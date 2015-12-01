@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=0.1
+Encoding=UTF-8
+Name=Open Lighting Console
+Comment=Lighting Console
+Exec=olc
+Icon=application-default-icon
+Terminal=false
+Type=Application
+StartupNotify=true
+Categories=GNOME;GTK;Utility;
