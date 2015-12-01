@@ -15,10 +15,10 @@ class PatchWindow(Gtk.Window):
         self.grid.set_row_homogeneous(True)
         self.add(self.grid)
 
-        self.patch_liststore = Gtk.ListStore(int, int, str)
+        self.patch_liststore = Gtk.ListStore(int, str, str)
         for i in range(len(self.patch.chanels)):
             for j in range(len(self.patch.chanels[i])):
-                self.patch_liststore.append([i+1, self.patch.chanels[i][j], ""])
+                self.patch_liststore.append([i+1, str(self.patch.chanels[i][j]), ""])
 
         self.treeview = Gtk.TreeView(self.patch_liststore)
         
@@ -26,10 +26,8 @@ class PatchWindow(Gtk.Window):
         column_chan = Gtk.TreeViewColumn("Chanel", renderer_chan, text=0)
         self.treeview.append_column(column_chan)
 
-        renderer_output = Gtk.CellRendererSpin()
+        renderer_output = Gtk.CellRendererText()
         renderer_output.set_property("editable", True)
-        adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        renderer_output.set_property("adjustment", adjustment)
         column_output = Gtk.TreeViewColumn("Output", renderer_output, text=1)
         self.treeview.append_column(column_output)
         renderer_output.connect("edited", self.output_edited)
@@ -59,10 +57,10 @@ class PatchWindow(Gtk.Window):
         # TODO: Mise à jour grille des chanels dans fenêtre principale
         output_old = self.patch.outputs[int(value) - 1]
         if output_old != 0:
-            self.patch_liststore[output_old - 1][1] = 0
+            self.patch_liststore[output_old - 1][1] = ""
             self.patch.chanels[output_old - 1] = [0]
             self.patch.outputs[int(value) - 1] = 0
-        self.patch_liststore[path][1] = int(value)
+        self.patch_liststore[path][1] = value
         self.patch.chanels[int(path)] = [int(value)]
         self.patch.outputs[int(value) - 1] = int(path) + 1
 
@@ -74,10 +72,10 @@ class PatchWindow(Gtk.Window):
         if button_label == "Patch Vide":
             self.patch.patch_empty()
             for i in range(512):
-                self.patch_liststore[i][1] = 0
+                self.patch_liststore[i][1] = ""
         elif button_label == "Patch 1:1":
             self.patch.patch_1on1()
             for i in range(512):
-                self.patch_liststore[i][1] = i + 1
+                self.patch_liststore[i][1] = str(i + 1)
         else:
             print ("Ne devrait jamais arrivé !!!")
