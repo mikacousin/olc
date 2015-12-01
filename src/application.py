@@ -4,6 +4,8 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gio, GLib
 
 from olc.window import Window
+from olc.patchwindow import PatchWindow
+from olc.dmx import PatchDmx
 
 class Application(Gtk.Application):
 
@@ -21,6 +23,11 @@ class Application(Gtk.Application):
     def do_activate(self):
         self.window = Window(self)
         self.window.show_all()
+
+        # TODO: Remove open patch window
+        patch = PatchDmx()
+        self.patchwindow = PatchWindow(patch)
+        self.patchwindow.show_all()
 
     def do_startup(self):
         Gtk.Application.do_startup(self)

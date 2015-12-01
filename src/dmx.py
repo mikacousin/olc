@@ -25,6 +25,12 @@ class PatchDmx(object):
             self.chanels[i] = [0]
             self.outputs[i] = 0
 
+    def patch_1on1(self):
+        """ Set patch 1:1 """
+        for i in range(512):
+            self.chanels[i] = [i+1]
+            self.outputs[i] = i+1
+
     def add_output(self, chanel, output):
         """ Add an output to a chanel """
         if self.chanels[chanel-1] == [0]:
