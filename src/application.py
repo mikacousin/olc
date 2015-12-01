@@ -5,7 +5,7 @@ from gi.repository import Gtk, Gio, GLib
 
 from olc.window import Window
 from olc.patchwindow import PatchWindow
-from olc.dmx import PatchDmx
+from olc.dmx import PatchDmx, DmxFrame
 
 class Application(Gtk.Application):
 
@@ -23,6 +23,15 @@ class Application(Gtk.Application):
     def do_activate(self):
         self.window = Window(self)
         self.window.show_all()
+
+        # Create DMX Frame
+        self.dmxframe = DmxFrame()
+        
+        # Create OlaClient
+        self.ola_client = OlaClient.OlaClient()
+        self.sock = ola_client.GetSocket()
+        self.universe = 1
+        ola_client.RegisterUniverse(universe, ola_client.REGISTER, on_dmx)
 
         # TODO: Remove open patch window
         patch = PatchDmx()
@@ -52,6 +61,13 @@ class Application(Gtk.Application):
         self.add_action(quitAction)
 
         return menu
+
+    def on_dmx(dmx):
+        for i in range(len(dmx)):
+            chanel = win.patch.outputs[i]
+            Gdk.ProgressBar.set_fraction(win.progressbar[chanel-1], dmx[i]/255)
+            win.levels[chanel-1].set_text(str(dmx[i]))
+            win.dmx_frame[i] = dmx[i]
 
     def _about(self, action, parameter):
         """

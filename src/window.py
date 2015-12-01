@@ -6,13 +6,6 @@ class Window(Gtk.ApplicationWindow):
 
     def __init__(self, app):
 
-        # TODO: Ne doit pas rester dans cet objet
-        ola_client = OlaClient.OlaClient()
-        self.sock = ola_client.GetSocket()
-        self.universe = 1
-        ola_client.RegisterUniverse(unniverse, ola_client.REGISTER, on_dmx)
-        #####
-
         Gtk.Window.__init__(self, title="Open Lighting Console", application=app)
         self.set_default_size(1400, 1000)
 
@@ -73,7 +66,7 @@ class Window(Gtk.ApplicationWindow):
             state = "off"
 
     def on_timeout(self, user_data):
-        readable, writable, exceptional = select.select([sock], [], [], 0)
+        readable, writable, exceptional = select.select([app.sock], [], [], 0)
         if readable:
             ola_client.SocketReady()
         return True
@@ -86,13 +79,3 @@ class Window(Gtk.ApplicationWindow):
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
-
-
-    def on_dmx(dmx):
-        # TODO: Ne doit pas rester dans cet objet !
-        for i in range(len(dmx)):
-            chanel = win.patch.outputs[i]
-            #print("output:", i+1, "@", dmx[i], "chanel:", chanel)
-            Gtk.ProgressBar.set_fraction(win.progressbar[chanel-1], dmx[i]/255)
-            win.levels[chanel-1].set_text(str(dmx[i]))
-            win.dmx_frame[i] = dmx[i]
