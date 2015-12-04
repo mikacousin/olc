@@ -1,7 +1,8 @@
 import sys
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gio, GLib
+from gi.repository import Gtk, Gio, GLib, Gdk
+from ola import OlaClient
 
 from olc.window import Window
 from olc.patchwindow import PatchWindow
@@ -20,22 +21,26 @@ class Application(Gtk.Application):
         settings = Gtk.Settings.get_default()
         settings.set_property('gtk-application-prefer-dark-theme', True)
 
-    def do_activate(self):
-        self.window = Window(self)
-        self.window.show_all()
-
         # Create DMX Frame
         self.dmxframe = DmxFrame()
-        
+
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
-        self.sock = ola_client.GetSocket()
+        self.sock = self.ola_client.GetSocket()
         self.universe = 1
-        ola_client.RegisterUniverse(universe, ola_client.REGISTER, on_dmx)
+        self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
+
+    def do_activate(self):
+        self.patch = PatchDmx()
+        self.patch.patch_empty()
+        self.patch.add_output(10, 10)
+        self.patch.add_output(510, 20)
+
+        self.window = Window(self, self.patch)
+        self.window.show_all()
 
         # TODO: Remove open patch window
-        patch = PatchDmx()
-        self.patchwindow = PatchWindow(patch)
+        self.patchwindow = PatchWindow(self.patch)
         self.patchwindow.show_all()
 
     def do_startup(self):
@@ -62,12 +67,12 @@ class Application(Gtk.Application):
 
         return menu
 
-    def on_dmx(dmx):
+    def on_dmx(self, dmx):
         for i in range(len(dmx)):
-            chanel = win.patch.outputs[i]
+            chanel = self.patch.outputs[i]
             Gdk.ProgressBar.set_fraction(win.progressbar[chanel-1], dmx[i]/255)
             win.levels[chanel-1].set_text(str(dmx[i]))
-            win.dmx_frame[i] = dmx[i]
+            self.dmxframe[i] = dmx[i]
 
     def _about(self, action, parameter):
         """
