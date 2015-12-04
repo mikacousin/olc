@@ -31,7 +31,9 @@ class Application(Gtk.Application):
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
 
     def do_activate(self):
+        # Create patch (1:1)
         self.patch = PatchDmx()
+        # TODO: A virer, juste pour test
         self.patch.patch_empty()
         self.patch.add_output(10, 10)
         self.patch.add_output(510, 20)
@@ -39,7 +41,7 @@ class Application(Gtk.Application):
         self.window = Window(self, self.patch)
         self.window.show_all()
 
-        # TODO: Remove open patch window
+        # TODO: A virer, ne doit pas s'ouvrir au demarrage
         self.patchwindow = PatchWindow(self.patch)
         self.patchwindow.show_all()
 
