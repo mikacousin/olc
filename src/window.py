@@ -30,35 +30,30 @@ class Window(Gtk.ApplicationWindow):
         self.levels = []
         self.progressbar = []
 
-        i = 0
-        for j in range(len(self.patch.chanels)):
-            if self.patch.chanels[j] != [0]:
-               	#print(self.patch.chanels[j], i)
+        for i in range(512):
 
-       	        # Création de la grille
-                self.grid.append(Gtk.Grid())
-                #self.grid[i].set_column_homogeneous(True)
-                self.flowbox.add(self.grid[i])
+            # Création de la grille
+            self.grid.append(Gtk.Grid())
+            #self.grid[i].set_column_homogeneous(True)
+            self.flowbox.add(self.grid[i])
 
-                # Création de la liste des outputs
-                self.chanels.append(Gtk.ToggleButton(str(j+1))) # Le numéro du chanel comme label
-                self.chanels[i].connect("toggled", self.on_button_toggled, str(j+1))
+            # Création de la liste des outputs
+            self.chanels.append(Gtk.ToggleButton(str(i+1))) # Le numéro du chanel comme label
+            self.chanels[i].connect("toggled", self.on_button_toggled, str(i+1))
 
-                # Création de la liste des niveaux
-                self.levels.append(Gtk.Label(label=" 0 "))
-                self.levels[i].set_justify(Gtk.Justification.CENTER)
+            # Création de la liste des niveaux
+            self.levels.append(Gtk.Label(label=" 0 "))
+            self.levels[i].set_justify(Gtk.Justification.CENTER)
 
-                # Création de la liste des barres de progression
-                self.progressbar.append(Gtk.ProgressBar())
-                self.progressbar[i].set_orientation(Gtk.Orientation.VERTICAL)
-                self.progressbar[i].set_inverted(1)
+            # Création de la liste des barres de progression
+            self.progressbar.append(Gtk.ProgressBar())
+            self.progressbar[i].set_orientation(Gtk.Orientation.VERTICAL)
+            self.progressbar[i].set_inverted(1)
 
-                # On place nos éléments dans la grille
-                self.grid[i].add(self.chanels[i])
-                self.grid[i].attach_next_to(self.levels[i], self.chanels[i], Gtk.PositionType.BOTTOM, 1, 1)
-                self.grid[i].attach_next_to(self.progressbar[i], self.chanels[i], Gtk.PositionType.RIGHT, 1, 2)
-
-                i += 1
+            # On place nos éléments dans la grille
+            self.grid[i].add(self.chanels[i])
+            self.grid[i].attach_next_to(self.levels[i], self.chanels[i], Gtk.PositionType.BOTTOM, 1, 1)
+            self.grid[i].attach_next_to(self.progressbar[i], self.chanels[i], Gtk.PositionType.RIGHT, 1, 2)
 
         self.scrolled.add(self.flowbox)
         self.add(self.scrolled)
