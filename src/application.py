@@ -50,7 +50,7 @@ class Application(Gtk.Application):
         self.window.show_all()
 
         # TODO: A virer, ne doit pas s'ouvrir au demarrage
-        self.patchwindow = PatchWindow(self.patch)
+        self.patchwindow = PatchWindow(self.patch, self.window)
         self.patchwindow.show_all()
 
     def do_startup(self):

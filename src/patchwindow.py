@@ -3,9 +3,10 @@ from gi.repository import Gtk
 from olc.dmx import PatchDmx
 
 class PatchWindow(Gtk.Window):
-    def __init__(self, patch):
+    def __init__(self, patch, win):
 
         self.patch = patch
+        self.win = win
 
         Gtk.Window.__init__(self, title="Patch")
         self.set_border_width(10)
@@ -59,14 +60,17 @@ class PatchWindow(Gtk.Window):
     def output_edited(self, widget, path, value):
         # TODO: Pouvoir mettre plusieurs outputs sur un chanel
         # TODO: Mise à jour grille des chanels dans fenêtre principale
+        if value == "":
+            value = "0"
         output_old = self.patch.outputs[int(value) - 1]
-        if output_old != 0:
+        if output_old > 0:
             self.patch_liststore[output_old - 1][1] = ""
             self.patch.chanels[output_old - 1] = [0]
             self.patch.outputs[int(value) - 1] = 0
         self.patch_liststore[path][1] = value
         self.patch.chanels[int(path)] = [int(value)]
         self.patch.outputs[int(value) - 1] = int(path) + 1
+        self.win.flowbox.invalidate_filter()
 
     def type_edited(self, widget, path, text):
         self.patch_liststore[path][2] = text
