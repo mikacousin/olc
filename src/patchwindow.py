@@ -18,6 +18,7 @@ class PatchWindow(Gtk.Window):
         self.patch_liststore = Gtk.ListStore(int, str, str)
         for i in range(len(self.patch.chanels)):
             for j in range(len(self.patch.chanels[i])):
+                #print("Chanel:", i+1, "Output:", self.patch.chanels[i][j])
                 if self.patch.chanels[i][j] != 0:
                     self.patch_liststore.append([i+1, str(self.patch.chanels[i][j]), ""])
                 else:

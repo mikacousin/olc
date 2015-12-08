@@ -24,6 +24,7 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_max_children_per_line(20)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.flowbox.set_filter_func(self.filter_func, None) # Fonction de filtrage
 
         self.grid = []
         self.chanels = []
@@ -31,7 +32,6 @@ class Window(Gtk.ApplicationWindow):
         self.progressbar = []
 
         for i in range(512):
-
             # Création de la grille
             self.grid.append(Gtk.Grid())
             #self.grid[i].set_column_homogeneous(True)
@@ -61,6 +61,15 @@ class Window(Gtk.ApplicationWindow):
         self.timeout_id = GObject.timeout_add(50, self.on_timeout, None)
 
         self.connect('key_press_event', self.on_key_press_event)
+
+    def filter_func(self, child, user_data):
+        i = child.get_index()
+        for j in range(len(self.patch.chanels[i])):
+            #print("Chanel:", i+1, "Output:", self.patch.chanels[i][j])
+            if self.patch.chanels[i][j] != 0:
+                return child
+            else:
+                return False
 
     def on_button_toggled(self, button, name):
         if button.get_active():

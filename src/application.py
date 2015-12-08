@@ -24,6 +24,9 @@ class Application(Gtk.Application):
         # Create DMX Frame
         self.dmxframe = DmxFrame()
 
+        # Create patch (1:1)
+        self.patch = PatchDmx()
+
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
         self.sock = self.ola_client.GetSocket()
@@ -31,11 +34,16 @@ class Application(Gtk.Application):
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
 
     def do_activate(self):
-        # Create patch (1:1)
-        self.patch = PatchDmx()
         # TODO: A virer, juste pour test
         self.patch.patch_empty()
-        self.patch.add_output(10, 10)
+        self.patch.add_output(10, 20)
+        self.patch.add_output(10, 30)
+        self.patch.add_output(11, 21)
+        self.patch.add_output(12, 22)
+        self.patch.add_output(13, 23)
+        self.patch.add_output(14, 24)
+        self.patch.add_output(15, 25)
+        self.patch.add_output(16, 26)
         self.patch.add_output(510, 20)
 
         self.window = Window(self, self.patch)
