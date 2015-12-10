@@ -59,7 +59,6 @@ class PatchWindow(Gtk.Window):
 
     def output_edited(self, widget, path, value):
         # TODO: Pouvoir mettre plusieurs outputs sur un chanel
-        # TODO: Mise à jour grille des chanels dans fenêtre principale
         if value == "":
             value = "0"
         output_old = self.patch.outputs[int(value) - 1]
@@ -81,9 +80,11 @@ class PatchWindow(Gtk.Window):
             self.patch.patch_empty()
             for i in range(512):
                 self.patch_liststore[i][1] = ""
+            self.win.flowbox.invalidate_filter()
         elif button_label == "Patch 1:1":
             self.patch.patch_1on1()
             for i in range(512):
                 self.patch_liststore[i][1] = str(i + 1)
+            self.win.flowbox.invalidate_filter()
         else:
             print ("Ne devrait jamais arrivé !!!")
