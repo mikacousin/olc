@@ -25,8 +25,8 @@ class PatchWindow(Gtk.Window):
                 else:
                     self.patch_liststore.append([i+1, "", ""])
 
-        self.treeview = Gtk.TreeView(self.patch_liststore)
-        
+        self.treeview = Gtk.TreeView(model=self.patch_liststore)
+
         renderer_chan = Gtk.CellRendererText()
         column_chan = Gtk.TreeViewColumn("Chanel", renderer_chan, text=0)
         self.treeview.append_column(column_chan)
@@ -50,26 +50,31 @@ class PatchWindow(Gtk.Window):
             button.connect("clicked", self.on_button_clicked)
 
         self.scrollable_treelist = Gtk.ScrolledWindow()
+        self.scrollable_treelist.add(self.treeview)
         self.scrollable_treelist.set_vexpand(True)
         self.grid.attach(self.scrollable_treelist, 0, 0, 6, 10)
         self.grid.attach_next_to(self.buttons[0], self.scrollable_treelist, Gtk.PositionType.BOTTOM, 1, 1)
         for i, button in enumerate(self.buttons[1:]):
             self.grid.attach_next_to(button, self.buttons[i], Gtk.PositionType.RIGHT, 1, 1)
-        self.scrollable_treelist.add(self.treeview)
 
     def output_edited(self, widget, path, value):
         # TODO: Pouvoir mettre plusieurs outputs sur un chanel
-        if value == "":
-            value = "0"
-        output_old = self.patch.outputs[int(value) - 1]
-        if output_old > 0:
-            self.patch_liststore[output_old - 1][1] = ""
-            self.patch.chanels[output_old - 1] = [0]
-            self.patch.outputs[int(value) - 1] = 0
-        self.patch_liststore[path][1] = value
-        self.patch.chanels[int(path)] = [int(value)]
-        self.patch.outputs[int(value) - 1] = int(path) + 1
-        self.win.flowbox.invalidate_filter()
+        if value == "" or value == "0":
+            self.patch_liststore[path][1] = ""
+            self.patch.chanels[int(path)] = [0]
+            for i in range(len(self.patch.chanels[int(path) - 1])):
+                self.patch.outputs[self.patch.chanels[int(path) - 1][i]] = 0
+            self.win.flowbox.invalidate_filter()
+        else:
+            output_old = self.patch.outputs[int(value) - 1]
+            if output_old > 0:
+                self.patch_liststore[output_old - 1][1] = ""
+                self.patch.chanels[output_old - 1] = [0]
+                self.patch.outputs[int(value) - 1] = 0
+            self.patch_liststore[path][1] = value
+            self.patch.chanels[int(path)] = [int(value)]
+            self.patch.outputs[int(value) - 1] = int(path) + 1
+            self.win.flowbox.invalidate_filter()
 
     def type_edited(self, widget, path, text):
         self.patch_liststore[path][2] = text

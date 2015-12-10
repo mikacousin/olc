@@ -37,7 +37,7 @@ class Application(Gtk.Application):
         # TODO: A virer, juste pour test
         self.patch.patch_empty()
         self.patch.add_output(10, 20)
-        self.patch.add_output(10, 30)
+        #self.patch.add_output(10, 30)
         self.patch.add_output(11, 21)
         self.patch.add_output(12, 22)
         self.patch.add_output(13, 23)
