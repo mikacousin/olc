@@ -16,30 +16,34 @@ class PatchWindow(Gtk.Window):
         self.grid.set_row_homogeneous(True)
         self.add(self.grid)
 
-        self.patch_liststore = Gtk.ListStore(int, str, str)
+        self.patch_liststore = Gtk.ListStore(str, int, str, str)
         for i in range(len(self.patch.chanels)):
             for j in range(len(self.patch.chanels[i])):
                 #print("Chanel:", i+1, "Output:", self.patch.chanels[i][j])
                 if self.patch.chanels[i][j] != 0:
-                    self.patch_liststore.append([i+1, str(self.patch.chanels[i][j]), ""])
+                    self.patch_liststore.append(["     ", i+1, str(self.patch.chanels[i][j]), ""])
                 else:
-                    self.patch_liststore.append([i+1, "", ""])
+                    self.patch_liststore.append(["     ", i+1, "", ""])
 
         self.treeview = Gtk.TreeView(model=self.patch_liststore)
 
         renderer_chan = Gtk.CellRendererText()
-        column_chan = Gtk.TreeViewColumn("Chanel", renderer_chan, text=0)
+        column_chan = Gtk.TreeViewColumn("", renderer_chan, text=0)
+        self.treeview.append_column(column_chan)
+
+        renderer_chan = Gtk.CellRendererText()
+        column_chan = Gtk.TreeViewColumn("Chanel", renderer_chan, text=1)
         self.treeview.append_column(column_chan)
 
         renderer_output = Gtk.CellRendererText()
         renderer_output.set_property("editable", True)
-        column_output = Gtk.TreeViewColumn("Output", renderer_output, text=1)
+        column_output = Gtk.TreeViewColumn("Output", renderer_output, text=2)
         self.treeview.append_column(column_output)
         renderer_output.connect("edited", self.output_edited)
 
         renderer_type = Gtk.CellRendererText()
         renderer_type.set_property("editable", True)
-        column_type = Gtk.TreeViewColumn("Type", renderer_type, text=2)
+        column_type = Gtk.TreeViewColumn("Type", renderer_type, text=3)
         self.treeview.append_column(column_type)
         renderer_type.connect("edited", self.type_edited)
 
@@ -60,7 +64,7 @@ class PatchWindow(Gtk.Window):
     def output_edited(self, widget, path, value):
         # TODO: Pouvoir mettre plusieurs outputs sur un chanel
         if value == "" or value == "0":
-            self.patch_liststore[path][1] = ""
+            self.patch_liststore[path][2] = ""
             self.patch.chanels[int(path)] = [0]
             for i in range(len(self.patch.chanels[int(path) - 1])):
                 self.patch.outputs[self.patch.chanels[int(path) - 1][i]] = 0
@@ -68,28 +72,28 @@ class PatchWindow(Gtk.Window):
         else:
             output_old = self.patch.outputs[int(value) - 1]
             if output_old > 0:
-                self.patch_liststore[output_old - 1][1] = ""
+                self.patch_liststore[output_old - 1][2] = ""
                 self.patch.chanels[output_old - 1] = [0]
                 self.patch.outputs[int(value) - 1] = 0
-            self.patch_liststore[path][1] = value
+            self.patch_liststore[path][2] = value
             self.patch.chanels[int(path)] = [int(value)]
             self.patch.outputs[int(value) - 1] = int(path) + 1
             self.win.flowbox.invalidate_filter()
 
     def type_edited(self, widget, path, text):
-        self.patch_liststore[path][2] = text
+        self.patch_liststore[path][3] = text
 
     def on_button_clicked(self, widget):
         button_label = widget.get_label()
         if button_label == "Patch Vide":
             self.patch.patch_empty()
             for i in range(512):
-                self.patch_liststore[i][1] = ""
+                self.patch_liststore[i][2] = ""
             self.win.flowbox.invalidate_filter()
         elif button_label == "Patch 1:1":
             self.patch.patch_1on1()
             for i in range(512):
-                self.patch_liststore[i][1] = str(i + 1)
+                self.patch_liststore[i][2] = str(i + 1)
             self.win.flowbox.invalidate_filter()
         else:
             print ("Ne devrait jamais arrivé !!!")
