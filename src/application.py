@@ -32,6 +32,8 @@ class Application(Gtk.Application):
         self.sock = self.ola_client.GetSocket()
         self.universe = 1
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
+        # Fetch dmx values on startup
+        self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
     def do_activate(self):
         # TODO: A virer, juste pour test
@@ -44,7 +46,7 @@ class Application(Gtk.Application):
         self.patch.add_output(14, 24)
         self.patch.add_output(15, 25)
         self.patch.add_output(16, 26)
-        self.patch.add_output(510, 20)
+        self.patch.add_output(510, 10)
 
         self.window = Window(self, self.patch)
         self.window.show_all()
@@ -81,11 +83,18 @@ class Application(Gtk.Application):
         for i in range(len(dmx)):
             chanel = self.patch.outputs[i]
             level = dmx[i]
-            self.dmxframe.set_level(i, dmx[i])
+            self.dmxframe.set_level(i, level)
             #print("Chanel:", chanel, "Level:", level)
             self.window.chanels[chanel-1].level = level
             self.window.chanels[chanel-1].queue_draw()
 
+    def fetch_dmx(self, request, univ, dmx):
+        for i in range(len(dmx)):
+            chanel = self.patch.outputs[i]
+            level = dmx[i]
+            self.dmxframe.set_level(i, level)
+            self.window.chanels[chanel-1].level = level
+            self.window.chanels[chanel-1].queue_draw()
 
     def _about(self, action, parameter):
         """
