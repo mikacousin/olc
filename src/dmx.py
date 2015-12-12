@@ -4,6 +4,9 @@ class DmxFrame(object):
     def __init__(self):
         self.dmx_frame = array.array('B', [0] * 512)
 
+    def set_level(self, output, level):
+        self.dmx_frame[output] = level
+
 class PatchDmx(object):
     """
     To store and manipulate DMX patch

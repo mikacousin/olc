@@ -30,10 +30,10 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
         self.flowbox.set_filter_func(self.filter_func, None) # Fonction de filtrage
 
-        self.grid = []
+        #self.grid = []
         self.chanels = []
-        self.levels = []
-        self.progressbar = []
+        #self.levels = []
+        #self.progressbar = []
 
         for i in range(512):
             """
@@ -60,8 +60,8 @@ class Window(Gtk.ApplicationWindow):
             self.grid[i].attach_next_to(self.levels[i], self.chanels[i], Gtk.PositionType.BOTTOM, 1, 1)
             self.grid[i].attach_next_to(self.progressbar[i], self.chanels[i], Gtk.PositionType.RIGHT, 1, 2)
             """
-            chanel = ChanelWidget(i+1, 0, 0)
-            self.flowbox.add(chanel)
+            self.chanels.append(ChanelWidget(i+1, 0, 0))
+            self.flowbox.add(self.chanels[i])
 
         self.scrolled.add(self.flowbox)
         self.add(self.scrolled)

@@ -80,9 +80,12 @@ class Application(Gtk.Application):
     def on_dmx(self, dmx):
         for i in range(len(dmx)):
             chanel = self.patch.outputs[i]
-            Gdk.ProgressBar.set_fraction(win.progressbar[chanel-1], dmx[i]/255)
-            win.levels[chanel-1].set_text(str(dmx[i]))
-            self.dmxframe[i] = dmx[i]
+            level = dmx[i]
+            self.dmxframe.set_level(i, dmx[i])
+            #print("Chanel:", chanel, "Level:", level)
+            self.window.chanels[chanel-1].level = level
+            self.window.chanels[chanel-1].queue_draw()
+
 
     def _about(self, action, parameter):
         """
