@@ -6,10 +6,21 @@ class ChanelWidget(Gtk.Widget):
 
     def __init__(self, chanel, level, next_level):
         Gtk.Widget.__init__(self)
+
         self.chanel = str(chanel)
         self.level = level
         self.next_level = next_level
+        self.clicked = False
+
+        self.connect("button-press-event", self.on_click)
         self.set_size_request(80, 80)
+
+    def on_click(self, tgt, ev):
+        if self.clicked:
+            self.clicked = False
+        else:
+            self.clicked = True
+        self.queue_draw()
 
     def do_draw(self, cr):
         # paint background
@@ -26,9 +37,14 @@ class ChanelWidget(Gtk.Widget):
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
         # dessine fond pour le numéro de cicuit
-        cr.set_source_rgb(0.2, 0.2, 0.2)
-        cr.rectangle(1, 1, allocation.width-2, 18)
-        cr.fill()
+        if self.clicked:
+            cr.set_source_rgb(0.4, 0.4, 0.4)
+            cr.rectangle(1, 1, allocation.width-2, 18)
+            cr.fill()
+        else:
+            cr.set_source_rgb(0.2, 0.2, 0.2)
+            cr.rectangle(1, 1, allocation.width-2, 18)
+            cr.fill()
         # draw chanel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
@@ -89,12 +105,14 @@ class ChanelWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK
+        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
+
         window = Gdk.Window(self.get_parent_window(), attr, mask);
         self.set_window(window)
         self.register_window(window)
+
         self.set_realized(True)
         window.set_background_pattern(None)
 

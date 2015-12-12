@@ -24,7 +24,9 @@ class Window(Gtk.ApplicationWindow):
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         self.flowbox = Gtk.FlowBox()
+        self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
+        self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
         self.flowbox.set_filter_func(self.filter_func, None) # Fonction de filtrage
 
