@@ -2,6 +2,8 @@ import select
 from gi.repository import Gtk, GObject, Gdk
 from ola import OlaClient
 
+from olc.customwidget import ChanelWidget
+
 class Window(Gtk.ApplicationWindow):
 
     def __init__(self, app, patch):
@@ -32,6 +34,7 @@ class Window(Gtk.ApplicationWindow):
         self.progressbar = []
 
         for i in range(512):
+            """
             # Création de la grille
             self.grid.append(Gtk.Grid())
             #self.grid[i].set_column_homogeneous(True)
@@ -54,6 +57,9 @@ class Window(Gtk.ApplicationWindow):
             self.grid[i].add(self.chanels[i])
             self.grid[i].attach_next_to(self.levels[i], self.chanels[i], Gtk.PositionType.BOTTOM, 1, 1)
             self.grid[i].attach_next_to(self.progressbar[i], self.chanels[i], Gtk.PositionType.RIGHT, 1, 2)
+            """
+            chanel = ChanelWidget(i+1, 0, 0)
+            self.flowbox.add(chanel)
 
         self.scrolled.add(self.flowbox)
         self.add(self.scrolled)
