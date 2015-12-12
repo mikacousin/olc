@@ -30,6 +30,9 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
         self.flowbox.set_filter_func(self.filter_func, None) # Fonction de filtrage
 
+        self.keystring = ""
+        self.last_chan_selected = ""
+
         #self.grid = []
         self.chanels = []
         #self.levels = []
@@ -110,3 +113,57 @@ class Window(Gtk.ApplicationWindow):
             else:
                 self.app.window.chanels[chanel].clicked = False
                 self.app.window.chanels[chanel].queue_draw()
+
+    def keypress_c(self):
+        if self.keystring == "" or self.keystring == "0":
+            for i in range(512):
+                chanel = self.app.patch.outputs[i] - 1
+                self.app.window.chanels[chanel].clicked = False
+                self.app.window.chanels[chanel].queue_draw()
+                self.last_chan_selected = ""
+        else:
+            chanel = int(self.keystring)-1
+            if chanel >= 0 and chanel < 512:
+                self.app.window.chanels[chanel].clicked = True
+                self.app.window.chanels[chanel].queue_draw()
+                self.last_chan_selected = self.keystring
+        self.keystring = ""
+
+    def keypress_greater(self):
+        if self.last_chan_selected:
+            for chanel in range(int(self.last_chan_selected), int(self.keystring)):
+                self.app.window.chanels[chanel].clicked = True
+                self.app.window.chanels[chanel].queue_draw()
+            self.last_chan_selected = self.keystring
+            self.keystring = ""
+
+    def keypress_plus(self):
+        for i in range(512):
+            chanel = self.app.patch.outputs[i] - 1
+            if self.app.window.chanels[chanel].clicked:
+                level = self.app.dmxframe.get_level(i)
+                if level < 255:
+                    self.app.dmxframe.set_level(i, level+1)
+        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def keypress_minus(self):
+        for i in range(512):
+            chanel = self.app.patch.outputs[i] - 1
+            if self.app.window.chanels[chanel].clicked:
+                level = self.app.dmxframe.get_level(i)
+                if level > 0:
+                    self.app.dmxframe.set_level(i, level-1)
+        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def keypress_equal(self):
+        for i in range(512):
+            chanel = self.app.patch.outputs[i] - 1
+            if self.app.window.chanels[chanel].clicked:
+                level = int(self.keystring)
+                if level >= 0 and level <= 255:
+                    self.app.dmxframe.set_level(i, level)
+        self.keystring = ""
+        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def keypress_Escape(self):
+        self.keystring = ""
