@@ -99,3 +99,14 @@ class Window(Gtk.ApplicationWindow):
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
+
+    def keypress_a(self):
+        for i in range(512):
+            level = self.app.dmxframe.get_level(i)
+            chanel = self.app.patch.outputs[i] - 1
+            if level > 0:
+                self.app.window.chanels[chanel].clicked = True
+                self.app.window.chanels[chanel].queue_draw()
+            else:
+                self.app.window.chanels[chanel].clicked = False
+                self.app.window.chanels[chanel].queue_draw()
