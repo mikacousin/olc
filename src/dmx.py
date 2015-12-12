@@ -7,6 +7,9 @@ class DmxFrame(object):
     def set_level(self, output, level):
         self.dmx_frame[output] = level
 
+    def get_level(self, output):
+        return self.dmx_frame[output]
+
 class PatchDmx(object):
     """
     To store and manipulate DMX patch

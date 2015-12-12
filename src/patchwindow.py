@@ -1,11 +1,12 @@
 from gi.repository import Gtk
 
-from olc.dmx import PatchDmx
+from olc.dmx import DmxFrame, PatchDmx
 
 class PatchWindow(Gtk.Window):
-    def __init__(self, patch, win):
+    def __init__(self, patch, dmx, win):
 
         self.patch = patch
+        self.dmx = dmx
         self.win = win
 
         Gtk.Window.__init__(self, title="Patch")
@@ -78,6 +79,9 @@ class PatchWindow(Gtk.Window):
             self.patch_liststore[path][2] = value
             self.patch.chanels[int(path)] = [int(value)]
             self.patch.outputs[int(value) - 1] = int(path) + 1
+            level = self.dmx.get_level(int(value)-1)
+            self.win.chanels[int(path)].level = level
+            self.win.chanels[int(path)].queue_draw()
             self.win.flowbox.invalidate_filter()
 
     def type_edited(self, widget, path, text):
@@ -94,6 +98,7 @@ class PatchWindow(Gtk.Window):
             self.patch.patch_1on1()
             for i in range(512):
                 self.patch_liststore[i][2] = str(i + 1)
+                level = self.dmx.get_level(i)
+                self.win.chanels[i].level = level
+                self.win.chanels[i].queue_draw()
             self.win.flowbox.invalidate_filter()
-        else:
-            print ("Ne devrait jamais arrivé !!!")
