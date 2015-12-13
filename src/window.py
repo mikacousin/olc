@@ -138,10 +138,20 @@ class Window(Gtk.ApplicationWindow):
             self.keystring = ""
 
     def keypress_plus(self):
-        print("")
+        chanel = int(self.keystring)-1
+        if chanel >= 0 and chanel < 512:
+            self.app.window.chanels[chanel].clicked = True
+            self.app.window.chanels[chanel].queue_draw()
+            self.last_chan_selected = self.keystring
+        self.keystring = ""
 
     def keypress_minus(self):
-        print("")
+        chanel = int(self.keystring)-1
+        if chanel >= 0 and chanel < 512:
+            self.app.window.chanels[chanel].clicked = False
+            self.app.window.chanels[chanel].queue_draw()
+            self.last_chan_selected = self.keystring
+        self.keystring = ""
 
     def keypress_Right(self):
         for i in range(512):
