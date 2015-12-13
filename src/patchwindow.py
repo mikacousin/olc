@@ -67,8 +67,8 @@ class PatchWindow(Gtk.Window):
         if value == "" or value == "0":
             self.patch_liststore[path][2] = ""
             self.patch.chanels[int(path)] = [0]
-            for i in range(len(self.patch.chanels[int(path) - 1])):
-                self.patch.outputs[self.patch.chanels[int(path) - 1][i]] = 0
+            for i in range(len(self.patch.chanels[int(path)])):
+                self.patch.outputs[self.patch.chanels[int(path)][i]] = 0
             self.win.flowbox.invalidate_filter()
         else:
             output_old = self.patch.outputs[int(value) - 1]
