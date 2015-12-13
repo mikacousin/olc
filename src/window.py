@@ -138,6 +138,12 @@ class Window(Gtk.ApplicationWindow):
             self.keystring = ""
 
     def keypress_plus(self):
+        print("")
+
+    def keypress_minus(self):
+        print("")
+
+    def keypress_Right(self):
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:
@@ -146,7 +152,7 @@ class Window(Gtk.ApplicationWindow):
                     self.app.dmxframe.set_level(i, level+1)
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
-    def keypress_minus(self):
+    def keypress_Left(self):
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:

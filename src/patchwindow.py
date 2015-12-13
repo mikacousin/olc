@@ -63,7 +63,8 @@ class PatchWindow(Gtk.Window):
             self.grid.attach_next_to(button, self.buttons[i], Gtk.PositionType.RIGHT, 1, 1)
 
     def output_edited(self, widget, path, text):
-        # TODO: Pouvoir mettre plusieurs outputs sur un chanel
+        # TODO: Pouvoir mettre plusieurs outputs sur un channel
+        # TODO: Bug quand on réutilise un output mis dans un groupe sur un channel
         s = ","
         value_list = text.split(',')
         for value in value_list:
@@ -80,8 +81,6 @@ class PatchWindow(Gtk.Window):
                     self.patch.chanels[output_old - 1] = [0]
                     self.patch.outputs[int(value) - 1] = 0
                 self.patch_liststore[path][2] = text
-                #self.patch.chanels[int(path)] = [int(value)]
-                #self.patch.outputs[int(value) - 1] = int(path) + 1
                 self.patch.add_output(int(path)+1, int(value))
                 level = self.dmx.get_level(int(value)-1)
                 self.win.chanels[int(path)].level = level
