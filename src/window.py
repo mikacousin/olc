@@ -2,7 +2,7 @@ import select
 from gi.repository import Gtk, GObject, Gdk
 from ola import OlaClient
 
-from olc.customwidget import ChanelWidget
+from olc.customwidgets import ChanelWidget
 
 class Window(Gtk.ApplicationWindow):
 
@@ -183,3 +183,29 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Escape(self):
         self.keystring = ""
+
+    def keypress_Up(self):
+        t_in = self.app.sequence.cues[0].time_in
+        t_out = self.app.sequence.cues[0].time_out
+        self.app.win_seq.sequential.time_in = t_in
+        self.app.win_seq.sequential.time_out = t_out
+        self.app.win_seq.sequential.queue_draw()
+        #print("Time In:", t_in)
+        #print("Time Out:", t_out)
+        for chanel in range(512):
+            level = self.app.sequence.cues[0].chanels[chanel]
+            self.app.dmxframe.set_level(chanel, level)
+        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def keypress_Down(self):
+        t_in = self.app.sequence.cues[1].time_in
+        t_out = self.app.sequence.cues[1].time_out
+        self.app.win_seq.sequential.time_in = t_in
+        self.app.win_seq.sequential.time_out = t_out
+        self.app.win_seq.sequential.queue_draw()
+        #print("Time In:", t_in)
+        #print("Time Out:", t_out)
+        for chanel in range(512):
+            level = self.app.sequence.cues[1].chanels[chanel][1]
+            self.app.dmxframe.set_level(chanel, level)
+        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)

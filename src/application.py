@@ -7,6 +7,9 @@ from ola import OlaClient
 from olc.window import Window
 from olc.patchwindow import PatchWindow
 from olc.dmx import PatchDmx, DmxFrame
+from olc.cue import Cue
+from olc.sequence import Sequence
+from olc.sequentialwindow import SequentialWindow
 
 class Application(Gtk.Application):
 
@@ -27,6 +30,9 @@ class Application(Gtk.Application):
         # Create patch (1:1)
         self.patch = PatchDmx()
 
+        # Create a sequential
+        self.sequence = Sequence(1)
+
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
         self.sock = self.ola_client.GetSocket()
@@ -36,6 +42,7 @@ class Application(Gtk.Application):
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
     def do_activate(self):
+        """
         # TODO: A virer, juste pour test
         self.patch.patch_empty()
         self.patch.add_output(10, 20)
@@ -47,9 +54,27 @@ class Application(Gtk.Application):
         self.patch.add_output(15, 25)
         self.patch.add_output(16, 26)
         self.patch.add_output(510, 10)
+        """
 
         self.window = Window(self, self.patch)
         self.window.show_all()
+
+        # TODO: A virer, juste pour tester le sequentiel
+        cue = Cue(1, 1.0, [[1, 255], [2, 128], [10, 30], [11, 30], [12, 30], [0, 0], [0, 0], [0, 0]]*64, text="blabla 1.0", time_in=8, time_out=5)
+        self.sequence.add_cue(cue)
+
+        self.win_seq = SequentialWindow(self.sequence)
+        self.win_seq.show_all()
+        """
+        for cue in self.sequence.cues:
+            for i in cue.chanels:
+                chanel = i[0]
+                level = i[1]
+                self.window.chanels[chanel - 1].level = level
+                self.window.chanels[chanel - 1].queue_draw()
+                self.dmxframe.set_level(chanel -1, level)
+        self.ola_client.SendDmx(self.universe, self.dmxframe.dmx_frame)
+        """
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
