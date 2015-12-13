@@ -62,27 +62,31 @@ class PatchWindow(Gtk.Window):
         for i, button in enumerate(self.buttons[1:]):
             self.grid.attach_next_to(button, self.buttons[i], Gtk.PositionType.RIGHT, 1, 1)
 
-    def output_edited(self, widget, path, value):
+    def output_edited(self, widget, path, text):
         # TODO: Pouvoir mettre plusieurs outputs sur un chanel
-        if value == "" or value == "0":
-            self.patch_liststore[path][2] = ""
-            self.patch.chanels[int(path)] = [0]
-            for i in range(len(self.patch.chanels[int(path)])):
-                self.patch.outputs[self.patch.chanels[int(path)][i]] = 0
-            self.win.flowbox.invalidate_filter()
-        else:
-            output_old = self.patch.outputs[int(value) - 1]
-            if output_old > 0:
-                self.patch_liststore[output_old - 1][2] = ""
-                self.patch.chanels[output_old - 1] = [0]
-                self.patch.outputs[int(value) - 1] = 0
-            self.patch_liststore[path][2] = value
-            self.patch.chanels[int(path)] = [int(value)]
-            self.patch.outputs[int(value) - 1] = int(path) + 1
-            level = self.dmx.get_level(int(value)-1)
-            self.win.chanels[int(path)].level = level
-            self.win.chanels[int(path)].queue_draw()
-            self.win.flowbox.invalidate_filter()
+        s = ","
+        value_list = text.split(',')
+        for value in value_list:
+            if value == "" or value == "0":
+                self.patch_liststore[path][2] = ""
+                self.patch.chanels[int(path)] = [0]
+                for i in range(len(self.patch.chanels[int(path)])):
+                    self.patch.outputs[self.patch.chanels[int(path)][i]] = 0
+                self.win.flowbox.invalidate_filter()
+            else:
+                output_old = self.patch.outputs[int(value) - 1]
+                if output_old > 0:
+                    self.patch_liststore[output_old - 1][2] = ""
+                    self.patch.chanels[output_old - 1] = [0]
+                    self.patch.outputs[int(value) - 1] = 0
+                self.patch_liststore[path][2] = text
+                #self.patch.chanels[int(path)] = [int(value)]
+                #self.patch.outputs[int(value) - 1] = int(path) + 1
+                self.patch.add_output(int(path)+1, int(value))
+                level = self.dmx.get_level(int(value)-1)
+                self.win.chanels[int(path)].level = level
+                self.win.chanels[int(path)].queue_draw()
+                self.win.flowbox.invalidate_filter()
 
     def type_edited(self, widget, path, text):
         self.patch_liststore[path][3] = text
