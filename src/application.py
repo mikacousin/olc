@@ -51,10 +51,6 @@ class Application(Gtk.Application):
         self.window = Window(self, self.patch)
         self.window.show_all()
 
-        # TODO: A virer, ne doit pas s'ouvrir au demarrage
-        self.patchwindow = PatchWindow(self.patch, self.dmxframe, self.window)
-        self.patchwindow.show_all()
-
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
@@ -68,6 +64,10 @@ class Application(Gtk.Application):
         builder.add_from_resource('/org/gnome/OpenLightingConsole/app-menu.ui')
 
         menu = builder.get_object('app-menu')
+
+        patchAction = Gio.SimpleAction.new('patch', None)
+        patchAction.connect('activate', self._patch)
+        self.add_action(patchAction)
 
         aboutAction = Gio.SimpleAction.new('about', None)
         aboutAction.connect('activate', self._about)
@@ -95,6 +95,10 @@ class Application(Gtk.Application):
             self.dmxframe.set_level(i, level)
             self.window.chanels[chanel-1].level = level
             self.window.chanels[chanel-1].queue_draw()
+
+    def _patch(self, action, parameter):
+        self.patchwindow = PatchWindow(self.patch, self.dmxframe, self.window)
+        self.patchwindow.show_all()
 
     def _about(self, action, parameter):
         """
