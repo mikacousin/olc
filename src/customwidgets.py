@@ -124,12 +124,10 @@ class SequentialWidget(Gtk.Widget):
         self.time_in = time_in
         self.time_out = time_out
 
+        self.pos_x = 0
+
         Gtk.Widget.__init__(self)
         self.set_size_request(800, 300)
-
-        # Change to dark theme
-        settings = Gtk.Settings.get_default()
-        settings.set_property('gtk-application-prefer-dark-theme', True)
 
     def do_draw(self, cr):
         if self.time_in > self.time_out:
@@ -174,22 +172,41 @@ class SequentialWidget(Gtk.Widget):
         cr.line_to(16+(inter*self.time_out), allocation.height-32)
         cr.stroke()
         # draw an arrow at the end
-        angle = math.atan2(allocation.height-32 - 40, 16+(inter*self.time_out) - 16)
         arrow_lenght = 12
         arrow_degrees = 10
+        start_x = 16
+        start_y = 40
         end_x = 16+(inter*self.time_out)
         end_y = allocation.height-32
-        x1 = 16+(inter*self.time_out) + arrow_lenght * math.cos(angle - arrow_degrees)
-        y1 = allocation.height-32 + arrow_lenght * math.sin(angle - arrow_degrees)
-        x2 = 16+(inter*self.time_out) + arrow_lenght * math.cos(angle + arrow_degrees)
-        y2 = allocation.height-32 + arrow_lenght * math.sin(angle + arrow_degrees)
+        angle = math.atan2(end_y - start_y, end_x - start_x)
+        x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
+        y1 = end_y + arrow_lenght * math.sin(angle - arrow_degrees)
+        x2 = end_x + arrow_lenght * math.cos(angle + arrow_degrees)
+        y2 = end_y + arrow_lenght * math.sin(angle + arrow_degrees)
         cr.move_to(end_x, end_y)
         cr.line_to(x1, y1)
         cr.line_to(x2, y2)
         cr.close_path()
         cr.fill()
+        # draw X1 cursor
+        x1 = start_x + self.pos_x
+        y1 = start_y + (self.pos_x * math.tan(angle))
+        if x1 > end_x:
+            x1 = end_x
+            y1 = end_y
+        cr.set_source_rgb(0.9, 0.6, 0.2)
+        cr.arc(x1, y1, 8, 0, 2*math.pi)
+        cr.fill()
+        cr.set_source_rgb(0.9, 0.9, 0.9)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+            cairo.FONT_WEIGHT_BOLD)
+        cr.set_font_size(10)
+        cr.move_to(x1 - 5, y1 + 2)
+        cr.show_text("A")
 
         # draw In line
+        fg_color = self.get_style_context().get_color(Gtk.StateFlags.NORMAL)
+        cr.set_source_rgba(*list(fg_color));
         cr.move_to(16, allocation.height-32)
         cr.line_to(16+(inter*self.time_in), 40)
         cr.stroke()
@@ -210,27 +227,27 @@ class SequentialWidget(Gtk.Widget):
         cr.line_to(x2, y2)
         cr.close_path()
         cr.fill()
-
-        # draw X1 cursor
-        cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.arc(16, 40, 8, 0, 2*math.pi)
-        cr.fill()
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
-            cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(10)
-        cr.move_to(11, 42)
-        cr.show_text("A")
         # draw X2 cursor
+        x1 = start_x + self.pos_x
+        y1 = start_y + (self.pos_x * math.tan(angle))
+        if x1 > end_x:
+            x1 = end_x
+            y1 = end_y
         cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.arc(16, allocation.height-32, 8, 0, 2*math.pi)
+        cr.arc(x1, y1, 8, 0, 2*math.pi)
         cr.fill()
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(10)
-        cr.move_to(11, allocation.height-29)
+        cr.move_to(x1 - 5, y1 + 3)
         cr.show_text("B")
+
+        # draw Time Cursor
+        #cr.set_source_rgb(0.9, 0.6, 0.2)
+        #cr.move_to(16+self.pos_x, 16)
+        #cr.line_to(16+self.pos_x, allocation.height-16)
+        #cr.stroke()
 
         # draw times number
         cr.set_source_rgb(0.9, 0.9, 0.9)

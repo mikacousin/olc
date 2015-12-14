@@ -213,3 +213,19 @@ class Window(Gtk.ApplicationWindow):
                 level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
                 self.app.dmxframe.set_level(chanel, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def keypress_w(self):
+        self.app.win_seq.sequential.pos_x -= 1
+        self.app.win_seq.sequential.queue_draw()
+
+    def keypress_x(self):
+        self.app.win_seq.sequential.pos_x += 1
+        self.app.win_seq.sequential.queue_draw()
+
+    def keypress_W(self):
+        self.app.win_seq.sequential.pos_x -= 10
+        self.app.win_seq.sequential.queue_draw()
+
+    def keypress_X(self):
+        self.app.win_seq.sequential.pos_x += 10
+        self.app.win_seq.sequential.queue_draw()
