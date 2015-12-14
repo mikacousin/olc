@@ -247,10 +247,11 @@ class Window(Gtk.ApplicationWindow):
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
         def example_target():
+            t_sleep = t_max / (800 - 32)
             for i in range(800 - 32): # Taille définit dans customwidgets
                 GLib.idle_add(update_progress, i)
-                time.sleep(0.01)
-            time.sleep(0.01)
+                time.sleep(t_sleep)
+            time.sleep(t_sleep)
             position = self.app.sequence.position
             position += 1
             if position <= 2:
