@@ -65,19 +65,14 @@ class Application(Gtk.Application):
             dmx.set_level(i, int(i/2))
         cue = Cue(1, 1.0, dmx, text="blabla 1.0", time_in=8, time_out=5)
         self.sequence.add_cue(cue)
+        dmx = DmxFrame()
+        for i in range(512):
+            dmx.set_level(i, 30)
+        cue = Cue(2, 2.0, dmx, text="2.0", time_in=6, time_out=10)
+        self.sequence.add_cue(cue)
 
-        self.win_seq = SequentialWindow(self.sequence)
+        self.win_seq = SequentialWindow(self, self.sequence)
         self.win_seq.show_all()
-        """
-        for cue in self.sequence.cues:
-            for i in cue.chanels:
-                chanel = i[0]
-                level = i[1]
-                self.window.chanels[chanel - 1].level = level
-                self.window.chanels[chanel - 1].queue_draw()
-                self.dmxframe.set_level(chanel -1, level)
-        self.ola_client.SendDmx(self.universe, self.dmxframe.dmx_frame)
-        """
 
     def do_startup(self):
         Gtk.Application.do_startup(self)

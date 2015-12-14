@@ -126,7 +126,7 @@ class SequentialWidget(Gtk.Widget):
         self.time_out = time_out
 
         Gtk.Widget.__init__(self)
-        self.set_size_request(1000, 300)
+        self.set_size_request(800, 300)
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()

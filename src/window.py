@@ -185,23 +185,31 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_Up(self):
-        t_in = self.app.sequence.cues[0].time_in
-        t_out = self.app.sequence.cues[0].time_out
-        self.app.win_seq.sequential.time_in = t_in
-        self.app.win_seq.sequential.time_out = t_out
-        self.app.win_seq.sequential.queue_draw()
-        for chanel in range(512):
-            level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
-            self.app.dmxframe.set_level(chanel, level)
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        position = self.app.sequence.position
+        position -= 1
+        if position >= 0:
+            self.app.sequence.position -= 1
+            t_in = self.app.sequence.cues[position].time_in
+            t_out = self.app.sequence.cues[position].time_out
+            self.app.win_seq.sequential.time_in = t_in
+            self.app.win_seq.sequential.time_out = t_out
+            self.app.win_seq.sequential.queue_draw()
+            for chanel in range(512):
+                level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
+                self.app.dmxframe.set_level(chanel, level)
+            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_Down(self):
-        t_in = self.app.sequence.cues[1].time_in
-        t_out = self.app.sequence.cues[1].time_out
-        self.app.win_seq.sequential.time_in = t_in
-        self.app.win_seq.sequential.time_out = t_out
-        self.app.win_seq.sequential.queue_draw()
-        for chanel in range(512):
-            level = self.app.sequence.cues[1].chanels.dmx_frame[chanel]
-            self.app.dmxframe.set_level(chanel, level)
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        position = self.app.sequence.position
+        position += 1
+        if position <= 2:
+            self.app.sequence.position += 1
+            t_in = self.app.sequence.cues[position].time_in
+            t_out = self.app.sequence.cues[position].time_out
+            self.app.win_seq.sequential.time_in = t_in
+            self.app.win_seq.sequential.time_out = t_out
+            self.app.win_seq.sequential.queue_draw()
+            for chanel in range(512):
+                level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
+                self.app.dmxframe.set_level(chanel, level)
+            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)

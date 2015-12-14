@@ -5,6 +5,7 @@ class Sequence(object):
     def __init__(self, index):
         self.index = index
         self.cues = []
+        self.position = 0
 
         # create an empty cue 0
         dmx = DmxFrame()
@@ -22,6 +23,7 @@ if __name__ == "__main__":
     sequence.add_cue(cue)
 
     print("Sequence :", sequence.index, "\n")
+    print("Position in sequence :", sequence.position)
     for cue in sequence.cues:
         print("Index :", cue.index)
         print("memory :", cue.memory)
