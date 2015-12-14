@@ -109,6 +109,11 @@ class Application(Gtk.Application):
             self.dmxframe.set_level(i, level)
             #print("Chanel:", chanel, "Level:", level)
             self.window.chanels[chanel-1].level = level
+            if self.sequence.position < 2:
+                next_level = self.sequence.cues[self.sequence.position+1].chanels.dmx_frame[i]
+            else:
+                next_level = self.sequence.cues[0].chanels.dmx_frame[i]
+            self.window.chanels[chanel-1].next_level = next_level
             self.window.chanels[chanel-1].queue_draw()
 
     def fetch_dmx(self, request, univ, dmx):
