@@ -190,10 +190,8 @@ class Window(Gtk.ApplicationWindow):
         self.app.win_seq.sequential.time_in = t_in
         self.app.win_seq.sequential.time_out = t_out
         self.app.win_seq.sequential.queue_draw()
-        #print("Time In:", t_in)
-        #print("Time Out:", t_out)
         for chanel in range(512):
-            level = self.app.sequence.cues[0].chanels[chanel]
+            level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
             self.app.dmxframe.set_level(chanel, level)
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
@@ -203,9 +201,7 @@ class Window(Gtk.ApplicationWindow):
         self.app.win_seq.sequential.time_in = t_in
         self.app.win_seq.sequential.time_out = t_out
         self.app.win_seq.sequential.queue_draw()
-        #print("Time In:", t_in)
-        #print("Time Out:", t_out)
         for chanel in range(512):
-            level = self.app.sequence.cues[1].chanels[chanel][1]
+            level = self.app.sequence.cues[1].chanels.dmx_frame[chanel]
             self.app.dmxframe.set_level(chanel, level)
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)

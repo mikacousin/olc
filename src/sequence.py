@@ -1,12 +1,14 @@
 from olc.cue import Cue
+from olc.dmx import DmxFrame
 
 class Sequence(object):
     def __init__(self, index):
         self.index = index
         self.cues = []
 
-        # create an empty cue 0 
-        cue = Cue(0, 0, [0,0]*512, text="Cue 0")
+        # create an empty cue 0
+        dmx = DmxFrame()
+        cue = Cue(0, 0, dmx, text="Cue 0")
         self.add_cue(cue)
 
     def add_cue(self, cue):

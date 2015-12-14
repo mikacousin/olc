@@ -60,7 +60,10 @@ class Application(Gtk.Application):
         self.window.show_all()
 
         # TODO: A virer, juste pour tester le sequentiel
-        cue = Cue(1, 1.0, [[1, 255], [2, 128], [10, 30], [11, 30], [12, 30], [0, 0], [0, 0], [0, 0]]*64, text="blabla 1.0", time_in=8, time_out=5)
+        dmx = DmxFrame()
+        for i in range(512):
+            dmx.set_level(i, int(i/2))
+        cue = Cue(1, 1.0, dmx, text="blabla 1.0", time_in=8, time_out=5)
         self.sequence.add_cue(cue)
 
         self.win_seq = SequentialWindow(self.sequence)
