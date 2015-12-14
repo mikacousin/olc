@@ -56,7 +56,7 @@ class ChanelWidget(Gtk.Widget):
         # draw level
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
-            cairo.FONT_WEIGHT_NORMAL)
+            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(11)
         cr.move_to(6,48)
         cr.show_text(str(self.level))
@@ -72,9 +72,8 @@ class ChanelWidget(Gtk.Widget):
             cr.line_to(offset_x + 6, offset_y + allocation.height-16)
             cr.line_to(offset_x + 16, offset_y + allocation.height-16)
             cr.close_path()
-            cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.fill()
             cr.set_source_rgb(0.5, 0.5, 0.9)
+            cr.fill()
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
                 cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(11)
@@ -88,9 +87,9 @@ class ChanelWidget(Gtk.Widget):
             cr.line_to(offset_x + 6, offset_y + 16)
             cr.line_to(offset_x + 16, offset_y + 16)
             cr.close_path()
-            cr.set_source_rgb(0.7, 0.7, 0.7)
+            cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.fill()
-            cr.set_source_rgb(0.5, 0.5, 0.9)
+            #cr.set_source_rgb(0.5, 0.5, 0.9)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
                 cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(11)
