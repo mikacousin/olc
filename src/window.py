@@ -1,5 +1,5 @@
 import select
-from gi.repository import Gtk, GObject, Gdk
+from gi.repository import Gtk, GObject, Gdk, GLib
 from ola import OlaClient
 
 from olc.customwidgets import ChanelWidget
@@ -189,6 +189,7 @@ class Window(Gtk.ApplicationWindow):
         position -= 1
         if position >= 0:
             self.app.sequence.position -= 1
+            self.app.win_seq.sequential.pos_x = 0
             t_in = self.app.sequence.cues[position].time_in
             t_out = self.app.sequence.cues[position].time_out
             self.app.win_seq.sequential.time_in = t_in
@@ -204,6 +205,7 @@ class Window(Gtk.ApplicationWindow):
         position += 1
         if position <= 2:
             self.app.sequence.position += 1
+            self.app.win_seq.sequential.pos_x = 0
             t_in = self.app.sequence.cues[position].time_in
             t_out = self.app.sequence.cues[position].time_out
             self.app.win_seq.sequential.time_in = t_in
@@ -213,6 +215,56 @@ class Window(Gtk.ApplicationWindow):
                 level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
                 self.app.dmxframe.set_level(chanel, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def keypress_space(self):
+        position = self.app.sequence.position
+        t_in = self.app.sequence.cues[position].time_in
+        t_out = self.app.sequence.cues[position].time_out
+        if t_in > t_out:
+            t_max = t_in
+            t_min = t_out
+        else:
+            t_max = t_out
+            t_min = t_in
+
+        import threading
+        import time
+
+        def update_progress(i):
+            self.app.win_seq.sequential.pos_x = i
+            self.app.win_seq.sequential.queue_draw()
+            for chanel in range(512):
+                old_level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
+                if position < 2:
+                    next_level = self.app.sequence.cues[position+1].chanels.dmx_frame[chanel]
+                else:
+                    next_level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
+                if next_level > old_level:
+                    level = int(((next_level - old_level+1) / (800-32)) * i) + old_level
+                else:
+                    level = int(((next_level - old_level-1) / (800-32)) * i) + old_level
+                self.app.dmxframe.set_level(chanel, level)
+            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+        def example_target():
+            for i in range(800 - 32): # Taille définit dans customwidgets
+                GLib.idle_add(update_progress, i)
+                time.sleep(0.01)
+            time.sleep(0.01)
+            position = self.app.sequence.position
+            position += 1
+            if position <= 2:
+                self.app.sequence.position += 1
+                t_in = self.app.sequence.cues[position].time_in
+                t_out = self.app.sequence.cues[position].time_out
+                self.app.win_seq.sequential.time_in = t_in
+                self.app.win_seq.sequential.time_out = t_out
+                self.app.win_seq.sequential.pos_x = 0
+                self.app.win_seq.sequential.queue_draw()
+
+        thread = threading.Thread(target=example_target)
+        thread.daemon = True
+        thread.start()
 
     def keypress_w(self):
         self.app.win_seq.sequential.pos_x -= 1

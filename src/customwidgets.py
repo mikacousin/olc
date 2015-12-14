@@ -205,8 +205,7 @@ class SequentialWidget(Gtk.Widget):
         cr.show_text("A")
 
         # draw In line
-        fg_color = self.get_style_context().get_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(fg_color));
+        cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.move_to(16, allocation.height-32)
         cr.line_to(16+(inter*self.time_in), 40)
         cr.stroke()
