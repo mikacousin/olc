@@ -57,7 +57,7 @@ class ChanelWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(11)
+        cr.set_font_size(12)
         cr.move_to(6,48)
         cr.show_text(str(self.level))
         # draw level bar
