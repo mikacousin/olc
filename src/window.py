@@ -252,7 +252,7 @@ class Window(Gtk.ApplicationWindow):
             i = (time.time() * 1000) - start_time
             while i < delay:
                 GLib.idle_add(update_progress, delay, i)
-                time.sleep(0.1)
+                time.sleep(0.02)
                 i = (time.time() * 1000) - start_time
 
             position = self.app.sequence.position
