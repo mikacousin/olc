@@ -217,9 +217,15 @@ class Window(Gtk.ApplicationWindow):
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_space(self):
+
+        # Position dans le séquentiel
         position = self.app.sequence.position
+
+        # On récupère les temps de monté et de descente
         t_in = self.app.sequence.cues[position].time_in
         t_out = self.app.sequence.cues[position].time_out
+
+        # Quel est le temps le plus long
         if t_in > t_out:
             t_max = t_in
             t_min = t_out
@@ -231,30 +237,41 @@ class Window(Gtk.ApplicationWindow):
         import time
 
         def update_progress(delay, i):
-            self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i
+            # Mise a jour position des sliders
+            self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # (800-32): en dur dans customwidgets
             self.app.win_seq.sequential.queue_draw()
+
             for chanel in range(512):
+
                 old_level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
+
+                # Pour l'instant on boucle sur 3 mémoires (dont la 0)
                 if position < 2:
                     next_level = self.app.sequence.cues[position+1].chanels.dmx_frame[chanel]
                 else:
                     next_level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
+
                 if next_level > old_level:
                     level = int(((next_level - old_level+1) / delay) * i) + old_level
                 else:
                     level = int(((next_level - old_level-1) / delay) * i) + old_level
+
                 self.app.dmxframe.set_level(chanel, level)
+
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
         def example_target():
-            start_time = time.time() * 1000 # time in ms
+            start_time = time.time() * 1000 # actual time in ms
             delay = t_max * 1000
             i = (time.time() * 1000) - start_time
+
+            # Boucle sur le temps de monté ou de descente (le plus grand)
             while i < delay:
-                GLib.idle_add(update_progress, delay, i)
+                GLib.idle_add(update_progress, delay, i)    # Mise à jour des niveaux
                 time.sleep(0.02)
                 i = (time.time() * 1000) - start_time
 
+            # On se positionne dans le séquentiel à la cue suivante
             position = self.app.sequence.position
             position += 1
             if position <= 2:
@@ -266,6 +283,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.win_seq.sequential.pos_x = 0
                 self.app.win_seq.sequential.queue_draw()
 
+        # On utilise un thread pour ne pas tout bloquer pendant le changement de mémoire
         thread = threading.Thread(target=example_target)
         thread.daemon = True
         thread.start()
