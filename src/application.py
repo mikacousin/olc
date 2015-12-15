@@ -63,12 +63,12 @@ class Application(Gtk.Application):
         dmx = DmxFrame()
         for i in range(512):
             dmx.set_level(i, int(i/2))
-        cue = Cue(1, 1.0, dmx, text="blabla 1.0", time_in=8, time_out=5)
+        cue = Cue(1, 1.0, dmx, text="blabla 1.0", time_in=20, time_out=5)
         self.sequence.add_cue(cue)
         dmx = DmxFrame()
         for i in range(512):
             dmx.set_level(i, 30)
-        cue = Cue(2, 2.0, dmx, text="2.0", time_in=6, time_out=10)
+        cue = Cue(2, 2.0, dmx, text="2.0", time_in=1, time_out=1)
         self.sequence.add_cue(cue)
 
         self.win_seq = SequentialWindow(self, self.sequence)

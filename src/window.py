@@ -230,8 +230,8 @@ class Window(Gtk.ApplicationWindow):
         import threading
         import time
 
-        def update_progress(i):
-            self.app.win_seq.sequential.pos_x = i
+        def update_progress(delay, i):
+            self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i
             self.app.win_seq.sequential.queue_draw()
             for chanel in range(512):
                 old_level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
@@ -240,18 +240,21 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     next_level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
                 if next_level > old_level:
-                    level = int(((next_level - old_level+1) / (800-32)) * i) + old_level
+                    level = int(((next_level - old_level+1) / delay) * i) + old_level
                 else:
-                    level = int(((next_level - old_level-1) / (800-32)) * i) + old_level
+                    level = int(((next_level - old_level-1) / delay) * i) + old_level
                 self.app.dmxframe.set_level(chanel, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
         def example_target():
-            t_sleep = t_max / (800 - 32)
-            for i in range(800 - 32): # Taille définit dans customwidgets
-                GLib.idle_add(update_progress, i)
-                time.sleep(t_sleep)
-            time.sleep(t_sleep)
+            start_time = time.time() * 1000 # time in ms
+            delay = t_max * 1000
+            i = (time.time() * 1000) - start_time
+            while i < delay:
+                GLib.idle_add(update_progress, delay, i)
+                time.sleep(0.1)
+                i = (time.time() * 1000) - start_time
+
             position = self.app.sequence.position
             position += 1
             if position <= 2:
