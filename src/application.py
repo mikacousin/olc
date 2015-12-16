@@ -63,7 +63,7 @@ class Application(Gtk.Application):
         dmx = DmxFrame()
         for i in range(512):
             dmx.set_level(i, int(i/2))
-        cue = Cue(1, 1.0, dmx, text="blabla 1.0", time_in=20, time_out=5)
+        cue = Cue(1, 1.0, dmx, text="blabla 1.0", time_in=5, time_out=20)
         self.sequence.add_cue(cue)
         dmx = DmxFrame()
         for i in range(512):

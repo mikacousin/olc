@@ -218,25 +218,10 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_space(self):
 
-        # Position dans le séquentiel
-        position = self.app.sequence.position
-
-        # On récupère les temps de monté et de descente
-        t_in = self.app.sequence.cues[position].time_in
-        t_out = self.app.sequence.cues[position].time_out
-
-        # Quel est le temps le plus long
-        if t_in > t_out:
-            t_max = t_in
-            t_min = t_out
-        else:
-            t_max = t_out
-            t_min = t_in
-
         import threading
         import time
 
-        def update_progress(delay, i):
+        def update_progress(delay, delay_in, delay_out, i, position):
             # Mise a jour position des sliders
             self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # (800-32): en dur dans customwidgets
             self.app.win_seq.sequential.queue_draw()
@@ -251,23 +236,45 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     next_level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
 
-                if next_level > old_level:
-                    level = int(((next_level - old_level+1) / delay) * i) + old_level
+                # Si le level augmente, on prend le temps de montée
+                if next_level > old_level and i < delay_in:
+                    level = int(((next_level - old_level+1) / delay_in) * i) + old_level
+                # si le level descend, on prend le temps de descente
+                elif next_level < old_level and i < delay_out:
+                    level = old_level - abs(int(((next_level - old_level-1) / delay_out) * i))
+                # sinon, la valeur est déjà bonne
                 else:
-                    level = int(((next_level - old_level-1) / delay) * i) + old_level
+                    level = next_level
 
                 self.app.dmxframe.set_level(chanel, level)
 
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
         def example_target():
+            # Position dans le séquentiel
+            position = self.app.sequence.position
+
+            # On récupère les temps de monté et de descente
+            t_in = self.app.sequence.cues[position].time_in
+            t_out = self.app.sequence.cues[position].time_out
+
+            # Quel est le temps le plus long
+            if t_in > t_out:
+                t_max = t_in
+                t_min = t_out
+            else:
+                t_max = t_out
+                t_min = t_in
+
             start_time = time.time() * 1000 # actual time in ms
             delay = t_max * 1000
+            delay_in = t_in * 1000
+            delay_out = t_out * 1000
             i = (time.time() * 1000) - start_time
 
             # Boucle sur le temps de monté ou de descente (le plus grand)
             while i < delay:
-                GLib.idle_add(update_progress, delay, i)    # Mise à jour des niveaux
+                GLib.idle_add(update_progress, delay, delay_in, delay_out, i, position)    # Mise à jour des niveaux
                 time.sleep(0.02)
                 i = (time.time() * 1000) - start_time
 
