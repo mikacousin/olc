@@ -2,6 +2,10 @@
   <menu id="app-menu">
     <section>
       <item>
+        <attribute name="action">app.open</attribute>
+        <attribute name="label" translatable="yes">_Open</attribute>
+      </item>
+      <item>
         <attribute name="action">app.patch</attribute>
         <attribute name="label" translatable="yes">_Patch</attribute>
       </item>

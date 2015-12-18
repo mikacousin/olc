@@ -1,7 +1,7 @@
 import sys
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gio, GLib, Gdk
+from gi.repository import Gtk, Gio, GLib, Gdk, GObject
 from ola import OlaClient
 
 from olc.window import Window
@@ -88,6 +88,10 @@ class Application(Gtk.Application):
 
         menu = builder.get_object('app-menu')
 
+        openAction = Gio.SimpleAction.new('open', None)
+        openAction.connect('activate', self._open)
+        self.add_action(openAction)
+
         patchAction = Gio.SimpleAction.new('patch', None)
         patchAction.connect('activate', self._patch)
         self.add_action(patchAction)
@@ -123,6 +127,54 @@ class Application(Gtk.Application):
             self.dmxframe.set_level(i, level)
             self.window.chanels[chanel-1].level = level
             self.window.chanels[chanel-1].queue_draw()
+
+    def _open(self, action, parameter):
+        # create a filechooserdialog to open:
+        # the arguments are: title of the window, parent_window, action,
+        # (buttons, response)
+        open_dialog = Gtk.FileChooserDialog("Open ASCII File", self.window,
+                Gtk.FileChooserAction.OPEN,
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                    Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT))
+
+        # not only local files can be selected in the file selector
+        open_dialog.set_local_only(False)
+        # dialog always on top of the textview window
+        open_dialog.set_modal(True)
+        # connect the dialog with the callback function open_response_cb()
+        open_dialog.connect("response", self.open_response_cb)
+        # show the dialog
+        open_dialog.show()
+
+    def open_response_cb(self, dialog, response_id):
+        # callback function for the dialog open_dialog
+        open_dialog = dialog
+
+        # if response is "ACCEPT" (the button "Open" has been clicked)
+        if response_id == Gtk.ResponseType.ACCEPT:
+            # self.file is the file that we get from the FileChooserDialog
+            self.file = open_dialog.get_file()
+            """
+            # an empty string (provisionally)
+            content = ""
+            try:
+                # load the content of the file into memory:
+                # success is a boolean depending on the success of the operation
+                # content is self-explanatory
+                # etags is an entity tag (can be used to quickly determine if the
+                # file has been modified from the version on the file system)
+                [success, content, etags] = self.file.load_contents(None)
+            except GObject.GError as e:
+                print("Error: " + e.message)
+            # set the content as the text into the buffer
+            self.buffer.set_text(content, len(content))
+            """
+            print("opened: " + open_dialog.get_filename())
+        elif response_id == Gtk.ResponseType.CANCEL:
+            print("cancelled: FileChooserAction.OPEN")
+
+        # destroy the FileChooserDialog
+        dialog.destroy()
 
     def _patch(self, action, parameter):
         self.patchwindow = PatchWindow(self.patch, self.dmxframe, self.window)
