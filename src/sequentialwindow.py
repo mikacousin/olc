@@ -16,8 +16,11 @@ class SequentialWindow(Gtk.Window):
         t_out = self.seq.cues[position].time_out
 
         for i in range(512):
-            level = self.app.sequence.cues[position].chanels.dmx_frame[i]
-            self.app.dmxframe.set_level(i, level)
+            level = self.app.sequence.cues[position].channels[i]
+            outputs = self.app.patch.chanels[i]
+            for output in outputs:
+                #print(output)
+                self.app.dmxframe.set_level(output-1, level)
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
         self.sequential = SequentialWidget(t_in, t_out)

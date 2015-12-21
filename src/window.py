@@ -196,14 +196,16 @@ class Window(Gtk.ApplicationWindow):
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.queue_draw()
             for chanel in range(512):
-                level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
-                self.app.dmxframe.set_level(chanel, level)
+                level = self.app.sequence.cues[position].channels[chanel]
+                outputs = self.app.patch.chanels[chanel]
+                for output in outputs:
+                    self.app.dmxframe.set_level(output, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_Down(self):
         position = self.app.sequence.position
         position += 1
-        if position <= 2:
+        if position <= self.app.sequence.last:
             self.app.sequence.position += 1
             self.app.win_seq.sequential.pos_x = 0
             t_in = self.app.sequence.cues[position].time_in
@@ -212,8 +214,10 @@ class Window(Gtk.ApplicationWindow):
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.queue_draw()
             for chanel in range(512):
-                level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
-                self.app.dmxframe.set_level(chanel, level)
+                level = self.app.sequence.cues[position].channels[chanel]
+                outputs = self.app.patch.chanels[chanel]
+                for output in outputs:
+                    self.app.dmxframe.set_level(output, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_space(self):
@@ -228,13 +232,13 @@ class Window(Gtk.ApplicationWindow):
 
             for chanel in range(512):
 
-                old_level = self.app.sequence.cues[position].chanels.dmx_frame[chanel]
+                old_level = self.app.sequence.cues[position].channels[chanel]
 
-                # Pour l'instant on boucle sur 3 mémoires (dont la 0)
-                if position < 2:
-                    next_level = self.app.sequence.cues[position+1].chanels.dmx_frame[chanel]
+                # On boucle sur les mémoires et on revient à 0
+                if position < self.app.sequence.last:
+                    next_level = self.app.sequence.cues[position+1].channels[chanel]
                 else:
-                    next_level = self.app.sequence.cues[0].chanels.dmx_frame[chanel]
+                    next_level = self.app.sequence.cues[0].channels[chanel]
 
                 # Si le level augmente, on prend le temps de montée
                 if next_level > old_level and i < delay_in:
@@ -246,7 +250,11 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     level = next_level
 
-                self.app.dmxframe.set_level(chanel, level)
+                #print(old_level, next_level, level, chanel+1)
+
+                outputs = self.app.patch.chanels[chanel]
+                for output in outputs:
+                    self.app.dmxframe.set_level(output-1, level)
 
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
@@ -281,7 +289,7 @@ class Window(Gtk.ApplicationWindow):
             # On se positionne dans le séquentiel à la cue suivante
             position = self.app.sequence.position
             position += 1
-            if position <= 2:
+            if position <= self.app.sequence.last:
                 self.app.sequence.position += 1
                 t_in = self.app.sequence.cues[position].time_in
                 t_out = self.app.sequence.cues[position].time_out

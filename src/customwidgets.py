@@ -121,8 +121,8 @@ class SequentialWidget(Gtk.Widget):
 
     def __init__(self, time_in, time_out):
 
-        self.time_in = time_in
-        self.time_out = time_out
+        self.time_in = int(time_in)
+        self.time_out = int(time_out)
 
         self.pos_x = 0
 
@@ -131,11 +131,11 @@ class SequentialWidget(Gtk.Widget):
 
     def do_draw(self, cr):
         if self.time_in > self.time_out:
-            self.time_max = self.time_in
-            self.time_min = self.time_out
+            self.time_max = int(self.time_in)
+            self.time_min = int(self.time_out)
         else:
-            self.time_max = self.time_out
-            self.time_min = self.time_in
+            self.time_max = int(self.time_out)
+            self.time_min = int(self.time_in)
 
         # paint background
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)

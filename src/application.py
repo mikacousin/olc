@@ -1,4 +1,5 @@
 import sys
+import array
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gio, GLib, Gdk, GObject
@@ -42,24 +43,12 @@ class Application(Gtk.Application):
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
     def do_activate(self):
-        """
-        # TODO: A virer, juste pour test
-        self.patch.patch_empty()
-        self.patch.add_output(10, 20)
-        #self.patch.add_output(10, 30)
-        self.patch.add_output(11, 21)
-        self.patch.add_output(12, 22)
-        self.patch.add_output(13, 23)
-        self.patch.add_output(14, 24)
-        self.patch.add_output(15, 25)
-        self.patch.add_output(16, 26)
-        self.patch.add_output(510, 10)
-        """
 
         self.window = Window(self, self.patch)
         self.window.show_all()
 
         # TODO: A virer, juste pour tester le sequentiel
+        """
         dmx = DmxFrame()
         for i in range(512):
             dmx.set_level(i, int(i/2))
@@ -70,6 +59,7 @@ class Application(Gtk.Application):
             dmx.set_level(i, 30)
         cue = Cue(2, 2.0, dmx, text="2.0", time_in=1, time_out=1)
         self.sequence.add_cue(cue)
+        """
 
         self.win_seq = SequentialWindow(self, self.sequence)
         self.win_seq.show_all()
@@ -107,16 +97,16 @@ class Application(Gtk.Application):
         return menu
 
     def on_dmx(self, dmx):
-        for i in range(len(dmx)):
+        #for i in range(len(dmx)):
+        for i in range(512):
             chanel = self.patch.outputs[i]
             level = dmx[i]
             self.dmxframe.set_level(i, level)
-            #print("Chanel:", chanel, "Level:", level)
             self.window.chanels[chanel-1].level = level
-            if self.sequence.position < 2:
-                next_level = self.sequence.cues[self.sequence.position+1].chanels.dmx_frame[i]
+            if self.sequence.position < self.sequence.last:
+                next_level = self.sequence.cues[self.sequence.position+1].channels[chanel-1]
             else:
-                next_level = self.sequence.cues[0].chanels.dmx_frame[i]
+                next_level = self.sequence.cues[0].channels[chanel-1]
             self.window.chanels[chanel-1].next_level = next_level
             self.window.chanels[chanel-1].queue_draw()
 
@@ -154,22 +144,154 @@ class Application(Gtk.Application):
         if response_id == Gtk.ResponseType.ACCEPT:
             # self.file is the file that we get from the FileChooserDialog
             self.file = open_dialog.get_file()
-            """
-            # an empty string (provisionally)
-            content = ""
+
             try:
-                # load the content of the file into memory:
-                # success is a boolean depending on the success of the operation
-                # content is self-explanatory
-                # etags is an entity tag (can be used to quickly determine if the
-                # file has been modified from the version on the file system)
-                [success, content, etags] = self.file.load_contents(None)
+                fstream = self.file.read(None)
+                dstream = Gio.DataInputStream.new(fstream)
+
+                flag_seq = False
+                in_cue = False
+                flag_patch = False
+                flag_group = False
+
+                type_seq = "Normal"
+                txt = False
+                t_in = False
+                t_out = False
+                channels = False
+                mem = False
+
+                while True:
+
+                    line, size = dstream.read_line(None)
+                    line = str(line)[2:-1]
+                    line = line.replace('\\t', '\t')
+
+                    # Marker for end of file
+                    if "ENDDATA" in line:
+                        break
+
+                    if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
+                        p = line[10:].split(" ")
+                        if p[1] == "0":
+                            type_seq = "Normal"
+                        elif p[1] == "1":
+                            type_seq = "Chaser"
+                        print ("Sequence :", p[0], "Type :", type_seq)
+                        i = 1
+                        flag_seq = True
+                        flag_patch = False
+                        flag_group = False
+                    if flag_seq and type_seq == "Normal":
+                        if line[:0] == "!":
+                            flag_seq = False
+                            print(line)
+                        if line[:3] == "CUE":
+                            in_cue = True
+                            channels = array.array('B', [0] * 512)
+                            i += 1
+                            #print ("        Mémoire :", line[4:])
+                            mem = line[4:]
+                        if line[:4] == "$CUE":
+                            in_cue = True
+                            channels = array.array('B', [0] * 512)
+                            i += 1
+                            #print ("        Mémoire :", line[5:])
+                            mem = line[4:]
+
+                        if in_cue:
+                            if line[:4] == "TEXT":
+                                #print ("        Text :", line[5:])
+                                txt = line[5:]
+                            if line[:6] == "$$TEXT":
+                                #print ("        $$Text :", line[7:])
+                                txt = line[7:]
+                            if line[:12] == "$$PRESETTEXT":
+                                #print ("        $$PrestText :", line[13:])
+                                txt = line[13:]
+                            if line[:4] == 'DOWN':
+                                #print ("        Time Out :", line[5:])
+                                p = line[5:]
+                                t_out = float(p.split(" ")[0])
+                            if line[:2] == 'UP':
+                                #print ("        Time In :", line[3:])
+                                p = line[3:]
+                                t_in = float(p.split(" ")[0])
+                            if line[:6] == '$$WAIT':                # TODO
+                                #print ("        Wait :", line[7:])
+                                wait = float(line[7:].split(" ")[0])
+                            if line[:4] == 'CHAN':
+                                #print ("        Chanels :")
+                                p = line[5:-1].split(" ")
+                                for q in p:
+                                    r = q.split("/")
+                                    #print ("            ", r[0], "@", int(r[1][1:], 16))
+                                    chanel = int(r[0])
+                                    level = int(r[1][1:], 16)
+                                    channels[chanel-1] = level
+                            if txt and t_out and t_in and channels:
+                                cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, text=txt)
+
+                                print("StepId :", cue.index, "Memory :", cue.memory)
+                                print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
+                                print("Text :", cue.text)
+                                print("")
+                                for channel in range(512):
+                                    print("Channel :", channel+1, "@", cue.channels[channel])
+
+                                self.sequence.add_cue(cue)
+                                in_cue = False
+                                txt = False
+                                t_out = False
+                                t_in = False
+                                mem = False
+                                channels = False
+
+                    if line[:11] == 'CLEAR PATCH':
+                        flag_seq = False
+                        flag_patch = True
+                        flag_group = False
+                         #print ("\nPatch :")
+                        self.patch.patch_empty()    # Empty patch
+                        self.window.flowbox.invalidate_filter()
+                    if flag_patch:
+                        if line[:0] == "!":
+                            flag_patch = False
+                    if line[:7] == 'PATCH 1':
+                        for p in line[8:-1].split(" "):
+                            q = p.split("<")
+                            r = q[1].split("@")
+                             #print ("Chanel :", q[0], "-> Output :", r[0], "@", r[1])
+                            self.patch.add_output(int(q[0]), int(r[0]))
+                            self.window.flowbox.invalidate_filter()
+
+                    if line[:6] == '$GROUP':
+                        flag_seq = False
+                        flag_patch = False
+                        flag_group = True
+                        print ("Group :", line[7:])
+                    if line[:5] == 'GROUP':
+                        flag_seq = False
+                        flag_patch = False
+                        flag_group = True
+                        print ("Group :", line[6:])
+                    if flag_group:
+                        if line[:1] == "!":
+                            flag_group = False
+                        if line[:4] == 'TEXT':
+                            print ("    Text :", line[5:])
+                        if line[:4] == 'CHAN':
+                            print ("    Chanels :")
+                            p = line[5:-1].split(" ")
+                            for q in p:
+                                r = q.split("/")
+                                print ("        ", r[0], "@", int(r[1][1:], 16))
+
+                fstream.close()
+
             except GObject.GError as e:
                 print("Error: " + e.message)
-            # set the content as the text into the buffer
-            self.buffer.set_text(content, len(content))
-            """
-            print("opened: " + open_dialog.get_filename())
+
         elif response_id == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")
 

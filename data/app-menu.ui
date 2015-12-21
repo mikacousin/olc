@@ -4,6 +4,7 @@
       <item>
         <attribute name="action">app.open</attribute>
         <attribute name="label" translatable="yes">_Open</attribute>
+        <attribute name="accel">&lt;Primary&gt;o</attribute>
       </item>
       <item>
         <attribute name="action">app.patch</attribute>
