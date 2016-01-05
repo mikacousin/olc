@@ -97,8 +97,8 @@ class Application(Gtk.Application):
         return menu
 
     def on_dmx(self, dmx):
-        #for i in range(len(dmx)):
-        for i in range(512):
+        #for i in range(512):
+        for i in range(len(dmx)):
             chanel = self.patch.outputs[i]
             level = dmx[i]
             self.dmxframe.set_level(i, level)
@@ -232,12 +232,12 @@ class Application(Gtk.Application):
                             if txt and t_out and t_in and channels:
                                 cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, text=txt)
 
-                                print("StepId :", cue.index, "Memory :", cue.memory)
-                                print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
-                                print("Text :", cue.text)
-                                print("")
-                                for channel in range(512):
-                                    print("Channel :", channel+1, "@", cue.channels[channel])
+                                #print("StepId :", cue.index, "Memory :", cue.memory)
+                                #print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
+                                #print("Text :", cue.text)
+                                #print("")
+                                #for channel in range(512):
+                                #    print("Channel :", channel+1, "@", cue.channels[channel])
 
                                 self.sequence.add_cue(cue)
                                 in_cue = False

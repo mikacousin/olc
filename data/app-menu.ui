@@ -9,6 +9,7 @@
       <item>
         <attribute name="action">app.patch</attribute>
         <attribute name="label" translatable="yes">_Patch</attribute>
+        <attribute name="accel">&lt;Primary&gt;p</attribute>
       </item>
     </section>
     <section>

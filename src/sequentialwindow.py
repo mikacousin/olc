@@ -15,6 +15,7 @@ class SequentialWindow(Gtk.Window):
         t_in = self.seq.cues[position].time_in
         t_out = self.seq.cues[position].time_out
 
+        # Set levels for chanels in actual cue
         for i in range(512):
             level = self.app.sequence.cues[position].channels[i]
             outputs = self.app.patch.chanels[i]
