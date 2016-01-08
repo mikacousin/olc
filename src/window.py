@@ -201,6 +201,7 @@ class Window(Gtk.ApplicationWindow):
                 for output in outputs:
                     self.app.dmxframe.set_level(output, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
     def keypress_Down(self):
         position = self.app.sequence.position
@@ -219,6 +220,7 @@ class Window(Gtk.ApplicationWindow):
                 for output in outputs:
                     self.app.dmxframe.set_level(output, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
     def keypress_space(self):
 
@@ -297,6 +299,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.win_seq.sequential.time_out = t_out
                 self.app.win_seq.sequential.pos_x = 0
                 self.app.win_seq.sequential.queue_draw()
+                print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
         # On utilise un thread pour ne pas tout bloquer pendant le changement de mémoire
         thread = threading.Thread(target=example_target)

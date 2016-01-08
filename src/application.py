@@ -213,10 +213,14 @@ class Application(Gtk.Application):
                                 #print ("        Time Out :", line[5:])
                                 p = line[5:]
                                 t_out = float(p.split(" ")[0])
+                                if t_out == 0:
+                                    t_out = 0.1
                             if line[:2] == 'UP':
                                 #print ("        Time In :", line[3:])
                                 p = line[3:]
                                 t_in = float(p.split(" ")[0])
+                                if t_in == 0:
+                                    t_in = 0.1
                             if line[:6] == '$$WAIT':                # TODO
                                 #print ("        Wait :", line[7:])
                                 wait = float(line[7:].split(" ")[0])
@@ -229,7 +233,9 @@ class Application(Gtk.Application):
                                     chanel = int(r[0])
                                     level = int(r[1][1:], 16)
                                     channels[chanel-1] = level
-                            if txt and t_out and t_in and channels:
+                            #if txt and t_out and t_in and channels:
+                            if line == "":
+                                #print("Fin Cue", mem)
                                 cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, text=txt)
 
                                 #print("StepId :", cue.index, "Memory :", cue.memory)
