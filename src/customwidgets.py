@@ -60,7 +60,8 @@ class ChanelWidget(Gtk.Widget):
         cr.set_font_size(12)
         cr.move_to(6,48)
         if self.level != 0:     # Don't show 0 level
-            cr.show_text(str(self.level))
+            #cr.show_text(str(self.level))                  # Level in 0 to 255 value
+            cr.show_text(str(int((self.level/255)*100)))    # Level in %
         # draw level bar
         cr.rectangle(allocation.width-9, allocation.height-2, 6, -(50/255)*self.level)
         cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -79,7 +80,8 @@ class ChanelWidget(Gtk.Widget):
                 cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(11)
             cr.move_to(offset_x + 24, offset_y + allocation.height-6)
-            cr.show_text(str(self.next_level))
+            #cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
+            cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
         # draw up icon
         if self.next_level > self.level:
             offset_x = 6
@@ -95,7 +97,8 @@ class ChanelWidget(Gtk.Widget):
                 cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(11)
             cr.move_to(offset_x + 24, offset_y + 16)
-            cr.show_text(str(self.next_level))
+            #cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
+            cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
 
     def do_realize(self):
         allocation = self.get_allocation()
