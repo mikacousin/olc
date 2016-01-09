@@ -127,6 +127,11 @@ class Application(Gtk.Application):
                 (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                     Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT))
 
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name("Text Files")
+        filter_text.add_mime_type("text/plain")
+        open_dialog.add_filter(filter_text)
+
         # not only local files can be selected in the file selector
         open_dialog.set_local_only(False)
         # dialog always on top of the textview window
