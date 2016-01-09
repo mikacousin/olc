@@ -59,7 +59,7 @@ class ChanelWidget(Gtk.Widget):
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         cr.move_to(6,48)
-        if self.level != 0:
+        if self.level != 0:     # Don't show 0 level
             cr.show_text(str(self.level))
         # draw level bar
         cr.rectangle(allocation.width-9, allocation.height-2, 6, -(50/255)*self.level)
@@ -257,10 +257,16 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(12,16)
         cr.show_text("0")
         cr.move_to(allocation.width-24,16)
-        cr.show_text(str(self.time_max))
+        if self.time_max.is_integer():              # If time is integer don't show the ".0"
+            cr.show_text(str(int(self.time_max)))
+        else:
+            cr.show_text(str(self.time_max))
         if self.time_min != self.time_max:
             cr.move_to(12+(inter*self.time_min),16)
-            cr.show_text(str(self.time_min))
+            if self.time_in.is_integer():
+                cr.show_text(str(int(self.time_min)))
+            else:
+                cr.show_text(str(self.time_min))
 
     def do_realize(self):
         allocation = self.get_allocation()
