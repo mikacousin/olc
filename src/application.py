@@ -295,6 +295,10 @@ class Application(Gtk.Application):
 
                 fstream.close()
 
+                # Add an empty cue at the end
+                cue = Cue(self.sequence.last+1, 0, text="Last Cue")
+                self.sequence.add_cue(cue)
+
                 # Redraw crossfade :
                 # On se place au début de la séquence
                 self.sequence.position = 0

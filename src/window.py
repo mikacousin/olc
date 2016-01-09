@@ -206,7 +206,7 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Down(self):
         position = self.app.sequence.position
         position += 1
-        if position <= self.app.sequence.last:
+        if position < self.app.sequence.last-1:     # Stop on the last cue
             self.app.sequence.position += 1
             self.app.win_seq.sequential.pos_x = 0
             t_in = self.app.sequence.cues[position+1].time_in
@@ -236,8 +236,8 @@ class Window(Gtk.ApplicationWindow):
 
                 old_level = self.app.sequence.cues[position].channels[chanel]
 
-                # On boucle sur les mémoires et on revient à 0
-                if position < self.app.sequence.last:
+                # TODO: On boucle sur les mémoires et on revient à 0
+                if position < self.app.sequence.last-1:
                     next_level = self.app.sequence.cues[position+1].channels[chanel]
                 else:
                     next_level = self.app.sequence.cues[0].channels[chanel]
