@@ -190,7 +190,7 @@ class Window(Gtk.ApplicationWindow):
         if position >= 0:
             self.app.sequence.position -= 1
             self.app.win_seq.sequential.pos_x = 0
-            t_in = self.app.sequence.cues[position+1].time_in
+            t_in = self.app.sequence.cues[position+1].time_in   # Always use times for next cue
             t_out = self.app.sequence.cues[position+1].time_out
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
@@ -199,7 +199,7 @@ class Window(Gtk.ApplicationWindow):
                 level = self.app.sequence.cues[position].channels[chanel]
                 outputs = self.app.patch.chanels[chanel]
                 for output in outputs:
-                    self.app.dmxframe.set_level(output, level)
+                    self.app.dmxframe.set_level(output-1, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
             print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
@@ -218,7 +218,7 @@ class Window(Gtk.ApplicationWindow):
                 level = self.app.sequence.cues[position].channels[chanel]
                 outputs = self.app.patch.chanels[chanel]
                 for output in outputs:
-                    self.app.dmxframe.set_level(output, level)
+                    self.app.dmxframe.set_level(output-1, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
             print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
