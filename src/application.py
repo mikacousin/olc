@@ -295,6 +295,9 @@ class Application(Gtk.Application):
 
                 fstream.close()
 
+                # TODO: Redraw crossfade
+                self.win_seq.sequential.queue_draw()
+
             except GObject.GError as e:
                 print("Error: " + e.message)
 

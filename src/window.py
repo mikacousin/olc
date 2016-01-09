@@ -190,8 +190,8 @@ class Window(Gtk.ApplicationWindow):
         if position >= 0:
             self.app.sequence.position -= 1
             self.app.win_seq.sequential.pos_x = 0
-            t_in = self.app.sequence.cues[position].time_in
-            t_out = self.app.sequence.cues[position].time_out
+            t_in = self.app.sequence.cues[position+1].time_in
+            t_out = self.app.sequence.cues[position+1].time_out
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.queue_draw()
@@ -209,8 +209,8 @@ class Window(Gtk.ApplicationWindow):
         if position <= self.app.sequence.last:
             self.app.sequence.position += 1
             self.app.win_seq.sequential.pos_x = 0
-            t_in = self.app.sequence.cues[position].time_in
-            t_out = self.app.sequence.cues[position].time_out
+            t_in = self.app.sequence.cues[position+1].time_in
+            t_out = self.app.sequence.cues[position+1].time_out
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.queue_draw()
@@ -264,9 +264,9 @@ class Window(Gtk.ApplicationWindow):
             # Position dans le séquentiel
             position = self.app.sequence.position
 
-            # On récupère les temps de monté et de descente
-            t_in = self.app.sequence.cues[position].time_in
-            t_out = self.app.sequence.cues[position].time_out
+            # On récupère les temps de monté et de descente dans la mémoire suivante
+            t_in = self.app.sequence.cues[position+1].time_in
+            t_out = self.app.sequence.cues[position+1].time_out
 
             # Quel est le temps le plus long
             if t_in > t_out:
@@ -293,8 +293,8 @@ class Window(Gtk.ApplicationWindow):
             position += 1
             if position <= self.app.sequence.last:
                 self.app.sequence.position += 1
-                t_in = self.app.sequence.cues[position].time_in
-                t_out = self.app.sequence.cues[position].time_out
+                t_in = self.app.sequence.cues[position+1].time_in
+                t_out = self.app.sequence.cues[position+1].time_out
                 self.app.win_seq.sequential.time_in = t_in
                 self.app.win_seq.sequential.time_out = t_out
                 self.app.win_seq.sequential.pos_x = 0
