@@ -163,6 +163,7 @@ class Application(Gtk.Application):
                 txt = False
                 t_in = False
                 t_out = False
+                wait = False
                 channels = False
                 mem = False
 
@@ -226,7 +227,7 @@ class Application(Gtk.Application):
                                 t_in = float(p.split(" ")[0])
                                 if t_in == 0:
                                     t_in = 0.1
-                            if line[:6] == '$$WAIT':                # TODO
+                            if line[:6] == '$$WAIT':
                                 #print ("        Wait :", line[7:])
                                 wait = float(line[7:].split(" ")[0])
                             if line[:4] == 'CHAN':
@@ -241,7 +242,7 @@ class Application(Gtk.Application):
                             #if txt and t_out and t_in and channels:
                             if line == "":
                                 #print("Fin Cue", mem)
-                                cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, text=txt)
+                                cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt)
 
                                 #print("StepId :", cue.index, "Memory :", cue.memory)
                                 #print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
@@ -255,6 +256,7 @@ class Application(Gtk.Application):
                                 txt = False
                                 t_out = False
                                 t_in = False
+                                wait = False
                                 mem = False
                                 channels = False
 

@@ -2,12 +2,13 @@ import array
 #from olc.dmx import DmxFrame
 
 class Cue(object):
-    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, text=""):
+    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, wait=0.0, text=""):
         self.index = index
         self.memory = memory
         self.channels = channels
         self.time_in = time_in
         self.time_out = time_out
+        self.wait = wait
         self.text = text
 
     def set_level(self, channel, level):

@@ -302,6 +302,11 @@ class Window(Gtk.ApplicationWindow):
                 self.app.win_seq.sequential.pos_x = 0
                 self.app.win_seq.sequential.queue_draw()
                 print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
+                # Si la mémoire a un wait
+                if self.app.sequence.cues[position+1].wait:
+                    print("Auto Go after", self.app.sequence.cues[position+1].wait, "seconds")
+                    time.sleep(self.app.sequence.cues[position+1].wait)
+                    print("GO!")
             # Sinon, on revient au début
             else:
                 self.app.sequence.position = 0
