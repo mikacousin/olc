@@ -236,11 +236,12 @@ class Window(Gtk.ApplicationWindow):
 
                 old_level = self.app.sequence.cues[position].channels[chanel]
 
-                # TODO: On boucle sur les mémoires et on revient à 0
+                # On boucle sur les mémoires et on revient à 0
                 if position < self.app.sequence.last-1:
                     next_level = self.app.sequence.cues[position+1].channels[chanel]
                 else:
                     next_level = self.app.sequence.cues[0].channels[chanel]
+                    self.app.sequence.position = 0
 
                 # Si le level augmente, on prend le temps de montée
                 if next_level > old_level and i < delay_in:
@@ -291,8 +292,20 @@ class Window(Gtk.ApplicationWindow):
             # On se positionne dans le séquentiel à la cue suivante
             position = self.app.sequence.position
             position += 1
-            if position <= self.app.sequence.last:
+            # Si elle existe
+            if position < self.app.sequence.last-1:
                 self.app.sequence.position += 1
+                t_in = self.app.sequence.cues[position+1].time_in
+                t_out = self.app.sequence.cues[position+1].time_out
+                self.app.win_seq.sequential.time_in = t_in
+                self.app.win_seq.sequential.time_out = t_out
+                self.app.win_seq.sequential.pos_x = 0
+                self.app.win_seq.sequential.queue_draw()
+                print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
+            # Sinon, on revient au début
+            else:
+                self.app.sequence.position = 0
+                position = 0
                 t_in = self.app.sequence.cues[position+1].time_in
                 t_out = self.app.sequence.cues[position+1].time_out
                 self.app.win_seq.sequential.time_in = t_in
