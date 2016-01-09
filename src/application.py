@@ -295,7 +295,15 @@ class Application(Gtk.Application):
 
                 fstream.close()
 
-                # TODO: Redraw crossfade
+                # Redraw crossfade :
+                # On se place au début de la séquence
+                self.sequence.position = 0
+                # On récupère les temps de la mémoire suivante
+                t_in = self.sequence.cues[1].time_in
+                t_out = self.sequence.cues[1].time_out
+                self.win_seq.sequential.time_in = t_in
+                self.win_seq.sequential.time_out = t_out
+                # On redessine
                 self.win_seq.sequential.queue_draw()
 
             except GObject.GError as e:
