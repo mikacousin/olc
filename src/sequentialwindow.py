@@ -42,7 +42,7 @@ class SequentialWindow(Gtk.Window):
         self.step.append(Gtk.Label(self.seq.position+1))
         self.grid.attach_next_to(self.step[4], self.step[3], Gtk.PositionType.BOTTOM, 1, 1)
 
-        self.grid.attach_next_to(self.sequential, self.step[4], Gtk.PositionType.BOTTOM, 6, 1)
+        self.grid.attach_next_to(self.sequential, self.step[4], Gtk.PositionType.BOTTOM, 7, 1)
 
         self.step.append(Gtk.Label(self.seq.position+2))
         self.grid.attach_next_to(self.step[5], self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
@@ -153,6 +153,7 @@ class SequentialWindow(Gtk.Window):
         self.t_in.append(Gtk.Label(""))
         self.grid.attach_next_to(self.t_in[8], self.t_out[8], Gtk.PositionType.RIGHT, 1, 1)
 
+        # TODO
         self.t_circ = []
         self.t_circ.append(Gtk.Label("Tps Circ"))
         self.grid.attach_next_to(self.t_circ[0], self.t_in[0], Gtk.PositionType.RIGHT, 1, 1)
