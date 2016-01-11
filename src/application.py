@@ -172,6 +172,7 @@ class Application(Gtk.Application):
                     line, size = dstream.read_line(None)
                     line = str(line)[2:-1]
                     line = line.replace('\\t', '\t')
+                    line = line.replace('\\r', '')
 
                     # Marker for end of file
                     if "ENDDATA" in line:
@@ -274,9 +275,12 @@ class Application(Gtk.Application):
                         for p in line[8:-1].split(" "):
                             q = p.split("<")
                             r = q[1].split("@")
-                             #print ("Chanel :", q[0], "-> Output :", r[0], "@", r[1])
-                            self.patch.add_output(int(q[0]), int(r[0]))
-                            self.window.flowbox.invalidate_filter()
+                            if int(q[0]) <= 512 and int(r[0]) <=512:
+                                #print ("Chanel :", q[0], "-> Output :", r[0], "@", r[1])
+                                self.patch.add_output(int(q[0]), int(r[0]))
+                                self.window.flowbox.invalidate_filter()
+                            else:
+                                print("Attention ! PLusieurs univers !!!")
 
                     if line[:6] == '$GROUP':
                         flag_seq = False
