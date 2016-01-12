@@ -210,10 +210,10 @@ class Application(Gtk.Application):
                             if line[:4] == "TEXT":
                                 #print ("        Text :", line[5:])
                                 txt = line[5:]
-                            if line[:6] == "$$TEXT":
+                            if line[:6] == "$$TEXT" and not txt:
                                 #print ("        $$Text :", line[7:])
                                 txt = line[7:]
-                            if line[:12] == "$$PRESETTEXT":
+                            if line[:12] == "$$PRESETTEXT" and not txt:
                                 #print ("        $$PrestText :", line[13:])
                                 txt = line[13:]
                             if line[:4] == 'DOWN':
@@ -318,8 +318,73 @@ class Application(Gtk.Application):
                 t_out = self.sequence.cues[1].time_out
                 self.win_seq.sequential.time_in = t_in
                 self.win_seq.sequential.time_out = t_out
-                # On redessine
-                self.win_seq.sequential.queue_draw()
+
+                """
+                # TODO: On met à jour la liste des mémoires
+                # Position 0 : les 2 premières lignes sont vides
+                position = 0
+                self.win_seq.step[1].set_text("")
+                self.win_seq.mem[1].set_text("")
+                self.win_seq.text[1].set_text("")
+                self.win_seq.wait[1].set_text("")
+                self.win_seq.t_out[1].set_text("")
+                self.win_seq.t_in[1].set_text("")
+                self.win_seq.step[2].set_text("")
+                self.win_seq.mem[2].set_text("")
+                self.win_seq.text[2].set_text("")
+                self.win_seq.wait[2].set_text("")
+                self.win_seq.t_out[2].set_text("")
+                self.win_seq.t_in[2].set_text("")
+                self.win_seq.step[3].set_text(str(position))
+                self.win_seq.mem[3].set_text(str(self.sequence.cues[position].memory))
+                self.win_seq.text[3].set_text(str(self.sequence.cues[position].text))
+                self.win_seq.wait[3].set_text(str(self.sequence.cues[position].wait))
+                self.win_seq.t_out[3].set_text(str(self.sequence.cues[position].time_out))
+                self.win_seq.t_in[3].set_text(str(self.sequence.cues[position].time_in))
+                self.win_seq.step[4].set_text(str(position+1))
+                self.win_seq.mem[4].set_text(str(self.sequence.cues[position+1].memory))
+                self.win_seq.text[4].set_text(str(self.sequence.cues[position+1].text))
+                self.win_seq.wait[4].set_text(str(self.sequence.cues[position+1].wait))
+                self.win_seq.t_out[4].set_text(str(self.sequence.cues[position+1].time_out))
+                self.win_seq.t_in[4].set_text(str(self.sequence.cues[position+1].time_in))
+                """
+
+                # On met à jour la liste des mémoires
+                self.win_seq.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+                # 2 lignes vides au début
+                #for i in range(2):
+                #    self.win_seq.cues_liststore.append(["", "", "", "", "", "", ""])
+                for i in range(self.sequence.last):
+                    # Si on a des entiers, on les affiche comme tels
+                    if self.sequence.cues[i].wait.is_integer():
+                        wait = str(int(self.sequence.cues[i].wait))
+                        if wait == "0":
+                            wait = ""
+                    else:
+                        wait = str(self.sequence.cues[i].wait)
+                    if self.sequence.cues[i].time_out.is_integer():
+                        t_out = int(self.sequence.cues[i].time_out)
+                    else:
+                        t_out = self.sequence.cues[i].time_out
+                    if self.sequence.cues[i].time_in.is_integer():
+                        t_in = int(self.sequence.cues[i].time_in)
+                    else:
+                        t_in = self.sequence.cues[i].time_in
+                    self.win_seq.cues_liststore.append([str(i), str(self.sequence.cues[i].memory),
+                            str(self.sequence.cues[i].text), wait,
+                            str(t_out), str(t_in),
+                            ""])
+                self.win_seq.step_filter = self.win_seq.cues_liststore.filter_new()
+                self.win_seq.step_filter.set_visible_func(self.win_seq.step_filter_func)
+
+                self.win_seq.treeview.set_model(self.win_seq.cues_liststore)
+                #self.win_seq.treeview.set_model(self.win_seq.step_filter)
+                #self.win_seq.step_filter.refilter()
+
+                path = Gtk.TreePath.new_from_indices([0])
+                self.win_seq.treeview.set_cursor(path, None, False)
+
+                self.win_seq.grid.queue_draw()
 
             except GObject.GError as e:
                 print("Error: " + e.message)

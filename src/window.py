@@ -195,6 +195,10 @@ class Window(Gtk.ApplicationWindow):
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             #self.app.win_seq.sequential.queue_draw()
+            path = Gtk.TreePath.new_from_indices([position])
+            self.app.win_seq.treeview.set_cursor(path, None, False)
+            self.app.win_seq.grid.queue_draw()
+            """
             if position > 0:
                 self.app.win_seq.step[2].set_text(str(position-1))
                 self.app.win_seq.mem[2].set_text(str(self.app.sequence.cues[position-1].memory))
@@ -236,6 +240,8 @@ class Window(Gtk.ApplicationWindow):
             self.app.win_seq.t_in[3].set_text(str(self.app.sequence.cues[position].time_in))
             self.app.win_seq.t_in[4].set_text(str(self.app.sequence.cues[position+1].time_in))
             self.app.win_seq.grid.queue_draw()
+            """
+
             for chanel in range(512):
                 level = self.app.sequence.cues[position].channels[chanel]
                 outputs = self.app.patch.chanels[chanel]
@@ -254,6 +260,10 @@ class Window(Gtk.ApplicationWindow):
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             #self.app.win_seq.sequential.queue_draw()
+            path = Gtk.TreePath.new_from_indices([position])
+            self.app.win_seq.treeview.set_cursor(path, None, False)
+            self.app.win_seq.grid.queue_draw()
+            """
             if position > 0:
                 self.app.win_seq.step[2].set_text(str(position-1))
                 self.app.win_seq.mem[2].set_text(str(self.app.sequence.cues[position-1].memory))
@@ -295,6 +305,8 @@ class Window(Gtk.ApplicationWindow):
             self.app.win_seq.t_in[3].set_text(str(self.app.sequence.cues[position].time_in))
             self.app.win_seq.t_in[4].set_text(str(self.app.sequence.cues[position+1].time_in))
             self.app.win_seq.grid.queue_draw()
+            """
+
             for chanel in range(512):
                 level = self.app.sequence.cues[position].channels[chanel]
                 outputs = self.app.patch.chanels[chanel]
@@ -381,6 +393,10 @@ class Window(Gtk.ApplicationWindow):
                 self.app.win_seq.sequential.time_out = t_out
                 self.app.win_seq.sequential.pos_x = 0
                 #self.app.win_seq.sequential.queue_draw()
+                path = Gtk.TreePath.new_from_indices([position])
+                self.app.win_seq.treeview.set_cursor(path, None, False)
+                self.app.win_seq.grid.queue_draw()
+                """
                 self.app.win_seq.step[3].set_text(str(position))
                 self.app.win_seq.step[4].set_text(str(position+1))
                 self.app.win_seq.mem[3].set_text(str(self.app.sequence.cues[position].memory))
@@ -391,6 +407,8 @@ class Window(Gtk.ApplicationWindow):
                 self.app.win_seq.t_out[3].set_text(str(self.app.sequence.cues[position].time_out))
                 self.app.win_seq.t_in[3].set_text(str(self.app.sequence.cues[position].time_in))
                 self.app.win_seq.grid.queue_draw()
+                """
+
                 # Si la mémoire a un wait
                 if self.app.sequence.cues[position+1].wait:
                     print("Auto Go after", self.app.sequence.cues[position+1].wait, "seconds")

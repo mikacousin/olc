@@ -24,11 +24,48 @@ class SequentialWindow(Gtk.Window):
                 self.app.dmxframe.set_level(output-1, level)
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
+        # Création du crossfade
         self.sequential = SequentialWidget(t_in, t_out)
 
+        # Création de la liste des mémoires
         self.grid = Gtk.Grid()
+        #self.grid.set_column_homogeneous(True)
         self.add(self.grid)
 
+        # Création du modèle
+        # Pas, Mémoire, Texte, Wait, Out, In, Tps Circ
+        self.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        for i in range(self.app.sequence.last):
+            print(i)
+            self.cues_liststore.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
+                    ""])
+
+        # Création du filtre
+        self.step_filter = self.cues_liststore.filter_new()
+        self.step_filter.set_visible_func(self.step_filter_func)
+
+        # Création de la liste
+        #self.treeview = Gtk.TreeView(model=self.cues_liststore)
+        self.treeview = Gtk.TreeView(model=self.step_filter)
+        #self.treeview.set_hexpand(True)
+        #self.treeview.set_vexpand(True)
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Tps Circ"]):
+            renderer = Gtk.CellRendererText()
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            if i == 2:
+                column.set_min_width(400)
+                column.set_resizable(True)
+            self.treeview.append_column(column)
+
+        # Création d'une scrollwindow pour mettre la lsite des mémoires
+        self.scrollable = Gtk.ScrolledWindow()
+        self.scrollable.set_vexpand(True)
+        self.scrollable.add(self.treeview)
+        self.grid.add(self.sequential)
+        self.grid.attach_next_to(self.scrollable, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
+
+        """
         self.step = []
         self.step.append(Gtk.Label("Pas"))
         self.grid.add(self.step[0])
@@ -157,3 +194,19 @@ class SequentialWindow(Gtk.Window):
         self.t_circ = []
         self.t_circ.append(Gtk.Label("Tps Circ"))
         self.grid.attach_next_to(self.t_circ[0], self.t_in[0], Gtk.PositionType.RIGHT, 1, 1)
+    """
+
+    def step_filter_func(self, model, iter, data):
+        return True
+        position = self.seq.position
+        #print(position, model[iter][0])
+        if model[iter][0] == str(position):
+            return True
+        if model[iter][0] == str(position+1):
+            return True
+        if model[iter][0] == str(position+2):
+            return True
+        if model[iter][0] == str(position+3):
+            return True
+        if model[iter][0] == str(position+4):
+            return True
