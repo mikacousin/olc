@@ -247,6 +247,8 @@ class Application(Gtk.Application):
                                 #print("Fin Cue", mem)
                                 if not wait:
                                     wait = 0.0
+                                if not txt:
+                                    txt = ""
                                 cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt)
 
                                 #print("StepId :", cue.index, "Memory :", cue.memory)

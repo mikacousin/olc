@@ -54,7 +54,7 @@ class SequentialWindow(Gtk.Window):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
-                column.set_min_width(400)
+                column.set_min_width(200)
                 column.set_resizable(True)
             self.treeview.append_column(column)
 
