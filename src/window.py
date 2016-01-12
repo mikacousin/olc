@@ -414,6 +414,8 @@ class Window(Gtk.ApplicationWindow):
                     print("Auto Go after", self.app.sequence.cues[position+1].wait, "seconds")
                     time.sleep(self.app.sequence.cues[position+1].wait)
                     print("GO!")
+                    self.keypress_space()
+
             # Sinon, on revient au début
             else:
                 self.app.sequence.position = 0

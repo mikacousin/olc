@@ -213,7 +213,7 @@ class Application(Gtk.Application):
                             if line[:6] == "$$TEXT" and not txt:
                                 #print ("        $$Text :", line[7:])
                                 txt = line[7:]
-                            if line[:12] == "$$PRESETTEXT" and not txt:
+                            if (line[:12] == "$$PRESETTEXT" or line[:12] == "$$PresetText") and not txt:
                                 #print ("        $$PrestText :", line[13:])
                                 txt = line[13:]
                             if line[:4] == 'DOWN':
@@ -233,13 +233,15 @@ class Application(Gtk.Application):
                                 wait = float(line[7:].split(" ")[0])
                             if line[:4] == 'CHAN':
                                 #print ("        Chanels :")
-                                p = line[5:-1].split(" ")
+                                #p = line[5:-1].split(" ")
+                                p = line[5:].split(" ")
                                 for q in p:
                                     r = q.split("/")
                                     #print ("            ", r[0], "@", int(r[1][1:], 16))
-                                    chanel = int(r[0])
-                                    level = int(r[1][1:], 16)
-                                    channels[chanel-1] = level
+                                    if r[0] != "":
+                                        chanel = int(r[0])
+                                        level = int(r[1][1:], 16)
+                                        channels[chanel-1] = level
                             #if txt and t_out and t_in and channels:
                             if line == "":
                                 #print("Fin Cue", mem)
