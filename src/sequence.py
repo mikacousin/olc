@@ -2,8 +2,9 @@ import array
 from olc.cue import Cue
 
 class Sequence(object):
-    def __init__(self, index):
+    def __init__(self, index, type_seq = "Normal"):
         self.index = index
+        self.type_seq = type_seq
         self.cues = []
         self.position = 0
         self.last = 0
@@ -26,7 +27,7 @@ if __name__ == "__main__":
     cue = Cue(1, 1.0, channels, text="Top blabla")
     sequence.add_cue(cue)
 
-    print("Sequence :", sequence.index, "\n")
+    print("Sequence :", sequence.index, "Type :", sequence.type_seq, "\n")
     print("Position in sequence :", sequence.position)
     print("Index of the last Cue :", sequence.last)
     for cue in sequence.cues:

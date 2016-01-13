@@ -31,8 +31,11 @@ class Application(Gtk.Application):
         # Create patch (1:1)
         self.patch = PatchDmx()
 
-        # Create a sequential
+        # Create Main Sequential
         self.sequence = Sequence(1)
+
+        # Create List for Chasers
+        self.chasers = []
 
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
@@ -185,13 +188,78 @@ class Application(Gtk.Application):
                                 type_seq = "Normal"
                             elif p[1] == "1":
                                 type_seq = "Chaser"
+                                index_seq = int(p[0])
+                                self.chasers.append(Sequence(index_seq))
+                                print ("Sequence :", index_seq, "Type :", type_seq)
                         except:
                             type_seq = "Normal"
-                        print ("Sequence :", p[0], "Type :", type_seq)
+                        #print ("Sequence :", p[0], "Type :", type_seq)
                         i = 1
                         flag_seq = True
                         flag_patch = False
                         flag_group = False
+                    if flag_seq and type_seq == "Chaser":
+                        if line[:4] == "$CUE":
+                            in_cue = True
+                            channels = array.array('B', [0] * 512)
+                            i += 1
+                            p = line[5:].split(" ")
+                            seq = p[0]
+                            mem = p[1]
+                            print ("CUE in Sequence", seq, "Memory", mem)
+
+                        if in_cue:
+                            if line[:4] == 'DOWN':
+                                p = line[5:]
+                                time = p.split(" ")[0]
+                                if ":" in time:
+                                    t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
+                                else:
+                                    t_out = float(time)
+                                if t_out == 0:
+                                    t_out = 0.1
+                                print("Time Out:", t_out)
+                            if line[:2] == 'UP':
+                                p = line[3:]
+                                time = p.split(" ")[0]
+                                if ":" in time:
+                                    t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
+                                else:
+                                    t_in = float(time)
+                                if t_in == 0:
+                                    t_in = 0.1
+                                print("Time In:", t_in)
+                            if line[:4] == 'CHAN':
+                                print ("        Chanels :")
+                                p = line[5:].split(" ")
+                                for q in p:
+                                    r = q.split("/")
+                                    if r[0] != "":
+                                        chanel = int(r[0])
+                                        level = int(r[1][1:], 16)
+                                        channels[chanel-1] = level
+                                        #print ("            ", r[0], "@", int(r[1][1:], 16))
+
+                            if line == "":
+                                print("Fin de la Cue")
+
+                                if not wait:
+                                    wait = 0.0
+                                if not txt:
+                                    txt = ""
+                                if not t_out:
+                                    t_out = 5.0
+                                if not t_in:
+                                    t_in = 5.0
+                                cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt)
+
+                                self.chasers[-1].add_cue(cue)
+
+                                in_cue = False
+                                t_out = False
+                                t_in = False
+                                channels = False
+
                     if flag_seq and type_seq == "Normal":
                         if line[:0] == "!":
                             flag_seq = False
@@ -408,6 +476,25 @@ class Application(Gtk.Application):
                 self.win_seq.treeview.set_cursor(path, None, False)
 
                 self.win_seq.grid.queue_draw()
+
+                # TODO: A virer
+                # On affiche les chasers pour voir
+                print("Chaser 0")
+                for i in range(self.chasers[0].last):
+                    print("Cue", self.chasers[0].cues[i].memory)
+                    print("In", self.chasers[0].cues[i].time_in)
+                    print("Out", self.chasers[0].cues[i].time_out)
+                    for channel in range(512):
+                        if self.chasers[0].cues[i].channels[channel] != 0:
+                            print("Channel :", channel+1, "@", self.chasers[0].cues[i].channels[channel])
+                print("Chaser 1")
+                for i in range(self.chasers[1].last):
+                    print("Cue", self.chasers[1].cues[i].memory)
+                    print("In", self.chasers[1].cues[i].time_in)
+                    print("Out", self.chasers[1].cues[i].time_out)
+                    for channel in range(512):
+                        if self.chasers[1].cues[i].channels[channel] != 0:
+                            print("Channel :", channel+1, "@", self.chasers[1].cues[i].channels[channel])
 
             except GObject.GError as e:
                 print("Error: " + e.message)
