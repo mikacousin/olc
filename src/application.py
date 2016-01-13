@@ -180,10 +180,13 @@ class Application(Gtk.Application):
 
                     if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
                         p = line[10:].split(" ")
-                        if p[1] == "0":
+                        try:
+                            if p[1] == "0":
+                                type_seq = "Normal"
+                            elif p[1] == "1":
+                                type_seq = "Chaser"
+                        except:
                             type_seq = "Normal"
-                        elif p[1] == "1":
-                            type_seq = "Chaser"
                         print ("Sequence :", p[0], "Type :", type_seq)
                         i = 1
                         flag_seq = True
@@ -219,16 +222,26 @@ class Application(Gtk.Application):
                             if line[:4] == 'DOWN':
                                 #print ("        Time Out :", line[5:])
                                 p = line[5:]
-                                t_out = float(p.split(" ")[0])
+                                time = p.split(" ")[0]
+                                # Si on a un tps avec ":" on est en minutes
+                                if ":" in time:
+                                    t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
+                                else:
+                                    t_out = float(time)
                                 if t_out == 0:
                                     t_out = 0.1
                             if line[:2] == 'UP':
                                 #print ("        Time In :", line[3:])
                                 p = line[3:]
-                                t_in = float(p.split(" ")[0])
+                                time = p.split(" ")[0]
+                                # Si on a un tps avec ":" on est en minutes
+                                if ":" in time:
+                                    t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
+                                else:
+                                    t_in = float(time)
                                 if t_in == 0:
                                     t_in = 0.1
-                            if line[:6] == '$$WAIT':
+                            if line[:6] == '$$WAIT' or line[:6] == '$$Wait':
                                 #print ("        Wait :", line[7:])
                                 wait = float(line[7:].split(" ")[0])
                             if line[:4] == 'CHAN':
@@ -249,6 +262,10 @@ class Application(Gtk.Application):
                                     wait = 0.0
                                 if not txt:
                                     txt = ""
+                                if not t_out:
+                                    t_out = 5.0
+                                if not t_in:
+                                    t_in = 5.0
                                 cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt)
 
                                 #print("StepId :", cue.index, "Memory :", cue.memory)

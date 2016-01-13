@@ -62,6 +62,7 @@ class SequentialWindow(Gtk.Window):
         # Création d'une scrollwindow pour mettre la lsite des mémoires
         self.scrollable = Gtk.ScrolledWindow()
         self.scrollable.set_vexpand(True)
+        self.scrollable.set_hexpand(True)
         self.scrollable.add(self.treeview)
         self.grid.add(self.sequential)
         self.grid.attach_next_to(self.scrollable, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
