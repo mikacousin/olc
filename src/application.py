@@ -477,6 +477,7 @@ class Application(Gtk.Application):
 
                 self.win_seq.grid.queue_draw()
 
+                """
                 # TODO: A virer
                 # On affiche les chasers pour voir
                 print("Chaser 0")
@@ -495,6 +496,7 @@ class Application(Gtk.Application):
                     for channel in range(512):
                         if self.chasers[1].cues[i].channels[channel] != 0:
                             print("Channel :", channel+1, "@", self.chasers[1].cues[i].channels[channel])
+                """
 
             except GObject.GError as e:
                 print("Error: " + e.message)

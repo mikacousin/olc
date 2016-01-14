@@ -1,4 +1,6 @@
 import select
+import time
+import threading
 from gi.repository import Gtk, GObject, Gdk, GLib
 from ola import OlaClient
 
@@ -316,9 +318,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_space(self):
 
-        import threading
-        import time
-
         def update_progress(delay, delay_in, delay_out, i, position):
             # Mise a jour position des sliders
             self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # (800-32): en dur dans customwidgets
@@ -434,17 +433,98 @@ class Window(Gtk.ApplicationWindow):
         thread.start()
 
     def keypress_w(self):
-        self.app.win_seq.sequential.pos_x -= 1
-        self.app.win_seq.sequential.queue_draw()
+
+        def update_levels(delay, delay_in, delay_out, i, position):
+            for channel in range(512):
+                # On ne modifie que les channels présents dans le chaser
+                if self.app.chasers[self.chaser].cues[position].channels[channel] != 0:
+                    # Niveau duquel on part
+                    old_level = self.app.chasers[self.chaser].cues[position].channels[channel]
+
+                    # On boucle sur les mémoires et on revient à 0
+                    if position < self.app.chasers[self.chaser].last-1:
+                        next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel]
+                    else:
+                        next_level = self.app.chasers[self.chaser].cues[0].channels[channel]
+                        self.app.chasers[self.chaser].position = 0
+
+                    # Si le level augmente, on prend le temps de montée
+                    if next_level > old_level and i < delay_in:
+                        level = int(((next_level - old_level+1) / delay_in) * i) + old_level
+                    # si le level descend, on prend le temps de descente
+                    elif next_level < old_level and i < delay_out:
+                        level = old_level - abs(int(((next_level - old_level-1) / delay_out) * i))
+                    # sinon, la valeur est déjà bonne
+                    else:
+                        level = next_level
+
+                    #print(old_level, next_level, level, chanel+1)
+
+                    outputs = self.app.patch.chanels[channel]
+                    for output in outputs:
+                        self.app.dmxframe.set_level(output-1, level)
+
+                    #if self.app.chasers[0].cues[position].channels[channel] != 0:
+                    #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])
+
+            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+        def time_loop():
+            # On boucle sur les mémoires du chasres
+            position = 0
+            while True:
+                #for position in range(self.app.chasers[0].last-1):
+                # On récupère les temps du pas suivant
+                if position != self.app.chasers[self.chaser].last-1:
+                    t_in = self.app.chasers[self.chaser].cues[position+1].time_in
+                    t_out = self.app.chasers[self.chaser].cues[position+1].time_out
+                else:
+                    t_in = self.app.chasers[self.chaser].cues[1].time_in
+                    t_out = self.app.chasers[self.chaser].cues[1].time_out
+
+                # Quel est le temps le plus long
+                if t_in > t_out:
+                    t_max = t_in
+                    t_min = t_out
+                else:
+                    t_max = t_out
+                    t_min = t_in
+
+                start_time = time.time() * 1000 # actual time in ms
+                delay = t_max * 1000
+                delay_in = t_in * 1000
+                delay_out = t_out * 1000
+                i = (time.time() * 1000) - start_time
+
+                # Boucle sur le temps de monté ou de descente (le plus grand)
+                while i < delay:
+                    # Mise à jour des niveaux
+                    GLib.idle_add(update_levels, delay, delay_in, delay_out, i, position)
+                    time.sleep(0.02)
+                    i = (time.time() * 1000) - start_time
+
+                position += 1
+                if position == self.app.chasers[self.chaser].last-1:
+                    position = 0
+
+        self.chaser = 1
+        print("Chaser", self.chaser)
+
+        # On utilise un thread pour ne pas tout bloquer pendant le changement de mémoire
+        thread = threading.Thread(target=time_loop)
+        thread.daemon = True
+        thread.start()
+
+        """
+        for i in range(1, self.app.chasers[0].last):
+            print("Cue", self.app.chasers[0].cues[i].memory)
+            print("In", self.app.chasers[0].cues[i].time_in)
+            print("Out", self.app.chasers[0].cues[i].time_out)
+            for channel in range(512):
+                if self.app.chasers[0].cues[i].channels[channel] != 0:
+                    print("Channel :", channel+1, "@", self.app.chasers[0].cues[i].channels[channel])
+        """
 
     def keypress_x(self):
         self.app.win_seq.sequential.pos_x += 1
-        self.app.win_seq.sequential.queue_draw()
-
-    def keypress_W(self):
-        self.app.win_seq.sequential.pos_x -= 10
-        self.app.win_seq.sequential.queue_draw()
-
-    def keypress_X(self):
-        self.app.win_seq.sequential.pos_x += 10
         self.app.win_seq.sequential.queue_draw()
