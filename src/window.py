@@ -437,16 +437,17 @@ class Window(Gtk.ApplicationWindow):
         def update_levels(delay, delay_in, delay_out, i, position):
             for channel in range(512):
                 # On ne modifie que les channels présents dans le chaser
-                if self.app.chasers[self.chaser].cues[position].channels[channel] != 0:
+                if self.app.chasers[self.chaser].channels[channel] != 0:
+                #if self.app.chasers[self.chaser].channels[channel] != 0 and self.app.chasers[self.chaser].cues[position].channels[channel] > self.app.sequence.cues[position].channels[channel]:
                     # Niveau duquel on part
                     old_level = self.app.chasers[self.chaser].cues[position].channels[channel]
 
-                    # On boucle sur les mémoires et on revient à 0
+                    # On boucle sur les mémoires et on revient au premier pas
                     if position < self.app.chasers[self.chaser].last-1:
                         next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel]
                     else:
-                        next_level = self.app.chasers[self.chaser].cues[0].channels[channel]
-                        self.app.chasers[self.chaser].position = 0
+                        next_level = self.app.chasers[self.chaser].cues[1].channels[channel]
+                        self.app.chasers[self.chaser].position = 1
 
                     # Si le level augmente, on prend le temps de montée
                     if next_level > old_level and i < delay_in:
@@ -472,43 +473,49 @@ class Window(Gtk.ApplicationWindow):
         def time_loop():
             # On boucle sur les mémoires du chasres
             position = 0
-            while True:
-                #for position in range(self.app.chasers[0].last-1):
-                # On récupère les temps du pas suivant
-                if position != self.app.chasers[self.chaser].last-1:
-                    t_in = self.app.chasers[self.chaser].cues[position+1].time_in
-                    t_out = self.app.chasers[self.chaser].cues[position+1].time_out
-                else:
-                    t_in = self.app.chasers[self.chaser].cues[1].time_in
-                    t_out = self.app.chasers[self.chaser].cues[1].time_out
+            while self.app.chasers[self.chaser].run:
+                #for position in range(self.app.chasers[0].last):
+                    # On récupère les temps du pas suivant
+                    if position != self.app.chasers[self.chaser].last-1:
+                        t_in = self.app.chasers[self.chaser].cues[position+1].time_in
+                        t_out = self.app.chasers[self.chaser].cues[position+1].time_out
+                    else:
+                        t_in = self.app.chasers[self.chaser].cues[1].time_in
+                        t_out = self.app.chasers[self.chaser].cues[1].time_out
 
-                # Quel est le temps le plus long
-                if t_in > t_out:
-                    t_max = t_in
-                    t_min = t_out
-                else:
-                    t_max = t_out
-                    t_min = t_in
+                    # Quel est le temps le plus long
+                    if t_in > t_out:
+                        t_max = t_in
+                        t_min = t_out
+                    else:
+                        t_max = t_out
+                        t_min = t_in
 
-                start_time = time.time() * 1000 # actual time in ms
-                delay = t_max * 1000
-                delay_in = t_in * 1000
-                delay_out = t_out * 1000
-                i = (time.time() * 1000) - start_time
-
-                # Boucle sur le temps de monté ou de descente (le plus grand)
-                while i < delay:
-                    # Mise à jour des niveaux
-                    GLib.idle_add(update_levels, delay, delay_in, delay_out, i, position)
-                    time.sleep(0.02)
+                    start_time = time.time() * 1000 # actual time in ms
+                    delay = t_max * 1000
+                    delay_in = t_in * 1000
+                    delay_out = t_out * 1000
                     i = (time.time() * 1000) - start_time
 
-                position += 1
-                if position == self.app.chasers[self.chaser].last-1:
-                    position = 0
+                    # Boucle sur le temps de monté ou de descente (le plus grand)
+                    while i < delay:
+                        # Mise à jour des niveaux
+                        GLib.idle_add(update_levels, delay, delay_in, delay_out, i, position)
+                        time.sleep(0.02)
+                        i = (time.time() * 1000) - start_time
+
+                    position += 1
+                    if position == self.app.chasers[self.chaser].last:
+                        position = 1
 
         self.chaser = 1
         print("Chaser", self.chaser)
+
+        # Bascule Marche/Arret
+        if self.app.chasers[self.chaser].run:
+            self.app.chasers[self.chaser].run = False
+        else:
+            self.app.chasers[self.chaser].run = True
 
         # On utilise un thread pour ne pas tout bloquer pendant le changement de mémoire
         thread = threading.Thread(target=time_loop)

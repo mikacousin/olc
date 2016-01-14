@@ -9,7 +9,8 @@ class SequentialWindow(Gtk.Window):
         self.seq = seq
 
         Gtk.Window.__init__(self, title="Sequential")
-        self.set_default_size(820, 1000)
+        #self.set_default_size(820, 1000)
+        self.set_default_size(820, 700)
         self.set_border_width(10)
 
         position = self.seq.position

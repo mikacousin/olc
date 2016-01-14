@@ -40,6 +40,7 @@ class Application(Gtk.Application):
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
         self.sock = self.ola_client.GetSocket()
+        # TODO: Choisir son univers
         self.universe = 1
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
         # Fetch dmx values on startup
@@ -176,7 +177,7 @@ class Application(Gtk.Application):
                                 type_seq = "Chaser"
                                 index_seq = int(p[0])
                                 self.chasers.append(Sequence(index_seq))
-                                print ("Sequence :", index_seq, "Type :", type_seq)
+                                #print ("Sequence :", index_seq, "Type :", type_seq)
                         except:
                             type_seq = "Normal"
                         #print ("Sequence :", p[0], "Type :", type_seq)
@@ -184,6 +185,7 @@ class Application(Gtk.Application):
                         flag_seq = True
                         flag_patch = False
                         flag_group = False
+
                     if flag_seq and type_seq == "Chaser":
                         if line[:4] == "$CUE":
                             in_cue = True
@@ -192,7 +194,7 @@ class Application(Gtk.Application):
                             p = line[5:].split(" ")
                             seq = p[0]
                             mem = p[1]
-                            print ("CUE in Sequence", seq, "Memory", mem)
+                            #print ("CUE in Sequence", seq, "Memory", mem)
 
                         if in_cue:
                             if line[:4] == 'DOWN':
@@ -204,7 +206,7 @@ class Application(Gtk.Application):
                                     t_out = float(time)
                                 if t_out == 0:
                                     t_out = 0.1
-                                print("Time Out:", t_out)
+                                #print("Time Out:", t_out)
                             if line[:2] == 'UP':
                                 p = line[3:]
                                 time = p.split(" ")[0]
@@ -214,9 +216,9 @@ class Application(Gtk.Application):
                                     t_in = float(time)
                                 if t_in == 0:
                                     t_in = 0.1
-                                print("Time In:", t_in)
+                                #print("Time In:", t_in)
                             if line[:4] == 'CHAN':
-                                print ("        Chanels :")
+                                #print ("        Chanels :")
                                 p = line[5:].split(" ")
                                 for q in p:
                                     r = q.split("/")
@@ -227,7 +229,7 @@ class Application(Gtk.Application):
                                         #print ("            ", r[0], "@", int(r[1][1:], 16))
 
                             if line == "":
-                                print("Fin de la Cue")
+                                #print("Fin de la Cue")
 
                                 if not wait:
                                     wait = 0.0

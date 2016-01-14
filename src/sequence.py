@@ -8,6 +8,10 @@ class Sequence(object):
         self.cues = []
         self.position = 0
         self.last = 0
+        # Liste des channels présent dans le sequentiel
+        self.channels = array.array('B', [0] * 512)
+        # Flag pour les chasers
+        self.run = False
 
         # create an empty cue 0
         cue = Cue(0, 0, text="Cue 0")
@@ -16,6 +20,10 @@ class Sequence(object):
     def add_cue(self, cue):
         self.cues.append(cue)
         self.last = cue.index
+        # On enregistre la liste des circuits présents dans la mméoire
+        for i in range(512):
+            if cue.channels[i] != 0:
+                self.channels[i] = 1 # Si présent on le note
 
 if __name__ == "__main__":
 
