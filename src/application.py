@@ -391,14 +391,15 @@ class Application(Gtk.Application):
                             txt = line[5:]
                         if line[:4] == 'CHAN':
                             #print ("    Chanels :")
-                            p = line[5:-1].split(" ")
+                            p = line[5:].split(" ")
                             for q in p:
                                 r = q.split("/")
                                 #print ("        ", r[0], "@", int(r[1][1:], 16))
-                                channel = int(r[0])
-                                level = int(r[1][1:], 16)
-                                if channel <= 512:
-                                    channels[channel-1] = level
+                                if r[0] != "":
+                                    channel = int(r[0])
+                                    level = int(r[1][1:], 16)
+                                    if channel <= 512:
+                                        channels[channel-1] = level
                         if line == "":
                             #print("Group", group_nb, txt, "channels", channels)
                             self.groups.append(Group(group_nb, channels, txt))
