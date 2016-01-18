@@ -438,15 +438,23 @@ class Window(Gtk.ApplicationWindow):
             for channel in range(512):
                 # On ne modifie que les channels présents dans le chaser
                 if self.app.chasers[self.chaser].channels[channel] != 0:
-                #if self.app.chasers[self.chaser].channels[channel] != 0 and self.app.chasers[self.chaser].cues[position].channels[channel] > self.app.sequence.cues[position].channels[channel]:
                     # Niveau duquel on part
                     old_level = self.app.chasers[self.chaser].cues[position].channels[channel]
+                    # Niveau dans le sequentiel
+                    seq_level = self.app.sequence.cues[self.app.sequence.position].channels[channel]
+
+                    if old_level < seq_level:
+                        old_level = seq_level
 
                     # On boucle sur les mémoires et on revient au premier pas
                     if position < self.app.chasers[self.chaser].last-1:
                         next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel]
+                        if next_level < seq_level:
+                            next_level = seq_level
                     else:
                         next_level = self.app.chasers[self.chaser].cues[1].channels[channel]
+                        if next_level < seq_level:
+                            next_level = seq_level
                         self.app.chasers[self.chaser].position = 1
 
                     # Si le level augmente, on prend le temps de montée
@@ -508,7 +516,7 @@ class Window(Gtk.ApplicationWindow):
                     if position == self.app.chasers[self.chaser].last:
                         position = 1
 
-        self.chaser = 1
+        self.chaser = 0
         print("Chaser", self.chaser)
 
         # Bascule Marche/Arret
