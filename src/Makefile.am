@@ -5,6 +5,7 @@ app_PYTHON = \
 	cue.py \
 	customwidgets.py \
 	dmx.py \
+	group.py \
 	patchwindow.py \
 	sequence.py \
 	sequentialwindow.py \
