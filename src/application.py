@@ -60,7 +60,7 @@ class Application(Gtk.Application):
         self.win_seq.show_all()
 
         self.win_groups = GroupsWindow(self, self.groups)
-        self.win_groups.show_all()
+        #self.win_groups.show_all()
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -83,6 +83,10 @@ class Application(Gtk.Application):
         patchAction = Gio.SimpleAction.new('patch', None)
         patchAction.connect('activate', self._patch)
         self.add_action(patchAction)
+
+        groupsAction = Gio.SimpleAction.new('groups', None)
+        groupsAction.connect('activate', self._groups)
+        self.add_action(groupsAction)
 
         aboutAction = Gio.SimpleAction.new('about', None)
         aboutAction.connect('activate', self._about)
@@ -481,8 +485,7 @@ class Application(Gtk.Application):
                                 self.win_groups.label[i], Gtk.PositionType.BOTTOM, 1, 1)
 
 
-                #self.win_groups.grid.queue_draw()
-                self.win_groups.show_all()
+                #self.win_groups.show_all()
 
             except GObject.GError as e:
                 print("Error: " + e.message)
@@ -496,6 +499,10 @@ class Application(Gtk.Application):
     def _patch(self, action, parameter):
         self.patchwindow = PatchWindow(self.patch, self.dmxframe, self.window)
         self.patchwindow.show_all()
+
+    def _groups(self, action, parameter):
+        self.win_groups = GroupsWindow(self, self.groups)
+        self.win_groups.show_all()
 
     def _about(self, action, parameter):
         """

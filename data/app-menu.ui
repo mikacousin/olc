@@ -11,6 +11,11 @@
         <attribute name="label" translatable="yes">_Patch</attribute>
         <attribute name="accel">&lt;Primary&gt;p</attribute>
       </item>
+      <item>
+        <attribute name="action">app.groups</attribute>
+        <attribute name="label" translatable="yes">_Groups</attribute>
+        <attribute name="accel">&lt;Primary&gt;g</attribute>
+      </item>
     </section>
     <section>
       <item>

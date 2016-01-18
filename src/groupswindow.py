@@ -14,11 +14,14 @@ class GroupsWindow(Gtk.Window):
         self.ad = []
         self.label = []
 
+        self.grid = Gtk.Grid()
+        self.grid.set_column_homogeneous(True)
+
         for i in range(len(self.groups)):
             # Adjustment for scale (initial value, min value, max value,
             # step increment, page increment, page size (not used here)
-            ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
-            self.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=ad[i]))
+            self.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
+            self.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.ad[i]))
             self.scale[i].set_digits(0)
             self.scale[i].set_vexpand(True)
             self.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
@@ -27,11 +30,12 @@ class GroupsWindow(Gtk.Window):
             self.label.append(Gtk.Label())
             self.label[i].set_text(groups[i].text)
 
-        self.grid = Gtk.Grid()
-        self.grid.set_column_homogeneous(True)
-        for i in range(len(self.scale)):
-            self.grid.attach(self.label[i], 0, 0, 1, 1)
-            self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+            if i == 0:
+                self.grid.attach(self.label[i], 0, 0, 1, 1)
+                self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+            else:
+                self.grid.attach_next_to(self.label[i], self.label[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
 
         self.add(self.grid)
 
