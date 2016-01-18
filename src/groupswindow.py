@@ -7,7 +7,7 @@ class GroupsWindow(Gtk.Window):
         self.groups = groups
 
         Gtk.Window.__init__(self, title="Groups")
-        self.set_default_size(800, 200)
+        self.set_default_size(800, 500)
         self.set_border_width(10)
 
         self.scale = []
@@ -32,6 +32,9 @@ class GroupsWindow(Gtk.Window):
 
             if i == 0:
                 self.grid.attach(self.label[i], 0, 0, 1, 1)
+                self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+            elif not i % 10:
+                self.grid.attach_next_to(self.label[i], self.scale[i-10], Gtk.PositionType.BOTTOM, 1, 1)
                 self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
             else:
                 self.grid.attach_next_to(self.label[i], self.label[i-1], Gtk.PositionType.RIGHT, 1, 1)
