@@ -6,6 +6,7 @@ app_PYTHON = \
 	customwidgets.py \
 	dmx.py \
 	group.py \
+	groupswindow.py \
 	patchwindow.py \
 	sequence.py \
 	sequentialwindow.py \

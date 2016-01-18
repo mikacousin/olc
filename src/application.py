@@ -12,6 +12,7 @@ from olc.cue import Cue
 from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
 from olc.group import Group
+from olc.groupswindow import GroupsWindow
 
 class Application(Gtk.Application):
 
@@ -57,6 +58,9 @@ class Application(Gtk.Application):
 
         self.win_seq = SequentialWindow(self, self.sequence)
         self.win_seq.show_all()
+
+        self.win_groups = GroupsWindow(self, self.groups)
+        self.win_groups.show_all()
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -451,12 +455,30 @@ class Application(Gtk.Application):
 
                 self.win_seq.grid.queue_draw()
 
-                """
-                # TODO: A Virer
-                # On affiche la liste des groupes pour test
+                # On met à jour la fenêtre des groupes
+                ad = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
                 for i in range(len(self.groups)):
-                    print(self.groups[i].index, self.groups[i].text, self.groups[i].channels)
-                """
+                    #print(self.groups[i].index, self.groups[i].text, self.groups[i].channels)
+                    self.win_groups.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=ad))
+                    self.win_groups.scale[i].set_digits(0)
+                    self.win_groups.scale[i].set_vexpand(True)
+                    self.win_groups.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
+                    self.win_groups.label.append(Gtk.Label())
+                    self.win_groups.label[i].set_text(self.groups[i].text)
+
+                    if i == 0:
+                        self.win_groups.grid.attach(self.win_groups.label[i], 0, 0, 1, 1)
+                        self.win_groups.grid.attach_next_to(self.win_groups.scale[i],
+                                self.win_groups.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+                    else:
+                        self.win_groups.grid.attach_next_to(self.win_groups.label[i],
+                                self.win_groups.label[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                        self.win_groups.grid.attach_next_to(self.win_groups.scale[i],
+                                self.win_groups.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+
+
+                #self.win_groups.grid.queue_draw()
+                self.win_groups.show_all()
 
             except GObject.GError as e:
                 print("Error: " + e.message)
