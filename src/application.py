@@ -11,6 +11,7 @@ from olc.dmx import PatchDmx, DmxFrame
 from olc.cue import Cue
 from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
+from olc.group import Group
 
 class Application(Gtk.Application):
 
@@ -36,6 +37,9 @@ class Application(Gtk.Application):
 
         # Create List for Chasers
         self.chasers = []
+
+        # Create List of Groups
+        self.groups = []
 
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
@@ -365,23 +369,35 @@ class Application(Gtk.Application):
                         flag_seq = False
                         flag_patch = False
                         flag_group = True
-                        print ("Group :", line[7:])
+                        #print ("Group :", line[7:])
+                        channels = array.array('B', [0] * 512)
+                        group_nb = int(line[7:])
                     if line[:5] == 'GROUP':
                         flag_seq = False
                         flag_patch = False
                         flag_group = True
-                        print ("Group :", line[6:])
+                        #print ("Group :", line[6:])
+                        channels = array.array('B', [0] * 512)
+                        group_nb = int(line[6:])
                     if flag_group:
                         if line[:1] == "!":
                             flag_group = False
                         if line[:4] == 'TEXT':
-                            print ("    Text :", line[5:])
+                            #print ("    Text :", line[5:])
+                            txt = line[5:]
                         if line[:4] == 'CHAN':
-                            print ("    Chanels :")
+                            #print ("    Chanels :")
                             p = line[5:-1].split(" ")
                             for q in p:
                                 r = q.split("/")
-                                print ("        ", r[0], "@", int(r[1][1:], 16))
+                                #print ("        ", r[0], "@", int(r[1][1:], 16))
+                                channel = int(r[0])
+                                level = int(r[1][1:], 16)
+                                if channel <= 512:
+                                    channels[channel-1] = level
+                        if line == "":
+                            #print("Group", group_nb, txt, "channels", channels)
+                            self.groups.append(Group(group_nb, channels, txt))
 
                 fstream.close()
 
@@ -397,36 +413,6 @@ class Application(Gtk.Application):
                 t_out = self.sequence.cues[1].time_out
                 self.win_seq.sequential.time_in = t_in
                 self.win_seq.sequential.time_out = t_out
-
-                """
-                # TODO: On met à jour la liste des mémoires
-                # Position 0 : les 2 premières lignes sont vides
-                position = 0
-                self.win_seq.step[1].set_text("")
-                self.win_seq.mem[1].set_text("")
-                self.win_seq.text[1].set_text("")
-                self.win_seq.wait[1].set_text("")
-                self.win_seq.t_out[1].set_text("")
-                self.win_seq.t_in[1].set_text("")
-                self.win_seq.step[2].set_text("")
-                self.win_seq.mem[2].set_text("")
-                self.win_seq.text[2].set_text("")
-                self.win_seq.wait[2].set_text("")
-                self.win_seq.t_out[2].set_text("")
-                self.win_seq.t_in[2].set_text("")
-                self.win_seq.step[3].set_text(str(position))
-                self.win_seq.mem[3].set_text(str(self.sequence.cues[position].memory))
-                self.win_seq.text[3].set_text(str(self.sequence.cues[position].text))
-                self.win_seq.wait[3].set_text(str(self.sequence.cues[position].wait))
-                self.win_seq.t_out[3].set_text(str(self.sequence.cues[position].time_out))
-                self.win_seq.t_in[3].set_text(str(self.sequence.cues[position].time_in))
-                self.win_seq.step[4].set_text(str(position+1))
-                self.win_seq.mem[4].set_text(str(self.sequence.cues[position+1].memory))
-                self.win_seq.text[4].set_text(str(self.sequence.cues[position+1].text))
-                self.win_seq.wait[4].set_text(str(self.sequence.cues[position+1].wait))
-                self.win_seq.t_out[4].set_text(str(self.sequence.cues[position+1].time_out))
-                self.win_seq.t_in[4].set_text(str(self.sequence.cues[position+1].time_in))
-                """
 
                 # On met à jour la liste des mémoires
                 self.win_seq.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
@@ -466,24 +452,10 @@ class Application(Gtk.Application):
                 self.win_seq.grid.queue_draw()
 
                 """
-                # TODO: A virer
-                # On affiche les chasers pour voir
-                print("Chaser 0")
-                for i in range(self.chasers[0].last):
-                    print("Cue", self.chasers[0].cues[i].memory)
-                    print("In", self.chasers[0].cues[i].time_in)
-                    print("Out", self.chasers[0].cues[i].time_out)
-                    for channel in range(512):
-                        if self.chasers[0].cues[i].channels[channel] != 0:
-                            print("Channel :", channel+1, "@", self.chasers[0].cues[i].channels[channel])
-                print("Chaser 1")
-                for i in range(self.chasers[1].last):
-                    print("Cue", self.chasers[1].cues[i].memory)
-                    print("In", self.chasers[1].cues[i].time_in)
-                    print("Out", self.chasers[1].cues[i].time_out)
-                    for channel in range(512):
-                        if self.chasers[1].cues[i].channels[channel] != 0:
-                            print("Channel :", channel+1, "@", self.chasers[1].cues[i].channels[channel])
+                # TODO: A Virer
+                # On affiche la liste des groupes pour test
+                for i in range(len(self.groups)):
+                    print(self.groups[i].index, self.groups[i].text, self.groups[i].channels)
                 """
 
             except GObject.GError as e:
