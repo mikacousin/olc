@@ -36,6 +36,26 @@ class GroupsWindow(Gtk.Window):
         self.add(self.grid)
 
     def scale_moved(self, scale):
+        # On cherche quel scale a été actionné
         for i in range(len(self.scale)):
             if self.scale[i] == scale:
-                print("Le Groupe", self.groups[i].text, "est passé à la valeur", int(scale.get_value()))
+                # Valeur du scale
+                level_scale = scale.get_value()
+                for channel in range(512):
+                    # Si le channel a une valeur différente de 0 dans le groupe
+                    if self.groups[i].channels[channel] != 0:
+                        # On récupère la valeur enregistrée dans le groupe
+                        level_group = self.groups[i].channels[channel]
+                        # Calcul du level
+                        if level_scale == 0:
+                            level = 0
+                        else:
+                            level = int(level_group / (256 / level_scale)) + 1
+                        # On regarde le level de la cue actuelle
+                        level_cue = self.app.sequence.cues[self.app.sequence.position].channels[channel]
+                        if level_cue > level:
+                            level = level_cue
+                        outputs = self.app.patch.chanels[channel]
+                        for output in outputs:
+                            self.app.dmxframe.set_level(output-1, level)
+                self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)

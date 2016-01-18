@@ -41,30 +41,6 @@ class Window(Gtk.ApplicationWindow):
         #self.progressbar = []
 
         for i in range(512):
-            """
-            # Création de la grille
-            self.grid.append(Gtk.Grid())
-            #self.grid[i].set_column_homogeneous(True)
-            self.flowbox.add(self.grid[i])
-
-            # Création de la liste des outputs
-            self.chanels.append(Gtk.ToggleButton(str(i+1))) # Le numéro du chanel comme label
-            self.chanels[i].connect("toggled", self.on_button_toggled, str(i+1))
-
-            # Création de la liste des niveaux
-            self.levels.append(Gtk.Label(label=" 0 "))
-            self.levels[i].set_justify(Gtk.Justification.CENTER)
-
-            # Création de la liste des barres de progression
-            self.progressbar.append(Gtk.ProgressBar())
-            self.progressbar[i].set_orientation(Gtk.Orientation.VERTICAL)
-            self.progressbar[i].set_inverted(1)
-
-            # On place nos éléments dans la grille
-            self.grid[i].add(self.chanels[i])
-            self.grid[i].attach_next_to(self.levels[i], self.chanels[i], Gtk.PositionType.BOTTOM, 1, 1)
-            self.grid[i].attach_next_to(self.progressbar[i], self.chanels[i], Gtk.PositionType.RIGHT, 1, 2)
-            """
             self.chanels.append(ChanelWidget(i+1, 0, 0))
             self.flowbox.add(self.chanels[i])
 
@@ -200,49 +176,6 @@ class Window(Gtk.ApplicationWindow):
             path = Gtk.TreePath.new_from_indices([position])
             self.app.win_seq.treeview.set_cursor(path, None, False)
             self.app.win_seq.grid.queue_draw()
-            """
-            if position > 0:
-                self.app.win_seq.step[2].set_text(str(position-1))
-                self.app.win_seq.mem[2].set_text(str(self.app.sequence.cues[position-1].memory))
-                self.app.win_seq.text[2].set_text(str(self.app.sequence.cues[position-1].text))
-                self.app.win_seq.wait[2].set_text(str(self.app.sequence.cues[position-1].wait))
-                self.app.win_seq.t_out[2].set_text(str(self.app.sequence.cues[position-1].time_out))
-                self.app.win_seq.t_in[2].set_text(str(self.app.sequence.cues[position-1].time_in))
-            else:
-                self.app.win_seq.step[2].set_text("")
-                self.app.win_seq.mem[2].set_text("")
-                self.app.win_seq.text[2].set_text("")
-                self.app.win_seq.wait[2].set_text("")
-                self.app.win_seq.t_out[2].set_text("")
-                self.app.win_seq.t_in[2].set_text("")
-            if position > 1:
-                self.app.win_seq.step[1].set_text(str(position-2))
-                self.app.win_seq.mem[1].set_text(str(self.app.sequence.cues[position-2].memory))
-                self.app.win_seq.text[1].set_text(str(self.app.sequence.cues[position-2].text))
-                self.app.win_seq.wait[1].set_text(str(self.app.sequence.cues[position-2].wait))
-                self.app.win_seq.t_out[1].set_text(str(self.app.sequence.cues[position-2].time_out))
-                self.app.win_seq.t_in[1].set_text(str(self.app.sequence.cues[position-2].time_in))
-            else:
-                self.app.win_seq.step[1].set_text("")
-                self.app.win_seq.mem[1].set_text("")
-                self.app.win_seq.text[1].set_text("")
-                self.app.win_seq.wait[1].set_text("")
-                self.app.win_seq.t_out[1].set_text("")
-                self.app.win_seq.t_in[1].set_text("")
-            self.app.win_seq.step[3].set_text(str(position))
-            self.app.win_seq.step[4].set_text(str(position+1))
-            self.app.win_seq.mem[3].set_text(str(self.app.sequence.cues[position].memory))
-            self.app.win_seq.mem[4].set_text(str(self.app.sequence.cues[position+1].memory))
-            self.app.win_seq.text[3].set_text(str(self.app.sequence.cues[position].text))
-            self.app.win_seq.text[4].set_text(str(self.app.sequence.cues[position+1].text))
-            self.app.win_seq.wait[3].set_text(str(self.app.sequence.cues[position].wait))
-            self.app.win_seq.wait[4].set_text(str(self.app.sequence.cues[position+1].wait))
-            self.app.win_seq.t_out[3].set_text(str(self.app.sequence.cues[position].time_out))
-            self.app.win_seq.t_out[4].set_text(str(self.app.sequence.cues[position+1].time_out))
-            self.app.win_seq.t_in[3].set_text(str(self.app.sequence.cues[position].time_in))
-            self.app.win_seq.t_in[4].set_text(str(self.app.sequence.cues[position+1].time_in))
-            self.app.win_seq.grid.queue_draw()
-            """
 
             for chanel in range(512):
                 level = self.app.sequence.cues[position].channels[chanel]
@@ -265,49 +198,6 @@ class Window(Gtk.ApplicationWindow):
             path = Gtk.TreePath.new_from_indices([position])
             self.app.win_seq.treeview.set_cursor(path, None, False)
             self.app.win_seq.grid.queue_draw()
-            """
-            if position > 0:
-                self.app.win_seq.step[2].set_text(str(position-1))
-                self.app.win_seq.mem[2].set_text(str(self.app.sequence.cues[position-1].memory))
-                self.app.win_seq.text[2].set_text(str(self.app.sequence.cues[position-1].text))
-                self.app.win_seq.wait[2].set_text(str(self.app.sequence.cues[position-1].wait))
-                self.app.win_seq.t_out[2].set_text(str(self.app.sequence.cues[position-1].time_out))
-                self.app.win_seq.t_in[2].set_text(str(self.app.sequence.cues[position-1].time_in))
-            else:
-                self.app.win_seq.step[2].set_text("")
-                self.app.win_seq.mem[2].set_text("")
-                self.app.win_seq.text[2].set_text("")
-                self.app.win_seq.wait[2].set_text("")
-                self.app.win_seq.t_out[2].set_text("")
-                self.app.win_seq.t_in[2].set_text("")
-            if position > 1:
-                self.app.win_seq.step[1].set_text(str(position-2))
-                self.app.win_seq.mem[1].set_text(str(self.app.sequence.cues[position-2].memory))
-                self.app.win_seq.text[1].set_text(str(self.app.sequence.cues[position-2].text))
-                self.app.win_seq.wait[1].set_text(str(self.app.sequence.cues[position-2].wait))
-                self.app.win_seq.t_out[1].set_text(str(self.app.sequence.cues[position-2].time_out))
-                self.app.win_seq.t_in[1].set_text(str(self.app.sequence.cues[position-2].time_in))
-            else:
-                self.app.win_seq.step[1].set_text("")
-                self.app.win_seq.mem[1].set_text("")
-                self.app.win_seq.text[1].set_text("")
-                self.app.win_seq.wait[1].set_text("")
-                self.app.win_seq.t_out[1].set_text("")
-                self.app.win_seq.t_in[1].set_text("")
-            self.app.win_seq.step[3].set_text(str(position))
-            self.app.win_seq.step[4].set_text(str(position+1))
-            self.app.win_seq.mem[3].set_text(str(self.app.sequence.cues[position].memory))
-            self.app.win_seq.mem[4].set_text(str(self.app.sequence.cues[position+1].memory))
-            self.app.win_seq.text[3].set_text(str(self.app.sequence.cues[position].text))
-            self.app.win_seq.text[4].set_text(str(self.app.sequence.cues[position+1].text))
-            self.app.win_seq.wait[3].set_text(str(self.app.sequence.cues[position].wait))
-            self.app.win_seq.wait[4].set_text(str(self.app.sequence.cues[position+1].wait))
-            self.app.win_seq.t_out[3].set_text(str(self.app.sequence.cues[position].time_out))
-            self.app.win_seq.t_out[4].set_text(str(self.app.sequence.cues[position+1].time_out))
-            self.app.win_seq.t_in[3].set_text(str(self.app.sequence.cues[position].time_in))
-            self.app.win_seq.t_in[4].set_text(str(self.app.sequence.cues[position+1].time_in))
-            self.app.win_seq.grid.queue_draw()
-            """
 
             for chanel in range(512):
                 level = self.app.sequence.cues[position].channels[chanel]
@@ -395,18 +285,6 @@ class Window(Gtk.ApplicationWindow):
                 path = Gtk.TreePath.new_from_indices([position])
                 self.app.win_seq.treeview.set_cursor(path, None, False)
                 self.app.win_seq.grid.queue_draw()
-                """
-                self.app.win_seq.step[3].set_text(str(position))
-                self.app.win_seq.step[4].set_text(str(position+1))
-                self.app.win_seq.mem[3].set_text(str(self.app.sequence.cues[position].memory))
-                self.app.win_seq.mem[4].set_text(str(self.app.sequence.cues[position+1].memory))
-                self.app.win_seq.text[3].set_text(str(self.app.sequence.cues[position].text))
-                self.app.win_seq.text[4].set_text(str(self.app.sequence.cues[position+1].text))
-                self.app.win_seq.wait[3].set_text(str(self.app.sequence.cues[position].wait))
-                self.app.win_seq.t_out[3].set_text(str(self.app.sequence.cues[position].time_out))
-                self.app.win_seq.t_in[3].set_text(str(self.app.sequence.cues[position].time_in))
-                self.app.win_seq.grid.queue_draw()
-                """
 
                 # Si la mémoire a un wait
                 if self.app.sequence.cues[position+1].wait:
