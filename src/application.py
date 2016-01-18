@@ -456,13 +456,16 @@ class Application(Gtk.Application):
                 self.win_seq.grid.queue_draw()
 
                 # On met à jour la fenêtre des groupes
-                ad = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
                 for i in range(len(self.groups)):
                     #print(self.groups[i].index, self.groups[i].text, self.groups[i].channels)
-                    self.win_groups.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=ad))
+                    self.win_groups.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
+                    self.win_groups.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL,
+                        adjustment=self.win_groups.ad[i]))
                     self.win_groups.scale[i].set_digits(0)
                     self.win_groups.scale[i].set_vexpand(True)
                     self.win_groups.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
+                    self.win_groups.scale[i].set_inverted(True)
+                    self.win_groups.scale[i].connect("value-changed", self.win_groups.scale_moved)
                     self.win_groups.label.append(Gtk.Label())
                     self.win_groups.label[i].set_text(self.groups[i].text)
 
