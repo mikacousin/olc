@@ -319,7 +319,7 @@ class Window(Gtk.ApplicationWindow):
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
         def time_loop():
-            # On boucle sur les mémoires du chasres
+            # On boucle sur les mémoires du chaser
             position = 0
             while self.app.chasers[self.chaser].run:
                 #for position in range(self.app.chasers[0].last):
@@ -379,7 +379,3 @@ class Window(Gtk.ApplicationWindow):
                 if self.app.chasers[0].cues[i].channels[channel] != 0:
                     print("Channel :", channel+1, "@", self.app.chasers[0].cues[i].channels[channel])
         """
-
-    def keypress_x(self):
-        self.app.win_seq.sequential.pos_x += 1
-        self.app.win_seq.sequential.queue_draw()
