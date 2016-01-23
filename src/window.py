@@ -163,48 +163,10 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_Up(self):
-        position = self.app.sequence.position
-        position -= 1
-        if position >= 0:
-            self.app.sequence.position -= 1
-            self.app.win_seq.sequential.pos_x = 0
-            t_in = self.app.sequence.cues[position+1].time_in   # Always use times for next cue
-            t_out = self.app.sequence.cues[position+1].time_out
-            self.app.win_seq.sequential.time_in = t_in
-            self.app.win_seq.sequential.time_out = t_out
-            #self.app.win_seq.sequential.queue_draw()
-            path = Gtk.TreePath.new_from_indices([position])
-            self.app.win_seq.treeview.set_cursor(path, None, False)
-            self.app.win_seq.grid.queue_draw()
-
-            for chanel in range(512):
-                level = self.app.sequence.cues[position].channels[chanel]
-                outputs = self.app.patch.chanels[chanel]
-                for output in outputs:
-                    self.app.dmxframe.set_level(output-1, level)
-            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.sequence.sequence_minus(self.app)
 
     def keypress_Down(self):
-        position = self.app.sequence.position
-        position += 1
-        if position < self.app.sequence.last-1:     # Stop on the last cue
-            self.app.sequence.position += 1
-            self.app.win_seq.sequential.pos_x = 0
-            t_in = self.app.sequence.cues[position+1].time_in
-            t_out = self.app.sequence.cues[position+1].time_out
-            self.app.win_seq.sequential.time_in = t_in
-            self.app.win_seq.sequential.time_out = t_out
-            #self.app.win_seq.sequential.queue_draw()
-            path = Gtk.TreePath.new_from_indices([position])
-            self.app.win_seq.treeview.set_cursor(path, None, False)
-            self.app.win_seq.grid.queue_draw()
-
-            for chanel in range(512):
-                level = self.app.sequence.cues[position].channels[chanel]
-                outputs = self.app.patch.chanels[chanel]
-                for output in outputs:
-                    self.app.dmxframe.set_level(output-1, level)
-            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.sequence.sequence_plus(self.app)
 
     def keypress_space(self):
 

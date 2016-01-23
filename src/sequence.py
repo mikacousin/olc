@@ -1,4 +1,5 @@
 import array
+from gi.repository import Gtk
 from olc.cue import Cue
 
 class Sequence(object):
@@ -24,6 +25,52 @@ class Sequence(object):
         for i in range(512):
             if cue.channels[i] != 0:
                 self.channels[i] = 1 # Si présent on le note
+
+    def sequence_plus(self, app):
+        self.app = app
+        position = self.position
+        position += 1
+        if position < self.last-1:     # Stop on the last cue
+            self.position += 1
+            self.app.win_seq.sequential.pos_x = 0
+            t_in = self.cues[position+1].time_in
+            t_out = self.cues[position+1].time_out
+            self.app.win_seq.sequential.time_in = t_in
+            self.app.win_seq.sequential.time_out = t_out
+            #self.app.win_seq.sequential.queue_draw()
+            path = Gtk.TreePath.new_from_indices([position])
+            self.app.win_seq.treeview.set_cursor(path, None, False)
+            self.app.win_seq.grid.queue_draw()
+
+            for chanel in range(512):
+                level = self.cues[position].channels[chanel]
+                outputs = self.app.patch.chanels[chanel]
+                for output in outputs:
+                    self.app.dmxframe.set_level(output-1, level)
+            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+    def sequence_minus(self, app):
+        self.app = app
+        position = self.position
+        position -= 1
+        if position >= 0:
+            self.position -= 1
+            self.app.win_seq.sequential.pos_x = 0
+            t_in = self.cues[position+1].time_in   # Always use times for next cue
+            t_out = self.cues[position+1].time_out
+            self.app.win_seq.sequential.time_in = t_in
+            self.app.win_seq.sequential.time_out = t_out
+            #self.app.win_seq.sequential.queue_draw()
+            path = Gtk.TreePath.new_from_indices([position])
+            self.app.win_seq.treeview.set_cursor(path, None, False)
+            self.app.win_seq.grid.queue_draw()
+
+            for chanel in range(512):
+                level = self.cues[position].channels[chanel]
+                outputs = self.app.patch.chanels[chanel]
+                for output in outputs:
+                    self.app.dmxframe.set_level(output-1, level)
+            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
 if __name__ == "__main__":
 
