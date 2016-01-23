@@ -7,6 +7,7 @@ app_PYTHON = \
 	dmx.py \
 	group.py \
 	groupswindow.py \
+	osc.py \
 	patchwindow.py \
 	sequence.py \
 	sequentialwindow.py \

@@ -394,7 +394,7 @@ class Window(Gtk.ApplicationWindow):
                     if position == self.app.chasers[self.chaser].last:
                         position = 1
 
-        self.chaser = 0
+        self.chaser = 1
         print("Chaser", self.chaser)
 
         # Bascule Marche/Arret

@@ -13,6 +13,7 @@ from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
 from olc.group import Group
 from olc.groupswindow import GroupsWindow
+from olc.osc import OscServer
 
 class Application(Gtk.Application):
 
@@ -61,6 +62,9 @@ class Application(Gtk.Application):
 
         self.win_groups = GroupsWindow(self, self.groups)
         #self.win_groups.show_all()
+
+        # Create and launch OSC server
+        self.osc_server = OscServer(self.window)
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
