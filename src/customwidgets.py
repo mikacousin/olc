@@ -184,10 +184,10 @@ class GroupWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
             cairo.FONT_WEIGHT_NORMAL)
         cr.move_to(8, 32)
-        if len(self.name) > 9:
-            cr.show_text(self.name[:9])
+        if len(self.name) > 10:
+            cr.show_text(self.name[:10])
             cr.move_to(8, 48)
-            cr.show_text(self.name[9:])
+            cr.show_text(self.name[10:])
         else:
             cr.show_text(self.name)
         # draw level
