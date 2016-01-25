@@ -123,13 +123,28 @@ class ChanelWidget(Gtk.Widget):
 class GroupWidget(Gtk.Widget):
     __gtype_name__ = 'GroupWidget'
 
-    def __init__(self, number, name):
+    def __init__(self, wingrps, number, name, grps):
 
+        self.wingrps = wingrps
         self.number = str(number)
         self.name = name
+        self.grps = grps
+        self.clicked = False
 
         Gtk.Widget.__init__(self)
         self.set_size_request(80, 80)
+        self.connect("button-press-event", self.on_click)
+
+    def on_click(self, tgt, ev):
+        #print("Groupe ", self.number, self.name)
+        for i in range(len(self.grps)):
+            self.grps[i].clicked = False
+        if self.clicked:
+            self.clicked = False
+        else:
+            self.clicked = True
+        self.queue_draw()
+        self.wingrps.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
         # paint background
@@ -145,10 +160,11 @@ class GroupWidget(Gtk.Widget):
         cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
-        # dessine fond pour le numéro de cicuit
-        #cr.set_source_rgb(0.2, 0.2, 0.2)
-        #cr.rectangle(1, 1, allocation.width-2, 18)
-        #cr.fill()
+        # dessine fond pour le numéro de cicuit si selectioné
+        if self.clicked:
+            cr.set_source_rgb(0.4, 0.4, 0.4)
+            cr.rectangle(1, 1, allocation.width-2, 18)
+            cr.fill()
         # dessine un fond pour le nom du groupe
         cr.set_source_rgb(0.2, 0.2, 0.2)
         cr.rectangle(8, 19, allocation.width-2, allocation.height-40)
@@ -186,6 +202,25 @@ class GroupWidget(Gtk.Widget):
         cr.set_source_rgb(0.5, 0.5, 0.9)
         cr.fill()
 
+    def do_realize(self):
+        allocation = self.get_allocation()
+        attr = Gdk.WindowAttr()
+        attr.window_type = Gdk.WindowType.CHILD
+        attr.x = allocation.x
+        attr.y = allocation.y
+        attr.width = allocation.width
+        attr.height = allocation.height
+        attr.visual = self.get_visual()
+        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
+        WAT = Gdk.WindowAttributesType
+        mask = WAT.X | WAT.Y | WAT.VISUAL
+
+        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        self.set_window(window)
+        self.register_window(window)
+
+        self.set_realized(True)
+        window.set_background_pattern(None)
 
 class SequentialWidget(Gtk.Widget):
     __gtype_name__ = 'SequentialWidget'

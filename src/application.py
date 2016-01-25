@@ -13,6 +13,7 @@ from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
 from olc.group import Group
 from olc.groupswindow import GroupsWindow
+from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 
 class Application(Gtk.Application):
@@ -466,8 +467,12 @@ class Application(Gtk.Application):
                 self.win_seq.grid.queue_draw()
 
                 # On met à jour la fenêtre des groupes
+                self.win_groups.grps = []
                 for i in range(len(self.groups)):
                     #print(self.groups[i].index, self.groups[i].text, self.groups[i].channels)
+                    self.win_groups.grps.append(GroupWidget(self.win_groups, self.groups[i].index, self.groups[i].text, self.win_groups.grps))
+                    self.win_groups.flowbox2.add(self.win_groups.grps[i])
+                    """
                     self.win_groups.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
                     self.win_groups.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL,
                         adjustment=self.win_groups.ad[i]))
@@ -488,9 +493,9 @@ class Application(Gtk.Application):
                                 self.win_groups.label[i-1], Gtk.PositionType.RIGHT, 1, 1)
                         self.win_groups.grid.attach_next_to(self.win_groups.scale[i],
                                 self.win_groups.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+                    """
+                self.win_groups.flowbox1.invalidate_filter()
 
-
-                #self.win_groups.show_all()
 
             except GObject.GError as e:
                 print("Error: " + e.message)
