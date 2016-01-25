@@ -13,6 +13,7 @@ from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
 from olc.group import Group
 from olc.groupswindow import GroupsWindow
+from olc.master import Master, MastersWindow
 from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 
@@ -43,6 +44,9 @@ class Application(Gtk.Application):
 
         # Create List of Groups
         self.groups = []
+
+        # Create List of Masters
+        self.masters = []
 
         # Create OlaClient
         self.ola_client = OlaClient.OlaClient()
@@ -93,6 +97,10 @@ class Application(Gtk.Application):
         groupsAction = Gio.SimpleAction.new('groups', None)
         groupsAction.connect('activate', self._groups)
         self.add_action(groupsAction)
+
+        mastersAction = Gio.SimpleAction.new('masters', None)
+        mastersAction.connect('activate', self._masters)
+        self.add_action(mastersAction)
 
         aboutAction = Gio.SimpleAction.new('about', None)
         aboutAction.connect('activate', self._about)
@@ -205,6 +213,9 @@ class Application(Gtk.Application):
                         flag_group = False
 
                     if flag_seq and type_seq == "Chaser":
+                        if line[:4] == 'TEXT':
+                            self.chasers[-1].text = line[5:]
+
                         if line[:4] == "$CUE":
                             in_cue = True
                             channels = array.array('B', [0] * 512)
@@ -414,6 +425,12 @@ class Application(Gtk.Application):
                             #print("Group", group_nb, txt, "channels", channels)
                             self.groups.append(Group(group_nb, channels, txt))
 
+                    if line[:13] == '$MASTPAGEITEM':
+                        #print("Master!")
+                        p = line[14:].split(" ")
+                        #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
+                        self.masters.append(Master(p[0], p[1], p[2], p[3], self.groups, self.chasers))
+
                 fstream.close()
 
                 # Add an empty cue at the end
@@ -513,6 +530,10 @@ class Application(Gtk.Application):
     def _groups(self, action, parameter):
         self.win_groups = GroupsWindow(self, self.groups)
         self.win_groups.show_all()
+
+    def _masters(self, action, parameter):
+        self.win_masters = MastersWindow(self, self.masters)
+        self.win_masters.show_all()
 
     def _about(self, action, parameter):
         """

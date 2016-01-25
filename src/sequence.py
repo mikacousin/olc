@@ -6,9 +6,10 @@ from olc.sequentialwindow import SequentialWindow
 from olc.dmx import PatchDmx
 
 class Sequence(object):
-    def __init__(self, index, patch, type_seq = "Normal"):
+    def __init__(self, index, patch, type_seq = "Normal", text=""):
         self.index = index
         self.type_seq = type_seq
+        self.text = text
         self.cues = []
         self.position = 0
         self.last = 0

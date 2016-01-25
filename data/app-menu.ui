@@ -16,6 +16,11 @@
         <attribute name="label" translatable="yes">_Groups</attribute>
         <attribute name="accel">&lt;Primary&gt;g</attribute>
       </item>
+      <item>
+        <attribute name="action">app.masters</attribute>
+        <attribute name="label" translatable="yes">_Masters</attribute>
+        <attribute name="accel">&lt;Primary&gt;m</attribute>
+      </item>
     </section>
     <section>
       <item>
