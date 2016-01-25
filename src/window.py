@@ -82,6 +82,7 @@ class Window(Gtk.ApplicationWindow):
             return func()
 
     def keypress_a(self):
+        """ All Channels """
         for i in range(512):
             level = self.app.dmxframe.get_level(i)
             chanel = self.app.patch.outputs[i] - 1
@@ -93,6 +94,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.window.chanels[chanel].queue_draw()
 
     def keypress_c(self):
+        """ Channel """
         if self.keystring == "" or self.keystring == "0":
             for i in range(512):
                 chanel = self.app.patch.outputs[i] - 1
@@ -108,6 +110,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_greater(self):
+        """ Through """
         if self.last_chan_selected:
             for chanel in range(int(self.last_chan_selected), int(self.keystring)):
                 self.app.window.chanels[chanel].clicked = True
@@ -116,6 +119,7 @@ class Window(Gtk.ApplicationWindow):
             self.keystring = ""
 
     def keypress_plus(self):
+        """ + """
         chanel = int(self.keystring)-1
         if chanel >= 0 and chanel < 512:
             self.app.window.chanels[chanel].clicked = True
@@ -124,6 +128,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_minus(self):
+        """ - """
         chanel = int(self.keystring)-1
         if chanel >= 0 and chanel < 512:
             self.app.window.chanels[chanel].clicked = False
@@ -132,6 +137,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_Right(self):
+        """ Level -1 of selected channels """
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:
@@ -141,6 +147,7 @@ class Window(Gtk.ApplicationWindow):
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_Left(self):
+        """ Level +1 of selected channels """
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:
@@ -150,6 +157,7 @@ class Window(Gtk.ApplicationWindow):
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_equal(self):
+        """ @ Level """
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:
@@ -163,12 +171,15 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_Up(self):
+        """ Seq - """
         self.app.sequence.sequence_minus(self.app)
 
     def keypress_Down(self):
+        """ Seq + """
         self.app.sequence.sequence_plus(self.app)
 
     def keypress_space(self):
+        """ Go """
 
         def update_progress(delay, delay_in, delay_out, i, position):
             # Mise a jour position des sliders
