@@ -1,9 +1,12 @@
 import array
 from gi.repository import Gtk
+
 from olc.cue import Cue
+from olc.sequentialwindow import SequentialWindow
+from olc.dmx import PatchDmx
 
 class Sequence(object):
-    def __init__(self, index, type_seq = "Normal"):
+    def __init__(self, index, patch, type_seq = "Normal"):
         self.index = index
         self.type_seq = type_seq
         self.cues = []
@@ -13,6 +16,10 @@ class Sequence(object):
         self.channels = array.array('B', [0] * 512)
         # Flag pour les chasers
         self.run = False
+        # Pour accéder à la fenêtre du séquentiel
+        self.window = None
+        # On a besoin de connaitre le patch
+        self.patch = patch
 
         # create an empty cue 0
         cue = Cue(0, 0, text="Cue 0")
@@ -32,19 +39,18 @@ class Sequence(object):
         position += 1
         if position < self.last-1:     # Stop on the last cue
             self.position += 1
-            self.app.win_seq.sequential.pos_x = 0
+            self.window.sequential.pos_x = 0
             t_in = self.cues[position+1].time_in
             t_out = self.cues[position+1].time_out
-            self.app.win_seq.sequential.time_in = t_in
-            self.app.win_seq.sequential.time_out = t_out
-            #self.app.win_seq.sequential.queue_draw()
+            self.window.sequential.time_in = t_in
+            self.window.sequential.time_out = t_out
             path = Gtk.TreePath.new_from_indices([position])
-            self.app.win_seq.treeview.set_cursor(path, None, False)
-            self.app.win_seq.grid.queue_draw()
+            self.window.treeview.set_cursor(path, None, False)
+            self.window.grid.queue_draw()
 
             for chanel in range(512):
                 level = self.cues[position].channels[chanel]
-                outputs = self.app.patch.chanels[chanel]
+                outputs = self.patch.chanels[chanel]
                 for output in outputs:
                     self.app.dmxframe.set_level(output-1, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
@@ -55,19 +61,18 @@ class Sequence(object):
         position -= 1
         if position >= 0:
             self.position -= 1
-            self.app.win_seq.sequential.pos_x = 0
+            self.window.sequential.pos_x = 0
             t_in = self.cues[position+1].time_in   # Always use times for next cue
             t_out = self.cues[position+1].time_out
-            self.app.win_seq.sequential.time_in = t_in
-            self.app.win_seq.sequential.time_out = t_out
-            #self.app.win_seq.sequential.queue_draw()
+            self.window.sequential.time_in = t_in
+            self.window.sequential.time_out = t_out
             path = Gtk.TreePath.new_from_indices([position])
-            self.app.win_seq.treeview.set_cursor(path, None, False)
-            self.app.win_seq.grid.queue_draw()
+            self.window.treeview.set_cursor(path, None, False)
+            self.window.grid.queue_draw()
 
             for chanel in range(512):
                 level = self.cues[position].channels[chanel]
-                outputs = self.app.patch.chanels[chanel]
+                outputs = self.patch.chanels[chanel]
                 for output in outputs:
                     self.app.dmxframe.set_level(output-1, level)
             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)

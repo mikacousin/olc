@@ -35,7 +35,7 @@ class Application(Gtk.Application):
         self.patch = PatchDmx()
 
         # Create Main Sequential
-        self.sequence = Sequence(1)
+        self.sequence = Sequence(1, self.patch)
 
         # Create List for Chasers
         self.chasers = []
@@ -59,6 +59,7 @@ class Application(Gtk.Application):
 
         self.win_seq = SequentialWindow(self, self.sequence)
         self.win_seq.show_all()
+        self.sequence.window = self.win_seq
 
         self.win_groups = GroupsWindow(self, self.groups)
         #self.win_groups.show_all()
@@ -192,7 +193,7 @@ class Application(Gtk.Application):
                             elif p[1] == "1":
                                 type_seq = "Chaser"
                                 index_seq = int(p[0])
-                                self.chasers.append(Sequence(index_seq))
+                                self.chasers.append(Sequence(index_seq, self.patch))
                                 #print ("Sequence :", index_seq, "Type :", type_seq)
                         except:
                             type_seq = "Normal"
