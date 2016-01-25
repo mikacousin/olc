@@ -120,6 +120,73 @@ class ChanelWidget(Gtk.Widget):
         self.set_realized(True)
         window.set_background_pattern(None)
 
+class GroupWidget(Gtk.Widget):
+    __gtype_name__ = 'GroupWidget'
+
+    def __init__(self, number, name):
+
+        self.number = str(number)
+        self.name = name
+
+        Gtk.Widget.__init__(self)
+        self.set_size_request(80, 80)
+
+    def do_draw(self, cr):
+        # paint background
+        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+        cr.set_source_rgba(*list(bg_color))
+        cr.paint()
+
+        allocation = self.get_allocation()
+
+        # dessine un cadre
+        cr.rectangle(0, 0, allocation.width, allocation.height)
+        cr.fill()
+        cr.set_source_rgb(0.3, 0.3, 0.3)
+        cr.rectangle(0, 0, allocation.width, allocation.height)
+        cr.stroke()
+        # dessine fond pour le numéro de cicuit
+        #cr.set_source_rgb(0.2, 0.2, 0.2)
+        #cr.rectangle(1, 1, allocation.width-2, 18)
+        #cr.fill()
+        # dessine un fond pour le nom du groupe
+        cr.set_source_rgb(0.2, 0.2, 0.2)
+        cr.rectangle(8, 19, allocation.width-2, allocation.height-40)
+        cr.fill()
+
+        # draw group number
+        #cr.set_source_rgb(0.9, 0.6, 0.2)
+        cr.set_source_rgb(0.5, 0.5, 0.9)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+            cairo.FONT_WEIGHT_BOLD)
+        cr.set_font_size(12)
+        cr.move_to(50,15)
+        cr.show_text(self.number)
+        # draw group name
+        cr.set_source_rgb(0.9, 0.9, 0.9)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+            cairo.FONT_WEIGHT_NORMAL)
+        cr.move_to(8, 32)
+        if len(self.name) > 9:
+            cr.show_text(self.name[:9])
+            cr.move_to(8, 48)
+            cr.show_text(self.name[9:])
+        else:
+            cr.show_text(self.name)
+        # draw level
+        cr.set_source_rgb(0.9, 0.9, 0.9)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+            cairo.FONT_WEIGHT_NORMAL)
+        cr.set_font_size(11)
+        cr.move_to(allocation.width-24,allocation.height-8)
+        cr.show_text("254")
+        # draw level bar
+        cr.rectangle(1, allocation.height-51, 6, 50)
+        #cr.set_source_rgb(0.9, 0.6, 0.2)
+        cr.set_source_rgb(0.5, 0.5, 0.9)
+        cr.fill()
+
+
 class SequentialWidget(Gtk.Widget):
     __gtype_name__ = 'SequentialWidget'
 
