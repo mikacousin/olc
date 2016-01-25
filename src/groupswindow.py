@@ -16,6 +16,7 @@ class GroupsWindow(Gtk.Window):
         # et en bas la liste des groupes
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.paned.set_position(300)
+        #self.paned.set_wide_handle(True)
 
         # On affiche les channels avec un flowbox dans une fenêtre avec scroller
         self.scrolled1 = Gtk.ScrolledWindow()
@@ -63,13 +64,16 @@ class GroupsWindow(Gtk.Window):
         self.add(self.paned)
 
     def filter_channels(self, child, user_data):
+        """ Pour n'afficher que les channels du groupe """
         i = child.get_index() # Numéro du widget qu'on filtre (channel-1)
+        # On cherche le groupe actuellement séléctionné
         for j in range(len(self.grps)):
             if self.grps[j].clicked:
-                #print("Groupe séléctionné :", self.groups[j].text)
+                # Si le channel est dans le groupe, on l'affiche
                 if self.groups[j].channels[i] != 0:
-                    #print("Channel", i+1, "@", self.groups[j].channels[i])
+                    # On récupère le level (next_level à la même valeur)
                     self.channels[i].level = self.groups[j].channels[i]
+                    self.channels[i].next_level = self.groups[j].channels[i]
                     return child
                 else:
                     return False
