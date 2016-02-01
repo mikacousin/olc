@@ -100,70 +100,70 @@ class OscServer(liblo.ServerThread):
             if a == 1:
                 self.window.keystring += "1"
                 #self.client.send('/pad/1')
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad2_cb(self, path, args, types):
         """ Pad 2 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "2"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad3_cb(self, path, args, types):
         """ Pad 3 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "3"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad4_cb(self, path, args, types):
         """ Pad 4 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "4"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad5_cb(self, path, args, types):
         """ Pad 5 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "5"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad6_cb(self, path, args, types):
         """ Pad 6 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "6"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad7_cb(self, path, args, types):
         """ Pad 7 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "7"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad8_cb(self, path, args, types):
         """ Pad 8 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "8"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad9_cb(self, path, args, types):
         """ Pad 9 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "9"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def pad0_cb(self, path, args, types):
         """ Pad 0 """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "0"
-                print("keystring :", self.window.keystring)
+                #print("keystring :", self.window.keystring)
 
     def paddot_cb(self, path, args, types):
         """ Pad . """
@@ -176,7 +176,6 @@ class OscServer(liblo.ServerThread):
         """ Pad Channel """
         for a, t in zip(args, types):
             if a == 1:
-                print("keystring :", self.window.keystring)
                 self.window.keypress_c()
 
     def padall_cb(self, path, args, types):
