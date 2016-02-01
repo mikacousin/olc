@@ -78,6 +78,7 @@ class MastersWindow(Gtk.Window):
                 # Valeur du scale
                 level_scale = scale.get_value()
 
+                # Si c'est un groupe
                 if self.masters[i].content_type == 2 or self.masters[i].content_type == 13:
                     grp = self.masters[i].content_value
                     for j in range(len(self.masters[i].groups)):
@@ -92,7 +93,7 @@ class MastersWindow(Gtk.Window):
                                         level = 0
                                     else:
                                         level = int(level_group / (256 / level_scale)) + 1
-                                    # On regarde le level de la cue actuelle
+                                    # TODO (voir + haut): On regarde le level de la cue actuelle
                                     level_cue = self.app.sequence.cues[self.app.sequence.position].channels[channel]
                                     if level_cue > level:
                                         level = level_cue
@@ -100,6 +101,9 @@ class MastersWindow(Gtk.Window):
                                     for output in outputs:
                                         self.app.dmxframe.set_level(output-1, level)
                             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
-
+                # Si c'est un chaser
                 elif self.masters[i].content_type == 3:
-                    print("Chaser")
+                    nb = self.masters[i].content_value
+                    for j in range(len(self.masters[i].chasers)):
+                        if self.masters[i].chasers[j].index == nb:
+                            print("Chaser", self.masters[i].chasers[j].text)

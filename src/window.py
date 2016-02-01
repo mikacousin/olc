@@ -137,7 +137,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_Right(self):
-        """ Level -1 of selected channels """
+        """ Level +1 of selected channels """
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:
@@ -147,7 +147,7 @@ class Window(Gtk.ApplicationWindow):
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
 
     def keypress_Left(self):
-        """ Level +1 of selected channels """
+        """ Level -1 of selected channels """
         for i in range(512):
             chanel = self.app.patch.outputs[i] - 1
             if self.app.window.chanels[chanel].clicked:
@@ -180,7 +180,9 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_space(self):
         """ Go """
+        self.app.sequence.sequence_go(self.app)
 
+        """
         def update_progress(delay, delay_in, delay_out, i, position):
             # Mise a jour position des sliders
             self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # (800-32): en dur dans customwidgets
@@ -243,6 +245,8 @@ class Window(Gtk.ApplicationWindow):
                 time.sleep(0.02)
                 i = (time.time() * 1000) - start_time
 
+            # Le Go est terminé
+            self.app.sequence.on_go = False
             # On se positionne dans le séquentiel à la cue suivante
             position = self.app.sequence.position
             position += 1
@@ -278,10 +282,18 @@ class Window(Gtk.ApplicationWindow):
                 self.app.win_seq.sequential.queue_draw()
                 print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
+        # Un go est dejà lancè ?
+        if self.app.sequence.on_go:
+            print("Go en cours !")
+            self.app.sequence.on_go = False
+
+        # On indique qu'un Go est en cours
+        self.app.sequence.on_go = True
         # On utilise un thread pour ne pas tout bloquer pendant le changement de mémoire
-        thread = threading.Thread(target=example_target)
-        thread.daemon = True
-        thread.start()
+        self.thread = threading.Thread(target=example_target)
+        self.thread.daemon = True
+        self.thread.start()
+        """
 
     def keypress_w(self):
 

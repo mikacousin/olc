@@ -52,7 +52,7 @@ class Application(Gtk.Application):
         self.ola_client = OlaClient.OlaClient()
         self.sock = self.ola_client.GetSocket()
         # TODO: Choisir son univers
-        self.universe = 1
+        self.universe = 0
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
         # Fetch dmx values on startup
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
@@ -292,7 +292,7 @@ class Application(Gtk.Application):
                             channels = array.array('B', [0] * 512)
                             i += 1
                             #print ("        Mémoire :", line[5:])
-                            mem = line[4:]
+                            mem = line[5:]
 
                         if in_cue:
                             if line[:4] == "TEXT":
@@ -328,7 +328,13 @@ class Application(Gtk.Application):
                                     t_in = 0.1
                             if line[:6] == '$$WAIT' or line[:6] == '$$Wait':
                                 #print ("        Wait :", line[7:])
-                                wait = float(line[7:].split(" ")[0])
+                                #wait = float(line[7:].split(" ")[0])
+                                time = line[7:].split(" ")[0]
+                                # Si on a un tps avec ":" on est en minutes
+                                if ":" in time:
+                                    wait = float(time.split(":")[0])*60 + float(time.split(":")[1])
+                                else:
+                                    wait = float(time)
                             if line[:4] == 'CHAN':
                                 #print ("        Chanels :")
                                 #p = line[5:-1].split(" ")
@@ -424,6 +430,8 @@ class Application(Gtk.Application):
                         if line == "":
                             #print("Group", group_nb, txt, "channels", channels)
                             self.groups.append(Group(group_nb, channels, txt))
+                            flag_group = False
+                            txt = ""
 
                     if line[:13] == '$MASTPAGEITEM':
                         #print("Master!")
