@@ -3,17 +3,18 @@ import liblo
 from olc.window import Window
 
 class OscClient(object):
-    def __init__(self, port=9000):
+    def __init__(self, host="localhost", port=9000):
         self.port = port
+        self.host = host
 
         try:
-            self.target = liblo.Address(self.port)
+            self.target = liblo.Address(self.host, self.port)
         except (liblo.AddressError, err):
             print(str(err))
             sys.exit()
 
-    def send(self, string):
-        liblo.send(self.target, string)
+    def send(self, path, arg):
+        liblo.send(self.target, path, arg)
 
 class OscServer(liblo.ServerThread):
     def __init__(self, window, port=7000):
@@ -23,7 +24,8 @@ class OscServer(liblo.ServerThread):
         liblo.ServerThread.__init__(self, port)
 
         # Create Client
-        #self.client = OscClient()
+        # TODO: Paramètre pour l'adresse IP
+        self.client = OscClient(host='10.0.0.3')
 
         # Add methods (strings the server will respond)
         self.add_method('/seq/go', 'i', self.seqgo_cb)
@@ -99,7 +101,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "1"
-                #self.client.send('/pad/1')
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad2_cb(self, path, args, types):
@@ -107,6 +109,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "2"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad3_cb(self, path, args, types):
@@ -114,6 +117,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "3"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad4_cb(self, path, args, types):
@@ -121,6 +125,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "4"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad5_cb(self, path, args, types):
@@ -128,6 +133,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "5"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad6_cb(self, path, args, types):
@@ -135,6 +141,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "6"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad7_cb(self, path, args, types):
@@ -142,6 +149,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "7"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad8_cb(self, path, args, types):
@@ -149,6 +157,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "8"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad9_cb(self, path, args, types):
@@ -156,6 +165,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "9"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def pad0_cb(self, path, args, types):
@@ -163,6 +173,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "0"
+                self.client.send('/pad/saisieText', self.window.keystring)
                 #print("keystring :", self.window.keystring)
 
     def paddot_cb(self, path, args, types):
@@ -170,6 +181,7 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keystring += "."
+                self.client.send('/pad/saisieText', self.window.keystring)
                 print("keystring :", self.window.keystring)
 
     def padchannel_cb(self, path, args, types):
@@ -177,18 +189,21 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_c()
+                self.client.send('/pad/saisieText', '')
 
     def padall_cb(self, path, args, types):
         """ Pad All """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_a()
+                self.client.send('/pad/saisieText', '')
 
     def padlevel_cb(self, path, args, types):
         """ Pad @ """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_equal()
+                self.client.send('/pad/saisieText', '')
 
     def padfull_cb(self, path, args, types):
         """ Pad Full """
@@ -196,39 +211,46 @@ class OscServer(liblo.ServerThread):
             if a == 1:
                 self.window.keystring += "255"
                 self.window.keypress_equal()
+                self.client.send('/pad/saisieText', '')
 
     def padthru_cb(self, path, args, types):
         """ Pad Thru """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_greater()
+                self.client.send('/pad/saisieText', '')
 
     def padplus_cb(self, path, args, types):
         """ Pad + """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_plus()
+                self.client.send('/pad/saisieText', '')
 
     def padminus_cb(self, path, args, types):
         """ Pad - """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_minus()
+                self.client.send('/pad/saisieText', '')
 
     def padpluspourcent_cb(self, path, args, types):
         """ Pad +% """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_Right()
+                self.client.send('/pad/saisieText', '')
 
     def padminuspourcent_cb(self, path, args, types):
         """ Pad -% """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_Left()
+                self.client.send('/pad/saisieText', '')
 
     def padclear_cb(self, path, args, types):
         """ Pad Clear """
         for a, t in zip(args, types):
             if a == 1:
                 self.window.keypress_Escape()
+                self.client.send('/pad/saisieText', '')
