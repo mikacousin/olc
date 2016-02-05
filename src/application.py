@@ -196,7 +196,16 @@ class Application(Gtk.Application):
 
                     if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
                         p = line[10:].split(" ")
+                        if int(p[0]) < 2:
+                            type_seq = "Normal"
+                        else:
+                            type_seq = "Chaser"
+                            index_seq = int(p[0])
+                            self.chasers.append(Sequence(index_seq, self.patch))
+                        """
                         try:
+                            test_type = p[1]
+                            print("try:", p[1])
                             if p[1] == "0":
                                 type_seq = "Normal"
                             elif p[1] == "1":
@@ -205,7 +214,14 @@ class Application(Gtk.Application):
                                 self.chasers.append(Sequence(index_seq, self.patch))
                                 #print ("Sequence :", index_seq, "Type :", type_seq)
                         except:
-                            type_seq = "Normal"
+                            print("except:", p[0])
+                            if p[0] == "0":
+                                type_seq = "Normal"
+                            else:
+                                type_seq = "Chaser"
+                                index_seq = int(p[0])
+                                self.chasers.append(Sequence(index_seq, self.patch))
+                        """
                         #print ("Sequence :", p[0], "Type :", type_seq)
                         i = 1
                         flag_seq = True
