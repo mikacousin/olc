@@ -89,13 +89,14 @@ class Sequence(object):
         if self.on_go:
             self.thread.stop()
             self.on_go = False
-            self.sequence_go(self.app)
-        # On indique qu'un Go est en cours
-        self.on_go = True
-        self.thread = ThreadGo(self.app)
-        self.thread.start()
-        #time.sleep(6)
-        #thread.stop()
+            #self.sequence_go(self.app)
+        else:
+            # On indique qu'un Go est en cours
+            self.on_go = True
+            self.thread = ThreadGo(self.app)
+            self.thread.start()
+            #time.sleep(6)
+            #thread.stop()
 
 # TODO: objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
@@ -104,10 +105,16 @@ class ThreadGo(threading.Thread):
         self.app = app
         self.name = name
         self._stopevent = threading.Event()
+        # To save dmx levels when user send Go
+        self.dmxlevels = array.array('B', [0] * 512)
 
     def run(self):
         # Position dans le séquentiel
         position = self.app.sequence.position
+
+        # Levels when Go is sent
+        for output in range(512):
+            self.dmxlevels[output] = self.app.dmxframe.dmx_frame[output]
 
         # On récupère les temps de montée et de descente de la mémoire suivante
         t_in = self.app.sequence.cues[position+1].time_in
@@ -179,8 +186,42 @@ class ThreadGo(threading.Thread):
         self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # TODO (800-32) en dur dans customwidgets
         self.app.win_seq.sequential.queue_draw()
 
+        for output in range(512):
+
+            # On utilise les valeurs dmx comme valeurs de départ
+            old_level = self.dmxlevels[output]
+
+            channel = self.app.patch.outputs[output]
+
+            if channel:
+                # On boucle sur les mémoires et on revient à 0
+                if position < self.app.sequence.last - 1:
+                    next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                else:
+                    next_level = self.app.sequence.cues[0].channels[channel-1]
+                    self.app.sequence.position = 0
+
+                # Si le level augmente, on prends le temps de montée
+                if next_level > old_level and i < delay_in:
+                    level = int(((next_level - old_level+1) / delay_in) * i) + old_level
+                # Si le level descend, on prend le temps de descente
+                elif next_level < old_level and i < delay_out:
+                    level = old_level - abs(int(((next_level - old_level-1) / delay_out) *i))
+                # Sinon, la valeur est déjà bonne
+                else:
+                    level = next_level
+
+                #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
+
+                self.app.dmxframe.set_level(output, level)
+
+        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+
+        """
         for channel in range(512):
 
+            #TODO: le niveau précédent doit prendre en compte les channels envoyés
+            #      et pas ceux de la conduite
             old_level = self.app.sequence.cues[position].channels[channel]
 
             # On boucle sur les mémoires et on revient à 0
@@ -205,6 +246,7 @@ class ThreadGo(threading.Thread):
                 self.app.dmxframe.set_level(output-1, level)
 
         self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        """
 
 if __name__ == "__main__":
 
