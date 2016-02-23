@@ -25,10 +25,7 @@ class Dmx(object):
             channel = self.patch.outputs[output]
             # Si il est patché
             if channel:
-                # On part du level actuel
-                #level = self.frame[output]
-                # Si on a une valeur pour ce channel dans le séquentiel, on l'utilise
-                #if self.sequence[channel]:
+                # On part du niveau du séquentiel
                 level = self.sequence[channel-1]
                 # Si le niveau entré par l'utilisateur est supérieur, c'est lui qu'on prend
                 if self.user[channel-1] > level:
