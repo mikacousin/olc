@@ -156,7 +156,7 @@ class ThreadGo(threading.Thread):
         # Le Go est terminé
         self.app.sequence.on_go = False
         # On vide le tableau des valeurs entrées par l'utilisateur
-        self.app.dmx.user = array.array('B', [0] * 512)
+        self.app.dmx.user = array.array('h', [-1] * 512)
 
         # On se positionne à la mémoire suivante
         position = self.app.sequence.position

@@ -41,12 +41,11 @@ class Application(Gtk.Application):
         self.sock = self.ola_client.GetSocket()
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
 
-        # Create several DMX arrays
-        self.dmx = Dmx(self.universe, self.patch, self.ola_client)
-        #self.dmxframe = DmxFrame()
-
         # Create Main Sequential
         self.sequence = Sequence(1, self.patch)
+
+        # Create several DMX arrays
+        self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence)
 
         # Create List for Chasers
         self.chasers = []

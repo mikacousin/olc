@@ -1,5 +1,7 @@
 import array
-from gi.repository import Gtk
+import threading
+import time
+from gi.repository import Gtk, GLib
 
 # TODO : - les Masters ne doivent pas descendre sous la valeur dmx envoyée par le sequentiel ou
 #        entrée directement à la main.
@@ -110,32 +112,132 @@ class MastersWindow(Gtk.Window):
                                         self.app.dmx.masters[channel-1] = level
 
                             # On met à jour les niveau DMX
-                            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
                             self.app.dmx.send()
-
-                            """
-                            for channel in range(512):
-                                if self.masters[i].groups[j].channels[channel] != 0:
-                                    # On récupère la valeur enregistrée dans le groupe
-                                    level_group = self.masters[i].groups[j].channels[channel]
-                                    # Calcul du level
-                                    if level_scale == 0:
-                                        level = 0
-                                    else:
-                                        level = int(level_group / (256 / level_scale)) + 1
-                                    # TODO (voir + haut): On regarde le level de la cue actuelle
-                                    level_cue = self.app.sequence.cues[self.app.sequence.position].channels[channel]
-                                    if level_cue > level:
-                                        level = level_cue
-                                    outputs = self.app.patch.chanels[channel]
-                                    for output in outputs:
-                                        self.app.dmxframe.set_level(output-1, level)
-                            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
-                            """
 
                 # Si c'est un chaser
                 elif self.masters[i].content_type == 3:
                     nb = self.masters[i].content_value
                     for j in range(len(self.masters[i].chasers)):
                         if self.masters[i].chasers[j].index == nb:
-                            print("Chaser", self.masters[i].chasers[j].text)
+                            #print("Chaser", self.masters[i].chasers[j].text)
+
+                            # On cherche le chaser
+                            for k in range(len(self.app.chasers)):
+                                    if self.app.chasers[k].index == nb:
+
+                                        # Si il tournait et que le master passe à 0
+                                        if level_scale == 0 and self.app.chasers[k].run == True:
+                                            self.app.chasers[k].run = False
+                                            # TODO: Stop chaser
+                                            self.thread.stop()
+                                        # Si il ne tournait pas et master > 0
+                                        elif level_scale and self.app.chasers[k].run == False:
+                                            self.app.chasers[k].run = True
+                                            # TODO: Lancer chaser
+                                            self.thread = ThreadChaser(self.app, k, level_scale)
+                                            self.thread.start()
+                                        # Si il tournait déjà et master > 0
+                                        elif level_scale and self.app.chasers[k].run == True:
+                                            # TODO: modifier valeurs max du chaser
+                                            self.thread.level_scale = level_scale
+
+class ThreadChaser(threading.Thread):
+    def __init__(self, app, chaser, level_scale, name=''):
+        threading.Thread.__init__(self)
+        self.app = app
+        self.chaser = chaser
+        self.level_scale = level_scale
+        self.name = name
+        self._stopevent = threading.Event()
+
+    def run(self):
+        position = 0
+
+        while self.app.chasers[self.chaser].run:
+            # On récupère les temps du pas suivant
+            if position != self.app.chasers[self.chaser].last-1:
+                t_in = self.app.chasers[self.chaser].cues[position+1].time_in
+                t_out = self.app.chasers[self.chaser].cues[position+1].time_out
+            else:
+                t_in = self.app.chasers[self.chaser].cues[1].time_in
+                t_out = self.app.chasers[self.chaser].cues[1].time_out
+
+            # Quel est le temps le plus long
+            if t_in > t_out:
+                t_max = t_in
+                t_min = t_out
+            else:
+                t_max = t_out
+                t_min = t_in
+
+            start_time = time.time() * 1000 # actual time in ms
+            delay = t_max * 1000
+            delay_in = t_in * 1000
+            delay_out = t_out * 1000
+            i = (time.time() * 1000) - start_time
+
+            # Boucle sur le temps de monté ou de descente (le plus grand)
+            while i < delay:
+                # Mise à jour des niveaux
+                GLib.idle_add(self.update_levels, delay, delay_in, delay_out, i, position)
+                time.sleep(0.02)
+                i = (time.time() * 1000) - start_time
+
+            position += 1
+            if position == self.app.chasers[self.chaser].last:
+                position = 1
+
+
+    def stop(self):
+        self._stopevent.set()
+
+
+    def update_levels(self, delay, delay_in, delay_out, i, position):
+
+        for output in range(512):
+
+            channel = self.app.patch.outputs[output]
+
+            # On ne modifie que les channels présents dans le chaser
+            if self.app.chasers[self.chaser].channels[channel-1] != 0:
+                # Niveau duquel on part
+                old_level = self.app.chasers[self.chaser].cues[position].channels[channel-1]
+                # Niveau dans le sequentiel
+                seq_level = self.app.sequence.cues[self.app.sequence.position].channels[channel-1]
+
+                if old_level < seq_level:
+                    old_level = seq_level
+
+                # On boucle sur les mémoires et on revient au premier pas
+                if position < self.app.chasers[self.chaser].last-1:
+                    next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel-1]
+                    if next_level < seq_level:
+                        next_level = seq_level
+                else:
+                    next_level = self.app.chasers[self.chaser].cues[1].channels[channel-1]
+                    if next_level < seq_level:
+                        next_level = seq_level
+                    self.app.chasers[self.chaser].position = 1
+
+                # Si le level augmente, on prend le temps de montée
+                if next_level > old_level and i < delay_in:
+                    level = int(((next_level - old_level+1) / delay_in) * i) + old_level
+                # si le level descend, on prend le temps de descente
+                elif next_level < old_level and i < delay_out:
+                    level = old_level - abs(int(((next_level - old_level-1) / delay_out) * i))
+                # sinon, la valeur est déjà bonne
+                else:
+                    level = next_level
+
+                #print(old_level, next_level, level, chanel+1)
+
+                # On limite le niveau par la valeur du Master
+                level = int(level / (256 / self.level_scale))
+
+                self.app.dmx.masters[channel-1] = level
+
+                #if self.app.chasers[0].cues[position].channels[channel] != 0:
+                #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])
+
+        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.dmx.send()

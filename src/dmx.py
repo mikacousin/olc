@@ -1,10 +1,11 @@
 import array
 
 class Dmx(object):
-    def __init__(self, universe, patch, ola_client):
+    def __init__(self, universe, patch, ola_client, sequence):
         self.universe = universe
         self.patch = patch
         self.ola_client = ola_client
+        self.seq = sequence
 
         # les valeurs DMX echangées avec Ola
         self.frame = array.array('B', [0] * 512)
@@ -13,7 +14,7 @@ class Dmx(object):
         # les valeurs des masters envoyés
         self.masters = array.array('B', [0] * 512)
         # les valaurs modifiées par l'utilisateur
-        self.user = array.array('B', [0] * 512)
+        self.user = array.array('h', [-1] * 512)
 
     def send(self):
         # TODO: cette fonction doit envoyer les valeurs DMX à Ola en prenant en compte
@@ -21,14 +22,14 @@ class Dmx(object):
 
         # Pour chaque output
         for output in range(512):
-            # On récupère le channel correspondant (-1 car commence à 0)
+            # On récupère le channel correspondant
             channel = self.patch.outputs[output]
             # Si il est patché
             if channel:
                 # On part du niveau du séquentiel
                 level = self.sequence[channel-1]
-                # Si le niveau entré par l'utilisateur est supérieur, c'est lui qu'on prend
-                if self.user[channel-1] > level:
+                # Si on est pas sur un Go, on utilise les valeurs de l'utilisateur
+                if not self.seq.on_go and self.user[channel-1] != -1:
                     level = self.user[channel-1]
                 # Si c'est le niveau d'un master le plus grand, on l'utilise
                 if self.masters[channel-1] > level:
