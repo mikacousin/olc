@@ -1,5 +1,4 @@
 import array
-#from olc.dmx import DmxFrame
 
 class Cue(object):
     def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, wait=0.0, text=""):

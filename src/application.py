@@ -7,7 +7,7 @@ from ola import OlaClient
 
 from olc.window import Window
 from olc.patchwindow import PatchWindow
-from olc.dmx import PatchDmx, DmxFrame
+from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
 from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
@@ -30,11 +30,20 @@ class Application(Gtk.Application):
         settings = Gtk.Settings.get_default()
         settings.set_property('gtk-application-prefer-dark-theme', True)
 
-        # Create DMX Frame
-        self.dmxframe = DmxFrame()
+        # TODO: Choisir son univers
+        self.universe = 0
 
         # Create patch (1:1)
         self.patch = PatchDmx()
+
+        # Create OlaClient
+        self.ola_client = OlaClient.OlaClient()
+        self.sock = self.ola_client.GetSocket()
+        self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
+
+        # Create several DMX arrays
+        self.dmx = Dmx(self.universe, self.patch, self.ola_client)
+        #self.dmxframe = DmxFrame()
 
         # Create Main Sequential
         self.sequence = Sequence(1, self.patch)
@@ -48,12 +57,6 @@ class Application(Gtk.Application):
         # Create List of Masters
         self.masters = []
 
-        # Create OlaClient
-        self.ola_client = OlaClient.OlaClient()
-        self.sock = self.ola_client.GetSocket()
-        # TODO: Choisir son univers
-        self.universe = 0
-        self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
         # Fetch dmx values on startup
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
@@ -112,27 +115,27 @@ class Application(Gtk.Application):
 
         return menu
 
-    def on_dmx(self, dmx):
+    def on_dmx(self, dmxframe):
         #for i in range(512):
-        for i in range(len(dmx)):
-            chanel = self.patch.outputs[i]
-            level = dmx[i]
-            self.dmxframe.set_level(i, level)
-            self.window.chanels[chanel-1].level = level
+        for output in range(len(dmxframe)):
+            channel = self.patch.outputs[output]
+            level = dmxframe[output]
+            self.dmx.frame[output] = level
+            self.window.chanels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
-                next_level = self.sequence.cues[self.sequence.position+1].channels[chanel-1]
+                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
             else:
-                next_level = self.sequence.cues[0].channels[chanel-1]
-            self.window.chanels[chanel-1].next_level = next_level
-            self.window.chanels[chanel-1].queue_draw()
+                next_level = self.sequence.cues[0].channels[channel-1]
+            self.window.chanels[channel-1].next_level = next_level
+            self.window.chanels[channel-1].queue_draw()
 
-    def fetch_dmx(self, request, univ, dmx):
-        for i in range(len(dmx)):
-            chanel = self.patch.outputs[i]
-            level = dmx[i]
-            self.dmxframe.set_level(i, level)
-            self.window.chanels[chanel-1].level = level
-            self.window.chanels[chanel-1].queue_draw()
+    def fetch_dmx(self, request, univ, dmxframe):
+        for output in range(len(dmxframe)):
+            channel = self.patch.outputs[output]
+            level = dmxframe[output]
+            self.dmx.frame[output] = level
+            self.window.chanels[channel-1].level = level
+            self.window.chanels[channel-1].queue_draw()
 
     def _open(self, action, parameter):
         # create a filechooserdialog to open:
@@ -548,7 +551,7 @@ class Application(Gtk.Application):
         dialog.destroy()
 
     def _patch(self, action, parameter):
-        self.patchwindow = PatchWindow(self.patch, self.dmxframe, self.window)
+        self.patchwindow = PatchWindow(self.patch, self.dmx, self.window)
         self.patchwindow.show_all()
 
     def _groups(self, action, parameter):

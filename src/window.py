@@ -83,15 +83,16 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_a(self):
         """ All Channels """
-        for i in range(512):
-            level = self.app.dmxframe.get_level(i)
-            chanel = self.app.patch.outputs[i] - 1
+        for output in range(512):
+            #level = self.app.dmxframe.get_level(i)
+            level = self.app.dmx.frame[output]
+            channel = self.app.patch.outputs[output] - 1
             if level > 0:
-                self.app.window.chanels[chanel].clicked = True
-                self.app.window.chanels[chanel].queue_draw()
+                self.app.window.chanels[channel].clicked = True
+                self.app.window.chanels[channel].queue_draw()
             else:
-                self.app.window.chanels[chanel].clicked = False
-                self.app.window.chanels[chanel].queue_draw()
+                self.app.window.chanels[channel].clicked = False
+                self.app.window.chanels[channel].queue_draw()
 
     def keypress_c(self):
         """ Channel """
@@ -110,7 +111,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
 
     def keypress_greater(self):
-        """ Through """
+        """ Thru """
         if self.last_chan_selected:
             for chanel in range(int(self.last_chan_selected), int(self.keystring)):
                 self.app.window.chanels[chanel].clicked = True
@@ -138,34 +139,37 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Right(self):
         """ Level +1 of selected channels """
-        for i in range(512):
-            chanel = self.app.patch.outputs[i] - 1
-            if self.app.window.chanels[chanel].clicked:
-                level = self.app.dmxframe.get_level(i)
+        for output in range(512):
+            channel = self.app.patch.outputs[output]
+            if self.app.window.chanels[channel-1].clicked:
+                level = self.app.dmx.frame[output]
                 if level < 255:
-                    self.app.dmxframe.set_level(i, level+1)
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+                    self.app.dmx.user[channel-1] = level + 1
+        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.dmx.send()
 
     def keypress_Left(self):
         """ Level -1 of selected channels """
-        for i in range(512):
-            chanel = self.app.patch.outputs[i] - 1
-            if self.app.window.chanels[chanel].clicked:
-                level = self.app.dmxframe.get_level(i)
+        for output in range(512):
+            channel = self.app.patch.outputs[output]
+            if self.app.window.chanels[channel-1].clicked:
+                level = self.app.dmx.frame[output]
                 if level > 0:
-                    self.app.dmxframe.set_level(i, level-1)
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+                    self.app.dmx.user[channel-1] = level - 1
+        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.dmx.send()
 
     def keypress_equal(self):
         """ @ Level """
-        for i in range(512):
-            chanel = self.app.patch.outputs[i] - 1
-            if self.app.window.chanels[chanel].clicked:
+        for output in range(512):
+            channel = self.app.patch.outputs[output] - 1
+            if self.app.window.chanels[channel].clicked:
                 level = int(self.keystring)
                 if level >= 0 and level <= 255:
-                    self.app.dmxframe.set_level(i, level)
+                    self.app.dmx.user[channel] = level
         self.keystring = ""
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.dmx.send()
 
     def keypress_Escape(self):
         self.keystring = ""
@@ -334,12 +338,13 @@ class Window(Gtk.ApplicationWindow):
 
                     outputs = self.app.patch.chanels[channel]
                     for output in outputs:
-                        self.app.dmxframe.set_level(output-1, level)
+                        self.app.dmx.masters[channel] = level
 
                     #if self.app.chasers[0].cues[position].channels[channel] != 0:
                     #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])
 
-            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            self.app.dmx.send()
 
         def time_loop():
             # On boucle sur les mémoires du chaser

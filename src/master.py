@@ -1,4 +1,10 @@
+import array
 from gi.repository import Gtk
+
+# TODO : - les Masters ne doivent pas descendre sous la valeur dmx envoyée par le sequentiel ou
+#        entrée directement à la main.
+#        - les Masters ne doivent pas bouger sur un Go si leur valeur est supérieure à celle envoyée dans
+#        le séquentiel
 
 class Master(object):
     def __init__(self, page, number, content_type, content_value, groups, chasers, exclude_record=True, text=""):
@@ -70,8 +76,8 @@ class MastersWindow(Gtk.Window):
 
         self.add(self.grid)
 
-    # TODO: Ce n'est pas le level de la cue qu'il faut vérifier mais celui envoyé en DMX
     def scale_moved(self, scale):
+
         # On cherche quel scale a été actionné
         for i in range(len(self.scale)):
             if self.scale[i] == scale:
@@ -84,6 +90,30 @@ class MastersWindow(Gtk.Window):
                     for j in range(len(self.masters[i].groups)):
                         if self.masters[i].groups[j].index == grp:
                             #print("Groupe", self.masters[i].groups[j].text)
+
+                            # Pour chaque Output
+                            for output in range(512):
+
+                                # Si l'output est patché sur un channel
+                                channel = self.app.patch.outputs[output]
+                                if channel:
+                                    if self.masters[i].groups[j].channels[channel-1] != 0:
+                                        # On récupère la valeur enregistrée dans le groupe
+                                        level_group = self.masters[i].groups[j].channels[channel-1]
+                                        # Calcul du level
+                                        if level_scale == 0:
+                                            level = 0
+                                        else:
+                                            level = int(level_group / (256 / level_scale)) + 1
+
+                                        # Mise à jour du tableau des niveau de masters
+                                        self.app.dmx.masters[channel-1] = level
+
+                            # On met à jour les niveau DMX
+                            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+                            self.app.dmx.send()
+
+                            """
                             for channel in range(512):
                                 if self.masters[i].groups[j].channels[channel] != 0:
                                     # On récupère la valeur enregistrée dans le groupe
@@ -101,6 +131,8 @@ class MastersWindow(Gtk.Window):
                                     for output in outputs:
                                         self.app.dmxframe.set_level(output-1, level)
                             self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+                            """
+
                 # Si c'est un chaser
                 elif self.masters[i].content_type == 3:
                     nb = self.masters[i].content_value

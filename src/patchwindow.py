@@ -1,6 +1,6 @@
 from gi.repository import Gtk
 
-from olc.dmx import DmxFrame, PatchDmx
+from olc.dmx import Dmx, PatchDmx
 
 class PatchWindow(Gtk.Window):
     def __init__(self, patch, dmx, win):

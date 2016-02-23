@@ -1,14 +1,47 @@
 import array
 
-class DmxFrame(object):
-    def __init__(self):
-        self.dmx_frame = array.array('B', [0] * 512)
+class Dmx(object):
+    def __init__(self, universe, patch, ola_client):
+        self.universe = universe
+        self.patch = patch
+        self.ola_client = ola_client
 
-    def set_level(self, output, level):
-        self.dmx_frame[output] = level
+        # les valeurs DMX echangées avec Ola
+        self.frame = array.array('B', [0] * 512)
+        # les valeurs du séquentiel
+        self.sequence = array.array('B', [0] * 512)
+        # les valeurs des masters envoyés
+        self.masters = array.array('B', [0] * 512)
+        # les valaurs modifiées par l'utilisateur
+        self.user = array.array('B', [0] * 512)
 
-    def get_level(self, output):
-        return self.dmx_frame[output]
+    def send(self):
+        # TODO: cette fonction doit envoyer les valeurs DMX à Ola en prenant en compte
+        # les valeurs actuelles, le sequentiel, les masters et les valeurs entrées par l'utilisateur
+
+        # Pour chaque output
+        for output in range(512):
+            # On récupère le channel correspondant (-1 car commence à 0)
+            channel = self.patch.outputs[output]
+            # Si il est patché
+            if channel:
+                # On part du level actuel
+                #level = self.frame[output]
+                # Si on a une valeur pour ce channel dans le séquentiel, on l'utilise
+                #if self.sequence[channel]:
+                level = self.sequence[channel-1]
+                # Si le niveau entré par l'utilisateur est supérieur, c'est lui qu'on prend
+                if self.user[channel-1] > level:
+                    level = self.user[channel-1]
+                # Si c'est le niveau d'un master le plus grand, on l'utilise
+                if self.masters[channel-1] > level:
+                    level = self.masters[channel-1]
+
+                # On met à jour le niveau pour cet output
+                self.frame[output] = level
+
+        # On met à jour les valeurs d'Ola
+        self.ola_client.SendDmx(self.universe, self.frame)
 
 class PatchDmx(object):
     """

@@ -17,14 +17,16 @@ class SequentialWindow(Gtk.Window):
         t_in = self.seq.cues[position].time_in
         t_out = self.seq.cues[position].time_out
 
+        # TODO: Faire une boucle sur les outputs
         # Set levels for chanels in actual cue
-        for i in range(512):
-            level = self.app.sequence.cues[position].channels[i]
-            outputs = self.app.patch.chanels[i]
-            for output in outputs:
-                #print(output)
-                self.app.dmxframe.set_level(output-1, level)
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        for output in range(512):
+            channel = self.app.patch.outputs[output]
+
+            if channel:
+                level = self.app.sequence.cues[position].channels[channel-1]
+                self.app.dmx.sequence[channel-1] = level
+
+        self.app.dmx.send()
 
         # Création du crossfade
         self.sequential = SequentialWidget(t_in, t_out)

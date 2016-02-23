@@ -34,7 +34,7 @@ class Sequence(object):
     def add_cue(self, cue):
         self.cues.append(cue)
         self.last = cue.index
-        # On enregistre la liste des circuits présents dans la mméoire
+        # On enregistre la liste des circuits présents dans la mémoire
         for i in range(512):
             if cue.channels[i] != 0:
                 self.channels[i] = 1 # Si présent on le note
@@ -54,12 +54,13 @@ class Sequence(object):
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
 
-            for chanel in range(512):
-                level = self.cues[position].channels[chanel]
-                outputs = self.patch.chanels[chanel]
-                for output in outputs:
-                    self.app.dmxframe.set_level(output-1, level)
-            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            for output in range(512):
+                channel = self.patch.outputs[output]
+                if channel:
+                    level = self.cues[position].channels[channel-1]
+                    self.app.dmx.sequence[channel-1] = level
+
+            self.app.dmx.send()
 
     def sequence_minus(self, app):
         self.app = app
@@ -76,12 +77,22 @@ class Sequence(object):
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
 
+            for output in range(512):
+                channel = self.patch.outputs[output]
+                if channel:
+                    level = self.cues[position].channels[channel-1]
+                    self.app.dmx.sequence[channel-1] = level
+
+            self.app.dmx.send()
+            """
             for chanel in range(512):
                 level = self.cues[position].channels[chanel]
                 outputs = self.patch.chanels[chanel]
                 for output in outputs:
-                    self.app.dmxframe.set_level(output-1, level)
-            self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+                    self.app.dmx.sequence[output-1] = level
+            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            self.app.dmx.send()
+            """
 
     def sequence_go(self, app):
         self.app = app
@@ -89,6 +100,7 @@ class Sequence(object):
         if self.on_go:
             self.thread.stop()
             self.on_go = False
+            #self.position += 1
             #self.sequence_go(self.app)
         else:
             # On indique qu'un Go est en cours
@@ -98,7 +110,7 @@ class Sequence(object):
             #time.sleep(6)
             #thread.stop()
 
-# TODO: objet Thread pour gérer les Go
+# Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
     def __init__(self, app, name=''):
         threading.Thread.__init__(self)
@@ -114,7 +126,8 @@ class ThreadGo(threading.Thread):
 
         # Levels when Go is sent
         for output in range(512):
-            self.dmxlevels[output] = self.app.dmxframe.dmx_frame[output]
+            #self.dmxlevels[output] = self.app.dmxframe.dmx_frame[output]
+            self.dmxlevels[output] = self.app.dmx.frame[output]
 
         # On récupère les temps de montée et de descente de la mémoire suivante
         t_in = self.app.sequence.cues[position+1].time_in
@@ -142,6 +155,8 @@ class ThreadGo(threading.Thread):
 
         # Le Go est terminé
         self.app.sequence.on_go = False
+        # On vide le tableau des valeurs entrées par l'utilisateur
+        self.app.dmx.user = array.array('B', [0] * 512)
 
         # On se positionne à la mémoire suivante
         position = self.app.sequence.position
@@ -213,9 +228,11 @@ class ThreadGo(threading.Thread):
 
                 #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
 
-                self.app.dmxframe.set_level(output, level)
+                #self.app.dmxframe.set_level(output, level)
+                self.app.dmx.sequence[channel-1] = level
 
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+        self.app.dmx.send()
 
         """
         for channel in range(512):
