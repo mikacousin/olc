@@ -127,18 +127,18 @@ class MastersWindow(Gtk.Window):
 
                                         # Si il tournait et que le master passe à 0
                                         if level_scale == 0 and self.app.chasers[k].run == True:
+                                            # Stop Chaser
                                             self.app.chasers[k].run = False
-                                            # TODO: Stop chaser
                                             self.thread.stop()
                                         # Si il ne tournait pas et master > 0
                                         elif level_scale and self.app.chasers[k].run == False:
+                                            # Start Chaser
                                             self.app.chasers[k].run = True
-                                            # TODO: Lancer chaser
                                             self.thread = ThreadChaser(self.app, k, level_scale)
                                             self.thread.start()
                                         # Si il tournait déjà et master > 0
                                         elif level_scale and self.app.chasers[k].run == True:
-                                            # TODO: modifier valeurs max du chaser
+                                            # Update Max Level
                                             self.thread.level_scale = level_scale
 
 class ThreadChaser(threading.Thread):
@@ -190,7 +190,6 @@ class ThreadChaser(threading.Thread):
 
     def stop(self):
         self._stopevent.set()
-
 
     def update_levels(self, delay, delay_in, delay_out, i, position):
 
