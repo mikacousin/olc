@@ -54,6 +54,9 @@ class Sequence(object):
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
 
+            # On vide le tableau des valeurs entrées par l'utilisateur
+            self.app.dmx.user = array.array('h', [-1] * 512)
+
             for output in range(512):
                 channel = self.patch.outputs[output]
                 if channel:
@@ -76,6 +79,9 @@ class Sequence(object):
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
+
+            # On vide le tableau des valeurs entrées par l'utilisateur
+            self.app.dmx.user = array.array('h', [-1] * 512)
 
             for output in range(512):
                 channel = self.patch.outputs[output]
