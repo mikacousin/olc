@@ -108,7 +108,7 @@ class MastersWindow(Gtk.Window):
                                         else:
                                             level = int(level_group / (256 / level_scale)) + 1
 
-                                        # Mise à jour du tableau des niveau de masters
+                                        # Mise à jour du tableau des niveaux de masters
                                         self.app.dmx.masters[channel-1] = level
 
                             # On met à jour les niveau DMX
@@ -233,6 +233,7 @@ class ThreadChaser(threading.Thread):
                 # On limite le niveau par la valeur du Master
                 level = int(level / (256 / self.level_scale))
 
+                # Mise à jour de la valeur des masters
                 self.app.dmx.masters[channel-1] = level
 
                 #if self.app.chasers[0].cues[position].channels[channel] != 0:

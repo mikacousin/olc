@@ -17,7 +17,6 @@ class SequentialWindow(Gtk.Window):
         t_in = self.seq.cues[position].time_in
         t_out = self.seq.cues[position].time_out
 
-        # TODO: Faire une boucle sur les outputs
         # Set levels for chanels in actual cue
         for output in range(512):
             channel = self.app.patch.outputs[output]
@@ -62,7 +61,7 @@ class SequentialWindow(Gtk.Window):
                 column.set_resizable(True)
             self.treeview.append_column(column)
 
-        # Création d'une scrollwindow pour mettre la lsite des mémoires
+        # Création d'une scrollwindow pour mettre la liste des mémoires
         self.scrollable = Gtk.ScrolledWindow()
         self.scrollable.set_vexpand(True)
         self.scrollable.set_hexpand(True)
