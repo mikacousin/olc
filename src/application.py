@@ -44,9 +44,6 @@ class Application(Gtk.Application):
         # Create Main Sequential
         self.sequence = Sequence(1, self.patch)
 
-        # Create several DMX arrays
-        self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence)
-
         # Create List for Chasers
         self.chasers = []
 
@@ -55,6 +52,9 @@ class Application(Gtk.Application):
 
         # Create List of Masters
         self.masters = []
+
+        # Create several DMX arrays
+        self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters)
 
         # Fetch dmx values on startup
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
@@ -103,6 +103,10 @@ class Application(Gtk.Application):
         mastersAction = Gio.SimpleAction.new('masters', None)
         mastersAction.connect('activate', self._masters)
         self.add_action(mastersAction)
+
+        settingsAction = Gio.SimpleAction.new('settings', None)
+        settingsAction.connect('activate', self._settings)
+        self.add_action(settingsAction)
 
         aboutAction = Gio.SimpleAction.new('about', None)
         aboutAction.connect('activate', self._about)
@@ -560,6 +564,9 @@ class Application(Gtk.Application):
     def _masters(self, action, parameter):
         self.win_masters = MastersWindow(self, self.masters)
         self.win_masters.show_all()
+
+    def _settings(self, actions, parameter):
+        pass
 
     def _about(self, action, parameter):
         """

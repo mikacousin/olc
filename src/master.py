@@ -18,6 +18,8 @@ class Master(object):
         self.text = text
         self.groups = groups
         self.chasers = chasers
+        # To store DMX values of the master
+        self.dmx = array.array('B', [0] * 512)
 
         if self.content_type == 3:
             #print("Type : Sequence", self.content_value)
@@ -108,8 +110,9 @@ class MastersWindow(Gtk.Window):
                                         else:
                                             level = int(level_group / (256 / level_scale)) + 1
 
-                                        # Mise à jour du tableau des niveaux de masters
-                                        self.app.dmx.masters[channel-1] = level
+                                        # Mise à jour du tableau des niveaux du master
+                                        #self.app.dmx.masters[channel-1] = level
+                                        self.masters[i].dmx[channel-1] = level
 
                             # On met à jour les niveau DMX
                             self.app.dmx.send()
@@ -134,7 +137,7 @@ class MastersWindow(Gtk.Window):
                                         elif level_scale and self.app.chasers[k].run == False:
                                             # Start Chaser
                                             self.app.chasers[k].run = True
-                                            self.thread = ThreadChaser(self.app, k, level_scale)
+                                            self.thread = ThreadChaser(self.app, self.masters[i], k, level_scale)
                                             self.thread.start()
                                         # Si il tournait déjà et master > 0
                                         elif level_scale and self.app.chasers[k].run == True:
@@ -142,9 +145,10 @@ class MastersWindow(Gtk.Window):
                                             self.thread.level_scale = level_scale
 
 class ThreadChaser(threading.Thread):
-    def __init__(self, app, chaser, level_scale, name=''):
+    def __init__(self, app, master, chaser, level_scale, name=''):
         threading.Thread.__init__(self)
         self.app = app
+        self.master = master
         self.chaser = chaser
         self.level_scale = level_scale
         self.name = name
@@ -234,7 +238,8 @@ class ThreadChaser(threading.Thread):
                 level = int(level / (256 / self.level_scale))
 
                 # Mise à jour de la valeur des masters
-                self.app.dmx.masters[channel-1] = level
+                #self.app.dmx.masters[channel-1] = level
+                self.master.dmx[channel-1] = level
 
                 #if self.app.chasers[0].cues[position].channels[channel] != 0:
                 #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])

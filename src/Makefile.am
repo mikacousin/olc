@@ -12,4 +12,5 @@ app_PYTHON = \
 	patchwindow.py \
 	sequence.py \
 	sequentialwindow.py \
+	settings.py \
 	window.py

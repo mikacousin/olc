@@ -24,6 +24,12 @@
     </section>
     <section>
       <item>
+        <attribute name="action">app.settings</attribute>
+        <attribute name="label" translatable="yes">_Preferences</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name="action">app.about</attribute>
         <attribute name="label" translatable="yes">_About</attribute>
       </item>
