@@ -369,7 +369,7 @@ class SequentialWidget(Gtk.Widget):
             cr.show_text(str(self.time_max))
         if self.time_min != self.time_max:
             cr.move_to(12+(inter*self.time_min),16)
-            if self.time_in.is_integer():
+            if self.time_min.is_integer():
                 cr.show_text(str(int(self.time_min)))
             else:
                 cr.show_text(str(self.time_min))
