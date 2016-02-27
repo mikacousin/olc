@@ -132,6 +132,7 @@ class ThreadGo(threading.Thread):
         # On récupère les temps de montée et de descente de la mémoire suivante
         t_in = self.app.sequence.cues[position+1].time_in
         t_out = self.app.sequence.cues[position+1].time_out
+        t_wait = self.app.sequence.cues[position+1].wait
 
         # Quel est le temps le plus long
         if t_in > t_out:
@@ -141,15 +142,19 @@ class ThreadGo(threading.Thread):
             t_max = t_out
             t_min = t_in
 
+        t_max = t_max + t_wait
+        t_min = t_min + t_wait
+
         start_time = time.time() * 1000 # actual time in ms
         delay = t_max * 1000
         delay_in = t_in * 1000
         delay_out = t_out * 1000
+        delay_wait = t_wait * 1000
         i = (time.time() * 1000) - start_time
 
         # Boucle sur le temps de montée ou de descente (le plus grand)
         while i < delay and not self._stopevent.isSet():
-            GLib.idle_add(self.update_levels, delay, delay_in, delay_out, i, position) # Mise à jour des niveaux
+            GLib.idle_add(self.update_levels, delay, delay_in, delay_out, delay_wait, i, position) # Mise à jour des niveaux
             time.sleep(0.02)
             i = (time.time() * 1000) - start_time
 
@@ -178,8 +183,17 @@ class ThreadGo(threading.Thread):
 
             # TODO: Si la mémoire a un Wait
             if self.app.sequence.cues[position+1].wait:
-                print("Auto Go after", self.app.sequence.cues[position+1].wait, "seconds")
-                time.sleep(self.app.sequence.cues[position+1].wait)
+                #print("Auto Go after", self.app.sequence.cues[position+1].wait, "seconds")
+                #start_time = time.time() * 1000 # actual time in ms
+                #delay = self.app.sequence.cues[position+1].wait * 1000
+                #i = (time.time() * 1000) - start_time
+
+                #while i < delay:
+                #    GLib.idle_add(self.update_wait, delay, i) # Mise à jour sliders
+                #    time.sleep(0.01)
+                #    i = (time.time() * 1000) - start_time
+
+                #time.sleep(self.app.sequence.cues[position+1].wait)
                 print("GO!")
                 self.app.window.keypress_space()
 
@@ -200,43 +214,51 @@ class ThreadGo(threading.Thread):
     def stop(self):
         self._stopevent.set()
 
-    def update_levels(self, delay, delay_in, delay_out, i, position):
+    def update_levels(self, delay, delay_in, delay_out, delay_wait, i, position):
         #Mise à jour position des sliders
         self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # TODO (800-32) en dur dans customwidgets
         self.app.win_seq.sequential.queue_draw()
 
-        for output in range(512):
+        # On attend que le temps d'un éventuel wait soit passé pour changer les levels
+        if i > delay_wait:
 
-            # On utilise les valeurs dmx comme valeurs de départ
-            old_level = self.dmxlevels[output]
+            for output in range(512):
 
-            channel = self.app.patch.outputs[output]
+                # On utilise les valeurs dmx comme valeurs de départ
+                old_level = self.dmxlevels[output]
 
-            if channel:
-                # On boucle sur les mémoires et on revient à 0
-                if position < self.app.sequence.last - 1:
-                    next_level = self.app.sequence.cues[position+1].channels[channel-1]
-                else:
-                    next_level = self.app.sequence.cues[0].channels[channel-1]
-                    self.app.sequence.position = 0
+                channel = self.app.patch.outputs[output]
 
-                # Si le level augmente, on prends le temps de montée
-                if next_level > old_level and i < delay_in:
-                    level = int(((next_level - old_level+1) / delay_in) * i) + old_level
-                # Si le level descend, on prend le temps de descente
-                elif next_level < old_level and i < delay_out:
-                    level = old_level - abs(int(((next_level - old_level-1) / delay_out) *i))
-                # Sinon, la valeur est déjà bonne
-                else:
-                    level = next_level
+                if channel:
+                    # On boucle sur les mémoires et on revient à 0
+                    if position < self.app.sequence.last - 1:
+                        next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                    else:
+                        next_level = self.app.sequence.cues[0].channels[channel-1]
+                        self.app.sequence.position = 0
 
-                #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
+                    # Si le level augmente, on prends le temps de montée
+                    if next_level > old_level and i < delay_in+delay_wait:
+                        level = int(((next_level - old_level+1) / (delay_in+delay_wait)) * (i-delay_wait)) + old_level
+                    # Si le level descend, on prend le temps de descente
+                    elif next_level < old_level and i < delay_out+delay_wait:
+                        level = old_level - abs(int(((next_level - old_level-1) / (delay_out+delay_wait)) *(i-delay_wait)))
+                    # Sinon, la valeur est déjà bonne
+                    else:
+                        level = next_level
 
-                #self.app.dmxframe.set_level(output, level)
-                self.app.dmx.sequence[channel-1] = level
+                    #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
 
-        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
-        self.app.dmx.send()
+                    #self.app.dmxframe.set_level(output, level)
+                    self.app.dmx.sequence[channel-1] = level
+
+            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
+            self.app.dmx.send()
+
+    def update_wait(self, delay, i):
+        #Mise à jour position des sliders
+        self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # TODO (800-32) en dur dans customwidgets
+        self.app.win_seq.sequential.queue_draw()
 
 if __name__ == "__main__":
 

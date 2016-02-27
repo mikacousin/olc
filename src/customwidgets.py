@@ -322,20 +322,36 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X1 cursor
-        x1 = start_x + self.pos_x
-        y1 = start_y + (self.pos_x * math.tan(angle))
-        if x1 > end_x:
-            x1 = end_x
-            y1 = end_y
-        cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.arc(x1, y1, 8, 0, 2*math.pi)
-        cr.fill()
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(10)
-        cr.move_to(x1 - 5, y1 + 2)
-        cr.show_text("A")
+        if not wait_x or self.pos_x > wait_x:
+            x1 = start_x + self.pos_x -wait_x
+            y1 = start_y + ((self.pos_x - wait_x) * math.tan(angle))
+            if x1 > end_x:
+                x1 = end_x
+                y1 = end_y
+            cr.set_source_rgb(0.9, 0.6, 0.2)
+            cr.arc(x1, y1, 8, 0, 2*math.pi)
+            cr.fill()
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(10)
+            cr.move_to(x1 - 5, y1 + 2)
+            cr.show_text("A")
+        else:
+            x1 = start_x + self.pos_x - wait_x
+            y1 = start_y
+            if x1 > end_x:
+                x1 = end_x
+                y1 = end_y
+            cr.set_source_rgb(0.9, 0.6, 0.2)
+            cr.arc(x1, y1, 8, 0, 2*math.pi)
+            cr.fill()
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(10)
+            cr.move_to(x1 - 5, y1 + 2)
+            cr.show_text("A")
 
         # draw In line
         cr.set_source_rgb(0.5, 0.5, 0.5)
@@ -360,20 +376,36 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X2 cursor
-        x1 = start_x + self.pos_x
-        y1 = start_y + (self.pos_x * math.tan(angle))
-        if x1 > end_x:
-            x1 = end_x
-            y1 = end_y
-        cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.arc(x1, y1, 8, 0, 2*math.pi)
-        cr.fill()
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
-            cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(10)
-        cr.move_to(x1 - 5, y1 + 3)
-        cr.show_text("B")
+        if not wait_x or self.pos_x > wait_x:
+            x1 = start_x + self.pos_x - wait_x
+            y1 = start_y + ((self.pos_x - wait_x) * math.tan(angle))
+            if x1 > end_x:
+                x1 = end_x
+                y1 = end_y
+            cr.set_source_rgb(0.9, 0.6, 0.2)
+            cr.arc(x1, y1, 8, 0, 2*math.pi)
+            cr.fill()
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(10)
+            cr.move_to(x1 - 5, y1 + 3)
+            cr.show_text("B")
+        else:
+            x1 = start_x + self.pos_x - wait_x
+            y1 = start_y
+            if x1 > end_x:
+                x1 = end_x
+                y1 = end_y
+            cr.set_source_rgb(0.9, 0.6, 0.2)
+            cr.arc(x1, y1, 8, 0, 2*math.pi)
+            cr.fill()
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(10)
+            cr.move_to(x1 - 5, y1 + 2)
+            cr.show_text("B")
 
         # draw Time Cursor
         #cr.set_source_rgb(0.9, 0.6, 0.2)
