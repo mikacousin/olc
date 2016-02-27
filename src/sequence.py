@@ -48,8 +48,10 @@ class Sequence(object):
             self.window.sequential.pos_x = 0
             t_in = self.cues[position+1].time_in
             t_out = self.cues[position+1].time_out
+            t_wait = self.cues[position+1].wait
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
+            self.window.sequential.wait = t_wait
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
@@ -74,8 +76,10 @@ class Sequence(object):
             self.window.sequential.pos_x = 0
             t_in = self.cues[position+1].time_in   # Always use times for next cue
             t_out = self.cues[position+1].time_out
+            t_wait = self.cues[position+1].wait
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
+            self.window.sequential.wait = t_wait
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
@@ -90,15 +94,6 @@ class Sequence(object):
                     self.app.dmx.sequence[channel-1] = level
 
             self.app.dmx.send()
-            """
-            for chanel in range(512):
-                level = self.cues[position].channels[chanel]
-                outputs = self.patch.chanels[chanel]
-                for output in outputs:
-                    self.app.dmx.sequence[output-1] = level
-            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
-            self.app.dmx.send()
-            """
 
     def sequence_go(self, app):
         self.app = app
@@ -132,7 +127,6 @@ class ThreadGo(threading.Thread):
 
         # Levels when Go is sent
         for output in range(512):
-            #self.dmxlevels[output] = self.app.dmxframe.dmx_frame[output]
             self.dmxlevels[output] = self.app.dmx.frame[output]
 
         # On récupère les temps de montée et de descente de la mémoire suivante
@@ -173,8 +167,10 @@ class ThreadGo(threading.Thread):
             self.app.sequence.position += 1
             t_in = self.app.sequence.cues[position+1].time_in
             t_out = self.app.sequence.cues[position+1].time_out
+            t_wait = self.app.sequence.cues[position+1].wait
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
+            self.app.win_seq.sequential.wait = t_wait
             self.app.win_seq.sequential.pos_x = 0
             path = Gtk.TreePath.new_from_indices([position])
             self.app.win_seq.treeview.set_cursor(path, None, False)
@@ -193,8 +189,10 @@ class ThreadGo(threading.Thread):
             position = 0
             t_in = self.app.sequence.cues[position+1].time_in
             t_out = self.app.sequence.cues[position+1].time_out
+            t_wait = self.app.sequence.cues[position+1].wait
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
+            self.app.win_seq.sequential.wait = t_wait
             self.app.win_seq.sequential.pos_x = 0
             self.app.win_seq.sequential.queue_draw()
             print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)

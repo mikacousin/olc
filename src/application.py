@@ -473,8 +473,10 @@ class Application(Gtk.Application):
                 # On récupère les temps de la mémoire suivante
                 t_in = self.sequence.cues[1].time_in
                 t_out = self.sequence.cues[1].time_out
+                t_wait = self.sequence.cues[1].wait
                 self.win_seq.sequential.time_in = t_in
                 self.win_seq.sequential.time_out = t_out
+                self.win_seq.sequential.wait = t_wait
 
                 # On met à jour la liste des mémoires
                 self.win_seq.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)

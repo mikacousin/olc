@@ -226,10 +226,11 @@ class GroupWidget(Gtk.Widget):
 class SequentialWidget(Gtk.Widget):
     __gtype_name__ = 'SequentialWidget'
 
-    def __init__(self, time_in, time_out):
+    def __init__(self, time_in, time_out, wait):
 
         self.time_in = time_in
         self.time_out = time_out
+        self.wait = wait
 
         self.pos_x = 0
 
@@ -243,6 +244,10 @@ class SequentialWidget(Gtk.Widget):
         else:
             self.time_max = self.time_out
             self.time_min = self.time_in
+
+        # Add Wait Time
+        self.time_max = self.time_max + self.wait
+        self.time_min = self.time_min + self.wait
 
         # paint background
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
@@ -273,17 +278,38 @@ class SequentialWidget(Gtk.Widget):
             cr.line_to(16+(inter*(i+1)), 18)
         cr.stroke()
 
+        # Draw Wait if any
+        if self.wait > 0:
+            # Draw Wait lines
+            cr.move_to(16, 40)
+            cr.line_to(16+(inter*self.wait), 40)
+            cr.move_to(16, allocation.height-32)
+            cr.line_to(16+(inter*self.wait), allocation.height-32)
+            wait_x = inter * self.wait
+            # Draw Wait time on the time line
+            cr.move_to(12+(inter*self.wait),16)
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(12)
+            if self.wait.is_integer():              # If time is integer don't show the ".0"
+                cr.show_text(str(int(self.wait)))
+            else:
+                cr.show_text(str(self.wait))
+        else:
+            wait_x = 0
+
         # draw Out line
         cr.set_source_rgb(0.5, 0.5, 0.5)
-        cr.move_to(16, 40)
-        cr.line_to(16+(inter*self.time_out), allocation.height-32)
+        cr.move_to(16+wait_x, 40)
+        cr.line_to(16+wait_x+(inter*self.time_out), allocation.height-32)
         cr.stroke()
         # draw an arrow at the end
         arrow_lenght = 12
         arrow_degrees = 10
-        start_x = 16
+        start_x = wait_x + 16
         start_y = 40
-        end_x = 16+(inter*self.time_out)
+        end_x = 16+wait_x+(inter*self.time_out)
         end_y = allocation.height-32
         angle = math.atan2(end_y - start_y, end_x - start_x)
         x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
@@ -313,15 +339,15 @@ class SequentialWidget(Gtk.Widget):
 
         # draw In line
         cr.set_source_rgb(0.5, 0.5, 0.5)
-        cr.move_to(16, allocation.height-32)
-        cr.line_to(16+(inter*self.time_in), 40)
+        cr.move_to(16+wait_x, allocation.height-32)
+        cr.line_to(16+wait_x+(inter*self.time_in), 40)
         cr.stroke()
         # draw an arrow at the end
         arrow_lenght = 12
         arrow_degrees = 10
-        start_x = 16
+        start_x = wait_x + 16
         start_y = allocation.height-32
-        end_x = 16+(inter*self.time_in)
+        end_x = 16+wait_x+(inter*self.time_in)
         end_y = 40
         angle = math.atan2(end_y - start_y, end_x - start_x)
         x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
