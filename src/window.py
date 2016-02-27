@@ -14,7 +14,7 @@ class Window(Gtk.ApplicationWindow):
         self.patch = patch
 
         Gtk.Window.__init__(self, title="Open Lighting Console", application=app)
-        self.set_default_size(1400, 1000)
+        self.set_default_size(1400, 1200)
 
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
         self.header.set_subtitle("Fonctionne avec ola")
@@ -37,8 +37,8 @@ class Window(Gtk.ApplicationWindow):
         self.set_titlebar(self.header)
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        self.paned.set_position(850)
-        self.paned.set_wide_handle(True)
+        self.paned.set_position(950)
+        #self.paned.set_wide_handle(True)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
