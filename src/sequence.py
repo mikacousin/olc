@@ -238,37 +238,6 @@ class ThreadGo(threading.Thread):
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
 
-        """
-        for channel in range(512):
-
-            #TODO: le niveau précédent doit prendre en compte les channels envoyés
-            #      et pas ceux de la conduite
-            old_level = self.app.sequence.cues[position].channels[channel]
-
-            # On boucle sur les mémoires et on revient à 0
-            if position < self.app.sequence.last - 1:
-                next_level = self.app.sequence.cues[position+1].channels[channel]
-            else:
-                next_level = self.app.sequence.cues[0].channels[channel]
-                self.app.sequence.position = 0
-
-            # Si le level augmente, on prends le temps de montée
-            if next_level > old_level and i < delay_in:
-                level = int(((next_level - old_level+1) / delay_in) * i) + old_level
-            # Si le level descend, on prend le temps de descente
-            elif next_level < old_level and i < delay_out:
-                level = old_level - abs(int(((next_level - old_level-1) / delay_out) *i))
-            # Sinon, la valeur est déjà bonne
-            else:
-                level = next_level
-
-            outputs = self.app.patch.chanels[channel]
-            for output in outputs:
-                self.app.dmxframe.set_level(output-1, level)
-
-        self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
-        """
-
 if __name__ == "__main__":
 
     sequence = Sequence(1)
