@@ -128,13 +128,8 @@ class MastersWindow(Gtk.Window):
                             for k in range(len(self.app.chasers)):
                                     if self.app.chasers[k].index == nb:
 
-                                        # Si il tournait et que le master passe à 0
-                                        if level_scale == 0 and self.app.chasers[k].run == True:
-                                            # Stop Chaser
-                                            self.app.chasers[k].run = False
-                                            self.thread.stop()
                                         # Si il ne tournait pas et master > 0
-                                        elif level_scale and self.app.chasers[k].run == False:
+                                        if level_scale and self.app.chasers[k].run == False:
                                             # Start Chaser
                                             self.app.chasers[k].run = True
                                             self.thread = ThreadChaser(self.app, self.masters[i], k, level_scale)
@@ -143,6 +138,17 @@ class MastersWindow(Gtk.Window):
                                         elif level_scale and self.app.chasers[k].run == True:
                                             # Update Max Level
                                             self.thread.level_scale = level_scale
+                                        # Si il tournait et que le master passe à 0
+                                        elif level_scale == 0 and self.app.chasers[k].run == True:
+                                            # Stop Chaser
+                                            self.app.chasers[k].run = False
+                                            self.thread.stop()
+                                            self.thread.join()
+                                            for output in range(512):
+                                                channel = self.app.patch.outputs[output]
+                                                #if self.app.chasers[k].channels[channel-1] != 0:
+                                                self.masters[i].dmx[channel-1] = 0
+                                            self.app.dmx.send()
 
 class ThreadChaser(threading.Thread):
     def __init__(self, app, master, chaser, level_scale, name=''):
@@ -181,7 +187,7 @@ class ThreadChaser(threading.Thread):
             i = (time.time() * 1000) - start_time
 
             # Boucle sur le temps de monté ou de descente (le plus grand)
-            while i < delay:
+            while i < delay and self.app.chasers[self.chaser].run:
                 # Mise à jour des niveaux
                 GLib.idle_add(self.update_levels, delay, delay_in, delay_out, i, position)
                 time.sleep(0.02)
