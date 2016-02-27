@@ -28,7 +28,7 @@ class Sequence(object):
         self.patch = patch
 
         # create an empty cue 0
-        cue = Cue(0, 0, text="Cue 0")
+        cue = Cue(0, 0, text="")
         self.add_cue(cue)
 
     def add_cue(self, cue):
