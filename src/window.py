@@ -1,7 +1,7 @@
 import select
 import time
 import threading
-from gi.repository import Gtk, GObject, Gdk, GLib
+from gi.repository import Gio, Gtk, GObject, Gdk, GLib
 from ola import OlaClient
 
 from olc.customwidgets import ChanelWidget
@@ -20,7 +20,25 @@ class Window(Gtk.ApplicationWindow):
         self.header.set_subtitle("Fonctionne avec ola")
         self.header.props.show_close_button = True
 
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        #Gtk.StyleContext.add_class(box.get_style_context(), "linked")
+        button = Gtk.Button()
+        icon = Gio.ThemedIcon(name="view-grid-symbolic")
+        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
+        button.add(image)
+        box.add(button)
+        button = Gtk.Button()
+        icon = Gio.ThemedIcon(name="open-menu-symbolic")
+        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
+        button.add(image)
+        box.add(button)
+        self.header.pack_end(box)
+
         self.set_titlebar(self.header)
+
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
+        self.paned.set_position(850)
+        self.paned.set_wide_handle(True)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -45,7 +63,12 @@ class Window(Gtk.ApplicationWindow):
             self.flowbox.add(self.chanels[i])
 
         self.scrolled.add(self.flowbox)
-        self.add(self.scrolled)
+        self.paned.add1(self.scrolled)
+
+        self.label = Gtk.Label("Saisie :")
+        self.paned.add2(self.label)
+
+        self.add(self.paned)
 
         self.timeout_id = GObject.timeout_add(50, self.on_timeout, None)
 
