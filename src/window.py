@@ -65,8 +65,12 @@ class Window(Gtk.ApplicationWindow):
         self.scrolled.add(self.flowbox)
         self.paned.add1(self.scrolled)
 
-        self.label = Gtk.Label("Saisie :")
-        self.paned.add2(self.label)
+        self.grid = Gtk.Grid()
+        label = Gtk.Label("Saisie clavier : ")
+        self.grid.add(label)
+        self.label = Gtk.Label("")
+        self.grid.attach_next_to(self.label, label, Gtk.PositionType.RIGHT, 1, 1)
+        self.paned.add2(self.grid)
 
         self.add(self.paned)
 
@@ -100,6 +104,8 @@ class Window(Gtk.ApplicationWindow):
         #print (keyname)
         if keyname == "1" or keyname == "2" or keyname == "3" or keyname == "4" or keyname == "5" or keyname =="6" or keyname == "7" or keyname =="8" or keyname == "9" or keyname =="0":
             self.keystring += keyname
+            self.label.set_label(self.keystring)
+            self.label.queue_draw()
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -132,6 +138,8 @@ class Window(Gtk.ApplicationWindow):
                 self.app.window.chanels[chanel].queue_draw()
                 self.last_chan_selected = self.keystring
         self.keystring = ""
+        self.label.set_label(self.keystring)
+        self.label.queue_draw()
 
     def keypress_greater(self):
         """ Thru """
@@ -141,6 +149,8 @@ class Window(Gtk.ApplicationWindow):
                 self.app.window.chanels[chanel].queue_draw()
             self.last_chan_selected = self.keystring
             self.keystring = ""
+            self.label.set_label(self.keystring)
+            self.label.queue_draw()
 
     def keypress_plus(self):
         """ + """
@@ -150,6 +160,8 @@ class Window(Gtk.ApplicationWindow):
             self.app.window.chanels[chanel].queue_draw()
             self.last_chan_selected = self.keystring
         self.keystring = ""
+        self.label.set_label(self.keystring)
+        self.label.queue_draw()
 
     def keypress_minus(self):
         """ - """
@@ -159,6 +171,8 @@ class Window(Gtk.ApplicationWindow):
             self.app.window.chanels[chanel].queue_draw()
             self.last_chan_selected = self.keystring
         self.keystring = ""
+        self.label.set_label(self.keystring)
+        self.label.queue_draw()
 
     def keypress_Right(self):
         """ Level +1 of selected channels """
@@ -191,11 +205,15 @@ class Window(Gtk.ApplicationWindow):
                 if level >= 0 and level <= 255:
                     self.app.dmx.user[channel] = level
         self.keystring = ""
+        self.label.set_label(self.keystring)
+        self.label.queue_draw()
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
 
     def keypress_Escape(self):
         self.keystring = ""
+        self.label.set_label(self.keystring)
+        self.label.queue_draw()
 
     def keypress_Up(self):
         """ Seq - """
