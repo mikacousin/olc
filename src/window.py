@@ -226,3 +226,15 @@ class Window(Gtk.ApplicationWindow):
     def keypress_space(self):
         """ Go """
         self.app.sequence.sequence_go(self.app)
+
+    def keypress_U(self):
+        """ Update Cue """
+        position = self.app.sequence.position
+        memory = self.app.sequence.cues[position].memory
+        # TODO: Dialogue de confirmation de mise à jour
+        for output in range(512):
+            channel = self.app.patch.outputs[output]
+            level = self.app.dmx.frame[output]
+            #print("Output", output, "Channel", channel, "@", level)
+            self.app.sequence.cues[position].channels[channel-1] = level
+        print("Mise à jour de la mémoire", memory)
