@@ -249,7 +249,6 @@ class ThreadGo(threading.Thread):
 
                     #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
 
-                    #self.app.dmxframe.set_level(output, level)
                     self.app.dmx.sequence[channel-1] = level
 
             #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
