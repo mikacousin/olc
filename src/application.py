@@ -172,6 +172,9 @@ class Application(Gtk.Application):
             # self.file is the file that we get from the FileChooserDialog
             self.file = open_dialog.get_file()
 
+            # TODO: Créer un fichier ascii.py pour alléger ce fichier
+            # TODO: permettre de charger un fichier après un autre (tout réinitialiser)
+
             try:
                 fstream = self.file.read(None)
                 dstream = Gio.DataInputStream.new(fstream)
