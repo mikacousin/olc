@@ -592,6 +592,12 @@ class Application(Gtk.Application):
         dialog.destroy()
 
     def _exit(self, action, parameter):
+        # Stop Chasers Threads
+        for i in range(len(self.chasers)):
+            if self.chasers[i].run:
+                self.chasers[i].run = False
+                self.win_masters.thread.stop()
+                self.win_masters.thread.join()
         self.quit()
 
 
