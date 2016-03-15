@@ -106,6 +106,10 @@ class Window(Gtk.ApplicationWindow):
             self.keystring += keyname
             self.label.set_label(self.keystring)
             self.label.queue_draw()
+        if keyname == "KP_1" or keyname == "KP_2" or keyname == "KP_3" or keyname == "KP_4" or keyname == "KP_5" or keyname == "KP_6" or keyname == "KP_7" or keyname == "KP_8" or keyname == "KP_9" or keyname == "KP_0":
+            self.keystring += keyname[3:]
+            self.label.set_label(self.keystring)
+            self.label.queue_draw()
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -152,6 +156,9 @@ class Window(Gtk.ApplicationWindow):
             self.label.set_label(self.keystring)
             self.label.queue_draw()
 
+    def keypress_KP_Add(self):
+        self.keypress_plus()
+
     def keypress_plus(self):
         """ + """
         chanel = int(self.keystring)-1
@@ -162,6 +169,9 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.label.set_label(self.keystring)
         self.label.queue_draw()
+
+    def keypress_KP_Subtract(self):
+        self.keypress_minus()
 
     def keypress_minus(self):
         """ - """
@@ -195,6 +205,9 @@ class Window(Gtk.ApplicationWindow):
                     self.app.dmx.user[channel-1] = level - 1
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
+
+    def keypress_KP_Enter(self):
+        self.keypress_equal()
 
     def keypress_equal(self):
         """ @ Level """
