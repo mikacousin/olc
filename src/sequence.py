@@ -97,19 +97,19 @@ class Sequence(object):
 
     def sequence_go(self, app):
         self.app = app
-        # TODO: Si un Go est en cours
+        # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.on_go:
+            # Stop actual Thread
             self.thread.stop()
+            self.thread.join()
             self.on_go = False
-            #self.position += 1
-            #self.sequence_go(self.app)
+            # Launch another Go
+            self.sequence_go(self.app)
         else:
             # On indique qu'un Go est en cours
             self.on_go = True
             self.thread = ThreadGo(self.app)
             self.thread.start()
-            #time.sleep(6)
-            #thread.stop()
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
