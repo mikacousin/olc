@@ -18,7 +18,7 @@ class Dmx(object):
         self.user = array.array('h', [-1] * 512)
 
     def send(self):
-        # TODO: cette fonction doit envoyer les valeurs DMX à Ola en prenant en compte
+        # Cette fonction envoi les valeurs DMX à Ola en prenant en compte
         # les valeurs actuelles, le sequentiel, les masters et les valeurs entrées par l'utilisateur
 
         # Pour chaque output

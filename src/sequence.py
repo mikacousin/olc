@@ -181,20 +181,8 @@ class ThreadGo(threading.Thread):
             self.app.win_seq.treeview.set_cursor(path, None, False)
             self.app.win_seq.grid.queue_draw()
 
-            # TODO: Si la mémoire a un Wait
+            # Si la mémoire a un Wait
             if self.app.sequence.cues[position+1].wait:
-                #print("Auto Go after", self.app.sequence.cues[position+1].wait, "seconds")
-                #start_time = time.time() * 1000 # actual time in ms
-                #delay = self.app.sequence.cues[position+1].wait * 1000
-                #i = (time.time() * 1000) - start_time
-
-                #while i < delay:
-                #    GLib.idle_add(self.update_wait, delay, i) # Mise à jour sliders
-                #    time.sleep(0.01)
-                #    i = (time.time() * 1000) - start_time
-
-                #time.sleep(self.app.sequence.cues[position+1].wait)
-                print("GO!")
                 self.app.window.keypress_space()
 
         # Sinon, on revient au début

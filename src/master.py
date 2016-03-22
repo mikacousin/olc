@@ -3,11 +3,6 @@ import threading
 import time
 from gi.repository import Gtk, GLib
 
-# TODO : - les Masters ne doivent pas descendre sous la valeur dmx envoyée par le sequentiel ou
-#        entrée directement à la main.
-#        - les Masters ne doivent pas bouger sur un Go si leur valeur est supérieure à celle envoyée dans
-#        le séquentiel
-
 class Master(object):
     def __init__(self, page, number, content_type, content_value, groups, chasers, exclude_record=True, text=""):
         self.page = page
