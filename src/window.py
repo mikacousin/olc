@@ -145,6 +145,9 @@ class Window(Gtk.ApplicationWindow):
         self.label.set_label(self.keystring)
         self.label.queue_draw()
 
+    def keypress_KP_Divide(self):
+        self.keypress_greater()
+
     def keypress_greater(self):
         """ Thru """
         if self.last_chan_selected:
@@ -222,6 +225,9 @@ class Window(Gtk.ApplicationWindow):
         self.label.queue_draw()
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
+
+    def keypress_BackSpace(self):
+        self.keypress_Escape()
 
     def keypress_Escape(self):
         self.keystring = ""
