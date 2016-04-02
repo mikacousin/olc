@@ -34,7 +34,10 @@ class ChanelWidget(Gtk.Widget):
         # dessine un cadre
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
-        cr.set_source_rgb(0.3, 0.3, 0.3)
+        if self.clicked:
+            cr.set_source_rgb(0.9, 0.6, 0.2)
+        else:
+            cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
         # dessine fond pour le numéro de cicuit
