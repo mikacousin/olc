@@ -245,8 +245,10 @@ class ThreadGo(threading.Thread):
             self.app.dmx.send()
 
     def update_wait(self, delay, i):
-        #Mise à jour position des sliders
-        self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # TODO (800-32) en dur dans customwidgets
+        # Update sliders position
+        # Get width of the sequential widget to place cursors correctly
+        allocation = self.app.win_seq.sequential.get_allocation()
+        self.app.win_seq.sequential.pos_x = ((allocation.width - 32) / delay) * i
         self.app.win_seq.sequential.queue_draw()
 
 if __name__ == "__main__":
