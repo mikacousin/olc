@@ -203,8 +203,10 @@ class ThreadGo(threading.Thread):
         self._stopevent.set()
 
     def update_levels(self, delay, delay_in, delay_out, delay_wait, i, position):
-        #Mise à jour position des sliders
-        self.app.win_seq.sequential.pos_x = ((800 - 32) / delay) * i # TODO (800-32) en dur dans customwidgets
+        # Update sliders position
+        # Get width of the sequential widget to place cursors correctly
+        allocation = self.app.win_seq.sequential.get_allocation()
+        self.app.win_seq.sequential.pos_x = ((allocation.width - 32) / delay) * i
         self.app.win_seq.sequential.queue_draw()
 
         # On attend que le temps d'un éventuel wait soit passé pour changer les levels
