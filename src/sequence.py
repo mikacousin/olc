@@ -104,6 +104,18 @@ class Sequence(object):
             if float(self.cues[i].memory) == float(keystring):
                 # Position to the one just before
                 self.app.sequence.position = i - 1
+                position = self.app.sequence.position
+                # Redraw Sequential window with new times
+                t_in = self.app.sequence.cues[position+1].time_in
+                t_out = self.app.sequence.cues[position+1].time_out
+                t_wait = self.app.sequence.cues[position+1].wait
+                self.app.win_seq.sequential.time_in = t_in
+                self.app.win_seq.sequential.time_out = t_out
+                self.app.win_seq.sequential.wait = t_wait
+                self.app.win_seq.sequential.pos_x = 0
+                path = Gtk.TreePath.new_from_indices([position])
+                self.app.win_seq.treeview.set_cursor(path, None, False)
+                self.app.win_seq.grid.queue_draw()
                 # Launch Go
                 self.sequence_go(self.app)
                 break
