@@ -67,11 +67,16 @@ class Window(Gtk.ApplicationWindow):
 
         # TODO: Try to use Gtk.Statusbar to display keyboard's keys
 
+        self.statusbar = Gtk.Statusbar()
+        self.context_id = self.statusbar.get_context_id("keypress")
+        #self.statusbar.push(self.context_id, "Test")
+
         self.grid = Gtk.Grid()
         label = Gtk.Label("Saisie clavier : ")
         self.grid.add(label)
-        self.label = Gtk.Label("")
-        self.grid.attach_next_to(self.label, label, Gtk.PositionType.RIGHT, 1, 1)
+        #self.label = Gtk.Label("")
+        #self.grid.attach_next_to(self.label, label, Gtk.PositionType.RIGHT, 1, 1)
+        self.grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
         self.paned.add2(self.grid)
 
         self.add(self.paned)
@@ -106,16 +111,19 @@ class Window(Gtk.ApplicationWindow):
         #print (keyname)
         if keyname == "1" or keyname == "2" or keyname == "3" or keyname == "4" or keyname == "5" or keyname =="6" or keyname == "7" or keyname =="8" or keyname == "9" or keyname =="0":
             self.keystring += keyname
-            self.label.set_label(self.keystring)
-            self.label.queue_draw()
+            #self.label.set_label(self.keystring)
+            #self.label.queue_draw()
+            self.statusbar.push(self.context_id, self.keystring)
         if keyname == "KP_1" or keyname == "KP_2" or keyname == "KP_3" or keyname == "KP_4" or keyname == "KP_5" or keyname == "KP_6" or keyname == "KP_7" or keyname == "KP_8" or keyname == "KP_9" or keyname == "KP_0":
             self.keystring += keyname[3:]
-            self.label.set_label(self.keystring)
-            self.label.queue_draw()
+            #self.label.set_label(self.keystring)
+            #self.label.queue_draw()
+            self.statusbar.push(self.context_id, self.keystring)
         if keyname == "period" :
             self.keystring += "."
-            self.label.set_label(self.keystring)
-            self.label.queue_draw()
+            #self.label.set_label(self.keystring)
+            #self.label.queue_draw()
+            self.statusbar.push(self.context_id, self.keystring)
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -151,8 +159,9 @@ class Window(Gtk.ApplicationWindow):
             except:
                 pass
         self.keystring = ""
-        self.label.set_label(self.keystring)
-        self.label.queue_draw()
+        #self.label.set_label(self.keystring)
+        #self.label.queue_draw()
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -165,8 +174,9 @@ class Window(Gtk.ApplicationWindow):
                 self.app.window.chanels[chanel].queue_draw()
             self.last_chan_selected = self.keystring
             self.keystring = ""
-            self.label.set_label(self.keystring)
-            self.label.queue_draw()
+            #self.label.set_label(self.keystring)
+            #self.label.queue_draw()
+            self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Add(self):
         self.keypress_plus()
@@ -179,8 +189,9 @@ class Window(Gtk.ApplicationWindow):
             self.app.window.chanels[chanel].queue_draw()
             self.last_chan_selected = self.keystring
         self.keystring = ""
-        self.label.set_label(self.keystring)
-        self.label.queue_draw()
+        #self.label.set_label(self.keystring)
+        #self.label.queue_draw()
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Subtract(self):
         self.keypress_minus()
@@ -193,8 +204,9 @@ class Window(Gtk.ApplicationWindow):
             self.app.window.chanels[chanel].queue_draw()
             self.last_chan_selected = self.keystring
         self.keystring = ""
-        self.label.set_label(self.keystring)
-        self.label.queue_draw()
+        #self.label.set_label(self.keystring)
+        #self.label.queue_draw()
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_Right(self):
         """ Level +1 of selected channels """
@@ -233,8 +245,9 @@ class Window(Gtk.ApplicationWindow):
                 except:
                     pass
         self.keystring = ""
-        self.label.set_label(self.keystring)
-        self.label.queue_draw()
+        #self.label.set_label(self.keystring)
+        #self.label.queue_draw()
+        self.statusbar.push(self.context_id, self.keystring)
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
 
@@ -243,8 +256,9 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Escape(self):
         self.keystring = ""
-        self.label.set_label(self.keystring)
-        self.label.queue_draw()
+        #self.label.set_label(self.keystring)
+        #self.label.queue_draw()
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_Up(self):
         """ Seq - """
@@ -262,8 +276,9 @@ class Window(Gtk.ApplicationWindow):
         """ Goto """
         self.app.sequence.sequence_goto(self.app, self.keystring)
         self.keystring = ""
-        self.label.set_label(self.keystring)
-        self.label.queue_draw()
+        #self.label.set_label(self.keystring)
+        #self.label.queue_draw()
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_U(self):
         """ Update Cue """
