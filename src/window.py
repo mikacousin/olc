@@ -13,6 +13,10 @@ class Window(Gtk.ApplicationWindow):
         self.app = app
         self.patch = patch
 
+        # 0 : patched channels
+        # 1 : all channels
+        self.view_type = 0
+
         Gtk.Window.__init__(self, title="Open Lighting Console", application=app)
         self.set_default_size(1400, 1200)
 
@@ -25,6 +29,7 @@ class Window(Gtk.ApplicationWindow):
         button = Gtk.Button()
         icon = Gio.ThemedIcon(name="view-grid-symbolic")
         image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
+        button.connect("clicked", self.button_clicked_cb)
         button.add(image)
         box.add(button)
         button = Gtk.Button()
@@ -86,13 +91,16 @@ class Window(Gtk.ApplicationWindow):
         self.connect('key_press_event', self.on_key_press_event)
 
     def filter_func(self, child, user_data):
-        i = child.get_index()
-        for j in range(len(self.patch.chanels[i])):
-            #print("Chanel:", i+1, "Output:", self.patch.chanels[i][j])
-            if self.patch.chanels[i][j] != 0:
-                return child
-            else:
-                return False
+        if self.view_type == 0:
+            i = child.get_index()
+            for j in range(len(self.patch.chanels[i])):
+                #print("Chanel:", i+1, "Output:", self.patch.chanels[i][j])
+                if self.patch.chanels[i][j] != 0:
+                    return child
+                else:
+                    return False
+        else:
+            return True
 
     def on_button_toggled(self, button, name):
         if button.get_active():
@@ -105,6 +113,14 @@ class Window(Gtk.ApplicationWindow):
         if readable:
             self.app.ola_client.SocketReady()
         return True
+
+    def button_clicked_cb(self, button):
+        """ Toggle type of view : patched channels or all channels """
+        if self.view_type == 0:
+            self.view_type = 1
+        else:
+            self.view_type = 0
+        self.flowbox.invalidate_filter()
 
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
