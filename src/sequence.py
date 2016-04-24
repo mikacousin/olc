@@ -95,6 +95,19 @@ class Sequence(object):
 
             self.app.dmx.send()
 
+    def sequence_goto(self, app, keystring):
+        """ Jump to cue number """
+        self.app = app
+        # Scan all cues
+        for i in range(len(self.cues)):
+            # Until we find the good one
+            if float(self.cues[i].memory) == float(keystring):
+                # Position to the one just before
+                self.app.sequence.position = i - 1
+                # Launch Go
+                self.sequence_go(self.app)
+                break
+
     def sequence_go(self, app):
         self.app = app
         # Si un Go est en cours, on bascule sur la mémoire suivante

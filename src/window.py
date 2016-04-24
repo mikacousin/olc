@@ -65,6 +65,8 @@ class Window(Gtk.ApplicationWindow):
         self.scrolled.add(self.flowbox)
         self.paned.add1(self.scrolled)
 
+        # TODO: Try to use Gtk.Statusbar to display keyboard's keys
+
         self.grid = Gtk.Grid()
         label = Gtk.Label("Saisie clavier : ")
         self.grid.add(label)
@@ -110,6 +112,10 @@ class Window(Gtk.ApplicationWindow):
             self.keystring += keyname[3:]
             self.label.set_label(self.keystring)
             self.label.queue_draw()
+        if keyname == "period" :
+            self.keystring += "."
+            self.label.set_label(self.keystring)
+            self.label.queue_draw()
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -136,11 +142,14 @@ class Window(Gtk.ApplicationWindow):
                 self.app.window.chanels[chanel].queue_draw()
                 self.last_chan_selected = ""
         else:
-            chanel = int(self.keystring)-1
-            if chanel >= 0 and chanel < 512:
-                self.app.window.chanels[chanel].clicked = True
-                self.app.window.chanels[chanel].queue_draw()
-                self.last_chan_selected = self.keystring
+            try:
+                chanel = int(self.keystring)-1
+                if chanel >= 0 and chanel < 512:
+                    self.app.window.chanels[chanel].clicked = True
+                    self.app.window.chanels[chanel].queue_draw()
+                    self.last_chan_selected = self.keystring
+            except:
+                pass
         self.keystring = ""
         self.label.set_label(self.keystring)
         self.label.queue_draw()
@@ -217,9 +226,12 @@ class Window(Gtk.ApplicationWindow):
         for output in range(512):
             channel = self.app.patch.outputs[output] - 1
             if self.app.window.chanels[channel].clicked:
-                level = int(self.keystring)
-                if level >= 0 and level <= 255:
-                    self.app.dmx.user[channel] = level
+                try:
+                    level = int(self.keystring)
+                    if level >= 0 and level <= 255:
+                        self.app.dmx.user[channel] = level
+                except:
+                    pass
         self.keystring = ""
         self.label.set_label(self.keystring)
         self.label.queue_draw()
@@ -245,6 +257,13 @@ class Window(Gtk.ApplicationWindow):
     def keypress_space(self):
         """ Go """
         self.app.sequence.sequence_go(self.app)
+
+    def keypress_G(self):
+        """ Goto """
+        self.app.sequence.sequence_goto(self.app, self.keystring)
+        self.keystring = ""
+        self.label.set_label(self.keystring)
+        self.label.queue_draw()
 
     def keypress_U(self):
         """ Update Cue """
