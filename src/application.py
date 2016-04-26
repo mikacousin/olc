@@ -5,6 +5,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gio, GLib, Gdk, GObject
 from ola import OlaClient
 
+from olc.settings import Settings
 from olc.window import Window
 from olc.patchwindow import PatchWindow
 from olc.dmx import Dmx, PatchDmx
@@ -30,8 +31,13 @@ class Application(Gtk.Application):
         settings = Gtk.Settings.get_default()
         settings.set_property('gtk-application-prefer-dark-theme', True)
 
+        # To store settings
+        self.settings = Settings.new()
+
         # TODO: Choisir son univers
-        self.universe = 0
+        #self.universe = 0
+        #self.universe = Gio.Application.get_default().settings.get_value('universe')
+        self.universe = self.settings.get_int('universe')
 
         # Create patch (1:1)
         self.patch = PatchDmx()

@@ -22,9 +22,12 @@ gsettings_SCHEMAS = org.gnome.OpenLightingConsole.gschema.xml
 gschemas.compiled: $(gsettings_SCHEMAS) Makefile
 	$(AM_V_GEN) $(GLIB_COMPILE_SCHEMAS) $(builddir)
 
+@GSETTINGS_RULES@
+
 EXTRA_DIST = \
 	$(resource_files) \
 	olc.desktop.in \
+	org.gnome.OpenLightingConsole.gschema.xml \
 	$(NULL)
 
 CLEANFILES = \
