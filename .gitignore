@@ -34,3 +34,4 @@ py-compile
 src/Makefile
 src/Makefile.in
 stamp-h1
+*.valid
