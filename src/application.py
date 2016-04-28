@@ -60,15 +60,22 @@ class Application(Gtk.Application):
         self.masters = []
 
         # Create several DMX arrays
-        self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters)
+        #self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters, self.window)
 
         # Fetch dmx values on startup
-        self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
+        #self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
     def do_activate(self):
 
+        # Create main window
         self.window = Window(self, self.patch)
         self.window.show_all()
+
+        # Create several DMX arrays
+        self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters, self.window)
+
+        # Fetch dmx values on startup
+        self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
         self.win_seq = SequentialWindow(self, self.sequence)
         self.win_seq.show_all()

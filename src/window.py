@@ -161,9 +161,9 @@ class Window(Gtk.ApplicationWindow):
         """ Channel """
         if self.keystring == "" or self.keystring == "0":
             for i in range(512):
-                chanel = self.app.patch.outputs[i] - 1
-                self.app.window.chanels[chanel].clicked = False
-                self.app.window.chanels[chanel].queue_draw()
+                channel = self.app6.patch.outputs[i] - 1
+                self.app.window.chanels[channel].clicked = False
+                self.app.window.chanels[channel].queue_draw()
                 self.last_chan_selected = ""
         else:
             try:

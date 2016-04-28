@@ -1,12 +1,15 @@
 import array
 
+from olc.customwidgets import ChanelWidget
+
 class Dmx(object):
-    def __init__(self, universe, patch, ola_client, sequence, masters):
+    def __init__(self, universe, patch, ola_client, sequence, masters, window):
         self.universe = universe
         self.patch = patch
         self.ola_client = ola_client
         self.seq = sequence
         self.masters = masters
+        self.window = window
 
         # les valeurs DMX echangées avec Ola
         self.frame = array.array('B', [0] * 512)
@@ -29,6 +32,9 @@ class Dmx(object):
             if channel:
                 # On part du niveau du séquentiel
                 level = self.sequence[channel-1]
+                self.window.chanels[channel-1].color_level_red = 0.9
+                self.window.chanels[channel-1].color_level_green = 0.9
+                self.window.chanels[channel-1].color_level_blue = 0.9
                 # Si on est pas sur un Go, on utilise les valeurs de l'utilisateur
                 if not self.seq.on_go and self.user[channel-1] != -1:
                     level = self.user[channel-1]
@@ -36,6 +42,9 @@ class Dmx(object):
                 for master in range(len(self.masters)):
                     if self.masters[master].dmx[channel-1] > level:
                         level = self.masters[master].dmx[channel-1]
+                        self.window.chanels[channel-1].color_level_red = 0.4
+                        self.window.chanels[channel-1].color_level_green = 0.7
+                        self.window.chanels[channel-1].color_level_blue = 0.4
 
                 # On met à jour le niveau pour cet output
                 self.frame[output] = level
