@@ -12,10 +12,13 @@ class ChanelWidget(Gtk.Widget):
         self.level = level
         self.next_level = next_level
         self.clicked = False
+<<<<<<< HEAD
         self.color_level_red = 0.9
         self.color_level_green = 0.9
         self.color_level_blue = 0.9
         self.percent_level = True
+=======
+>>>>>>> parent of 340a111... Change levels color with Masters
 
         self.connect("button-press-event", self.on_click)
         self.set_size_request(80, 80)
@@ -61,7 +64,11 @@ class ChanelWidget(Gtk.Widget):
         cr.move_to(50,15)
         cr.show_text(self.chanel)
         # draw level
+<<<<<<< HEAD
         cr.set_source_rgb(self.color_level_red, self.color_level_green, self.color_level_blue)
+=======
+        cr.set_source_rgb(0.9, 0.9, 0.9)
+>>>>>>> parent of 340a111... Change levels color with Masters
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(13)
