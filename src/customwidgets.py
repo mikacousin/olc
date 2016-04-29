@@ -15,6 +15,7 @@ class ChanelWidget(Gtk.Widget):
         self.color_level_red = 0.9
         self.color_level_green = 0.9
         self.color_level_blue = 0.9
+        self.percent_level = True
 
         self.connect("button-press-event", self.on_click)
         self.set_size_request(80, 80)
@@ -60,15 +61,16 @@ class ChanelWidget(Gtk.Widget):
         cr.move_to(50,15)
         cr.show_text(self.chanel)
         # draw level
-        #cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.set_source_rgb(self.color_level_red, self.color_level_green, self.color_level_blue)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(13)
         cr.move_to(6,48)
         if self.level != 0 or self.next_level != 0:     # Don't show 0 level
-            cr.show_text(str(self.level))                  # Level in 0 to 255 value
-            #cr.show_text(str(int((self.level/255)*100)))    # Level in %
+            if self.percent_level:
+                cr.show_text(str(int((self.level/255)*100)))    # Level in %
+            else:
+                cr.show_text(str(self.level))                  # Level in 0 to 255 value
         # draw level bar
         cr.rectangle(allocation.width-9, allocation.height-2, 6, -(50/255)*self.level)
         cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -87,8 +89,10 @@ class ChanelWidget(Gtk.Widget):
                 cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(10)
             cr.move_to(offset_x + 24, offset_y + allocation.height-6)
-            cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
-            #cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
+            if self.percent_level:
+                cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
+            else:
+                cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
         # draw up icon
         if self.next_level > self.level:
             offset_x = 6
@@ -104,8 +108,10 @@ class ChanelWidget(Gtk.Widget):
                 cairo.FONT_WEIGHT_NORMAL)
             cr.set_font_size(10)
             cr.move_to(offset_x + 24, offset_y + 16)
-            cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
-            #cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
+            if self.percent_level:
+                cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
+            else:
+                cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
 
     def do_realize(self):
         allocation = self.get_allocation()

@@ -6,6 +6,11 @@
       <summary>Universe number</summary>
       <description></description>
     </key>
+    <key name="percent" type="b">
+      <default>true</default>
+      <summary>Display in percent</summary>
+      <description>Display levels in percent state.</description>
+    </key>
   </schema>
 </schemalist>
 
