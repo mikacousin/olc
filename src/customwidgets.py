@@ -1,6 +1,8 @@
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk, Gio
 import cairo
 import math
+
+from olc.settings import Settings
 
 class ChanelWidget(Gtk.Widget):
     __gtype_name__ = 'ChanelWidget'
@@ -15,7 +17,8 @@ class ChanelWidget(Gtk.Widget):
         self.color_level_red = 0.9
         self.color_level_green = 0.9
         self.color_level_blue = 0.9
-        self.percent_level = True
+
+        self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
 
         self.connect("button-press-event", self.on_click)
         self.set_size_request(80, 80)
