@@ -45,7 +45,7 @@ class MastersWindow(Gtk.Window):
 
         self.scale = []
         self.ad = []
-        self.label = []
+        self.flash = []
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -60,20 +60,39 @@ class MastersWindow(Gtk.Window):
             self.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
             self.scale[i].set_inverted(True)
             self.scale[i].connect("value-changed", self.scale_moved)
-            self.label.append(Gtk.Label())
-            self.label[i].set_text(masters[i].text)
+            # A button to flash the Master
+            self.flash.append(Gtk.Button.new_with_label(self.masters[i].text))
+            self.flash[i].connect("button-press-event", self.flash_on)
+            self.flash[i].connect("button-release-event", self.flash_off)
 
+            # Place the masters in the window
             if i == 0:
-                self.grid.attach(self.label[i], 0, 0, 1, 1)
-                self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+                self.grid.attach(self.scale[i], 0, 0, 1, 1)
+                self.grid.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
             elif not i % 10:
-                self.grid.attach_next_to(self.label[i], self.scale[i-10], Gtk.PositionType.BOTTOM, 1, 1)
-                self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+                self.grid.attach_next_to(self.scale[i], self.flash[i-10], Gtk.PositionType.BOTTOM, 1, 1)
+                self.grid.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
             else:
-                self.grid.attach_next_to(self.label[i], self.label[i-1], Gtk.PositionType.RIGHT, 1, 1)
-                self.grid.attach_next_to(self.scale[i], self.label[i], Gtk.PositionType.BOTTOM, 1, 1)
+                self.grid.attach_next_to(self.scale[i], self.scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                self.grid.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
 
         self.add(self.grid)
+
+    def flash_on(self, widget, event):
+        # Find the number of the button
+        for i in range(len(self.masters)):
+            if widget == self.flash[i]:
+                # Put the master's value to full
+                self.scale[i].set_value(255)
+                break
+
+    def flash_off(self, widget, event):
+        # Find the number of the button
+        for i in range(len(self.masters)):
+            if widget == self.flash[i]:
+                # Put the master's value to 0
+                self.scale[i].set_value(0)
+                break
 
     def scale_moved(self, scale):
 
