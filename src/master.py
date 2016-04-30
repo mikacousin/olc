@@ -1,7 +1,9 @@
 import array
 import threading
 import time
-from gi.repository import Gtk, GLib
+from gi.repository import Gio, Gtk, GLib
+
+from olc.settings import Settings
 
 class Master(object):
     def __init__(self, page, number, content_type, content_value, groups, chasers, exclude_record=True, text=""):
@@ -39,6 +41,8 @@ class MastersWindow(Gtk.Window):
         self.app = app
         self.masters = masters
 
+        self.percent_view = Gio.Application.get_default().settings.get_boolean('percent')
+
         Gtk.Window.__init__(self, title="Masters")
         self.set_default_size(800, 500)
         self.set_border_width(10)
@@ -53,7 +57,10 @@ class MastersWindow(Gtk.Window):
         for i in range(len(self.masters)):
             # Adjustment for scale (initial value, min value, max value,
             # step increment, page increment, page size (not used here)
-            self.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
+            if self.percent_view:
+                self.ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
+            else:
+                self.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
             self.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.ad[i]))
             self.scale[i].set_digits(0)
             self.scale[i].set_vexpand(True)
@@ -83,7 +90,10 @@ class MastersWindow(Gtk.Window):
         for i in range(len(self.masters)):
             if widget == self.flash[i]:
                 # Put the master's value to full
-                self.scale[i].set_value(255)
+                if self.percent_view:
+                    self.scale[i].set_value(100)
+                else:
+                    self.scale[i].set_value(255)
                 break
 
     def flash_off(self, widget, event):
@@ -122,7 +132,10 @@ class MastersWindow(Gtk.Window):
                                         if level_scale == 0:
                                             level = 0
                                         else:
-                                            level = int(level_group / (256 / level_scale)) + 1
+                                            if self.percent_view:
+                                                level = int(level_group / (100 / level_scale))
+                                            else:
+                                                level = int(level_group / (256 / level_scale)) + 1
 
                                         # Mise à jour du tableau des niveaux du master
                                         #self.app.dmx.masters[channel-1] = level
@@ -146,7 +159,7 @@ class MastersWindow(Gtk.Window):
                                         if level_scale and self.app.chasers[k].run == False:
                                             # Start Chaser
                                             self.app.chasers[k].run = True
-                                            self.thread = ThreadChaser(self.app, self.masters[i], k, level_scale)
+                                            self.thread = ThreadChaser(self.app, self.masters[i], k, level_scale, self.percent_view)
                                             self.thread.start()
                                         # Si il tournait déjà et master > 0
                                         elif level_scale and self.app.chasers[k].run == True:
@@ -165,12 +178,13 @@ class MastersWindow(Gtk.Window):
                                             self.app.dmx.send()
 
 class ThreadChaser(threading.Thread):
-    def __init__(self, app, master, chaser, level_scale, name=''):
+    def __init__(self, app, master, chaser, level_scale, percent_view, name=''):
         threading.Thread.__init__(self)
         self.app = app
         self.master = master
         self.chaser = chaser
         self.level_scale = level_scale
+        self.percent_view = percent_view
         self.name = name
         self._stopevent = threading.Event()
 
@@ -255,7 +269,10 @@ class ThreadChaser(threading.Thread):
                 #print(old_level, next_level, level, chanel+1)
 
                 # On limite le niveau par la valeur du Master
-                level = int(level / (256 / self.level_scale))
+                if self.percent_view:
+                    level = int(level / (100 / self.level_scale))
+                else:
+                    level = int(level / (256 / self.level_scale))
 
                 # Mise à jour de la valeur des masters
                 #self.app.dmx.masters[channel-1] = level
