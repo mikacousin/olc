@@ -115,6 +115,10 @@ class Application(Gtk.Application):
         settingsAction.connect('activate', self._settings)
         self.add_action(settingsAction)
 
+        shortcutsAction = Gio.SimpleAction.new('shortcuts', None)
+        shortcutsAction.connect('activate', self._shortcuts)
+        self.add_action(shortcutsAction)
+
         aboutAction = Gio.SimpleAction.new('about', None)
         aboutAction.connect('activate', self._about)
         self.add_action(aboutAction)
@@ -579,6 +583,16 @@ class Application(Gtk.Application):
 
     def _settings(self, actions, parameter):
         pass
+
+    def _shortcuts(self, action, parameter):
+        """
+            Create Shortcuts Window
+        """
+        builder = Gtk.Builder()
+        builder.add_from_resource('/org/gnome/OpenLightingConsole/Shortcuts.ui')
+        self.shortcuts = builder.get_object('shortcuts-olc')
+        #self.shortcuts.set_transient_for(self.window)
+        self.shortcuts.show()
 
     def _about(self, action, parameter):
         """
