@@ -17,6 +17,8 @@ class Window(Gtk.ApplicationWindow):
         # 1 : all channels
         self.view_type = 0
 
+        self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
+
         Gtk.Window.__init__(self, title="Open Lighting Console", application=app)
         self.set_default_size(1400, 1200)
 
@@ -256,8 +258,14 @@ class Window(Gtk.ApplicationWindow):
             if self.app.window.chanels[channel].clicked:
                 try:
                     level = int(self.keystring)
-                    if level >= 0 and level <= 255:
-                        self.app.dmx.user[channel] = level
+                    if self.percent_level:
+                        if level >= 0 and level <= 100:
+                            self.app.dmx.user[channel] = int((level/100)*255+1)
+                            if self.app.dmx.user[channel] > 255:
+                                self.app.dmx.user[channel] = 255
+                    else:
+                        if level >= 0 and level <= 255:
+                            self.app.dmx.user[channel] = level
                 except:
                     pass
         self.keystring = ""

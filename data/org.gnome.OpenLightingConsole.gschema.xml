@@ -7,7 +7,7 @@
       <description></description>
     </key>
     <key name="percent" type="b">
-      <default>false</default>
+      <default>true</default>
       <summary>Display in percent</summary>
       <description>Display levels in percent state.</description>
     </key>
