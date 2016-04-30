@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <!-- interface-requires gtk+ 3.20 -->
+
+  <object class="GtkShortcutsWindow" id="shortcuts-olc">
+    <property name="modal">1</property>
+    <property name="visible">False</property>
+    <child>
+      <object class="GtkShortcutsSection"  id="shortcuts">
+        <property name="visible">1</property>
+        <property name="section-name">shortcuts</property>
+        <property name="max-height">12</property>
+        <child>
+          <object class="GtkShortcutsGroup" id="general">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">General</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="open">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;O</property>
+                <property name="title" translatable="yes" context="shortcut window">Open ASCII File</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="patch">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;P</property>
+                <property name="title" translatable="yes" context="shortcut window">Patch</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="groups">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;G</property>
+                <property name="title" translatable="yes" context="shortcut window">Groups</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="masters">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;M</property>
+                <property name="title" translatable="yes" context="shortcut window">Masters</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="quit">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;Q</property>
+                <property name="title" translatable="yes" context="shortcut window">Quit</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="channels">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Select Channels</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="channel">
+                <property name="visible">1</property>
+                <property name="accelerator">c</property>
+                <property name="title" translatable="yes" context="shortcut window">Select channel number</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="+">
+                <property name="visible">1</property>
+                <property name="accelerator">plus</property>
+                <property name="title" translatable="yes" context="shortcut window">Add channel number</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="-">
+                <property name="visible">1</property>
+                <property name="accelerator">minus</property>
+                <property name="title" translatable="yes" context="shortcut window">Remove channel number</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="thru">
+                <property name="visible">1</property>
+                <property name="accelerator">greater</property>
+                <property name="title" translatable="yes" context="shortcut window">Thru channel number</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="all">
+                <property name="visible">1</property>
+                <property name="accelerator">a</property>
+                <property name="title" translatable="yes" context="shortcut window">All channels</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="levels">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Levels</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="at">
+                <property name="visible">1</property>
+                <property name="accelerator">equal</property>
+                <property name="title" translatable="yes" context="shortcut window">@ level</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="+%">
+                <property name="visible">1</property>
+                <property name="accelerator">Right</property>
+                <property name="title" translatable="yes" context="shortcut window">Level +1</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="-%">
+                <property name="visible">1</property>
+                <property name="accelerator">Left</property>
+                <property name="title" translatable="yes" context="shortcut window">Level -1</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="sequence">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Sequence</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="go">
+                <property name="visible">1</property>
+                <property name="accelerator">space</property>
+                <property name="title" translatable="yes" context="shortcut window">Go</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="seq+">
+                <property name="visible">1</property>
+                <property name="accelerator">Down</property>
+                <property name="title" translatable="yes" context="shortcut window">Sequence +</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="seq-">
+                <property name="visible">1</property>
+                <property name="accelerator">Up</property>
+                <property name="title" translatable="yes" context="shortcut window">Sequence -</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="goto">
+                <property name="visible">1</property>
+                <property name="accelerator">G</property>
+                <property name="title" translatable="yes" context="shortcut window">Goto cue</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="cue">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Cue</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="update">
+                <property name="visible">1</property>
+                <property name="accelerator">U</property>
+                <property name="title" translatable="yes" context="shortcut window">Update cue</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
