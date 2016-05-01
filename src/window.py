@@ -1,6 +1,7 @@
 import select
 import time
 import threading
+import mido
 from gi.repository import Gio, Gtk, GObject, Gdk, GLib
 from ola import OlaClient
 
@@ -88,6 +89,9 @@ class Window(Gtk.ApplicationWindow):
 
         self.add(self.paned)
 
+        # Open MIDI input port
+        self.inport = mido.open_input('UC-33 USB MIDI Controller MIDI ')
+
         self.timeout_id = GObject.timeout_add(50, self.on_timeout, None)
 
         self.connect('key_press_event', self.on_key_press_event)
@@ -111,6 +115,31 @@ class Window(Gtk.ApplicationWindow):
             state = "off"
 
     def on_timeout(self, user_data):
+        # Scan MIDI messages
+        for msg in self.inport.iter_pending():
+            #print(msg)
+            if msg.type == 'note_on' and msg.note == 11 and msg.velocity == 127:
+                self.keypress_space()
+            if msg.type == 'note_on' and msg.note == 12 and msg.velocity == 127:
+                self.keypress_Up()
+            if msg.type == 'note_on' and msg.note == 13 and msg.velocity == 127:
+                self.keypress_Down()
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 1:
+                self.app.win_masters.scale[0].set_value(msg.value)
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 2:
+                self.app.win_masters.scale[1].set_value(msg.value)
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 3:
+                self.app.win_masters.scale[2].set_value(msg.value)
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 4:
+                self.app.win_masters.scale[3].set_value(msg.value)
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 5:
+                self.app.win_masters.scale[4].set_value(msg.value)
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 6:
+                self.app.win_masters.scale[5].set_value(msg.value)
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 7:
+                self.app.win_masters.scale[6].set_value(msg.value)
+
+        # Ola messages
         readable, writable, exceptional = select.select([self.app.sock], [], [], 0)
         if readable:
             self.app.ola_client.SocketReady()
