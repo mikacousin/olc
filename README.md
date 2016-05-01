@@ -14,5 +14,5 @@ $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
 $ ./autogen.sh
 $ make
-\# make install
+# make install
 ```
