@@ -1,6 +1,5 @@
-# olc
 
-Open Lighting Console
+# Open Lighting Console
 
 Open Lighting Console (olc) is a software to control lights on shows.
 
