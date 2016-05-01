@@ -82,7 +82,8 @@ class PatchWindow(Gtk.Window):
                     self.patch.outputs[int(value) - 1] = 0
                 self.patch_liststore[path][2] = text
                 self.patch.add_output(int(path)+1, int(value))
-                level = self.dmx.get_level(int(value)-1)
+                #level = self.dmx.get_level(int(value)-1)
+                level = self.dmx.frame[int(value)-1]
                 self.win.chanels[int(path)].level = level
                 self.win.chanels[int(path)].queue_draw()
                 self.win.flowbox.invalidate_filter()
@@ -101,7 +102,8 @@ class PatchWindow(Gtk.Window):
             self.patch.patch_1on1()
             for i in range(512):
                 self.patch_liststore[i][2] = str(i + 1)
-                level = self.dmx.get_level(i)
+                #level = self.dmx.get_level(i)
+                level = self.dmx.frame[i]
                 self.win.chanels[i].level = level
                 self.win.chanels[i].queue_draw()
             self.win.flowbox.invalidate_filter()
