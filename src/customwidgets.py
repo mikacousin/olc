@@ -7,10 +7,10 @@ from olc.settings import Settings
 class ChanelWidget(Gtk.Widget):
     __gtype_name__ = 'ChanelWidget'
 
-    def __init__(self, chanel, level, next_level):
+    def __init__(self, channel, level, next_level):
         Gtk.Widget.__init__(self)
 
-        self.chanel = str(chanel)
+        self.channel = str(channel)
         self.level = level
         self.next_level = next_level
         self.clicked = False
@@ -56,13 +56,13 @@ class ChanelWidget(Gtk.Widget):
             cr.set_source_rgb(0.2, 0.2, 0.2)
             cr.rectangle(1, 1, allocation.width-2, 18)
             cr.fill()
-        # draw chanel number
+        # draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         cr.move_to(50,15)
-        cr.show_text(self.chanel)
+        cr.show_text(self.channel)
         # draw level
         cr.set_source_rgb(self.color_level_red, self.color_level_green, self.color_level_blue)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 

@@ -32,9 +32,9 @@ class Dmx(object):
             if channel:
                 # On part du niveau du séquentiel
                 level = self.sequence[channel-1]
-                self.window.chanels[channel-1].color_level_red = 0.9
-                self.window.chanels[channel-1].color_level_green = 0.9
-                self.window.chanels[channel-1].color_level_blue = 0.9
+                self.window.channels[channel-1].color_level_red = 0.9
+                self.window.channels[channel-1].color_level_green = 0.9
+                self.window.channels[channel-1].color_level_blue = 0.9
                 # Si on est pas sur un Go, on utilise les valeurs de l'utilisateur
                 if not self.seq.on_go and self.user[channel-1] != -1:
                     level = self.user[channel-1]
@@ -42,9 +42,9 @@ class Dmx(object):
                 for master in range(len(self.masters)):
                     if self.masters[master].dmx[channel-1] > level:
                         level = self.masters[master].dmx[channel-1]
-                        self.window.chanels[channel-1].color_level_red = 0.4
-                        self.window.chanels[channel-1].color_level_green = 0.7
-                        self.window.chanels[channel-1].color_level_blue = 0.4
+                        self.window.channels[channel-1].color_level_red = 0.4
+                        self.window.channels[channel-1].color_level_green = 0.7
+                        self.window.channels[channel-1].color_level_blue = 0.4
 
                 # On met à jour le niveau pour cet output
                 self.frame[output] = level
@@ -61,55 +61,55 @@ class PatchDmx(object):
 
         # 2 lists to store patch (default 1:1)
         #
-        self.chanels = []
+        self.channels = []
         self.outputs = []
         for i in range(512):
-            self.chanels.append([i + 1]) # Liste de liste pour avoir plusieurs outputs sur 1 chanel
+            self.channels.append([i + 1]) # Liste de liste pour avoir plusieurs outputs sur 1 channel
             self.outputs.append(i + 1)
 
     def patch_empty(self):
         """ Set patch to Zero """
         for i in range(512):
-            self.chanels[i] = [0]
+            self.channels[i] = [0]
             self.outputs[i] = 0
 
     def patch_1on1(self):
         """ Set patch 1:1 """
         for i in range(512):
-            self.chanels[i] = [i+1]
+            self.channels[i] = [i+1]
             self.outputs[i] = i+1
 
-    def add_output(self, chanel, output):
-        """ Add an output to a chanel """
-        if self.chanels[chanel-1] == [0]:
-            self.chanels[chanel-1] = [output]
+    def add_output(self, channel, output):
+        """ Add an output to a channel """
+        if self.channels[channel-1] == [0]:
+            self.channels[channel-1] = [output]
         else:
-            self.chanels[chanel-1].append(output)
-        self.outputs[output-1] = chanel
+            self.channels[channel-1].append(output)
+        self.outputs[output-1] = channel
 
 if __name__ == "__main__":
 
     patch = PatchDmx()
 
-    #for i in range(len(patch.chanels)):
-    #    print ("chanel :", i+1, "output(s) :", patch.chanels[i])
+    #for i in range(len(patch.channels)):
+    #    print ("channel :", i+1, "output(s) :", patch.channels[i])
 
     #for i in range(len(patch.outputs)):
-    #    print ("output :", i+1, "chanel :", patch.outputs[i])
+    #    print ("output :", i+1, "channel :", patch.outputs[i])
 
     patch.patch_empty()
 
-    #for i in range(len(patch.chanels)):
-    #    print ("chanel :", i+1, "output(s) :", patch.chanels[i])
+    #for i in range(len(patch.channels)):
+    #    print ("channel :", i+1, "output(s) :", patch.channels[i])
 
     #for i in range(len(patch.outputs)):
-    #    print ("output :", i+1, "chanel :", patch.outputs[i])
+    #    print ("output :", i+1, "channel :", patch.outputs[i])
 
     patch.add_output(510, 10)
     patch.add_output(510, 20)
 
-    for i in range(len(patch.chanels)):
-        print ("chanel :", i+1, "output(s) :", patch.chanels[i])
+    for i in range(len(patch.channels)):
+        print ("channel :", i+1, "output(s) :", patch.channels[i])
 
     for i in range(len(patch.outputs)):
-        print ("output :", i+1, "chanel :", patch.outputs[i])
+        print ("output :", i+1, "channel :", patch.outputs[i])

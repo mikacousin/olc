@@ -266,7 +266,7 @@ class ThreadChaser(threading.Thread):
                 else:
                     level = next_level
 
-                #print(old_level, next_level, level, chanel+1)
+                #print(old_level, next_level, level, channel+1)
 
                 # On limite le niveau par la valeur du Master
                 if self.percent_view:

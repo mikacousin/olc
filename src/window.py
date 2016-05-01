@@ -61,13 +61,13 @@ class Window(Gtk.ApplicationWindow):
         self.last_chan_selected = ""
 
         #self.grid = []
-        self.chanels = []
+        self.channels = []
         #self.levels = []
         #self.progressbar = []
 
         for i in range(512):
-            self.chanels.append(ChanelWidget(i+1, 0, 0))
-            self.flowbox.add(self.chanels[i])
+            self.channels.append(ChanelWidget(i+1, 0, 0))
+            self.flowbox.add(self.channels[i])
 
         self.scrolled.add(self.flowbox)
         self.paned.add1(self.scrolled)
@@ -95,9 +95,9 @@ class Window(Gtk.ApplicationWindow):
     def filter_func(self, child, user_data):
         if self.view_type == 0:
             i = child.get_index()
-            for j in range(len(self.patch.chanels[i])):
-                #print("Chanel:", i+1, "Output:", self.patch.chanels[i][j])
-                if self.patch.chanels[i][j] != 0:
+            for j in range(len(self.patch.channels[i])):
+                #print("Chanel:", i+1, "Output:", self.patch.channels[i][j])
+                if self.patch.channels[i][j] != 0:
                     return child
                 else:
                     return False
@@ -153,26 +153,26 @@ class Window(Gtk.ApplicationWindow):
             level = self.app.dmx.frame[output]
             channel = self.app.patch.outputs[output] - 1
             if level > 0:
-                self.app.window.chanels[channel].clicked = True
-                self.app.window.chanels[channel].queue_draw()
+                self.app.window.channels[channel].clicked = True
+                self.app.window.channels[channel].queue_draw()
             else:
-                self.app.window.chanels[channel].clicked = False
-                self.app.window.chanels[channel].queue_draw()
+                self.app.window.channels[channel].clicked = False
+                self.app.window.channels[channel].queue_draw()
 
     def keypress_c(self):
         """ Channel """
         if self.keystring == "" or self.keystring == "0":
             for i in range(512):
                 channel = self.app.patch.outputs[i] - 1
-                self.app.window.chanels[channel].clicked = False
-                self.app.window.chanels[channel].queue_draw()
+                self.app.window.channels[channel].clicked = False
+                self.app.window.channels[channel].queue_draw()
                 self.last_chan_selected = ""
         else:
             try:
-                chanel = int(self.keystring)-1
-                if chanel >= 0 and chanel < 512:
-                    self.app.window.chanels[chanel].clicked = True
-                    self.app.window.chanels[chanel].queue_draw()
+                channel = int(self.keystring)-1
+                if channel >= 0 and channel < 512:
+                    self.app.window.channels[channel].clicked = True
+                    self.app.window.channels[channel].queue_draw()
                     self.last_chan_selected = self.keystring
             except:
                 pass
@@ -187,9 +187,9 @@ class Window(Gtk.ApplicationWindow):
     def keypress_greater(self):
         """ Thru """
         if self.last_chan_selected:
-            for chanel in range(int(self.last_chan_selected), int(self.keystring)):
-                self.app.window.chanels[chanel].clicked = True
-                self.app.window.chanels[chanel].queue_draw()
+            for channel in range(int(self.last_chan_selected), int(self.keystring)):
+                self.app.window.channels[channel].clicked = True
+                self.app.window.channels[channel].queue_draw()
             self.last_chan_selected = self.keystring
             self.keystring = ""
             #self.label.set_label(self.keystring)
@@ -201,10 +201,10 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_plus(self):
         """ + """
-        chanel = int(self.keystring)-1
-        if chanel >= 0 and chanel < 512:
-            self.app.window.chanels[chanel].clicked = True
-            self.app.window.chanels[chanel].queue_draw()
+        channel = int(self.keystring)-1
+        if channel >= 0 and channel < 512:
+            self.app.window.channels[channel].clicked = True
+            self.app.window.channels[channel].queue_draw()
             self.last_chan_selected = self.keystring
         self.keystring = ""
         #self.label.set_label(self.keystring)
@@ -216,10 +216,10 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_minus(self):
         """ - """
-        chanel = int(self.keystring)-1
-        if chanel >= 0 and chanel < 512:
-            self.app.window.chanels[chanel].clicked = False
-            self.app.window.chanels[chanel].queue_draw()
+        channel = int(self.keystring)-1
+        if channel >= 0 and channel < 512:
+            self.app.window.channels[channel].clicked = False
+            self.app.window.channels[channel].queue_draw()
             self.last_chan_selected = self.keystring
         self.keystring = ""
         #self.label.set_label(self.keystring)
@@ -230,7 +230,7 @@ class Window(Gtk.ApplicationWindow):
         """ Level +1 of selected channels """
         for output in range(512):
             channel = self.app.patch.outputs[output]
-            if self.app.window.chanels[channel-1].clicked:
+            if self.app.window.channels[channel-1].clicked:
                 level = self.app.dmx.frame[output]
                 if level < 255:
                     self.app.dmx.user[channel-1] = level + 1
@@ -241,7 +241,7 @@ class Window(Gtk.ApplicationWindow):
         """ Level -1 of selected channels """
         for output in range(512):
             channel = self.app.patch.outputs[output]
-            if self.app.window.chanels[channel-1].clicked:
+            if self.app.window.channels[channel-1].clicked:
                 level = self.app.dmx.frame[output]
                 if level > 0:
                     self.app.dmx.user[channel-1] = level - 1
@@ -255,7 +255,7 @@ class Window(Gtk.ApplicationWindow):
         """ @ Level """
         for output in range(512):
             channel = self.app.patch.outputs[output] - 1
-            if self.app.window.chanels[channel].clicked:
+            if self.app.window.channels[channel].clicked:
                 try:
                     level = int(self.keystring)
                     if self.percent_level:

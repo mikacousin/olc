@@ -135,21 +135,21 @@ class Application(Gtk.Application):
             channel = self.patch.outputs[output]
             level = dmxframe[output]
             self.dmx.frame[output] = level
-            self.window.chanels[channel-1].level = level
+            self.window.channels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
                 next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
             else:
                 next_level = self.sequence.cues[0].channels[channel-1]
-            self.window.chanels[channel-1].next_level = next_level
-            self.window.chanels[channel-1].queue_draw()
+            self.window.channels[channel-1].next_level = next_level
+            self.window.channels[channel-1].queue_draw()
 
     def fetch_dmx(self, request, univ, dmxframe):
         for output in range(len(dmxframe)):
             channel = self.patch.outputs[output]
             level = dmxframe[output]
             self.dmx.frame[output] = level
-            self.window.chanels[channel-1].level = level
-            self.window.chanels[channel-1].queue_draw()
+            self.window.channels[channel-1].level = level
+            self.window.channels[channel-1].queue_draw()
 
     def _open(self, action, parameter):
         # create a filechooserdialog to open:
@@ -288,9 +288,9 @@ class Application(Gtk.Application):
                                 for q in p:
                                     r = q.split("/")
                                     if r[0] != "":
-                                        chanel = int(r[0])
+                                        channel = int(r[0])
                                         level = int(r[1][1:], 16)
-                                        channels[chanel-1] = level
+                                        channels[channel-1] = level
                                         #print ("            ", r[0], "@", int(r[1][1:], 16))
 
                             if line == "":
@@ -379,9 +379,9 @@ class Application(Gtk.Application):
                                     r = q.split("/")
                                     #print ("            ", r[0], "@", int(r[1][1:], 16))
                                     if r[0] != "":
-                                        chanel = int(r[0])
+                                        channel = int(r[0])
                                         level = int(r[1][1:], 16)
-                                        channels[chanel-1] = level
+                                        channels[channel-1] = level
                             #if txt and t_out and t_in and channels:
                             if line == "":
                                 #print("Fin Cue", mem)
