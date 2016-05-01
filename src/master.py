@@ -159,18 +159,18 @@ class MastersWindow(Gtk.Window):
                                         if level_scale and self.app.chasers[k].run == False:
                                             # Start Chaser
                                             self.app.chasers[k].run = True
-                                            self.thread = ThreadChaser(self.app, self.masters[i], k, level_scale, self.percent_view)
-                                            self.thread.start()
+                                            self.app.chasers[k].thread = ThreadChaser(self.app, self.masters[i], k, level_scale, self.percent_view)
+                                            self.app.chasers[k].thread.start()
                                         # Si il tournait déjà et master > 0
                                         elif level_scale and self.app.chasers[k].run == True:
                                             # Update Max Level
-                                            self.thread.level_scale = level_scale
+                                            self.app.chasers[k].thread.level_scale = level_scale
                                         # Si il tournait et que le master passe à 0
                                         elif level_scale == 0 and self.app.chasers[k].run == True:
                                             # Stop Chaser
                                             self.app.chasers[k].run = False
-                                            self.thread.stop()
-                                            self.thread.join()
+                                            self.app.chasers[k].thread.stop()
+                                            self.app.chasers[k].thread.join()
                                             for output in range(512):
                                                 channel = self.app.patch.outputs[output]
                                                 #if self.app.chasers[k].channels[channel-1] != 0:

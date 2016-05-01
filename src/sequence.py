@@ -20,8 +20,10 @@ class Sequence(object):
         self.on_go = False
         # Liste des channels présent dans le sequentiel
         self.channels = array.array('B', [0] * 512)
-        # Flag pour les chasers
+        # Flag for chasers
         self.run = False
+        # Thread for chasers
+        self.thread = None
         # Pour accéder à la fenêtre du séquentiel
         self.window = None
         # On a besoin de connaitre le patch
