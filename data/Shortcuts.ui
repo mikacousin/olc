@@ -147,7 +147,7 @@
             <child>
               <object class="GtkShortcutsShortcut" id="goto">
                 <property name="visible">1</property>
-                <property name="accelerator">G</property>
+                <property name="accelerator">&lt;Shift&gt;G</property>
                 <property name="title" translatable="yes" context="shortcut window">Goto cue</property>
               </object>
             </child>
@@ -160,7 +160,7 @@
             <child>
               <object class="GtkShortcutsShortcut" id="update">
                 <property name="visible">1</property>
-                <property name="accelerator">U</property>
+                <property name="accelerator">&lt;Shift&gt;U</property>
                 <property name="title" translatable="yes" context="shortcut window">Update cue</property>
               </object>
             </child>
