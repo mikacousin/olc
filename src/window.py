@@ -125,19 +125,40 @@ class Window(Gtk.ApplicationWindow):
             if msg.type == 'note_on' and msg.note == 13 and msg.velocity == 127:
                 self.keypress_Down()
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 1:
-                self.app.win_masters.scale[0].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[0].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[0].set_value((msg.value/127)*256)
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 2:
-                self.app.win_masters.scale[1].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[1].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[1].set_value((msg.value/127)*256)
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 3:
-                self.app.win_masters.scale[2].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[2].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[2].set_value((msg.value/127)*256)
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 4:
-                self.app.win_masters.scale[3].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[3].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[3].set_value((msg.value/127)*256)
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 5:
-                self.app.win_masters.scale[4].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[4].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[4].set_value((msg.value/127)*256)
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 6:
-                self.app.win_masters.scale[5].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[5].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[5].set_value((msg.value/127)*256)
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 7:
-                self.app.win_masters.scale[6].set_value(msg.value)
+                if self.percent_level:
+                    self.app.win_masters.scale[6].set_value((msg.value/127)*100)
+                else:
+                    self.app.win_masters.scale[6].set_value((msg.value/127)*256)
 
         # Ola messages
         readable, writable, exceptional = select.select([self.app.sock], [], [], 0)
