@@ -47,7 +47,8 @@ class Sequence(object):
         position += 1
         if position < self.last-1:     # Stop on the last cue
             self.position += 1
-            self.window.sequential.pos_x = 0
+            self.window.sequential.pos_xA = 0
+            self.window.sequential.pos_xB = 0
             t_in = self.cues[position+1].time_in
             t_out = self.cues[position+1].time_out
             t_wait = self.cues[position+1].wait
@@ -75,7 +76,8 @@ class Sequence(object):
         position -= 1
         if position >= 0:
             self.position -= 1
-            self.window.sequential.pos_x = 0
+            self.window.sequential.pos_xA = 0
+            self.window.sequential.pos_xB = 0
             t_in = self.cues[position+1].time_in   # Always use times for next cue
             t_out = self.cues[position+1].time_out
             t_wait = self.cues[position+1].wait
@@ -114,7 +116,8 @@ class Sequence(object):
                 self.app.win_seq.sequential.time_in = t_in
                 self.app.win_seq.sequential.time_out = t_out
                 self.app.win_seq.sequential.wait = t_wait
-                self.app.win_seq.sequential.pos_x = 0
+                self.app.win_seq.sequential.pos_xA = 0
+                self.app.win_seq.sequential.pos_xB = 0
                 path = Gtk.TreePath.new_from_indices([position])
                 self.app.win_seq.treeview.set_cursor(path, None, False)
                 self.app.win_seq.grid.queue_draw()
@@ -203,7 +206,8 @@ class ThreadGo(threading.Thread):
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.wait = t_wait
-            self.app.win_seq.sequential.pos_x = 0
+            self.app.win_seq.sequential.pos_xA = 0
+            self.app.win_seq.sequential.pos_xB = 0
             path = Gtk.TreePath.new_from_indices([position])
             self.app.win_seq.treeview.set_cursor(path, None, False)
             self.app.win_seq.grid.queue_draw()
@@ -222,7 +226,8 @@ class ThreadGo(threading.Thread):
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.wait = t_wait
-            self.app.win_seq.sequential.pos_x = 0
+            self.app.win_seq.sequential.pos_xA = 0
+            self.app.win_seq.sequential.pos_xB = 0
             self.app.win_seq.sequential.queue_draw()
             print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
@@ -233,7 +238,8 @@ class ThreadGo(threading.Thread):
         # Update sliders position
         # Get width of the sequential widget to place cursors correctly
         allocation = self.app.win_seq.sequential.get_allocation()
-        self.app.win_seq.sequential.pos_x = ((allocation.width - 32) / delay) * i
+        self.app.win_seq.sequential.pos_xA = ((allocation.width - 32) / delay) * i
+        self.app.win_seq.sequential.pos_xB = ((allocation.width - 32) / delay) * i
         self.app.win_seq.sequential.queue_draw()
 
         # On attend que le temps d'un éventuel wait soit passé pour changer les levels
@@ -275,7 +281,8 @@ class ThreadGo(threading.Thread):
         # Update sliders position
         # Get width of the sequential widget to place cursors correctly
         allocation = self.app.win_seq.sequential.get_allocation()
-        self.app.win_seq.sequential.pos_x = ((allocation.width - 32) / delay) * i
+        self.app.win_seq.sequential.pos_xA = ((allocation.width - 32) / delay) * i
+        self.app.win_seq.sequential.pos_xB = ((allocation.width - 32) / delay) * i
         self.app.win_seq.sequential.queue_draw()
 
 if __name__ == "__main__":

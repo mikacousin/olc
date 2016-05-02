@@ -78,6 +78,10 @@ class Application(Gtk.Application):
         self.win_groups = GroupsWindow(self, self.groups)
         #self.win_groups.show_all()
 
+        # TODO: Test manual crossfade, must be deleted
+        self.win_crossfade = CrossfadeWindow()
+        self.win_crossfade.show_all()
+
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
 
@@ -624,6 +628,232 @@ class Application(Gtk.Application):
                 self.win_masters.thread.join()
         self.quit()
 
+#######################################################################
+#TODO: Must be deleted, just for testing manual crosfade
+#######################################################################
+
+
+class CrossfadeWindow(Gtk.Window):
+    def __init__(self):
+
+        self.link = True
+
+        Gtk.Window.__init__(self, title='Crossfade')
+        self.set_default_size(200, 400)
+
+        self.grid = Gtk.Grid()
+        self.grid.set_column_homogeneous(True)
+
+        self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        self.scaleA = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adA)
+        self.scaleA.set_draw_value(False)
+        self.scaleA.set_vexpand(True)
+        #self.scaleA.set_value_pos(Gtk.PositionType.BOTTOM)
+        self.scaleA.set_inverted(True)
+        self.scaleA.connect('value-changed', self.scale_moved)
+
+        self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        self.scaleB = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adB)
+        self.scaleB.set_draw_value(False)
+        self.scaleB.set_vexpand(True)
+        #self.scaleB.set_value_pos(Gtk.PositionType.BOTTOM)
+        self.scaleB.set_inverted(True)
+        self.scaleB.connect('value-changed', self.scale_moved)
+
+        self.button = Gtk.CheckButton('Link crossfade')
+        self.button.set_active(True)
+        self.button.connect('toggled', self.on_button_toggled)
+
+        self.grid.attach(self.button, 0, 0, 2, 1)
+        self.grid.attach_next_to(self.scaleA, self.button, Gtk.PositionType.BOTTOM, 1, 1)
+        self.grid.attach_next_to(self.scaleB, self.scaleA, Gtk.PositionType.RIGHT, 1, 1)
+
+        self.add(self.grid)
+
+    def on_button_toggled(self, button):
+        if button.get_active():
+            self.link = True
+        else:
+            self.link = False
+
+    def scale_moved(self, scale):
+        # TODO: Bug avec In monté puis après monter Out (les levels des channels tombent à 0)
+        # TODO: Bug si on arrive sur un wait
+        app = Gio.Application.get_default()
+        level = scale.get_value()
+        position = app.sequence.position
+
+        if level != 255 and level != 0:
+            app.sequence.on_go = True
+
+        if self.link:
+            # Update scales position
+            if scale == self.scaleA:
+                self.scaleB.set_value(level)
+            else:
+                self.scaleA.set_value(level)
+            # Update sliders position
+            delay = app.sequence.cues[position+1].time_out * 1000
+            wait = app.sequence.cues[position+1].wait * 1000
+            pos = (level / 255) * delay
+            # Get SequentialWindow's width to place cursor
+            allocation = app.win_seq.sequential.get_allocation()
+            app.win_seq.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
+            app.win_seq.sequential.pos_xB = app.win_seq.sequential.pos_xA
+            app.win_seq.sequential.queue_draw()
+            # Update levels
+            for output in range(512):
+
+                channel = app.patch.outputs[output]
+
+                old_level = app.sequence.cues[position].channels[channel-1]
+
+                if channel:
+                    if position < app.sequence.last - 1:
+                        next_level = app.sequence.cues[position+1].channels[channel-1]
+                    else:
+                        next_level = app.sequence.cues[0].channels[channel-1]
+
+                    if app.dmx.user[channel-1] != -1:
+                        user_level = app.dmx.user[channel-1]
+                        if next_level < user_level:
+                            lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
+                        elif next_level > user_level:
+                            lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                        else:
+                            lvl = user_level
+                    else:
+                        if next_level < old_level:
+                            lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
+                        elif next_level > old_level:
+                            lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
+                        else:
+                            lvl = old_level
+
+                    app.dmx.sequence[channel-1] = lvl
+
+            app.dmx.send()
+        elif scale == self.scaleA:
+            # Update slider A position
+            delay = app.sequence.cues[position+1].time_out * 1000
+            wait = app.sequence.cues[position+1].wait * 1000
+            pos = (level / 255) * delay
+            # Get SequentialWindow's width to place cursor
+            allocation = app.win_seq.sequential.get_allocation()
+            app.win_seq.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
+            app.win_seq.sequential.queue_draw()
+            # Update levels
+            for output in range(512):
+
+                channel = app.patch.outputs[output]
+
+                old_level = app.sequence.cues[position].channels[channel-1]
+
+                if channel:
+                    if position < app.sequence.last - 1:
+                        next_level = app.sequence.cues[position+1].channels[channel-1]
+                    else:
+                        next_level = app.sequence.cues[0].channels[channel-1]
+
+                    if app.dmx.user[channel-1] != -1:
+                        user_level = app.dmx.user[channel-1]
+                        if next_level < user_level:
+                            lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
+                        else:
+                            lvl = user_level
+                    else:
+                        if next_level < old_level:
+                            lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
+                        else:
+                            lvl = old_level
+
+                    app.dmx.sequence[channel-1] = lvl
+
+            app.dmx.send()
+        elif scale == self.scaleB:
+            # Update slider B position
+            delay = app.sequence.cues[position+1].time_in * 1000
+            wait = app.sequence.cues[position+1].wait * 1000
+            pos = (level / 255) * delay
+            # Get SequentialWindow's width to place cursor
+            allocation = app.win_seq.sequential.get_allocation()
+            app.win_seq.sequential.pos_xB = ((allocation.width - 32) / delay) * pos
+            app.win_seq.sequential.queue_draw()
+            # Update levels
+            for output in range(512):
+
+                channel = app.patch.outputs[output]
+
+                old_level = app.sequence.cues[position].channels[channel-1]
+
+                if channel:
+                    if position < app.sequence.last - 1:
+                        next_level = app.sequence.cues[position+1].channels[channel-1]
+                    else:
+                        next_level = app.sequence.cues[0].channels[channel-1]
+
+                    if app.dmx.user[channel-1] != -1:
+                        user_level = app.dmx.user[channel-1]
+                        if next_level > user_level:
+                            lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                        else:
+                            lvl = user_level
+                    else:
+                        if next_level > old_level:
+                            lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
+                        else:
+                            lvl = old_level
+
+                    app.dmx.sequence[channel-1] = lvl
+
+            app.dmx.send()
+
+        if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
+            if app.sequence.on_go == True:
+                app.sequence.on_go = False
+                if self.scaleA.get_inverted():
+                    self.scaleA.set_inverted(False)
+                    self.scaleB.set_inverted(False)
+                else:
+                    self.scaleA.set_inverted(True)
+                    self.scaleB.set_inverted(True)
+                self.scaleA.set_value(0)
+                self.scaleB.set_value(0)
+                # Empty array of levels enter by user
+                app.dmx.user = array.array('h', [-1] * 512)
+                # Go to next cue
+                position = app.sequence.position
+                position += 1
+                # If exist
+                if position < app.sequence.last - 1:
+                    app.sequence.position += 1
+                    t_in = app.sequence.cues[position+1].time_in
+                    t_out = app.sequence.cues[position+1].time_out
+                    t_wait = app.sequence.cues[position+1].wait
+                    app.win_seq.sequential.time_in = t_in
+                    app.win_seq.sequential.time_out = t_out
+                    app.win_seq.sequential.wait = t_wait
+                    app.win_seq.sequential.pos_xA = 0
+                    app.win_seq.sequential.pos_xB = 0
+                    path = Gtk.TreePath.new_from_indices([position])
+                    app.win_seq.treeview.set_cursor(path, None, False)
+                    app.win_seq.grid.queue_draw()
+                    # If Wait
+                    if app.sequence.cues[position+1].wait:
+                        app.window.keypress_space()
+                # Else, we return to first cue
+                else:
+                    app.sequence.position = 0
+                    position = 0
+                    t_in = app.sequence.cues[position+1].time_in
+                    t_out = app.sequence.cues[position+1].time_out
+                    t_wait = app.sequence.cues[position+1].wait
+                    app.win_seq.sequential.time_in = t_in
+                    app.win_seq.sequential.time_out = t_out
+                    app.win_seq.sequential.wait = t_wait
+                    app.win_seq.sequential.pos_xA = 0
+                    app.win_seq.sequential.pos_xB = 0
+                    app.win_seq.sequential.queue_draw()
 
 if __name__ == "__main__":
     app = Application()

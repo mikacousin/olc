@@ -248,7 +248,9 @@ class SequentialWidget(Gtk.Widget):
         self.time_out = time_out
         self.wait = wait
 
-        self.pos_x = 0
+        #self.pos_x = 0
+        self.pos_xA = 0
+        self.pos_xB = 0
 
         Gtk.Widget.__init__(self)
         self.set_size_request(800, 300)
@@ -338,9 +340,9 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X1 cursor
-        if not wait_x or self.pos_x > wait_x:
-            x1 = start_x + self.pos_x -wait_x
-            y1 = start_y + ((self.pos_x - wait_x) * math.tan(angle))
+        if not wait_x or self.pos_xA > wait_x:
+            x1 = start_x + self.pos_xA -wait_x
+            y1 = start_y + ((self.pos_xA - wait_x) * math.tan(angle))
             if x1 > end_x:
                 x1 = end_x
                 y1 = end_y
@@ -354,7 +356,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("A")
         else:
-            x1 = start_x + self.pos_x - wait_x
+            x1 = start_x + self.pos_xA- wait_x
             y1 = start_y
             if x1 > end_x:
                 x1 = end_x
@@ -392,9 +394,9 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X2 cursor
-        if not wait_x or self.pos_x > wait_x:
-            x1 = start_x + self.pos_x - wait_x
-            y1 = start_y + ((self.pos_x - wait_x) * math.tan(angle))
+        if not wait_x or self.pos_xB > wait_x:
+            x1 = start_x + self.pos_xB - wait_x
+            y1 = start_y + ((self.pos_xB - wait_x) * math.tan(angle))
             if x1 > end_x:
                 x1 = end_x
                 y1 = end_y
@@ -408,7 +410,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(x1 - 5, y1 + 3)
             cr.show_text("B")
         else:
-            x1 = start_x + self.pos_x - wait_x
+            x1 = start_x + self.pos_xB - wait_x
             y1 = start_y
             if x1 > end_x:
                 x1 = end_x
