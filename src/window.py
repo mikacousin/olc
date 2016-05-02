@@ -90,7 +90,10 @@ class Window(Gtk.ApplicationWindow):
         self.add(self.paned)
 
         # Open MIDI input port
-        self.inport = mido.open_input('UC-33 USB MIDI Controller MIDI ')
+        try:
+            self.inport = mido.open_input('UC-33 USB MIDI Controller MIDI ')
+        except:
+            self.inport = mido.open_input()
 
         self.timeout_id = GObject.timeout_add(50, self.on_timeout, None)
 
