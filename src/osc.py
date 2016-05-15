@@ -4,10 +4,11 @@ from gi.repository import Gio
 from olc.window import Window
 
 class OscClient(object):
-    def __init__(self, host="localhost", port=9000):
-        #self.port = port
+    def __init__(self):
+        # Port to send data to the client
         self.port = Gio.Application.get_default().settings.get_int('osc-client-port')
-        self.host = host
+        # client's IP address
+        self.host = Gio.Application.get_default().settings.get_string('osc-host')
 
         try:
             self.target = liblo.Address(self.host, self.port)
@@ -19,23 +20,22 @@ class OscClient(object):
         liblo.send(self.target, path, arg)
 
 class OscServer(liblo.ServerThread):
-    def __init__(self, window, port=7000):
+    def __init__(self, window):
+        # Main Window
         self.window = window
-        self.host = Gio.Application.get_default().settings.get_string('osc-host')
+        # Port to listen data from the client
         self.serv_port = Gio.Application.get_default().settings.get_int('osc-server-port')
 
         # Create Thread server
         liblo.ServerThread.__init__(self, self.serv_port)
 
         # Create Client
-        # TODO: Paramètre pour l'adresse IP
-        #self.client = OscClient(host='10.0.0.3')
-        self.client = OscClient(self.host)
+        self.client = OscClient()
 
         # Add methods (strings the server will respond)
-        self.add_method('/seq/go', 'i', self.seqgo_cb)
-        self.add_method('/seq/plus', 'i', self.seqplus_cb)
-        self.add_method('/seq/moins', 'i', self.seqless_cb)
+        self.add_method('/seq/go', 'i', self.seqgo_cb) # Go
+        self.add_method('/seq/plus', 'i', self.seqplus_cb) # Seq +
+        self.add_method('/seq/moins', 'i', self.seqless_cb) # Seq -
         self.add_method('/pad/1', None, self.pad1_cb)
         self.add_method('/pad/2', None, self.pad2_cb)
         self.add_method('/pad/3', None, self.pad3_cb)
