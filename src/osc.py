@@ -5,7 +5,8 @@ from olc.window import Window
 
 class OscClient(object):
     def __init__(self, host="localhost", port=9000):
-        self.port = port
+        #self.port = port
+        self.port = Gio.Application.get_default().settings.get_int('osc-client-port')
         self.host = host
 
         try:
@@ -21,9 +22,10 @@ class OscServer(liblo.ServerThread):
     def __init__(self, window, port=7000):
         self.window = window
         self.host = Gio.Application.get_default().settings.get_string('osc-host')
+        self.serv_port = Gio.Application.get_default().settings.get_int('osc-server-port')
 
         # Create Thread server
-        liblo.ServerThread.__init__(self, port)
+        liblo.ServerThread.__init__(self, self.serv_port)
 
         # Create Client
         # TODO: Paramètre pour l'adresse IP

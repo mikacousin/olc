@@ -16,6 +16,16 @@
       <summary>OSC client's IP address</summary>
       <description></description>
     </key>
+    <key name="osc-server-port" type="i">
+      <default>7000</default>
+      <summary>OSC server port</summary>
+      <description>Port use by OSC server to listen</description>
+    </key>
+    <key name="osc-client-port" type="i">
+      <default>9000</default>
+      <summary>OSC client port</summary>
+      <description>Port use by OSC to send data to the client</description>
+    </key>
   </schema>
 </schemalist>
 
