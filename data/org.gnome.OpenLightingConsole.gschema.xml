@@ -11,6 +11,11 @@
       <summary>Display in percent</summary>
       <description>Display levels in percent state.</description>
     </key>
+    <key name="osc-host" type="s">
+      <default>"10.0.0.3"</default>
+      <summary>OSC client's IP address</summary>
+      <description></description>
+    </key>
   </schema>
 </schemalist>
 

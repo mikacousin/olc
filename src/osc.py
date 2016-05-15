@@ -1,4 +1,5 @@
 import liblo
+from gi.repository import Gio
 
 from olc.window import Window
 
@@ -19,13 +20,15 @@ class OscClient(object):
 class OscServer(liblo.ServerThread):
     def __init__(self, window, port=7000):
         self.window = window
+        self.host = Gio.Application.get_default().settings.get_string('osc-host')
 
         # Create Thread server
         liblo.ServerThread.__init__(self, port)
 
         # Create Client
         # TODO: Paramètre pour l'adresse IP
-        self.client = OscClient(host='10.0.0.3')
+        #self.client = OscClient(host='10.0.0.3')
+        self.client = OscClient(self.host)
 
         # Add methods (strings the server will respond)
         self.add_method('/seq/go', 'i', self.seqgo_cb)
