@@ -481,6 +481,9 @@ class Application(Gtk.Application):
 
                 fstream.close()
 
+                # Set main window's subtitle with the file name
+                self.window.header.set_subtitle(self.file.get_basename())
+
                 # Add an empty cue at the end
                 cue = Cue(self.sequence.last+1, 0, text="Last Cue")
                 self.sequence.add_cue(cue)
