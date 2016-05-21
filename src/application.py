@@ -698,6 +698,12 @@ class CrossfadeWindow(Gtk.Window):
                 self.scaleB.set_value(level)
             else:
                 self.scaleA.set_value(level)
+
+            # If sequential is empty, don't do anything
+            if app.sequence.last == 0:
+                app.sequence.on_go = False
+                return
+
             # Update sliders position
             delay = app.sequence.cues[position+1].time_out * 1000
             wait = app.sequence.cues[position+1].wait * 1000
@@ -740,6 +746,10 @@ class CrossfadeWindow(Gtk.Window):
 
             app.dmx.send()
         elif scale == self.scaleA:
+            # If sequential is empty, don't do anything
+            if app.sequence.last == 0:
+                app.sequence.on_go = False
+                return
             # Update slider A position
             delay = app.sequence.cues[position+1].time_out * 1000
             wait = app.sequence.cues[position+1].wait * 1000
@@ -777,6 +787,10 @@ class CrossfadeWindow(Gtk.Window):
 
             app.dmx.send()
         elif scale == self.scaleB:
+            # If sequential is empty, don't do anything
+            if app.sequence.last == 0:
+                app.sequence.on_go = False
+                return
             # Update slider B position
             delay = app.sequence.cues[position+1].time_in * 1000
             wait = app.sequence.cues[position+1].wait * 1000

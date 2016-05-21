@@ -165,6 +165,10 @@ class ThreadGo(threading.Thread):
         for output in range(512):
             self.dmxlevels[output] = self.app.dmx.frame[output]
 
+        # If sequential is empty, just return
+        if self.app.sequence.last == 0:
+            return
+
         # On récupère les temps de montée et de descente de la mémoire suivante
         t_in = self.app.sequence.cues[position+1].time_in
         t_out = self.app.sequence.cues[position+1].time_out
