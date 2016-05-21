@@ -30,7 +30,7 @@ class Sequence(object):
         self.patch = patch
 
         # create an empty cue 0
-        cue = Cue(0, 0, text="")
+        cue = Cue(0, "0", text="")
         self.add_cue(cue)
 
     def add_cue(self, cue):
@@ -58,6 +58,9 @@ class Sequence(object):
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
+            # Set main window's subtitle
+            subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
+            self.app.window.header.set_subtitle(subtitle)
 
             # On vide le tableau des valeurs entrées par l'utilisateur
             self.app.dmx.user = array.array('h', [-1] * 512)
@@ -87,6 +90,9 @@ class Sequence(object):
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
+            # Set main window's subtitle
+            subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
+            self.app.window.header.set_subtitle(subtitle)
 
             # On vide le tableau des valeurs entrées par l'utilisateur
             self.app.dmx.user = array.array('h', [-1] * 512)
@@ -211,6 +217,9 @@ class ThreadGo(threading.Thread):
             path = Gtk.TreePath.new_from_indices([position])
             self.app.win_seq.treeview.set_cursor(path, None, False)
             self.app.win_seq.grid.queue_draw()
+            # Set main window's subtitle
+            subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+            self.app.window.header.set_subtitle(subtitle)
 
             # Si la mémoire a un Wait
             if self.app.sequence.cues[position+1].wait:
@@ -229,6 +238,9 @@ class ThreadGo(threading.Thread):
             self.app.win_seq.sequential.pos_xA = 0
             self.app.win_seq.sequential.pos_xB = 0
             self.app.win_seq.sequential.queue_draw()
+            # Set main window's subtitle
+            subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+            self.app.window.header.set_subtitle(subtitle)
             print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
 
     def stop(self):

@@ -481,11 +481,14 @@ class Application(Gtk.Application):
 
                 fstream.close()
 
-                # Set main window's subtitle with the file name
-                self.window.header.set_subtitle(self.file.get_basename())
+                # Set main window's title with the file name
+                self.window.header.set_title(self.file.get_basename())
+                # Set main window's subtitle
+                subtitle = "Mem. : 0 - Next Mem. : "+self.sequence.cues[1].memory+" "+self.sequence.cues[1].text
+                self.window.header.set_subtitle(subtitle)
 
                 # Add an empty cue at the end
-                cue = Cue(self.sequence.last+1, 0, text="Last Cue")
+                cue = Cue(self.sequence.last+1, "0", text="Last Cue")
                 self.sequence.add_cue(cue)
 
                 # Redraw crossfade :
