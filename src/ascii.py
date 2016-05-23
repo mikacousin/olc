@@ -375,36 +375,17 @@ class Ascii(object):
 
             self.app.win_seq.grid.queue_draw()
 
-            # TODO: On met à jour la fenêtre des groupes
-            self.app.win_groups.grps = []
+            # Redraw Groups Window
+            del(self.app.win_groups.grps[:])
             for i in range(len(self.app.groups)):
                 #print(self.app.groups[i].index, self.app.groups[i].text, self.app.groups[i].channels)
                 self.app.win_groups.grps.append(GroupWidget(self.app.win_groups, self.app.groups[i].index,
                     self.app.groups[i].text, self.app.win_groups.grps))
                 self.app.win_groups.flowbox2.add(self.app.win_groups.grps[i])
-                """
-                self.app.win_groups.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
-                self.app.win_groups.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL,
-                    adjustment=self.app.win_groups.ad[i]))
-                self.app.win_groups.scale[i].set_digits(0)
-                self.app.win_groups.scale[i].set_vexpand(True)
-                self.app.win_groups.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
-                self.app.win_groups.scale[i].set_inverted(True)
-                self.app.win_groups.scale[i].connect("value-changed", self.win_groups.scale_moved)
-                self.app.win_groups.label.append(Gtk.Label())
-                self.app.win_groups.label[i].set_text(self.app.groups[i].text)
-
-                if i == 0:
-                    self.app.win_groups.grid.attach(self.app.win_groups.label[i], 0, 0, 1, 1)
-                    self.app.win_groups.grid.attach_next_to(self.app.win_groups.scale[i],
-                            self.app.win_groups.label[i], Gtk.PositionType.BOTTOM, 1, 1)
-                else:
-                    self.app.win_groups.grid.attach_next_to(self.app.win_groups.label[i],
-                            self.app.win_groups.label[i-1], Gtk.PositionType.RIGHT, 1, 1)
-                    self.app.win_groups.grid.attach_next_to(self.app.win_groups.scale[i],
-                            self.app.win_groups.label[i], Gtk.PositionType.BOTTOM, 1, 1)
-                """
             self.app.win_groups.flowbox1.invalidate_filter()
+            self.app.win_groups.show_all()
+
+            # TODO: Mise a jour fenetres Patch, Masters
 
         except GObject.GError as e:
             print("Error: " + e.message)
