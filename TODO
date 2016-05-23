@@ -5,3 +5,6 @@
 - Gestion du Channel Time
 - Sauvegarder ASCII
 - Tout remettre à 0 (vider sequentiels, groupes, patch, etc ...)
+- Finir Crossfade manuel
+- Lancer olad automatiquement si il tourne pas
+- Configuration olad
