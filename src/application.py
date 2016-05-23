@@ -76,9 +76,6 @@ class Application(Gtk.Application):
         self.win_seq.show_all()
         self.sequence.window = self.win_seq
 
-        self.win_groups = GroupsWindow(self, self.groups)
-        #self.win_groups.show_all()
-
         # TODO: Test manual crossfade, must be deleted
         self.win_crossfade = CrossfadeWindow()
         self.win_crossfade.show_all()

@@ -376,15 +376,17 @@ class Ascii(object):
             self.app.win_seq.grid.queue_draw()
 
             # Redraw Groups Window
-            del(self.app.win_groups.grps[:])
-            for i in range(len(self.app.groups)):
-                #print(self.app.groups[i].index, self.app.groups[i].text, self.app.groups[i].channels)
-                self.app.win_groups.grps.append(GroupWidget(self.app.win_groups, self.app.groups[i].index,
-                    self.app.groups[i].text, self.app.win_groups.grps))
-                self.app.win_groups.flowbox2.add(self.app.win_groups.grps[i])
-            self.app.win_groups.flowbox1.invalidate_filter()
-            # TODO: pas bon, ouvre la fenetre si fermée
-            self.app.win_groups.show_all()
+            try:
+                del(self.app.win_groups.grps[:])
+                for i in range(len(self.app.groups)):
+                    #print(self.app.groups[i].index, self.app.groups[i].text, self.app.groups[i].channels)
+                    self.app.win_groups.grps.append(GroupWidget(self.app.win_groups, self.app.groups[i].index,
+                        self.app.groups[i].text, self.app.win_groups.grps))
+                    self.app.win_groups.flowbox2.add(self.app.win_groups.grps[i])
+                self.app.win_groups.flowbox1.invalidate_filter()
+                self.app.win_groups.show_all()
+            except:
+                pass
 
             # Redraw Masters Window if exist
             try:
