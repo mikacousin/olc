@@ -2,6 +2,7 @@ appdir = $(pythondir)/olc/
 
 app_PYTHON = \
 	application.py \
+	ascii.py \
 	cue.py \
 	customwidgets.py \
 	dmx.py \
