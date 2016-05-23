@@ -428,7 +428,17 @@ class Ascii(object):
             except:
                 pass
 
-            # TODO: Redraw Patch Window if exist
+            # Redraw Patch Window if exist
+            try:
+                for i in range(512):
+                    for j in range(len(self.app.patch.channels[i])):
+                        if self.app.patch.channels[i][j] != 0:
+                            self.app.patchwindow.patch_liststore[i][2] = str(self.app.patch.channels[i][j])
+                        else:
+                            self.app.patchwindow.patch_liststore[i][2] = ""
+                self.app.patchwindow.show_all()
+            except:
+                pass
 
         except GObject.GError as e:
             print("Error: " + e.message)
