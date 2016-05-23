@@ -383,9 +383,50 @@ class Ascii(object):
                     self.app.groups[i].text, self.app.win_groups.grps))
                 self.app.win_groups.flowbox2.add(self.app.win_groups.grps[i])
             self.app.win_groups.flowbox1.invalidate_filter()
+            # TODO: pas bon, ouvre la fenetre si fermée
             self.app.win_groups.show_all()
 
-            # TODO: Mise a jour fenetres Patch, Masters
+            # Redraw Masters Window if exist
+            try:
+                del(self.app.win_masters.scale[:])
+                del(self.app.win_masters.ad[:])
+                del(self.app.win_masters.flash[:])
+                for i in range(len(self.app.masters)):
+                    if Gio.Application.get_default().settings.get_boolean('percent'):
+                        self.app.win_masters.ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
+                    else:
+                        self.app.win_masters.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
+                    self.app.win_masters.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL,
+                        adjustment=self.app.win_masters.ad[i]))
+                    self.app.win_masters.scale[i].set_digits(0)
+                    self.app.win_masters.scale[i].set_vexpand(True)
+                    self.app.win_masters.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
+                    self.app.win_masters.scale[i].set_inverted(True)
+                    self.app.win_masters.scale[i].connect("value-changed", self.app.win_masters.scale_moved)
+                    # Button to flash Master
+                    self.app.win_masters.flash.append(Gtk.Button.new_with_label(self.app.masters[i].text))
+                    self.app.win_masters.flash[i].connect("button-press-event", self.app.win_masters.flash_on)
+                    self.app.win_masters.flash[i].connect("button-release-event", self.app.win_masters.flash_off)
+                    # Place Masters in Window
+                    if i == 0:
+                        self.app.win_masters.grid.attach(self.app.win_masters.scale[i], 0, 0, 1, 1)
+                        self.app.win_masters.grid.attach_next_to(self.app.win_masters.flash[i],
+                                self.app.win_masters.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                    elif not i % 10:
+                        self.app.win_masters.grid.attach_next_to(self.app.win_masters.scale[i],
+                                self.app.win_masters.flash[i-10], Gtk.PositionType.BOTTOM, 1, 1)
+                        self.app.win_masters.grid.attach_next_to(self.app.win_masters.flash[i],
+                                self.app.win_masters.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                    else:
+                        self.app.win_masters.grid.attach_next_to(self.app.win_masters.scale[i],
+                                self.app.win_masters.scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                        self.app.win_masters.grid.attach_next_to(self.app.win_masters.flash[i],
+                                self.app.win_masters.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                self.app.win_masters.show_all()
+            except:
+                pass
+
+            # TODO: Redraw Patch Window if exist
 
         except GObject.GError as e:
             print("Error: " + e.message)
