@@ -99,6 +99,10 @@ class Application(Gtk.Application):
 
         menu = builder.get_object('app-menu')
 
+        newAction = Gio.SimpleAction.new('new', None)
+        newAction.connect('activate', self._new)
+        self.add_action(newAction)
+
         openAction = Gio.SimpleAction.new('open', None)
         openAction.connect('activate', self._open)
         self.add_action(openAction)
@@ -154,6 +158,69 @@ class Application(Gtk.Application):
             self.dmx.frame[output] = level
             self.window.channels[channel-1].level = level
             self.window.channels[channel-1].queue_draw()
+
+    def _new(self, action, parameter):
+        del(self.chasers[:])
+        # Redraw Sequential Window
+        self.sequence = Sequence(1, self.patch)
+        self.sequence.window = self.win_seq
+        cue = Cue(self.sequence.last+1, "0", text="Last Cue")
+        self.sequence.add_cue(cue)
+        self.sequence.position = 0
+        self.win_seq.sequential.time_in = self.sequence.cues[1].time_in
+        self.win_seq.sequential.time_out = self.sequence.cues[1].time_out
+        self.win_seq.sequential.wait = self.sequence.cues[1].wait
+        self.win_seq.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        for i in range(self.sequence.last):
+            if self.sequence.cues[i].wait.is_integer():
+                wait = str(int(self.sequence.cues[i].wait))
+                if wait == "0":
+                    wait = ""
+            else:
+                wait = str(self.sequence.cues[i].wait)
+            if self.sequence.cues[i].time_out.is_integer():
+                t_out = int(self.sequence.cues[i].time_out)
+            else:
+                t_out = self.sequence.cues[i].time_out
+            if self.sequence.cues[i].time_in.is_integer():
+                t_in = int(self.sequence.cues[i].time_in)
+            else:
+                t_in = self.sequence.cues[i].time_in
+            self.win_seq.cues_liststore.append([str(i), str(self.sequence.cues[i].memory),
+                str(self.sequence.cues[i].text), wait,
+                str(t_out), str(t_in), ""])
+        self.win_seq.step_filter = self.win_seq.cues_liststore.filter_new()
+        self.win_seq.step_filter.set_visible_func(self.win_seq.step_filter_func)
+        self.win_seq.treeview.set_model(self.win_seq.cues_liststore)
+        path = Gtk.TreePath.new_from_indices([0])
+        self.win_seq.treeview.set_cursor(path, None, False)
+        self.win_seq.grid.queue_draw()
+        # Redraw Patch Window
+        self.patch.patch_1on1()
+        for i in range(512):
+            try:
+                self.patchwindow.patch_liststore[i][2] = ""
+            except:
+                pass
+        # Redraw Masters Window
+        try:
+            for i in range(len(self.masters)):
+                self.win_masters.scale[i].destroy()
+                self.win_masters.flash[i].destroy()
+            del(self.win_masters.scale[:])
+            del(self.win_masters.ad[:])
+            del(self.win_masters.flash[:])
+        except:
+            pass
+        del(self.masters[:])
+        # Redraw Groups Window
+        for i in range(len(self.win_groups.grps)):
+            self.win_groups.grps[i].destroy()
+        del(self.groups[:])
+        del(self.win_groups.grps[:])
+        self.win_groups.flowbox1.invalidate_filter()
+        # Redraw Main Window
+        self.window.flowbox.invalidate_filter()
 
     def _open(self, action, parameter):
         # create a filechooserdialog to open:
@@ -217,6 +284,15 @@ class Application(Gtk.Application):
                     # Marker for end of file
                     if "ENDDATA" in line:
                         break
+
+                    if line[:9] == "CLEAR ALL":
+                        # Clear All
+                        del(self.chasers[:])
+                        del(self.groups[:])
+                        del(self.masters[:])
+                        self.patch.patch_empty()
+                        self.sequence = Sequence(1, self.patch)
+                        self.sequence.window = self.win_seq
 
                     if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
                         p = line[10:].split(" ")
@@ -539,7 +615,7 @@ class Application(Gtk.Application):
 
                 self.win_seq.grid.queue_draw()
 
-                # On met à jour la fenêtre des groupes
+                # TODO: On met à jour la fenêtre des groupes
                 self.win_groups.grps = []
                 for i in range(len(self.groups)):
                     #print(self.groups[i].index, self.groups[i].text, self.groups[i].channels)

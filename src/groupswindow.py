@@ -79,4 +79,4 @@ class GroupsWindow(Gtk.Window):
                     return False
 
     def filter_groups(self, child, user_data):
-        return True
+        return child
