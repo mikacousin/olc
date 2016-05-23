@@ -270,7 +270,13 @@ class Application(Gtk.Application):
         dialog.destroy()
 
     def _save(self, action, parameter):
-        self.ascii.save()
+        try:
+            self.ascii.save()
+        except:
+            self._saveas(None, None)
+
+    def _saveas(self, action, parameter):
+        print("Save As")
 
     def _patch(self, action, parameter):
         self.patchwindow = PatchWindow(self.patch, self.dmx, self.window)
