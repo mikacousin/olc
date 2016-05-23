@@ -370,5 +370,4 @@ class Window(Gtk.ApplicationWindow):
         print("Mise à jour de la mémoire", memory)
         # Tag filename as modified
         self.app.ascii.modified = True
-        self.app.ascii.basename = self.app.ascii.basename + "*"
-        self.app.window.header.set_title(self.app.ascii.basename)
+        self.app.window.header.set_title(self.app.ascii.basename + "*")

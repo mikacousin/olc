@@ -12,6 +12,11 @@
         <attribute name="accel">&lt;Primary&gt;o</attribute>
       </item>
       <item>
+        <attribute name="action">app.save</attribute>
+        <attribute name="label" translatable="yes">_Save</attribute>
+        <attribute name="accel">&lt;Primary&gt;s</attribute>
+      </item>
+      <item>
         <attribute name="action">app.patch</attribute>
         <attribute name="label" translatable="yes">_Patch</attribute>
         <attribute name="accel">&lt;Primary&gt;p</attribute>

@@ -108,6 +108,10 @@ class Application(Gtk.Application):
         openAction.connect('activate', self._open)
         self.add_action(openAction)
 
+        saveAction = Gio.SimpleAction.new('save', None)
+        saveAction.connect('activate', self._save)
+        self.add_action(saveAction)
+
         patchAction = Gio.SimpleAction.new('patch', None)
         patchAction.connect('activate', self._patch)
         self.add_action(patchAction)
@@ -264,6 +268,9 @@ class Application(Gtk.Application):
 
         # destroy the FileChooserDialog
         dialog.destroy()
+
+    def _save(self, action, parameter):
+        self.ascii.save()
 
     def _patch(self, action, parameter):
         self.patchwindow = PatchWindow(self.patch, self.dmx, self.window)

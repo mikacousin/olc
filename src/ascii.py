@@ -414,4 +414,4 @@ class Ascii(object):
     def save(self):
         print("Save ASCII")
         self.modify = False
-        pass
+        self.app.window.header.set_title(self.basename)
