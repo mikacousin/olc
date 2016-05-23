@@ -256,8 +256,8 @@ class Application(Gtk.Application):
             self.file = open_dialog.get_file()
 
             # Load the ASCII file
-            ascii = Ascii(self.file)
-            ascii.load()
+            self.ascii = Ascii(self.file)
+            self.ascii.load()
 
         elif response_id == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")
