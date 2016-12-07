@@ -1,7 +1,7 @@
 import array
 from gi.repository import Gio, Gtk, GObject
 
-from olc.cue import Cue
+from olc.cue import Cue, ChannelTime
 from olc.sequence import Sequence
 from olc.group import Group
 from olc.master import Master
@@ -32,6 +32,8 @@ class Ascii(object):
             wait = False
             channels = False
             mem = False
+            chan_t = False
+            channel_time = []
 
             while True:
 
@@ -210,6 +212,17 @@ class Ascii(object):
                                 wait = float(time.split(":")[0])*60 + float(time.split(":")[1])
                             else:
                                 wait = float(time)
+                        if line[:11] == '$$PARTTIME ':
+                            #print("Channel Time")
+                            p = line[11:]
+                            delay = p.split(" ")[0]
+                            time = p.split(" ")[1]
+                            #print("Temps:", time, "Delay:", delay)
+                        if line[:14] == '$$PARTTIMECHAN':
+                            p = line[15:]
+                            #print("Channel N°", p)
+                            chan_t = ChannelTime(p, delay, time)
+                            channel_time.append(chan_t)
                         if line[:4] == 'CHAN':
                             #print ("        Chanels :")
                             #p = line[5:-1].split(" ")
@@ -232,11 +245,13 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt)
+                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt, channel_time=channel_time)
 
                             #print("StepId :", cue.index, "Memory :", cue.memory)
                             #print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
                             #print("Text :", cue.text)
+                            for ct in channel_time:
+                                print("Channel Time :", ct.channel, ct.delay, ct.time)
                             #print("")
                             #for channel in range(512):
                             #    print("Channel :", channel+1, "@", cue.channels[channel])
@@ -249,6 +264,8 @@ class Ascii(object):
                             wait = False
                             mem = False
                             channels = False
+                            chan_t = False
+                            channel_time = []
 
                 if line[:11] == 'CLEAR PATCH':
                     flag_seq = False
