@@ -215,13 +215,13 @@ class Ascii(object):
                         if line[:11] == '$$PARTTIME ':
                             #print("Channel Time")
                             p = line[11:]
-                            delay = p.split(" ")[0]
-                            time = p.split(" ")[1]
+                            delay = float(p.split(" ")[0])
+                            time = float(p.split(" ")[1])
                             #print("Temps:", time, "Delay:", delay)
                         if line[:14] == '$$PARTTIMECHAN':
                             p = line[15:]
                             #print("Channel N°", p)
-                            chan_t = ChannelTime(p, delay, time)
+                            chan_t = ChannelTime(int(p), delay, time)
                             channel_time.append(chan_t)
                         if line[:4] == 'CHAN':
                             #print ("        Chanels :")
