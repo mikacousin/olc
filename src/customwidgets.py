@@ -323,11 +323,12 @@ class SequentialWidget(Gtk.Widget):
         # Draw Channel Time if any
         self.ct_nb = 0
         for ct in self.channel_time:
-            cr.move_to(12,16)
-            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.move_to((inter*ct.delay),allocation.height-24-(self.ct_nb*8))
+            cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12)
+            cr.show_text(str(ct.channel))
             #cr.show_text("Channel Time :" + str(ct.channel) + " " + str(ct.delay) + " " + str(ct.time))
             # draw Channel Time line
             cr.set_source_rgb(0.5, 0.5, 0.5)
