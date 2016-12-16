@@ -11,6 +11,15 @@ class Cue(object):
         self.text = text
         self.channel_time = channel_time
 
+        # Find the time cue need to operate
+        if self.time_in > self.time_out:
+            self.total_time = self.time_in + self.wait
+        else:
+            self.total_time = self.time_out + self.wait
+        for ct in self.channel_time:
+            if ct.delay + ct.time > self.total_time:
+                self.total_time = ct.delay + ct.time
+
     def set_level(self, channel, level):
         self.channels[channel] = level
 

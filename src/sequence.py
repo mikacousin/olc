@@ -52,9 +52,11 @@ class Sequence(object):
             t_in = self.cues[position+1].time_in
             t_out = self.cues[position+1].time_out
             t_wait = self.cues[position+1].wait
+            self.window.sequential.total_time = self.cues[position+1].total_time
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
             self.window.sequential.wait = t_wait
+            self.window.sequential.channel_time = self.cues[position+1].channel_time
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
@@ -84,9 +86,11 @@ class Sequence(object):
             t_in = self.cues[position+1].time_in   # Always use times for next cue
             t_out = self.cues[position+1].time_out
             t_wait = self.cues[position+1].wait
+            self.window.sequential.total_time = self.cues[position+1].total_time
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
             self.window.sequential.wait = t_wait
+            self.window.sequential.channel_time = self.cues[position+1].channel_time
             path = Gtk.TreePath.new_from_indices([position])
             self.window.treeview.set_cursor(path, None, False)
             self.window.grid.queue_draw()
@@ -119,9 +123,11 @@ class Sequence(object):
                 t_in = self.app.sequence.cues[position+1].time_in
                 t_out = self.app.sequence.cues[position+1].time_out
                 t_wait = self.app.sequence.cues[position+1].wait
+                self.window.sequential.total_time = self.cues[position+1].total_time
                 self.app.win_seq.sequential.time_in = t_in
                 self.app.win_seq.sequential.time_out = t_out
                 self.app.win_seq.sequential.wait = t_wait
+                self.window.sequential.channel_time = self.cues[position+1].channel_time
                 self.app.win_seq.sequential.pos_xA = 0
                 self.app.win_seq.sequential.pos_xB = 0
                 path = Gtk.TreePath.new_from_indices([position])
@@ -146,6 +152,9 @@ class Sequence(object):
             self.on_go = True
             self.thread = ThreadGo(self.app)
             self.thread.start()
+            # Launch Channels Times if exist
+            for ct in self.app.sequence.cues[self.app.sequence.position+1].channel_time:
+                print("Lancement des Channels Times :", ct.channel, ct.delay, ct.time)
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
@@ -213,9 +222,11 @@ class ThreadGo(threading.Thread):
             t_in = self.app.sequence.cues[position+1].time_in
             t_out = self.app.sequence.cues[position+1].time_out
             t_wait = self.app.sequence.cues[position+1].wait
+            self.app.win_seq.sequential.total_time = self.app.sequence.cues[position+1].total_time
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.wait = t_wait
+            self.app.win_seq.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
             self.app.win_seq.sequential.pos_xA = 0
             self.app.win_seq.sequential.pos_xB = 0
             path = Gtk.TreePath.new_from_indices([position])
@@ -236,9 +247,11 @@ class ThreadGo(threading.Thread):
             t_in = self.app.sequence.cues[position+1].time_in
             t_out = self.app.sequence.cues[position+1].time_out
             t_wait = self.app.sequence.cues[position+1].wait
+            self.app.win_seq.sequential.total_time = self.app.sequence.cues[position+1].total_time
             self.app.win_seq.sequential.time_in = t_in
             self.app.win_seq.sequential.time_out = t_out
             self.app.win_seq.sequential.wait = t_wait
+            self.app.win_seq.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
             self.app.win_seq.sequential.pos_xA = 0
             self.app.win_seq.sequential.pos_xB = 0
             self.app.win_seq.sequential.queue_draw()

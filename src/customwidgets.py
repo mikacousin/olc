@@ -242,11 +242,13 @@ class GroupWidget(Gtk.Widget):
 class SequentialWidget(Gtk.Widget):
     __gtype_name__ = 'SequentialWidget'
 
-    def __init__(self, time_in, time_out, wait):
+    def __init__(self, total_time, time_in, time_out, wait, channel_time):
 
+        self.total_time = total_time
         self.time_in = time_in
         self.time_out = time_out
         self.wait = wait
+        self.channel_time = channel_time
 
         #self.pos_x = 0
         self.pos_xA = 0
@@ -290,8 +292,9 @@ class SequentialWidget(Gtk.Widget):
         cr.line_to(allocation.width-16, 18)
         cr.move_to(16, 24)
         cr.line_to(16, 18)
-        inter = (allocation.width-32)/self.time_max
-        for i in range(int(self.time_max-1)):
+        #inter = (allocation.width-32)/self.time_max
+        inter = (allocation.width-32)/self.total_time
+        for i in range(int(self.total_time-1)):
             cr.move_to(16+(inter*(i+1)), 24)
             cr.line_to(16+(inter*(i+1)), 18)
         cr.stroke()
@@ -316,6 +319,41 @@ class SequentialWidget(Gtk.Widget):
                 cr.show_text(str(self.wait))
         else:
             wait_x = 0
+
+        # Draw Channel Time if any
+        self.ct_nb = 0
+        for ct in self.channel_time:
+            cr.move_to(12,16)
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(12)
+            #cr.show_text("Channel Time :" + str(ct.channel) + " " + str(ct.delay) + " " + str(ct.time))
+            # draw Channel Time line
+            cr.set_source_rgb(0.5, 0.5, 0.5)
+            cr.move_to(16+(inter*ct.delay), allocation.height-24-(self.ct_nb*12))
+            cr.line_to(16+(inter*ct.delay)+(inter*ct.time), allocation.height-24-(self.ct_nb*12))
+            cr.stroke()
+            # draw Time Cursor
+            if self.pos_xA > inter*ct.delay:
+                cr.set_source_rgb(0.9, 0.6, 0.2)
+                cr.move_to(16+self.pos_xA, allocation.height-32-(self.ct_nb*12))
+                cr.line_to(16+self.pos_xA, allocation.height-16-(self.ct_nb*12))
+                cr.stroke()
+            else:
+                cr.set_source_rgb(0.9, 0.6, 0.2)
+                cr.move_to(16+(inter*ct.delay), allocation.height-32-(self.ct_nb*12))
+                cr.line_to(16+(inter*ct.delay), allocation.height-16-(self.ct_nb*12))
+                cr.stroke()
+            # draw delay number if any
+            if ct.delay:
+                cr.set_source_rgb(0.9, 0.9, 0.9)
+                cr.move_to(12+(inter*ct.delay),16)
+                if ct.delay.is_integer():              # If time is integer don't show the ".0"
+                    cr.show_text(str(int(ct.delay)))
+                else:
+                    cr.show_text(str(ct.delay))
+            self.ct_nb += 1
 
         # draw Out line
         cr.set_source_rgb(0.5, 0.5, 0.5)
@@ -425,12 +463,6 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("B")
 
-        # draw Time Cursor
-        #cr.set_source_rgb(0.9, 0.6, 0.2)
-        #cr.move_to(16+self.pos_x, 16)
-        #cr.line_to(16+self.pos_x, allocation.height-16)
-        #cr.stroke()
-
         # draw times number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
@@ -439,10 +471,17 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(12,16)
         cr.show_text("0")
         cr.move_to(allocation.width-24,16)
+        # Draw Total Time at the end
         if self.time_max.is_integer():              # If time is integer don't show the ".0"
-            cr.show_text(str(int(self.time_max)))
+            cr.show_text(str(int(self.total_time)))
         else:
-            cr.show_text(str(self.time_max))
+            cr.show_text(str(self.total_time))
+        if self.time_max != self.total_time:
+            cr.move_to(12+(inter*self.time_max),16)
+            if self.time_max.is_integer():
+                cr.show_text(str(int(self.time_max)))
+            else:
+                cr.show_text(str(self.time_max))
         if self.time_min != self.time_max:
             cr.move_to(12+(inter*self.time_min),16)
             if self.time_min.is_integer():

@@ -14,9 +14,11 @@ class SequentialWindow(Gtk.Window):
         self.set_border_width(10)
 
         position = self.seq.position
+        t_total = self.seq.cues[position].total_time
         t_in = self.seq.cues[position].time_in
         t_out = self.seq.cues[position].time_out
         t_wait = self.seq.cues[position].wait
+        channel_time = self.seq.cues[position].channel_time
 
         # Set levels for channels in actual cue
         for output in range(512):
@@ -29,7 +31,7 @@ class SequentialWindow(Gtk.Window):
         self.app.dmx.send()
 
         # Création du crossfade
-        self.sequential = SequentialWidget(t_in, t_out, t_wait)
+        self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
 
         # Création de la liste des mémoires
         self.grid = Gtk.Grid()
