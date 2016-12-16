@@ -1,0 +1,46 @@
+# 
+#
+# Translators :
+# Mika Cousin <mika.cousin@gmail.com>, 2016-2017
+msgid ""
+msgstr ""
+
+#: ../data/app-menu.ui.h:1
+msgid "_New"
+msgstr "Nouveau"
+
+#: ../data/app-menu.ui.h:2
+msgid "_Open"
+msgstr "Ouvrir"
+
+#: ../data/app-menu.ui.h:3
+msgid "_Save"
+msgstr "Enregistrer"
+
+#: ../data/app-menu.ui.h:4
+msgid "_Patch"
+msgstr "Patch"
+
+#: ../data/app-menu.ui.h:5
+msgid "_Groups"
+msgstr "Groupes"
+
+#: ../data/app-menu.ui.h:6
+msgid "_Masters"
+msgstr "Masters"
+
+#: ../data/app-menu.ui.h:7
+msgid "_Preferences"
+msgstr "Préférences"
+
+#: ../data/app-menu.ui.h:8
+msgid "_Keyboard Shortcuts"
+msgstr "Raccourcis claviers"
+
+#: ../data/app-menu.ui.h:9
+msgid "_About"
+msgstr "À propos"
+
+#: ../data/app-menu.ui.h:10
+msgid "_Quit"
+msgstr "Quitter"

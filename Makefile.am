@@ -3,7 +3,7 @@ NULL =
 
 bin_SCRIPTS = olc
 
-SUBDIRS = src data
+SUBDIRS = src data po
 
 EXTRA_DIST = \
 	olc.in
