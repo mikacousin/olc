@@ -2,6 +2,8 @@
 
 import sys
 import os
+import locale
+import gettext
 
 # Make sure we'll find the pygobject module, even in JHBuild
 sys.path.insert(1, '@pyexecdir@')
@@ -10,11 +12,18 @@ sys.path.insert(1, '@pythondir@')
 
 from gi.repository import Gio
 
+localedir = '@localedir@'
+
 pkgdatadir = '@pkgdatadir@'
 
 from olc.application import Application
 
 if __name__ == "__main__":
+
+    locale.bindtextdomain('olc', localedir)
+    locale.textdomain('olc')
+    gettext.bindtextdomain('olc', localedir)
+    gettext.textdomain('olc')
 
     resource = Gio.resource_load(os.path.join(pkgdatadir, 'olc.gresource'))
     Gio.Resource._register(resource)

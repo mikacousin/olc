@@ -1,4 +1,4 @@
-<interface>
+<interface domain="olc">
   <menu id="app-menu">
     <section>
       <item>
@@ -40,9 +40,8 @@
     </section>
     <section>
       <item>
-        <attribute name="action">app.shortcuts</attribute>
-        <attribute name="label" translatable="yes">_Shortcuts</attribute>
-        <attribute name="accel">&lt;Primary&gt;F1</attribute>
+        <attribute name="action">app.show-help-overlay</attribute>
+        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
       </item>
       <item>
         <attribute name="action">app.about</attribute>

@@ -27,6 +27,7 @@ gschemas.compiled: $(gsettings_SCHEMAS) Makefile
 EXTRA_DIST = \
 	$(resource_files) \
 	olc.desktop.in \
+	olc.gresource.xml \
 	org.gnome.OpenLightingConsole.gschema.xml \
 	$(NULL)
 

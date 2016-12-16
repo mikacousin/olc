@@ -86,14 +86,35 @@ class Application(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
+        # TODO: Revoir pour le menu et la gestion auto de la fenetre des shortcuts
         menu = self.setup_app_menu()
         self.set_app_menu(menu)
+        #self.build_app_menu()
+
+    def build_app_menu(self):
+        actionEntries = [
+            ('new', self._new),
+            ('open', self._open),
+            ('save', self._save),
+            ('patch', self._patch),
+            ('groups', self._groups),
+            ('masters', self._masters),
+            ('settings', self._settings),
+            ('about', self._about),
+            ('quit', self._exit),
+        ]
+
+        for action, callback in actionEntries:
+            simpleAction = Gio.SimpleAction.new(action, None)
+            simpleAction.connect('activate', callback)
+            self.add_action(simpleAction)
 
     def setup_app_menu(self):
         """ Setup application menu, return Gio.Menu """
         builder = Gtk.Builder()
 
-        builder.add_from_resource('/org/gnome/OpenLightingConsole/app-menu.ui')
+        #builder.add_from_resource('/org/gnome/OpenLightingConsole/app-menu.ui')
+        builder.add_from_resource('/org/gnome/OpenLightingConsole/gtk/menus.ui')
 
         menu = builder.get_object('app-menu')
 
@@ -125,7 +146,7 @@ class Application(Gtk.Application):
         settingsAction.connect('activate', self._settings)
         self.add_action(settingsAction)
 
-        shortcutsAction = Gio.SimpleAction.new('shortcuts', None)
+        shortcutsAction = Gio.SimpleAction.new('show-help-overlay', None)
         shortcutsAction.connect('activate', self._shortcuts)
         self.add_action(shortcutsAction)
 
@@ -295,8 +316,8 @@ class Application(Gtk.Application):
             Create Shortcuts Window
         """
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/OpenLightingConsole/Shortcuts.ui')
-        self.shortcuts = builder.get_object('shortcuts-olc')
+        builder.add_from_resource('/org/gnome/OpenLightingConsole/gtk/help-overlay.ui')
+        self.shortcuts = builder.get_object('help_overlay')
         #self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
 
