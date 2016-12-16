@@ -1,9 +1,13 @@
-# 
-#
+# French translation for olc.
+# Copyright (C) 2016 olc's COPYRIGHT HOLDER
+# This file is distributed under the same license as the olc package.
 # Translators :
 # Mika Cousin <mika.cousin@gmail.com>, 2016-2017
+#
 msgid ""
 msgstr ""
+"Project-Id-Version: olc master\n"
+"Language: fr\n"
 
 #: ../data/app-menu.ui.h:1
 msgid "_New"
@@ -44,3 +48,126 @@ msgstr "À propos"
 #: ../data/app-menu.ui.h:10
 msgid "_Quit"
 msgstr "Quitter"
+
+#: ../data/AboutDialog.ui.in.h:1
+msgid "A Lighting Console."
+msgstr "Une console lumière."
+
+#: ../data/AboutDialog.ui.in.h:2
+msgid "Visit Open Lighting Console website"
+msgstr "Visiter le site web de Open Lighting Console"
+
+#: ../data/help-overlay.ui.h:1
+msgctxt "shortcut window"
+msgid "General"
+msgstr "Général"
+
+#: ../data/help-overlay.ui.h:2
+msgctxt "shortcut window"
+msgid "Open ASCII File"
+msgstr "Ouvrir un fichier ASCII"
+
+#: ../data/help-overlay.ui.h:3
+msgctxt "shortcut window"
+msgid "Patch"
+msgstr "Patch"
+
+#: ../data/help-overlay.ui.h:4
+msgctxt "shortcut window"
+msgid "Groups"
+msgstr "Groupes"
+
+#: ../data/help-overlay.ui.h:5
+msgctxt "shortcut window"
+msgid "Masters"
+msgstr "Masters"
+
+#: ../data/help-overlay.ui.h:6
+msgctxt "shortcut window"
+msgid "Quit"
+msgstr "Quitter"
+
+#: ../data/help-overlay.ui.h:7
+msgctxt "shortcut window"
+msgid "Select Channels"
+msgstr "Séléction des circuits"
+
+#: ../data/help-overlay.ui.h:8
+msgctxt "shortcut window"
+msgid "Select channel number"
+msgstr "Séléction du numéro de circuit"
+
+#: ../data/help-overlay.ui.h:9
+msgctxt "shortcut window"
+msgid "Add channel number"
+msgstr "Ajoute le numéro de circuit"
+
+#: ../data/help-overlay.ui.h:10
+msgctxt "shortcut window"
+msgid "Remove channel number"
+msgstr "Retire le numéro de circuit"
+
+#: ../data/help-overlay.ui.h:11
+msgctxt "shortcut window"
+msgid "Thru channel number"
+msgstr "Thru"
+
+#: ../data/help-overlay.ui.h:12
+msgctxt "shortcut window"
+msgid "All channels"
+msgstr "Tous les circuits"
+
+#: ../data/help-overlay.ui.h:13
+msgctxt "shortcut window"
+msgid "Levels"
+msgstr "Niveaux"
+
+#: ../data/help-overlay.ui.h:14
+msgctxt "shortcut window"
+msgid "@ level"
+msgstr "@ niveau"
+
+#: ../data/help-overlay.ui.h:15
+msgctxt "shortcut window"
+msgid "Level +1"
+msgstr "Niveau +1"
+
+#: ../data/help-overlay.ui.h:16
+msgctxt "shortcut window"
+msgid "Level -1"
+msgstr "Niveau -1"
+
+#: ../data/help-overlay.ui.h:17
+msgctxt "shortcut window"
+msgid "Sequence"
+msgstr "Séquence"
+
+#: ../data/help-overlay.ui.h:18
+msgctxt "shortcut window"
+msgid "Go"
+msgstr "Go"
+
+#: ../data/help-overlay.ui.h:19
+msgctxt "shortcut window"
+msgid "Sequence +"
+msgstr "Séquence +"
+
+#: ../data/help-overlay.ui.h:20
+msgctxt "shortcut window"
+msgid "Sequence -"
+msgstr "Séquence -"
+
+#: ../data/help-overlay.ui.h:21
+msgctxt "shortcut window"
+msgid "Goto cue"
+msgstr "Aller à la mémoire"
+
+#: ../data/help-overlay.ui.h:22
+msgctxt "shortcut window"
+msgid "Cue"
+msgstr "Mémoire"
+
+#: ../data/help-overlay.ui.h:23
+msgctxt "shortcut window"
+msgid "Update cue"
+msgstr "Mettre à jour la mémoire"
