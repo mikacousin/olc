@@ -339,9 +339,13 @@ class SequentialWidget(Gtk.Widget):
             cr.stroke()
             # draw Time Cursor
             if self.pos_xA > inter*delay:
+                if self.pos_xA > (inter*delay)+(inter*time):
+                    self.pos_xCT = (inter*delay)+(inter*time)
+                else:
+                    self.pos_xCT = self.pos_xA
                 cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+self.pos_xA, allocation.height-32-(self.ct_nb*12))
-                cr.line_to(16+self.pos_xA, allocation.height-16-(self.ct_nb*12))
+                cr.move_to(16+self.pos_xCT, allocation.height-32-(self.ct_nb*12))
+                cr.line_to(16+self.pos_xCT, allocation.height-16-(self.ct_nb*12))
                 cr.stroke()
             else:
                 cr.set_source_rgb(0.9, 0.6, 0.2)
