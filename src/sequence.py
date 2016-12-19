@@ -285,26 +285,43 @@ class ThreadGo(threading.Thread):
                 channel = self.app.patch.outputs[output]
 
                 if channel:
-                    # On boucle sur les mémoires et on revient à 0
-                    if position < self.app.sequence.last - 1:
-                        next_level = self.app.sequence.cues[position+1].channels[channel-1]
+
+                    channel_time = self.app.sequence.cues[position+1].channel_time
+
+                    if channel in channel_time:
+                        #print(channel_time[channel].delay, channel_time[channel].time)
+                        ct_delay = channel_time[channel].delay * 1000
+                        ct_time = channel_time[channel].time * 1000
+                        if i > ct_delay and i < ct_delay+ct_time:
+                            next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                            if next_level > old_level:
+                                level = int(((next_level - old_level+1) / (ct_time+ct_delay)) * i) + old_level
+                            else:
+                                level = old_level - abs(int(((next_level - old_level-1) / (ct_time+ct_delay)) *i))
+                            #print("Channel Time", channel, ct_delay, ct_time, next_level, level, i)
+                            self.app.dmx.sequence[channel-1] = level
+
                     else:
-                        next_level = self.app.sequence.cues[0].channels[channel-1]
-                        self.app.sequence.position = 0
+                        # On boucle sur les mémoires et on revient à 0
+                        if position < self.app.sequence.last - 1:
+                            next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                        else:
+                            next_level = self.app.sequence.cues[0].channels[channel-1]
+                            self.app.sequence.position = 0
 
-                    # Si le level augmente, on prends le temps de montée
-                    if next_level > old_level and i < delay_in+delay_wait:
-                        level = int(((next_level - old_level+1) / (delay_in+delay_wait)) * (i-delay_wait)) + old_level
-                    # Si le level descend, on prend le temps de descente
-                    elif next_level < old_level and i < delay_out+delay_wait:
-                        level = old_level - abs(int(((next_level - old_level-1) / (delay_out+delay_wait)) *(i-delay_wait)))
-                    # Sinon, la valeur est déjà bonne
-                    else:
-                        level = next_level
+                        # Si le level augmente, on prends le temps de montée
+                        if next_level > old_level and i < delay_in+delay_wait:
+                            level = int(((next_level - old_level+1) / (delay_in+delay_wait)) * (i-delay_wait)) + old_level
+                        # Si le level descend, on prend le temps de descente
+                        elif next_level < old_level and i < delay_out+delay_wait:
+                            level = old_level - abs(int(((next_level - old_level-1) / (delay_out+delay_wait)) *(i-delay_wait)))
+                        # Sinon, la valeur est déjà bonne
+                        else:
+                            level = next_level
 
-                    #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
+                        #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
 
-                    self.app.dmx.sequence[channel-1] = level
+                        self.app.dmx.sequence[channel-1] = level
 
             #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
             self.app.dmx.send()
