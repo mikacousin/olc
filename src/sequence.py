@@ -152,11 +152,6 @@ class Sequence(object):
             self.on_go = True
             self.thread = ThreadGo(self.app)
             self.thread.start()
-            # Launch Channels Times if exist
-            for channel in self.app.sequence.cues[self.app.sequence.position+1].channel_time.keys():
-                print("Lancement des Channels Times :", channel,
-                        self.app.sequence.cues[self.app.sequence.position+1].channel_time[channel].delay,
-                        self.app.sequence.cues[self.app.sequence.position+1].channel_time[channel].time)
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
@@ -288,6 +283,7 @@ class ThreadGo(threading.Thread):
 
                     channel_time = self.app.sequence.cues[position+1].channel_time
 
+                    # If channel is in a channel time
                     if channel in channel_time:
                         #print(channel_time[channel].delay, channel_time[channel].time)
                         ct_delay = channel_time[channel].delay * 1000
@@ -295,12 +291,11 @@ class ThreadGo(threading.Thread):
                         if i > ct_delay and i < ct_delay+ct_time:
                             next_level = self.app.sequence.cues[position+1].channels[channel-1]
                             if next_level > old_level:
-                                level = int(((next_level - old_level+1) / (ct_time+ct_delay)) * i) + old_level
+                                level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay)) + old_level
                             else:
-                                level = old_level - abs(int(((next_level - old_level-1) / (ct_time+ct_delay)) *i))
-                            #print("Channel Time", channel, ct_delay, ct_time, next_level, level, i)
+                                level = old_level - abs(int(((next_level - old_level-1) / ct_time) * (i-ct_delay)))
                             self.app.dmx.sequence[channel-1] = level
-
+                    # Else channel is normal
                     else:
                         # On boucle sur les mémoires et on revient à 0
                         if position < self.app.sequence.last - 1:
@@ -311,10 +306,10 @@ class ThreadGo(threading.Thread):
 
                         # Si le level augmente, on prends le temps de montée
                         if next_level > old_level and i < delay_in+delay_wait:
-                            level = int(((next_level - old_level+1) / (delay_in+delay_wait)) * (i-delay_wait)) + old_level
+                            level = int(((next_level - old_level+1) / delay_in) * (i-delay_wait)) + old_level
                         # Si le level descend, on prend le temps de descente
                         elif next_level < old_level and i < delay_out+delay_wait:
-                            level = old_level - abs(int(((next_level - old_level-1) / (delay_out+delay_wait)) *(i-delay_wait)))
+                            level = old_level - abs(int(((next_level - old_level-1) / delay_out) *(i-delay_wait)))
                         # Sinon, la valeur est déjà bonne
                         else:
                             level = next_level
