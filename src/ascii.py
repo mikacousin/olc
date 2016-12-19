@@ -375,10 +375,13 @@ class Ascii(object):
                     t_in = int(self.app.sequence.cues[i].time_in)
                 else:
                     t_in = self.app.sequence.cues[i].time_in
+                channel_time = str(len(self.app.sequence.cues[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
                 self.app.win_seq.cues_liststore.append([str(i), str(self.app.sequence.cues[i].memory),
                         str(self.app.sequence.cues[i].text), wait,
                         str(t_out), str(t_in),
-                        ""])
+                        channel_time])
             self.app.win_seq.step_filter = self.app.win_seq.cues_liststore.filter_new()
             self.app.win_seq.step_filter.set_visible_func(self.app.win_seq.step_filter_func)
 

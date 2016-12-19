@@ -56,7 +56,7 @@ class SequentialWindow(Gtk.Window):
         self.treeview = Gtk.TreeView(model=self.step_filter)
         #self.treeview.set_hexpand(True)
         #self.treeview.set_vexpand(True)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Tps Circ"]):
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
