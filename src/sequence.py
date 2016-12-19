@@ -153,8 +153,10 @@ class Sequence(object):
             self.thread = ThreadGo(self.app)
             self.thread.start()
             # Launch Channels Times if exist
-            for ct in self.app.sequence.cues[self.app.sequence.position+1].channel_time:
-                print("Lancement des Channels Times :", ct.channel, ct.delay, ct.time)
+            for channel in self.app.sequence.cues[self.app.sequence.position+1].channel_time.keys():
+                print("Lancement des Channels Times :", channel,
+                        self.app.sequence.cues[self.app.sequence.position+1].channel_time[channel].delay,
+                        self.app.sequence.cues[self.app.sequence.position+1].channel_time[channel].time)
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
@@ -182,6 +184,7 @@ class ThreadGo(threading.Thread):
         t_in = self.app.sequence.cues[position+1].time_in
         t_out = self.app.sequence.cues[position+1].time_out
         t_wait = self.app.sequence.cues[position+1].wait
+        t_total = self.app.sequence.cues[position+1].total_time
 
         # Quel est le temps le plus long
         if t_in > t_out:
@@ -195,7 +198,7 @@ class ThreadGo(threading.Thread):
         t_min = t_min + t_wait
 
         start_time = time.time() * 1000 # actual time in ms
-        delay = t_max * 1000
+        delay = t_total * 1000
         delay_in = t_in * 1000
         delay_out = t_out * 1000
         delay_wait = t_wait * 1000

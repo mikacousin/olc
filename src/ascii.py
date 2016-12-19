@@ -33,7 +33,7 @@ class Ascii(object):
             channels = False
             mem = False
             chan_t = False
-            channel_time = []
+            channel_time = {}
 
             while True:
 
@@ -221,8 +221,7 @@ class Ascii(object):
                         if line[:14] == '$$PARTTIMECHAN':
                             p = line[15:]
                             #print("Channel N°", p)
-                            chan_t = ChannelTime(int(p), delay, time)
-                            channel_time.append(chan_t)
+                            channel_time[int(p)] = ChannelTime(delay, time)
                         if line[:4] == 'CHAN':
                             #print ("        Chanels :")
                             #p = line[5:-1].split(" ")
@@ -250,8 +249,8 @@ class Ascii(object):
                             #print("StepId :", cue.index, "Memory :", cue.memory)
                             #print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
                             #print("Text :", cue.text)
-                            for ct in channel_time:
-                                print("Channel Time :", ct.channel, ct.delay, ct.time)
+                            #for channel in channel_time.keys():
+                            #   print("Channel Time :", channel, channel_time[channel].delay, channel_time[channel].time)
                             #print("")
                             #for channel in range(512):
                             #    print("Channel :", channel+1, "@", cue.channels[channel])
@@ -265,7 +264,7 @@ class Ascii(object):
                             mem = False
                             channels = False
                             chan_t = False
-                            channel_time = []
+                            channel_time = {}
 
                 if line[:11] == 'CLEAR PATCH':
                     flag_seq = False

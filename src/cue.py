@@ -1,7 +1,7 @@
 import array
 
 class Cue(object):
-    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, wait=0.0, text="", channel_time=[]):
+    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, wait=0.0, text="", channel_time={}):
         self.index = index
         self.memory = memory
         self.channels = channels
@@ -16,9 +16,10 @@ class Cue(object):
             self.total_time = self.time_in + self.wait
         else:
             self.total_time = self.time_out + self.wait
-        for ct in self.channel_time:
-            if ct.delay + ct.time > self.total_time:
-                self.total_time = ct.delay + ct.time
+        for channel in self.channel_time.keys():
+            #print(channel, channel_time[channel].delay, channel_time[channel].time)
+            if channel_time[channel].delay + channel_time[channel].time > self.total_time:
+                self.total_time = channel_time[channel].delay + channel_time[channel].time
 
     def set_level(self, channel, level):
         self.channels[channel] = level
@@ -27,8 +28,7 @@ class Cue(object):
         return self.channels[channel]
 
 class ChannelTime(object):
-    def __init__(self, channel, delay=0.0, time=0.0):
-        self.channel = channel
+    def __init__(self, delay=0.0, time=0.0):
         self.delay = delay
         self.time = time
 
