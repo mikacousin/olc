@@ -293,7 +293,7 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(16, 24)
         cr.line_to(16, 18)
         #inter = (allocation.width-32)/self.time_max
-        inter = (allocation.width-32)/self.total_time
+        inter = (allocation.width - 32) / self.total_time
         for i in range(int(self.total_time-1)):
             cr.move_to(16+(inter*(i+1)), 24)
             cr.line_to(16+(inter*(i+1)), 18)
@@ -325,7 +325,7 @@ class SequentialWidget(Gtk.Widget):
         for channel in self.channel_time.keys():
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
-            cr.move_to((inter*delay),allocation.height-24-(self.ct_nb*8))
+            cr.move_to((inter*delay)+wait_x-4,allocation.height-24-(self.ct_nb*8))
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
@@ -333,20 +333,20 @@ class SequentialWidget(Gtk.Widget):
             cr.show_text(str(channel))
             # draw Channel Time line
             cr.set_source_rgb(0.5, 0.5, 0.5)
-            cr.move_to(16+(inter*delay), allocation.height-24-(self.ct_nb*12))
-            cr.line_to(16+(inter*delay)+(inter*time), allocation.height-24-(self.ct_nb*12))
+            cr.move_to(16+(inter*delay)+wait_x, allocation.height-24-(self.ct_nb*12))
+            cr.line_to(16+(inter*delay)+(inter*time)+wait_x, allocation.height-24-(self.ct_nb*12))
             cr.stroke()
             cr.set_dash([8.0, 6.0])
-            cr.move_to(16+(inter*delay), 24)
-            cr.line_to(16+(inter*delay), allocation.height)
-            cr.move_to(16+(inter*delay)+(inter*time), 24)
-            cr.line_to(16+(inter*delay)+(inter*time), allocation.height)
+            cr.move_to(16+(inter*delay)+wait_x, 24)
+            cr.line_to(16+(inter*delay)+wait_x, allocation.height)
+            cr.move_to(16+(inter*delay)+(inter*time)+wait_x, 24)
+            cr.line_to(16+(inter*delay)+(inter*time)+wait_x, allocation.height)
             cr.stroke()
             cr.set_dash([])
             # draw Time Cursor
-            if self.pos_xA > inter*delay:
-                if self.pos_xA > (inter*delay)+(inter*time):
-                    self.pos_xCT = (inter*delay)+(inter*time)
+            if self.pos_xA > inter*delay + wait_x:
+                if self.pos_xA > (inter*delay)+(inter*time)+wait_x:
+                    self.pos_xCT = (inter * delay) + (inter * time) + wait_x
                 else:
                     self.pos_xCT = self.pos_xA
                 cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -355,17 +355,27 @@ class SequentialWidget(Gtk.Widget):
                 cr.stroke()
             else:
                 cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+(inter*delay), allocation.height-28-(self.ct_nb*12))
-                cr.line_to(16+(inter*delay), allocation.height-20-(self.ct_nb*12))
+                cr.move_to(16+(inter*delay)+wait_x, allocation.height-28-(self.ct_nb*12))
+                cr.line_to(16+(inter*delay)+wait_x, allocation.height-20-(self.ct_nb*12))
                 cr.stroke()
+            # draw time number
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.move_to(12+(inter*delay)+(inter*time)+wait_x,16)
+            t = delay + time + self.wait
+            if t != self.total_time:
+                if t.is_integer():              # If time is integer don't show the ".0"
+                    cr.show_text(str(int(t)))
+                else:
+                    cr.show_text(str(t))
             # draw delay number if any
             if delay:
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.move_to(12+(inter*delay),16)
-                if delay.is_integer():              # If time is integer don't show the ".0"
-                    cr.show_text(str(int(delay)))
+                cr.move_to(12+(inter*delay)+wait_x,16)
+                t = delay + self.wait
+                if t.is_integer():              # If time is integer don't show the ".0"
+                    cr.show_text(str(int(t)))
                 else:
-                    cr.show_text(str(delay))
+                    cr.show_text(str(t))
             self.ct_nb += 1
 
         # draw Out line

@@ -288,12 +288,12 @@ class ThreadGo(threading.Thread):
                         #print(channel_time[channel].delay, channel_time[channel].time)
                         ct_delay = channel_time[channel].delay * 1000
                         ct_time = channel_time[channel].time * 1000
-                        if i > ct_delay and i < ct_delay+ct_time:
+                        if i > ct_delay+delay_wait and i < ct_delay+ct_time+delay_wait:
                             next_level = self.app.sequence.cues[position+1].channels[channel-1]
                             if next_level > old_level:
-                                level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay)) + old_level
+                                level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay-delay_wait)) + old_level
                             else:
-                                level = old_level - abs(int(((next_level - old_level-1) / ct_time) * (i-ct_delay)))
+                                level = old_level - abs(int(((next_level - old_level-1) / ct_time) * (i-ct_delay-delay_wait)))
                             self.app.dmx.sequence[channel-1] = level
                     # Else channel is normal
                     else:
