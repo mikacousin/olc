@@ -31,6 +31,9 @@ class ChanelWidget(Gtk.Widget):
         self.queue_draw()
 
     def do_draw(self, cr):
+
+        self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
+
         # paint background
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
         cr.set_source_rgba(*list(bg_color))

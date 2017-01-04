@@ -5,7 +5,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gio, GLib, Gdk, GObject
 from ola import OlaClient
 
-from olc.settings import Settings
+from olc.settings import Settings, SettingsDialog
 from olc.window import Window
 from olc.patchwindow import PatchWindow
 from olc.dmx import Dmx, PatchDmx
@@ -308,8 +308,9 @@ class Application(Gtk.Application):
         self.win_masters = MastersWindow(self, self.masters)
         self.win_masters.show_all()
 
-    def _settings(self, actions, parameter):
-        pass
+    def _settings(self, action, parameter):
+        self.win_settings = SettingsDialog()
+        self.win_settings.settings_dialog.show_all()
 
     def _shortcuts(self, action, parameter):
         """
