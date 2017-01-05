@@ -106,6 +106,8 @@ class MastersWindow(Gtk.Window):
 
     def scale_moved(self, scale):
 
+        self.percent_view = Gio.Application.get_default().settings.get_boolean('percent')
+
         # On cherche quel scale a été actionné
         for i in range(len(self.scale)):
             if self.scale[i] == scale:

@@ -46,7 +46,26 @@ class SettingsDialog:
         """ Change levels view (0-100) or (0-255) """
         Gio.Application.get_default().settings.set_value('percent', GLib.Variant('b', state))
 
+        # Force redraw of main window
         Gio.Application.get_default().window.flowbox.invalidate_filter()
+
+        # Redraw Groups Window if exist
+        try:
+            Gio.Application.get_default().win_groups.flowbox1.invalidate_filter()
+        except:
+            pass
+
+        # Redraw Masters Window if exist
+        try:
+            for i in range(len(Gio.Application.get_default().win_masters.masters)):
+                val = Gio.Application.get_default().win_masters.scale[i].get_value()
+                if state:
+                    ad = Gtk.Adjustment((val/255)*100, 0, 100, 1, 10, 0)
+                else:
+                    ad = Gtk.Adjustment((val/100)*255, 0, 255, 1, 10, 0)
+                Gio.Application.get_default().win_masters.scale[i].set_adjustment(ad)
+        except:
+            pass
 
     def _on_btn_clicked(self, button):
         ip = self.entry_client_ip.get_text()
