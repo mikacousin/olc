@@ -99,6 +99,8 @@ class Window(Gtk.ApplicationWindow):
 
         self.connect('key_press_event', self.on_key_press_event)
 
+        self.set_icon_name('olc')
+
     def filter_func(self, child, user_data):
         if self.view_type == 0:
             i = child.get_index()
