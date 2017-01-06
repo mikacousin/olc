@@ -8,6 +8,7 @@ Open Lighting Console (olc) is a software to control lights on shows.
 - python3
 - ola (with python3 support) 
 - mido (installed via pip)
+- liblo (python-pyliblo on archlinux)
 
 ##Building from git
 ```
