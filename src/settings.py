@@ -22,6 +22,11 @@ class SettingsDialog:
         switch_percent = builder.get_object('switch_percent')
         switch_percent.set_state(Gio.Application.get_default().settings.get_boolean('percent'))
 
+        self.spin_percent_level = builder.get_object('spin_percent_level')
+        adjustment = Gtk.Adjustment(0, 0, 100, 1, 10, 0)
+        self.spin_percent_level.set_adjustment(adjustment)
+        self.spin_percent_level.set_value(Gio.Application.get_default().settings.get_int('percent-level'))
+
         self.entry_client_ip = builder.get_object('entry_client_ip')
         self.entry_client_ip.set_text(Gio.Application.get_default().settings.get_string('osc-host'))
 
