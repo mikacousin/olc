@@ -47,6 +47,10 @@ class SettingsDialog:
 
         builder.connect_signals(self)
 
+    def _on_change_percent(self, widget):
+        lvl = self.spin_percent_level.get_value_as_int()
+        Gio.Application.get_default().settings.set_value('percent-level', GLib.Variant('i', lvl))
+
     def _update_ui_percent(self, widget, state):
         """ Change levels view (0-100) or (0-255) """
         Gio.Application.get_default().settings.set_value('percent', GLib.Variant('b', state))

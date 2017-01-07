@@ -63,6 +63,7 @@
                 <property name="halign">end</property>
                 <property name="hexpand">True</property>
                 <property name="numeric">True</property>
+                <signal name="value-changed" handler="_on_change_percent" swapped="no"/>
               </object>
               <packing>
                 <property name="left_attach">1</property>
