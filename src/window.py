@@ -286,24 +286,30 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_Right(self):
-        """ Level +1 of selected channels """
+        """ Level + (% level) of selected channels """
+        lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for output in range(512):
             channel = self.app.patch.outputs[output]
             if self.app.window.channels[channel-1].clicked:
                 level = self.app.dmx.frame[output]
-                if level < 255:
-                    self.app.dmx.user[channel-1] = level + 1
+                if level + 255 > 255:
+                    self.app.dmx.user[channel-1] = 255
+                else:
+                    self.app.dmx.user[channel-1] = level + lvl
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
 
     def keypress_Left(self):
-        """ Level -1 of selected channels """
+        """ Level - (% level) of selected channels """
+        lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for output in range(512):
             channel = self.app.patch.outputs[output]
             if self.app.window.channels[channel-1].clicked:
                 level = self.app.dmx.frame[output]
-                if level > 0:
-                    self.app.dmx.user[channel-1] = level - 1
+                if level - lvl < 0:
+                    self.app.dmx.user[channel-1] = 0
+                else:
+                    self.app.dmx.user[channel-1] = level - lvl
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
 
