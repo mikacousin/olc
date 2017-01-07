@@ -317,8 +317,9 @@ class Window(Gtk.ApplicationWindow):
             if self.app.window.channels[channel].clicked:
                 try:
                     level = int(self.keystring)
-                    if self.percent_level:
+                    if Gio.Application.get_default().settings.get_boolean('percent'):
                         if level >= 0 and level <= 100:
+                            # Bug on level calculation ?
                             self.app.dmx.user[channel] = int((level/100)*255+1)
                             if self.app.dmx.user[channel] > 255:
                                 self.app.dmx.user[channel] = 255
