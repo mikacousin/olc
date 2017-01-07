@@ -226,6 +226,10 @@ class Window(Gtk.ApplicationWindow):
             try:
                 channel = int(self.keystring)-1
                 if channel >= 0 and channel < 512:
+                    for i in range(512):
+                        chan = self.app.patch.outputs[i] - 1
+                        self.app.window.channels[chan].clicked = False
+                        self.app.window.channels[chan].queue_draw()
                     self.app.window.channels[channel].clicked = True
                     self.app.window.channels[channel].queue_draw()
                     self.last_chan_selected = self.keystring
