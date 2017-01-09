@@ -53,7 +53,7 @@ class Ascii(object):
                     del(self.app.masters[:])
                     self.app.patch.patch_empty()
                     self.app.sequence = Sequence(1, self.app.patch)
-                    self.app.sequence.window = self.app.win_seq
+                    self.app.sequence.window = self.app.window
 
                 if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
                     p = line[10:].split(" ")
@@ -350,12 +350,12 @@ class Ascii(object):
             t_in = self.app.sequence.cues[1].time_in
             t_out = self.app.sequence.cues[1].time_out
             t_wait = self.app.sequence.cues[1].wait
-            self.app.win_seq.sequential.time_in = t_in
-            self.app.win_seq.sequential.time_out = t_out
-            self.app.win_seq.sequential.wait = t_wait
+            self.app.window.sequential.time_in = t_in
+            self.app.window.sequential.time_out = t_out
+            self.app.window.sequential.wait = t_wait
 
             # On met à jour la liste des mémoires
-            self.app.win_seq.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+            self.app.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
             # 2 lignes vides au début
             #for i in range(2):
             #    self.app.win_seq.cues_liststore.append(["", "", "", "", "", "", ""])
@@ -378,21 +378,21 @@ class Ascii(object):
                 channel_time = str(len(self.app.sequence.cues[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
-                self.app.win_seq.cues_liststore.append([str(i), str(self.app.sequence.cues[i].memory),
+                self.app.window.cues_liststore.append([str(i), str(self.app.sequence.cues[i].memory),
                         str(self.app.sequence.cues[i].text), wait,
                         str(t_out), str(t_in),
                         channel_time])
-            self.app.win_seq.step_filter = self.app.win_seq.cues_liststore.filter_new()
-            self.app.win_seq.step_filter.set_visible_func(self.app.win_seq.step_filter_func)
+            self.app.window.step_filter = self.app.window.cues_liststore.filter_new()
+            self.app.window.step_filter.set_visible_func(self.app.window.step_filter_func)
 
-            self.app.win_seq.treeview.set_model(self.app.win_seq.cues_liststore)
+            self.app.window.treeview.set_model(self.app.window.cues_liststore)
             #self.app.win_seq.treeview.set_model(self.app.win_seq.step_filter)
             #self.app.win_seq.step_filter.refilter()
 
             path = Gtk.TreePath.new_from_indices([0])
-            self.app.win_seq.treeview.set_cursor(path, None, False)
+            self.app.window.treeview.set_cursor(path, None, False)
 
-            self.app.win_seq.grid.queue_draw()
+            self.app.window.seq_grid.queue_draw()
 
             # Redraw Groups Window
             try:

@@ -64,6 +64,7 @@ class Application(Gtk.Application):
 
         # Create Main Window
         self.window = Window(self, self.patch)
+        self.sequence.window = self.window
         self.window.show_all()
 
         # Create several DMX arrays
@@ -72,13 +73,10 @@ class Application(Gtk.Application):
         # Fetch dmx values on startup
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
-        self.win_seq = SequentialWindow(self, self.sequence)
-        self.win_seq.show_all()
-        self.sequence.window = self.win_seq
 
         # TODO: Test manual crossfade, must be deleted
-        self.win_crossfade = CrossfadeWindow()
-        self.win_crossfade.show_all()
+        #self.win_crossfade = CrossfadeWindow()
+        #self.win_crossfade.show_all()
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
@@ -186,14 +184,14 @@ class Application(Gtk.Application):
         del(self.chasers[:])
         # Redraw Sequential Window
         self.sequence = Sequence(1, self.patch)
-        self.sequence.window = self.win_seq
+        self.sequence.window = self.window
         cue = Cue(self.sequence.last+1, "0", text="Last Cue")
         self.sequence.add_cue(cue)
         self.sequence.position = 0
-        self.win_seq.sequential.time_in = self.sequence.cues[1].time_in
-        self.win_seq.sequential.time_out = self.sequence.cues[1].time_out
-        self.win_seq.sequential.wait = self.sequence.cues[1].wait
-        self.win_seq.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.window.sequential.time_in = self.sequence.cues[1].time_in
+        self.window.sequential.time_out = self.sequence.cues[1].time_out
+        self.window.sequential.wait = self.sequence.cues[1].wait
+        self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
         for i in range(self.sequence.last):
             if self.sequence.cues[i].wait.is_integer():
                 wait = str(int(self.sequence.cues[i].wait))
@@ -209,15 +207,15 @@ class Application(Gtk.Application):
                 t_in = int(self.sequence.cues[i].time_in)
             else:
                 t_in = self.sequence.cues[i].time_in
-            self.win_seq.cues_liststore.append([str(i), str(self.sequence.cues[i].memory),
+            self.window.cues_liststore.append([str(i), str(self.sequence.cues[i].memory),
                 str(self.sequence.cues[i].text), wait,
                 str(t_out), str(t_in), ""])
-        self.win_seq.step_filter = self.win_seq.cues_liststore.filter_new()
-        self.win_seq.step_filter.set_visible_func(self.win_seq.step_filter_func)
-        self.win_seq.treeview.set_model(self.win_seq.cues_liststore)
+        self.window.step_filter = self.window.cues_liststore.filter_new()
+        self.window.step_filter.set_visible_func(self.window.step_filter_func)
+        self.window.treeview.set_model(self.window.cues_liststore)
         path = Gtk.TreePath.new_from_indices([0])
-        self.win_seq.treeview.set_cursor(path, None, False)
-        self.win_seq.grid.queue_draw()
+        self.window.treeview.set_cursor(path, None, False)
+        self.window.seq_grid.queue_draw()
         # Redraw Patch Window
         self.patch.patch_1on1()
         for i in range(512):
@@ -427,10 +425,10 @@ class CrossfadeWindow(Gtk.Window):
             wait = app.sequence.cues[position+1].wait * 1000
             pos = (level / 255) * delay
             # Get SequentialWindow's width to place cursor
-            allocation = app.win_seq.sequential.get_allocation()
-            app.win_seq.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
-            app.win_seq.sequential.pos_xB = app.win_seq.sequential.pos_xA
-            app.win_seq.sequential.queue_draw()
+            allocation = app.window.sequential.get_allocation()
+            app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
+            app.window.sequential.pos_xB = app.win_seq.sequential.pos_xA
+            app.window.sequential.queue_draw()
             # Update levels
             for output in range(512):
 
@@ -473,9 +471,9 @@ class CrossfadeWindow(Gtk.Window):
             wait = app.sequence.cues[position+1].wait * 1000
             pos = (level / 255) * delay
             # Get SequentialWindow's width to place cursor
-            allocation = app.win_seq.sequential.get_allocation()
-            app.win_seq.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
-            app.win_seq.sequential.queue_draw()
+            allocation = app.window.sequential.get_allocation()
+            app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
+            app.window.sequential.queue_draw()
             # Update levels
             for output in range(512):
 
@@ -514,9 +512,9 @@ class CrossfadeWindow(Gtk.Window):
             wait = app.sequence.cues[position+1].wait * 1000
             pos = (level / 255) * delay
             # Get SequentialWindow's width to place cursor
-            allocation = app.win_seq.sequential.get_allocation()
-            app.win_seq.sequential.pos_xB = ((allocation.width - 32) / delay) * pos
-            app.win_seq.sequential.queue_draw()
+            allocation = app.window.sequential.get_allocation()
+            app.window.sequential.pos_xB = ((allocation.width - 32) / delay) * pos
+            app.window.sequential.queue_draw()
             # Update levels
             for output in range(512):
 
@@ -568,14 +566,14 @@ class CrossfadeWindow(Gtk.Window):
                     t_in = app.sequence.cues[position+1].time_in
                     t_out = app.sequence.cues[position+1].time_out
                     t_wait = app.sequence.cues[position+1].wait
-                    app.win_seq.sequential.time_in = t_in
-                    app.win_seq.sequential.time_out = t_out
-                    app.win_seq.sequential.wait = t_wait
-                    app.win_seq.sequential.pos_xA = 0
-                    app.win_seq.sequential.pos_xB = 0
+                    app.window.sequential.time_in = t_in
+                    app.window.sequential.time_out = t_out
+                    app.window.sequential.wait = t_wait
+                    app.window.sequential.pos_xA = 0
+                    app.window.sequential.pos_xB = 0
                     path = Gtk.TreePath.new_from_indices([position])
-                    app.win_seq.treeview.set_cursor(path, None, False)
-                    app.win_seq.grid.queue_draw()
+                    app.window.treeview.set_cursor(path, None, False)
+                    app.window.seq_grid.queue_draw()
                     # If Wait
                     if app.sequence.cues[position+1].wait:
                         app.window.keypress_space()
@@ -586,12 +584,12 @@ class CrossfadeWindow(Gtk.Window):
                     t_in = app.sequence.cues[position+1].time_in
                     t_out = app.sequence.cues[position+1].time_out
                     t_wait = app.sequence.cues[position+1].wait
-                    app.win_seq.sequential.time_in = t_in
-                    app.win_seq.sequential.time_out = t_out
-                    app.win_seq.sequential.wait = t_wait
-                    app.win_seq.sequential.pos_xA = 0
-                    app.win_seq.sequential.pos_xB = 0
-                    app.win_seq.sequential.queue_draw()
+                    app.window.sequential.time_in = t_in
+                    app.window.sequential.time_out = t_out
+                    app.window.sequential.wait = t_wait
+                    app.window.sequential.pos_xA = 0
+                    app.window.sequential.pos_xB = 0
+                    app.window.sequential.queue_draw()
 
 if __name__ == "__main__":
     app = Application()

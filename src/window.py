@@ -5,7 +5,7 @@ import mido
 from gi.repository import Gio, Gtk, GObject, Gdk, GLib
 from ola import OlaClient
 
-from olc.customwidgets import ChanelWidget
+from olc.customwidgets import ChanelWidget, SequentialWidget
 
 class Window(Gtk.ApplicationWindow):
 
@@ -87,7 +87,49 @@ class Window(Gtk.ApplicationWindow):
         self.grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
         self.paned.add2(self.grid)
 
-        self.add(self.paned)
+        self.paned2 = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        self.paned2.set_position(950)
+        self.paned2.add1(self.paned)
+
+        self.app = Gio.Application.get_default()
+        self.seq = self.app.sequence
+        
+        # Sequential part of the window
+        position = self.seq.position
+        t_total = self.seq.cues[position].total_time
+        t_in = self.seq.cues[position].time_in
+        t_out = self.seq.cues[position].time_out
+        t_wait = self.seq.cues[position].wait
+        channel_time = self.seq.cues[position].channel_time
+        self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
+        self.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        for i in range(self.app.sequence.last):
+            print(i)
+            self.cues_liststore.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
+                ""])
+        self.step_filter = self.cues_liststore.filter_new()
+        self.step_filter.set_visible_func(self.step_filter_func)
+        self.treeview = Gtk.TreeView(model=self.step_filter)
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
+            renderer = Gtk.CellRendererText()
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            if i == 2:
+                column.set_min_width(200)
+                column.set_resizable(True)
+            self.treeview.append_column(column)
+        self.scrollable = Gtk.ScrolledWindow()
+        self.scrollable.set_vexpand(True)
+        self.scrollable.set_hexpand(True)
+        self.scrollable.add(self.treeview)
+        self.seq_grid = Gtk.Grid()
+        self.seq_grid.add(self.sequential)
+        self.seq_grid.attach_next_to(self.scrollable, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
+        self.notebook = Gtk.Notebook()
+        self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
+        self.paned2.add2(self.notebook)
+
+        self.add(self.paned2)
 
         # Open MIDI input port
         try:
@@ -100,6 +142,9 @@ class Window(Gtk.ApplicationWindow):
         self.connect('key_press_event', self.on_key_press_event)
 
         self.set_icon_name('olc')
+
+    def step_filter_func(self, model, iter, data):
+        return True
 
     def filter_func(self, child, user_data):
         if self.view_type == 0:
