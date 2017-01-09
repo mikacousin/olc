@@ -1,6 +1,6 @@
 import array
 
-from olc.customwidgets import ChanelWidget
+from olc.customwidgets import ChannelWidget
 
 class Dmx(object):
     def __init__(self, universe, patch, ola_client, sequence, masters, window):

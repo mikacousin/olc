@@ -33,7 +33,7 @@ class PatchWindow(Gtk.Window):
         self.treeview.append_column(column_chan)
 
         renderer_chan = Gtk.CellRendererText()
-        column_chan = Gtk.TreeViewColumn("Chanel", renderer_chan, text=1)
+        column_chan = Gtk.TreeViewColumn("Channel", renderer_chan, text=1)
         self.treeview.append_column(column_chan)
 
         renderer_output = Gtk.CellRendererText()

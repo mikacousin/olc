@@ -4,8 +4,8 @@ import math
 
 from olc.settings import Settings
 
-class ChanelWidget(Gtk.Widget):
-    __gtype_name__ = 'ChanelWidget'
+class ChannelWidget(Gtk.Widget):
+    __gtype_name__ = 'ChannelWidget'
 
     def __init__(self, channel, level, next_level):
         Gtk.Widget.__init__(self)
@@ -164,7 +164,7 @@ class GroupWidget(Gtk.Widget):
         else:
             self.clicked = True
         self.queue_draw()
-        self.wingrps.flowbox1.invalidate_filter()
+        self.wingrps.grp_flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
         # paint background

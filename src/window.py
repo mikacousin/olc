@@ -1,11 +1,13 @@
 import select
 import time
 import threading
+import array
 import mido
 from gi.repository import Gio, Gtk, GObject, Gdk, GLib
 from ola import OlaClient
 
-from olc.customwidgets import ChanelWidget, SequentialWidget
+from olc.group import Group
+from olc.customwidgets import ChannelWidget, SequentialWidget, GroupWidget
 
 class Window(Gtk.ApplicationWindow):
 
@@ -67,7 +69,7 @@ class Window(Gtk.ApplicationWindow):
         #self.progressbar = []
 
         for i in range(512):
-            self.channels.append(ChanelWidget(i+1, 0, 0))
+            self.channels.append(ChannelWidget(i+1, 0, 0))
             self.flowbox.add(self.channels[i])
 
         self.scrolled.add(self.flowbox)
@@ -125,8 +127,121 @@ class Window(Gtk.ApplicationWindow):
         self.seq_grid = Gtk.Grid()
         self.seq_grid.add(self.sequential)
         self.seq_grid.attach_next_to(self.scrollable, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
+
+        # Sequential in a Tab
         self.notebook = Gtk.Notebook()
         self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
+
+        # Groups Tab
+        self.grp_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
+        self.grp_paned.set_position(300)
+        self.grp_scrolled1 = Gtk.ScrolledWindow()
+        self.grp_scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.grp_flowbox1 = Gtk.FlowBox()
+        self.grp_flowbox1.set_valign(Gtk.Align.START)
+        self.grp_flowbox1.set_max_children_per_line(20)
+        self.grp_flowbox1.set_homogeneous(True)
+        self.grp_flowbox1.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.grp_channels = []
+        for i in range(512):
+            self.grp_channels.append(ChannelWidget(i+1, 0, 0))
+            self.grp_flowbox1.add(self.grp_channels[i])
+        self.grp_scrolled1.add(self.grp_flowbox1)
+        self.grp_paned.add1(self.grp_scrolled1)
+        self.grp_scrolled2 = Gtk.ScrolledWindow()
+        self.grp_scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.grp_flowbox2 = Gtk.FlowBox()
+        self.grp_flowbox2.set_valign(Gtk.Align.START)
+        self.grp_flowbox2.set_max_children_per_line(20)
+        self.grp_flowbox2.set_homogeneous(True)
+        self.grp_flowbox2.set_activate_on_single_click(True)
+        self.grp_flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.grp_flowbox2.set_filter_func(self.filter_groups, None)
+        self.grp_grps = []
+        for i in range(len(self.app.groups)):
+            self.grp_grps.append(GroupWidget(self, self.app.groups[i].index, self.app.groups[i].text,
+                self.grp_grps))
+            self.grp_flowbox2.add(self.grp_grps[i])
+        self.grp_scrolled2.add(self.grp_flowbox2)
+        self.grp_paned.add2(self.grp_scrolled2)
+        self.grp_flowbox1.set_filter_func(self.filter_channels, None)
+
+        self.notebook.append_page(self.grp_paned, Gtk.Label('Groups'))
+
+        # Masters Tab
+        self.master_ad = []
+        self.master_scale = []
+        self.master_flash = []
+        self.master_grid = Gtk.Grid()
+        self.master_grid.set_column_homogeneous(True)
+        for i in range(len(self.app.masters)):
+            if self.percent_level:
+                self.master_ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
+            else:
+                self.master_ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
+            self.master_scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.master_ad[i]))
+            self.master_scale[i].set_digits(0)
+            self.master_scale[i].set_vexpand(True)
+            self.master_scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
+            self.master_scale[i].set_inverted(True)
+            self.master_scale[i].connect('value-changed', self.master_scale_moved)
+            self.master_flash.append(Gtk.Button.new_with_label(self.app.masters[i].text))
+            self.master_flash[i].connect('button-press-event', self.master_flash_on)
+            self.master_flash[i].connect('button-release-event', self.master_flash_off)
+            if i == 0:
+                self.master_grid.attach(self.master_scale[i], 0, 0, 1, 1)
+                self.master_grid.attach_next_to(self.master_flash[i], self.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+            elif not i % 4:
+                self.master_grid.attach_next_to(self.master_scale[i], self.master_flash[i-4], Gtk.PositionType.BOTTOM, 1, 1)
+                self.master_grid.attach_next_to(self.master_flash[i], self.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+            else:
+                self.master_grid.attach_next_to(self.master_scale[i], self.master_scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                self.master_grid.attach_next_to(self.master_flash[i], self.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+        self.notebook.append_page(self.master_grid, Gtk.Label('Masters'))
+
+        # Patch Tab
+        self.patch_grid = Gtk.Grid()
+        self.patch_grid.set_column_homogeneous(True)
+        self.patch_grid.set_row_homogeneous(True)
+        self.patch_liststore = Gtk.ListStore(str, int, str, str)
+        for i in range(len(self.app.patch.channels)):
+            for j in range(len(self.app.patch.channels[i])):
+                if self.app.patch.channels[i][j] != 0:
+                    self.patch_liststore.append(["     ", i+1, str(self.app.patch.channels[i][j]), ""])
+                else:
+                    self.patch_liststore.append(["     ", i+1, "", ""])
+        self.patch_treeview = Gtk.TreeView(model=self.patch_liststore)
+        patch_renderer_chan = Gtk.CellRendererText()
+        patch_column_chan = Gtk.TreeViewColumn("", patch_renderer_chan, text=0)
+        self.patch_treeview.append_column(patch_column_chan)
+        patch_renderer_chan = Gtk.CellRendererText()
+        patch_column_chan = Gtk.TreeViewColumn("Channel", patch_renderer_chan, text=1)
+        self.patch_treeview.append_column(patch_column_chan)
+        patch_renderer_output = Gtk.CellRendererText()
+        patch_renderer_output.set_property('editable', True)
+        patch_column_output = Gtk.TreeViewColumn("Output", patch_renderer_output, text=2)
+        self.patch_treeview.append_column(patch_column_output)
+        #patch_renderer_output.connect('edited', self.output_edited)
+        patch_renderer_type = Gtk.CellRendererText()
+        patch_renderer_type.set_property('editable', True)
+        patch_column_type = Gtk.TreeViewColumn("Type", patch_renderer_type, text=3)
+        self.patch_treeview.append_column(patch_column_type)
+        #patch_renderer_type.connect('edited', self.type_edited)
+        self.patch_buttons = list()
+        for type in ["Patch 1:1", "Patch Vide"]:
+            button = Gtk.Button(type)
+            self.patch_buttons.append(button)
+            button.connect('clicked', self.on_patch_button_clicked)
+        self.patch_scrollable_treelist = Gtk.ScrolledWindow()
+        self.patch_scrollable_treelist.add(self.patch_treeview)
+        self.patch_scrollable_treelist.set_vexpand(True)
+        self.patch_grid.attach(self.patch_scrollable_treelist, 0, 0, 6, 10)
+        self.patch_grid.attach_next_to(self.patch_buttons[0], self.patch_scrollable_treelist,
+                Gtk.PositionType.BOTTOM, 1, 1)
+        for i, button in enumerate(self.patch_buttons[1:]):
+            self.patch_grid.attach_next_to(button, self.patch_buttons[i], Gtk.PositionType.RIGHT, 1, 1)
+        self.notebook.append_page(self.patch_grid, Gtk.Label('Patch'))
+
         self.paned2.add2(self.notebook)
 
         self.add(self.paned2)
@@ -142,6 +257,95 @@ class Window(Gtk.ApplicationWindow):
         self.connect('key_press_event', self.on_key_press_event)
 
         self.set_icon_name('olc')
+
+    def master_flash_on(self, widget, events):
+        # Find the number of the button
+        for i in range(len(self.app.masters)):
+            if widget == self.master_flash[i]:
+                # Put the master's value to Full
+                if self.percent_level:
+                    self.master_scale[i].set_value(100)
+                else:
+                    self.master_scale[i].set_value(255)
+                break
+
+    def master_flash_off(self, widget, events):
+        # Find the number of the button
+        for i in range(len(self.app.masters)):
+            if widget == self.master_flash[i]:
+                # Put the master's value to 0
+                self.master_scale[i].set_value(0)
+                break
+
+    def master_scale_moved(self, scale):
+
+        # Wich Scale has been moved ?
+        for i in range(len(self.master_scale)):
+            if self.master_scale[i] == scale:
+                # Scale's Value
+                level_scale = scale.get_value()
+
+                # Master is a group
+                if self.app.masters[i].content_type == 2 or self.app.masters[i].content_type == 13:
+                    grp = self.app.masters[i].content_value
+                    for j in range(len(self.app.masters[i].groups)):
+                        if self.app.masters[i].groups[j].index == grp:
+                            # For each output
+                            for output in range(512):
+                                # If Output patched
+                                channel = self.app.patch.outputs[output]
+                                if channel:
+                                    if self.app.masters[i].groups[j].channels[channel-1] != 0:
+                                        # On récupère la valeur enregistrée dans le groupe
+                                        level_group = self.app.masters[i].groups[j].channels[channel-1]
+                                        # Calcul du level
+                                        if level_scale == 0:
+                                            level = 0
+                                        else:
+                                            if self.percent_level:
+                                                level = int(level_group / (100 / level_scale))
+                                            else:
+                                                level = int(level_group / (256 / level_scale)) + 1
+                                        # Mise à jour du tableau des niveaux du master
+                                        self.app.masters[i].dmx[channel-1] = level
+
+                            # On met à jour les niveaux DMX
+                            self.app.dmx.send()
+
+    def on_patch_button_clicked(self, widget):
+        # TODO: A revoir car basé sur du texte qui doit être traduit
+        button_label = widget.get_label()
+        if button_label == "Patch Vide":
+            self.app.patch.patch_empty()
+            for i in range(512):
+                self.patch_liststore[i][2] = ""
+            self.flowbox.invalidate_filter()
+        elif button_label == "Patch 1:1":
+            self.app.patch.patch_1on1()
+            for i in range(512):
+                self.patch_liststore[i][2] = str(i + 1)
+                level = self.app.dmx.frame[i]
+                self.channels[i].level = level
+                self.channels[i].queue_draw()
+            self.flowbox.invalidate_filter()
+
+    def filter_channels(self, child, user_data):
+        """ Pour n'afficher que les channels du groupe """
+        i = child.get_index() # Numéro du widget qu'on filtre (channel-1)
+        # On cherche le groupe actuellement séléctionné
+        for j in range(len(self.grp_grps)):
+            if self.grp_grps[j].clicked:
+                # Si le channel est dans le groupe, on l'affiche
+                if self.app.groups[j].channels[i] != 0 or self.grp_channels[i].clicked == True:
+                    # On récupère le level (next_level à la même valeur)
+                    self.grp_channels[i].level = self.app.groups[j].channels[i]
+                    self.grp_channels[i].next_level = self.app.groups[j].channels[i]
+                    return child
+                else:
+                    return False
+
+    def filter_groups(self, child, user_data):
+        return child
 
     def step_filter_func(self, model, iter, data):
         return True

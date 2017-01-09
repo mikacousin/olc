@@ -1,6 +1,6 @@
 from gi.repository import Gio, Gtk, Gdk
 
-from olc.customwidgets import ChanelWidget, GroupWidget
+from olc.customwidgets import ChannelWidget, GroupWidget
 
 class GroupsWindow(Gtk.Window):
     def __init__(self, app, groups):
@@ -25,19 +25,19 @@ class GroupsWindow(Gtk.Window):
         self.scrolled1 = Gtk.ScrolledWindow()
         self.scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
-        self.flowbox1 = Gtk.FlowBox()
-        self.flowbox1.set_valign(Gtk.Align.START)
-        self.flowbox1.set_max_children_per_line(20)
-        self.flowbox1.set_homogeneous(True)
-        self.flowbox1.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.grp_flowbox1 = Gtk.FlowBox()
+        self.grp_flowbox1.set_valign(Gtk.Align.START)
+        self.grp_flowbox1.set_max_children_per_line(20)
+        self.grp_flowbox1.set_homogeneous(True)
+        self.grp_flowbox1.set_selection_mode(Gtk.SelectionMode.NONE)
 
         self.channels = []
 
         for i in range(512):
-            self.channels.append(ChanelWidget(i+1, 0, 0))
-            self.flowbox1.add(self.channels[i])
+            self.channels.append(ChannelWidget(i+1, 0, 0))
+            self.grp_flowbox1.add(self.channels[i])
 
-        self.scrolled1.add(self.flowbox1)
+        self.scrolled1.add(self.grp_flowbox1)
         self.paned.add1(self.scrolled1)
 
         # On affiche les groupes avec un flowbox et un scroller
@@ -62,7 +62,7 @@ class GroupsWindow(Gtk.Window):
         self.paned.add2(self.scrolled2)
 
         # Définition de la fonction de filtre des channels
-        self.flowbox1.set_filter_func(self.filter_channels, None)
+        self.grp_flowbox1.set_filter_func(self.filter_channels, None)
 
         self.add(self.paned)
 
@@ -94,7 +94,7 @@ class GroupsWindow(Gtk.Window):
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
         self.grps[child.get_index()].clicked = True
-        self.flowbox1.invalidate_filter()
+        self.grp_flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
 
     def on_key_press_event(self, widget, event):
@@ -131,7 +131,7 @@ class GroupsWindow(Gtk.Window):
                     for channel in range(512):
                         self.channels[channel].clicked = False
                         self.channels[channel].queue_draw()
-            self.flowbox1.invalidate_filter()
+            self.grp_flowbox1.invalidate_filter()
         else:
             channel = int(self.keystring) - 1
             if channel >= 0 and channel < 512:
@@ -141,7 +141,7 @@ class GroupsWindow(Gtk.Window):
                             self.channels[chan].clicked = False
                 self.channels[channel].clicked = True
                 self.channels[channel].queue_draw()
-                self.flowbox1.invalidate_filter()
+                self.grp_flowbox1.invalidate_filter()
                 self.last_chan_selected = self.keystring
         self.keystring = ""
 
@@ -154,7 +154,7 @@ class GroupsWindow(Gtk.Window):
         for chan in range(int(self.last_chan_selected), to_chan):
             self.channels[chan].clicked = True
             self.channels[chan].queue_draw()
-        self.flowbox1.invalidate_filter()
+        self.grp_flowbox1.invalidate_filter()
         self.last_chan_selected = self.keystring
         self.keystring = ""
 
@@ -164,7 +164,7 @@ class GroupsWindow(Gtk.Window):
         if channel >= 0 and channel < 512:
             self.channels[channel].clicked = True
             self.channels[channel].queue_draw()
-            self.flowbox1.invalidate_filter()
+            self.grp_flowbox1.invalidate_filter()
             self.last_chan_selected = self.keystring
             self.keystring = ""
 
@@ -174,7 +174,7 @@ class GroupsWindow(Gtk.Window):
         if channel >= 0 and channel < 512:
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
-            self.flowbox1.invalidate_filter()
+            self.grp_flowbox1.invalidate_filter()
             self.last_chan_selected = self.keystring
             self.keystring = ""
 
@@ -199,7 +199,7 @@ class GroupsWindow(Gtk.Window):
                     if self.channels[channel].clicked:
                         if level != -1:
                             self.groups[grp].channels[channel] = level
-        self.flowbox1.invalidate_filter()
+        self.grp_flowbox1.invalidate_filter()
 
     def keypress_colon(self):
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
@@ -213,7 +213,7 @@ class GroupsWindow(Gtk.Window):
                         else:
                             level = level - lvl
                         self.groups[grp].channels[channel] = level
-        self.flowbox1.invalidate_filter()
+        self.grp_flowbox1.invalidate_filter()
 
     def keypress_exclam(self):
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
@@ -227,4 +227,4 @@ class GroupsWindow(Gtk.Window):
                         else:
                             level = level + lvl
                         self.groups[grp].channels[channel] = level
-        self.flowbox1.invalidate_filter()
+        self.grp_flowbox1.invalidate_filter()

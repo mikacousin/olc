@@ -406,6 +406,18 @@ class Ascii(object):
                 self.app.win_groups.show_all()
             except:
                 pass
+            # Redraw Groups Tab
+            del(self.app.window.grp_grps[:])
+            for i in range(len(self.app.groups)):
+                #print(self.app.groups[i].text)
+                self.app.window.grp_grps.append(GroupWidget(self.app.window,
+                    self.app.groups[i].index, self.app.groups[i].text, self.app.window.grp_grps))
+                self.app.window.grp_flowbox2.add(self.app.window.grp_grps[i])
+            #for i in range(len(self.app.window.grp_grps)):
+            #    print(self.app.window.grp_grps[i].name)
+            self.app.window.grp_flowbox1.invalidate_filter()
+            self.app.window.grp_flowbox2.invalidate_filter()
+            self.app.window.grp_flowbox2.queue_draw()
 
             # Redraw Masters Window if exist
             try:
@@ -446,6 +458,42 @@ class Ascii(object):
                 self.app.win_masters.show_all()
             except:
                 pass
+            # Redraw Masters Tab
+            del(self.app.window.master_scale[:])
+            del(self.app.window.master_ad[:])
+            del(self.app.window.master_flash[:])
+            for i in range(len(self.app.masters)):
+                if Gio.Application.get_default().settings.get_boolean('percent'):
+                    self.app.window.master_ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
+                else:
+                    self.app.window.master_ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
+                self.app.window.master_scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL,
+                    adjustment=self.app.window.master_ad[i]))
+                self.app.window.master_scale[i].set_digits(0)
+                self.app.window.master_scale[i].set_vexpand(True)
+                self.app.window.master_scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
+                self.app.window.master_scale[i].set_inverted(True)
+                self.app.window.master_scale[i].connect("value-changed", self.app.window.master_scale_moved)
+                # Button to flash Master
+                self.app.window.master_flash.append(Gtk.Button.new_with_label(self.app.masters[i].text))
+                self.app.window.master_flash[i].connect("button-press-event", self.app.window.master_flash_on)
+                self.app.window.master_flash[i].connect("button-release-event", self.app.window.master_flash_off)
+                # Place Masters in Window
+                if i == 0:
+                    self.app.window.master_grid.attach(self.app.window.master_scale[i], 0, 0, 1, 1)
+                    self.app.window.master_grid.attach_next_to(self.app.window.master_flash[i],
+                            self.app.window.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                elif not i % 4:
+                    self.app.window.master_grid.attach_next_to(self.app.window.master_scale[i],
+                            self.app.window.master_flash[i-4], Gtk.PositionType.BOTTOM, 1, 1)
+                    self.app.window.master_grid.attach_next_to(self.app.window.master_flash[i],
+                            self.app.window.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                else:
+                    self.app.window.master_grid.attach_next_to(self.app.window.master_scale[i],
+                            self.app.window.master_scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                    self.app.window.master_grid.attach_next_to(self.app.window.master_flash[i],
+                            self.app.window.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+            self.app.window.show_all()
 
             # Redraw Patch Window if exist
             try:
@@ -458,6 +506,13 @@ class Ascii(object):
                 self.app.patchwindow.show_all()
             except:
                 pass
+            # Redraw Patch Tab
+            for i in range(512):
+                for j in range(len(self.app.patch.channels[i])):
+                    if self.app.patch.channels[i][j] != 0:
+                        self.app.window.patch_liststore[i][2] = str(self.app.patch.channels[i][j])
+                    else:
+                        self.app.window.patch_liststore[i][2] = ""
 
         except GObject.GError as e:
             print("Error: " + e.message)
