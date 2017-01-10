@@ -12,7 +12,7 @@ from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
 from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
-from olc.group import Group
+from olc.group import Group, GroupTab
 from olc.groupswindow import GroupsWindow
 from olc.master import Master, MastersWindow
 from olc.customwidgets import GroupWidget
@@ -301,6 +301,12 @@ class Application(Gtk.Application):
     def _groups(self, action, parameter):
         self.win_groups = GroupsWindow(self, self.groups)
         self.win_groups.show_all()
+
+        # TODO: Test create tab
+        tab = GroupTab()
+        self.window.notebook.append_page(tab, Gtk.Label('Groups'))
+        self.window.show_all()
+        self.window.notebook.set_current_page(-1)
 
     def _masters(self, action, parameter):
         self.win_masters = MastersWindow(self, self.masters)

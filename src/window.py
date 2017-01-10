@@ -165,6 +165,7 @@ class Window(Gtk.ApplicationWindow):
         self.grp_scrolled2.add(self.grp_flowbox2)
         self.grp_paned.add2(self.grp_scrolled2)
         self.grp_flowbox1.set_filter_func(self.filter_channels, None)
+        self.grp_flowbox2.connect('child_activated', self.on_group_selected)
 
         self.notebook.append_page(self.grp_paned, Gtk.Label('Groups'))
 
@@ -346,6 +347,16 @@ class Window(Gtk.ApplicationWindow):
 
     def filter_groups(self, child, user_data):
         return child
+
+    def on_group_selected(self, flowbox, child):
+        for grp in range(len(self.grp_grps)):
+            self.grp_grps[grp].clicked = False
+        for channel in range(512):
+            self.grp_channels[channel].clicked = False
+            self.grp_channels[channel].queue_draw()
+        self.grp_grps[child.get_index()].clicked = True
+        self.grp_flowbox1.invalidate_filter()
+        self.grp_flowbox2.invalidate_filter()
 
     def step_filter_func(self, model, iter, data):
         return True
