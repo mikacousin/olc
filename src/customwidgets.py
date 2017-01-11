@@ -308,8 +308,8 @@ class SequentialWidget(Gtk.Widget):
             # Draw Wait lines
             cr.move_to(16, 40)
             cr.line_to(16+(inter*self.wait), 40)
-            cr.move_to(16, allocation.height-32)
-            cr.line_to(16+(inter*self.wait), allocation.height-32)
+            cr.move_to(16, allocation.height-32-(len(self.channel_time)*24))
+            cr.line_to(16+(inter*self.wait), allocation.height-32-(len(self.channel_time)*24))
             wait_x = inter * self.wait
             # Draw Wait time on the time line
             cr.move_to(12+(inter*self.wait),16)
@@ -326,6 +326,10 @@ class SequentialWidget(Gtk.Widget):
 
         # Draw Channel Time if any
         self.ct_nb = 0
+
+        # Change height to draw channel time
+        self.set_size_request(800, 300 + (len(self.channel_time) * 24))
+
         for channel in self.channel_time.keys():
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
@@ -385,7 +389,7 @@ class SequentialWidget(Gtk.Widget):
         # draw Out line
         cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.move_to(16+wait_x, 40)
-        cr.line_to(16+wait_x+(inter*self.time_out), allocation.height-32)
+        cr.line_to(16+wait_x+(inter*self.time_out), allocation.height-32-(len(self.channel_time)*24))
         cr.stroke()
         cr.move_to(16+wait_x+(inter*self.time_out), 24)
         cr.line_to(16+wait_x+(inter*self.time_out), allocation.height)
@@ -398,7 +402,7 @@ class SequentialWidget(Gtk.Widget):
         start_x = wait_x + 16
         start_y = 40
         end_x = 16+wait_x+(inter*self.time_out)
-        end_y = allocation.height-32
+        end_y = allocation.height-32-(len(self.channel_time)*24)
         angle = math.atan2(end_y - start_y, end_x - start_x)
         x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
         y1 = end_y + arrow_lenght * math.sin(angle - arrow_degrees)
@@ -443,7 +447,7 @@ class SequentialWidget(Gtk.Widget):
 
         # draw In line
         cr.set_source_rgb(0.5, 0.5, 0.5)
-        cr.move_to(16+wait_x, allocation.height-32)
+        cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*24))
         cr.line_to(16+wait_x+(inter*self.time_in), 40)
         cr.stroke()
         cr.move_to(16+wait_x+(inter*self.time_in), 24)
@@ -455,7 +459,7 @@ class SequentialWidget(Gtk.Widget):
         arrow_lenght = 12
         arrow_degrees = 10
         start_x = wait_x + 16
-        start_y = allocation.height-32
+        start_y = allocation.height-32-(len(self.channel_time)*24)
         end_x = 16+wait_x+(inter*self.time_in)
         end_y = 40
         angle = math.atan2(end_y - start_y, end_x - start_x)
