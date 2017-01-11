@@ -406,23 +406,22 @@ class Ascii(object):
                 self.app.win_groups.show_all()
             except:
                 pass
-            """
-            # Redraw Groups Tab
-            del(self.app.window.grp_grps[:])
-            for i in range(len(self.app.groups)):
-                #print(self.app.groups[i].text)
-                self.app.window.grp_grps.append(GroupWidget(self.app.window,
-                    self.app.groups[i].index, self.app.groups[i].text, self.app.window.grp_grps))
-                self.app.window.grp_flowbox2.add(self.app.window.grp_grps[i])
-            #for i in range(len(self.app.window.grp_grps)):
-            #    print(self.app.window.grp_grps[i].name)
-            self.app.window.grp_flowbox1.invalidate_filter()
-            self.app.window.grp_flowbox2.invalidate_filter()
-            self.app.window.grp_flowbox2.queue_draw()
-            """
             # Redraw New Group Tab
             try:
+                # Remove Old Groups
                 del(self.app.tab.grps[:])
+                self.app.tab.scrolled2.remove(self.app.tab.flowbox2)
+                self.app.tab.flowbox2.destroy()
+                # New FlowBox
+                self.app.tab.flowbox2 = Gtk.FlowBox()
+                self.app.tab.flowbox2.set_valign(Gtk.Align.START)
+                self.app.tab.flowbox2.set_max_children_per_line(20)
+                self.app.tab.flowbox2.set_homogeneous(True)
+                self.app.tab.flowbox2.set_activate_on_single_click(True)
+                self.app.tab.flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
+                self.app.tab.flowbox2.set_filter_func(self.app.tab.filter_groups, None)
+                self.app.tab.scrolled2.add(self.app.tab.flowbox2)
+                # Add Groups to FlowBox
                 for i in range(len(self.app.groups)):
                     self.app.tab.grps.append(GroupWidget(self.app.window, self.app.groups[i].index,
                         self.app.groups[i].text, self.app.tab.grps))
