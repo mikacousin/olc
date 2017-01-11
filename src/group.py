@@ -108,6 +108,22 @@ class GroupTab(Gtk.Paned):
         if func:
             return func()
 
+    def keypress_g(self):
+        """ Select Group """
+        # Deselect group selected
+        for grp in range(len(self.grps)):
+            self.grps[grp].clicked = False
+        # Find the group with is number and select it
+        if self.keystring != "" and self.keystring != "0":
+            group = int(self.keystring)
+            for grp in range(len(self.grps)):
+                if group == int(self.grps[grp].number):
+                    self.grps[grp].clicked = True
+        # Update display
+        self.flowbox1.invalidate_filter()
+        self.flowbox2.invalidate_filter()
+        self.keystring = ""
+
     def keypress_a(self):
         """ All Channels """
         for j in range(len(self.grps)):
