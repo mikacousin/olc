@@ -103,15 +103,15 @@
             <child>
               <object class="GtkShortcutsShortcut" id="+%">
                 <property name="visible">1</property>
-                <property name="accelerator">Right</property>
-                <property name="title" translatable="yes" context="shortcut window">Level +1</property>
+                <property name="accelerator">exclam</property>
+                <property name="title" translatable="yes" context="shortcut window">Level + %</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="-%">
                 <property name="visible">1</property>
-                <property name="accelerator">Left</property>
-                <property name="title" translatable="yes" context="shortcut window">Level -1</property>
+                <property name="accelerator">colon</property>
+                <property name="title" translatable="yes" context="shortcut window">Level - %</property>
               </object>
             </child>
           </object>

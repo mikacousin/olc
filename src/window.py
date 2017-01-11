@@ -489,7 +489,7 @@ class Window(Gtk.ApplicationWindow):
         #self.label.queue_draw()
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_Right(self):
+    def keypress_exclam(self):
         """ Level + (% level) of selected channels """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for output in range(512):
@@ -503,7 +503,7 @@ class Window(Gtk.ApplicationWindow):
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
 
-    def keypress_Left(self):
+    def keypress_colon(self):
         """ Level - (% level) of selected channels """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for output in range(512):
