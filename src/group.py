@@ -14,6 +14,9 @@ class GroupTab(Gtk.Paned):
 
         self.app = Gio.Application.get_default()
 
+        self.keystring = ""
+        self.last_chan_selected = ""
+
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
@@ -94,4 +97,139 @@ class GroupTab(Gtk.Paned):
 
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
-        print(keyname)
+        #print(keyname)
+
+        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+            self.keystring += keyname
+        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+            self.keystring += keyname[3:]
+
+        func = getattr(self, 'keypress_' + keyname, None)
+        if func:
+            return func()
+
+    def keypress_a(self):
+        """ All Channels """
+        for j in range(len(self.grps)):
+            if self.grps[j].clicked:
+                for channel in range(512):
+                    level = self.app.groups[j].channels[channel]
+                    if level > 0:
+                        self.channels[channel].clicked = True
+                        self.channels[channel].queue_draw()
+                    else:
+                        self.channels[channel].clicked = False
+                        self.channels[channel].queue_draw()
+
+    def keypress_c(self):
+        """ Channel """
+        if self.keystring == "" or self.keystring == "0":
+            for grp in range(len(self.grps)):
+                if self.grps[grp].clicked:
+                    for channel in range(512):
+                        self.channels[channel].clicked = False
+                        self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+        else:
+            channel = int(self.keystring) - 1
+            if channel >= 0 and channel < 512:
+                for grp in range(len(self.grps)):
+                    if self.grps[grp].clicked:
+                        for chan in range(512):
+                            self.channels[chan].clicked = False
+                self.channels[channel].clicked = True
+                self.channels[channel].queue_draw()
+                self.flowbox1.invalidate_filter()
+                self.last_chan_selected = self.keystring
+        self.keystring = ""
+
+    def keypress_KP_Divide(self):
+        self.keypress_greater()
+
+    def keypress_greater(self):
+        """ Channel Thru """
+        if not self.last_chan_selected:
+            return
+        to_chan = int(self.keystring)
+        if to_chan > int(self.last_chan_selected):
+            for chan in range(int(self.last_chan_selected), to_chan):
+                self.channels[chan].clicked = True
+                self.channels[chan].queue_draw()
+        else:
+            for chan in range(to_chan - 1, int(self.last_chan_selected)):
+                self.channels[chan].clicked = True
+                self.channels[chan].queue_draw()
+        self.flowbox1.invalidate_filter()
+        self.last_chan_selected = self.keystring
+        self.keystring = ""
+
+    def keypress_plus(self):
+        """ Channel + """
+        channel = int(self.keystring) - 1
+        if channel >= 0 and channel < 512:
+            self.channels[channel].clicked = True
+            self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.last_chan_selected = self.keystring
+            self.keystring = ""
+
+    def keypress_minus(self):
+        """ Channel - """
+        channel = int(self.keystring) - 1
+        if channel >= 0 and channel < 512:
+            self.channels[channel].clicked = False
+            self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.last_chan_selected = self.keystring
+            self.keystring = ""
+
+    def keypress_equal(self):
+        """ @ Level """
+        # TODO: Pb de calcul du level (en mode % on a 0 = 1 par ex)
+        level = int(self.keystring)
+        self.keystring = ""
+        if Gio.Application.get_default().settings.get_boolean('percent'):
+            if level >= 0 and level <= 100:
+                level = int((level / 100) * 255 + 1)
+                if level > 255:
+                    level = 255
+            else:
+                level = -1
+        else:
+            if level > 255:
+                level = 255
+        for grp in range(len(self.grps)):
+            if self.grps[grp].clicked:
+                for channel in range(512):
+                    if self.channels[channel].clicked:
+                        if level != -1:
+                            self.app.groups[grp].channels[channel] = level
+        self.flowbox1.invalidate_filter()
+
+    def keypress_colon(self):
+        lvl = Gio.Application.get_default().settings.get_int('percent-level')
+        for grp in range(len(self.grps)):
+            if self.grps[grp].clicked:
+                for channel in range(512):
+                    if self.channels[channel].clicked:
+                        level = self.app.groups[grp].channels[channel]
+                        if level - lvl < 0:
+                            level = 0
+                        else:
+                            level = level - lvl
+                        self.app.groups[grp].channels[channel] = level
+        self.flowbox1.invalidate_filter()
+
+    def keypress_exclam(self):
+        lvl = Gio.Application.get_default().settings.get_int('percent-level')
+        for grp in range(len(self.grps)):
+            if self.grps[grp].clicked:
+                for channel in range(512):
+                    if self.channels[channel].clicked:
+                        level = self.app.groups[grp].channels[channel]
+                        if level + lvl > 255:
+                            level = 255
+                        else:
+                            level = level + lvl
+                        self.app.groups[grp].channels[channel] = level
+        self.flowbox1.invalidate_filter()

@@ -406,6 +406,7 @@ class Ascii(object):
                 self.app.win_groups.show_all()
             except:
                 pass
+            """
             # Redraw Groups Tab
             del(self.app.window.grp_grps[:])
             for i in range(len(self.app.groups)):
@@ -418,6 +419,19 @@ class Ascii(object):
             self.app.window.grp_flowbox1.invalidate_filter()
             self.app.window.grp_flowbox2.invalidate_filter()
             self.app.window.grp_flowbox2.queue_draw()
+            """
+            # Redraw New Group Tab
+            try:
+                del(self.app.tab.grps[:])
+                for i in range(len(self.app.groups)):
+                    self.app.tab.grps.append(GroupWidget(self.app.window, self.app.groups[i].index,
+                        self.app.groups[i].text, self.app.tab.grps))
+                    self.app.tab.flowbox2.add(self.app.tab.grps[i])
+                self.app.tab.flowbox1.invalidate_filter()
+                self.app.tab.flowbox2.invalidate_filter()
+                self.app.window.show_all()
+            except:
+                pass
 
             # Redraw Masters Window if exist
             try:

@@ -299,12 +299,12 @@ class Application(Gtk.Application):
         self.patchwindow.show_all()
 
     def _groups(self, action, parameter):
-        self.win_groups = GroupsWindow(self, self.groups)
-        self.win_groups.show_all()
+        #self.win_groups = GroupsWindow(self, self.groups)
+        #self.win_groups.show_all()
 
         # TODO: Test create tab
-        tab = GroupTab()
-        self.window.notebook.append_page(tab, Gtk.Label('Groups'))
+        self.tab = GroupTab()
+        self.window.notebook.append_page(self.tab, Gtk.Label('Groups'))
         self.window.show_all()
         self.window.notebook.set_current_page(-1)
 

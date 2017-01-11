@@ -132,6 +132,7 @@ class Window(Gtk.ApplicationWindow):
         self.notebook = Gtk.Notebook()
         self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
 
+        """
         # Groups Tab
         self.grp_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.grp_paned.set_position(300)
@@ -168,6 +169,7 @@ class Window(Gtk.ApplicationWindow):
         self.grp_flowbox2.connect('child_activated', self.on_group_selected)
 
         self.notebook.append_page(self.grp_paned, Gtk.Label('Groups'))
+        """
 
         # Masters Tab
         self.master_ad = []
@@ -440,6 +442,15 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.invalidate_filter()
 
     def on_key_press_event(self, widget, event):
+
+        # TODO: Cherche la page ouverte dans le notebook
+        # TODO: Pour rediriger les saisies clavier
+        page = self.notebook.get_current_page()
+        child = self.notebook.get_nth_page(page)
+        label = self.notebook.get_tab_label(child).get_label()
+        if label == 'Groups':
+            return self.app.tab.on_key_press_event(widget, event)
+
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)
         if keyname == "1" or keyname == "2" or keyname == "3" or keyname == "4" or keyname == "5" or keyname =="6" or keyname == "7" or keyname =="8" or keyname == "9" or keyname =="0":
