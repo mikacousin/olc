@@ -132,45 +132,6 @@ class Window(Gtk.ApplicationWindow):
         self.notebook = Gtk.Notebook()
         self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
 
-        """
-        # Groups Tab
-        self.grp_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        self.grp_paned.set_position(300)
-        self.grp_scrolled1 = Gtk.ScrolledWindow()
-        self.grp_scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.grp_flowbox1 = Gtk.FlowBox()
-        self.grp_flowbox1.set_valign(Gtk.Align.START)
-        self.grp_flowbox1.set_max_children_per_line(20)
-        self.grp_flowbox1.set_homogeneous(True)
-        self.grp_flowbox1.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.grp_channels = []
-        for i in range(512):
-            self.grp_channels.append(ChannelWidget(i+1, 0, 0))
-            self.grp_flowbox1.add(self.grp_channels[i])
-        self.grp_scrolled1.add(self.grp_flowbox1)
-        self.grp_paned.add1(self.grp_scrolled1)
-        self.grp_scrolled2 = Gtk.ScrolledWindow()
-        self.grp_scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.grp_flowbox2 = Gtk.FlowBox()
-        self.grp_flowbox2.set_valign(Gtk.Align.START)
-        self.grp_flowbox2.set_max_children_per_line(20)
-        self.grp_flowbox2.set_homogeneous(True)
-        self.grp_flowbox2.set_activate_on_single_click(True)
-        self.grp_flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
-        self.grp_flowbox2.set_filter_func(self.filter_groups, None)
-        self.grp_grps = []
-        for i in range(len(self.app.groups)):
-            self.grp_grps.append(GroupWidget(self, self.app.groups[i].index, self.app.groups[i].text,
-                self.grp_grps))
-            self.grp_flowbox2.add(self.grp_grps[i])
-        self.grp_scrolled2.add(self.grp_flowbox2)
-        self.grp_paned.add2(self.grp_scrolled2)
-        self.grp_flowbox1.set_filter_func(self.filter_channels, None)
-        self.grp_flowbox2.connect('child_activated', self.on_group_selected)
-
-        self.notebook.append_page(self.grp_paned, Gtk.Label('Groups'))
-        """
-
         # Masters Tab
         self.master_ad = []
         self.master_scale = []
@@ -331,34 +292,6 @@ class Window(Gtk.ApplicationWindow):
                 self.channels[i].level = level
                 self.channels[i].queue_draw()
             self.flowbox.invalidate_filter()
-
-    def filter_channels(self, child, user_data):
-        """ Pour n'afficher que les channels du groupe """
-        i = child.get_index() # Numéro du widget qu'on filtre (channel-1)
-        # On cherche le groupe actuellement séléctionné
-        for j in range(len(self.grp_grps)):
-            if self.grp_grps[j].clicked:
-                # Si le channel est dans le groupe, on l'affiche
-                if self.app.groups[j].channels[i] != 0 or self.grp_channels[i].clicked == True:
-                    # On récupère le level (next_level à la même valeur)
-                    self.grp_channels[i].level = self.app.groups[j].channels[i]
-                    self.grp_channels[i].next_level = self.app.groups[j].channels[i]
-                    return child
-                else:
-                    return False
-
-    def filter_groups(self, child, user_data):
-        return child
-
-    def on_group_selected(self, flowbox, child):
-        for grp in range(len(self.grp_grps)):
-            self.grp_grps[grp].clicked = False
-        for channel in range(512):
-            self.grp_channels[channel].clicked = False
-            self.grp_channels[channel].queue_draw()
-        self.grp_grps[child.get_index()].clicked = True
-        self.grp_flowbox1.invalidate_filter()
-        self.grp_flowbox2.invalidate_filter()
 
     def step_filter_func(self, model, iter, data):
         return True

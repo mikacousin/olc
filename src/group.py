@@ -207,6 +207,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
 
     def keypress_colon(self):
+        """ Level - % """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for grp in range(len(self.grps)):
             if self.grps[grp].clicked:
@@ -221,6 +222,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
 
     def keypress_exclam(self):
+        """ Level + % """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for grp in range(len(self.grps)):
             if self.grps[grp].clicked:
@@ -233,3 +235,26 @@ class GroupTab(Gtk.Paned):
                             level = level + lvl
                         self.app.groups[grp].channels[channel] = level
         self.flowbox1.invalidate_filter()
+
+    def keypress_N(self):
+        """ New Group """
+        # If no group number, use the next one
+        if self.keystring == "":
+            group_nb = self.app.groups[-1].index + 1
+        else:
+            group_nb = int(self.keystring)
+
+        self.keystring = ""
+
+        channels = array.array('B', [0] * 512)
+        txt = str(group_nb)
+        self.app.groups.append(Group(group_nb, channels, txt))
+        self.grps.append(GroupWidget(self.app.window, self.app.groups[-1].index,
+            self.app.groups[-1].text, self.grps))
+        for grp in range(len(self.grps)):
+            self.grps[grp].clicked = False
+        self.grps[-1].clicked = True
+        self.flowbox2.add(self.grps[-1])
+        self.flowbox1.invalidate_filter()
+        self.flowbox2.invalidate_filter()
+        self.app.window.show_all()
