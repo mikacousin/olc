@@ -108,6 +108,11 @@ class GroupTab(Gtk.Paned):
         if func:
             return func()
 
+    def keypress_Escape(self):
+        """ Close Tab """
+        page = self.app.window.notebook.get_current_page()
+        self.app.window.notebook.remove_page(page)
+
     def keypress_g(self):
         """ Select Group """
         # Deselect group selected
