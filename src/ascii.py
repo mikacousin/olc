@@ -542,21 +542,24 @@ class Ascii(object):
         self.modify = False
 
     def save(self):
-        print("IDENT 3:0")
-        print("MANUFACTURER MIKA")
-        print("CONSOLE OLC")
-        print("")
-        print("CLEAR ALL")
-        print("")
-        print("SEQUENCE 1 0")
-        print("")
+
+        stream = self.file.replace('', False, Gio.FileCreateFlags.NONE, None)
+
+        stream.write(bytes('IDENT 3:0\n', 'utf8'))
+        stream.write(bytes('MANUFACTURER MIKA\n', 'utf8'))
+        stream.write(bytes('CONSOLE OLC\n\n', 'utf8'))
+        stream.write(bytes('CLEAR ALL\n\n', 'utf8'))
+        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
+        stream.write(bytes('! Main sequence\n\n', 'utf8'))
+        stream.write(bytes('SEQUENCE 1 0\n\n', 'utf8'))
+
         for cue in range(len(self.app.sequence.cues)):
             if self.app.sequence.cues[cue].memory != '0':
-                print("CUE", self.app.sequence.cues[cue].memory)
-                print("DOWN", self.app.sequence.cues[cue].time_out)
-                print("UP", self.app.sequence.cues[cue].time_in)
-                print("$$WAIT", self.app.sequence.cues[cue].wait)
-                print("$$TEXT", self.app.sequence.cues[cue].text)
+                stream.write(bytes('CUE ' + self.app.sequence.cues[cue].memory + '\n', 'utf8'))
+                stream.write(bytes('DOWN ' + str(self.app.sequence.cues[cue].time_out) + '\n', 'utf8'))
+                stream.write(bytes('UP ' + str(self.app.sequence.cues[cue].time_in) + '\n', 'utf8'))
+                stream.write(bytes('$$WAIT ' + str(self.app.sequence.cues[cue].wait) + '\n', 'utf8'))
+                stream.write(bytes('$$TEXT ' + self.app.sequence.cues[cue].text + '\n', 'utf8'))
                 channels = ""
                 i = 1
                 for chan in range(len(self.app.sequence.cues[cue].channels)):
@@ -566,11 +569,43 @@ class Ascii(object):
                         channels += " " + str(chan+1) + "/" + level
                         # 6 Channels per line
                         if not i % 6 and channels != "":
-                            print("CHAN", channels)
+                            stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
                             channels = ""
                         i += 1
                 if channels != "":
-                    print("CHAN", channels)
-                print("")
+                    stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                stream.write(bytes('\n', 'utf8'))
+
+        stream.write(bytes('! Additional Sequences\n\n', 'utf8'))
+
+        for chaser in range(len(self.app.chasers)):
+            stream.write(bytes('$SEQUENCE ' + str(self.app.chasers[chaser].index) + '\n', 'utf8'))
+            stream.write(bytes('TEXT ' + self.app.chasers[chaser].text + '\n\n', 'utf8'))
+            for cue in range(len(self.app.chasers[chaser].cues)):
+                if self.app.chasers[chaser].cues[cue].memory != '0':
+                    stream.write(bytes('$CUE ' + str(self.app.chasers[chaser].index) + ' ' + self.app.chasers[chaser].cues[cue].memory + '\n', 'utf8'))
+                    stream.write(bytes('DOWN ' + str(self.app.chasers[chaser].cues[cue].time_out) + '\n', 'utf8'))
+                    stream.write(bytes('UP ' + str(self.app.chasers[chaser].cues[cue].time_in) + '\n', 'utf8'))
+                    stream.write(bytes('$$WAIT ' + str(self.app.chasers[chaser].cues[cue].wait) + '\n', 'utf8'))
+                    channels = ""
+                    i = 1
+                    for chan in range(len(self.app.chasers[chaser].cues[cue].channels)):
+                        level = self.app.chasers[chaser].cues[cue].channels[chan]
+                        if level != 0:
+                            level = 'H' + format(level, '02X')
+                            channels += " " + str(chan+1) + "/" + level
+                            # 6 channels per line
+                            if not i % 6 and channels != "":
+                                stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                                channels = ""
+                            i += 1
+                    if channels != "":
+                        stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                    stream.write(bytes('\n', 'utf8'))
+
+        # TODO: Groups, Masters, Patch
+
+        stream.close()
+
         self.modify = False
         self.app.window.header.set_title(self.basename)
