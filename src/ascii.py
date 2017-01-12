@@ -35,16 +35,25 @@ class Ascii(object):
             chan_t = False
             channel_time = {}
 
+            console = ""
+
             while True:
 
                 line, size = dstream.read_line(None)
-                line = str(line)[2:-1]
+                if console == "CONGO":
+                    line = line.decode('iso-8859-1').encode('utf8')
+                    line = str(line, 'utf8')
+                else:
+                    line = str(line)[2:-1]
                 line = line.replace('\\t', '\t')
                 line = line.replace('\\r', '')
 
                 # Marker for end of file
                 if "ENDDATA" in line:
                     break
+
+                if line[:7] == "CONSOLE":
+                    console = line[8:]
 
                 if line[:9] == "CLEAR ALL":
                     # Clear All
@@ -533,6 +542,35 @@ class Ascii(object):
         self.modify = False
 
     def save(self):
-        print("Save ASCII")
+        print("IDENT 3:0")
+        print("MANUFACTURER MIKA")
+        print("CONSOLE OLC")
+        print("")
+        print("CLEAR ALL")
+        print("")
+        print("SEQUENCE 1 0")
+        print("")
+        for cue in range(len(self.app.sequence.cues)):
+            if self.app.sequence.cues[cue].memory != '0':
+                print("CUE", self.app.sequence.cues[cue].memory)
+                print("DOWN", self.app.sequence.cues[cue].time_out)
+                print("UP", self.app.sequence.cues[cue].time_in)
+                print("$$WAIT", self.app.sequence.cues[cue].wait)
+                print("$$TEXT", self.app.sequence.cues[cue].text)
+                channels = ""
+                i = 1
+                for chan in range(len(self.app.sequence.cues[cue].channels)):
+                    level = self.app.sequence.cues[cue].channels[chan]
+                    if level != 0:
+                        level = 'H' + format(level, '02X')
+                        channels += " " + str(chan+1) + "/" + level
+                        # 6 Channels per line
+                        if not i % 6 and channels != "":
+                            print("CHAN", channels)
+                            channels = ""
+                        i += 1
+                if channels != "":
+                    print("CHAN", channels)
+                print("")
         self.modify = False
         self.app.window.header.set_title(self.basename)
