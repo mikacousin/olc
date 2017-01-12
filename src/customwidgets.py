@@ -333,7 +333,8 @@ class SequentialWidget(Gtk.Widget):
         for channel in self.channel_time.keys():
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
-            cr.move_to((inter*delay)+wait_x-4,allocation.height-24-(self.ct_nb*8))
+            # draw Channel number
+            cr.move_to((inter*delay)+wait_x,allocation.height-24-(self.ct_nb*8))
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
