@@ -649,9 +649,27 @@ class Ascii(object):
                 '\n', 'utf8'))
         stream.write(bytes('\n', 'utf8'))
 
-        # TODO: Masters, Patch
+        # Patch
+        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
+        stream.write(bytes('! Patch\n', 'utf8' ))
+        stream.write(bytes('CLEAR PATCH\n\n', 'utf8'))
+        # TODO: More than 1 Univers
+        # TODO: Prise en charge du niveau de l'output
+        patch = ""
+        i = 1
+        for output in range(len(self.app.patch.outputs)):
+            if self.app.patch.outputs[output] != 0:
+                patch += " " + str(self.app.patch.outputs[output]) + "<" + str(output+1) + "@100"
+                if not i % 4 and patch != "":
+                    stream.write(bytes('PATCH 1' + patch + '\n', 'utf8'))
+                    #print('PATCH 1' + patch)
+                    patch = ""
+                i += 1
+        if patch != "":
+            stream.write(bytes('PATCH 1' + patch + '\n', 'utf8'))
+            #print("PATCH 1" + patch)
 
-        stream.write(bytes('ENDDATA\n', 'utf8'))
+        stream.write(bytes('\nENDDATA\n', 'utf8'))
 
         stream.close()
 
