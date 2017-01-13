@@ -681,8 +681,11 @@ class Ascii(object):
         stream.write(bytes('! Master Pages\n', 'utf8'))
         stream.write(bytes('CLEAR $MASTPAGE\n\n', 'utf8'))
         stream.write(bytes('$MASTPAGE 1 0 0 0\n', 'utf8'))
-        # TODO: $MASTPAGE 2 0 0 0
+        page = 1
         for master in range(len(self.app.masters)):
+            if self.app.masters[master].page != page:
+                page = self.app.masters[master].page
+                stream.write(bytes('\n$MASTPAGE ' + str(page) + ' 0 0 0\n', 'utf8'))
             stream.write(bytes('$MASTPAGEITEM ' + self.app.masters[master].page +
                 ' ' + self.app.masters[master].number +
                 ' ' + str(self.app.masters[master].content_type) +
