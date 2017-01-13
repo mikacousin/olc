@@ -249,8 +249,21 @@ class Window(Gtk.ApplicationWindow):
                 # Scale's Value
                 level_scale = scale.get_value()
 
+                # Master is Channels
+                if self.app.masters[i].content_type == 2:
+                    for channel in range(len(self.app.masters[i].channels)):
+                        if level_scale == 0:
+                            level = 0
+                        else:
+                            if self.percent_level:
+                                level = int(self.app.masters[i].channels[channel] / (100 / level_scale))
+                            else:
+                                level = int(self.app.masters[i].channels[channel] / (255 / level_scale))
+                        self.app.masters[i].dmx[channel] = level
+                    self.app.dmx.send()
+
                 # Master is a group
-                if self.app.masters[i].content_type == 2 or self.app.masters[i].content_type == 13:
+                elif self.app.masters[i].content_type == 13:
                     grp = self.app.masters[i].content_value
                     for j in range(len(self.app.masters[i].groups)):
                         if self.app.masters[i].groups[j].index == grp:

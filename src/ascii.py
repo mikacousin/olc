@@ -23,6 +23,7 @@ class Ascii(object):
             flag_seq = False
             in_cue = False
             flag_patch = False
+            flag_master = False
             flag_group = False
 
             type_seq = "Normal"
@@ -96,6 +97,7 @@ class Ascii(object):
                     i = 1
                     flag_seq = True
                     flag_patch = False
+                    flag_master = False
                     flag_group = False
 
                 if flag_seq and type_seq == "Chaser":
@@ -278,6 +280,7 @@ class Ascii(object):
                 if line[:11] == 'CLEAR PATCH':
                     flag_seq = False
                     flag_patch = True
+                    flag_master = False
                     flag_group = False
                     #print ("\nPatch :")
                     self.app.patch.patch_empty()    # Empty patch
@@ -299,6 +302,7 @@ class Ascii(object):
                 if line[:6] == '$GROUP':
                     flag_seq = False
                     flag_patch = False
+                    flag_master = False
                     flag_group = True
                     #print ("Group :", line[7:])
                     channels = array.array('B', [0] * 512)
@@ -306,6 +310,7 @@ class Ascii(object):
                 if line[:5] == 'GROUP':
                     flag_seq = False
                     flag_patch = False
+                    flag_master = False
                     flag_group = True
                     #print ("Group :", line[6:])
                     channels = array.array('B', [0] * 512)
@@ -335,11 +340,33 @@ class Ascii(object):
                         txt = ""
 
                 if line[:13] == '$MASTPAGEITEM':
-                    # TODO: Type "2" pour des Channels (voir conduite création d'Inuk)
                     #print("Master!")
-                    p = line[14:].split(" ")
+                    item = line[14:].split(" ")
                     #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
-                    self.app.masters.append(Master(p[0], p[1], p[2], p[3], self.app.groups, self.app.chasers))
+                    if item[2] == "2":
+                        flag_seq = False
+                        flag_patch = False
+                        flag_group = False
+                        flag_master = True
+                        channels = array.array('B', [0] * 512)
+                    else:
+                        self.app.masters.append(Master(item[0], item[1], item[2], item[3], self.app.groups, self.app.chasers))
+                if flag_master:
+                    if line[:1] == "!":
+                        flag_master = False
+                    if line[:4] == 'CHAN':
+                        p = line[5:].split(" ")
+                        for q in p:
+                            r = q.split("/")
+                            if r[0] != "":
+                                channel = int(r[0])
+                                level = int(r[1][1:], 16)
+                                if channel <= 512:
+                                    channels[channel-1] = level
+                    if line == "":
+                        self.app.masters.append(Master(item[0], item[1], item[2], item[3], self.app.groups, self.app.chasers, channels=channels))
+                        flag_master = False
+
 
             fstream.close()
 

@@ -6,7 +6,7 @@ from gi.repository import Gio, Gtk, GLib
 from olc.settings import Settings
 
 class Master(object):
-    def __init__(self, page, number, content_type, content_value, groups, chasers, exclude_record=True, text=""):
+    def __init__(self, page, number, content_type, content_value, groups, chasers, channels=array.array('B', [0] * 512), exclude_record=True, text=""):
         self.page = page
         self.number = number
         self.content_type = int(content_type)
@@ -15,6 +15,7 @@ class Master(object):
         self.text = text
         self.groups = groups
         self.chasers = chasers
+        self.channels = channels
         # To store DMX values of the master
         self.dmx = array.array('B', [0] * 512)
 
@@ -27,14 +28,21 @@ class Master(object):
                         self.text = self.chasers[i].text
                     self.text = self.chasers[i].text
         # Type 13 : Group
-        # TODO: Type 2 : Channels (peut y en avoir plusieurs)
-        elif self.content_type == 2 or self.content_type == 13:
+        elif self.content_type == 13:
             #print("Type : Groupe", self.content_value)
             for i in range(len(self.groups)):
                 #print(self.groups[i].index, self.content_value)
                 if self.groups[i].index == self.content_value:
                     #print(self.groups[i].text)
                     self.text = self.groups[i].text
+        # Type 2 : Channels
+        elif self.content_type == 2:
+            #print("Type : Channels")
+            self.text += 'Ch'
+            for channel in range(len(self.channels)):
+                if channels[channel] != 0:
+                    #print(channel+1, self.channels[channel])
+                    self.text += ' ' + str(channel + 1)
         else:
             print("Type : Inconnu")
 
@@ -117,8 +125,21 @@ class MastersWindow(Gtk.Window):
                 # Valeur du scale
                 level_scale = scale.get_value()
 
-                # Si c'est un groupe
-                if self.masters[i].content_type == 2 or self.masters[i].content_type == 13:
+                # Type is Channels
+                if self.masters[i].content_type == 2:
+                    for channel in range(len(self.masters[i].channels)):
+                        if level_scale == 0:
+                            level = 0
+                        else:
+                            if self.percent_view:
+                                level = int(self.masters[i].channels[channel] / (100 / level_scale))
+                            else:
+                                level = int(self.masters[i].channels[channel] / (255 / level_scale))
+                        self.masters[i].dmx[channel] = level
+                    self.app.dmx.send()
+
+                # Type is Group
+                elif self.masters[i].content_type == 13:
                     grp = self.masters[i].content_value
                     for j in range(len(self.masters[i].groups)):
                         if self.masters[i].groups[j].index == grp:
@@ -149,7 +170,7 @@ class MastersWindow(Gtk.Window):
                             # On met à jour les niveau DMX
                             self.app.dmx.send()
 
-                # Si c'est un chaser
+                # Type is Chaser
                 elif self.masters[i].content_type == 3:
                     nb = self.masters[i].content_value
                     for j in range(len(self.masters[i].chasers)):
