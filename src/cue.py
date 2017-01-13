@@ -10,6 +10,7 @@ class Cue(object):
         self.wait = wait
         self.text = text
         self.channel_time = channel_time
+        # TODO: Add 'delay in' and 'delay out'
 
         # Find the time cue need to operate
         if self.time_in > self.time_out:

@@ -547,6 +547,9 @@ class Ascii(object):
 
         stream = self.file.replace('', False, Gio.FileCreateFlags.NONE, None)
 
+        # TODO: to import Fx in dlight :
+        # MANUFACTURER NICOBATS
+        # CONSOLE DLIGHT
         stream.write(bytes('IDENT 3:0\n', 'utf8'))
         stream.write(bytes('MANUFACTURER MIKA\n', 'utf8'))
         stream.write(bytes('CONSOLE OLC\n\n', 'utf8'))
@@ -562,12 +565,14 @@ class Ascii(object):
                 stream.write(bytes('DOWN ' + str(self.app.sequence.cues[cue].time_out) + '\n', 'utf8'))
                 stream.write(bytes('UP ' + str(self.app.sequence.cues[cue].time_in) + '\n', 'utf8'))
                 stream.write(bytes('$$WAIT ' + str(self.app.sequence.cues[cue].wait) + '\n', 'utf8'))
-                stream.write(bytes('$$TEXT ' + self.app.sequence.cues[cue].text + '\n', 'utf8'))
                 #  Chanel Time if any
                 for chan in self.app.sequence.cues[cue].channel_time.keys():
                     stream.write(bytes('$$PARTTIME ' + str(self.app.sequence.cues[cue].channel_time[chan].delay) +
                         ' ' + str(self.app.sequence.cues[cue].channel_time[chan].time) + '\n', 'utf8'))
                     stream.write(bytes('$$PARTTIMECHAN ' + str(chan) + '\n', 'utf8'))
+                stream.write(bytes('TEXT ' + ascii(self.app.sequence.cues[cue].text)[1:-1] +
+                    '\n', 'utf8').decode('utf8').encode('ascii'))
+                stream.write(bytes('$$TEXT ' + self.app.sequence.cues[cue].text + '\n', 'utf8'))
                 channels = ""
                 i = 1
                 for chan in range(len(self.app.sequence.cues[cue].channels)):
@@ -577,11 +582,11 @@ class Ascii(object):
                         channels += " " + str(chan+1) + "/" + level
                         # 6 Channels per line
                         if not i % 6 and channels != "":
-                            stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                            stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
                             channels = ""
                         i += 1
                 if channels != "":
-                    stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                    stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
                 stream.write(bytes('\n', 'utf8'))
 
         # Chasers
@@ -605,20 +610,25 @@ class Ascii(object):
                             channels += " " + str(chan+1) + "/" + level
                             # 6 channels per line
                             if not i % 6 and channels != "":
-                                stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                                stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
                                 channels = ""
                             i += 1
                     if channels != "":
-                        stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                        stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
                     stream.write(bytes('\n', 'utf8'))
 
         # Groups
         stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
-        stream.write(bytes('! Groups\n', 'utf8'))
-        stream.write(bytes('CLEAR $GROUP\n\n', 'utf8'))
+        stream.write(bytes('! Groups (presets not in sequence)\n', 'utf8'))
+        stream.write(bytes('! GROUP  Standard ASCII Light Cues\n', 'utf8'))
+        stream.write(bytes('! CHAN   Standard ASCII Light Cues\n', 'utf8'))
+        stream.write(bytes('! TEXT   Standard ASCII Light Cues\n', 'utf8'))
+        stream.write(bytes('! $$TEXT  Unicode encoded version of the same text\n', 'utf8'))
 
         for group in range(len(self.app.groups)):
-            stream.write(bytes('$GROUP ' + str(self.app.groups[group].index) + '\n', 'utf8'))
+            stream.write(bytes('GROUP ' + str(self.app.groups[group].index) + '\n', 'utf8'))
+            stream.write(bytes('TEXT ' + ascii(self.app.groups[group].text)[1:-1] +
+                '\n', 'utf8').decode('utf8').encode('ascii'))
             stream.write(bytes('$$TEXT ' + self.app.groups[group].text + '\n', 'utf8'))
             channels = ""
             i = 1
@@ -629,11 +639,41 @@ class Ascii(object):
                     channels += " " + str(chan+1) + "/" + level
                     # 6 channels per line
                     if not i % 6 and channels != "":
-                        stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                        stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
                         channels = ""
                     i += 1
             if channels != "":
-                stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
+            stream.write(bytes('\n', 'utf8'))
+
+        # Congo Groups
+        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
+        stream.write(bytes('! Congo Groups\n', 'utf8'))
+        stream.write(bytes('! $GROUP  Group number\n', 'utf8'))
+        stream.write(bytes('! CHAN    Standard ASCII Light Cues\n', 'utf8'))
+        stream.write(bytes('! TEXT    Standard ASCII Light Cues\n', 'utf8'))
+        stream.write(bytes('! $$TEXT  Unicode encoded version of the same text\n', 'utf8'))
+        stream.write(bytes('CLEAR $GROUP\n\n', 'utf8'))
+
+        for group in range(len(self.app.groups)):
+            stream.write(bytes('$GROUP ' + str(self.app.groups[group].index) + '\n', 'utf8'))
+            stream.write(bytes('TEXT ' + ascii(self.app.groups[group].text)[1:-1] +
+                '\n', 'utf8').decode('utf8').encode('ascii'))
+            stream.write(bytes('$$TEXT ' + self.app.groups[group].text + '\n', 'utf8'))
+            channels = ""
+            i = 1
+            for chan in range(len(self.app.groups[group].channels)):
+                level = self.app.groups[group].channels[chan]
+                if level != 0:
+                    level = 'H' + format(level, '02X')
+                    channels += " " + str(chan+1) + "/" + level
+                    # 6 channels per line
+                    if not i % 6 and channels != "":
+                        stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
+                        channels = ""
+                    i += 1
+            if channels != "":
+                stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
             stream.write(bytes('\n', 'utf8'))
 
         # Masters
@@ -663,12 +703,10 @@ class Ascii(object):
                 patch += " " + str(self.app.patch.outputs[output]) + "<" + str(output+1) + "@100"
                 if not i % 4 and patch != "":
                     stream.write(bytes('PATCH 1' + patch + '\n', 'utf8'))
-                    #print('PATCH 1' + patch)
                     patch = ""
                 i += 1
         if patch != "":
             stream.write(bytes('PATCH 1' + patch + '\n', 'utf8'))
-            #print("PATCH 1" + patch)
 
         stream.write(bytes('\nENDDATA\n', 'utf8'))
 
