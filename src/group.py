@@ -64,6 +64,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.set_filter_func(self.filter_channels, None)
 
         self.flowbox2.connect('child_activated', self.on_group_selected)
+        self.flowbox2.connect('button_press_event', self.on_group_clicked)
 
         self.connect('key_press_event', self.on_key_press_event)
 
@@ -84,6 +85,13 @@ class GroupTab(Gtk.Paned):
 
     def filter_groups(self, child, user_data):
         return child
+
+    def on_group_clicked(self, widget, event):
+        for channel in range(512):
+            self.channels[channel].clicked = False
+            self.channels[channel].queue_draw()
+        self.flowbox1.invalidate_filter()
+        self.flowbox2.invalidate_filter()
 
     def on_group_selected(self, flowbox, child):
         for grp in range(len(self.grps)):
@@ -124,6 +132,10 @@ class GroupTab(Gtk.Paned):
             for grp in range(len(self.grps)):
                 if group == int(self.grps[grp].number):
                     self.grps[grp].clicked = True
+        # Deselect all channels
+        for channel in range(512):
+            self.channels[channel].clicked = False
+            self.channels[channel].queue_draw()
         # Update display
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
