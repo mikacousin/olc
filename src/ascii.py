@@ -313,9 +313,10 @@ class Ascii(object):
                 if flag_group:
                     if line[:1] == "!":
                         flag_group = False
-                    if line[:4] == 'TEXT':
+                    # TODO: 'TEXT'
+                    if line[:6] == '$$TEXT':
                         #print ("    Text :", line[5:])
-                        txt = line[5:]
+                        txt = line[7:]
                     if line[:4] == 'CHAN':
                         #print ("    Chanels :")
                         p = line[5:].split(" ")
@@ -549,10 +550,11 @@ class Ascii(object):
         stream.write(bytes('MANUFACTURER MIKA\n', 'utf8'))
         stream.write(bytes('CONSOLE OLC\n\n', 'utf8'))
         stream.write(bytes('CLEAR ALL\n\n', 'utf8'))
-        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
-        stream.write(bytes('! Main sequence\n\n', 'utf8'))
-        stream.write(bytes('SEQUENCE 1 0\n\n', 'utf8'))
 
+        # Main Sequence
+        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
+        stream.write(bytes('! Main sequence\n\n', 'utf8'))
+        stream.write(bytes('$SEQUENCE 1 0\n\n', 'utf8'))
         for cue in range(len(self.app.sequence.cues)):
             if self.app.sequence.cues[cue].memory != '0':
                 stream.write(bytes('CUE ' + self.app.sequence.cues[cue].memory + '\n', 'utf8'))
@@ -560,6 +562,11 @@ class Ascii(object):
                 stream.write(bytes('UP ' + str(self.app.sequence.cues[cue].time_in) + '\n', 'utf8'))
                 stream.write(bytes('$$WAIT ' + str(self.app.sequence.cues[cue].wait) + '\n', 'utf8'))
                 stream.write(bytes('$$TEXT ' + self.app.sequence.cues[cue].text + '\n', 'utf8'))
+                #  Chanel Time if any
+                for chan in self.app.sequence.cues[cue].channel_time.keys():
+                    stream.write(bytes('$$PARTTIME ' + str(self.app.sequence.cues[cue].channel_time[chan].delay) +
+                        ' ' + str(self.app.sequence.cues[cue].channel_time[chan].time) + '\n', 'utf8'))
+                    stream.write(bytes('$$PARTTIMECHAN ' + str(chan) + '\n', 'utf8'))
                 channels = ""
                 i = 1
                 for chan in range(len(self.app.sequence.cues[cue].channels)):
@@ -576,6 +583,7 @@ class Ascii(object):
                     stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
                 stream.write(bytes('\n', 'utf8'))
 
+        # Chasers
         stream.write(bytes('! Additional Sequences\n\n', 'utf8'))
 
         for chaser in range(len(self.app.chasers)):
@@ -603,7 +611,47 @@ class Ascii(object):
                         stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
                     stream.write(bytes('\n', 'utf8'))
 
-        # TODO: Groups, Masters, Patch
+        # Groups
+        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
+        stream.write(bytes('! Groups\n', 'utf8'))
+        stream.write(bytes('CLEAR $GROUP\n\n', 'utf8'))
+
+        for group in range(len(self.app.groups)):
+            stream.write(bytes('$GROUP ' + str(self.app.groups[group].index) + '\n', 'utf8'))
+            stream.write(bytes('$$TEXT ' + self.app.groups[group].text + '\n', 'utf8'))
+            channels = ""
+            i = 1
+            for chan in range(len(self.app.groups[group].channels)):
+                level = self.app.groups[group].channels[chan]
+                if level != 0:
+                    level = 'H' + format(level, '02X')
+                    channels += " " + str(chan+1) + "/" + level
+                    # 6 channels per line
+                    if not i % 6 and channels != "":
+                        stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+                        channels = ""
+                    i += 1
+            if channels != "":
+                stream.write(bytes('CHAN ' + channels + '\n', 'utf8'))
+            stream.write(bytes('\n', 'utf8'))
+
+        # Masters
+        stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
+        stream.write(bytes('! Master Pages\n', 'utf8'))
+        stream.write(bytes('CLEAR $MASTPAGE\n\n', 'utf8'))
+        stream.write(bytes('$MASTPAGE 1 0 0 0\n', 'utf8'))
+        # TODO: $MASTPAGE 2 0 0 0
+        for master in range(len(self.app.masters)):
+            stream.write(bytes('$MASTPAGEITEM ' + self.app.masters[master].page +
+                ' ' + self.app.masters[master].number +
+                ' ' + str(self.app.masters[master].content_type) +
+                ' ' + str(self.app.masters[master].content_value) +
+                '\n', 'utf8'))
+        stream.write(bytes('\n', 'utf8'))
+
+        # TODO: Masters, Patch
+
+        stream.write(bytes('ENDDATA\n', 'utf8'))
 
         stream.close()
 
