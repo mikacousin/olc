@@ -335,7 +335,14 @@ class Ascii(object):
                                     channels[channel-1] = level
                     if line == "":
                         #print("Group", group_nb, txt, "channels", channels)
-                        self.app.groups.append(Group(group_nb, channels, txt))
+                        # We don't create a group who already exist
+                        master_exist = False
+                        for grp in range(len(self.app.groups)):
+                            if group_nb == self.app.groups[grp].index:
+                                #print("Le groupe", txt, "existe déjà")
+                                master_exist = True
+                        if not master_exist:
+                            self.app.groups.append(Group(group_nb, channels, txt))
                         flag_group = False
                         txt = ""
 
@@ -718,6 +725,22 @@ class Ascii(object):
                 ' ' + str(self.app.masters[master].content_type) +
                 ' ' + str(self.app.masters[master].content_value) +
                 '\n', 'utf8'))
+            # Master of Channels, save them
+            if self.app.masters[master].content_type == 2:
+                channels = ""
+                i = 1
+                for chan in range(len(self.app.masters[master].channels)):
+                    level = self.app.masters[master].channels[chan]
+                    if level != 0:
+                        level = 'H' + format(level, '02X')
+                        channels += " " + str(chan+1) + "/" + level
+                        # 6 channels per line
+                        if not i % 6 and channels != "":
+                            stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
+                            channels = ""
+                        i += 1
+                if channels != "":
+                    stream.write(bytes('CHAN' + channels + '\n', 'utf8'))
         stream.write(bytes('\n', 'utf8'))
 
         # Patch
