@@ -18,6 +18,7 @@ class Master(object):
         # To store DMX values of the master
         self.dmx = array.array('B', [0] * 512)
 
+        # Type 3 : Chaser
         if self.content_type == 3:
             #print("Type : Sequence", self.content_value)
             for i in range(len(self.chasers)):
@@ -25,6 +26,8 @@ class Master(object):
                     if self.chasers[i] == self.content_value:
                         self.text = self.chasers[i].text
                     self.text = self.chasers[i].text
+        # Type 13 : Group
+        # TODO: Type 2 : Channels (peut y en avoir plusieurs)
         elif self.content_type == 2 or self.content_type == 13:
             #print("Type : Groupe", self.content_value)
             for i in range(len(self.groups)):

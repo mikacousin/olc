@@ -335,6 +335,7 @@ class Ascii(object):
                         txt = ""
 
                 if line[:13] == '$MASTPAGEITEM':
+                    # TODO: Type "2" pour des Channels (voir conduite création d'Inuk)
                     #print("Master!")
                     p = line[14:].split(" ")
                     #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
