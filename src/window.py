@@ -132,49 +132,6 @@ class Window(Gtk.ApplicationWindow):
         self.notebook = Gtk.Notebook()
         self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
 
-        # Patch Tab
-        self.patch_grid = Gtk.Grid()
-        self.patch_grid.set_column_homogeneous(True)
-        self.patch_grid.set_row_homogeneous(True)
-        self.patch_liststore = Gtk.ListStore(str, int, str, str)
-        for i in range(len(self.app.patch.channels)):
-            for j in range(len(self.app.patch.channels[i])):
-                if self.app.patch.channels[i][j] != 0:
-                    self.patch_liststore.append(["     ", i+1, str(self.app.patch.channels[i][j]), ""])
-                else:
-                    self.patch_liststore.append(["     ", i+1, "", ""])
-        self.patch_treeview = Gtk.TreeView(model=self.patch_liststore)
-        patch_renderer_chan = Gtk.CellRendererText()
-        patch_column_chan = Gtk.TreeViewColumn("", patch_renderer_chan, text=0)
-        self.patch_treeview.append_column(patch_column_chan)
-        patch_renderer_chan = Gtk.CellRendererText()
-        patch_column_chan = Gtk.TreeViewColumn("Channel", patch_renderer_chan, text=1)
-        self.patch_treeview.append_column(patch_column_chan)
-        patch_renderer_output = Gtk.CellRendererText()
-        patch_renderer_output.set_property('editable', True)
-        patch_column_output = Gtk.TreeViewColumn("Output", patch_renderer_output, text=2)
-        self.patch_treeview.append_column(patch_column_output)
-        #patch_renderer_output.connect('edited', self.output_edited)
-        patch_renderer_type = Gtk.CellRendererText()
-        patch_renderer_type.set_property('editable', True)
-        patch_column_type = Gtk.TreeViewColumn("Type", patch_renderer_type, text=3)
-        self.patch_treeview.append_column(patch_column_type)
-        #patch_renderer_type.connect('edited', self.type_edited)
-        self.patch_buttons = list()
-        for type in ["Patch 1:1", "Patch Vide"]:
-            button = Gtk.Button(type)
-            self.patch_buttons.append(button)
-            button.connect('clicked', self.on_patch_button_clicked)
-        self.patch_scrollable_treelist = Gtk.ScrolledWindow()
-        self.patch_scrollable_treelist.add(self.patch_treeview)
-        self.patch_scrollable_treelist.set_vexpand(True)
-        self.patch_grid.attach(self.patch_scrollable_treelist, 0, 0, 6, 10)
-        self.patch_grid.attach_next_to(self.patch_buttons[0], self.patch_scrollable_treelist,
-                Gtk.PositionType.BOTTOM, 1, 1)
-        for i, button in enumerate(self.patch_buttons[1:]):
-            self.patch_grid.attach_next_to(button, self.patch_buttons[i], Gtk.PositionType.RIGHT, 1, 1)
-        self.notebook.append_page(self.patch_grid, Gtk.Label('Patch'))
-
         self.paned2.add2(self.notebook)
 
         self.add(self.paned2)
@@ -190,23 +147,6 @@ class Window(Gtk.ApplicationWindow):
         self.connect('key_press_event', self.on_key_press_event)
 
         self.set_icon_name('olc')
-
-    def on_patch_button_clicked(self, widget):
-        # TODO: A revoir car basé sur du texte qui doit être traduit
-        button_label = widget.get_label()
-        if button_label == "Patch Vide":
-            self.app.patch.patch_empty()
-            for i in range(512):
-                self.patch_liststore[i][2] = ""
-            self.flowbox.invalidate_filter()
-        elif button_label == "Patch 1:1":
-            self.app.patch.patch_1on1()
-            for i in range(512):
-                self.patch_liststore[i][2] = str(i + 1)
-                level = self.app.dmx.frame[i]
-                self.channels[i].level = level
-                self.channels[i].queue_draw()
-            self.flowbox.invalidate_filter()
 
     def step_filter_func(self, model, iter, data):
         return True
@@ -300,6 +240,8 @@ class Window(Gtk.ApplicationWindow):
             return self.app.tab.on_key_press_event(widget, event)
         if label == 'Masters':
             return self.app.master_tab.on_key_press_event(widget, event)
+        if label == 'Patch':
+            return self.app.patch_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)

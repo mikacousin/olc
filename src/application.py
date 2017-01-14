@@ -7,7 +7,7 @@ from ola import OlaClient
 
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
-from olc.patchwindow import PatchWindow
+from olc.patch import PatchTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
 from olc.sequence import Sequence
@@ -218,9 +218,9 @@ class Application(Gtk.Application):
         self.window.seq_grid.queue_draw()
         # Redraw Patch Window
         self.patch.patch_1on1()
-        for i in range(512):
+        for channel in range(512):
             try:
-                self.patchwindow.patch_liststore[i][2] = ""
+                self.patch_tab.liststore[channel][2] = str(channel + 1)
             except:
                 pass
         # Redraw Masters Window
@@ -299,8 +299,12 @@ class Application(Gtk.Application):
         print("Save As")
 
     def _patch(self, action, parameter):
-        self.patchwindow = PatchWindow(self.patch, self.dmx, self.window)
-        self.patchwindow.show_all()
+        # Create Patch Tab
+        # TODO: don't open severals Patch Tab
+        self.patch_tab = PatchTab()
+        self.window.notebook.append_page(self.patch_tab, Gtk.Label('Patch'))
+        self.window.show_all()
+        self.window.notebook.set_current_page(-1)
 
     def _groups(self, action, parameter):
         #self.win_groups = GroupsWindow(self, self.groups)

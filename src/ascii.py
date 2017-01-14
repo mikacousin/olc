@@ -505,24 +505,17 @@ class Ascii(object):
             except:
                 pass
 
-            # Redraw Patch Window if exist
+            # Redraw Patch Tab if exist
             try:
-                for i in range(512):
-                    for j in range(len(self.app.patch.channels[i])):
-                        if self.app.patch.channels[i][j] != 0:
-                            self.app.patchwindow.patch_liststore[i][2] = str(self.app.patch.channels[i][j])
+                for channel in range(512):
+                    for output in range(len(self.app.patch.channels[channel])):
+                        if self.app.patch.channels[channel][output] != 0:
+                            self.app.patch_tab.liststore[channel][2] = str(self.app.patch.channels[channel][output])
                         else:
-                            self.app.patchwindow.patch_liststore[i][2] = ""
-                self.app.patchwindow.show_all()
+                            self.app.patch_tab.liststore[channel][2] = ""
+                self.app.window.show_all()
             except:
                 pass
-            # Redraw Patch Tab
-            for i in range(512):
-                for j in range(len(self.app.patch.channels[i])):
-                    if self.app.patch.channels[i][j] != 0:
-                        self.app.window.patch_liststore[i][2] = str(self.app.patch.channels[i][j])
-                    else:
-                        self.app.window.patch_liststore[i][2] = ""
 
         except GObject.GError as e:
             print("Error: " + e.message)

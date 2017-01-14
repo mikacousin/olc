@@ -10,7 +10,7 @@ app_PYTHON = \
 	groupswindow.py \
 	master.py \
 	osc.py \
-	patchwindow.py \
+	patch.py \
 	sequence.py \
 	sequentialwindow.py \
 	settings.py \
