@@ -355,7 +355,7 @@ class Window(Gtk.ApplicationWindow):
             channel = self.app.patch.outputs[output]
             if self.app.window.channels[channel-1].clicked:
                 level = self.app.dmx.frame[output]
-                if level + 255 > 255:
+                if level + lvl > 255:
                     self.app.dmx.user[channel-1] = 255
                 else:
                     self.app.dmx.user[channel-1] = level + lvl
