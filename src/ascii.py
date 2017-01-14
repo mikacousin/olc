@@ -581,9 +581,10 @@ class Ascii(object):
 
         stream = self.file.replace('', False, Gio.FileCreateFlags.NONE, None)
 
-        # TODO: to import Fx in dlight :
-        # MANUFACTURER NICOBATS
-        # CONSOLE DLIGHT
+        # TODO: to import Fx and Masters in dlight :
+        # MANUFACTURER NICOBATS or AVAB
+        # CONSOLE      DLIGHT   or CONGO
+        # TODO: Masters dans Dlight sont en Time et pas Flash
         stream.write(bytes('IDENT 3:0\n', 'utf8'))
         stream.write(bytes('MANUFACTURER MIKA\n', 'utf8'))
         stream.write(bytes('CONSOLE OLC\n\n', 'utf8'))
@@ -713,6 +714,14 @@ class Ascii(object):
         # Masters
         stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
         stream.write(bytes('! Master Pages\n', 'utf8'))
+        stream.write(bytes('! $MASTPAGE     Master page number\n', 'utf8'))
+        stream.write(bytes('! TEXT          Master page text\n', 'utf8'))
+        stream.write(bytes('! $TEXT         Unicode encoded version of the same text\n', 'utf8'))
+        stream.write(bytes('! $MASTPAGEITEM Page number, Master number,\n', 'utf8'))
+        stream.write(bytes('!               Content type (2 = Channels, 3 = Chaser,\n', 'utf8'))
+        stream.write(bytes('!               13 = Group), Content value (Chaser#, Group#),\n', 'utf8'))
+        stream.write(bytes('!               Time In, Wait time, Time Out,\n', 'utf8'))
+        stream.write(bytes('!               Flash level (0-255)\n', 'utf8'))
         stream.write(bytes('CLEAR $MASTPAGE\n\n', 'utf8'))
         stream.write(bytes('$MASTPAGE 1 0 0 0\n', 'utf8'))
         page = 1
@@ -720,11 +729,12 @@ class Ascii(object):
             if self.app.masters[master].page != page:
                 page = self.app.masters[master].page
                 stream.write(bytes('\n$MASTPAGE ' + str(page) + ' 0 0 0\n', 'utf8'))
+            # MASTPAGEITEM : page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
             stream.write(bytes('$MASTPAGEITEM ' + self.app.masters[master].page +
                 ' ' + self.app.masters[master].number +
                 ' ' + str(self.app.masters[master].content_type) +
                 ' ' + str(self.app.masters[master].content_value) +
-                '\n', 'utf8'))
+                ' 5 0 5 255\n', 'utf8'))
             # Master of Channels, save them
             if self.app.masters[master].content_type == 2:
                 channels = ""
