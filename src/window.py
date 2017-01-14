@@ -132,37 +132,6 @@ class Window(Gtk.ApplicationWindow):
         self.notebook = Gtk.Notebook()
         self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
 
-        # Masters Tab
-        self.master_ad = []
-        self.master_scale = []
-        self.master_flash = []
-        self.master_grid = Gtk.Grid()
-        self.master_grid.set_column_homogeneous(True)
-        for i in range(len(self.app.masters)):
-            if self.percent_level:
-                self.master_ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
-            else:
-                self.master_ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
-            self.master_scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.master_ad[i]))
-            self.master_scale[i].set_digits(0)
-            self.master_scale[i].set_vexpand(True)
-            self.master_scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
-            self.master_scale[i].set_inverted(True)
-            self.master_scale[i].connect('value-changed', self.master_scale_moved)
-            self.master_flash.append(Gtk.Button.new_with_label(self.app.masters[i].text))
-            self.master_flash[i].connect('button-press-event', self.master_flash_on)
-            self.master_flash[i].connect('button-release-event', self.master_flash_off)
-            if i == 0:
-                self.master_grid.attach(self.master_scale[i], 0, 0, 1, 1)
-                self.master_grid.attach_next_to(self.master_flash[i], self.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-            elif not i % 4:
-                self.master_grid.attach_next_to(self.master_scale[i], self.master_flash[i-4], Gtk.PositionType.BOTTOM, 1, 1)
-                self.master_grid.attach_next_to(self.master_flash[i], self.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-            else:
-                self.master_grid.attach_next_to(self.master_scale[i], self.master_scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
-                self.master_grid.attach_next_to(self.master_flash[i], self.master_scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-        self.notebook.append_page(self.master_grid, Gtk.Label('Masters'))
-
         # Patch Tab
         self.patch_grid = Gtk.Grid()
         self.patch_grid.set_column_homogeneous(True)
@@ -221,73 +190,6 @@ class Window(Gtk.ApplicationWindow):
         self.connect('key_press_event', self.on_key_press_event)
 
         self.set_icon_name('olc')
-
-    def master_flash_on(self, widget, events):
-        # Find the number of the button
-        for i in range(len(self.app.masters)):
-            if widget == self.master_flash[i]:
-                # Put the master's value to Full
-                if self.percent_level:
-                    self.master_scale[i].set_value(100)
-                else:
-                    self.master_scale[i].set_value(255)
-                break
-
-    def master_flash_off(self, widget, events):
-        # Find the number of the button
-        for i in range(len(self.app.masters)):
-            if widget == self.master_flash[i]:
-                # Put the master's value to 0
-                self.master_scale[i].set_value(0)
-                break
-
-    def master_scale_moved(self, scale):
-
-        # Wich Scale has been moved ?
-        for i in range(len(self.master_scale)):
-            if self.master_scale[i] == scale:
-                # Scale's Value
-                level_scale = scale.get_value()
-
-                # Master is Channels
-                if self.app.masters[i].content_type == 2:
-                    for channel in range(len(self.app.masters[i].channels)):
-                        if level_scale == 0:
-                            level = 0
-                        else:
-                            if self.percent_level:
-                                level = int(self.app.masters[i].channels[channel] / (100 / level_scale))
-                            else:
-                                level = int(self.app.masters[i].channels[channel] / (255 / level_scale))
-                        self.app.masters[i].dmx[channel] = level
-                    self.app.dmx.send()
-
-                # Master is a group
-                elif self.app.masters[i].content_type == 13:
-                    grp = self.app.masters[i].content_value
-                    for j in range(len(self.app.masters[i].groups)):
-                        if self.app.masters[i].groups[j].index == grp:
-                            # For each output
-                            for output in range(512):
-                                # If Output patched
-                                channel = self.app.patch.outputs[output]
-                                if channel:
-                                    if self.app.masters[i].groups[j].channels[channel-1] != 0:
-                                        # On récupère la valeur enregistrée dans le groupe
-                                        level_group = self.app.masters[i].groups[j].channels[channel-1]
-                                        # Calcul du level
-                                        if level_scale == 0:
-                                            level = 0
-                                        else:
-                                            if self.percent_level:
-                                                level = int(level_group / (100 / level_scale))
-                                            else:
-                                                level = int(level_group / (256 / level_scale)) + 1
-                                        # Mise à jour du tableau des niveaux du master
-                                        self.app.masters[i].dmx[channel-1] = level
-
-                            # On met à jour les niveaux DMX
-                            self.app.dmx.send()
 
     def on_patch_button_clicked(self, widget):
         # TODO: A revoir car basé sur du texte qui doit être traduit
@@ -396,6 +298,8 @@ class Window(Gtk.ApplicationWindow):
         label = self.notebook.get_tab_label(child).get_label()
         if label == 'Groups':
             return self.app.tab.on_key_press_event(widget, event)
+        if label == 'Masters':
+            return self.app.master_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)

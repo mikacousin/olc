@@ -1,7 +1,7 @@
 import array
 import threading
 import time
-from gi.repository import Gio, Gtk, GLib
+from gi.repository import Gio, Gtk, GLib, Gdk
 
 from olc.settings import Settings
 
@@ -46,27 +46,22 @@ class Master(object):
         else:
             print("Type : Inconnu")
 
-class MastersWindow(Gtk.Window):
-    def __init__(self, app, masters):
+class MasterTab(Gtk.Grid):
+    def __init__(self):
 
-        self.app = app
-        self.masters = masters
+        self.app = Gio.Application.get_default()
 
-        self.percent_view = Gio.Application.get_default().settings.get_boolean('percent')
-
-        Gtk.Window.__init__(self, title="Masters")
-        self.set_default_size(800, 500)
-        self.set_border_width(10)
+        self.percent_view = self.app.settings.get_boolean('percent')
 
         self.scale = []
         self.ad = []
         self.flash = []
 
-        self.grid = Gtk.Grid()
-        self.grid.set_column_homogeneous(True)
+        Gtk.Grid.__init__(self)
+        self.set_column_homogeneous(True)
 
-        for i in range(len(self.masters)):
-            # Adjustment for scale (initial value, min value, max value,
+        for i in range(len(self.app.masters)):
+            # Ajustment for scale (initial value, min value, max value,
             # step increment, page increment, page size (not used here)
             if self.percent_view:
                 self.ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
@@ -77,30 +72,40 @@ class MastersWindow(Gtk.Window):
             self.scale[i].set_vexpand(True)
             self.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
             self.scale[i].set_inverted(True)
-            self.scale[i].connect("value-changed", self.scale_moved)
-            # A button to flash the Master
-            self.flash.append(Gtk.Button.new_with_label(self.masters[i].text))
-            self.flash[i].connect("button-press-event", self.flash_on)
-            self.flash[i].connect("button-release-event", self.flash_off)
-
-            # Place the masters in the window
+            self.scale[i].connect('value-changed', self.scale_moved)
+            # A button to flash Master
+            self.flash.append(Gtk.Button.new_with_label(self.app.masters[i].text))
+            self.flash[i].connect('button-press-event', self.flash_on)
+            self.flash[i].connect('button-release-event', self.flash_off)
+            # Place masters in tab (4 per line)
             if i == 0:
-                self.grid.attach(self.scale[i], 0, 0, 1, 1)
-                self.grid.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-            elif not i % 10:
-                self.grid.attach_next_to(self.scale[i], self.flash[i-10], Gtk.PositionType.BOTTOM, 1, 1)
-                self.grid.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                self.attach(self.scale[i], 0, 0, 1, 1)
+                self.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+            elif not i % 4:
+                self.attach_next_to(self.scale[i], self.flash[i-4], Gtk.PositionType.BOTTOM, 1, 1)
+                self.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
             else:
-                self.grid.attach_next_to(self.scale[i], self.scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
-                self.grid.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
+                self.attach_next_to(self.scale[i], self.scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
+                self.attach_next_to(self.flash[i], self.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
 
-        self.add(self.grid)
+    def on_key_press_event(self, widget, event):
+        keyname = Gdk.keyval_name(event.keyval)
+        #print(keyname)
+
+        func = getattr(self, 'keypress_' + keyname, None)
+        if func:
+            return func()
+
+    def keypress_Escape(self):
+        """ Close Tab """
+        page = self.app.window.notebook.get_current_page()
+        self.app.window.notebook.remove_page(page)
 
     def flash_on(self, widget, event):
         # Find the number of the button
-        for i in range(len(self.masters)):
+        for i in range(len(self.app.masters)):
             if widget == self.flash[i]:
-                # Put the master's value to full
+                # Put the master's value to Full
                 if self.percent_view:
                     self.scale[i].set_value(100)
                 else:
@@ -109,7 +114,7 @@ class MastersWindow(Gtk.Window):
 
     def flash_off(self, widget, event):
         # Find the number of the button
-        for i in range(len(self.masters)):
+        for i in range(len(self.app.masters)):
             if widget == self.flash[i]:
                 # Put the master's value to 0
                 self.scale[i].set_value(0)
@@ -117,64 +122,57 @@ class MastersWindow(Gtk.Window):
 
     def scale_moved(self, scale):
 
-        self.percent_view = Gio.Application.get_default().settings.get_boolean('percent')
-
-        # On cherche quel scale a été actionné
+        # Wich Scale has been moved ?
         for i in range(len(self.scale)):
             if self.scale[i] == scale:
-                # Valeur du scale
+                # Scale's Value
                 level_scale = scale.get_value()
 
-                # Type is Channels
-                if self.masters[i].content_type == 2:
-                    for channel in range(len(self.masters[i].channels)):
+                # Master type is Channels
+                if self.app.masters[i].content_type == 2:
+                    for channel in range(len(self.app.masters[i].channels)):
                         if level_scale == 0:
                             level = 0
                         else:
                             if self.percent_view:
-                                level = int(self.masters[i].channels[channel] / (100 / level_scale))
+                                level = int(self.app.masters[i].channels[channel] / (100 / level_scale))
                             else:
-                                level = int(self.masters[i].channels[channel] / (255 / level_scale))
-                        self.masters[i].dmx[channel] = level
+                                level = int(self.app.masters[i].channels[channel] / (255 / level_scale))
+                        self.app.masters[i].dmx[channel] = level
                     self.app.dmx.send()
 
-                # Type is Group
-                elif self.masters[i].content_type == 13:
-                    grp = self.masters[i].content_value
-                    for j in range(len(self.masters[i].groups)):
-                        if self.masters[i].groups[j].index == grp:
-                            #print("Groupe", self.masters[i].groups[j].text)
-
-                            # Pour chaque Output
+                # Master Type is Group
+                elif self.app.masters[i].content_type == 13:
+                    grp = self.app.masters[i].content_value
+                    for j in range(len(self.app.masters[i].groups)):
+                        if self.app.masters[i].groups[j].index == grp:
+                            # For each output
                             for output in range(512):
-
-                                # Si l'output est patché sur un channel
+                                # If Output patched
                                 channel = self.app.patch.outputs[output]
                                 if channel:
-                                    if self.masters[i].groups[j].channels[channel-1] != 0:
-                                        # On récupère la valeur enregistrée dans le groupe
-                                        level_group = self.masters[i].groups[j].channels[channel-1]
-                                        # Calcul du level
+                                    if self.app.masters[i].groups[j].channels[channel-1] != 0:
+                                        # Get level saved in group
+                                        level_group = self.app.masters[i].groups[j].channels[channel-1]
+                                        # Level calculation
                                         if level_scale == 0:
                                             level = 0
                                         else:
                                             if self.percent_view:
                                                 level = int(level_group / (100 / level_scale))
                                             else:
-                                                level = int(level_group / (256 / level_scale)) + 1
+                                                level = int(level_group / (255 / level_scale))
+                                        # Update level in master array
+                                        self.app.masters[i].dmx[channel-1] = level
 
-                                        # Mise à jour du tableau des niveaux du master
-                                        #self.app.dmx.masters[channel-1] = level
-                                        self.masters[i].dmx[channel-1] = level
-
-                            # On met à jour les niveau DMX
+                            # Update DMX levels
                             self.app.dmx.send()
 
-                # Type is Chaser
-                elif self.masters[i].content_type == 3:
-                    nb = self.masters[i].content_value
-                    for j in range(len(self.masters[i].chasers)):
-                        if self.masters[i].chasers[j].index == nb:
+                # Master type is Chaser
+                elif self.app.masters[i].content_type == 3:
+                    nb = self.app.masters[i].content_value
+                    for j in range(len(self.app.masters[i].chasers)):
+                        if self.app.masters[i].chasers[j].index == nb:
                             #print("Chaser", self.masters[i].chasers[j].text)
 
                             # On cherche le chaser
@@ -185,7 +183,8 @@ class MastersWindow(Gtk.Window):
                                         if level_scale and self.app.chasers[k].run == False:
                                             # Start Chaser
                                             self.app.chasers[k].run = True
-                                            self.app.chasers[k].thread = ThreadChaser(self.app, self.masters[i], k, level_scale, self.percent_view)
+                                            self.app.chasers[k].thread = ThreadChaser(self.app,
+                                                    self.app.masters[i], k, level_scale, self.percent_view)
                                             self.app.chasers[k].thread.start()
                                         # Si il tournait déjà et master > 0
                                         elif level_scale and self.app.chasers[k].run == True:
@@ -200,7 +199,7 @@ class MastersWindow(Gtk.Window):
                                             for output in range(512):
                                                 channel = self.app.patch.outputs[output]
                                                 #if self.app.chasers[k].channels[channel-1] != 0:
-                                                self.masters[i].dmx[channel-1] = 0
+                                                self.app.masters[i].dmx[channel-1] = 0
                                             self.app.dmx.send()
 
 class ThreadChaser(threading.Thread):
@@ -298,7 +297,7 @@ class ThreadChaser(threading.Thread):
                 if self.percent_view:
                     level = int(level / (100 / self.level_scale))
                 else:
-                    level = int(level / (256 / self.level_scale))
+                    level = int(level / (255 / self.level_scale))
 
                 # Mise à jour de la valeur des masters
                 #self.app.dmx.masters[channel-1] = level

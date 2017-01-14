@@ -14,7 +14,7 @@ from olc.sequence import Sequence
 from olc.sequentialwindow import SequentialWindow
 from olc.group import Group, GroupTab
 from olc.groupswindow import GroupsWindow
-from olc.master import Master, MastersWindow
+from olc.master import Master, MasterTab
 from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 from olc.ascii import Ascii
@@ -306,15 +306,20 @@ class Application(Gtk.Application):
         #self.win_groups = GroupsWindow(self, self.groups)
         #self.win_groups.show_all()
 
-        # TODO: Test create tab
+        # Create Groups Tab
+        # TODO: don't open severals Groups Tab
         self.tab = GroupTab()
         self.window.notebook.append_page(self.tab, Gtk.Label('Groups'))
         self.window.show_all()
         self.window.notebook.set_current_page(-1)
 
     def _masters(self, action, parameter):
-        self.win_masters = MastersWindow(self, self.masters)
-        self.win_masters.show_all()
+        # Create Masters Tab
+        # TODO: don't open severals Master Tab
+        self.master_tab = MasterTab()
+        self.window.notebook.append_page(self.master_tab, Gtk.Label('Masters'))
+        self.window.show_all()
+        self.window.notebook.set_current_page(-1)
 
     def _settings(self, action, parameter):
         self.win_settings = SettingsDialog()
@@ -356,8 +361,8 @@ class Application(Gtk.Application):
         for i in range(len(self.chasers)):
             if self.chasers[i].run:
                 self.chasers[i].run = False
-                self.win_masters.thread.stop()
-                self.win_masters.thread.join()
+                self.chasers[i].thread.stop()
+                self.chasers[i].thread.join()
         self.quit()
 
 #######################################################################
