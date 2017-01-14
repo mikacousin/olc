@@ -28,6 +28,8 @@ class Application(Gtk.Application):
         GLib.set_application_name('OpenLightingConsole')
         GLib.set_prgname('olc')
 
+        # TODO: Test css et unbind des bindings pour la gestion clavier
+
         # Change to dark theme
         settings = Gtk.Settings.get_default()
         settings.set_property('gtk-application-prefer-dark-theme', True)
@@ -59,6 +61,11 @@ class Application(Gtk.Application):
 
         # Create List of Masters
         self.masters = []
+
+        # For Tabs
+        self.patch_tab = None
+        self.master_tab = None
+        self.group_tab = None
 
     def do_activate(self):
 
@@ -300,30 +307,36 @@ class Application(Gtk.Application):
 
     def _patch(self, action, parameter):
         # Create Patch Tab
-        # TODO: don't open severals Patch Tab
-        self.patch_tab = PatchTab()
-        self.window.notebook.append_page(self.patch_tab, Gtk.Label('Patch'))
-        self.window.show_all()
-        self.window.notebook.set_current_page(-1)
+        if self.patch_tab == None:
+            self.patch_tab = PatchTab()
+            self.window.notebook.append_page(self.patch_tab, Gtk.Label('Patch'))
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.patch_tab)
+            self.window.notebook.set_current_page(page)
 
     def _groups(self, action, parameter):
-        #self.win_groups = GroupsWindow(self, self.groups)
-        #self.win_groups.show_all()
-
         # Create Groups Tab
-        # TODO: don't open severals Groups Tab
-        self.tab = GroupTab()
-        self.window.notebook.append_page(self.tab, Gtk.Label('Groups'))
-        self.window.show_all()
-        self.window.notebook.set_current_page(-1)
+        if self.group_tab == None:
+            self.group_tab = GroupTab()
+            self.window.notebook.append_page(self.group_tab, Gtk.Label('Groups'))
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.group_tab)
+            self.window.notebook.set_current_page(page)
 
     def _masters(self, action, parameter):
         # Create Masters Tab
-        # TODO: don't open severals Master Tab
-        self.master_tab = MasterTab()
-        self.window.notebook.append_page(self.master_tab, Gtk.Label('Masters'))
-        self.window.show_all()
-        self.window.notebook.set_current_page(-1)
+        if self.master_tab == None:
+            self.master_tab = MasterTab()
+            self.window.notebook.append_page(self.master_tab, Gtk.Label('Masters'))
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.master_tab)
+            self.window.notebook.set_current_page(page)
 
     def _settings(self, action, parameter):
         self.win_settings = SettingsDialog()

@@ -100,6 +100,7 @@ class MasterTab(Gtk.Grid):
         """ Close Tab """
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
+        self.app.master_tab = None
 
     def flash_on(self, widget, event):
         # Find the number of the button

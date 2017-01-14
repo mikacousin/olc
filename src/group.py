@@ -120,6 +120,7 @@ class GroupTab(Gtk.Paned):
         """ Close Tab """
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
+        self.app.group_tab = None
 
     def keypress_g(self):
         """ Select Group """

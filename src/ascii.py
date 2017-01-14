@@ -442,25 +442,25 @@ class Ascii(object):
             # Redraw Group Tab if exist
             try:
                 # Remove Old Groups
-                del(self.app.tab.grps[:])
-                self.app.tab.scrolled2.remove(self.app.tab.flowbox2)
-                self.app.tab.flowbox2.destroy()
+                del(self.app.group_tab.grps[:])
+                self.app.group_tab.scrolled2.remove(self.app.group_tab.flowbox2)
+                self.app.group_tab.flowbox2.destroy()
                 # New FlowBox
-                self.app.tab.flowbox2 = Gtk.FlowBox()
-                self.app.tab.flowbox2.set_valign(Gtk.Align.START)
-                self.app.tab.flowbox2.set_max_children_per_line(20)
-                self.app.tab.flowbox2.set_homogeneous(True)
-                self.app.tab.flowbox2.set_activate_on_single_click(True)
-                self.app.tab.flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
-                self.app.tab.flowbox2.set_filter_func(self.app.tab.filter_groups, None)
-                self.app.tab.scrolled2.add(self.app.tab.flowbox2)
+                self.app.group_tab.flowbox2 = Gtk.FlowBox()
+                self.app.group_tab.flowbox2.set_valign(Gtk.Align.START)
+                self.app.group_tab.flowbox2.set_max_children_per_line(20)
+                self.app.group_tab.flowbox2.set_homogeneous(True)
+                self.app.group_tab.flowbox2.set_activate_on_single_click(True)
+                self.app.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
+                self.app.group_tab.flowbox2.set_filter_func(self.app.group_tab.filter_groups, None)
+                self.app.group_tab.scrolled2.add(self.app.group_tab.flowbox2)
                 # Add Groups to FlowBox
                 for i in range(len(self.app.groups)):
-                    self.app.tab.grps.append(GroupWidget(self.app.window, self.app.groups[i].index,
-                        self.app.groups[i].text, self.app.tab.grps))
-                    self.app.tab.flowbox2.add(self.app.tab.grps[i])
-                self.app.tab.flowbox1.invalidate_filter()
-                self.app.tab.flowbox2.invalidate_filter()
+                    self.app.group_tab.grps.append(GroupWidget(self.app.window, self.app.groups[i].index,
+                        self.app.groups[i].text, self.app.group_tab.grps))
+                    self.app.group_tab.flowbox2.add(self.app.group_tab.grps[i])
+                self.app.group_tab.flowbox1.invalidate_filter()
+                self.app.group_tab.flowbox2.invalidate_filter()
                 self.app.window.show_all()
             except:
                 pass

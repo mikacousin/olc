@@ -237,7 +237,7 @@ class Window(Gtk.ApplicationWindow):
         child = self.notebook.get_nth_page(page)
         label = self.notebook.get_tab_label(child).get_label()
         if label == 'Groups':
-            return self.app.tab.on_key_press_event(widget, event)
+            return self.app.group_tab.on_key_press_event(widget, event)
         if label == 'Masters':
             return self.app.master_tab.on_key_press_event(widget, event)
         if label == 'Patch':

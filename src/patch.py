@@ -112,3 +112,4 @@ class PatchTab(Gtk.Grid):
         """ Close Tab """
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
+        self.app.patch_tab = None
