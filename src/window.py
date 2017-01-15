@@ -131,6 +131,7 @@ class Window(Gtk.ApplicationWindow):
 
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
+
         self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
 
         self.paned2.add2(self.notebook)
@@ -232,16 +233,15 @@ class Window(Gtk.ApplicationWindow):
 
     def on_key_press_event(self, widget, event):
 
-        # TODO: Cherche la page ouverte dans le notebook
-        # TODO: Pour rediriger les saisies clavier
+        # Cherche la page ouverte dans le notebook
+        # Pour rediriger les saisies clavier
         page = self.notebook.get_current_page()
         child = self.notebook.get_nth_page(page)
-        label = self.notebook.get_tab_label(child).get_label()
-        if label == 'Groups':
+        if child == self.app.group_tab:
             return self.app.group_tab.on_key_press_event(widget, event)
-        if label == 'Masters':
+        if child == self.app.master_tab:
             return self.app.master_tab.on_key_press_event(widget, event)
-        if label == 'Patch':
+        if child == self.app.patch_tab:
             return self.app.patch_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)

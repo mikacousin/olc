@@ -102,6 +102,12 @@ class MasterTab(Gtk.Grid):
         self.app.window.notebook.remove_page(page)
         self.app.master_tab = None
 
+    def on_close_icon(self, widget):
+        """ Close Tab on close click """
+        page = self.app.window.notebook.page_num(self.app.master_tab)
+        self.app.window.notebook.remove_page(page)
+        self.app.master_tab = None
+
     def flash_on(self, widget, event):
         self.percent_view = self.app.settings.get_boolean('percent')
         # Find the number of the button

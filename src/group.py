@@ -103,6 +103,12 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
 
+    def on_close_icon(self, widget):
+        """ Close Tab with the icon clicked """
+        page = self.app.window.notebook.page_num(self.app.group_tab)
+        self.app.window.notebook.remove_page(page)
+        self.app.group_tab = None
+
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
         #print(keyname)

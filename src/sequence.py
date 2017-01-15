@@ -154,6 +154,7 @@ class Sequence(object):
             self.thread.start()
 
 # Objet Thread pour gérer les Go
+# TODO: Verifier si les core dumps ne viennent pas de l'utilisation de gtk dans le thread
 class ThreadGo(threading.Thread):
     def __init__(self, app, name=''):
         threading.Thread.__init__(self)

@@ -1,0 +1,11 @@
+@binding-set unbind-keys {
+  unbind "Right";
+  unbind "Left";
+  unbind "Up";
+  unbind "Down";
+  unbind "Tab";
+}
+
+#olc {
+  -gtk-key-bindings: unbind-keys;
+}

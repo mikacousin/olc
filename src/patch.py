@@ -100,6 +100,12 @@ class PatchTab(Gtk.Grid):
                 self.app.window.channels[channel].queue_draw()
             self.app.window.flowbox.invalidate_filter()
 
+    def on_close_icon(self, widget):
+        """ Close Tab on close clicked """
+        page = self.app.window.notebook.page_num(self.app.patch_tab)
+        self.app.window.notebook.remove_page(page)
+        self.app.patch_tab = None
+
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
         #print(keyname)

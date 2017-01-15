@@ -29,6 +29,13 @@ class Application(Gtk.Application):
         GLib.set_prgname('olc')
 
         # TODO: Test css et unbind des bindings pour la gestion clavier
+        # TODO: Trouver dans le css de lollypop comment virer le cadre autour du widget qui a le focus
+        cssProviderFile = Gio.File.new_for_uri('resource://org/gnome/OpenLightingConsole/application.css')
+        cssProvider = Gtk.CssProvider()
+        cssProvider.load_from_file(cssProviderFile)
+        screen = Gdk.Screen.get_default()
+        styleContext = Gtk.StyleContext()
+        styleContext.add_provider_for_screen(screen, cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()
@@ -309,7 +316,18 @@ class Application(Gtk.Application):
         # Create Patch Tab
         if self.patch_tab == None:
             self.patch_tab = PatchTab()
-            self.window.notebook.append_page(self.patch_tab, Gtk.Label('Patch'))
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.patch_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Patch'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.patch_tab, label)
             self.window.show_all()
             self.window.notebook.set_current_page(-1)
         else:
@@ -320,7 +338,18 @@ class Application(Gtk.Application):
         # Create Groups Tab
         if self.group_tab == None:
             self.group_tab = GroupTab()
-            self.window.notebook.append_page(self.group_tab, Gtk.Label('Groups'))
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.group_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Groups'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.group_tab, label)
             self.window.show_all()
             self.window.notebook.set_current_page(-1)
         else:
@@ -331,7 +360,18 @@ class Application(Gtk.Application):
         # Create Masters Tab
         if self.master_tab == None:
             self.master_tab = MasterTab()
-            self.window.notebook.append_page(self.master_tab, Gtk.Label('Masters'))
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.master_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Masters'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.master_tab, label)
             self.window.show_all()
             self.window.notebook.set_current_page(-1)
         else:
