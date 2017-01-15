@@ -11,6 +11,5 @@ app_PYTHON = \
 	osc.py \
 	patch.py \
 	sequence.py \
-	sequentialwindow.py \
 	settings.py \
 	window.py
