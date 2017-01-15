@@ -11,9 +11,7 @@ from olc.patch import PatchTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
 from olc.sequence import Sequence
-from olc.sequentialwindow import SequentialWindow
 from olc.group import Group, GroupTab
-from olc.groupswindow import GroupsWindow
 from olc.master import Master, MasterTab
 from olc.customwidgets import GroupWidget
 from olc.osc import OscServer

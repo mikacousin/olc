@@ -225,14 +225,11 @@ class GroupTab(Gtk.Paned):
 
     def keypress_equal(self):
         """ @ Level """
-        # TODO: Pb de calcul du level (en mode % on a 0 = 1 par ex)
         level = int(self.keystring)
         self.keystring = ""
         if Gio.Application.get_default().settings.get_boolean('percent'):
             if level >= 0 and level <= 100:
                 level = int(round((level / 100) * 255))
-                #if level > 255:
-                #    level = 255
             else:
                 level = -1
         else:

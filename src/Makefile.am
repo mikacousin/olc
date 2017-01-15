@@ -7,7 +7,6 @@ app_PYTHON = \
 	customwidgets.py \
 	dmx.py \
 	group.py \
-	groupswindow.py \
 	master.py \
 	osc.py \
 	patch.py \

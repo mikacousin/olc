@@ -5,7 +5,6 @@ from gi.repository import Gtk, GLib
 
 
 from olc.cue import Cue
-from olc.sequentialwindow import SequentialWindow
 from olc.dmx import PatchDmx
 
 class Sequence(object):
