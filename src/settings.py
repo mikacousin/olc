@@ -60,19 +60,22 @@ class SettingsDialog:
 
         # Redraw Groups Window if exist
         try:
-            Gio.Application.get_default().win_groups.flowbox1.invalidate_filter()
+            Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
         except:
             pass
 
         # Redraw Masters Window if exist
         try:
-            for i in range(len(Gio.Application.get_default().win_masters.masters)):
-                val = Gio.Application.get_default().win_masters.scale[i].get_value()
+            for i in range(len(Gio.Application.get_default().master_tab.scale)):
+                val = Gio.Application.get_default().master_tab.scale[i].get_value()
                 if state:
-                    ad = Gtk.Adjustment((val/255)*100, 0, 100, 1, 10, 0)
+                    val = (val/255)*100
+                    ad = Gtk.Adjustment(val, 0, 100, 1, 10, 0)
                 else:
-                    ad = Gtk.Adjustment((val/100)*255, 0, 255, 1, 10, 0)
-                Gio.Application.get_default().win_masters.scale[i].set_adjustment(ad)
+                    val = (val/100)*255
+                    ad = Gtk.Adjustment(val, 0, 255, 1, 10, 0)
+                Gio.Application.get_default().master_tab.scale[i].set_adjustment(ad)
+                Gio.Application.get_default().master_tab.scale[i].set_value(val)
         except:
             pass
 
