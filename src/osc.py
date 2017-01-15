@@ -291,7 +291,7 @@ class OscServer(liblo.ServerThread):
         """ Flash Master """
         flash, level = args
         if self.percent_view:
-            lvl = int((level / 255) * 100)
+            lvl = int(round((level / 255) * 100))
         self.app.win_masters.scale[flash-1].set_value(lvl)
         self.client.send('/subStick/level', ('i', flash), ('i', level))
 
@@ -299,7 +299,7 @@ class OscServer(liblo.ServerThread):
         """ Master Level """
         flash, level = args
         if self.percent_view:
-            lvl = int((level / 255) * 100)
+            lvl = int(round((level / 255) * 100))
         self.app.win_masters.scale[flash-1].set_value(lvl)
         self.client.send('/subStick/level', ('i', flash), ('i', level))
 

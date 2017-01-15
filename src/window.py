@@ -24,6 +24,7 @@ class Window(Gtk.ApplicationWindow):
 
         Gtk.Window.__init__(self, title="Open Lighting Console", application=app)
         self.set_default_size(1400, 1200)
+        self.set_name('olc')
 
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
         self.header.set_subtitle("Fonctionne avec ola")
@@ -389,9 +390,9 @@ class Window(Gtk.ApplicationWindow):
                     if Gio.Application.get_default().settings.get_boolean('percent'):
                         if level >= 0 and level <= 100:
                             # Bug on level calculation ?
-                            self.app.dmx.user[channel] = int((level/100)*255+1)
-                            if self.app.dmx.user[channel] > 255:
-                                self.app.dmx.user[channel] = 255
+                            self.app.dmx.user[channel] = int(round((level/100)*255))
+                            #if self.app.dmx.user[channel] > 255:
+                            #    self.app.dmx.user[channel] = 255
                     else:
                         if level >= 0 and level <= 255:
                             self.app.dmx.user[channel] = level

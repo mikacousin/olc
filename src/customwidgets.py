@@ -74,7 +74,7 @@ class ChannelWidget(Gtk.Widget):
         cr.move_to(6,48)
         if self.level != 0 or self.next_level != 0:     # Don't show 0 level
             if self.percent_level:
-                cr.show_text(str(int((self.level/255)*100)))    # Level in %
+                cr.show_text(str(int(round((self.level/255)*100))))    # Level in %
             else:
                 cr.show_text(str(self.level))                  # Level in 0 to 255 value
         # draw level bar
@@ -96,7 +96,7 @@ class ChannelWidget(Gtk.Widget):
             cr.set_font_size(10)
             cr.move_to(offset_x + 24, offset_y + allocation.height-6)
             if self.percent_level:
-                cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
+                cr.show_text(str(int(round((self.next_level/255)*100))))   # Level in %
             else:
                 cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
         # draw up icon
@@ -115,7 +115,7 @@ class ChannelWidget(Gtk.Widget):
             cr.set_font_size(10)
             cr.move_to(offset_x + 24, offset_y + 16)
             if self.percent_level:
-                cr.show_text(str(int((self.next_level/255)*100)))   # Level in %
+                cr.show_text(str(int(round((self.next_level/255)*100))))   # Level in %
             else:
                 cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
 

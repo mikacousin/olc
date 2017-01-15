@@ -127,7 +127,7 @@ class MasterTab(Gtk.Grid):
         for i in range(len(self.scale)):
             if self.scale[i] == scale:
                 # Scale's Value
-                level_scale = scale.get_value()
+                level_scale = self.scale[i].get_value()
 
                 # Master type is Channels
                 if self.app.masters[i].content_type == 2:
@@ -136,9 +136,9 @@ class MasterTab(Gtk.Grid):
                             level = 0
                         else:
                             if self.percent_view:
-                                level = int(self.app.masters[i].channels[channel] / (100 / level_scale))
+                                level = int(round(self.app.masters[i].channels[channel] / (100 / level_scale)))
                             else:
-                                level = int(self.app.masters[i].channels[channel] / (255 / level_scale))
+                                level = int(round(self.app.masters[i].channels[channel] / (255 / level_scale)))
                         self.app.masters[i].dmx[channel] = level
                     self.app.dmx.send()
 
@@ -160,9 +160,9 @@ class MasterTab(Gtk.Grid):
                                             level = 0
                                         else:
                                             if self.percent_view:
-                                                level = int(level_group / (100 / level_scale))
+                                                level = int(round(level_group / (100 / level_scale)))
                                             else:
-                                                level = int(level_group / (255 / level_scale))
+                                                level = int(round(level_group / (255 / level_scale)))
                                         # Update level in master array
                                         self.app.masters[i].dmx[channel-1] = level
 
@@ -296,9 +296,9 @@ class ThreadChaser(threading.Thread):
 
                 # On limite le niveau par la valeur du Master
                 if self.percent_view:
-                    level = int(level / (100 / self.level_scale))
+                    level = int(round(level / (100 / self.level_scale)))
                 else:
-                    level = int(level / (255 / self.level_scale))
+                    level = int(round(level / (255 / self.level_scale)))
 
                 # Mise à jour de la valeur des masters
                 #self.app.dmx.masters[channel-1] = level

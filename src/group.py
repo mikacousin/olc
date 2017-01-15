@@ -224,9 +224,9 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         if Gio.Application.get_default().settings.get_boolean('percent'):
             if level >= 0 and level <= 100:
-                level = int((level / 100) * 255 + 1)
-                if level > 255:
-                    level = 255
+                level = int(round((level / 100) * 255))
+                #if level > 255:
+                #    level = 255
             else:
                 level = -1
         else:
