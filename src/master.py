@@ -103,6 +103,7 @@ class MasterTab(Gtk.Grid):
         self.app.master_tab = None
 
     def flash_on(self, widget, event):
+        self.percent_view = self.app.settings.get_boolean('percent')
         # Find the number of the button
         for i in range(len(self.app.masters)):
             if widget == self.flash[i]:
@@ -114,6 +115,7 @@ class MasterTab(Gtk.Grid):
                 break
 
     def flash_off(self, widget, event):
+        self.percent_view = self.app.settings.get_boolean('percent')
         # Find the number of the button
         for i in range(len(self.app.masters)):
             if widget == self.flash[i]:
@@ -122,6 +124,8 @@ class MasterTab(Gtk.Grid):
                 break
 
     def scale_moved(self, scale):
+
+        self.percent_view = self.app.settings.get_boolean('percent')
 
         # Wich Scale has been moved ?
         for i in range(len(self.scale)):
@@ -256,6 +260,8 @@ class ThreadChaser(threading.Thread):
         self._stopevent.set()
 
     def update_levels(self, delay, delay_in, delay_out, i, position):
+
+        self.percent_view = self.app.settings.get_boolean('percent')
 
         for output in range(512):
 
