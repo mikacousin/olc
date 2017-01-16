@@ -227,12 +227,12 @@ class ThreadGo(threading.Thread):
             self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
             self.app.window.sequential.pos_xB = 0
-            path = Gtk.TreePath.new_from_indices([position])
-            self.app.window.treeview.set_cursor(path, None, False)
-            self.app.window.seq_grid.queue_draw()
+
             # Set main window's subtitle
             subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
-            self.app.window.header.set_subtitle(subtitle)
+
+            # Update Gtk in the main thread
+            GLib.idle_add(self.update_ui, position, subtitle)
 
             # Si la mémoire a un Wait
             if self.app.sequence.cues[position+1].wait:
@@ -252,11 +252,12 @@ class ThreadGo(threading.Thread):
             self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
             self.app.window.sequential.pos_xB = 0
-            self.app.window.sequential.queue_draw()
+
             # Set main window's subtitle
             subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
-            self.app.window.header.set_subtitle(subtitle)
-            print(position, self.app.sequence.cues[position].memory, self.app.sequence.cues[position].text)
+
+            # Update Gtk in the main thread
+            GLib.idle_add(self.update_ui, position, subtitle)
 
     def stop(self):
         self._stopevent.set()
@@ -321,13 +322,11 @@ class ThreadGo(threading.Thread):
             #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
             self.app.dmx.send()
 
-    def update_wait(self, delay, i):
-        # Update sliders position
-        # Get width of the sequential widget to place cursors correctly
-        allocation = self.app.window.sequential.get_allocation()
-        self.app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * i
-        self.app.window.sequential.pos_xB = ((allocation.width - 32) / delay) * i
-        self.app.window.sequential.queue_draw()
+    def update_ui(self, position, subtitle):
+        path = Gtk.TreePath.new_from_indices([position])
+        self.app.window.treeview.set_cursor(path, None, False)
+        self.app.window.seq_grid.queue_draw()
+        self.app.window.header.set_subtitle(subtitle)
 
 if __name__ == "__main__":
 
