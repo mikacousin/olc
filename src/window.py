@@ -116,6 +116,9 @@ class Window(Gtk.ApplicationWindow):
         self.treeview = Gtk.TreeView(model=self.step_filter)
         for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
+            # Change background color one column out of two
+            if i % 2 == 0:
+                renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
                 column.set_min_width(200)
