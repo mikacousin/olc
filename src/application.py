@@ -291,6 +291,8 @@ class Application(Gtk.Application):
             self.ascii = Ascii(self.file)
             self.ascii.load()
 
+            self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
+
         elif response_id == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")
 
