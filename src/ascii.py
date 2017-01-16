@@ -424,9 +424,9 @@ class Ascii(object):
                 if channel_time == "0":
                     channel_time = ""
                 self.app.window.cues_liststore.append([str(i), str(self.app.sequence.cues[i].memory),
-                        str(self.app.sequence.cues[i].text), wait,
-                        str(t_out), str(t_in),
-                        channel_time])
+                    str(self.app.sequence.cues[i].text), wait,
+                    str(t_out), str(t_in),
+                    channel_time])
             self.app.window.step_filter = self.app.window.cues_liststore.filter_new()
             self.app.window.step_filter.set_visible_func(self.app.window.step_filter_func)
 
