@@ -110,17 +110,28 @@ class Window(Gtk.ApplicationWindow):
         self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
+        for i in range(4):
+            self.cues_liststore1.append([str(i), "", "", "", "", "", ""])
+            self.cues_liststore2.append([str(i), "", "", "", "", "", ""])
         for i in range(self.app.sequence.last):
-            print(i)
-            self.cues_liststore.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+            channel_time = str(len(self.seq.cues[i].channel_time))
+            if channel_time == "0":
+                channel_time = ""
+            self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
-                ""])
-        # Filter
-        self.step_filter = self.cues_liststore.filter_new()
-        self.step_filter.set_visible_func(self.step_filter_func)
+                channel_time])
+            self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
+                channel_time])
+
+        # Filter for the first part of the cue list
+        self.step_filter1 = self.cues_liststore1.filter_new()
+        self.step_filter1.set_visible_func(self.step_filter_func1)
         # List
-        self.treeview = Gtk.TreeView(model=self.step_filter)
+        self.treeview1 = Gtk.TreeView(model=self.step_filter1)
+        # TODO: Open X2 when the second line is selected
         for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
@@ -130,15 +141,40 @@ class Window(Gtk.ApplicationWindow):
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
-            self.treeview.append_column(column)
+            self.treeview1.append_column(column)
+
+        # Filter
+        self.step_filter2 = self.cues_liststore2.filter_new()
+        self.step_filter2.set_visible_func(self.step_filter_func2)
+        # List
+        self.treeview2 = Gtk.TreeView(model=self.step_filter2)
+        self.treeview2.set_enable_search(False)
+        sel = self.treeview2.get_selection()
+        sel.set_mode(Gtk.SelectionMode.NONE)
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
+            renderer = Gtk.CellRendererText()
+            # Change background color one column out of two
+            if i % 2 == 0:
+                renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            if i == 2:
+                column.set_min_width(200)
+                column.set_resizable(True)
+            self.treeview2.append_column(column)
         # Put Cues List in a scrolled window
-        self.scrollable = Gtk.ScrolledWindow()
-        self.scrollable.set_vexpand(True)
-        self.scrollable.set_hexpand(True)
-        self.scrollable.add(self.treeview)
+        self.scrollable2 = Gtk.ScrolledWindow()
+        self.scrollable2.set_vexpand(True)
+        self.scrollable2.set_hexpand(True)
+        self.scrollable2.add(self.treeview2)
+        # Put Cues lists and sequential in a grid
         self.seq_grid = Gtk.Grid()
-        self.seq_grid.add(self.sequential)
-        self.seq_grid.attach_next_to(self.scrollable, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.set_row_homogeneous(False)
+        #self.seq_grid.set_column_homogeneous(False)
+        self.seq_grid.attach(self.treeview1, 0, 0, 1, 1)
+        #self.seq_grid.attach(self.scrollable1, 0, 0, 1, 1)
+        #self.seq_grid.attach_next_to(self.sequential, self.scrollable1, Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.attach_next_to(self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.attach_next_to(self.scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
 
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
@@ -161,10 +197,22 @@ class Window(Gtk.ApplicationWindow):
 
         self.set_icon_name('olc')
 
-    def step_filter_func(self, model, iter, data):
-        return True
+    def step_filter_func1(self, model, iter, data):
+        """ Filter for the first part of the cues list """
+        if int(model[iter][0]) == self.app.sequence.position or int(model[iter][0]) == self.app.sequence.position+1:
+            return True
+        else:
+            return False
+
+    def step_filter_func2(self, model, iter, data):
+        """ Filter for the second part of the cues list """
+        if int(model[iter][0]) <= self.app.sequence.position+1:
+            return False
+        else:
+            return True
 
     def filter_func(self, child, user_data):
+        """ Filter for channels window """
         if self.view_type == 0:
             i = child.get_index()
             for j in range(len(self.patch.channels[i])):

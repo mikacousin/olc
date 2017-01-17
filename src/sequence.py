@@ -56,9 +56,15 @@ class Sequence(object):
             self.window.sequential.time_out = t_out
             self.window.sequential.wait = t_wait
             self.window.sequential.channel_time = self.cues[position+1].channel_time
-            path = Gtk.TreePath.new_from_indices([position])
-            self.window.treeview.set_cursor(path, None, False)
+
+            # Update ui
+            self.window.step_filter1.refilter()
+            self.window.step_filter2.refilter()
+            path = Gtk.TreePath.new_from_indices([0])
+            self.app.window.treeview1.set_cursor(path, None, False)
+            self.app.window.treeview2.set_cursor(path, None, False)
             self.window.seq_grid.queue_draw()
+
             # Set main window's subtitle
             subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
             self.app.window.header.set_subtitle(subtitle)
@@ -90,12 +96,18 @@ class Sequence(object):
             self.window.sequential.time_out = t_out
             self.window.sequential.wait = t_wait
             self.window.sequential.channel_time = self.cues[position+1].channel_time
-            path = Gtk.TreePath.new_from_indices([position])
-            self.window.treeview.set_cursor(path, None, False)
-            self.window.seq_grid.queue_draw()
+
             # Set main window's subtitle
             subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
             self.app.window.header.set_subtitle(subtitle)
+
+            # Update ui
+            self.window.step_filter1.refilter()
+            self.window.step_filter2.refilter()
+            path = Gtk.TreePath.new_from_indices([0])
+            self.app.window.treeview1.set_cursor(path, None, False)
+            self.app.window.treeview2.set_cursor(path, None, False)
+            self.window.seq_grid.queue_draw()
 
             # On vide le tableau des valeurs entrées par l'utilisateur
             self.app.dmx.user = array.array('h', [-1] * 512)
@@ -129,9 +141,15 @@ class Sequence(object):
                 self.window.sequential.channel_time = self.cues[position+1].channel_time
                 self.app.window.sequential.pos_xA = 0
                 self.app.window.sequential.pos_xB = 0
-                path = Gtk.TreePath.new_from_indices([position])
-                self.app.window.treeview.set_cursor(path, None, False)
+
+                # Update ui
+                self.app.window.step_filter1.refilter()
+                self.app.window.step_filter2.refilter()
+                path = Gtk.TreePath.new_from_indices([0])
+                self.app.window.treeview1.set_cursor(path, None, False)
+                self.app.window.treeview2.set_cursor(path, None, False)
                 self.app.window.seq_grid.queue_draw()
+
                 # Launch Go
                 self.sequence_go(self.app)
                 break
@@ -322,9 +340,14 @@ class ThreadGo(threading.Thread):
             self.app.dmx.send()
 
     def update_ui(self, position, subtitle):
-        path = Gtk.TreePath.new_from_indices([position])
-        self.app.window.treeview.set_cursor(path, None, False)
+        # Update Sequential Tab
+        self.app.window.step_filter1.refilter()
+        self.app.window.step_filter2.refilter()
+        path = Gtk.TreePath.new_from_indices([0])
+        self.app.window.treeview1.set_cursor(path, None, False)
+        self.app.window.treeview2.set_cursor(path, None, False)
         self.app.window.seq_grid.queue_draw()
+        # Update Main Window's Subtitle
         self.app.window.header.set_subtitle(subtitle)
 
 if __name__ == "__main__":

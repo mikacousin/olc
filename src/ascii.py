@@ -400,7 +400,8 @@ class Ascii(object):
             self.app.window.sequential.wait = t_wait
 
             # On met à jour la liste des mémoires
-            self.app.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+            self.app.window.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str)
+            self.app.window.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
             # 2 lignes vides au début
             #for i in range(2):
             #    self.app.win_seq.cues_liststore.append(["", "", "", "", "", "", ""])
@@ -423,19 +424,30 @@ class Ascii(object):
                 channel_time = str(len(self.app.sequence.cues[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
-                self.app.window.cues_liststore.append([str(i), str(self.app.sequence.cues[i].memory),
+                self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
                     str(self.app.sequence.cues[i].text), wait,
                     str(t_out), str(t_in),
                     channel_time])
-            self.app.window.step_filter = self.app.window.cues_liststore.filter_new()
-            self.app.window.step_filter.set_visible_func(self.app.window.step_filter_func)
+                self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
+                    str(self.app.sequence.cues[i].text), wait,
+                    str(t_out), str(t_in),
+                    channel_time])
 
-            self.app.window.treeview.set_model(self.app.window.cues_liststore)
-            #self.app.win_seq.treeview.set_model(self.app.win_seq.step_filter)
-            #self.app.win_seq.step_filter.refilter()
+            self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
+            self.app.window.step_filter1.set_visible_func(self.app.window.step_filter_func1)
+
+            self.app.window.step_filter2 = self.app.window.cues_liststore2.filter_new()
+            self.app.window.step_filter2.set_visible_func(self.app.window.step_filter_func2)
+
+            self.app.window.treeview1.set_model(self.app.window.step_filter1)
+            self.app.window.treeview2.set_model(self.app.window.step_filter2)
+
+            self.app.window.step_filter1.refilter()
+            self.app.window.step_filter2.refilter()
 
             path = Gtk.TreePath.new_from_indices([0])
-            self.app.window.treeview.set_cursor(path, None, False)
+            self.app.window.treeview1.set_cursor(path, None, False)
+            self.app.window.treeview2.set_cursor(path, None, False)
 
             self.app.window.seq_grid.queue_draw()
 
