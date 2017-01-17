@@ -98,21 +98,28 @@ class Window(Gtk.ApplicationWindow):
         self.seq = self.app.sequence
         
         # Sequential part of the window
+        # TODO: 2 treeview avec le crossfade au milieu (cf Congo)
         position = self.seq.position
         t_total = self.seq.cues[position].total_time
         t_in = self.seq.cues[position].time_in
         t_out = self.seq.cues[position].time_out
         t_wait = self.seq.cues[position].wait
         channel_time = self.seq.cues[position].channel_time
+
+        # Crossfade widget
         self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
+
+        # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
         self.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
         for i in range(self.app.sequence.last):
             print(i)
             self.cues_liststore.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
                 ""])
+        # Filter
         self.step_filter = self.cues_liststore.filter_new()
         self.step_filter.set_visible_func(self.step_filter_func)
+        # List
         self.treeview = Gtk.TreeView(model=self.step_filter)
         for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
@@ -124,6 +131,7 @@ class Window(Gtk.ApplicationWindow):
                 column.set_min_width(200)
                 column.set_resizable(True)
             self.treeview.append_column(column)
+        # Put Cues List in a scrolled window
         self.scrollable = Gtk.ScrolledWindow()
         self.scrollable.set_vexpand(True)
         self.scrollable.set_hexpand(True)
