@@ -1,7 +1,8 @@
 - Add Track Channels
-- Création d'une mémoire
-- Editer chasers
-- Changer les temps dans le séquentiel
-- Finir Crossfade manuel
-- Lancer olad automatiquement si il tourne pas
-- Configuration olad
+- Create New Memory
+- Edit Chasers
+- Change Time In, Time Out, Wait
+- Create / Edit Channel Time
+- Manual Crossfade
+- Launch olad if not
+- Ola Configuration
