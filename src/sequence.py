@@ -155,6 +155,7 @@ class Sequence(object):
                 break
 
     def sequence_go(self, app):
+        # TODO: Pb with fast cues (<0.5): don't go to the next levels
         self.app = app
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.on_go:
@@ -218,8 +219,10 @@ class ThreadGo(threading.Thread):
 
         # Boucle sur le temps de montée ou de descente (le plus grand)
         while i < delay and not self._stopevent.isSet():
-            GLib.idle_add(self.update_levels, delay, delay_in, delay_out, delay_wait, i, position) # Mise à jour des niveaux
-            time.sleep(0.02)
+            # Update DMX levels
+            GLib.idle_add(self.update_levels, delay, delay_in, delay_out, delay_wait, i, position)
+            # Sleep for 10ms
+            time.sleep(0.01)
             i = (time.time() * 1000) - start_time
 
         # Le Go est terminé
@@ -332,11 +335,8 @@ class ThreadGo(threading.Thread):
                         else:
                             level = next_level
 
-                        #print("Channel :", channel, "old_level", old_level, "next_level", next_level, "level", level)
-
                         self.app.dmx.sequence[channel-1] = level
 
-            #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
             self.app.dmx.send()
 
     def update_ui(self, position, subtitle):
