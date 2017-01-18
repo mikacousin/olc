@@ -41,6 +41,7 @@ class Sequence(object):
                 self.channels[i] = 1 # Si présent on le note
 
     def sequence_plus(self, app):
+        # TODO: Prendre la main si un Go est en cours
         self.app = app
         position = self.position
         position += 1
@@ -81,6 +82,7 @@ class Sequence(object):
             self.app.dmx.send()
 
     def sequence_minus(self, app):
+        # TODO: Prendre la main si un Go est en cours
         self.app = app
         position = self.position
         position -= 1

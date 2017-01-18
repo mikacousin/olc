@@ -130,6 +130,7 @@ class Window(Gtk.ApplicationWindow):
         # List
         self.treeview1 = Gtk.TreeView(model=self.step_filter1)
         # TODO: Open X2 when the second line is selected
+        # TODO: Un click sur la 2eme ligne décalle la mémoire en scène
         for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
