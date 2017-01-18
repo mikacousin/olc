@@ -28,7 +28,6 @@ class Application(Gtk.Application):
         GLib.set_prgname('olc')
 
         # TODO: Test css et unbind des bindings pour la gestion clavier
-        # TODO: Trouver dans le css de lollypop comment virer le cadre autour du widget qui a le focus
         cssProviderFile = Gio.File.new_for_uri('resource://org/gnome/OpenLightingConsole/application.css')
         cssProvider = Gtk.CssProvider()
         cssProvider.load_from_file(cssProviderFile)
@@ -67,6 +66,9 @@ class Application(Gtk.Application):
 
         # Create List of Masters
         self.masters = []
+
+        # For Windows
+        self.about_window = None
 
         # For Tabs
         self.patch_tab = None
@@ -387,6 +389,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def _settings(self, action, parameter):
+        # TODO: Don't open multiple Settings Windows
         self.win_settings = SettingsDialog()
         self.win_settings.settings_dialog.show_all()
 
@@ -394,10 +397,11 @@ class Application(Gtk.Application):
         """
             Create Shortcuts Window
         """
+        # TODO: Don't open multiple Shortcuts Windows
         builder = Gtk.Builder()
         builder.add_from_resource('/org/gnome/OpenLightingConsole/gtk/help-overlay.ui')
         self.shortcuts = builder.get_object('help_overlay')
-        #self.shortcuts.set_transient_for(self.window)
+        self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
 
     def _about(self, action, parameter):
@@ -406,12 +410,15 @@ class Application(Gtk.Application):
             @param action as Gio.SimpleAction
             @param param as GLib.Variant
         """
-        builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/OpenLightingConsole/AboutDialog.ui')
-        about = builder.get_object('about_dialog')
-        about.set_transient_for(self.window)
-        about.connect("response", self._about_response)
-        about.show()
+        if self.about_window == None:
+            builder = Gtk.Builder()
+            builder.add_from_resource('/org/gnome/OpenLightingConsole/AboutDialog.ui')
+            self.about_window = builder.get_object('about_dialog')
+            self.about_window.set_transient_for(self.window)
+            self.about_window.connect("response", self._about_response)
+            self.about_window.show()
+        else:
+            self.about_window.present()
 
     def _about_response(self, dialog, response):
         """
@@ -420,6 +427,7 @@ class Application(Gtk.Application):
             @param response as int
         """
         dialog.destroy()
+        self.about_window = None
 
     def _exit(self, action, parameter):
         # Stop Chasers Threads
