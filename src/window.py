@@ -1,4 +1,3 @@
-import select
 import time
 import threading
 import array
@@ -98,7 +97,6 @@ class Window(Gtk.ApplicationWindow):
         self.seq = self.app.sequence
         
         # Sequential part of the window
-        # TODO: 2 treeview avec le crossfade au milieu (cf Congo)
         position = self.seq.position
         t_total = self.seq.cues[position].total_time
         t_in = self.seq.cues[position].time_in
@@ -169,10 +167,7 @@ class Window(Gtk.ApplicationWindow):
         # Put Cues lists and sequential in a grid
         self.seq_grid = Gtk.Grid()
         self.seq_grid.set_row_homogeneous(False)
-        #self.seq_grid.set_column_homogeneous(False)
         self.seq_grid.attach(self.treeview1, 0, 0, 1, 1)
-        #self.seq_grid.attach(self.scrollable1, 0, 0, 1, 1)
-        #self.seq_grid.attach_next_to(self.sequential, self.scrollable1, Gtk.PositionType.BOTTOM, 1, 1)
         self.seq_grid.attach_next_to(self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
         self.seq_grid.attach_next_to(self.scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
 
@@ -191,7 +186,10 @@ class Window(Gtk.ApplicationWindow):
         except:
             self.inport = mido.open_input()
 
-        self.timeout_id = GObject.timeout_add(50, self.on_timeout, None)
+        # Scan MIDI every 100ms
+        self.timeout_id = GObject.timeout_add(100, self.on_timeout, None)
+        # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
+        GLib.unix_fd_add_full(0, self.app.sock.fileno(), GLib.IOCondition(27), self.app.on_fd_read, None)
 
         self.connect('key_press_event', self.on_key_press_event)
 
@@ -275,12 +273,6 @@ class Window(Gtk.ApplicationWindow):
                     self.app.win_masters.scale[6].set_value((msg.value/127)*100)
                 else:
                     self.app.win_masters.scale[6].set_value((msg.value/127)*256)
-
-        # Ola messages
-        readable, writable, exceptional = select.select([self.app.sock], [], [], 0)
-        if readable:
-            self.app.ola_client.SocketReady()
-        return True
 
     def button_clicked_cb(self, button):
         """ Toggle type of view : patched channels or all channels """

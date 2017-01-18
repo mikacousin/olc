@@ -1,5 +1,6 @@
 import sys
 import array
+import select
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gio, GLib, Gdk, GObject
@@ -169,6 +170,13 @@ class Application(Gtk.Application):
         self.add_action(quitAction)
 
         return menu
+
+    def on_fd_read(self, fd, condition, data):
+        # Ola messages
+        readable, writable, exceptional = select.select([self.sock], [], [], 0)
+        if readable:
+            self.ola_client.SocketReady()
+        return True
 
     def on_dmx(self, dmxframe):
         #for i in range(512):
