@@ -358,6 +358,9 @@ class SequenceTab(Gtk.Grid):
 
         self.app = Gio.Application.get_default()
 
+        self.keystring = ""
+        self.last_chan_selected = ""
+
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
         #self.set_row_homogeneous(True)
@@ -371,6 +374,7 @@ class SequenceTab(Gtk.Grid):
             self.liststore1.append([self.app.chasers[chaser].index, self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
+        self.treeview1.set_enable_search(False)
         self.treeview1.connect('cursor-changed', self.on_sequence_changed)
 
         for i, column_title in enumerate(["Seq", "Type", "Name"]):
@@ -596,6 +600,9 @@ class SequenceTab(Gtk.Grid):
 
     def on_memory_changed(self, treeview):
         """ Select memory """
+        for channel in range(512):
+            self.channels[channel].clicked = False
+            self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
     def filter_func(self, child, user_data):
@@ -626,6 +633,8 @@ class SequenceTab(Gtk.Grid):
                 self.channels[i].next_level = channels[i]
                 return child
             else:
+                self.channels[i].level = 0
+                self.channels[i].next_level = 0
                 return False
         else:
             return False
@@ -683,6 +692,11 @@ class SequenceTab(Gtk.Grid):
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
 
+        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+            self.keystring += keyname
+        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+            self.keystring += keyname[3:]
+
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -692,6 +706,93 @@ class SequenceTab(Gtk.Grid):
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
         self.app.sequences_tab = None
+
+    def keypress_a(self):
+        """ All Channels """
+        # Find selected sequence
+        path, focus_column = self.treeview1.get_cursor()
+        if path != None:
+            selected = path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == self.app.sequence.index:
+                self.seq = self.app.sequence
+            else:
+                for i in range(len(self.app.chasers)):
+                    if sequence == self.app.chasers[i].index:
+                        self.seq = self.app.chasers[i]
+            # Find Step
+            path, focus_column = self.treeview2.get_cursor()
+            if path != None:
+                selected = path.get_indices()[0]
+                step = int(self.liststore2[selected][0])
+                channels = self.seq.cues[step].channels
+
+                for channel in range(512):
+                    if channels[channel] != 0:
+                        self.channels[channel].clicked = True
+                        self.channels[channel].queue_draw()
+                    else:
+                        self.channels[channel].clicked = False
+                        self.channels[channel].queue_draw()
+
+    def keypress_colon(self):
+        """ Level - % """
+        lvl = Gio.Application.get_default().settings.get_int('percent-level')
+        for channel in range(512):
+            if self.channels[channel].clicked:
+                level = self.channels[channel].level
+                if level - lvl < 0:
+                    level = 0
+                else:
+                    level = level - lvl
+                self.channels[channel].level = level
+                self.channels[channel].next_level = level
+                self.channels[channel].queue_draw()
+
+    def keypress_exclam(self):
+        """ Level - % """
+        lvl = Gio.Application.get_default().settings.get_int('percent-level')
+        for channel in range(512):
+            if self.channels[channel].clicked:
+                level = self.channels[channel].level
+                if level + lvl > 255:
+                    level = 255
+                else:
+                    level = level + lvl
+                self.channels[channel].level = level
+                self.channels[channel].next_level = level
+                self.channels[channel].queue_draw()
+
+    def keypress_U(self):
+        """ Update Cue """
+        # Find selected sequence
+        path, focus_column = self.treeview1.get_cursor()
+        if path != None:
+            selected = path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == self.app.sequence.index:
+                self.seq = self.app.sequence
+            else:
+                for i in range(len(self.app.chasers)):
+                    if sequence == self.app.chasers[i].index:
+                        self.seq = self.app.chasers[i]
+            # Find Step
+            path, focus_column = self.treeview2.get_cursor()
+            if path != None:
+                selected = path.get_indices()[0]
+                step = int(self.liststore2[selected][0])
+                channels = self.seq.cues[step].channels
+
+                for channel in range(512):
+                    channels[channel] = self.channels[channel].level
+
+                # TODO: Dialog to confirm Update
+                memory = self.seq.cues[step].memory
+                print("Mise à jour de la mémoire", memory)
+
+                # Tag filename as modified
+                self.app.ascii.modified = True
+                self.app.window.header.set_title(self.app.ascii.basename + "*")
 
 if __name__ == "__main__":
 

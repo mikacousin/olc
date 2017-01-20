@@ -11,7 +11,7 @@ class Ascii(object):
     def __init__(self, filename):
         self.file = filename
         self.basename = self.file.get_basename()
-        self.modify = False
+        self.modified = False
 
         self.app = Gio.Application.get_default()
 
@@ -547,7 +547,7 @@ class Ascii(object):
         except GObject.GError as e:
             print("Error: " + e.message)
 
-        self.modify = False
+        self.modified = False
 
     def save(self):
 
@@ -747,5 +747,5 @@ class Ascii(object):
 
         stream.close()
 
-        self.modify = False
+        self.modified = False
         self.app.window.header.set_title(self.basename)
