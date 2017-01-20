@@ -9,11 +9,8 @@
 }
 
 #olc * {
-    outline-width: 0px;
-    text-shadow: none;
-}
-
-#olc {
+  outline-width: 0px;
+  text-shadow: none;
   -gtk-key-bindings: unbind-keys;
 }
 
