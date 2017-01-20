@@ -72,7 +72,7 @@ class Ascii(object):
                     else:
                         type_seq = "Chaser"
                         index_seq = int(p[0])
-                        self.app.chasers.append(Sequence(index_seq, self.app.patch))
+                        self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = type_seq))
                     """
                     try:
                         test_type = p[1]
@@ -516,6 +516,21 @@ class Ascii(object):
                 self.app.window.show_all()
             except:
                 pass
+
+            # Redraw Sequences Tab if exist
+            if self.app.sequences_tab != None:
+                self.app.sequences_tab.liststore1 = Gtk.ListStore(int, str, str)
+
+                self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
+                    self.app.sequence.text])
+
+                for chaser in range(len(self.app.chasers)):
+                    self.app.sequences_tab.liststore1.append([self.app.chasers[chaser].index,
+                        self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
+
+                self.app.sequences_tab.treeview1.set_model(self.app.sequences_tab.liststore1)
+                path = Gtk.TreePath.new()
+                self.app.window.treeview1.set_cursor(path, None, False)
 
             # Redraw Patch Tab if exist
             try:

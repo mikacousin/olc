@@ -57,7 +57,7 @@ class PatchDmx(object):
     To store and manipulate DMX patch
     """
     def __init__(self):
-        self.univers = 0
+        # TODO: Add level limitation for Outputs (see ascii files)
 
         # 2 lists to store patch (default 1:1)
         #

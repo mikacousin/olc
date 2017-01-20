@@ -18,8 +18,7 @@ class Cue(object):
         else:
             self.total_time = self.time_out + self.wait
         for channel in self.channel_time.keys():
-            #print(channel, channel_time[channel].delay, channel_time[channel].time)
-            if channel_time[channel].delay + channel_time[channel].time > self.total_time:
+            if channel_time[channel].delay + channel_time[channel].time + self.wait > self.total_time:
                 self.total_time = channel_time[channel].delay + channel_time[channel].time + self.wait
 
     def set_level(self, channel, level):

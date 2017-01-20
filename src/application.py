@@ -11,7 +11,7 @@ from olc.window import Window
 from olc.patch import PatchTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
-from olc.sequence import Sequence
+from olc.sequence import Sequence, SequenceTab
 from olc.group import Group, GroupTab
 from olc.master import Master, MasterTab
 from olc.customwidgets import GroupWidget
@@ -74,6 +74,7 @@ class Application(Gtk.Application):
         self.patch_tab = None
         self.master_tab = None
         self.group_tab = None
+        self.sequences_tab = None
 
     def do_activate(self):
 
@@ -154,6 +155,10 @@ class Application(Gtk.Application):
         mastersAction = Gio.SimpleAction.new('masters', None)
         mastersAction.connect('activate', self._masters)
         self.add_action(mastersAction)
+
+        sequencesAction = Gio.SimpleAction.new('sequences', None)
+        sequencesAction.connect('activate', self._sequences)
+        self.add_action(sequencesAction)
 
         settingsAction = Gio.SimpleAction.new('settings', None)
         settingsAction.connect('activate', self._settings)
@@ -386,6 +391,27 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(-1)
         else:
             page = self.window.notebook.page_num(self.master_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _sequences(self, action, parameter):
+        # Create Sequences Tab
+        if self.sequences_tab == None:
+            self.sequences_tab = SequenceTab()
+
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.sequences_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Sequences'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.sequences_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.sequences_tab)
             self.window.notebook.set_current_page(page)
 
     def _settings(self, action, parameter):

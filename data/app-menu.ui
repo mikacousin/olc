@@ -31,6 +31,11 @@
         <attribute name="label" translatable="yes">_Masters</attribute>
         <attribute name="accel">&lt;Primary&gt;m</attribute>
       </item>
+      <item>
+        <attribute name="action">app.sequences</attribute>
+        <attribute name="label" translatable="yes">_Sequences</attribute>
+        <attribute name="accel">&lt;Primary&gt;t</attribute>
+      </item>
     </section>
     <section>
       <item>
