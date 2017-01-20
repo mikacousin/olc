@@ -694,8 +694,15 @@ class SequenceTab(Gtk.Grid):
 
         if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
             self.keystring += keyname
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
         if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
             self.keystring += keyname[3:]
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+        if keyname == 'period':
+            self.keystring += '.'
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
@@ -706,6 +713,40 @@ class SequenceTab(Gtk.Grid):
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
         self.app.sequences_tab = None
+
+    def keypress_BackSpace(self):
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_Tab(self):
+        """ Cycle Sequences """
+        path, focus_column = self.treeview1.get_cursor()
+        if path != None:
+            path.next()
+            self.treeview1.set_cursor(path)
+        else:
+            path = Gtk.TreePath.new_first()
+            self.treeview1.set_cursor(path)
+
+    def keypress_Up(self):
+        """ Prev Memory """
+        path, focus_column = self.treeview2.get_cursor()
+        if path != None:
+            if path.prev():
+                self.treeview2.set_cursor(path)
+        else:
+            path = Gtk.TreePath.new_first()
+            self.treeview2.set_cursor(path)
+
+    def keypress_Down(self):
+        """ Next Memory """
+        path, focus_column = self.treeview2.get_cursor()
+        if path != None:
+            path.next()
+            self.treeview2.set_cursor(path)
+        else:
+            path = Gtk.TreePath.new_first()
+            self.treeview2.set_cursor(path)
 
     def keypress_a(self):
         """ All Channels """
