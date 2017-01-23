@@ -108,10 +108,12 @@ class Window(Gtk.ApplicationWindow):
         self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
         for i in range(4):
-            self.cues_liststore1.append([str(i), "", "", "", "", "", ""])
+            # Trouver comment récupérer la couleur de fond du thème
+            bg = "#232729"
+            self.cues_liststore1.append([str(i), "", "", "", "", "", "", bg])
             self.cues_liststore2.append([str(i), "", "", "", "", "", ""])
         for i in range(self.app.sequence.last):
             channel_time = str(len(self.seq.cues[i].channel_time))
@@ -119,7 +121,7 @@ class Window(Gtk.ApplicationWindow):
                 channel_time = ""
             self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
-                channel_time])
+                channel_time], bg)
             self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
                 channel_time])
@@ -129,14 +131,15 @@ class Window(Gtk.ApplicationWindow):
         self.step_filter1.set_visible_func(self.step_filter_func1)
         # List
         self.treeview1 = Gtk.TreeView(model=self.step_filter1)
-        # TODO: Open X2 when the second line is selected
-        # TODO: Un click sur la 2eme ligne décalle la mémoire en scène
+        self.treeview1.set_enable_search(False)
+        sel = self.treeview1.get_selection()
+        sel.set_mode(Gtk.SelectionMode.NONE)
         for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=7)
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)

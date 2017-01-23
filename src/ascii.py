@@ -400,7 +400,7 @@ class Ascii(object):
             self.app.window.sequential.wait = t_wait
 
             # On met à jour la liste des mémoires
-            self.app.window.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str)
+            self.app.window.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str)
             self.app.window.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
             # 2 lignes vides au début
             #for i in range(2):
@@ -424,14 +424,14 @@ class Ascii(object):
                 channel_time = str(len(self.app.sequence.cues[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
+                if i == 0:
+                    bg = "#997004"
+                else:
+                    bg = "#232729"
                 self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait,
-                    str(t_out), str(t_in),
-                    channel_time])
+                    str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time, bg])
                 self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait,
-                    str(t_out), str(t_in),
-                    channel_time])
+                    str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time])
 
             self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
             self.app.window.step_filter1.set_visible_func(self.app.window.step_filter_func1)

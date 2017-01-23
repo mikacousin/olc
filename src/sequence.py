@@ -60,6 +60,8 @@ class Sequence(object):
             self.window.sequential.channel_time = self.cues[position+1].channel_time
 
             # Update ui
+            self.app.window.cues_liststore1[position-1][7] = "#232729"
+            self.app.window.cues_liststore1[position][7] = "#997004"
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_from_indices([0])
@@ -105,6 +107,8 @@ class Sequence(object):
             self.app.window.header.set_subtitle(subtitle)
 
             # Update ui
+            self.app.window.cues_liststore1[position+1][7] = "#232729"
+            self.app.window.cues_liststore1[position][7] = "#997004"
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_from_indices([0])
@@ -126,6 +130,7 @@ class Sequence(object):
     def sequence_goto(self, app, keystring):
         """ Jump to cue number """
         self.app = app
+        old_pos = self.app.sequence.position
         # Scan all cues
         for i in range(len(self.cues)):
             # Until we find the good one
@@ -146,6 +151,8 @@ class Sequence(object):
                 self.app.window.sequential.pos_xB = 0
 
                 # Update ui
+                self.app.window.cues_liststore1[old_pos][7] = "#232729"
+                self.app.window.cues_liststore1[position][7] = "#997004"
                 self.app.window.step_filter1.refilter()
                 self.app.window.step_filter2.refilter()
                 path = Gtk.TreePath.new_from_indices([0])
@@ -344,6 +351,8 @@ class ThreadGo(threading.Thread):
 
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
+        self.app.window.cues_liststore1[position+1][7] = "#232729"
+        self.app.window.cues_liststore1[position][7] = "#997004"
         self.app.window.step_filter1.refilter()
         self.app.window.step_filter2.refilter()
         path = Gtk.TreePath.new_from_indices([0])
