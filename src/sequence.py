@@ -223,9 +223,9 @@ class ThreadGo(threading.Thread):
         # Boucle sur le temps de montée ou de descente (le plus grand)
         while i < delay and not self._stopevent.isSet():
             # Update DMX levels
-            GLib.idle_add(self.update_levels, delay, delay_in, delay_out, delay_wait, i, position)
-            # Sleep for 10ms
-            time.sleep(0.01)
+            self.update_levels(delay, delay_in, delay_out, delay_wait, i, position)
+            # Sleep for 5ms
+            time.sleep(0.005)
             i = (time.time() * 1000) - start_time
 
         # Le Go est terminé
@@ -291,7 +291,7 @@ class ThreadGo(threading.Thread):
         allocation = self.app.window.sequential.get_allocation()
         self.app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * i
         self.app.window.sequential.pos_xB = ((allocation.width - 32) / delay) * i
-        self.app.window.sequential.queue_draw()
+        GLib.idle_add(self.app.window.sequential.queue_draw)
 
         # On attend que le temps d'un éventuel wait soit passé pour changer les levels
         if i > delay_wait:
