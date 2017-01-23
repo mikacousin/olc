@@ -58,14 +58,16 @@ class SettingsDialog:
         # Force redraw of main window
         Gio.Application.get_default().window.flowbox.invalidate_filter()
 
-        # Redraw Groups Window if exist
-        try:
+        # Redraw Sequences Tab if open
+        if Gio.Application.get_default().sequences_tab != None:
+            Gio.Application.get_default().sequences_tab.flowbox.invalidate_filter()
+
+        # Redraw Groups Tab if exist
+        if Gio.Application.get_default().patch_tab != None:
             Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
-        except:
-            pass
 
         # Redraw Masters Window if exist
-        try:
+        if Gio.Application.get_default().master_tab != None:
             for i in range(len(Gio.Application.get_default().master_tab.scale)):
                 val = Gio.Application.get_default().master_tab.scale[i].get_value()
                 if state:
@@ -76,8 +78,6 @@ class SettingsDialog:
                     ad = Gtk.Adjustment(val, 0, 255, 1, 10, 0)
                 Gio.Application.get_default().master_tab.scale[i].set_adjustment(ad)
                 Gio.Application.get_default().master_tab.scale[i].set_value(val)
-        except:
-            pass
 
     def _on_btn_clicked(self, button):
         ip = self.entry_client_ip.get_text()
