@@ -165,7 +165,7 @@ class GroupWidget(Gtk.Widget):
             self.clicked = True
         self.queue_draw()
         #self.wingrps.grp_flowbox1.invalidate_filter()
-        Gio.Application.get_default().tab.flowbox1.invalidate_filter()
+        Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
         # paint background
