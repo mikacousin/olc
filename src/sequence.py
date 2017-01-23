@@ -892,6 +892,7 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_U(self):
         """ Update Cue """
+
         # Find selected sequence
         path, focus_column = self.treeview1.get_cursor()
         if path != None:
@@ -910,16 +911,40 @@ class SequenceTab(Gtk.Grid):
                 step = int(self.liststore2[selected][0])
                 channels = self.seq.cues[step].channels
 
-                for channel in range(512):
-                    channels[channel] = self.channels[channel].level
-
-                # TODO: Dialog to confirm Update
                 memory = self.seq.cues[step].memory
-                print("Mise à jour de la mémoire", memory)
 
-                # Tag filename as modified
-                self.app.ascii.modified = True
-                self.app.window.header.set_title(self.app.ascii.basename + "*")
+                # Dialog to confirm Update
+                dialog = DialogExemple(self.app.window, memory)
+                response = dialog.run()
+
+                if response == Gtk.ResponseType.OK:
+                    # Update levels in the cue
+                    for channel in range(512):
+                        channels[channel] = self.channels[channel].level
+
+                    # Tag filename as modified
+                    self.app.ascii.modified = True
+                    self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+                elif response == Gtk.ResponseType.CANCEL:
+                    pass
+
+                dialog.destroy()
+
+class DialogExemple(Gtk.Dialog):
+
+    def __init__(self, parent, memory):
+        Gtk.Dialog.__init__(self, "Confirmation", parent, 0,
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                 Gtk.STOCK_OK, Gtk.ResponseType.OK))
+
+        self.set_default_size(150,100)
+
+        label = Gtk.Label("Update memory " + memory + " ?")
+
+        box = self.get_content_area()
+        box.add(label)
+        self.show_all()
 
 if __name__ == "__main__":
 
