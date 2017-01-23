@@ -495,13 +495,39 @@ class Window(Gtk.ApplicationWindow):
         """ Update Cue """
         position = self.app.sequence.position
         memory = self.app.sequence.cues[position].memory
-        # TODO: Dialogue de confirmation de mise à jour
-        for output in range(512):
-            channel = self.app.patch.outputs[output]
-            level = self.app.dmx.frame[output]
-            #print("Output", output, "Channel", channel, "@", level)
-            self.app.sequence.cues[position].channels[channel-1] = level
-        print("Mise à jour de la mémoire", memory)
-        # Tag filename as modified
-        self.app.ascii.modified = True
-        self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+        # Confirmation Dialog
+        dialog = Dialog(self, memory)
+        response = dialog.run()
+
+        if response == Gtk.ResponseType.OK:
+
+            for output in range(512):
+                channel = self.app.patch.outputs[output]
+                level = self.app.dmx.frame[output]
+
+                self.app.sequence.cues[position].channels[channel-1] = level
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+        elif response == Gtk.ResponseType.CANCEL:
+            pass
+
+        dialog.destroy()
+
+class Dialog(Gtk.Dialog):
+
+    def __init__(self, parent, memory):
+        Gtk.Dialog.__init__(self, "", parent, 0,
+                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                 Gtk.STOCK_OK, Gtk.ResponseType.OK))
+
+        self.set_default_size(150,100)
+
+        label = Gtk.Label("Update memory " + memory + " ?")
+
+        box = self.get_content_area()
+        box.add(label)
+        self.show_all()
