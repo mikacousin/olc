@@ -111,7 +111,7 @@ class Window(Gtk.ApplicationWindow):
         self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
         for i in range(4):
-            # Trouver comment récupérer la couleur de fond du thème
+            # TODO: Trouver comment récupérer la couleur de fond du thème
             bg = "#232729"
             self.cues_liststore1.append([str(i), "", "", "", "", "", "", bg])
             self.cues_liststore2.append([str(i), "", "", "", "", "", ""])
@@ -141,7 +141,7 @@ class Window(Gtk.ApplicationWindow):
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
             column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=7)
             if i == 2:
-                column.set_min_width(200)
+                column.set_min_width(600)
                 column.set_resizable(True)
             self.treeview1.append_column(column)
 
@@ -160,7 +160,7 @@ class Window(Gtk.ApplicationWindow):
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
-                column.set_min_width(200)
+                column.set_min_width(600)
                 column.set_resizable(True)
             self.treeview2.append_column(column)
         # Put Cues List in a scrolled window

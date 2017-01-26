@@ -509,6 +509,7 @@ class SequenceTab(Gtk.Grid):
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
+            # TODO: Les 2 lignes suivantes ne servent pas ?
             if i == 3:
                 renderer.set_property('editable', True)
             self.treeview2.append_column(column)
