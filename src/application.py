@@ -424,7 +424,7 @@ class Application(Gtk.Application):
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect('clicked', self.sequences_tab.on_close_icon)
+            button.connect('clicked', self.channeltime_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Channel Time'), False, False, 0)
             label.pack_start(button, False, False, 0)

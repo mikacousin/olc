@@ -345,6 +345,7 @@ class ThreadGo(threading.Thread):
                     channel_time = self.app.sequence.cues[position+1].channel_time
 
                     # If channel is in a channel time
+                    # TODO: If Time is 0, use TimeIn or TimeOut
                     if channel in channel_time:
                         #print(channel_time[channel].delay, channel_time[channel].time)
                         ct_delay = channel_time[channel].delay * 1000

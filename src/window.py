@@ -300,6 +300,8 @@ class Window(Gtk.ApplicationWindow):
             return self.app.patch_tab.on_key_press_event(widget, event)
         if child == self.app.sequences_tab:
             return self.app.sequences_tab.on_key_press_event(widget, event)
+        if child == self.app.channeltime_tab:
+            return self.app.channeltime_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)
