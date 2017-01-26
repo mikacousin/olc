@@ -923,7 +923,6 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_U(self):
         """ Update Cue """
-        # TODO: Modifs des channels pas prise en compte pour les chasers
 
         # Find selected sequence
         path, focus_column = self.treeview1.get_cursor()
