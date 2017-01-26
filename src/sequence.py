@@ -42,8 +42,16 @@ class Sequence(object):
                 self.channels[i] = 1 # Si présent on le note
 
     def sequence_plus(self, app):
-        # TODO: Prendre la main si un Go est en cours
         self.app = app
+
+        if self.on_go:
+            # Stop actual Thread
+            self.thread.stop()
+            self.on_go = False
+            # Stop at the end
+            if self.position > self.last - 3:
+                self.position = self.last - 3
+
         position = self.position
         position += 1
         if position < self.last-1:     # Stop on the last cue
@@ -64,7 +72,7 @@ class Sequence(object):
             self.app.window.cues_liststore1[position][7] = "#997004"
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
-            path = Gtk.TreePath.new_from_indices([0])
+            path = Gtk.TreePath.new_first()
             self.app.window.treeview1.set_cursor(path, None, False)
             self.app.window.treeview2.set_cursor(path, None, False)
             self.window.seq_grid.queue_draw()
@@ -85,8 +93,16 @@ class Sequence(object):
             self.app.dmx.send()
 
     def sequence_minus(self, app):
-        # TODO: Prendre la main si un Go est en cours
         self.app = app
+
+        if self.on_go:
+            # Stop actual Thread
+            self.thread.stop()
+            self.on_go = False
+            # Stop at the begining
+            if self.position < 1:
+                self.position = 1
+
         position = self.position
         position -= 1
         if position >= 0:
@@ -111,7 +127,7 @@ class Sequence(object):
             self.app.window.cues_liststore1[position][7] = "#997004"
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
-            path = Gtk.TreePath.new_from_indices([0])
+            path = Gtk.TreePath.new_first()
             self.app.window.treeview1.set_cursor(path, None, False)
             self.app.window.treeview2.set_cursor(path, None, False)
             self.window.seq_grid.queue_draw()
@@ -235,6 +251,10 @@ class ThreadGo(threading.Thread):
             time.sleep(0.005)
             i = (time.time() * 1000) - start_time
 
+        # Stop thread if we send stop message
+        if self._stopevent.isSet():
+            return
+
         # Le Go est terminé
         self.app.sequence.on_go = False
         # On vide le tableau des valeurs entrées par l'utilisateur
@@ -351,7 +371,7 @@ class ThreadGo(threading.Thread):
 
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
-        self.app.window.cues_liststore1[position+1][7] = "#232729"
+        self.app.window.cues_liststore1[position-1][7] = "#232729"
         self.app.window.cues_liststore1[position][7] = "#997004"
         self.app.window.step_filter1.refilter()
         self.app.window.step_filter2.refilter()
@@ -474,6 +494,7 @@ class SequenceTab(Gtk.Grid):
             if i == 5:
                 renderer.set_property('editable', True)
                 renderer.connect('edited', self.in_edited)
+            # TODO: Edit Channel Time
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
                 column.set_min_width(200)
@@ -892,6 +913,7 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_U(self):
         """ Update Cue """
+        # TODO: Modifs des channels pas prise en compte pour les chasers
 
         # Find selected sequence
         path, focus_column = self.treeview1.get_cursor()
@@ -914,7 +936,7 @@ class SequenceTab(Gtk.Grid):
                 memory = self.seq.cues[step].memory
 
                 # Dialog to confirm Update
-                dialog = DialogExemple(self.app.window, memory)
+                dialog = Dialog(self.app.window, memory)
                 response = dialog.run()
 
                 if response == Gtk.ResponseType.OK:
@@ -931,7 +953,7 @@ class SequenceTab(Gtk.Grid):
 
                 dialog.destroy()
 
-class DialogExemple(Gtk.Dialog):
+class Dialog(Gtk.Dialog):
 
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(self, "Confirmation", parent, 0,
