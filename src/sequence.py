@@ -181,7 +181,6 @@ class Sequence(object):
                 break
 
     def sequence_go(self, app):
-        # TODO: Pb with fast cues (<0.5): don't go to the next levels
         self.app = app
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.on_go:
@@ -254,6 +253,14 @@ class ThreadGo(threading.Thread):
         # Stop thread if we send stop message
         if self._stopevent.isSet():
             return
+
+        # Finish to load memory
+        for output in range(512):
+            channel = self.app.patch.outputs[output]
+            if channel:
+                level = self.app.sequence.cues[position+1].channels[channel-1]
+                self.app.dmx.sequence[channel-1] = level
+        self.app.dmx.send()
 
         # Le Go est terminé
         self.app.sequence.on_go = False
