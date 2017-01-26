@@ -953,6 +953,8 @@ class SequenceTab(Gtk.Grid):
                     # Update levels in the cue
                     for channel in range(512):
                         channels[channel] = self.channels[channel].level
+                        if channels[channel] != 0:
+                            self.seq.channels[channel] = 1
 
                     # Tag filename as modified
                     self.app.ascii.modified = True
