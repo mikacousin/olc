@@ -14,6 +14,7 @@ from olc.cue import Cue
 from olc.sequence import Sequence, SequenceTab
 from olc.group import Group, GroupTab
 from olc.master import Master, MasterTab
+from olc.channel_time import ChanneltimeTab
 from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 from olc.ascii import Ascii
@@ -75,6 +76,7 @@ class Application(Gtk.Application):
         self.master_tab = None
         self.group_tab = None
         self.sequences_tab = None
+        self.channeltime_tab = None
 
     def do_activate(self):
 
@@ -412,6 +414,27 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(-1)
         else:
             page = self.window.notebook.page_num(self.sequences_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _channeltime(self, step):
+        # Create Channel Time Tab
+        if self.channeltime_tab == None:
+            self.channeltime_tab = ChanneltimeTab(step)
+
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.sequences_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Channel Time'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.channeltime_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.channeltime_tab)
             self.window.notebook.set_current_page(page)
 
     def _settings(self, action, parameter):

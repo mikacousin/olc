@@ -487,7 +487,9 @@ class SequenceTab(Gtk.Grid):
 
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
+        #self.treeview2.set_activate_on_single_click(True)
         self.treeview2.connect('cursor-changed', self.on_memory_changed)
+        self.treeview2.connect('row-activated', self.on_row_activated)
 
         # Display selected sequence
         for i, column_title in enumerate(["Step", "Memory", "Text", "Wait", "Out", "In", "Channel Time"]):
@@ -504,14 +506,10 @@ class SequenceTab(Gtk.Grid):
             if i == 5:
                 renderer.set_property('editable', True)
                 renderer.connect('edited', self.in_edited)
-            # TODO: Edit Channel Time
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
-            # TODO: Les 2 lignes suivantes ne servent pas ?
-            if i == 3:
-                renderer.set_property('editable', True)
             self.treeview2.append_column(column)
         # Put Cues List in a scrolled window
         self.scrollable2 = Gtk.ScrolledWindow()
@@ -524,6 +522,21 @@ class SequenceTab(Gtk.Grid):
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
         self.flowbox.set_filter_func(self.filter_func, None)
+
+    def on_row_activated(self, treeview, path, column):
+        # Find the double clicked cell
+        itr = self.liststore2.get_iter(path)
+        columns = self.treeview2.get_columns()
+        for col_nb, col in enumerate(columns):
+            if col == column:
+                break
+        # Double click on Channel Time
+        if col_nb == 6:
+            # Edit Channel Time
+            step = self.liststore2[path][0]
+            self.app._channeltime(step)
+            # Set a new value
+            #self.liststore2.set_value(itr, col_nb, "666")
 
     def wait_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
