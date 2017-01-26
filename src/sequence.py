@@ -568,13 +568,14 @@ class SequenceTab(Gtk.Grid):
                     self.seq.cues[step].total_time = t
 
             # Update Sequential Tab
-            path = str(int(path) + 1)
-            self.app.window.cues_liststore1[path][3] = text
-            self.app.window.cues_liststore2[path][3] = text
-            if self.app.sequence.position+1 == step:
-                self.app.window.sequential.wait = float(text)
-                self.app.window.sequential.total_time = self.seq.cues[step].total_time
-                self.app.window.sequential.queue_draw()
+            if self.seq == self.app.sequence:
+                path = str(int(path) + 1)
+                self.app.window.cues_liststore1[path][3] = text
+                self.app.window.cues_liststore2[path][3] = text
+                if self.app.sequence.position+1 == step:
+                    self.app.window.sequential.wait = float(text)
+                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.queue_draw()
 
     def out_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
@@ -606,13 +607,14 @@ class SequenceTab(Gtk.Grid):
                     self.seq.cues[step].total_time = t
 
             # Update Sequential Tab
-            path = str(int(path) + 1)
-            self.app.window.cues_liststore1[path][4] = text
-            self.app.window.cues_liststore2[path][4] = text
-            if self.app.sequence.position+1 == step:
-                self.app.window.sequential.time_out = float(text)
-                self.app.window.sequential.total_time = self.seq.cues[step].total_time
-                self.app.window.sequential.queue_draw()
+            if self.seq == self.app.sequence:
+                path = str(int(path) + 1)
+                self.app.window.cues_liststore1[path][4] = text
+                self.app.window.cues_liststore2[path][4] = text
+                if self.app.sequence.position+1 == step:
+                    self.app.window.sequential.time_out = float(text)
+                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.queue_draw()
 
     def in_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
@@ -644,13 +646,14 @@ class SequenceTab(Gtk.Grid):
                     self.seq.cues[step].total_time = t
 
             # Update Sequential Tab
-            path = str(int(path) + 1)
-            self.app.window.cues_liststore1[path][5] = text
-            self.app.window.cues_liststore2[path][5] = text
-            if self.app.sequence.position+1 == step:
-                self.app.window.sequential.time_in = float(text)
-                self.app.window.sequential.total_time = self.seq.cues[step].total_time
-                self.app.window.sequential.queue_draw()
+            if self.seq == self.app.sequence:
+                path = str(int(path) + 1)
+                self.app.window.cues_liststore1[path][5] = text
+                self.app.window.cues_liststore2[path][5] = text
+                if self.app.sequence.position+1 == step:
+                    self.app.window.sequential.time_in = float(text)
+                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.queue_draw()
 
     def on_memory_changed(self, treeview):
         """ Select memory """
