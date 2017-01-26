@@ -258,7 +258,10 @@ class ThreadGo(threading.Thread):
         for output in range(512):
             channel = self.app.patch.outputs[output]
             if channel:
-                level = self.app.sequence.cues[position+1].channels[channel-1]
+                if position < self.app.sequence.last - 1:
+                    level = self.app.sequence.cues[position+1].channels[channel-1]
+                else:
+                    level = self.app.sequence.cues[0].channels[channel-1]
                 self.app.dmx.sequence[channel-1] = level
         self.app.dmx.send()
 
