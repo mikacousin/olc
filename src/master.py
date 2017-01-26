@@ -206,7 +206,6 @@ class MasterTab(Gtk.Grid):
                                             # Stop Chaser
                                             self.app.chasers[k].run = False
                                             self.app.chasers[k].thread.stop()
-                                            self.app.chasers[k].thread.join()
                                             for output in range(512):
                                                 channel = self.app.patch.outputs[output]
                                                 #if self.app.chasers[k].channels[channel-1] != 0:
