@@ -992,6 +992,22 @@ class SequenceTab(Gtk.Grid):
 
                 dialog.destroy()
 
+    def keypress_N(self):
+        """ New Chaser """
+        # Use the next free index
+        if len(self.app.chasers) >  0:
+            index_seq = self.app.chasers[-1].index + 1
+        else:
+            # Or 2 (1 is for Main Playback)
+            index_seq = 2
+
+        # Create Chaser
+        self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = "Chaser"))
+
+        # Update List of sequences
+        self.liststore1.append([self.app.chasers[-1].index, self.app.chasers[-1].type_seq, self.app.chasers[-1].text])
+        # TODO: create cues
+
 class Dialog(Gtk.Dialog):
 
     def __init__(self, parent, memory):

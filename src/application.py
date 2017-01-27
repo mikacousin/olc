@@ -57,7 +57,7 @@ class Application(Gtk.Application):
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
 
         # Create Main Sequential
-        self.sequence = Sequence(1, self.patch)
+        self.sequence = Sequence(1, self.patch, text="Main Playback")
 
         # Create List for Chasers
         self.chasers = []

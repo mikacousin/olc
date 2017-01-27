@@ -62,7 +62,7 @@ class Ascii(object):
                     del(self.app.groups[:])
                     del(self.app.masters[:])
                     self.app.patch.patch_empty()
-                    self.app.sequence = Sequence(1, self.app.patch)
+                    self.app.sequence = Sequence(1, self.app.patch, text="Main Playback")
                     self.app.sequence.window = self.app.window
 
                 if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
