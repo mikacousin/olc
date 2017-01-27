@@ -416,10 +416,10 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.sequences_tab)
             self.window.notebook.set_current_page(page)
 
-    def _channeltime(self, step):
+    def _channeltime(self, sequence, step):
         # Create Channel Time Tab
         if self.channeltime_tab == None:
-            self.channeltime_tab = ChanneltimeTab(step)
+            self.channeltime_tab = ChanneltimeTab(sequence, step)
 
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)

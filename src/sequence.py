@@ -533,11 +533,21 @@ class SequenceTab(Gtk.Grid):
                 break
         # Double click on Channel Time
         if col_nb == 6:
+
+            # Find selected sequence
+            seq_path, focus_column = self.treeview1.get_cursor()
+            selected = seq_path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == self.app.sequence.index:
+                seq = self.app.sequence
+            else:
+                for i in range(len(self.app.chasers)):
+                    if sequence == self.app.chasers[i].index:
+                        seq = self.app.chasers[i]
+
             # Edit Channel Time
             step = self.liststore2[path][0]
-            self.app._channeltime(step)
-            # Set a new value
-            #self.liststore2.set_value(itr, col_nb, "666")
+            self.app._channeltime(seq, step)
 
     def wait_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
