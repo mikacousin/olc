@@ -710,7 +710,7 @@ class SequenceTab(Gtk.Grid):
     def on_sequence_changed(self, treeview):
         """ Select Sequence """
 
-        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.liststore2.clear()
 
         path, focus_column = treeview.get_cursor()
 

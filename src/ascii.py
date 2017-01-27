@@ -400,8 +400,8 @@ class Ascii(object):
             self.app.window.sequential.wait = t_wait
 
             # On met à jour la liste des mémoires
-            self.app.window.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str)
-            self.app.window.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
+            self.app.window.cues_liststore1.clear()
+            self.app.window.cues_liststore2.clear()
             # 2 lignes vides au début
             #for i in range(2):
             #    self.app.win_seq.cues_liststore.append(["", "", "", "", "", "", ""])
@@ -452,7 +452,7 @@ class Ascii(object):
             self.app.window.seq_grid.queue_draw()
 
             # Redraw Group Tab if exist
-            try:
+            if self.app.group_tab != None:
                 # Remove Old Groups
                 del(self.app.group_tab.grps[:])
                 self.app.group_tab.scrolled2.remove(self.app.group_tab.flowbox2)
@@ -474,11 +474,9 @@ class Ascii(object):
                 self.app.group_tab.flowbox1.invalidate_filter()
                 self.app.group_tab.flowbox2.invalidate_filter()
                 self.app.window.show_all()
-            except:
-                pass
 
             # Redraw Masters Tab if exist
-            try:
+            if self.app.master_tab != None:
                 del(self.app.master_tab.scale[:])
                 del(self.app.master_tab.ad[:])
                 del(self.app.master_tab.flash[:])
@@ -514,12 +512,10 @@ class Ascii(object):
                         self.app.master_tab.attach_next_to(self.app.master_tab.flash[i],
                                 self.app.master_tab.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
                 self.app.window.show_all()
-            except:
-                pass
 
             # Redraw Sequences Tab if exist
             if self.app.sequences_tab != None:
-                self.app.sequences_tab.liststore1 = Gtk.ListStore(int, str, str)
+                self.app.sequences_tab.liststore1.clear()
 
                 self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
                     self.app.sequence.text])
@@ -533,7 +529,7 @@ class Ascii(object):
                 self.app.window.treeview1.set_cursor(path, None, False)
 
             # Redraw Patch Tab if exist
-            try:
+            if self.app.patch_tab != None:
                 for channel in range(512):
                     for output in range(len(self.app.patch.channels[channel])):
                         if self.app.patch.channels[channel][output] != 0:
@@ -541,8 +537,6 @@ class Ascii(object):
                         else:
                             self.app.patch_tab.liststore[channel][2] = ""
                 self.app.window.show_all()
-            except:
-                pass
 
         except GObject.GError as e:
             print("Error: " + e.message)
@@ -550,6 +544,7 @@ class Ascii(object):
         self.modified = False
 
     def save(self):
+        """ Save ASCII File """
 
         stream = self.file.replace('', False, Gio.FileCreateFlags.NONE, None)
 

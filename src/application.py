@@ -210,6 +210,7 @@ class Application(Gtk.Application):
             self.window.channels[channel-1].queue_draw()
 
     def _new(self, action, parameter):
+        # TODO: Verify this entire fonction
         del(self.chasers[:])
         # Redraw Sequential Window
         self.sequence = Sequence(1, self.patch)
