@@ -318,7 +318,8 @@ class Ascii(object):
                 if flag_group:
                     if line[:1] == "!":
                         flag_group = False
-                    # TODO: 'TEXT'
+                    if line[:4] == 'TEXT':
+                        txt = line[5:]
                     if line[:6] == '$$TEXT':
                         #print ("    Text :", line[5:])
                         txt = line[7:]
