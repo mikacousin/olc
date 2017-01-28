@@ -1045,7 +1045,7 @@ class SequenceTab(Gtk.Grid):
 
             channels = array.array('B', [0] * 512)
 
-            cue = Cue(index, memory, channels)
+            cue = Cue(index, str(memory), channels)
 
             # Main Playback has a final cue
             if self.seq.index == 1:
@@ -1058,21 +1058,75 @@ class SequenceTab(Gtk.Grid):
 
             # Update Display
             if self.seq.index == 1:
+
                 i = self.app.sequence.last - 2
+
+                if self.seq.cues[i].wait.is_integer():
+                    wait = str(int(self.seq.cues[i].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.seq.cues[i].wait)
+                if self.seq.cues[i].time_out.is_integer():
+                    t_out = str(int(self.seq.cues[i].time_out))
+                else:
+                    t_out = str(self.seq.cues[i].time_out)
+                if self.seq.cues[i].time_in.is_integer():
+                    t_in = str(int(self.seq.cues[i].time_in))
+                else:
+                    t_in = str(self.seq.cues[i].time_in)
+                channel_time = str(len(self.seq.cues[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
                 self.liststore2[-1] = [str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                    str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
-                    str(len(self.seq.cues[i].channel_time))]
+                    wait, t_out, t_in, channel_time]
+
+                if self.seq.cues[i+1].wait.is_integer():
+                    wait = str(int(self.seq.cues[i+1].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.seq.cues[i+1].wait)
+                if self.seq.cues[i+1].time_out.is_integer():
+                    t_out = str(int(self.seq.cues[i+1].time_out))
+                else:
+                    t_out = str(self.seq.cues[i+1].time_out)
+                if self.seq.cues[i+1].time_in.is_integer():
+                    t_in = str(int(self.seq.cues[i+1].time_in))
+                else:
+                    t_in = str(self.seq.cues[i+1].time_in)
+                channel_time = str(len(self.seq.cues[i+1].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
                 self.liststore2.append([str(i+1), str(self.seq.cues[i+1].memory), self.seq.cues[i+1].text,
-                    str(self.seq.cues[i+1].wait), str(self.seq.cues[i+1].time_out), str(self.seq.cues[i+1].time_in),
-                    str(len(self.seq.cues[i+1].channel_time))])
+                    wait, t_out, t_in, channel_time])
+
                 # Select last step
                 path = Gtk.TreePath.new_from_indices([self.seq.last-3])
                 self.treeview2.set_cursor(path, None, False)
             else:
                 i = index - 1
+
+                if self.seq.cues[i].wait.is_integer():
+                    wait = str(int(self.seq.cues[i].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.seq.cues[i].wait)
+                if self.seq.cues[i].time_out.is_integer():
+                    t_out = str(int(self.seq.cues[i].time_out))
+                else:
+                    t_out = str(self.seq.cues[i].time_out)
+                if self.seq.cues[i].time_in.is_integer():
+                    t_in = str(int(self.seq.cues[i].time_in))
+                else:
+                    t_in = str(self.seq.cues[i].time_in)
+                channel_time = str(len(self.seq.cues[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
                 self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                    str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
-                    str(len(self.seq.cues[i].channel_time))])
+                    wait, t_out, t_in, channel_time])
+
                 # Select last step
                 path = Gtk.TreePath.new_from_indices([self.seq.last-2])
                 self.treeview2.set_cursor(path, None, False)
