@@ -415,7 +415,8 @@ class SequenceTab(Gtk.Grid):
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
-        self.treeview1.connect('cursor-changed', self.on_sequence_changed)
+        selection = self.treeview1.get_selection()
+        selection.connect('changed', self.on_sequence_changed)
 
         for i, column_title in enumerate(["Seq", "Type", "Name"]):
             renderer = Gtk.CellRendererText()
@@ -486,7 +487,10 @@ class SequenceTab(Gtk.Grid):
                 self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                     wait, t_out, t_in, channel_time])
 
-        self.treeview2 = Gtk.TreeView(model=self.liststore2)
+        self.filter2 = self.liststore2.filter_new()
+        self.filter2.set_visible_func(self.filter_cue_func)
+
+        self.treeview2 = Gtk.TreeView(model=self.filter2)
         self.treeview2.set_enable_search(False)
         #self.treeview2.set_activate_on_single_click(True)
         self.treeview2.connect('cursor-changed', self.on_memory_changed)
@@ -673,6 +677,9 @@ class SequenceTab(Gtk.Grid):
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
+    def filter_cue_func(self, model, iter, data):
+        return True
+
     def filter_func(self, child, user_data):
         """ Filter channels """
         # Find selected sequence
@@ -687,10 +694,10 @@ class SequenceTab(Gtk.Grid):
                     if sequence == self.app.chasers[i].index:
                         self.seq = self.app.chasers[i]
         # Find Step
-        path, focus_column = self.treeview2.get_cursor()
-        if path != None:
-            selected = path.get_indices()[0]
-            step = int(self.liststore2[selected][0])
+        selection = self.treeview2.get_selection()
+        model, treeiter = selection.get_selected()
+        if treeiter != None:
+            step = int(model[treeiter][0])
             # Display channels in step
             channels = self.seq.cues[step].channels
 
@@ -707,18 +714,20 @@ class SequenceTab(Gtk.Grid):
         else:
             return False
 
-    def on_sequence_changed(self, treeview):
+    def on_sequence_changed(self, selection):
         """ Select Sequence """
 
-        self.liststore2.clear()
+        # TODO: voir pourquoi clear declanche un scan de toute la liststore
+        #self.liststore2.clear()
+        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
 
-        path, focus_column = treeview.get_cursor()
+        model, treeiter = selection.get_selected()
 
-        if path != None:
-            selected = path.get_indices()[0]
+        if treeiter != None:
+            selected = model[treeiter][0]
             # Find it
             for i in range(len(self.liststore1)):
-                if i == selected:
+                if i + 1 == selected:
                     if self.liststore1[i][0] == self.app.sequence.index:
                         self.seq = self.app.sequence
                     else:
@@ -747,9 +756,11 @@ class SequenceTab(Gtk.Grid):
                 self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                     wait, t_out, t_in, channel_time])
 
-        self.treeview2.set_model(self.liststore2)
+            self.treeview2.set_model(self.liststore2)
+            path = Gtk.TreePath.new_first()
+            self.treeview2.set_cursor(path)
 
-        self.app.window.show_all()
+            self.app.window.show_all()
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
@@ -795,6 +806,8 @@ class SequenceTab(Gtk.Grid):
         else:
             path = Gtk.TreePath.new_first()
             self.treeview1.set_cursor(path)
+        path = Gtk.TreePath.new_first()
+        self.treeview2.set_cursor(path)
 
     def keypress_Up(self):
         """ Prev Memory """
@@ -1006,7 +1019,63 @@ class SequenceTab(Gtk.Grid):
 
         # Update List of sequences
         self.liststore1.append([self.app.chasers[-1].index, self.app.chasers[-1].type_seq, self.app.chasers[-1].text])
-        # TODO: create cues
+    def keypress_R(self):
+        """ New Cue """
+        # TODO : Create not empty Cue
+
+        # Find the selected sequence
+        path, focus_column = self.treeview1.get_cursor()
+        if path != None:
+            selected = path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == self.app.sequence.index:
+                self.seq = self.app.sequence
+            else:
+                for i in range(len(self.app.chasers)):
+                    if sequence == self.app.chasers[i].index:
+                        self.seq = self.app.chasers[i]
+
+            # Find the next free index and memory
+            if self.seq.index == 1:
+                index = self.seq.cues[-2].index + 1
+                memory = float(self.seq.cues[-2].memory) + 1
+            else:
+                index = self.seq.cues[-1].index + 1
+                memory = float(self.seq.cues[-1].memory) + 1
+
+            channels = array.array('B', [0] * 512)
+
+            cue = Cue(index, memory, channels)
+
+            # Main Playback has a final cue
+            if self.seq.index == 1:
+                del self.seq.cues[-1]
+                self.seq.add_cue(cue)
+                last = Cue(self.app.sequence.last+1, "0", text="Last Cue")
+                self.seq.add_cue(last)
+            else:
+                self.seq.add_cue(cue)
+
+            # Update Display
+            if self.seq.index == 1:
+                i = self.app.sequence.last - 2
+                self.liststore2[-1] = [str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
+                    str(len(self.seq.cues[i].channel_time))]
+                self.liststore2.append([str(i+1), str(self.seq.cues[i+1].memory), self.seq.cues[i+1].text,
+                    str(self.seq.cues[i+1].wait), str(self.seq.cues[i+1].time_out), str(self.seq.cues[i+1].time_in),
+                    str(len(self.seq.cues[i+1].channel_time))])
+                # Select last step
+                path = Gtk.TreePath.new_from_indices([self.seq.last-3])
+                self.treeview2.set_cursor(path, None, False)
+            else:
+                i = index - 1
+                self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
+                    str(len(self.seq.cues[i].channel_time))])
+                # Select last step
+                path = Gtk.TreePath.new_from_indices([self.seq.last-2])
+                self.treeview2.set_cursor(path, None, False)
 
 class Dialog(Gtk.Dialog):
 
