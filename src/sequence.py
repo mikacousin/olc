@@ -405,6 +405,9 @@ class SequenceTab(Gtk.Grid):
         self.keystring = ""
         self.last_chan_selected = ""
 
+        # To stock user modification on channels
+        self.user_channels = array.array('h', [-1] * 512)
+
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
         #self.set_row_homogeneous(True)
@@ -531,6 +534,10 @@ class SequenceTab(Gtk.Grid):
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
         self.flowbox.set_filter_func(self.filter_func, None)
+
+        # Select Main Playback
+        path = Gtk.TreePath.new_first()
+        self.treeview1.set_cursor(path, None, False)
 
     def on_row_activated(self, treeview, path, column):
         # Find the double clicked cell
@@ -710,6 +717,7 @@ class SequenceTab(Gtk.Grid):
                     if sequence == self.app.chasers[i].index:
                         self.seq = self.app.chasers[i]
         # Find Step
+        i = child.get_index()
         selection = self.treeview2.get_selection()
         model, treeiter = selection.get_selected()
         if treeiter != None:
@@ -717,18 +725,34 @@ class SequenceTab(Gtk.Grid):
             # Display channels in step
             channels = self.seq.cues[step].channels
 
-            i = child.get_index()
-
             if channels[i] != 0 or self.channels[i].clicked:
-                self.channels[i].level = channels[i]
-                self.channels[i].next_level = channels[i]
+                if self.user_channels[i] == -1:
+                    self.channels[i].level = channels[i]
+                    self.channels[i].next_level = channels[i]
+                else:
+                    self.channels[i].level = self.user_channels[i]
+                    self.channels[i].next_level = self.user_channels[i]
                 return child
             else:
+                if self.user_channels[i] == -1:
+                    self.channels[i].level = 0
+                    self.channels[i].next_level = 0
+                    return False
+                else:
+                    self.channels[i].level = self.user_channels[i]
+                    self.channels[i].next_level = self.user_channels[i]
+                    return child
+
+        if self.user_channels[i] != -1 or self.channels[i].clicked:
+            if self.user_channels[i] == -1:
                 self.channels[i].level = 0
                 self.channels[i].next_level = 0
-                return False
-        else:
-            return False
+            else:
+                self.channels[i].level = self.user_channels[i]
+                self.channels[i].next_level = self.user_channels[i]
+            return child
+
+        return False
 
     def on_sequence_changed(self, selection):
         """ Select Sequence """
@@ -846,9 +870,15 @@ class SequenceTab(Gtk.Grid):
             self.treeview1.set_cursor(path)
         path = Gtk.TreePath.new_first()
         self.treeview2.set_cursor(path)
+        # Reset user modifications
+        self.user_channels = array.array('h', [-1] * 512)
 
     def keypress_Up(self):
         """ Prev Memory """
+
+        # Reset user modifications
+        self.user_channels = array.array('h', [-1] * 512)
+
         path, focus_column = self.treeview2.get_cursor()
         if path != None:
             if path.prev():
@@ -859,6 +889,10 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_Down(self):
         """ Next Memory """
+
+        # Reset user modifications
+        self.user_channels = array.array('h', [-1] * 512)
+
         path, focus_column = self.treeview2.get_cursor()
         if path != None:
             path.next()
@@ -969,6 +1003,7 @@ class SequenceTab(Gtk.Grid):
                     self.channels[channel].level = level
                     self.channels[channel].next_level = level
                     self.channels[channel].queue_draw()
+                    self.user_channels[channel] = level
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
@@ -985,6 +1020,7 @@ class SequenceTab(Gtk.Grid):
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
+                self.user_channels[channel] = level
 
     def keypress_exclam(self):
         """ Level - % """
@@ -999,6 +1035,7 @@ class SequenceTab(Gtk.Grid):
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
+                self.user_channels[channel] = level
 
     def keypress_U(self):
         """ Update Cue """
@@ -1050,6 +1087,9 @@ class SequenceTab(Gtk.Grid):
 
                 dialog.destroy()
 
+                # Reset user modifications
+                self.user_channels = array.array('h', [-1] * 512)
+
     def keypress_N(self):
         """ New Chaser """
         # Use the next free index
@@ -1068,7 +1108,6 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_R(self):
         """ New Cue """
-        # TODO : Create not empty Cue
 
         # Find the selected sequence
         path, focus_column = self.treeview1.get_cursor()
@@ -1091,6 +1130,8 @@ class SequenceTab(Gtk.Grid):
                 memory = float(self.seq.cues[-1].memory) + 1
 
             channels = array.array('B', [0] * 512)
+            for channel in range(512):
+                channels[channel] = self.channels[channel].level
 
             cue = Cue(index, str(memory), channels)
 
@@ -1187,6 +1228,9 @@ class SequenceTab(Gtk.Grid):
                 # Select last step
                 path = Gtk.TreePath.new_from_indices([self.seq.last-2])
                 self.treeview2.set_cursor(path, None, False)
+
+            # Reset user modifications
+            self.user_channels = array.array('h', [-1] * 512)
 
 class Dialog(Gtk.Dialog):
 
