@@ -30,7 +30,7 @@ class Sequence(object):
         self.patch = patch
 
         # create an empty cue 0
-        cue = Cue(0, "0", text="")
+        cue = Cue(1, "0.0", text="Start")
         self.add_cue(cue)
 
     def add_cue(self, cue):
@@ -382,8 +382,12 @@ class ThreadGo(threading.Thread):
 
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
-        self.app.window.cues_liststore1[position-1][7] = "#232729"
-        self.app.window.cues_liststore1[position][7] = "#997004"
+        if position == 0:
+            self.app.window.cues_liststore1[-2][7] = "#232729"
+            self.app.window.cues_liststore1[position][7] = "#997004"
+        else:
+            self.app.window.cues_liststore1[position-1][7] = "#232729"
+            self.app.window.cues_liststore1[position][7] = "#997004"
         self.app.window.step_filter1.refilter()
         self.app.window.step_filter2.refilter()
         path = Gtk.TreePath.new_from_indices([0])
@@ -555,6 +559,10 @@ class SequenceTab(Gtk.Grid):
 
     def wait_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
+
+            if text[0] == ".":
+                text = '0' + text
+
             self.liststore2[path][3] = text
 
             # Find selected sequence
@@ -594,6 +602,10 @@ class SequenceTab(Gtk.Grid):
 
     def out_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
+
+            if text[0] == ".":
+                text = '0' + text
+
             self.liststore2[path][4] = text
 
             # Find selected sequence
@@ -633,6 +645,10 @@ class SequenceTab(Gtk.Grid):
 
     def in_edited(self, widget, path, text):
         if text.replace('.','',1).isdigit():
+
+            if text[0] == ".":
+                text = '0' + text
+
             self.liststore2[path][5] = text
 
             # Find selected sequence
@@ -735,26 +751,48 @@ class SequenceTab(Gtk.Grid):
                             if self.liststore1[i][0] == self.app.chasers[j].index:
                                 self.seq = self.app.chasers[j]
             # Liststore with infos from the sequence
-            for i in range(self.seq.last)[1:]:
-                if self.seq.cues[i].wait.is_integer():
-                    wait = str(int(self.seq.cues[i].wait))
-                    if wait == "0":
-                        wait = ""
-                else:
-                    wait = str(self.seq.cues[i].wait)
-                if self.seq.cues[i].time_out.is_integer():
-                    t_out = str(int(self.seq.cues[i].time_out))
-                else:
-                    t_out = str(self.seq.cues[i].time_out)
-                if self.seq.cues[i].time_in.is_integer():
-                    t_in = str(int(self.seq.cues[i].time_in))
-                else:
-                    t_in = str(self.seq.cues[i].time_in)
-                channel_time = str(len(self.seq.cues[i].channel_time))
-                if channel_time == "0":
-                    channel_time = ""
-                self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                    wait, t_out, t_in, channel_time])
+            if self.seq == self.app.sequence:
+                for i in range(self.seq.last)[1:-1]:
+                    if self.seq.cues[i].wait.is_integer():
+                        wait = str(int(self.seq.cues[i].wait))
+                        if wait == "0":
+                            wait = ""
+                    else:
+                        wait = str(self.seq.cues[i].wait)
+                    if self.seq.cues[i].time_out.is_integer():
+                        t_out = str(int(self.seq.cues[i].time_out))
+                    else:
+                        t_out = str(self.seq.cues[i].time_out)
+                    if self.seq.cues[i].time_in.is_integer():
+                        t_in = str(int(self.seq.cues[i].time_in))
+                    else:
+                        t_in = str(self.seq.cues[i].time_in)
+                    channel_time = str(len(self.seq.cues[i].channel_time))
+                    if channel_time == "0":
+                        channel_time = ""
+                    self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                        wait, t_out, t_in, channel_time])
+            else:
+                for i in range(self.seq.last)[1:]:
+                    if self.seq.cues[i].wait.is_integer():
+                        wait = str(int(self.seq.cues[i].wait))
+                        if wait == "0":
+                            wait = ""
+                    else:
+                        wait = str(self.seq.cues[i].wait)
+                    if self.seq.cues[i].time_out.is_integer():
+                        t_out = str(int(self.seq.cues[i].time_out))
+                    else:
+                        t_out = str(self.seq.cues[i].time_out)
+                    if self.seq.cues[i].time_in.is_integer():
+                        t_in = str(int(self.seq.cues[i].time_in))
+                    else:
+                        t_in = str(self.seq.cues[i].time_in)
+                    channel_time = str(len(self.seq.cues[i].channel_time))
+                    if channel_time == "0":
+                        channel_time = ""
+                    self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                        wait, t_out, t_in, channel_time])
 
             self.treeview2.set_model(self.liststore2)
             path = Gtk.TreePath.new_first()
@@ -1000,6 +1038,13 @@ class SequenceTab(Gtk.Grid):
                     self.app.ascii.modified = True
                     self.app.window.header.set_title(self.app.ascii.basename + "*")
 
+                    # Update Main playback display
+                    if self.seq == self.app.sequence:
+                        if step == self.app.sequence.position + 1:
+                            for channel in range(512):
+                                self.app.window.channels[channel].next_level = self.seq.cues[step].channels[channel]
+                                self.app.window.channels[channel].queue_draw()
+
                 elif response == Gtk.ResponseType.CANCEL:
                     pass
 
@@ -1018,7 +1063,9 @@ class SequenceTab(Gtk.Grid):
         self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = "Chaser"))
 
         # Update List of sequences
-        self.liststore1.append([self.app.chasers[-1].index, self.app.chasers[-1].type_seq, self.app.chasers[-1].text])
+        self.liststore1.append([self.app.chasers[-1].index, self.app.chasers[-1].type_seq,
+            self.app.chasers[-1].text])
+
     def keypress_R(self):
         """ New Cue """
         # TODO : Create not empty Cue
@@ -1051,7 +1098,7 @@ class SequenceTab(Gtk.Grid):
             if self.seq.index == 1:
                 del self.seq.cues[-1]
                 self.seq.add_cue(cue)
-                last = Cue(self.app.sequence.last+1, "0", text="Last Cue")
+                last = Cue(self.app.sequence.last+1, "0.0", text="End")
                 self.seq.add_cue(last)
             else:
                 self.seq.add_cue(cue)
@@ -1078,7 +1125,18 @@ class SequenceTab(Gtk.Grid):
                 channel_time = str(len(self.seq.cues[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
-                self.liststore2[-1] = [str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    wait, t_out, t_in, channel_time])
+
+                # Select last step
+                path = Gtk.TreePath.new_from_indices([self.app.sequence.last-3])
+                self.treeview2.set_cursor(path, None, False)
+
+                # Update Main Playback
+                bg = "#232729"
+                self.app.window.cues_liststore1[-1] = [str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    wait, t_out, t_in, channel_time, bg]
+                self.app.window.cues_liststore2[-1] = [str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                     wait, t_out, t_in, channel_time]
 
                 if self.seq.cues[i+1].wait.is_integer():
@@ -1098,12 +1156,11 @@ class SequenceTab(Gtk.Grid):
                 channel_time = str(len(self.seq.cues[i+1].channel_time))
                 if channel_time == "0":
                     channel_time = ""
-                self.liststore2.append([str(i+1), str(self.seq.cues[i+1].memory), self.seq.cues[i+1].text,
-                    wait, t_out, t_in, channel_time])
+                self.app.window.cues_liststore1.append([str(i+1), str(self.seq.cues[i+1].memory),
+                    self.seq.cues[i+1].text, wait, t_out, t_in, channel_time, bg])
+                self.app.window.cues_liststore2.append([str(i+1), str(self.seq.cues[i+1].memory),
+                    self.seq.cues[i+1].text, wait, t_out, t_in, channel_time])
 
-                # Select last step
-                path = Gtk.TreePath.new_from_indices([self.seq.last-3])
-                self.treeview2.set_cursor(path, None, False)
             else:
                 i = index - 1
 

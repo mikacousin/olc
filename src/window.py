@@ -110,21 +110,30 @@ class Window(Gtk.ApplicationWindow):
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
         self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
-        for i in range(4):
-            # TODO: Trouver comment récupérer la couleur de fond du thème
-            bg = "#232729"
-            self.cues_liststore1.append([str(i), "", "", "", "", "", "", bg])
-            self.cues_liststore2.append([str(i), "", "", "", "", "", ""])
+
         for i in range(self.app.sequence.last):
+            if self.seq.cues[i].wait.is_integer():
+                wait = str(int(self.seq.cues[i].wait))
+                if wait == "0":
+                    wait = ""
+            else:
+                wait = str(self.seq.cues[i].wait)
+            if self.seq.cues[i].time_out.is_integer():
+                t_out = str(int(self.seq.cues[i].time_out))
+            else:
+                t_out = str(self.seq.cues[i].time_out)
+            if self.seq.cues[i].time_in.is_integer():
+                t_in = str(int(self.seq.cues[i].time_in))
+            else:
+                t_in = str(self.seq.cues[i].time_in)
             channel_time = str(len(self.seq.cues[i].channel_time))
             if channel_time == "0":
                 channel_time = ""
+            bg = "#232729"
             self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
-                channel_time], bg)
+                wait, t_out, t_in, channel_time, bg])
             self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                str(self.seq.cues[i].wait), str(self.seq.cues[i].time_out), str(self.seq.cues[i].time_in),
-                channel_time])
+                wait, t_out, t_in, channel_time])
 
         # Filter for the first part of the cue list
         self.step_filter1 = self.cues_liststore1.filter_new()
@@ -178,11 +187,14 @@ class Window(Gtk.ApplicationWindow):
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
 
-        self.notebook.append_page(self.seq_grid, Gtk.Label('Sequential'))
+        self.notebook.append_page(self.seq_grid, Gtk.Label('Main Playback'))
 
         self.paned2.add2(self.notebook)
 
         self.add(self.paned2)
+
+        # Select first Cue
+        self.cues_liststore1[0][7] = "#997004"
 
         # Open MIDI input port
         try:

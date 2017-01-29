@@ -56,8 +56,10 @@ class Application(Gtk.Application):
         self.sock = self.ola_client.GetSocket()
         self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
 
-        # Create Main Sequential
+        # Create Main Playback
         self.sequence = Sequence(1, self.patch, text="Main Playback")
+        last = Cue(self.sequence.last + 1, "0.0", text="End")
+        self.sequence.add_cue(last)
 
         # Create List for Chasers
         self.chasers = []
@@ -91,13 +93,15 @@ class Application(Gtk.Application):
         # Fetch dmx values on startup
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
-
         # TODO: Test manual crossfade, must be deleted
         #self.win_crossfade = CrossfadeWindow()
         #self.win_crossfade.show_all()
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
+
+        # Init of ascii file
+        self.ascii = Ascii(None)
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -306,7 +310,7 @@ class Application(Gtk.Application):
             self.file = open_dialog.get_file()
 
             # Load the ASCII file
-            self.ascii = Ascii(self.file)
+            self.ascii.file = self.file
             self.ascii.load()
 
             self.ola_client.FetchDmx(self.universe, self.fetch_dmx)

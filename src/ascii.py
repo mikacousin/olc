@@ -10,12 +10,16 @@ from olc.customwidgets import GroupWidget
 class Ascii(object):
     def __init__(self, filename):
         self.file = filename
-        self.basename = self.file.get_basename()
+        if filename != None:
+            self.basename = self.file.get_basename()
+        else:
+            self.basename = ""
         self.modified = False
 
         self.app = Gio.Application.get_default()
 
     def load(self):
+        self.basename = self.file.get_basename()
         try:
             fstream = self.file.read(None)
             dstream = Gio.DataInputStream.new(fstream)
@@ -386,7 +390,7 @@ class Ascii(object):
             self.app.window.header.set_subtitle(subtitle)
 
             # Add an empty cue at the end
-            cue = Cue(self.app.sequence.last+1, "0", text="Last Cue")
+            cue = Cue(self.app.sequence.last+1, "0", text="End")
             self.app.sequence.add_cue(cue)
 
             # Redraw crossfade :
