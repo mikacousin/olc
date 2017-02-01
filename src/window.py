@@ -230,8 +230,8 @@ class Window(Gtk.ApplicationWindow):
         if self.view_type == 0:
             i = child.get_index()
             for j in range(len(self.patch.channels[i])):
-                #print("Chanel:", i+1, "Output:", self.patch.channels[i][j])
                 if self.patch.channels[i][j] != 0:
+                    #print("Chanel:", i+1, "Output:", self.patch.channels[i][j])
                     return child
                 else:
                     return False

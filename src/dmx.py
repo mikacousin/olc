@@ -87,6 +87,14 @@ class PatchDmx(object):
             self.channels[channel-1].append(output)
         self.outputs[output-1] = channel
 
+    """
+    def is_channel_patched(self, channel):
+        for out in range(512):
+            if self.outputs[out] == channel:
+                return out
+        return -1
+    """
+
 if __name__ == "__main__":
 
     patch = PatchDmx()

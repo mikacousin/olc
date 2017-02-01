@@ -1,5 +1,6 @@
 @define-color seq_selected_bg #997004;
 
+/*
 @binding-set unbind-keys {
   unbind "Right";
   unbind "Left";
@@ -7,12 +8,20 @@
   unbind "Down";
   unbind "Tab";
 }
+*/
 
+flowboxchild:selected {
+  outline-width: 0px;
+  background-color: @seq_selected_bg;
+}
+
+/*
 #olc * {
   outline-width: 0px;
   text-shadow: none;
   -gtk-key-bindings: unbind-keys;
 }
+*/
 
 #olc treeview {
   padding: 2px 2px 2px 2px;

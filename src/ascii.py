@@ -535,13 +535,7 @@ class Ascii(object):
 
             # Redraw Patch Tab if exist
             if self.app.patch_tab != None:
-                for channel in range(512):
-                    for output in range(len(self.app.patch.channels[channel])):
-                        if self.app.patch.channels[channel][output] != 0:
-                            self.app.patch_tab.liststore[channel][2] = str(self.app.patch.channels[channel][output])
-                        else:
-                            self.app.patch_tab.liststore[channel][2] = ""
-                self.app.window.show_all()
+                self.app.patch_tab.flowbox.queue_draw()
 
         except GObject.GError as e:
             print("Error: " + e.message)

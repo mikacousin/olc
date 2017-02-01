@@ -139,6 +139,91 @@ class ChannelWidget(Gtk.Widget):
         self.set_realized(True)
         window.set_background_pattern(None)
 
+class PatchWidget(Gtk.Widget):
+    __gtype_name__ = "PatchWidget"
+
+    def __init__(self, output, patch):
+
+        self.output = output
+        self.patch = patch
+
+        self.app = Gio.Application.get_default()
+
+        Gtk.Widget.__init__(self)
+        self.set_size_request(80,80)
+        self.connect('button-press-event', self.on_click)
+        self.connect('touch-event', self.on_click)
+
+    def on_click(self, tgt, ev):
+        child = self.app.patch_tab.flowbox.get_child_at_index(self.output-1)
+        self.app.window.set_focus(child)
+        self.app.patch_tab.flowbox.select_child(child)
+
+    def do_draw(self, cr):
+        # paint background
+        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+        cr.set_source_rgba(*list(bg_color))
+        cr.paint()
+
+        allocation = self.get_allocation()
+
+        if self.patch.outputs[self.output-1] != 0:
+            # draw frame
+            cr.rectangle(0, 0, allocation.width, allocation.height)
+            cr.fill()
+            cr.set_source_rgb(0.3, 0.3, 0.3)
+            cr.rectangle(0, 0, allocation.width, allocation.height)
+            cr.stroke()
+            # draw background
+            cr.set_source_rgb(0.3, 0.3, 0.3)
+            cr.rectangle(1, 1, allocation.width-2, 78)
+            cr.fill()
+        else:
+            # draw background
+            bg = Gdk.RGBA()
+            # TODO: How to get theme's background color ?
+            bg.parse("#232729")
+            cr.set_source_rgba(*list(bg))
+            cr.rectangle(1, 1, allocation.width-2, 78)
+            cr.fill()
+
+        # draw output number
+        cr.set_source_rgb(0.9, 0.9, 0.9)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+            cairo.FONT_WEIGHT_BOLD)
+        cr.set_font_size(12)
+        cr.move_to(40,15)
+        cr.show_text(str(self.output))
+
+        if self.patch.outputs[self.output-1] != 0:
+            # draw channel number
+            cr.set_source_rgb(0.7, 0.7, 0.7)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(12)
+            cr.move_to(40,48)
+            cr.show_text(str(self.patch.outputs[self.output-1]))
+
+    def do_realize(self):
+        allocation = self.get_allocation()
+        attr = Gdk.WindowAttr()
+        attr.window_type = Gdk.WindowType.CHILD
+        attr.x = allocation.x
+        attr.y = allocation.y
+        attr.width = allocation.width
+        attr.height = allocation.height
+        attr.visual = self.get_visual()
+        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
+        WAT = Gdk.WindowAttributesType
+        mask = WAT.X | WAT.Y | WAT.VISUAL
+
+        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        self.set_window(window)
+        self.register_window(window)
+
+        self.set_realized(True)
+        window.set_background_pattern(None)
+
 class GroupWidget(Gtk.Widget):
     __gtype_name__ = 'GroupWidget'
 
@@ -156,7 +241,6 @@ class GroupWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
 
     def on_click(self, tgt, ev):
-        #print("Groupe ", self.number, self.name)
         for i in range(len(self.grps)):
             self.grps[i].clicked = False
         if self.clicked:
