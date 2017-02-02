@@ -155,9 +155,13 @@ class PatchWidget(Gtk.Widget):
         self.connect('touch-event', self.on_click)
 
     def on_click(self, tgt, ev):
+        # Deselect selected widgets
+        self.app.patch_tab.flowbox.unselect_all()
+        # Select clicked widget
         child = self.app.patch_tab.flowbox.get_child_at_index(self.output-1)
         self.app.window.set_focus(child)
         self.app.patch_tab.flowbox.select_child(child)
+        self.app.patch_tab.last_out_selected = str(self.output)
 
     def do_draw(self, cr):
         # paint background

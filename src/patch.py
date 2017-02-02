@@ -22,8 +22,7 @@ class PatchTab(Gtk.Grid):
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
         self.flowbox.set_homogeneous(True)
-        # TODO: Find how we can patch with thru
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.outputs = []
 
@@ -92,63 +91,105 @@ class PatchTab(Gtk.Grid):
         self.app.patch_tab = None
 
     def keypress_BackSpace(self):
-        """ Output """
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_o(self):
         """ Select Output """
+
+        self.flowbox.unselect_all()
+
         if self.keystring != "":
             output = int(self.keystring) - 1
             if output >= 0 and output < 512:
                 child = self.flowbox.get_child_at_index(output)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
+                self.last_out_selected = self.keystring
+        else:
+            widget = self.app.window.get_focus()
+            self.flowbox.select_child(widget)
+
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_KP_Divide(self):
+        self.keypress_greater()
+
+    def keypress_greater(self):
+        """ Output Thru """
+
+        # If just one output is selected, start from it
+        selected = self.flowbox.get_selected_children()
+        if len(selected) == 1:
+            patchwidget = selected[0].get_children()
+            output = patchwidget[0].output - 1
+            self.last_out_selected = str(output)
+
+        if not self.last_out_selected:
+            return
+
+        to_out = int(self.keystring)
+
+        if to_out > int(self.last_out_selected):
+            for out in range(int(self.last_out_selected), to_out):
+                child = self.flowbox.get_child_at_index(out)
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_out_selected = self.keystring
+        else:
+            for out in range(to_out - 1, int(self.last_out_selected)):
+                child = self.flowbox.get_child_at_index(out)
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_out_selected = self.keystring
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_c(self):
         """ Attribute Channel """
+        # TODO: Adapt for multi selection : mettre un patch droit sur la selection à partir du channel entré
 
         # Find Selected Output
-        output = -1
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:
             children = flowboxchild.get_children()
-        for patchwidget in children:
-            output = patchwidget.output - 1
 
-        if output != -1:
-            # Unpatch if no entry
-            if self.keystring == "" or self.keystring == "0":
-                channel = self.app.patch.outputs[output]
-                if channel != 0:
-                    channel -= 1
-                    self.app.patch.outputs[output] = 0
-                    self.app.patch.channels[channel].remove(output + 1)
-            else:
-                channel = int(self.keystring) - 1
+            for patchwidget in children:
+                output = patchwidget.output - 1
 
-                if channel >= 0 and channel < 512:
-                    # Unpatch old value if exist
-                    if self.app.patch.outputs[output] != 0:
-                        self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
-                    # Patch Channel
-                    self.app.patch.add_output(channel+1, output+1)
-            # Update ui
+                # Unpatch if no entry
+                if self.keystring == "" or self.keystring == "0":
+                    channel = self.app.patch.outputs[output]
+                    if channel != 0:
+                        channel -= 1
+                        self.app.patch.outputs[output] = 0
+                        self.app.patch.channels[channel].remove(output + 1)
+                else:
+                    channel = int(self.keystring) - 1
+
+                    if channel >= 0 and channel < 512:
+                        # Unpatch old value if exist
+                        if self.app.patch.outputs[output] != 0:
+                            self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
+                        # Patch Channel
+                        self.app.patch.add_output(channel+1, output+1)
+                # Update ui
+                self.outputs[output].queue_draw()
+                # Update list of channels
+                level = self.app.dmx.frame[output]
+                self.app.window.channels[channel].level = level
+                self.app.window.channels[channel].queue_draw()
+                self.app.window.flowbox.invalidate_filter()
             # Select next output
             if output < 511:
+                self.flowbox.unselect_all()
                 child = self.flowbox.get_child_at_index(output+1)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
-            self.outputs[output].queue_draw()
-            # Update list of channels
-            level = self.app.dmx.frame[output]
-            self.app.window.channels[channel].level = level
-            self.app.window.channels[channel].queue_draw()
-            self.app.window.flowbox.invalidate_filter()
+                self.last_out_selected = str(output+1)
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
