@@ -1,19 +1,41 @@
 from gi.repository import Gio, Gtk, Gdk
 
 from olc.dmx import Dmx, PatchDmx
-from olc.customwidgets   import PatchWidget
+from olc.customwidgets   import PatchWidget, PatchChannelWidget
 
 class PatchTab(Gtk.Grid):
     def __init__(self):
 
         self.app = Gio.Application.get_default()
 
+        self.view_outputs = True
+
         self.keystring = ""
         self.last_out_selected = ""
+        self.last_chan_selected = ""
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
         self.set_row_homogeneous(True)
+
+        # Headerbar with buttons
+        self.header = Gtk.HeaderBar()
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        button = Gtk.Button()
+        icon = Gio.ThemedIcon(name='view-grid-symbolic')
+        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
+        button.add(image)
+        button.connect('clicked', self.on_view_changed)
+        box.add(button)
+        button = Gtk.Button('Patch 1:1')
+        button.connect('clicked', self.on_button_clicked)
+        box.add(button)
+        button = Gtk.Button('Patch Vide')
+        button.connect('clicked', self.on_button_clicked)
+        box.add(button)
+        self.label = Gtk.Label("View: by Outputs")
+        self.header.pack_start(self.label)
+        self.header.pack_end(box)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -25,23 +47,44 @@ class PatchTab(Gtk.Grid):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.outputs = []
+        self.channels = []
 
         for i in range(512):
             self.outputs.append(PatchWidget(i+1, self.app.patch))
             self.flowbox.add(self.outputs[i])
+            self.channels.append(PatchChannelWidget(i+1, self.app.patch))
+            self.flowbox.add(self.channels[i])
+
+        self.flowbox.set_filter_func(self.filter_func, None)
 
         self.scrolled.add(self.flowbox)
 
-        self.buttons = list()
-        for type in ["Patch 1:1", "Patch Vide"]:
-            button = Gtk.Button(type)
-            self.buttons.append(button)
-            button.connect('clicked', self.on_button_clicked)
+        self.attach(self.header, 0, 0, 1, 1)
+        self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
-        self.attach(self.scrolled, 0, 0, 2, 12)
-        self.attach_next_to(self.buttons[0], self.scrolled, Gtk.PositionType.BOTTOM, 1, 1)
-        for i, button in enumerate(self.buttons[1:]):
-            self.attach_next_to(button, self.buttons[i], Gtk.PositionType.RIGHT, 1, 1)
+    def filter_func(self, child, user_data):
+        if self.view_outputs:
+            if child.get_children()[0].type == 'Output':
+                return child
+            else:
+                return False
+        else:
+            if child.get_children()[0].type == 'Channel':
+                return child
+            else:
+                return False
+
+    def on_view_changed(self, widget):
+        """ Change view type """
+
+        if self.view_outputs:
+            self.label.set_text('View: by Channels')
+            self.view_outputs = False
+            self.flowbox.invalidate_filter()
+        else:
+            self.label.set_text('View: by Outputs')
+            self.view_outputs = True
+            self.flowbox.invalidate_filter()
 
     def on_button_clicked(self, widget):
 
@@ -97,12 +140,16 @@ class PatchTab(Gtk.Grid):
     def keypress_o(self):
         """ Select Output """
 
+        # TODO: Add for channels view
+        if not self.view_outputs:
+            return
+
         self.flowbox.unselect_all()
 
         if self.keystring != "":
             output = int(self.keystring) - 1
             if output >= 0 and output < 512:
-                child = self.flowbox.get_child_at_index(output)
+                child = self.flowbox.get_child_at_index(output * 2)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
@@ -119,6 +166,34 @@ class PatchTab(Gtk.Grid):
     def keypress_greater(self):
         """ Output Thru """
 
+        # Channels view
+        if not self.view_outputs:
+            selected = self.flowbox.get_selected_children()
+            if len(selected) == 1:
+                patchwidget = selected[0].get_children()
+                channel = patchwidget[0].channel - 1
+                self.last_chan_selected = str(channel)
+            if not self.last_chan_selected:
+                return
+            to_chan = int(self.keystring)
+            if to_chan > int(self.last_chan_selected):
+                for chan in range(int(self.last_chan_selected), to_chan):
+                    child = self.flowbox.get_child_at_index((chan * 2) + 1)
+                    self.app.window.set_focus(child)
+                    self.flowbox.select_child(child)
+                    self.last_chan_selected = self.keystring
+            else:
+                for chan in range(to_chan - 1, int(self.last_chan_selected)):
+                    child = self.flowbox.get_child_at_index((chan * 2) + 1)
+                    self.app.window.set_focus(child)
+                    self.flowbox.select_child(child)
+                    self.last_chan_selected = self.keystring
+
+            self.keystring = ""
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            return
+
+        # Outputs view
         # If just one output is selected, start from it
         selected = self.flowbox.get_selected_children()
         if len(selected) == 1:
@@ -133,13 +208,13 @@ class PatchTab(Gtk.Grid):
 
         if to_out > int(self.last_out_selected):
             for out in range(int(self.last_out_selected), to_out):
-                child = self.flowbox.get_child_at_index(out)
+                child = self.flowbox.get_child_at_index(out * 2)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
         else:
             for out in range(to_out - 1, int(self.last_out_selected)):
-                child = self.flowbox.get_child_at_index(out)
+                child = self.flowbox.get_child_at_index(out * 2)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
@@ -148,9 +223,27 @@ class PatchTab(Gtk.Grid):
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_c(self):
-        """ Attribute Channel """
+        """ Select or Attribute Channel """
         # TODO: Adapt for multi selection : mettre un patch droit sur la selection à partir du channel entré
 
+        # Channels view
+        if not self.view_outputs:
+            self.flowbox.unselect_all()
+            if self.keystring != "":
+                channel = int(self.keystring) - 1
+                if channel >= 0 and channel < 512:
+                    child = self.flowbox.get_child_at_index((channel * 2) + 1)
+                    self.app.window.set_focus(child)
+                    self.flowbox.select_child(child)
+                    self.last_chan_selected = self.keystring
+            else:
+                widget = self.app.window.get_focus()
+                self.flowbox.select_child(widget)
+            self.keystring = ""
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            return
+
+        # Outputs view
         # Find Selected Output
         sel = self.flowbox.get_selected_children()
         children = []
@@ -186,7 +279,7 @@ class PatchTab(Gtk.Grid):
             # Select next output
             if output < 511:
                 self.flowbox.unselect_all()
-                child = self.flowbox.get_child_at_index(output+1)
+                child = self.flowbox.get_child_at_index((output+1) * 2)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output+1)
