@@ -231,7 +231,12 @@ class Ascii(object):
                             #print("Channel Time")
                             p = line[11:]
                             delay = float(p.split(" ")[0])
-                            time = float(p.split(" ")[1])
+                            # Times with ":" are in minutes
+                            time_str = p.split(" ")[1]
+                            if ':' in time_str:
+                                time = float(time_str.split(':')[0])*60 + float(time_str.split(':')[1])
+                            else:
+                                time = float(time_str)
                             #print("Temps:", time, "Delay:", delay)
                         if line[:14] == '$$PARTTIMECHAN':
                             p = line[15:]
