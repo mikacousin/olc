@@ -154,8 +154,10 @@ class PatchTab(Gtk.Grid):
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
         else:
+            # Verify focus is on Output Widget
             widget = self.app.window.get_focus()
-            self.flowbox.select_child(widget)
+            if widget.get_path().is_type(Gtk.FlowBoxChild):
+                self.flowbox.select_child(widget)
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
