@@ -173,18 +173,27 @@ class PatchChannelWidget(Gtk.Widget):
 
         allocation = self.get_allocation()
 
-        #print(self.channel-1)
-        if self.patch.channels[self.channel-1][0] != 0:
-            # draw frame
-            cr.rectangle(0, 0, allocation.width, allocation.height)
-            cr.fill()
-            cr.set_source_rgb(0.4, 0.3, 0.3)
-            cr.rectangle(0, 0, allocation.width, allocation.height)
-            cr.stroke()
-            # draw background
-            cr.set_source_rgb(0.4, 0.3, 0.3)
-            cr.rectangle(1, 1, allocation.width-2, 78)
-            cr.fill()
+        #print(len(self.patch.channels[self.channel-1]))
+        if len(self.patch.channels[self.channel-1]) != 0:
+            if self.patch.channels[self.channel-1][0] != 0:
+                # draw frame
+                cr.rectangle(0, 0, allocation.width, allocation.height)
+                cr.fill()
+                cr.set_source_rgb(0.4, 0.3, 0.3)
+                cr.rectangle(0, 0, allocation.width, allocation.height)
+                cr.stroke()
+                # draw background
+                cr.set_source_rgb(0.4, 0.3, 0.3)
+                cr.rectangle(1, 1, allocation.width-2, 78)
+                cr.fill()
+            else:
+                # draw background
+                bg = Gdk.RGBA()
+                # TODO: How to get theme's background color ?
+                bg.parse("#232729")
+                cr.set_source_rgba(*list(bg))
+                cr.rectangle(1, 1, allocation.width-2, 78)
+                cr.fill()
         else:
             # draw background
             bg = Gdk.RGBA()
@@ -202,15 +211,16 @@ class PatchChannelWidget(Gtk.Widget):
         cr.move_to(40,15)
         cr.show_text(str(self.channel))
 
-        if self.patch.channels[self.channel-1][0] != 0:
-            # draw channel number
-            cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12)
-            cr.move_to(40,48)
-            # TODO: draw every outputs in the channel
-            cr.show_text(str(self.patch.channels[self.channel-1][0]))
+        if len(self.patch.channels[self.channel-1]) != 0:
+            if self.patch.channels[self.channel-1][0] != 0:
+                # draw output number
+                cr.set_source_rgb(0.7, 0.7, 0.7)
+                cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                    cairo.FONT_WEIGHT_BOLD)
+                cr.set_font_size(12)
+                cr.move_to(40,48)
+                # TODO: draw every outputs in the channel
+                cr.show_text(str(self.patch.channels[self.channel-1][0]))
 
         # indicate there's more than one output in the channel
         if len(self.patch.channels[self.channel-1]) > 1:
