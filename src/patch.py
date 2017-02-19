@@ -140,8 +140,49 @@ class PatchTab(Gtk.Grid):
     def keypress_o(self):
         """ Select Output """
 
-        # TODO: Add for channels view
+        # Channels view
         if not self.view_outputs:
+            # Find selected channels
+            sel = self.flowbox.get_selected_children()
+            children = []
+            # For each selected channel
+            for i in range(len(sel)):
+                children = sel[i].get_children()
+
+                for patchwidget in children:
+                    channel = patchwidget.channel - 1
+
+                    # Unpatch if no entry
+                    if self.keystring == "" or self.keystring == "0":
+                        for output in self.app.patch.channels[channel]:
+                            self.app.patch.outputs[output-1] = 0
+                            self.app.patch.channels[channel].remove(output)
+                    else:
+                        # We add i to automatically patch a range of channels
+                        output = int(self.keystring) - 1 + i
+
+                        if output >= 0 and output < 512:
+                            self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
+                            self.channels[self.app.patch.outputs[output]-1].queue_draw()
+                            self.app.patch.add_output(channel+1, output+1)
+
+                    # Update ui
+                    self.channels[channel].queue_draw()
+                    # Update list of channels
+                    level = self.app.dmx.frame[output]
+                    self.app.window.channels[channel].level = level
+                    self.app.window.channels[channel].queue_draw()
+                    self.app.window.flowbox.invalidate_filter()
+                # Select next channel
+                if channel < 511:
+                    self.flowbox.unselect_all()
+                    child = self.flowbox.get_child_at_index(((channel+1) * 2) + 1)
+                    self.app.window.set_focus(child)
+                    self.flowbox.select_child(child)
+                    self.last_out_selected = str(channel+1)
+
+            self.keystring = ""
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
             return
 
         self.flowbox.unselect_all()
@@ -226,7 +267,6 @@ class PatchTab(Gtk.Grid):
 
     def keypress_c(self):
         """ Select or Attribute Channel """
-        # TODO: Adapt for multi selection : mettre un patch droit sur la selection à partir du channel entré
 
         # Channels view
         if not self.view_outputs:
@@ -269,7 +309,7 @@ class PatchTab(Gtk.Grid):
                         # Unpatch old value if exist
                         if self.app.patch.outputs[output] != 0:
                             self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
-                        # Patch Channel
+                        # Patch Channel : same channel for every outputs
                         self.app.patch.add_output(channel+1, output+1)
                 # Update ui
                 self.outputs[output].queue_draw()

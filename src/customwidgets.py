@@ -141,7 +141,6 @@ class ChannelWidget(Gtk.Widget):
 
 class PatchChannelWidget(Gtk.Widget):
     __gtype_name__ = "PatchChannelWidget"
-    # TODO: modify for channels
 
     def __init__(self, channel, patch):
 
@@ -220,7 +219,12 @@ class PatchChannelWidget(Gtk.Widget):
                 cr.set_font_size(12)
                 cr.move_to(40,48)
                 # TODO: draw every outputs in the channel
-                cr.show_text(str(self.patch.channels[self.channel-1][0]))
+                outputs = ''
+                for i in range(len(self.patch.channels[self.channel-1])):
+                    #print("Channel :", self.channel, "Output :", self.patch.channels[self.channel-1][i])
+                    outputs += str(self.patch.channels[self.channel-1][i]) + ' '
+                #cr.show_text(str(self.patch.channels[self.channel-1][0]))
+                cr.show_text(outputs)
 
         # indicate there's more than one output in the channel
         if len(self.patch.channels[self.channel-1]) > 1:
