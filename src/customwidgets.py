@@ -18,17 +18,23 @@ class ChannelWidget(Gtk.Widget):
         self.color_level_green = 0.9
         self.color_level_blue = 0.9
 
-        self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
+        self.app = Gio.Application.get_default()
+
+        self.percent_level = self.app.settings.get_boolean('percent')
 
         self.connect("button-press-event", self.on_click)
         self.set_size_request(80, 80)
 
     def on_click(self, tgt, ev):
-        if self.clicked:
-            self.clicked = False
-        else:
-            self.clicked = True
-        self.queue_draw()
+        # Select clicked widget
+        flowboxchild = tgt.get_parent()
+        flowbox = flowboxchild.get_parent()
+
+        flowbox.unselect_all()
+
+        self.app.window.set_focus(flowboxchild)
+        flowbox.select_child(flowboxchild)
+        self.app.window.last_chan_selected = self.channel
 
     def do_draw(self, cr):
 
@@ -44,14 +50,19 @@ class ChannelWidget(Gtk.Widget):
         # dessine un cadre
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
-        if self.clicked:
-            cr.set_source_rgb(0.9, 0.6, 0.2)
-        else:
-            cr.set_source_rgb(0.3, 0.3, 0.3)
+        cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
-        # dessine fond pour le numéro de cicuit
-        if self.clicked:
+        # draw background
+        bg = Gdk.RGBA()
+        # TODO: Get background color
+        bg.parse('#33393B')
+        cr.set_source_rgba(*list(bg))
+        cr.rectangle(1, 1, allocation.width-2, 78)
+        cr.fill()
+        # draw background of channel number
+        flowboxchild = self.get_parent()
+        if flowboxchild.is_selected():
             cr.set_source_rgb(0.4, 0.4, 0.4)
             cr.rectangle(1, 1, allocation.width-2, 18)
             cr.fill()
@@ -172,7 +183,6 @@ class PatchChannelWidget(Gtk.Widget):
 
         allocation = self.get_allocation()
 
-        #print(len(self.patch.channels[self.channel-1]))
         if len(self.patch.channels[self.channel-1]) != 0:
             if self.patch.channels[self.channel-1][0] != 0:
                 # draw frame
