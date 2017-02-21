@@ -27,7 +27,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.set_valign(Gtk.Align.START)
         self.flowbox1.set_max_children_per_line(20)
         self.flowbox1.set_homogeneous(True)
-        self.flowbox1.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.flowbox1.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.channels = []
 
@@ -65,8 +65,6 @@ class GroupTab(Gtk.Paned):
 
         self.flowbox2.connect('child_activated', self.on_group_selected)
         self.flowbox2.connect('button_press_event', self.on_group_clicked)
-
-        self.connect('key_press_event', self.on_key_press_event)
 
     def filter_channels(self, child, user_data):
         """ Pour n'afficher que les channels du groupe """
@@ -115,12 +113,19 @@ class GroupTab(Gtk.Paned):
 
         if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
             self.keystring += keyname
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
         if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
             self.keystring += keyname[3:]
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
+
+    def keypress_BackSpace(self):
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_Escape(self):
         """ Close Tab """
@@ -146,87 +151,135 @@ class GroupTab(Gtk.Paned):
         # Update display
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
+
         self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_a(self):
         """ All Channels """
-        for j in range(len(self.grps)):
-            if self.grps[j].clicked:
+
+        self.flowbox1.unselect_all()
+
+        for group in range(len(self.grps)):
+            if self.grps[group].clicked:
                 for channel in range(512):
-                    level = self.app.groups[j].channels[channel]
+                    level = self.app.groups[group].channels[channel]
                     if level > 0:
                         self.channels[channel].clicked = True
-                        self.channels[channel].queue_draw()
-                    else:
-                        self.channels[channel].clicked = False
-                        self.channels[channel].queue_draw()
+                        child = self.flowbox1.get_child_at_index(channel)
+                        self.app.window.set_focus(child)
+                        self.flowbox1.select_child(child)
 
     def keypress_c(self):
         """ Channel """
-        if self.keystring == "" or self.keystring == "0":
-            for grp in range(len(self.grps)):
-                if self.grps[grp].clicked:
-                    for channel in range(512):
-                        self.channels[channel].clicked = False
-                        self.channels[channel].queue_draw()
-            self.flowbox1.invalidate_filter()
-        else:
+
+        self.flowbox1.unselect_all()
+
+        if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
             if channel >= 0 and channel < 512:
-                for grp in range(len(self.grps)):
-                    if self.grps[grp].clicked:
-                        for chan in range(512):
-                            self.channels[chan].clicked = False
-                self.channels[channel].clicked = True
-                self.channels[channel].queue_draw()
-                self.flowbox1.invalidate_filter()
-                self.last_chan_selected = self.keystring
+
+                # Only patched channel
+                if self.app.patch.channels[channel][0] != 0:
+                    self.channels[channel].clicked = True
+                    self.flowbox1.invalidate_filter()
+
+                    child = self.flowbox1.get_child_at_index(channel)
+                    self.app.window.set_focus(child)
+                    self.flowbox1.select_child(child)
+                    self.last_chan_selected = self.keystring
+        else:
+            for channel in range(512):
+                self.channels[channel].clicked = False
+            self.flowbox1.invalidate_filter()
+
         self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
 
     def keypress_greater(self):
         """ Channel Thru """
-        if not self.last_chan_selected:
-            return
-        to_chan = int(self.keystring)
-        if to_chan > int(self.last_chan_selected):
-            for chan in range(int(self.last_chan_selected), to_chan):
-                self.channels[chan].clicked = True
-                self.channels[chan].queue_draw()
-        else:
-            for chan in range(to_chan - 1, int(self.last_chan_selected)):
-                self.channels[chan].clicked = True
-                self.channels[chan].queue_draw()
-        self.flowbox1.invalidate_filter()
-        self.last_chan_selected = self.keystring
+
+        sel = self.flowbox1.get_selected_children()
+        if len(sel) == 1:
+            flowboxchild = sel[0]
+            channelwidget = flowboxchild.get_children()[0]
+            self.last_chan_selected = channelwidget.channel
+
+        if self.last_chan_selected:
+            to_chan = int(self.keystring)
+            if to_chan > int(self.last_chan_selected):
+                for channel in range(int(self.last_chan_selected) - 1, to_chan):
+
+                    # Only patched channels
+                    if self.app.patch.channels[channel][0] != 0:
+                        self.channels[channel].clicked = True
+                        self.flowbox1.invalidate_filter()
+
+                        child = self.flowbox1.get_child_at_index(channel)
+                        self.app.window.set_focus(child)
+                        self.flowbox1.select_child(child)
+            else:
+                for channel in range(to_chan - 1, int(self.last_chan_selected)):
+
+                    # Only patched channels
+                    if self.app.patch.channels[channel][0] != 0:
+                        self.channels[channel].clicked = True
+                        self.flowbox1.invalidate_filter()
+
+                        child = self.flowbox1.get_child_at_index(channel)
+                        self.app.window.set_focus(child)
+                        self.flowbox1.select_child(child)
+
+            self.last_chan_selected = self.keystring
+
         self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_plus(self):
         """ Channel + """
+
+        if self.keystring == "":
+            return
+
         channel = int(self.keystring) - 1
         if channel >= 0 and channel < 512:
             self.channels[channel].clicked = True
-            self.channels[channel].queue_draw()
             self.flowbox1.invalidate_filter()
+
+            child = self.flowbox1.get_child_at_index(channel)
+            self.app.window.set_focus(child)
+            self.flowbox1.select_child(child)
             self.last_chan_selected = self.keystring
+
             self.keystring = ""
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_minus(self):
         """ Channel - """
+
+        if self.keystring == "":
+            return
+
         channel = int(self.keystring) - 1
         if channel >= 0 and channel < 512:
             self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
             self.flowbox1.invalidate_filter()
+
+            child = self.flowbox1.get_child_at_index(channel)
+            self.app.window.set_focus(child)
+            self.flowbox1.unselect_child(child)
+
             self.last_chan_selected = self.keystring
+
             self.keystring = ""
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_equal(self):
         """ @ Level """
         level = int(self.keystring)
-        self.keystring = ""
         if Gio.Application.get_default().settings.get_boolean('percent'):
             if level >= 0 and level <= 100:
                 level = int(round((level / 100) * 255))
@@ -237,25 +290,43 @@ class GroupTab(Gtk.Paned):
                 level = 255
         for grp in range(len(self.grps)):
             if self.grps[grp].clicked:
-                for channel in range(512):
-                    if self.channels[channel].clicked:
+                sel = self.flowbox1.get_selected_children()
+
+                for flowboxchild in sel:
+                    children = flowboxchild.get_children()
+
+                    for channelwidget in children:
+                        channel = int(channelwidget.channel) - 1
+
                         if level != -1:
                             self.app.groups[grp].channels[channel] = level
+
         self.flowbox1.invalidate_filter()
+
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_colon(self):
         """ Level - % """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for grp in range(len(self.grps)):
             if self.grps[grp].clicked:
-                for channel in range(512):
-                    if self.channels[channel].clicked:
+                sel = self.flowbox1.get_selected_children()
+
+                for flowboxchild in sel:
+                    children = flowboxchild.get_children()
+
+                    for channelwidget in children:
+                        channel = int(channelwidget.channel) - 1
+
                         level = self.app.groups[grp].channels[channel]
+
                         if level - lvl < 0:
                             level = 0
                         else:
                             level = level - lvl
                         self.app.groups[grp].channels[channel] = level
+
         self.flowbox1.invalidate_filter()
 
     def keypress_exclam(self):
@@ -263,25 +334,36 @@ class GroupTab(Gtk.Paned):
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         for grp in range(len(self.grps)):
             if self.grps[grp].clicked:
-                for channel in range(512):
-                    if self.channels[channel].clicked:
+                sel = self.flowbox1.get_selected_children()
+
+                for flowboxchild in sel:
+                    children = flowboxchild.get_children()
+
+                    for channelwidget in children:
+                        channel = int(channelwidget.channel) - 1
+
                         level = self.app.groups[grp].channels[channel]
                         if level + lvl > 255:
                             level = 255
                         else:
                             level = level + lvl
                         self.app.groups[grp].channels[channel] = level
+
         self.flowbox1.invalidate_filter()
 
     def keypress_N(self):
         """ New Group """
         # If no group number, use the next one
         if self.keystring == "":
-            group_nb = self.app.groups[-1].index + 1
+            if len(self.app.groups) == 0:
+                group_nb = 1
+            else:
+                group_nb = self.app.groups[-1].index + 1
         else:
             group_nb = int(self.keystring)
 
         self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
         channels = array.array('B', [0] * 512)
         txt = str(group_nb)
@@ -292,6 +374,10 @@ class GroupTab(Gtk.Paned):
             self.grps[grp].clicked = False
         self.grps[-1].clicked = True
         self.flowbox2.add(self.grps[-1])
+        # Deselect all channels
+        self.flowbox1.unselect_all()
+        for channel in range(512):
+            self.channels[channel].clicked = False
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
         self.app.window.show_all()
