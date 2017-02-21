@@ -361,6 +361,23 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_greater(self):
         """ Thru """
+
+        sel = self.flowbox.get_selected_children()
+        if len(sel) == 1:
+            flowboxchild = sel[0]
+            channelwidget = flowboxchild.get_children()[0]
+            self.last_chan_selected = channelwidget.channel
+
+        if not self.last_chan_selected:
+            sel = self.flowbox.get_selected_children()
+            if len(sel):
+                for flowboxchild in sel:
+                    children = flowboxchild.get_children()
+
+                    for channelwidget in children:
+                        channel = int(channelwidget.channel)
+                self.last_chan_selected = str(channel)
+
         if self.last_chan_selected:
             to_chan = int(self.keystring)
             if to_chan > int(self.last_chan_selected):
@@ -376,8 +393,8 @@ class Window(Gtk.ApplicationWindow):
 
             self.last_chan_selected = self.keystring
 
-            self.keystring = ""
-            self.statusbar.push(self.context_id, self.keystring)
+        self.keystring = ""
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Add(self):
         self.keypress_plus()
