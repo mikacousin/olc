@@ -444,7 +444,7 @@ class SequenceTab(Gtk.Grid):
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
         self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.channels = []
         for i in range(512):
@@ -903,6 +903,9 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_a(self):
         """ All Channels """
+
+        self.flowbox.unselect_all()
+
         # Find selected sequence
         path, focus_column = self.treeview1.get_cursor()
         if path != None:
@@ -924,27 +927,36 @@ class SequenceTab(Gtk.Grid):
                 for channel in range(512):
                     if channels[channel] != 0:
                         self.channels[channel].clicked = True
-                        self.channels[channel].queue_draw()
+                        child = self.flowbox.get_child_at_index(channel)
+                        self.app.window.set_focus(child)
+                        self.flowbox.select_child(child)
                     else:
                         self.channels[channel].clicked = False
-                        self.channels[channel].queue_draw()
                 self.flowbox.invalidate_filter()
 
     def keypress_c(self):
         """ Channel """
-        if self.keystring == "" or self.keystring == "0":
-            for channel in range(512):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
-            self.flowbox.invalidate_filter()
-        else:
+
+        self.flowbox.unselect_all()
+
+        if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
             if channel >= 0 and channel < 512:
-                for chan in range(512):
-                    self.channels[chan].clicked = False
-                self.channels[channel].clicked = True
-                self.flowbox.invalidate_filter()
-                self.last_chan_selected = self.keystring
+
+                # Only patched channel
+                if self.app.patch.channels[channel][0] != 0:
+                    self.channels[channel].clicked = True
+                    self.flowbox.invalidate_filter()
+
+                    child = self.flowbox.get_child_at_index(channel)
+                    self.app.window.set_focus(child)
+                    self.flowbox.select_child(child)
+                    self.last_chan_selected = self.keystring
+        else:
+            for channel in range(512):
+                self.channels[channel].clicked = False
+            self.flowbox.invalidate_filter()
+
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
@@ -953,39 +965,72 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_greater(self):
         """ Channel Thru """
-        if not self.last_chan_selected:
-            return
-        to_chan = int(self.keystring)
-        if to_chan > int(self.last_chan_selected):
-            for chan in range(int(self.last_chan_selected), to_chan):
-                self.channels[chan].clicked = True
-        else:
-            for chan in range(to_chan - 1, int(self.last_chan_selected)):
-                self.channels[chan].clicked = True
-        self.flowbox.invalidate_filter()
-        self.last_chan_selected = self.keystring
+
+        sel = self.flowbox.get_selected_children()
+        if len(sel) == 1:
+            flowboxchild = sel[0]
+            channelwidget = flowboxchild.get_children()[0]
+            self.last_chan_selected = channelwidget.channel
+
+        if self.last_chan_selected:
+            to_chan = int(self.keystring)
+            if to_chan > int(self.last_chan_selected):
+                for channel in range(int(self.last_chan_selected) - 1, to_chan):
+                    # Only patched channels
+                    if self.app.patch.channels[channel][0] != 0:
+                        self.channels[channel].clicked = True
+                        child = self.flowbox.get_child_at_index(channel)
+                        self.app.window.set_focus(child)
+                        self.flowbox.select_child(child)
+                self.flowbox.invalidate_filter()
+            else:
+                for channel in range(to_chan - 1, int(self.last_chan_selected)):
+                    # Only patched channels
+                    if self.app.patch.channels[channel][0] != 0:
+                        self.channels[channel].clicked = True
+                        child = self.flowbox.get_child_at_index(channel)
+                        self.app.window.set_focus(child)
+                        self.flowbox.select_child(child)
+                self.flowbox.invalidate_filter()
+
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_plus(self):
         """ Channel + """
+
+        if self.keystring == "":
+            return
+
         channel = int(self.keystring) - 1
         if channel >= 0 and channel < 512:
             self.channels[channel].clicked = True
-            self.channels[channel].queue_draw()
             self.flowbox.invalidate_filter()
+
+            child = self.flowbox.get_child_at_index(channel)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
+
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_minus(self):
         """ Channel - """
+
+        if self.keystring == "":
+            return
+
         channel = int(self.keystring) - 1
         if channel >= 0 and channel < 512:
             self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
             self.flowbox.invalidate_filter()
+
+            child = self.flowbox.get_child_at_index(channel)
+            self.app.window.set_focus(child)
+            self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
+
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
@@ -998,40 +1043,68 @@ class SequenceTab(Gtk.Grid):
             else:
                 level = -1
         if level >= 0 and level <= 255:
-            for channel in range(512):
-                if self.channels[channel].clicked and level != -1:
-                    self.channels[channel].level = level
-                    self.channels[channel].next_level = level
-                    self.channels[channel].queue_draw()
-                    self.user_channels[channel] = level
+            sel = self.flowbox.get_selected_children()
+
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+
+                for channelwidget in children:
+                    channel = int(channelwidget.channel) - 1
+
+                    if level != -1:
+                        self.channels[channel].level = level
+                        self.channels[channel].next_level = level
+                        self.channels[channel].queue_draw()
+                        self.user_channels[channel] = level
+
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_colon(self):
         """ Level - % """
+
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
-        for channel in range(512):
-            if self.channels[channel].clicked:
+
+        sel = self.flowbox.get_selected_children()
+
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+
+            for channelwidget in children:
+                channel = int(channelwidget.channel) - 1
+
                 level = self.channels[channel].level
+
                 if level - lvl < 0:
                     level = 0
                 else:
                     level = level - lvl
+
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
     def keypress_exclam(self):
-        """ Level - % """
+        """ Level + % """
+
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
-        for channel in range(512):
-            if self.channels[channel].clicked:
+
+        sel = self.flowbox.get_selected_children()
+
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+
+            for channelwidget in children:
+                channel = int(channelwidget.channel) - 1
+
                 level = self.channels[channel].level
+
                 if level + lvl > 255:
                     level = 255
                 else:
                     level = level + lvl
+
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
@@ -1108,6 +1181,12 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_R(self):
         """ New Cue """
+        # TODO: Saisir un numéro de mémoire
+        if self.keystring != "":
+            mem = float(self.keystring)
+            print(mem)
+            self.keystring = ""
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
         # Find the selected sequence
         path, focus_column = self.treeview1.get_cursor()
