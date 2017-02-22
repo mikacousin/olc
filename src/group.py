@@ -216,22 +216,24 @@ class GroupTab(Gtk.Paned):
                     # Only patched channels
                     if self.app.patch.channels[channel][0] != 0:
                         self.channels[channel].clicked = True
-                        self.flowbox1.invalidate_filter()
 
                         child = self.flowbox1.get_child_at_index(channel)
                         self.app.window.set_focus(child)
                         self.flowbox1.select_child(child)
+
+                self.flowbox1.invalidate_filter()
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
 
                     # Only patched channels
                     if self.app.patch.channels[channel][0] != 0:
                         self.channels[channel].clicked = True
-                        self.flowbox1.invalidate_filter()
 
                         child = self.flowbox1.get_child_at_index(channel)
                         self.app.window.set_focus(child)
                         self.flowbox1.select_child(child)
+
+                self.flowbox1.invalidate_filter()
 
             self.last_chan_selected = self.keystring
 
