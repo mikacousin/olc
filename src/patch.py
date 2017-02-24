@@ -162,7 +162,8 @@ class PatchTab(Gtk.Grid):
                         output = int(self.keystring) - 1 + i
 
                         if output >= 0 and output < 512:
-                            self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
+                            if self.app.patch.channels[self.app.patch.outputs[output]-1][0] != 0:
+                                self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
                             self.channels[self.app.patch.outputs[output]-1].queue_draw()
                             self.app.patch.add_output(channel+1, output+1)
 
