@@ -1,6 +1,7 @@
 from gi.repository import Gio, Gtk, Gdk
 
 from olc.customwidgets import ChannelWidget
+from olc.cue import ChannelTime
 
 class ChanneltimeTab(Gtk.Paned):
     def __init__(self, sequence, step):
@@ -22,7 +23,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
         self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.channels = []
 
@@ -83,6 +84,11 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.flowbox.set_filter_func(self.filter_channels, None)
 
+        # Select first Channel Time
+        path = Gtk.TreePath.new_first()
+        self.treeview.set_cursor(path)
+        self.app.window.set_focus(self.treeview)
+
     def delay_edited(self, widget, path, text):
         if text == "":
             text = "0"
@@ -117,23 +123,23 @@ class ChanneltimeTab(Gtk.Paned):
                         time = str(self.cue.channel_time[channel].time)
                     self.liststore.append([channel, delay, time])
                     self.treeview.set_model(self.liststore)
-                # Update Sequence Tab if Open on the good sequence
-                if self.app.sequences_tab != None:
-                    # Start to find the selected sequence
-                    seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
-                    selected = seq_path.get_indices()
-                    sequence = self.app.sequences_tab.liststore1[selected][0]
-                    # If the same sequence is selected
-                    if sequence == self.sequence.index:
-                        path = Gtk.TreePath.new_from_indices([int(self.step) - 1])
-                        ct_nb = len(self.cue.channel_time)
-                        if ct_nb == 0:
-                            self.app.sequences_tab.liststore2[path][6] = ""
-                        else:
-                            self.app.sequences_tab.liststore2[path][6] = str(ct_nb)
             else:
                 # Update Delay value
                 self.cue.channel_time[channel].delay = float(text)
+            # Update Sequence Tab if Open on the good sequence
+            if self.app.sequences_tab != None:
+                # Start to find the selected sequence
+                seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
+                selected = seq_path.get_indices()
+                sequence = self.app.sequences_tab.liststore1[selected][0]
+                # If the same sequence is selected
+                if sequence == self.sequence.index:
+                    path = Gtk.TreePath.new_from_indices([int(self.step) - 1])
+                    ct_nb = len(self.cue.channel_time)
+                    if ct_nb == 0:
+                        self.app.sequences_tab.liststore2[path][6] = ""
+                    else:
+                        self.app.sequences_tab.liststore2[path][6] = str(ct_nb)
             # Update Total Time
             if self.cue.time_in > self.cue.time_out:
                 self.cue.total_time = self.cue.time_in + self.cue.wait
@@ -195,23 +201,23 @@ class ChanneltimeTab(Gtk.Paned):
                         time = str(self.cue.channel_time[channel].time)
                     self.liststore.append([channel, delay, time])
                     self.treeview.set_model(self.liststore)
-                # Update Sequence Tab if Open on the good sequence
-                if self.app.sequences_tab != None:
-                    # Start to find the selected sequence
-                    seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
-                    selected = seq_path.get_indices()
-                    sequence = self.app.sequences_tab.liststore1[selected][0]
-                    # If the same sequence is selected
-                    if sequence == self.sequence.index:
-                        path = Gtk.TreePath.new_from_indices([int(self.step) - 1])
-                        ct_nb = len(self.cue.channel_time)
-                        if ct_nb == 0:
-                            self.app.sequences_tab.liststore2[path][6] = ""
-                        else:
-                            self.app.sequences_tab.liststore2[path][6] = str(ct_nb)
             else:
                 # Update Time value
                 self.cue.channel_time[channel].time = float(text)
+            # Update Sequence Tab if Open on the good sequence
+            if self.app.sequences_tab != None:
+                # Start to find the selected sequence
+                seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
+                selected = seq_path.get_indices()
+                sequence = self.app.sequences_tab.liststore1[selected][0]
+                # If the same sequence is selected
+                if sequence == self.sequence.index:
+                    path = Gtk.TreePath.new_from_indices([int(self.step) - 1])
+                    ct_nb = len(self.cue.channel_time)
+                    if ct_nb == 0:
+                        self.app.sequences_tab.liststore2[path][6] = ""
+                    else:
+                        self.app.sequences_tab.liststore2[path][6] = str(ct_nb)
             # Update Total Time
             if self.cue.time_in > self.cue.time_out:
                 self.cue.total_time = self.cue.time_in + self.cue.wait
@@ -259,6 +265,18 @@ class ChanneltimeTab(Gtk.Paned):
                 self.channels[i].level = 0
                 self.channels[i].next_level = 0
                 return False
+        # If no selected Channel Time, display selected channels
+        else:
+            i = child.get_index()
+            channels = self.cue.channels
+
+            if self.channels[i].clicked:
+                self.channels[i].level = channels[i]
+                self.channels[i].next_level = channels[i]
+                return child
+            else:
+                self.channels[i].level = 0
+                self.channels[i].next_level = 0
 
     def on_channeltime_changed(self, treeview):
         """ Select a Channel Time """
@@ -269,6 +287,14 @@ class ChanneltimeTab(Gtk.Paned):
 
     def on_close_icon(self, widget):
         """ Close Tab with the icon clicked """
+        # If channel times has no delay and no time, delete it
+        keys = list(self.cue.channel_time.keys())
+        for channel in keys:
+            delay = self.cue.channel_time[channel].delay
+            time = self.cue.channel_time[channel].time
+            if delay == 0.0 and time == 0.0:
+                del self.cue.channel_time[channel]
+
         page = self.app.window.notebook.page_num(self.app.channeltime_tab)
         self.app.window.notebook.remove_page(page)
         self.app.channeltime_tab = None
@@ -294,6 +320,14 @@ class ChanneltimeTab(Gtk.Paned):
 
     def keypress_Escape(self):
         """ Close Tab """
+        # If channel times has no delay and no time, delete it
+        keys = list(self.cue.channel_time.keys())
+        for channel in keys:
+            delay = self.cue.channel_time[channel].delay
+            time = self.cue.channel_time[channel].time
+            if delay == 0.0 and time == 0.0:
+                del self.cue.channel_time[channel]
+
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
         self.app.channeltime_tab = None
@@ -304,38 +338,79 @@ class ChanneltimeTab(Gtk.Paned):
 
     def keypress_c(self):
         """ Channel """
-        if self.keystring == "" or self.keystring == "0":
-            for channel in range(512):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
-            self.flowbox.invalidate_filter()
-        else:
+        # TODO: Bug on Empty Channel time
+
+        self.flowbox.unselect_all()
+
+        if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
             if channel >= 0 and channel < 512:
-                for chan in range(512):
-                    self.channels[chan].clicked = False
                 self.channels[channel].clicked = True
                 self.flowbox.invalidate_filter()
+
+                child = self.flowbox.get_child_at_index(channel)
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
+        else:
+            for channel in range(512):
+                self.channels[channel].clicked = False
+            self.flowbox.invalidate_filter()
+
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-    def keypress_Up(self):
+    def keypress_q(self):
         """ Prev Channel Time """
+
+        self.flowbox.unselect_all()
+
         path, focus_column = self.treeview.get_cursor()
         if path != None:
             if path.prev():
                 self.treeview.set_cursor(path)
+                self.app.window.set_focus(self.treeview)
         else:
             path = Gtk.TreePath.new_first()
             self.treeview.set_cursor(path)
+            self.app.window.set_focus(self.treeview)
 
-    def keypress_Down(self):
+    def keypress_w(self):
         """ Next Channel Time """
+
+        self.flowbox.unselect_all()
+
         path, focus_column = self.treeview.get_cursor()
         if path != None:
             path.next()
             self.treeview.set_cursor(path)
+            self.app.window.set_focus(self.treeview)
         else:
             path = Gtk.TreePath.new_first()
             self.treeview.set_cursor(path)
+            self.app.window.set_focus(self.treeview)
+
+    def keypress_A(self):
+        """ Add Channel Time """
+
+        # Find selected channels
+        sel = self.flowbox.get_selected_children()
+
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+
+            for channelwidget in children:
+                channel = int(channelwidget.channel)
+
+                # If not already exist
+                if not channel in self.cue.channel_time:
+                    # Add Channel Time
+                    delay = 0.0
+                    time = 0.0
+                    self.cue.channel_time[channel] = ChannelTime(delay, time)
+
+                    # Update ui
+                    self.liststore.append([channel, "", ""])
+                    path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
+                    self.treeview.set_cursor(path)
+                    self.app.window.set_focus(self.treeview)
