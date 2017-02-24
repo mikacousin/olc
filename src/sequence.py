@@ -859,8 +859,9 @@ class SequenceTab(Gtk.Grid):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-    def keypress_Tab(self):
+    def keypress_Q(self):
         """ Cycle Sequences """
+        # TODO: Update Shortcuts window
         path, focus_column = self.treeview1.get_cursor()
         if path != None:
             path.next()
@@ -873,7 +874,7 @@ class SequenceTab(Gtk.Grid):
         # Reset user modifications
         self.user_channels = array.array('h', [-1] * 512)
 
-    def keypress_Up(self):
+    def keypress_q(self):
         """ Prev Memory """
 
         # Reset user modifications
@@ -887,7 +888,7 @@ class SequenceTab(Gtk.Grid):
             path = Gtk.TreePath.new_first()
             self.treeview2.set_cursor(path)
 
-    def keypress_Down(self):
+    def keypress_w(self):
         """ Next Memory """
 
         # Reset user modifications
