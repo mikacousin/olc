@@ -155,16 +155,20 @@ class PatchTab(Gtk.Grid):
                     # Unpatch if no entry
                     if self.keystring == "" or self.keystring == "0":
                         for output in self.app.patch.channels[channel]:
-                            self.app.patch.outputs[output-1] = 0
-                            self.app.patch.channels[channel].remove(output)
+                            self.app.patch.outputs[output - 1] = 0
+                        del(self.app.patch.channels[channel][:])
                     else:
                         # We add i to automatically patch a range of channels
                         output = int(self.keystring) - 1 + i
 
                         if output >= 0 and output < 512:
-                            if self.app.patch.channels[self.app.patch.outputs[output]-1][0] != 0:
-                                self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
-                            self.channels[self.app.patch.outputs[output]-1].queue_draw()
+                            # Unpatch Output if already patched
+                            chan = self.app.patch.outputs[output]
+                            if chan != 0:
+                                self.app.patch.outputs[output] = 0
+                                self.app.patch.channels[chan - 1].remove(output + 1)
+                                self.channels[chan - 1].queue_draw()
+                            # Patch new channel
                             self.app.patch.add_output(channel+1, output+1)
 
                     # Update ui
