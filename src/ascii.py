@@ -114,7 +114,7 @@ class Ascii(object):
                         i += 1
                         p = line[5:].split(" ")
                         seq = p[0]
-                        mem = p[1]
+                        mem = float(p[1])
                         #print ("CUE in Sequence", seq, "Memory", mem)
 
                     if in_cue:
