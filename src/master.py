@@ -6,7 +6,7 @@ from gi.repository import Gio, Gtk, GLib, Gdk
 from olc.settings import Settings
 
 class Master(object):
-    def __init__(self, page, number, content_type, content_value, groups, chasers, channels=array.array('B', [0] * 512), exclude_record=True, text=""):
+    def __init__(self, page, number, content_type, content_value, groups, chasers, channels=array.array('B', [0] * 512), exclude_record=True, text="", value=0.0):
         self.page = page
         self.number = number
         self.content_type = int(content_type)
@@ -18,6 +18,7 @@ class Master(object):
         self.channels = channels
         # To store DMX values of the master
         self.dmx = array.array('B', [0] * 512)
+        self.value = value
 
         # Type 3 : Chaser
         if self.content_type == 3:
@@ -45,6 +46,80 @@ class Master(object):
                     self.text += ' ' + str(channel + 1)
         else:
             print("Type : Inconnu")
+
+    def level_changed(self):
+
+        self.app = Gio.Application.get_default()
+
+        self.percent_view = self.app.settings.get_boolean('percent')
+
+        # Master type is Channels
+        if self.content_type == 2:
+            for channel in range(len(self.channels)):
+                if self.value == 0:
+                    level = 0
+                else:
+                    level = int(round(self.channels[channel] / (255 / self.value)))
+
+                self.dmx[channel] = level
+            self.app.dmx.send()
+
+        # Master Type is Group
+        elif self.content_type == 13:
+            grp = self.content_value
+            for j in range(len(self.groups)):
+                if self.groups[j].index == grp:
+                    # For each output
+                    for output in range(512):
+                        # If Output patched
+                        channel = self.app.patch.outputs[output]
+                        if channel:
+                            if self.groups[j].channels[channel-1] != 0:
+                                # Get level saved in group
+                                level_group = self.groups[j].channels[channel-1]
+                                # Level calculation
+                                if self.value == 0:
+                                    level = 0
+                                else:
+                                    level = int(round(level_group / (255 / self.value)))
+                                # Update level in master array
+                                self.dmx[channel-1] = level
+
+                    # Update DMX levels
+                    self.app.dmx.send()
+
+        # Master type is Chaser
+        elif self.content_type == 3:
+            nb = self.content_value
+            for j in range(len(self.chasers)):
+                if self.chasers[j].index == nb:
+                    #print("Chaser", self.masters[i].chasers[j].text)
+
+                    # On cherche le chaser
+                    for k in range(len(self.app.chasers)):
+                        if self.app.chasers[k].index == nb:
+
+                            # Si il ne tournait pas et master > 0
+                            if self.value and self.app.chasers[k].run == False:
+                                # Start Chaser
+                                self.app.chasers[k].run = True
+                                self.app.chasers[k].thread = ThreadChaser(self.app,
+                                        self, k, self.value, self.percent_view)
+                                self.app.chasers[k].thread.start()
+                            # Si il tournait déjà et master > 0
+                            elif self.value and self.app.chasers[k].run == True:
+                                # Update Max Level
+                                self.app.chasers[k].thread.level_scale = self.value
+                            # Si il tournait et que le master passe à 0
+                            elif self.value == 0 and self.app.chasers[k].run == True:
+                                # Stop Chaser
+                                self.app.chasers[k].run = False
+                                self.app.chasers[k].thread.stop()
+                                for output in range(512):
+                                    channel = self.app.patch.outputs[output]
+                                    #if self.app.chasers[k].channels[channel-1] != 0:
+                                    self.dmx[channel-1] = 0
+                                self.app.dmx.send()
 
 class MasterTab(Gtk.Grid):
     def __init__(self):

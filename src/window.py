@@ -2,7 +2,7 @@ import time
 import threading
 import array
 import mido
-from gi.repository import Gio, Gtk, GObject, Gdk, GLib
+from gi.repository import Gio, Gtk, Gdk, GObject, GLib
 from ola import OlaClient
 
 from olc.group import Group
@@ -190,8 +190,9 @@ class Window(Gtk.ApplicationWindow):
         self.cues_liststore1[0][7] = "#997004"
 
         # Open MIDI input port
+        #self.inport = mido.open_input('UC-33 USB MIDI Controller:UC-33 USB MIDI Controller MIDI  24:1')
         try:
-            self.inport = mido.open_input('UC-33 USB MIDI Controller MIDI ')
+            self.inport = mido.open_input('UC-33 USB MIDI Controller:UC-33 USB MIDI Controller MIDI  24:0')
         except:
             self.inport = mido.open_input()
 
@@ -241,47 +242,79 @@ class Window(Gtk.ApplicationWindow):
         # Scan MIDI messages
         for msg in self.inport.iter_pending():
             #print(msg)
+
+            # Go
             if msg.type == 'note_on' and msg.note == 11 and msg.velocity == 127:
                 self.keypress_space()
+
+            # Seq -
             if msg.type == 'note_on' and msg.note == 12 and msg.velocity == 127:
-                self.keypress_Up()
+                self.keypress_q()
+
+            # Seq +
             if msg.type == 'note_on' and msg.note == 13 and msg.velocity == 127:
-                self.keypress_Down()
+                self.keypress_w()
+
+            # Flash 1
+            if msg.type == 'note_on' and msg.note == 1 and msg.velocity == 127:
+                self.app.masters[5].value = 255
+                self.app.masters[5].level_changed()
+            else:
+                self.app.masters[5].value = 0
+                self.app.masters[5].level_changed()
+
+            # Flash 3
+            if msg.type == 'note_on' and msg.note == 3 and msg.velocity == 127:
+                self.app.masters[14].value = 255
+                self.app.masters[14].level_changed()
+            else:
+                self.app.masters[14].value = 0
+                self.app.masters[14].level_changed()
+
+            # Flash 7
+            if msg.type == 'note_on' and msg.note == 7 and msg.velocity == 127:
+                self.app.masters[2].value = 255
+                self.app.masters[2].level_changed()
+            else:
+                self.app.masters[2].value = 0
+                self.app.masters[2].level_changed()
+
+            # Fader 1
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 1:
-                if self.percent_level:
-                    self.app.win_masters.scale[0].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[0].set_value((msg.value/127)*256)
+                self.app.masters[10].value = (msg.value / 127) * 255
+                self.app.masters[10].level_changed()
+
+            # Fader 2
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 2:
-                if self.percent_level:
-                    self.app.win_masters.scale[1].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[1].set_value((msg.value/127)*256)
+                self.app.masters[11].value = (msg.value / 127) * 255
+                self.app.masters[11].level_changed()
+
+            # Fader 3
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 3:
-                if self.percent_level:
-                    self.app.win_masters.scale[2].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[2].set_value((msg.value/127)*256)
+                self.app.masters[0].value = (msg.value / 127) * 255
+                self.app.masters[0].level_changed()
+
+            # Fader 4
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 4:
-                if self.percent_level:
-                    self.app.win_masters.scale[3].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[3].set_value((msg.value/127)*256)
+                self.app.masters[1].value = (msg.value / 127) * 255
+                self.app.masters[1].level_changed()
+
+            # Fader 5
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 5:
-                if self.percent_level:
-                    self.app.win_masters.scale[4].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[4].set_value((msg.value/127)*256)
+                self.app.masters[8].value = (msg.value / 127) * 255
+                self.app.masters[8].level_changed()
+
+            # Fader 6
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 6:
-                if self.percent_level:
-                    self.app.win_masters.scale[5].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[5].set_value((msg.value/127)*256)
+                self.app.masters[4].value = (msg.value / 127) * 255
+                self.app.masters[4].level_changed()
+
+            # Fader 7
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 7:
-                if self.percent_level:
-                    self.app.win_masters.scale[6].set_value((msg.value/127)*100)
-                else:
-                    self.app.win_masters.scale[6].set_value((msg.value/127)*256)
+                self.app.masters[3].value = (msg.value / 127) * 255
+                self.app.masters[3].level_changed()
+
+        return True
 
     def button_clicked_cb(self, button):
         """ Toggle type of view : patched channels or all channels """
