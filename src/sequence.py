@@ -518,12 +518,18 @@ class SequenceTab(Gtk.Grid):
             if i == 5:
                 renderer.set_property('editable', True)
                 renderer.connect('edited', self.in_edited)
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
-                # TODO: Edit text
+                renderer.set_property('editable', True)
+                renderer.connect('edited', self.text_edited)
+
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+
+            if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
+
             self.treeview2.append_column(column)
+
         # Put Cues List in a scrolled window
         self.scrollable2 = Gtk.ScrolledWindow()
         self.scrollable2.set_vexpand(True)
@@ -566,6 +572,7 @@ class SequenceTab(Gtk.Grid):
             self.app._channeltime(seq, step)
 
     def wait_edited(self, widget, path, text):
+
         if text.replace('.','',1).isdigit():
 
             if text[0] == ".":
@@ -598,6 +605,10 @@ class SequenceTab(Gtk.Grid):
                 if t > self.seq.cues[step].total_time:
                     self.seq.cues[step].total_time = t
 
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + '*')
+
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
@@ -609,6 +620,7 @@ class SequenceTab(Gtk.Grid):
                     self.app.window.sequential.queue_draw()
 
     def out_edited(self, widget, path, text):
+
         if text.replace('.','',1).isdigit():
 
             if text[0] == ".":
@@ -641,6 +653,10 @@ class SequenceTab(Gtk.Grid):
                 if t > self.seq.cues[step].total_time:
                     self.seq.cues[step].total_time = t
 
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + '*')
+
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
@@ -652,6 +668,7 @@ class SequenceTab(Gtk.Grid):
                     self.app.window.sequential.queue_draw()
 
     def in_edited(self, widget, path, text):
+
         if text.replace('.','',1).isdigit():
 
             if text[0] == ".":
@@ -684,6 +701,10 @@ class SequenceTab(Gtk.Grid):
                 if t > self.seq.cues[step].total_time:
                     self.seq.cues[step].total_time = t
 
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + '*')
+
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
@@ -693,6 +714,45 @@ class SequenceTab(Gtk.Grid):
                     self.app.window.sequential.time_in = float(text)
                     self.app.window.sequential.total_time = self.seq.cues[step].total_time
                     self.app.window.sequential.queue_draw()
+
+    def text_edited(self, widget, path, text):
+
+        self.liststore2[path][2] = text
+
+        # Find selected sequence
+        seq_path, focus_column = self.treeview1.get_cursor()
+        selected = seq_path.get_indices()[0]
+        sequence = self.liststore1[selected][0]
+        if sequence == self.app.sequence.index:
+            self.seq = self.app.sequence
+        else:
+            for i in range(len(self.app.chasers)):
+                if sequence == self.app.chasers[i].index:
+                    self.seq = self.app.chasers[i]
+        # Find Cue
+        step = int(self.liststore2[path][0])
+
+        # Update text value
+        self.seq.cues[step].text = text
+
+        # Tag filename as modified
+        self.app.ascii.modified = True
+        self.app.window.header.set_title(self.app.ascii.basename + '*')
+
+        # Update Main Playback
+        if self.seq == self.app.sequence:
+            path = str(int(path) + 1)
+            self.app.window.cues_liststore1[path][2] = text
+            self.app.window.cues_liststore2[path][2] = text
+
+            # Update window's subtitle if needed
+            if self.app.sequence.position == step:
+                subtitle = "Mem. : " + self.seq.cues[step].memory + " " + self.seq.cues[step].text + " - Next Mem. : " + self.seq.cues[step + 1].memory + " " + self.seq.cues[step + 1].text
+                self.app.window.header.set_subtitle(subtitle)
+
+            if self.app.sequence.position + 1 == step:
+                subtitle = "Mem. : " + self.seq.cues[step - 1].memory + " " + self.seq.cues[step - 1].text + " - Next Mem. : " + self.seq.cues[step].memory + " " + self.seq.cues[step].text
+                self.app.window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, treeview):
         """ Select memory """
@@ -832,6 +892,12 @@ class SequenceTab(Gtk.Grid):
         self.app.sequences_tab = None
 
     def on_key_press_event(self, widget, event):
+
+        # TODO: Hack to know if user is editing something
+        path, focus_column = self.treeview2.get_cursor()
+        if focus_column != None:
+            return
+
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
@@ -1167,6 +1233,7 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_N(self):
         """ New Chaser """
+
         # Use the next free index
         if len(self.app.chasers) >  0:
             index_seq = self.app.chasers[-1].index + 1
@@ -1180,6 +1247,10 @@ class SequenceTab(Gtk.Grid):
         # Update List of sequences
         self.liststore1.append([self.app.chasers[-1].index, self.app.chasers[-1].type_seq,
             self.app.chasers[-1].text])
+
+        # Tag filename as modified
+        self.app.ascii.modified = True
+        self.app.window.header.set_title(self.app.ascii.basename + '*')
 
     def keypress_R(self):
         """ New Cue """
@@ -1225,6 +1296,10 @@ class SequenceTab(Gtk.Grid):
                         pass
 
                     dialog.destroy()
+
+                    # Tag filename as modified
+                    self.app.ascii.modified = True
+                    self.app.window.header.set_title(self.app.ascii.basename + '*')
 
                     self.keystring = ""
                     self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -1283,7 +1358,11 @@ class SequenceTab(Gtk.Grid):
             self.seq.cues.insert(index, cue)
             self.seq.last += 1
 
-            # Update Display
+            ### Update Display
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + '*')
 
             # Update Main Playback
             if self.seq.index == 1:
