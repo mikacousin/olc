@@ -130,14 +130,14 @@
             <child>
               <object class="GtkShortcutsShortcut" id="seq+">
                 <property name="visible">1</property>
-                <property name="accelerator">Down</property>
+                <property name="accelerator">w</property>
                 <property name="title" translatable="yes" context="shortcut window">Sequence +</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="seq-">
                 <property name="visible">1</property>
-                <property name="accelerator">Up</property>
+                <property name="accelerator">q</property>
                 <property name="title" translatable="yes" context="shortcut window">Sequence -</property>
               </object>
             </child>
