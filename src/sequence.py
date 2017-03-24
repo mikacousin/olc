@@ -894,8 +894,9 @@ class SequenceTab(Gtk.Grid):
     def on_key_press_event(self, widget, event):
 
         # TODO: Hack to know if user is editing something
-        path, focus_column = self.treeview2.get_cursor()
-        if focus_column != None:
+        widget = self.app.window.get_focus()
+        #print(widget.get_path().is_type(Gtk.Entry))
+        if widget.get_path().is_type(Gtk.Entry):
             return
 
         keyname = Gdk.keyval_name(event.keyval)
