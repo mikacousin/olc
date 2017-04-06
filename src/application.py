@@ -18,6 +18,7 @@ from olc.channel_time import ChanneltimeTab
 from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 from olc.ascii import Ascii
+from olc.midi import MidiTab
 
 class Application(Gtk.Application):
 
@@ -79,6 +80,7 @@ class Application(Gtk.Application):
         self.group_tab = None
         self.sequences_tab = None
         self.channeltime_tab = None
+        self.midi_tab = None
 
     def do_activate(self):
 
@@ -94,8 +96,8 @@ class Application(Gtk.Application):
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
         # TODO: Test manual crossfade, must be deleted
-        #self.win_crossfade = CrossfadeWindow()
-        #self.win_crossfade.show_all()
+        self.win_crossfade = CrossfadeWindow()
+        self.win_crossfade.show_all()
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
@@ -169,6 +171,10 @@ class Application(Gtk.Application):
         settingsAction = Gio.SimpleAction.new('settings', None)
         settingsAction.connect('activate', self._settings)
         self.add_action(settingsAction)
+
+        midiAction = Gio.SimpleAction.new('midi', None)
+        midiAction.connect('activate', self._midi)
+        self.add_action(midiAction)
 
         shortcutsAction = Gio.SimpleAction.new('show-help-overlay', None)
         shortcutsAction.connect('activate', self._shortcuts)
@@ -400,6 +406,27 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.master_tab)
             self.window.notebook.set_current_page(page)
 
+    def _midi(self, action, parameter):
+        # Create Midi Tab
+        if self.midi_tab == None:
+            self.midi_tab = MidiTab()
+
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.midi_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Midi'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.midi_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.midi_tab)
+            self.window.notebook.set_current_page(page)
+
     def _sequences(self, action, parameter):
         # Create Sequences Tab
         if self.sequences_tab == None:
@@ -547,6 +574,9 @@ class CrossfadeWindow(Gtk.Window):
         level = scale.get_value()
         position = app.sequence.position
 
+        # TODO: Pouvoir prendre la main pendant un Go
+
+        # TODO: Si on prend la main sur le crossfade, impossible de faire un Go, Seq+, Seq- si on va pas au bout
         if level != 255 and level != 0:
             app.sequence.on_go = True
 
@@ -569,7 +599,7 @@ class CrossfadeWindow(Gtk.Window):
             # Get SequentialWindow's width to place cursor
             allocation = app.window.sequential.get_allocation()
             app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
-            app.window.sequential.pos_xB = app.win_seq.sequential.pos_xA
+            app.window.sequential.pos_xB = app.window.sequential.pos_xA
             app.window.sequential.queue_draw()
             # Update levels
             for output in range(512):
@@ -708,18 +738,35 @@ class CrossfadeWindow(Gtk.Window):
                     t_in = app.sequence.cues[position+1].time_in
                     t_out = app.sequence.cues[position+1].time_out
                     t_wait = app.sequence.cues[position+1].wait
+                    app.window.sequential.total_time = app.sequence.cues[position + 1].total_time
                     app.window.sequential.time_in = t_in
                     app.window.sequential.time_out = t_out
                     app.window.sequential.wait = t_wait
+                    app.window.sequential.channel_time = app.sequence.cues[position + 1].channel_time
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
-                    path = Gtk.TreePath.new_from_indices([position])
-                    app.window.treeview.set_cursor(path, None, False)
+
+                    subtitle = "Mem. :"+app.sequence.cues[position].memory+" "+app.sequence.cues[position].text+" - Next Mem. : "+app.sequence.cues[position+1].memory+" "+app.sequence.cues[position+1].text
+                    app.window.header.set_subtitle(subtitle)
+
+                    if position == 0:
+                        app.window.cues_liststore1[-2][7] = "#232729"
+                        app.window.cues_liststore1[position][7] = "#997004"
+                    else:
+                        app.window.cues_liststore1[position - 1][7] = "#232729"
+                        app.window.cues_liststore1[position][7] = "#997004"
+                    app.window.step_filter1.refilter()
+                    app.window.step_filter2.refilter()
+                    path = Gtk.TreePath.new_from_indices([0])
+                    app.window.treeview1.set_cursor(path, None, False)
+                    app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
+
                     # If Wait
                     if app.sequence.cues[position+1].wait:
                         app.window.keypress_space()
                 # Else, we return to first cue
+                # TODO: Update code
                 else:
                     app.sequence.position = 0
                     position = 0

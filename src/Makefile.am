@@ -9,6 +9,7 @@ app_PYTHON = \
 	dmx.py \
 	group.py \
 	master.py \
+	midi.py \
 	osc.py \
 	patch.py \
 	sequence.py \
