@@ -201,9 +201,124 @@ class Window(Gtk.ApplicationWindow):
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
         GLib.unix_fd_add_full(0, self.app.sock.fileno(), GLib.IOCondition(27), self.app.on_fd_read, None)
 
+        # TODO: Add Enttec wing playback support with Gio.SocketService (et Gio.SocketListener.add_address)
+        """
+        service = Gio.SocketService()
+        service.connect('incoming', self.incoming_connection_cb)
+        #service.add_address(Gio.InetSocketAddress(Gio.SocketFamily(2), 3330), Gio.SocketType(2), Gio.SocketProtocal(17), None)
+        address = Gio.InetAddress.new_any(2)
+        #address = Gio.InetAddress.new_from_string('127.0.0.1')
+        #inetsock = Gio.InetSocketAddress.new(address, 3330)
+        inetsock = Gio.InetSocketAddress.new_from_string('127.0.0.1', 3330)
+        service.add_address(inetsock, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP)
+        """
+        """
+        socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP)
+        address = Gio.InetAddress.new_any(Gio.SocketFamily.IPV4)
+        inetsock = Gio.InetSocketAddress.new(address, 3330)
+        ret = socket.connect(inetsock)
+        print(ret)
+        fd = socket.get_fd()
+        print(fd)
+        ch = GLib.IOChannel.unix_new(fd)
+        print(ch)
+        GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
+        """
+        import socket
+        address = ('', 3330)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(address)
+        self.fd = self.sock.fileno()
+        #ch = GLib.IOChannel.unix_new(fd)
+        #GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
+        GLib.unix_fd_add_full(0, self.fd, GLib.IOCondition.IN, self.incoming_connection_cb, None)
+
         self.connect('key_press_event', self.on_key_press_event)
 
         self.set_icon_name('olc')
+
+    def incoming_connection_cb(self, fd, condition, data):
+        #print(fd, condition, data)
+        message = self.sock.recv(1024)
+        if message[0:4] == b'WODD':
+            print("Wing output data", message[0:4])
+            print("Wing firmware :", message[4])
+            print("Wing flags :", message[5])
+
+            if message[6] & 16:
+                print('Go released')
+            else:
+                print('Go pressed')
+                self.keypress_space()
+            if message[6] & 32:
+                print('Back released')
+            else:
+                print('Back pressed')
+            if message[6] & 64:
+                print('PageDown released')
+            else:
+                print('PageDown pressed')
+            if message[6] & 128:
+                print('PageUp released')
+            else:
+                print('PageUp pressed')
+
+            if message[7] & 1:
+                print('Flash 10 (Key 39) released')
+            else:
+                print('Flash 10 (Key 39) pressed')
+            if message[7] & 2:
+                print('Flash 9 (Key 38) released')
+            else:
+                print('Flash 9 (Key 38) pressed')
+            if message[7] & 4:
+                print('Flash 8 (Key 37) released')
+            else:
+                print('Flash 8 (Key 37) pressed')
+            if message[7] & 8:
+                print('Flash 7 (Key 36) released')
+            else:
+                print('Flash 7 (Key 36) pressed')
+            if message[7] & 16:
+                print('Flash 6 (Key 35) released')
+            else:
+                print('Flash 6 (Key 35) pressed')
+            if message[7] & 32:
+                print('Flash 5 (Key 34) released')
+            else:
+                print('Flash 5 (Key 34) pressed')
+            if message[7] & 64:
+                print('Flash 4 (Key 33) released')
+            else:
+                print('Flash 4 (Key 33) pressed')
+            if message[7] & 128:
+                print('Flash 3 (Key 32) released')
+            else:
+                print('Flash 3 (Key 32) pressed')
+
+            if message[8] & 1:
+                print('Flash 2 (Key 31) released')
+            else:
+                print('Flash 2 (Key 31) pressed')
+            if message[8] & 2:
+                print('Flash 1 (Key 30) released')
+            else:
+                print('Flash 1 (Key 30) pressed')
+
+            print('Fader 1', int(message[15]))
+            self.app.masters[10].value = int(message[15])
+            self.app.masters[10].level_changed()
+            print('Fader 2', message[16])
+            print('Fader 3', message[17])
+            print('Fader 4', message[18])
+            print('Fader 5', message[19])
+            print('Fader 6', message[20])
+            print('Fader 7', message[21])
+            print('Fader 8', message[22])
+            print('Fader 9', message[23])
+            print('Fader 10', message[24])
+
+        return True
 
     def step_filter_func1(self, model, iter, data):
         """ Filter for the first part of the cues list """
@@ -340,6 +455,8 @@ class Window(Gtk.ApplicationWindow):
             return self.app.sequences_tab.on_key_press_event(widget, event)
         if child == self.app.channeltime_tab:
             return self.app.channeltime_tab.on_key_press_event(widget, event)
+        if child == self.app.midi_tab:
+            return self.app.midi_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)
