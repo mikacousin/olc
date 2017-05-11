@@ -239,9 +239,12 @@ class Ascii(object):
                                 time = float(time_str)
                             #print("Temps:", time, "Delay:", delay)
                         if line[:14] == '$$PARTTIMECHAN':
-                            p = line[15:]
-                            #print("Channel N°", p)
-                            channel_time[int(p)] = ChannelTime(delay, time)
+                            p = line[15:].split(' ')
+                            # We could have several channels
+                            for chan in p:
+                                if chan.isdigit():
+                                    #print("PARTTIMECHAN: Channel N°", chan)
+                                    channel_time[int(chan)] = ChannelTime(delay, time)
                         if line[:4] == 'CHAN':
                             #print ("        Chanels :")
                             #p = line[5:-1].split(" ")
@@ -323,6 +326,7 @@ class Ascii(object):
                     flag_group = True
                     #print ("Group :", line[6:])
                     channels = array.array('B', [0] * 512)
+                    # TODO: Le numéro du groupe peut etre un float
                     group_nb = int(line[6:])
                 if flag_group:
                     if line[:1] == "!":
@@ -357,6 +361,7 @@ class Ascii(object):
                         txt = ""
 
                 if line[:13] == '$MASTPAGEITEM':
+                    # TODO: DLight use Type "2" for Groups
                     #print("Master!")
                     item = line[14:].split(" ")
                     #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
