@@ -63,7 +63,7 @@ class SettingsDialog:
             Gio.Application.get_default().sequences_tab.flowbox.invalidate_filter()
 
         # Redraw Groups Tab if exist
-        if Gio.Application.get_default().patch_tab != None:
+        if Gio.Application.get_default().group_tab != None:
             Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
 
         # Redraw Masters Window if exist

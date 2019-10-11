@@ -198,7 +198,6 @@ class Application(Gtk.Application):
         return True
 
     def on_dmx(self, dmxframe):
-        #for i in range(512):
         for output in range(len(dmxframe)):
             channel = self.patch.outputs[output]
             level = dmxframe[output]

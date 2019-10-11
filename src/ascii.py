@@ -1,5 +1,5 @@
 import array
-from gi.repository import Gio, Gtk, GObject
+from gi.repository import Gio, Gtk, GObject, Pango
 
 from olc.cue import Cue, ChannelTime
 from olc.sequence import Sequence
@@ -254,8 +254,10 @@ class Ascii(object):
                                 #print ("            ", r[0], "@", int(r[1][1:], 16))
                                 if r[0] != "":
                                     channel = int(r[0])
-                                    level = int(r[1][1:], 16)
-                                    channels[channel-1] = level
+                                    # For now, ignore channels greater than 512
+                                    if channel < 512:
+                                        level = int(r[1][1:], 16)
+                                        channels[channel-1] = level
                         #if txt and t_out and t_in and channels:
                         if line == "":
                             #print("Fin Cue", mem)
@@ -318,7 +320,7 @@ class Ascii(object):
                     flag_group = True
                     #print ("Group :", line[7:])
                     channels = array.array('B', [0] * 512)
-                    group_nb = int(line[7:])
+                    group_nb = float(line[7:])
                 if line[:5] == 'GROUP':
                     flag_seq = False
                     flag_patch = False
@@ -327,7 +329,7 @@ class Ascii(object):
                     #print ("Group :", line[6:])
                     channels = array.array('B', [0] * 512)
                     # TODO: Le numéro du groupe peut etre un float
-                    group_nb = int(line[6:])
+                    group_nb = float(line[6:])
                 if flag_group:
                     if line[:1] == "!":
                         flag_group = False
@@ -443,8 +445,13 @@ class Ascii(object):
                     bg = "#997004"
                 else:
                     bg = "#232729"
+                # Next Cue in Bold
+                if i == 1:
+                    weight = Pango.Weight.ULTRAHEAVY
+                else:
+                    weight = Pango.Weight.NORMAL
                 self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time, bg])
+                    str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time, bg, weight])
                 self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
                     str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time])
 

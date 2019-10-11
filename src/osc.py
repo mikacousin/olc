@@ -109,6 +109,7 @@ class OscServer(liblo.ServerThread):
         """ Go """
         for a, t in zip(args, types):
             if a == 1:
+                self.client.send('/seq/go', self.window.keystring)
                 self.window.keypress_space()
 
     def seqplus_cb(self, path, args, types):

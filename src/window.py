@@ -2,7 +2,7 @@ import time
 import threading
 import array
 import mido
-from gi.repository import Gio, Gtk, Gdk, GObject, GLib
+from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
 from ola import OlaClient
 
 from olc.group import Group
@@ -101,7 +101,7 @@ class Window(Gtk.ApplicationWindow):
         self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str)
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, int)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
 
         for i in range(self.app.sequence.last):
@@ -124,7 +124,7 @@ class Window(Gtk.ApplicationWindow):
                 channel_time = ""
             bg = "#232729"
             self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                wait, t_out, t_in, channel_time, bg])
+                wait, t_out, t_in, channel_time, bg, Pango.Weight.NORMAL])
             self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 wait, t_out, t_in, channel_time])
 
@@ -141,7 +141,7 @@ class Window(Gtk.ApplicationWindow):
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=7)
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=7, weight=8)
             if i == 2:
                 column.set_min_width(600)
                 column.set_resizable(True)
@@ -188,6 +188,8 @@ class Window(Gtk.ApplicationWindow):
 
         # Select first Cue
         self.cues_liststore1[0][7] = "#997004"
+        # Bold next Cue
+        self.cues_liststore1[1][8] = Pango.Weight.ULTRAHEAVY
 
         # Open MIDI input port
         #self.inport = mido.open_input('UC-33 USB MIDI Controller:UC-33 USB MIDI Controller MIDI  24:1')
@@ -309,6 +311,8 @@ class Window(Gtk.ApplicationWindow):
             self.app.masters[10].value = int(message[15])
             self.app.masters[10].level_changed()
             print('Fader 2', message[16])
+            self.app.masters[0].value = int(message[16])
+            self.app.masters[0].level_changed()
             print('Fader 3', message[17])
             print('Fader 4', message[18])
             print('Fader 5', message[19])

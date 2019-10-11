@@ -175,12 +175,15 @@ class UC33Widget(Gtk.Widget):
                 self.queue_draw()
 
         # TODO: Popover
-        grid = Gtk.Grid()
-        grid.set_orientation(Gtk.Orientation.VERTICAL)
+        group_store = Gtk.ListStore(str)
         for group in self.app.groups:
-            #print(group.index, group.text)
-            label = Gtk.Label(group.text)
-            grid.add(label)
+            group_store.append([group.text])
+        group_combo = Gtk.ComboBox.new_with_model(group_store)
+        group_combo.connect('changed', self.on_group_combo_changed)
+        renderer_text = Gtk.CellRendererText()
+        group_combo.pack_start(renderer_text, True)
+        group_combo.add_attribute(renderer_text, 'text', 0)
+
         rec = Gdk.Rectangle()
         rec.x = self.selected[0]
         rec.y = self.selected[1]
@@ -189,8 +192,15 @@ class UC33Widget(Gtk.Widget):
         popover = Gtk.Popover.new(self)
         popover.set_pointing_to(rec)
         #popover.set_position(Gtk.PositionType.BOTTOM)
-        popover.add(grid)
+        popover.add(group_combo)
         popover.show_all()
+
+    def on_group_combo_changed(self, combo):
+        tree_iter = combo.get_active_iter()
+        if tree_iter != None:
+            model = combo.get_model()
+            group = model[tree_iter][0]
+            print("Selected group:", group)
 
     def do_draw(self, cr):
 

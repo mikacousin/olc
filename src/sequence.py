@@ -1,7 +1,7 @@
 import array
 import threading
 import time
-from gi.repository import Gtk, GLib, Gio, Gdk
+from gi.repository import Gtk, GLib, Gio, Gdk, Pango
 
 
 from olc.cue import Cue
@@ -9,7 +9,7 @@ from olc.dmx import PatchDmx
 from olc.customwidgets import ChannelWidget
 
 class Sequence(object):
-    def __init__(self, index, patch, type_seq = "Normal", text=""):
+    def __init__(self, index, patch, type_seq="Normal", text=""):
         self.index = index
         self.type_seq = type_seq
         self.text = text
@@ -39,7 +39,7 @@ class Sequence(object):
         # On enregistre la liste des circuits présents dans la mémoire
         for i in range(512):
             if cue.channels[i] != 0:
-                self.channels[i] = 1 # Si présent on le note
+                self.channels[i] = 1  # Si présent on le note
 
     def sequence_plus(self, app):
         self.app = app
@@ -70,6 +70,8 @@ class Sequence(object):
             # Update ui
             self.app.window.cues_liststore1[position-1][7] = "#232729"
             self.app.window.cues_liststore1[position][7] = "#997004"
+            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY  # Next Cue in Bold
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -125,6 +127,8 @@ class Sequence(object):
             # Update ui
             self.app.window.cues_liststore1[position+1][7] = "#232729"
             self.app.window.cues_liststore1[position][7] = "#997004"
+            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY # Next Cue in Bold
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -169,6 +173,8 @@ class Sequence(object):
                 # Update ui
                 self.app.window.cues_liststore1[old_pos][7] = "#232729"
                 self.app.window.cues_liststore1[position][7] = "#997004"
+                self.app.window.cues_liststore1[old_pos][8] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY
                 self.app.window.step_filter1.refilter()
                 self.app.window.step_filter2.refilter()
                 path = Gtk.TreePath.new_from_indices([0])
@@ -246,8 +252,8 @@ class ThreadGo(threading.Thread):
         while i < delay and not self._stopevent.isSet():
             # Update DMX levels
             self.update_levels(delay, delay_in, delay_out, delay_wait, i, position)
-            # Sleep for 5ms
-            time.sleep(0.005)
+            # Sleep for 20ms TODO: find godd value for sleeping
+            time.sleep(0.02)
             i = (time.time() * 1000) - start_time
 
         # Stop thread if we send stop message
@@ -385,9 +391,13 @@ class ThreadGo(threading.Thread):
         if position == 0:
             self.app.window.cues_liststore1[-2][7] = "#232729"
             self.app.window.cues_liststore1[position][7] = "#997004"
+            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY
         else:
             self.app.window.cues_liststore1[position-1][7] = "#232729"
             self.app.window.cues_liststore1[position][7] = "#997004"
+            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY
         self.app.window.step_filter1.refilter()
         self.app.window.step_filter2.refilter()
         path = Gtk.TreePath.new_from_indices([0])
