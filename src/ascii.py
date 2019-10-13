@@ -436,9 +436,11 @@ class Ascii(object):
             t_in = self.app.sequence.cues[1].time_in
             t_out = self.app.sequence.cues[1].time_out
             t_wait = self.app.sequence.cues[1].wait
+            t_total = self.app.sequence.cues[1].total_time
             self.app.window.sequential.time_in = t_in
             self.app.window.sequential.time_out = t_out
             self.app.window.sequential.wait = t_wait
+            self.app.window.sequential.total_time = t_total
 
             # On met à jour la liste des mémoires
             self.app.window.cues_liststore1.clear()

@@ -83,7 +83,7 @@ class Window(Gtk.ApplicationWindow):
         self.paned.add2(self.grid)
 
         self.paned2 = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        self.paned2.set_position(950)
+        self.paned2.set_position(800)
         self.paned2.add1(self.paned)
 
         self.app = Gio.Application.get_default()
