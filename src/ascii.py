@@ -328,13 +328,14 @@ class Ascii(object):
                 if line[:7] == 'PATCH 1':
                     for p in line[8:-1].split(" "):
                         q = p.split("<")
-                        r = q[1].split("@")
-                        if int(q[0]) <= 512 and int(r[0]) <=512:
-                            #print ("Chanel :", q[0], "-> Output :", r[0], "@", r[1])
-                            self.app.patch.add_output(int(q[0]), int(r[0]))
-                            self.app.window.flowbox.invalidate_filter()
-                        else:
-                            print("Attention ! PLusieurs univers !!!")
+                        if q[0]:
+                            r = q[1].split("@")
+                            if int(q[0]) <= 512 and int(r[0]) <=512:
+                                #print ("Chanel :", q[0], "-> Output :", r[0], "@", r[1])
+                                self.app.patch.add_output(int(q[0]), int(r[0]))
+                                self.app.window.flowbox.invalidate_filter()
+                            else:
+                                print("Attention ! PLusieurs univers !!!")
 
                 if line[:6] == '$GROUP':
                     flag_seq = False

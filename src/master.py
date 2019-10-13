@@ -10,7 +10,7 @@ class Master(object):
         self.page = page
         self.number = number
         self.content_type = int(content_type)
-        self.content_value = int(content_value)
+        self.content_value = float(content_value)
         self.exclude_record = exclude_record
         self.text = text
         self.groups = groups
