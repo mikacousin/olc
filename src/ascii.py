@@ -121,23 +121,35 @@ class Ascii(object):
                         if line[:4] == 'DOWN':
                             p = line[5:]
                             time = p.split(" ")[0]
+                            delay = p.split(" ")[1]
                             if ":" in time:
                                 t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
                             else:
                                 t_out = float(time)
                             if t_out == 0:
                                 t_out = 0.1
-                            #print("Time Out:", t_out)
+                            if ":" in delay:
+                                d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
+                            else:
+                                d_out = float(delay)
+                            # print("Time Out:", t_out)
+                            # print("Delay Out:", d_out)
                         if line[:2] == 'UP':
                             p = line[3:]
                             time = p.split(" ")[0]
+                            delay = p.split(" ")[1]
                             if ":" in time:
                                 t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
                             else:
                                 t_in = float(time)
                             if t_in == 0:
                                 t_in = 0.1
-                            #print("Time In:", t_in)
+                            if ":" in delay:
+                                d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
+                            else:
+                                d_in = float(delay)
+                            # print("Time In:", t_in)
+                            # print("Delay In:", d_in)
                         if line[:4] == 'CHAN':
                             #print ("        Chanels :")
                             p = line[5:].split(" ")
@@ -160,7 +172,7 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt)
+                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, delay_out=d_out, delay_in=d_in, wait=wait, text=txt)
 
                             self.app.chasers[-1].add_cue(cue)
 
@@ -200,6 +212,7 @@ class Ascii(object):
                             #print ("        Time Out :", line[5:])
                             p = line[5:]
                             time = p.split(" ")[0]
+                            delay = p.split(" ")[1]
                             # Si on a un tps avec ":" on est en minutes
                             if ":" in time:
                                 t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
@@ -207,10 +220,15 @@ class Ascii(object):
                                 t_out = float(time)
                             if t_out == 0:
                                 t_out = 0.1
+                            if ":" in delay:
+                                d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
+                            else:
+                                d_out = float(delay)
                         if line[:2] == 'UP':
                             #print ("        Time In :", line[3:])
                             p = line[3:]
                             time = p.split(" ")[0]
+                            delay = p.split(" ")[1]
                             # Si on a un tps avec ":" on est en minutes
                             if ":" in time:
                                 t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
@@ -218,6 +236,10 @@ class Ascii(object):
                                 t_in = float(time)
                             if t_in == 0:
                                 t_in = 0.1
+                            if ":" in delay:
+                                d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
+                            else:
+                                d_in = float(delay)
                         if line[:6] == '$$WAIT' or line[:6] == '$$Wait':
                             #print ("        Wait :", line[7:])
                             #wait = float(line[7:].split(" ")[0])
@@ -269,16 +291,17 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, wait=wait, text=txt, channel_time=channel_time)
+                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, text=txt, channel_time=channel_time)
 
-                            #print("StepId :", cue.index, "Memory :", cue.memory)
-                            #print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
-                            #print("Text :", cue.text)
-                            #for channel in channel_time.keys():
-                            #   print("Channel Time :", channel, channel_time[channel].delay, channel_time[channel].time)
-                            #print("")
-                            #for channel in range(512):
-                            #    print("Channel :", channel+1, "@", cue.channels[channel])
+                            # print("StepId :", cue.index, "Memory :", cue.memory)
+                            # print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
+                            # print("Delay In :", cue.delay_in, "\nDelay Out :", cue.delay_out)
+                            # print("Text :", cue.text)
+                            # for channel in channel_time.keys():
+                            #     print("Channel Time :", channel, channel_time[channel].delay, channel_time[channel].time)
+                            # print("")
+                            # for channel in range(512):
+                            #     print("Channel :", channel+1, "@", cue.channels[channel])
 
                             self.app.sequence.add_cue(cue)
                             in_cue = False
@@ -434,10 +457,22 @@ class Ascii(object):
                     t_out = int(self.app.sequence.cues[i].time_out)
                 else:
                     t_out = self.app.sequence.cues[i].time_out
+                if self.app.sequence.cues[i].delay_out.is_integer():
+                    d_out = str(int(self.app.sequence.cues[i].delay_out))
+                else:
+                    d_out = str(self.app.sequence.cues[i].delay_out)
+                if d_out == "0":
+                    d_out = ""
                 if self.app.sequence.cues[i].time_in.is_integer():
                     t_in = int(self.app.sequence.cues[i].time_in)
                 else:
                     t_in = self.app.sequence.cues[i].time_in
+                if self.app.sequence.cues[i].delay_in.is_integer():
+                    d_in = str(int(self.app.sequence.cues[i].delay_in))
+                else:
+                    d_in = str(self.app.sequence.cues[i].delay_in)
+                if d_in == "0":
+                    d_in = ""
                 channel_time = str(len(self.app.sequence.cues[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
@@ -451,9 +486,9 @@ class Ascii(object):
                 else:
                     weight = Pango.Weight.NORMAL
                 self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time, bg, weight])
+                    str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight])
                 self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait, str(t_out), str(t_in), channel_time])
+                    str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
 
             self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
             self.app.window.step_filter1.set_visible_func(self.app.window.step_filter_func1)

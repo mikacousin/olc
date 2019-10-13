@@ -94,15 +94,17 @@ class Window(Gtk.ApplicationWindow):
         t_total = self.seq.cues[position].total_time
         t_in = self.seq.cues[position].time_in
         t_out = self.seq.cues[position].time_out
+        d_in = self.seq.cues[position].delay_in
+        d_out = self.seq.cues[position].delay_out
         t_wait = self.seq.cues[position].wait
         channel_time = self.seq.cues[position].channel_time
 
         # Crossfade widget
-        self.sequential = SequentialWidget(t_total, t_in, t_out, t_wait, channel_time)
+        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait, channel_time)
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, int)
-        self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int)
+        self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
         for i in range(self.app.sequence.last):
             if self.seq.cues[i].wait.is_integer():
@@ -115,18 +117,26 @@ class Window(Gtk.ApplicationWindow):
                 t_out = str(int(self.seq.cues[i].time_out))
             else:
                 t_out = str(self.seq.cues[i].time_out)
+            if self.seq.cues[i].delay_out.is_integer():
+                d_out = str(int(self.seq.cues[i].delay_out))
+            else:
+                d_out = str(self.seq.cues[i].delay_out)
             if self.seq.cues[i].time_in.is_integer():
                 t_in = str(int(self.seq.cues[i].time_in))
             else:
                 t_in = str(self.seq.cues[i].time_in)
+            if self.seq.cues[i].delay_in.is_integer():
+                d_in = str(int(self.seq.cues[i].delay_in))
+            else:
+                d_in = str(self.seq.cues[i].delay_in)
             channel_time = str(len(self.seq.cues[i].channel_time))
             if channel_time == "0":
                 channel_time = ""
             bg = "#232729"
             self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                wait, t_out, t_in, channel_time, bg, Pango.Weight.NORMAL])
+                wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL])
             self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                wait, t_out, t_in, channel_time])
+                wait, d_out, t_out, d_in, t_in, channel_time])
 
         # Filter for the first part of the cue list
         self.step_filter1 = self.cues_liststore1.filter_new()
@@ -136,12 +146,12 @@ class Window(Gtk.ApplicationWindow):
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Delay Out", "Out", "Delay In", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=7, weight=8)
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=9, weight=10)
             if i == 2:
                 column.set_min_width(600)
                 column.set_resizable(True)
@@ -155,7 +165,7 @@ class Window(Gtk.ApplicationWindow):
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Out", "In", "Channel Time"]):
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Delay Out", "Out", "Delay In", "In", "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
@@ -187,9 +197,9 @@ class Window(Gtk.ApplicationWindow):
         self.add(self.paned2)
 
         # Select first Cue
-        self.cues_liststore1[0][7] = "#997004"
+        self.cues_liststore1[0][9] = "#997004"
         # Bold next Cue
-        self.cues_liststore1[1][8] = Pango.Weight.ULTRAHEAVY
+        self.cues_liststore1[1][10] = Pango.Weight.ULTRAHEAVY
 
         # Open MIDI input port
         #self.inport = mido.open_input('UC-33 USB MIDI Controller:UC-33 USB MIDI Controller MIDI  24:1')

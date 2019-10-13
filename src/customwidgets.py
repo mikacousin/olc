@@ -461,11 +461,13 @@ class GroupWidget(Gtk.Widget):
 class SequentialWidget(Gtk.Widget):
     __gtype_name__ = 'SequentialWidget'
 
-    def __init__(self, total_time, time_in, time_out, wait, channel_time):
+    def __init__(self, total_time, time_in, time_out, delay_in, delay_out, wait, channel_time):
 
         self.total_time = total_time
         self.time_in = time_in
         self.time_out = time_out
+        self.delay_in = delay_in
+        self.delay_out = delay_out
         self.wait = wait
         self.channel_time = channel_time
 
@@ -477,12 +479,12 @@ class SequentialWidget(Gtk.Widget):
         self.set_size_request(800, 300)
 
     def do_draw(self, cr):
-        if self.time_in > self.time_out:
-            self.time_max = self.time_in
-            self.time_min = self.time_out
+        if self.time_in + self.delay_in > self.time_out + self.delay_out:
+            self.time_max = self.time_in + self.delay_in
+            self.time_min = self.time_out + self.delay_out
         else:
-            self.time_max = self.time_out
-            self.time_min = self.time_in
+            self.time_max = self.time_out + self.delay_out
+            self.time_min = self.time_in + self.delay_in
 
         # Add Wait Time
         self.time_max = self.time_max + self.wait
@@ -538,6 +540,36 @@ class SequentialWidget(Gtk.Widget):
                 cr.show_text(str(self.wait))
         else:
             wait_x = 0
+
+        # Draw Delay Out
+        if self.delay_out:
+            cr.move_to(16+wait_x, 40)
+            cr.line_to(16+wait_x+(inter*self.delay_out), 40)
+            # Draw Delay Out on the time line
+            cr.move_to(12+wait_x+(inter*self.delay_out),16)
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(12)
+            if self.wait.is_integer():              # If time is integer don't show the ".0"
+                cr.show_text(str(int(self.delay_out+self.wait)))
+            else:
+                cr.show_text(str(self.delay_out+self.wait))
+
+        # Draw Delay In
+        if self.delay_in:
+            cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*24))
+            cr.line_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*24))
+            # Draw Delay In on the time line
+            cr.move_to(12+wait_x+(inter*self.delay_in),16)
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(12)
+            if self.wait.is_integer():              # If time is integer don't show the ".0"
+                cr.show_text(str(int(self.delay_in+self.wait)))
+            else:
+                cr.show_text(str(self.delay_in+self.wait))
 
         # Draw Channel Time if any
         self.ct_nb = 0
@@ -604,20 +636,20 @@ class SequentialWidget(Gtk.Widget):
 
         # draw Out line
         cr.set_source_rgb(0.5, 0.5, 0.5)
-        cr.move_to(16+wait_x, 40)
-        cr.line_to(16+wait_x+(inter*self.time_out), allocation.height-32-(len(self.channel_time)*24))
+        cr.move_to(16+wait_x+(inter*self.delay_out), 40)
+        cr.line_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), allocation.height-32-(len(self.channel_time)*24))
         cr.stroke()
-        cr.move_to(16+wait_x+(inter*self.time_out), 24)
-        cr.line_to(16+wait_x+(inter*self.time_out), allocation.height)
+        cr.move_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), 24)
+        cr.line_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), allocation.height)
         cr.set_dash([8.0, 6.0])
         cr.stroke()
         cr.set_dash([])
         # draw an arrow at the end
         arrow_lenght = 12
         arrow_degrees = 10
-        start_x = wait_x + 16
+        start_x = wait_x + (inter*self.delay_out) + 16
         start_y = 40
-        end_x = 16+wait_x+(inter*self.time_out)
+        end_x = 16+wait_x+(inter*self.delay_out)+(inter*self.time_out)
         end_y = allocation.height-32-(len(self.channel_time)*24)
         angle = math.atan2(end_y - start_y, end_x - start_x)
         x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
@@ -630,9 +662,9 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X1 cursor
-        if not wait_x or self.pos_xA > wait_x:
-            x1 = start_x + self.pos_xA -wait_x
-            y1 = start_y + ((self.pos_xA - wait_x) * math.tan(angle))
+        if (not wait_x or self.pos_xA > wait_x) and (not self.delay_out or self.pos_xA > (inter*self.delay_out)):
+            x1 = start_x + self.pos_xA - wait_x - (inter*self.delay_out)
+            y1 = start_y + ((self.pos_xA - wait_x - (inter*self.delay_out)) * math.tan(angle))
             if x1 > end_x:
                 x1 = end_x
                 y1 = end_y
@@ -646,7 +678,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("A")
         else:
-            x1 = start_x + self.pos_xA- wait_x
+            x1 = start_x + self.pos_xA - wait_x - (inter*self.delay_out)
             y1 = start_y
             if x1 > end_x:
                 x1 = end_x
@@ -663,20 +695,20 @@ class SequentialWidget(Gtk.Widget):
 
         # draw In line
         cr.set_source_rgb(0.5, 0.5, 0.5)
-        cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*24))
-        cr.line_to(16+wait_x+(inter*self.time_in), 40)
+        cr.move_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*24))
+        cr.line_to(16+wait_x+(inter*self.delay_in)+(inter*self.time_in), 40)
         cr.stroke()
-        cr.move_to(16+wait_x+(inter*self.time_in), 24)
-        cr.line_to(16+wait_x+(inter*self.time_in), allocation.height)
+        cr.move_to(16+wait_x+(inter*self.delay_in)+(inter*self.time_in), 24)
+        cr.line_to(16+wait_x+(inter*self.delay_in)+(inter*self.time_in), allocation.height)
         cr.set_dash([8.0, 6.0])
         cr.stroke()
         cr.set_dash([])
         # draw an arrow at the end
         arrow_lenght = 12
         arrow_degrees = 10
-        start_x = wait_x + 16
+        start_x = wait_x + 16 + (inter*self.delay_in)
         start_y = allocation.height-32-(len(self.channel_time)*24)
-        end_x = 16+wait_x+(inter*self.time_in)
+        end_x = 16+wait_x+(inter*self.delay_in)+(inter*self.time_in)
         end_y = 40
         angle = math.atan2(end_y - start_y, end_x - start_x)
         x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
@@ -689,9 +721,9 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X2 cursor
-        if not wait_x or self.pos_xB > wait_x:
-            x1 = start_x + self.pos_xB - wait_x
-            y1 = start_y + ((self.pos_xB - wait_x) * math.tan(angle))
+        if (not wait_x or self.pos_xB > wait_x) and (not self.delay_in or self.pos_xB > ((inter*self.delay_in)+wait_x)):
+            x1 = start_x + self.pos_xB - wait_x - (inter*self.delay_in)
+            y1 = start_y + ((self.pos_xB - wait_x - (inter*self.delay_in)) * math.tan(angle))
             if x1 > end_x:
                 x1 = end_x
                 y1 = end_y
@@ -704,8 +736,8 @@ class SequentialWidget(Gtk.Widget):
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 3)
             cr.show_text("B")
-        else:
-            x1 = start_x + self.pos_xB - wait_x
+        else:  # Wait and Delay In
+            x1 = start_x + self.pos_xB - wait_x - (inter*self.delay_in)
             y1 = start_y
             if x1 > end_x:
                 x1 = end_x

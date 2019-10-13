@@ -56,22 +56,26 @@ class Sequence(object):
         position += 1
         if position < self.last-1:     # Stop on the last cue
             self.position += 1
-            self.window.sequential.pos_xA = 0
-            self.window.sequential.pos_xB = 0
             t_in = self.cues[position+1].time_in
             t_out = self.cues[position+1].time_out
+            d_in = self.cues[position+1].delay_in
+            d_out = self.cues[position+1].delay_out
             t_wait = self.cues[position+1].wait
             self.window.sequential.total_time = self.cues[position+1].total_time
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
+            self.window.sequential.delay_in = d_in
+            self.window.sequential.delay_out = d_out
             self.window.sequential.wait = t_wait
             self.window.sequential.channel_time = self.cues[position+1].channel_time
+            self.app.window.sequential.pos_xA = 0
+            self.app.window.sequential.pos_xB = 0
 
             # Update ui
-            self.app.window.cues_liststore1[position-1][7] = "#232729"
-            self.app.window.cues_liststore1[position][7] = "#997004"
-            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY  # Next Cue in Bold
+            self.app.window.cues_liststore1[position-1][9] = "#232729"
+            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY  # Next Cue in Bold
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -109,26 +113,30 @@ class Sequence(object):
         position -= 1
         if position >= 0:
             self.position -= 1
-            self.window.sequential.pos_xA = 0
-            self.window.sequential.pos_xB = 0
             t_in = self.cues[position+1].time_in   # Always use times for next cue
             t_out = self.cues[position+1].time_out
+            d_in = self.cues[position+1].delay_in
+            d_out = self.cues[position+1].delay_out
             t_wait = self.cues[position+1].wait
             self.window.sequential.total_time = self.cues[position+1].total_time
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
+            self.window.sequential.delay_in = d_in
+            self.window.sequential.delay_out = d_out
             self.window.sequential.wait = t_wait
             self.window.sequential.channel_time = self.cues[position+1].channel_time
+            self.app.window.sequential.pos_xA = 0
+            self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
             subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
             self.app.window.header.set_subtitle(subtitle)
 
             # Update ui
-            self.app.window.cues_liststore1[position+1][7] = "#232729"
-            self.app.window.cues_liststore1[position][7] = "#997004"
-            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY # Next Cue in Bold
+            self.app.window.cues_liststore1[position+1][9] = "#232729"
+            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY # Next Cue in Bold
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -161,20 +169,24 @@ class Sequence(object):
                 # Redraw Sequential window with new times
                 t_in = self.app.sequence.cues[position+1].time_in
                 t_out = self.app.sequence.cues[position+1].time_out
+                d_in = self.cues[position+1].delay_in
+                d_out = self.cues[position+1].delay_out
                 t_wait = self.app.sequence.cues[position+1].wait
                 self.window.sequential.total_time = self.cues[position+1].total_time
                 self.app.window.sequential.time_in = t_in
                 self.app.window.sequential.time_out = t_out
+                self.window.sequential.delay_in = d_in
+                self.window.sequential.delay_out = d_out
                 self.app.window.sequential.wait = t_wait
                 self.window.sequential.channel_time = self.cues[position+1].channel_time
                 self.app.window.sequential.pos_xA = 0
                 self.app.window.sequential.pos_xB = 0
 
                 # Update ui
-                self.app.window.cues_liststore1[old_pos][7] = "#232729"
-                self.app.window.cues_liststore1[position][7] = "#997004"
-                self.app.window.cues_liststore1[old_pos][8] = Pango.Weight.NORMAL
-                self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY
+                self.app.window.cues_liststore1[old_pos][9] = "#232729"
+                self.app.window.cues_liststore1[position][9] = "#997004"
+                self.app.window.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY
                 self.app.window.step_filter1.refilter()
                 self.app.window.step_filter2.refilter()
                 path = Gtk.TreePath.new_from_indices([0])
@@ -227,31 +239,35 @@ class ThreadGo(threading.Thread):
         # On récupère les temps de montée et de descente de la mémoire suivante
         t_in = self.app.sequence.cues[position+1].time_in
         t_out = self.app.sequence.cues[position+1].time_out
+        d_in = self.app.sequence.cues[position+1].delay_in
+        d_out = self.app.sequence.cues[position+1].delay_out
         t_wait = self.app.sequence.cues[position+1].wait
         t_total = self.app.sequence.cues[position+1].total_time
 
         # Quel est le temps le plus long
-        if t_in > t_out:
-            t_max = t_in
-            t_min = t_out
+        if t_in + d_in > t_out + d_out:
+            t_max = t_in + d_in
+            t_min = t_out + d_out
         else:
-            t_max = t_out
-            t_min = t_in
+            t_max = t_out + d_out
+            t_min = t_in + d_in
 
         t_max = t_max + t_wait
         t_min = t_min + t_wait
 
-        start_time = time.time() * 1000 # actual time in ms
+        start_time = time.time() * 1000  # actual time in ms
         delay = t_total * 1000
         delay_in = t_in * 1000
         delay_out = t_out * 1000
         delay_wait = t_wait * 1000
+        delay_d_in = d_in * 1000
+        delay_d_out = d_out * 1000
         i = (time.time() * 1000) - start_time
 
         # Boucle sur le temps de montée ou de descente (le plus grand)
         while i < delay and not self._stopevent.isSet():
             # Update DMX levels
-            self.update_levels(delay, delay_in, delay_out, delay_wait, i, position)
+            self.update_levels(delay, delay_in, delay_out, delay_d_in, delay_d_out, delay_wait, i, position)
             # Sleep for 20ms TODO: find godd value for sleeping
             time.sleep(0.02)
             i = (time.time() * 1000) - start_time
@@ -285,10 +301,14 @@ class ThreadGo(threading.Thread):
             self.app.sequence.position += 1
             t_in = self.app.sequence.cues[position+1].time_in
             t_out = self.app.sequence.cues[position+1].time_out
+            d_in = self.app.sequence.cues[position+1].delay_in
+            d_out = self.app.sequence.cues[position+1].delay_out
             t_wait = self.app.sequence.cues[position+1].wait
             self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
             self.app.window.sequential.time_in = t_in
             self.app.window.sequential.time_out = t_out
+            self.app.window.sequential.delay_in = d_in
+            self.app.window.sequential.delay_out = d_out
             self.app.window.sequential.wait = t_wait
             self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
@@ -310,10 +330,14 @@ class ThreadGo(threading.Thread):
             position = 0
             t_in = self.app.sequence.cues[position+1].time_in
             t_out = self.app.sequence.cues[position+1].time_out
+            d_in = self.app.sequence.cues[position+1].delay_in
+            d_out = self.app.sequence.cues[position+1].delay_out
             t_wait = self.app.sequence.cues[position+1].wait
             self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
             self.app.window.sequential.time_in = t_in
             self.app.window.sequential.time_out = t_out
+            self.app.window.sequential.delay_in = d_in
+            self.app.window.sequential.delay_out = d_out
             self.app.window.sequential.wait = t_wait
             self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
@@ -328,7 +352,7 @@ class ThreadGo(threading.Thread):
     def stop(self):
         self._stopevent.set()
 
-    def update_levels(self, delay, delay_in, delay_out, delay_wait, i, position):
+    def update_levels(self, delay, delay_in, delay_out, delay_d_in, delay_d_out, delay_wait, i, position):
         # Update sliders position
         # Get width of the sequential widget to place cursors correctly
         allocation = self.app.window.sequential.get_allocation()
@@ -373,14 +397,18 @@ class ThreadGo(threading.Thread):
                             self.app.sequence.position = 0
 
                         # Si le level augmente, on prends le temps de montée
-                        if next_level > old_level and i < delay_in+delay_wait:
-                            level = int(((next_level - old_level+1) / delay_in) * (i-delay_wait)) + old_level
+                        if next_level > old_level and i < delay_in+delay_wait+delay_d_in and i > delay_wait+delay_d_in:
+                            level = int(((next_level - old_level+1) / delay_in) * (i-delay_wait-delay_d_in)) + old_level
+                        elif next_level > old_level and i > delay_in+delay_wait+delay_d_in:
+                            level = next_level
                         # Si le level descend, on prend le temps de descente
-                        elif next_level < old_level and i < delay_out+delay_wait:
-                            level = old_level - abs(int(((next_level - old_level-1) / delay_out) *(i-delay_wait)))
+                        elif next_level < old_level and i < delay_out+delay_wait+delay_d_out and i > delay_wait+delay_d_out:
+                            level = old_level - abs(int(((next_level - old_level-1) / delay_out) * (i-delay_wait-delay_d_out)))
+                        elif next_level < old_level and i > delay_out+delay_wait+delay_d_out:
+                            level = next_level
                         # Sinon, la valeur est déjà bonne
                         else:
-                            level = next_level
+                            level = old_level
 
                         self.app.dmx.sequence[channel-1] = level
 
@@ -389,15 +417,15 @@ class ThreadGo(threading.Thread):
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
         if position == 0:
-            self.app.window.cues_liststore1[-2][7] = "#232729"
-            self.app.window.cues_liststore1[position][7] = "#997004"
-            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY
+            self.app.window.cues_liststore1[-2][9] = "#232729"
+            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY
         else:
-            self.app.window.cues_liststore1[position-1][7] = "#232729"
-            self.app.window.cues_liststore1[position][7] = "#997004"
-            self.app.window.cues_liststore1[position][8] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][8] = Pango.Weight.ULTRAHEAVY
+            self.app.window.cues_liststore1[position-1][9] = "#232729"
+            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY
         self.app.window.step_filter1.refilter()
         self.app.window.step_filter2.refilter()
         path = Gtk.TreePath.new_from_indices([0])

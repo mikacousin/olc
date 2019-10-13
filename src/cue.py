@@ -1,22 +1,24 @@
 import array
 
 class Cue(object):
-    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, wait=0.0, text="", channel_time={}):
+    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0, wait=0.0, text="", channel_time={}):
         self.index = index
         self.memory = memory
         self.channels = channels
         self.time_in = time_in
         self.time_out = time_out
+        self.delay_in = delay_in
+        self.delay_out = delay_out
         self.wait = wait
         self.text = text
         self.channel_time = channel_time
         # TODO: Add 'delay in' and 'delay out'
 
         # Find the time cue need to operate
-        if self.time_in > self.time_out:
-            self.total_time = self.time_in + self.wait
+        if self.time_in + self.delay_in > self.time_out + self.delay_out:
+            self.total_time = self.time_in + self.delay_in + self.wait
         else:
-            self.total_time = self.time_out + self.wait
+            self.total_time = self.time_out + self.delay_out + self.wait
         for channel in self.channel_time.keys():
             if channel_time[channel].delay + channel_time[channel].time + self.wait > self.total_time:
                 self.total_time = channel_time[channel].delay + channel_time[channel].time + self.wait
@@ -41,6 +43,7 @@ if __name__ == "__main__":
 
     print("Step :", cue.index, "Memory :",cue.memory)
     print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
+    print("Delay In :", cue.delay_in, "\nDelay Out :", cue.delay_out)
     print("Text :", cue.text)
     print("")
     for i in range(512):
