@@ -623,12 +623,18 @@ class SequenceTab(Gtk.Grid):
 
     def wait_edited(self, widget, path, text):
 
+        if text == '':
+            text = '0'
+
         if text.replace('.','',1).isdigit():
 
             if text[0] == ".":
                 text = '0' + text
 
-            self.liststore2[path][3] = text
+            if text == "0":
+                self.liststore2[path][3] = ""
+            else:
+                self.liststore2[path][3] = text
 
             # Find selected sequence
             seq_path, focus_column = self.treeview1.get_cursor()
@@ -662,8 +668,12 @@ class SequenceTab(Gtk.Grid):
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
-                self.app.window.cues_liststore1[path][3] = text
-                self.app.window.cues_liststore2[path][3] = text
+                if text == "0":
+                    self.app.window.cues_liststore1[path][3] = ""
+                    self.app.window.cues_liststore2[path][3] = ""
+                else:
+                    self.app.window.cues_liststore1[path][3] = text
+                    self.app.window.cues_liststore2[path][3] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.wait = float(text)
                     self.app.window.sequential.total_time = self.seq.cues[step].total_time
