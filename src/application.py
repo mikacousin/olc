@@ -88,6 +88,8 @@ class Application(Gtk.Application):
         self.window = Window(self, self.patch)
         self.sequence.window = self.window
         self.window.show_all()
+        # No selected channel on startup
+        self.window.flowbox.unselect_all()
 
         # Create several DMX arrays
         self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters, self.window)
