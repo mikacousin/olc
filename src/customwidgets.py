@@ -522,11 +522,22 @@ class SequentialWidget(Gtk.Widget):
 
         # Draw Wait if any
         if self.wait > 0:
+            # Draw a grey box
+            cr.set_source_rgb(0.2, 0.2, 0.2)
+            cr.set_line_width(1)
+            cr.rectangle(16, 40, (inter*self.wait), allocation.height-70-(len(self.channel_time)*24))
+            cr.fill()
             # Draw Wait lines
+            cr.set_source_rgb(0.5, 0.5, 0.9)
+            cr.set_line_width(3)
             cr.move_to(16, 40)
             cr.line_to(16+(inter*self.wait), 40)
+            cr.stroke()
+            cr.set_source_rgb(0.9, 0.5, 0.5)
+            cr.set_line_width(3)
             cr.move_to(16, allocation.height-32-(len(self.channel_time)*24))
             cr.line_to(16+(inter*self.wait), allocation.height-32-(len(self.channel_time)*24))
+            cr.stroke()
             wait_x = inter * self.wait
             # Draw Wait time on the time line
             cr.move_to(12+(inter*self.wait),16)
@@ -543,8 +554,11 @@ class SequentialWidget(Gtk.Widget):
 
         # Draw Delay Out
         if self.delay_out:
+            cr.set_source_rgb(0.5, 0.5, 0.9)
+            cr.set_line_width(3)
             cr.move_to(16+wait_x, 40)
             cr.line_to(16+wait_x+(inter*self.delay_out), 40)
+            cr.stroke()
             # Draw Delay Out on the time line
             cr.move_to(12+wait_x+(inter*self.delay_out),16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -558,8 +572,11 @@ class SequentialWidget(Gtk.Widget):
 
         # Draw Delay In
         if self.delay_in:
+            cr.set_source_rgb(0.9, 0.5, 0.5)
+            cr.set_line_width(3)
             cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*24))
             cr.line_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*24))
+            cr.stroke()
             # Draw Delay In on the time line
             cr.move_to(12+wait_x+(inter*self.delay_in),16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -635,7 +652,8 @@ class SequentialWidget(Gtk.Widget):
             self.ct_nb += 1
 
         # draw Out line
-        cr.set_source_rgb(0.5, 0.5, 0.5)
+        cr.set_source_rgb(0.5, 0.5, 0.9)
+        cr.set_line_width(3)
         cr.move_to(16+wait_x+(inter*self.delay_out), 40)
         cr.line_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), allocation.height-32-(len(self.channel_time)*24))
         cr.stroke()
@@ -694,7 +712,7 @@ class SequentialWidget(Gtk.Widget):
             cr.show_text("A")
 
         # draw In line
-        cr.set_source_rgb(0.5, 0.5, 0.5)
+        cr.set_source_rgb(0.9, 0.5, 0.5)
         cr.move_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*24))
         cr.line_to(16+wait_x+(inter*self.delay_in)+(inter*self.time_in), 40)
         cr.stroke()
