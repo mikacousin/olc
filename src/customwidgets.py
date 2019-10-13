@@ -498,6 +498,8 @@ class SequentialWidget(Gtk.Widget):
         allocation = self.get_allocation()
 
         # dessine un cadre
+        if self.pos_xA or self.pos_xB:  # Red filter in fades
+            cr.set_source_rgba(1, 0, 0, 0.1)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
         cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -524,6 +526,8 @@ class SequentialWidget(Gtk.Widget):
         if self.wait > 0:
             # Draw a grey box
             cr.set_source_rgb(0.2, 0.2, 0.2)
+            if self.pos_xA or self.pos_xB:  # Red filter in fades
+                cr.set_source_rgba(1, 0, 0, 0.1)
             cr.set_line_width(1)
             cr.rectangle(16, 40, (inter*self.wait), allocation.height-70-(len(self.channel_time)*24))
             cr.fill()
