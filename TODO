@@ -1,10 +1,9 @@
 - Voir si on peut avoir la meme memoire à deux endroits
-- Delay In, Delay Out
 - Create new masters
 - Add GoBack and Pause
 - Add Track Channels
 - Edit Chasers
-- Change Time In, Time Out, Wait in Main Window
+- Change Time In, Time Out, Wait, Delay In, Delay Out in Main Window
 - Manual Crossfade
 - Launch olad if not
 - Ola Configuration
