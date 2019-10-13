@@ -562,9 +562,15 @@ class SequenceTab(Gtk.Grid):
             if i == 3:
                 renderer.set_property('editable', True)
                 renderer.connect('edited', self.wait_edited)
+            if i == 4:
+                renderer.set_property('editable', True)
+                renderer.connect('edited', self.delay_out_edited)
             if i == 5:
                 renderer.set_property('editable', True)
                 renderer.connect('edited', self.out_edited)
+            if i == 6:
+                renderer.set_property('editable', True)
+                renderer.connect('edited', self.delay_in_edited)
             if i == 7:
                 renderer.set_property('editable', True)
                 renderer.connect('edited', self.in_edited)
@@ -652,10 +658,10 @@ class SequenceTab(Gtk.Grid):
             # Update Wait value
             self.seq.cues[step].wait = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in > self.seq.cues[step].time_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait
+            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait
+                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
             for channel in self.seq.cues[step].channel_time.keys():
                 t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
                 if t > self.seq.cues[step].total_time:
@@ -704,10 +710,10 @@ class SequenceTab(Gtk.Grid):
             # Update Time Out value
             self.seq.cues[step].time_out = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in > self.seq.cues[step].time_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait
+            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait
+                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
             for channel in self.seq.cues[step].channel_time.keys():
                 t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
                 if t > self.seq.cues[step].total_time:
@@ -752,10 +758,10 @@ class SequenceTab(Gtk.Grid):
             # Update Time In value
             self.seq.cues[step].time_in = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in > self.seq.cues[step].time_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait
+            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait
+                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
             for channel in self.seq.cues[step].channel_time.keys():
                 t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
                 if t > self.seq.cues[step].total_time:
@@ -772,6 +778,122 @@ class SequenceTab(Gtk.Grid):
                 self.app.window.cues_liststore2[path][6] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.time_in = float(text)
+                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.queue_draw()
+
+    def delay_out_edited(self, widget, path, text):
+
+        if text == '':
+            text = '0'
+
+        if text.replace('.','',1).isdigit():
+
+            if text[0] == ".":
+                text = '0' + text
+
+            if text == "0":
+                self.liststore2[path][4] = ""
+            else:
+                self.liststore2[path][4] = text
+
+            # Find selected sequence
+            seq_path, focus_column = self.treeview1.get_cursor()
+            selected = seq_path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == self.app.sequence.index:
+                self.seq = self.app.sequence
+            else:
+                for i in range(len(self.app.chasers)):
+                    if sequence == self.app.chasers[i].index:
+                        self.seq = self.app.chasers[i]
+            # Find Cue
+            step = int(self.liststore2[path][0])
+
+            # Update Delay Out value
+            self.seq.cues[step].delay_out = float(text)
+            # Update Total Time
+            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            else:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
+            for channel in self.seq.cues[step].channel_time.keys():
+                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
+                if t > self.seq.cues[step].total_time:
+                    self.seq.cues[step].total_time = t
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + '*')
+
+            # Update Sequential Tab
+            if self.seq == self.app.sequence:
+                path = str(int(path) + 1)
+                if text == "0":
+                    self.app.window.cues_liststore1[path][4] = ""
+                    self.app.window.cues_liststore2[path][4] = ""
+                else:
+                    self.app.window.cues_liststore1[path][4] = text
+                    self.app.window.cues_liststore2[path][4] = text
+                if self.app.sequence.position+1 == step:
+                    self.app.window.sequential.delay_out = float(text)
+                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.queue_draw()
+
+    def delay_in_edited(self, widget, path, text):
+
+        if text == '':
+            text = '0'
+
+        if text.replace('.','',1).isdigit():
+
+            if text[0] == ".":
+                text = '0' + text
+
+            if text == "0":
+                self.liststore2[path][6] = ""
+            else:
+                self.liststore2[path][6] = text
+
+            # Find selected sequence
+            seq_path, focus_column = self.treeview1.get_cursor()
+            selected = seq_path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == self.app.sequence.index:
+                self.seq = self.app.sequence
+            else:
+                for i in range(len(self.app.chasers)):
+                    if sequence == self.app.chasers[i].index:
+                        self.seq = self.app.chasers[i]
+            # Find Cue
+            step = int(self.liststore2[path][0])
+
+            # Update Delay Out value
+            self.seq.cues[step].delay_in = float(text)
+            # Update Total Time
+            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            else:
+                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
+            for channel in self.seq.cues[step].channel_time.keys():
+                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
+                if t > self.seq.cues[step].total_time:
+                    self.seq.cues[step].total_time = t
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + '*')
+
+            # Update Sequential Tab
+            if self.seq == self.app.sequence:
+                path = str(int(path) + 1)
+                if text == "0":
+                    self.app.window.cues_liststore1[path][6] = ""
+                    self.app.window.cues_liststore2[path][6] = ""
+                else:
+                    self.app.window.cues_liststore1[path][6] = text
+                    self.app.window.cues_liststore2[path][6] = text
+                if self.app.sequence.position+1 == step:
+                    self.app.window.sequential.delay_in = float(text)
                     self.app.window.sequential.total_time = self.seq.cues[step].total_time
                     self.app.window.sequential.queue_draw()
 

@@ -569,7 +569,7 @@ class SequentialWidget(Gtk.Widget):
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12)
-            if self.wait.is_integer():              # If time is integer don't show the ".0"
+            if self.delay_out.is_integer():              # If time is integer don't show the ".0"
                 cr.show_text(str(int(self.delay_out+self.wait)))
             else:
                 cr.show_text(str(self.delay_out+self.wait))
@@ -587,7 +587,7 @@ class SequentialWidget(Gtk.Widget):
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12)
-            if self.wait.is_integer():              # If time is integer don't show the ".0"
+            if self.delay_in.is_integer():              # If time is integer don't show the ".0"
                 cr.show_text(str(int(self.delay_in+self.wait)))
             else:
                 cr.show_text(str(self.delay_in+self.wait))
@@ -684,7 +684,7 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X1 cursor
-        if (not wait_x or self.pos_xA > wait_x) and (not self.delay_out or self.pos_xA > (inter*self.delay_out)):
+        if (not wait_x or self.pos_xA > wait_x) and (not self.delay_out or self.pos_xA > (inter*self.delay_out)+wait_x):
             x1 = start_x + self.pos_xA - wait_x - (inter*self.delay_out)
             y1 = start_y + ((self.pos_xA - wait_x - (inter*self.delay_out)) * math.tan(angle))
             if x1 > end_x:
