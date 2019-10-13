@@ -16,10 +16,13 @@ class Ascii(object):
             self.basename = ""
         self.modified = False
 
+        self.default_time = Gio.Application.get_default().settings.get_double('default-time')
+
         self.app = Gio.Application.get_default()
 
     def load(self):
         self.basename = self.file.get_basename()
+        self.default_time = Gio.Application.get_default().settings.get_double('default-time')
         try:
             fstream = self.file.read(None)
             dstream = Gio.DataInputStream.new(fstream)
@@ -127,7 +130,7 @@ class Ascii(object):
                             else:
                                 t_out = float(time)
                             if t_out == 0:
-                                t_out = 0.1
+                                t_out = self.default_time
                             if ":" in delay:
                                 d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:
@@ -143,7 +146,7 @@ class Ascii(object):
                             else:
                                 t_in = float(time)
                             if t_in == 0:
-                                t_in = 0.1
+                                t_in = default_time
                             if ":" in delay:
                                 d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:
@@ -219,7 +222,7 @@ class Ascii(object):
                             else:
                                 t_out = float(time)
                             if t_out == 0:
-                                t_out = 0.1
+                                t_out = self.default_time
                             if ":" in delay:
                                 d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:
@@ -235,7 +238,7 @@ class Ascii(object):
                             else:
                                 t_in = float(time)
                             if t_in == 0:
-                                t_in = 0.1
+                                t_in = self.default_time
                             if ":" in delay:
                                 d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:

@@ -16,6 +16,11 @@
       <summary>Percent level</summary>
       <description></description>
     </key>
+    <key name="default-time" type="d">
+      <default>5</default>
+      <summary>Default Time</summary>
+      <description></description>
+    </key>
     <key name="osc-host" type="s">
       <default>"10.0.0.3"</default>
       <summary>OSC client's IP address</summary>
