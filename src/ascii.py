@@ -449,8 +449,8 @@ class Ascii(object):
             self.app.window.cues_liststore1.clear()
             self.app.window.cues_liststore2.clear()
             # 2 lignes vides au début
-            self.app.window.cues_liststore1.append(['-2', '', '', '', '', '', '', '', '', '#232729', 0])
-            self.app.window.cues_liststore1.append(['-1', '', '', '', '', '', '', '', '', '#232729', 0])
+            self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
+            self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
             for i in range(self.app.sequence.last):
                 # Si on a des entiers, on les affiche comme tels
                 if self.app.sequence.cues[i].wait.is_integer():
@@ -494,11 +494,11 @@ class Ascii(object):
                 else:
                     weight = Pango.Weight.NORMAL
                 if i == 0 or i == self.app.sequence.last-1:
-                    self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL])
+                    self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 99])
                     self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
                 else:
                     self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
-                        str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight])
+                        str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight, 99])
                     self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
                         str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
 

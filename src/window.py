@@ -103,11 +103,11 @@ class Window(Gtk.ApplicationWindow):
         self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait, channel_time)
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int)
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int, int)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
-        self.cues_liststore1.append(['-2', '', '', '', '', '', '', '', '', '#232729', 0])
-        self.cues_liststore1.append(['-1', '', '', '', '', '', '', '', '', '#232729', 0])
+        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
+        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
 
         for i in range(self.app.sequence.last):
             if self.seq.cues[i].wait.is_integer():
@@ -137,10 +137,10 @@ class Window(Gtk.ApplicationWindow):
                 channel_time = ""
             bg = "#232729"
             if i == 0 or i == self.app.sequence.last-1:
-                self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL])
+                self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 42])
             else:
                 self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                    wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL])
+                    wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL, 42])
             self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 wait, d_out, t_out, d_in, t_in, channel_time])
 
@@ -346,16 +346,27 @@ class Window(Gtk.ApplicationWindow):
         """ Filter for the first part of the cues list """
 
         if self.app.sequence.position <= 0:
-            if int(model[iter][0]) == -2 or int(model[iter][0]) == -1 or int(model[iter][0]) == 0 or int(model[iter][0]) == 1:
+            if int(model[iter][11]) == 0 or int(model[iter][11]) == 1:
+                return True
+            if int(model[iter][0]) == 0 or int(model[iter][0]) == 1:
                 return True
             else:
                 return False
 
         if self.app.sequence.position == 1:
-            if int(model[iter][0]) == -1 or int(model[iter][0]) == 0 or int(model[iter][0]) == 1 or int(model[iter][0]) == 2:
+            if int(model[iter][11]) == 1:
+                return True
+            if int(model[iter][11]) == 0:
+                return False
+            if int(model[iter][0]) == 0 or int(model[iter][0]) == 1 or int(model[iter][0]) == 2:
                 return True
             else:
                 return False
+
+        if int(model[iter][11]) == 1:
+            return False
+        if int(model[iter][11]) == 0:
+            return False
 
         if int(model[iter][0]) == self.app.sequence.position or int(model[iter][0]) == self.app.sequence.position+1 or int(model[iter][0]) == self.app.sequence.position-1 or int(model[iter][0]) == self.app.sequence.position-2:
             return True
