@@ -1124,6 +1124,8 @@ class SequenceTab(Gtk.Grid):
         # TODO: Hack to know if user is editing something
         widget = self.app.window.get_focus()
         #print(widget.get_path().is_type(Gtk.Entry))
+        if not widget:
+            return
         if widget.get_path().is_type(Gtk.Entry):
             return
 

@@ -445,6 +445,7 @@ class Application(Gtk.Application):
             self.window.notebook.append_page(self.sequences_tab, label)
             self.window.show_all()
             self.window.notebook.set_current_page(-1)
+            self.window.notebook.grab_focus()
         else:
             page = self.window.notebook.page_num(self.sequences_tab)
             self.window.notebook.set_current_page(page)
