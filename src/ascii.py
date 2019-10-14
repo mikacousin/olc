@@ -358,6 +358,7 @@ class Ascii(object):
                     # TODO: Le numéro du groupe peut etre un float
                     group_nb = float(line[6:])
                 if flag_group:
+                    txt = ""
                     if line[:1] == "!":
                         flag_group = False
                     if line[:4] == 'TEXT':
