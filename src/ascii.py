@@ -449,8 +449,8 @@ class Ascii(object):
             self.app.window.cues_liststore1.clear()
             self.app.window.cues_liststore2.clear()
             # 2 lignes vides au début
-            #for i in range(2):
-            #    self.app.win_seq.cues_liststore.append(["", "", "", "", "", "", ""])
+            self.app.window.cues_liststore1.append(['-2', '', '', '', '', '', '', '', '', '#232729', 0])
+            self.app.window.cues_liststore1.append(['-1', '', '', '', '', '', '', '', '', '#232729', 0])
             for i in range(self.app.sequence.last):
                 # Si on a des entiers, on les affiche comme tels
                 if self.app.sequence.cues[i].wait.is_integer():
@@ -484,17 +484,23 @@ class Ascii(object):
                     channel_time = ""
                 if i == 0:
                     bg = "#997004"
+                elif i == 1:
+                    bg = "#555555"
                 else:
                     bg = "#232729"
-                # Next Cue in Bold
-                if i == 1:
-                    weight = Pango.Weight.ULTRAHEAVY
+                # Actual and Next Cue in Bold
+                if i == 0 or i == 1:
+                    weight = Pango.Weight.HEAVY
                 else:
                     weight = Pango.Weight.NORMAL
-                self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight])
-                self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
-                    str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
+                if i == 0 or i == self.app.sequence.last-1:
+                    self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL])
+                    self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
+                else:
+                    self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
+                        str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight])
+                    self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
+                        str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
 
             self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
             self.app.window.step_filter1.set_visible_func(self.app.window.step_filter_func1)

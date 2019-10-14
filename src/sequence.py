@@ -72,10 +72,14 @@ class Sequence(object):
             self.app.window.sequential.pos_xB = 0
 
             # Update ui
-            self.app.window.cues_liststore1[position-1][9] = "#232729"
-            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][9] = "#232729"
+            self.app.window.cues_liststore1[position+1][9] = "#232729"
+            self.app.window.cues_liststore1[position+2][9] = "#997004"
+            self.app.window.cues_liststore1[position+3][9] = "#555555"
             self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY  # Next Cue in Bold
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY  # Next Cue in Bold
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -133,10 +137,14 @@ class Sequence(object):
             self.app.window.header.set_subtitle(subtitle)
 
             # Update ui
+            self.app.window.cues_liststore1[position][9] = "#232729"
             self.app.window.cues_liststore1[position+1][9] = "#232729"
-            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position+2][9] = "#997004"
+            self.app.window.cues_liststore1[position+3][9] = "#555555"
             self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY # Next Cue in Bold
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY  # Next Cue in Bold
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -184,9 +192,15 @@ class Sequence(object):
 
                 # Update ui
                 self.app.window.cues_liststore1[old_pos][9] = "#232729"
-                self.app.window.cues_liststore1[position][9] = "#997004"
+                self.app.window.cues_liststore1[position][9] = "#232729"
+                self.app.window.cues_liststore1[position+1][9] = "#232729"
+                self.app.window.cues_liststore1[position+2][9] = "#997004"
+                self.app.window.cues_liststore1[position+3][9] = "#555555"
                 self.app.window.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
-                self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY
+                self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+                self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
                 self.app.window.step_filter1.refilter()
                 self.app.window.step_filter2.refilter()
                 path = Gtk.TreePath.new_from_indices([0])
@@ -417,15 +431,23 @@ class ThreadGo(threading.Thread):
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
         if position == 0:
-            self.app.window.cues_liststore1[-2][9] = "#232729"
-            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][9] = "#232729"
+            self.app.window.cues_liststore1[position+1][9] = "#232729"
+            self.app.window.cues_liststore1[position+2][9] = "#997004"
+            self.app.window.cues_liststore1[position+3][9] = "#555555"
             self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
         else:
-            self.app.window.cues_liststore1[position-1][9] = "#232729"
-            self.app.window.cues_liststore1[position][9] = "#997004"
+            self.app.window.cues_liststore1[position][9] = "#232729"
+            self.app.window.cues_liststore1[position+1][9] = "#232729"
+            self.app.window.cues_liststore1[position+2][9] = "#997004"
+            self.app.window.cues_liststore1[position+3][9] = "#555555"
             self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.ULTRAHEAVY
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
         self.app.window.step_filter1.refilter()
         self.app.window.step_filter2.refilter()
         path = Gtk.TreePath.new_from_indices([0])

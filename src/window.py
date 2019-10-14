@@ -106,6 +106,9 @@ class Window(Gtk.ApplicationWindow):
         self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
+        self.cues_liststore1.append(['-2', '', '', '', '', '', '', '', '', '#232729', 0])
+        self.cues_liststore1.append(['-1', '', '', '', '', '', '', '', '', '#232729', 0])
+
         for i in range(self.app.sequence.last):
             if self.seq.cues[i].wait.is_integer():
                 wait = str(int(self.seq.cues[i].wait))
@@ -133,8 +136,11 @@ class Window(Gtk.ApplicationWindow):
             if channel_time == "0":
                 channel_time = ""
             bg = "#232729"
-            self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
-                wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL])
+            if i == 0 or i == self.app.sequence.last-1:
+                self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL])
+            else:
+                self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL])
             self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
                 wait, d_out, t_out, d_in, t_in, channel_time])
 
@@ -197,9 +203,11 @@ class Window(Gtk.ApplicationWindow):
         self.add(self.paned2)
 
         # Select first Cue
-        self.cues_liststore1[0][9] = "#997004"
+        self.cues_liststore1[2][9] = "#997004"
+        self.cues_liststore1[2][10] = Pango.Weight.HEAVY
         # Bold next Cue
-        self.cues_liststore1[1][10] = Pango.Weight.ULTRAHEAVY
+        self.cues_liststore1[3][10] = Pango.Weight.HEAVY
+        self.cues_liststore1[3][9] = "#555555"
 
         # Open MIDI input port
         #self.inport = mido.open_input('UC-33 USB MIDI Controller:UC-33 USB MIDI Controller MIDI  24:1')
@@ -336,7 +344,20 @@ class Window(Gtk.ApplicationWindow):
 
     def step_filter_func1(self, model, iter, data):
         """ Filter for the first part of the cues list """
-        if int(model[iter][0]) == self.app.sequence.position or int(model[iter][0]) == self.app.sequence.position+1:
+
+        if self.app.sequence.position <= 0:
+            if int(model[iter][0]) == -2 or int(model[iter][0]) == -1 or int(model[iter][0]) == 0 or int(model[iter][0]) == 1:
+                return True
+            else:
+                return False
+
+        if self.app.sequence.position == 1:
+            if int(model[iter][0]) == -1 or int(model[iter][0]) == 0 or int(model[iter][0]) == 1 or int(model[iter][0]) == 2:
+                return True
+            else:
+                return False
+
+        if int(model[iter][0]) == self.app.sequence.position or int(model[iter][0]) == self.app.sequence.position+1 or int(model[iter][0]) == self.app.sequence.position-1 or int(model[iter][0]) == self.app.sequence.position-2:
             return True
         else:
             return False
