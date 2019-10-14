@@ -529,7 +529,7 @@ class SequentialWidget(Gtk.Widget):
             if self.pos_xA or self.pos_xB:  # Red filter in fades
                 cr.set_source_rgba(1, 0, 0, 0.1)
             cr.set_line_width(1)
-            cr.rectangle(16, 40, (inter*self.wait), allocation.height-70-(len(self.channel_time)*24))
+            cr.rectangle(16, 40, (inter*self.wait), allocation.height-70-(len(self.channel_time)*8))
             cr.fill()
             # Draw Wait lines
             cr.set_source_rgb(0.5, 0.5, 0.9)
@@ -539,8 +539,8 @@ class SequentialWidget(Gtk.Widget):
             cr.stroke()
             cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.set_line_width(3)
-            cr.move_to(16, allocation.height-32-(len(self.channel_time)*24))
-            cr.line_to(16+(inter*self.wait), allocation.height-32-(len(self.channel_time)*24))
+            cr.move_to(16, allocation.height-32-(len(self.channel_time)*8))
+            cr.line_to(16+(inter*self.wait), allocation.height-32-(len(self.channel_time)*8))
             cr.stroke()
             wait_x = inter * self.wait
             # Draw Wait time on the time line
@@ -579,7 +579,7 @@ class SequentialWidget(Gtk.Widget):
             cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.set_line_width(3)
             cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*24))
-            cr.line_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*24))
+            cr.line_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*8))
             cr.stroke()
             # Draw Delay In on the time line
             cr.move_to(12+wait_x+(inter*self.delay_in),16)
@@ -596,22 +596,24 @@ class SequentialWidget(Gtk.Widget):
         self.ct_nb = 0
 
         # Change height to draw channel time
-        self.set_size_request(800, 300 + (len(self.channel_time) * 24))
+        self.set_size_request(800, 300 + (len(self.channel_time) * 8))
 
         for channel in self.channel_time.keys():
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
             # draw Channel number
-            cr.move_to((inter*delay)+wait_x,allocation.height-24-(self.ct_nb*8))
+            cr.move_to((inter*delay)+wait_x,allocation.height-4-(self.ct_nb*12))
+            #cr.move_to((inter*delay)+wait_x,allocation.height-28-(self.ct_nb*12))
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12)
+            cr.set_font_size(10)
             cr.show_text(str(channel))
             # draw Channel Time line
             cr.set_source_rgb(0.5, 0.5, 0.5)
-            cr.move_to(16+(inter*delay)+wait_x, allocation.height-24-(self.ct_nb*12))
-            cr.line_to(16+(inter*delay)+(inter*time)+wait_x, allocation.height-24-(self.ct_nb*12))
+            cr.set_line_width(1)
+            cr.move_to(16+(inter*delay)+wait_x, allocation.height-8-(self.ct_nb*12))
+            cr.line_to(16+(inter*delay)+(inter*time)+wait_x, allocation.height-8-(self.ct_nb*12))
             cr.stroke()
             cr.set_dash([8.0, 6.0])
             cr.move_to(16+(inter*delay)+wait_x, 24)
@@ -627,13 +629,13 @@ class SequentialWidget(Gtk.Widget):
                 else:
                     self.pos_xCT = self.pos_xA
                 cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+self.pos_xCT, allocation.height-28-(self.ct_nb*12))
-                cr.line_to(16+self.pos_xCT, allocation.height-20-(self.ct_nb*12))
+                cr.move_to(16+self.pos_xCT, allocation.height-8-(self.ct_nb*12))
+                cr.line_to(16+self.pos_xCT, allocation.height-(self.ct_nb*12))
                 cr.stroke()
             else:
                 cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+(inter*delay)+wait_x, allocation.height-28-(self.ct_nb*12))
-                cr.line_to(16+(inter*delay)+wait_x, allocation.height-20-(self.ct_nb*12))
+                cr.move_to(16+(inter*delay)+wait_x, allocation.height-8-(self.ct_nb*12))
+                cr.line_to(16+(inter*delay)+wait_x, allocation.height-(self.ct_nb*12))
                 cr.stroke()
             # draw time number
             cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -659,7 +661,7 @@ class SequentialWidget(Gtk.Widget):
         cr.set_source_rgb(0.5, 0.5, 0.9)
         cr.set_line_width(3)
         cr.move_to(16+wait_x+(inter*self.delay_out), 40)
-        cr.line_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), allocation.height-32-(len(self.channel_time)*24))
+        cr.line_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), allocation.height-32-(len(self.channel_time)*8))
         cr.stroke()
         cr.move_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), 24)
         cr.line_to(16+wait_x+(inter*self.delay_out)+(inter*self.time_out), allocation.height)
@@ -672,7 +674,7 @@ class SequentialWidget(Gtk.Widget):
         start_x = wait_x + (inter*self.delay_out) + 16
         start_y = 40
         end_x = 16+wait_x+(inter*self.delay_out)+(inter*self.time_out)
-        end_y = allocation.height-32-(len(self.channel_time)*24)
+        end_y = allocation.height-32-(len(self.channel_time)*8)
         angle = math.atan2(end_y - start_y, end_x - start_x)
         x1 = end_x + arrow_lenght * math.cos(angle - arrow_degrees)
         y1 = end_y + arrow_lenght * math.sin(angle - arrow_degrees)
@@ -717,7 +719,7 @@ class SequentialWidget(Gtk.Widget):
 
         # draw In line
         cr.set_source_rgb(0.9, 0.5, 0.5)
-        cr.move_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*24))
+        cr.move_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*8))
         cr.line_to(16+wait_x+(inter*self.delay_in)+(inter*self.time_in), 40)
         cr.stroke()
         cr.move_to(16+wait_x+(inter*self.delay_in)+(inter*self.time_in), 24)
@@ -729,7 +731,7 @@ class SequentialWidget(Gtk.Widget):
         arrow_lenght = 12
         arrow_degrees = 10
         start_x = wait_x + 16 + (inter*self.delay_in)
-        start_y = allocation.height-32-(len(self.channel_time)*24)
+        start_y = allocation.height-32-(len(self.channel_time)*8)
         end_x = 16+wait_x+(inter*self.delay_in)+(inter*self.time_in)
         end_y = 40
         angle = math.atan2(end_y - start_y, end_x - start_x)
