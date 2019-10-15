@@ -146,7 +146,7 @@ class Ascii(object):
                             else:
                                 t_in = float(time)
                             if t_in == 0:
-                                t_in = default_time
+                                t_in = self.default_time
                             if ":" in delay:
                                 d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:

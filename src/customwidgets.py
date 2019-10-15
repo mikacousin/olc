@@ -629,13 +629,13 @@ class SequentialWidget(Gtk.Widget):
                 else:
                     self.pos_xCT = self.pos_xA
                 cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+self.pos_xCT, allocation.height-8-(self.ct_nb*12))
-                cr.line_to(16+self.pos_xCT, allocation.height-(self.ct_nb*12))
+                cr.move_to(16+self.pos_xCT, allocation.height-12-(self.ct_nb*12))
+                cr.line_to(16+self.pos_xCT, allocation.height-4-(self.ct_nb*12))
                 cr.stroke()
             else:
                 cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+(inter*delay)+wait_x, allocation.height-8-(self.ct_nb*12))
-                cr.line_to(16+(inter*delay)+wait_x, allocation.height-(self.ct_nb*12))
+                cr.move_to(16+(inter*delay)+wait_x, allocation.height-12-(self.ct_nb*12))
+                cr.line_to(16+(inter*delay)+wait_x, allocation.height-4-(self.ct_nb*12))
                 cr.stroke()
             # draw time number
             cr.set_source_rgb(0.9, 0.9, 0.9)
