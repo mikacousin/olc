@@ -112,26 +112,15 @@ class Application(Gtk.Application):
 
         # TODO: Revoir pour le menu et la gestion auto de la fenetre des shortcuts
         menu = self.setup_app_menu()
-        self.set_app_menu(menu)
-        #self.build_app_menu()
 
-    def build_app_menu(self):
-        actionEntries = [
-            ('new', self._new),
-            ('open', self._open),
-            ('save', self._save),
-            ('patch', self._patch),
-            ('groups', self._groups),
-            ('masters', self._masters),
-            ('settings', self._settings),
-            ('about', self._about),
-            ('quit', self._exit),
-        ]
-
-        for action, callback in actionEntries:
-            simpleAction = Gio.SimpleAction.new(action, None)
-            simpleAction.connect('activate', callback)
-            self.add_action(simpleAction)
+        # General shortcuts
+        self.set_accels_for_action("app.quit", ["<Control>q"])
+        self.set_accels_for_action("app.open", ["<Control>o"])
+        self.set_accels_for_action("app.patch", ["<Control>p"])
+        self.set_accels_for_action("app.groups", ["<Control>g"])
+        self.set_accels_for_action("app.masters", ["<Control>m"])
+        self.set_accels_for_action("app.sequences", ["<Control>t"])
+        self.set_accels_for_action("app.about", ["F3"])
 
     def setup_app_menu(self):
         """ Setup application menu, return Gio.Menu """
