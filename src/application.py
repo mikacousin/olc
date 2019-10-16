@@ -91,6 +91,32 @@ class Application(Gtk.Application):
         # No selected channel on startup
         self.window.flowbox.unselect_all()
 
+        """
+        # TODO: Test this code without window manager
+        nb_monitors = Gdk.Display.get_default().get_n_monitors()
+        #print(nb_monitors)
+        if nb_monitors == 2:
+            display = Gdk.Display.get_default()
+            #print(display)
+            monitor = display.get_monitor(1)
+            #print(monitor)
+            monitor_geometry = monitor.get_geometry()
+            print(monitor_geometry.x, monitor_geometry.y)
+            print(self.window.get_position())
+            self.window.move(monitor_geometry.x, monitor_geometry.y)
+            #self.window.move(100, 100)
+            print(self.window.get_position())
+            #self.window.maximize()
+            #self.window.fullscreen_on_monitor(self.window.get_screen(), 1)
+            self.window.fullscreen()
+        """
+
+        # Add global shortcut for Go (Space bar)
+        action = Gio.SimpleAction.new('go', None)
+        action.connect('activate', self.sequence.sequence_go)
+        self.add_action(action)
+        self.set_accels_for_action("app.go", ["space"])
+
         # Create several DMX arrays
         self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters, self.window)
 
@@ -98,8 +124,8 @@ class Application(Gtk.Application):
         self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
 
         # TODO: Test manual crossfade, must be deleted
-        self.win_crossfade = CrossfadeWindow()
-        self.win_crossfade.show_all()
+        #self.win_crossfade = CrossfadeWindow()
+        #self.win_crossfade.show_all()
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)

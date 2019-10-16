@@ -719,9 +719,10 @@ class Window(Gtk.ApplicationWindow):
         """ Seq + """
         self.app.sequence.sequence_plus(self.app)
 
-    def keypress_space(self):
-        """ Go """
-        self.app.sequence.sequence_go(self.app)
+    # TODO: Delete this, Go is a global shortcut
+    #def keypress_space(self):
+    #    """ Go """
+    #    self.app.sequence.sequence_go(self.app)
 
     def keypress_G(self):
         """ Goto """

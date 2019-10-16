@@ -209,11 +209,11 @@ class Sequence(object):
                 self.app.window.seq_grid.queue_draw()
 
                 # Launch Go
-                self.sequence_go(self.app)
+                self.sequence_go(None, None)
                 break
 
-    def sequence_go(self, app):
-        self.app = app
+    def sequence_go(self, action, param):
+        self.app = Gio.Application.get_default()
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.on_go:
             # Stop actual Thread
@@ -221,7 +221,7 @@ class Sequence(object):
             self.thread.join()
             self.on_go = False
             # Launch another Go
-            self.sequence_go(self.app)
+            self.sequence_go(None, None)
         else:
             # On indique qu'un Go est en cours
             self.on_go = True
@@ -336,7 +336,7 @@ class ThreadGo(threading.Thread):
 
             # Si la mémoire a un Wait
             if self.app.sequence.cues[position+1].wait:
-                self.app.window.keypress_space()
+                self.app.sequence.sequence_go(None, None)
 
         # Sinon, on revient au début
         else:
