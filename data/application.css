@@ -12,7 +12,7 @@
 
 flowboxchild:selected {
   outline-width: 0px;
-  background-color: @seq_selected_bg;
+  background-color: alpha(@theme_bg_color, 0);
 }
 
 /*

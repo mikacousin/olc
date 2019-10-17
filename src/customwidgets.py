@@ -40,16 +40,19 @@ class ChannelWidget(Gtk.Widget):
 
         self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
 
-        # paint background
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
-        cr.paint()
-
         allocation = self.get_allocation()
 
-        # dessine un cadre
+        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+
+        # paint background
+        if self.get_parent().is_selected():
+            cr.set_source_rgb(0.6, 0.4, 0.1)
+        else:
+            cr.set_source_rgba(*list(bg_color))
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
+
+        # draw rectangle
         cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
@@ -58,17 +61,17 @@ class ChannelWidget(Gtk.Widget):
         # TODO: Get background color
         bg.parse('#33393B')
         cr.set_source_rgba(*list(bg))
-        cr.rectangle(1, 1, allocation.width-2, 78)
+        cr.rectangle(4, 4, allocation.width-8, 72)
         cr.fill()
         # draw background of channel number
         flowboxchild = self.get_parent()
         if flowboxchild.is_selected():
             cr.set_source_rgb(0.4, 0.4, 0.4)
-            cr.rectangle(1, 1, allocation.width-2, 18)
+            cr.rectangle(4, 4, allocation.width-8, 18)
             cr.fill()
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            cr.rectangle(1, 1, allocation.width-2, 18)
+            cr.rectangle(4, 4, allocation.width-8, 18)
             cr.fill()
         # draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -277,12 +280,15 @@ class PatchWidget(Gtk.Widget):
         self.app = Gio.Application.get_default()
 
         Gtk.Widget.__init__(self)
-        self.set_size_request(80,80)
+        self.scale = 1.2
+        self.width = 60 * self.scale
+        self.set_size_request(self.width,self.width)
         self.connect('button-press-event', self.on_click)
         self.connect('touch-event', self.on_click)
 
     def on_click(self, tgt, ev):
         # Deselect selected widgets
+        self.app.window.flowbox.unselect_all()
         self.app.patch_tab.flowbox.unselect_all()
         # Select clicked widget
         child = self.app.patch_tab.flowbox.get_child_at_index((self.output-1) * 2)
@@ -291,49 +297,44 @@ class PatchWidget(Gtk.Widget):
         self.app.patch_tab.last_out_selected = str(self.output)
 
     def do_draw(self, cr):
+        self.width = 60 * self.scale
+        self.set_size_request(self.width,self.width)
         # paint background
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
-        cr.paint()
-
-        allocation = self.get_allocation()
+        area = (0, self.width, 0, self.width)
 
         if self.patch.outputs[self.output-1] != 0:
-            # draw frame
-            cr.rectangle(0, 0, allocation.width, allocation.height)
-            cr.fill()
-            cr.set_source_rgb(0.3, 0.3, 0.3)
-            cr.rectangle(0, 0, allocation.width, allocation.height)
-            cr.stroke()
-            # draw background
-            cr.set_source_rgb(0.3, 0.3, 0.3)
-            cr.rectangle(1, 1, allocation.width-2, 78)
-            cr.fill()
+            if self.get_parent().is_selected():
+                cr.set_source_rgb(0.6, 0.4, 0.1)
+            else:
+                cr.set_source_rgb(0.3, 0.3, 0.3)
+
+            self.draw_rounded_rectangle(cr, area, 10)
         else:
-            # draw background
-            bg = Gdk.RGBA()
-            # TODO: How to get theme's background color ?
-            bg.parse("#232729")
-            cr.set_source_rgba(*list(bg))
-            cr.rectangle(1, 1, allocation.width-2, 78)
-            cr.fill()
+            if self.get_parent().is_selected():
+                cr.set_source_rgb(0.6, 0.4, 0.1)
+                self.draw_rounded_rectangle(cr, area, 10)
 
         # draw output number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
             cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(12)
-        cr.move_to(40,15)
-        cr.show_text(str(self.output))
+        cr.set_font_size(12*self.scale)
+        text = str(self.output)
+        (x, y, width, height, dx, dy) = cr.text_extents(text)
+        cr.move_to(self.width/2-width/2,self.width/4-height/4)
+        cr.show_text(text)
 
         if self.patch.outputs[self.output-1] != 0:
             # draw channel number
-            cr.set_source_rgb(0.7, 0.7, 0.7)
+            #cr.set_source_rgb(0.7, 0.7, 0.7)
+            cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12)
-            cr.move_to(40,48)
-            cr.show_text(str(self.patch.outputs[self.output-1]))
+            cr.set_font_size(12*self.scale)
+            text = str(self.patch.outputs[self.output-1])
+            (x, y, width, height, dx, dy) = cr.text_extents(text)
+            cr.move_to(self.width/2-width/2,3*(self.width/4-height/4))
+            cr.show_text(text)
 
     def do_realize(self):
         allocation = self.get_allocation()
@@ -354,6 +355,15 @@ class PatchWidget(Gtk.Widget):
 
         self.set_realized(True)
         window.set_background_pattern(None)
+
+    def draw_rounded_rectangle(self, cr, area, radius):
+        a,b,c,d = area
+        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
+        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
+        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
+        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.close_path()
+        cr.fill()
 
 class GroupWidget(Gtk.Widget):
     __gtype_name__ = 'GroupWidget'
@@ -383,27 +393,34 @@ class GroupWidget(Gtk.Widget):
         Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
-        # paint background
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
-        cr.paint()
 
         allocation = self.get_allocation()
 
-        # dessine un cadre
+        # paint background
+        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+        if self.clicked:
+            cr.set_source_rgb(0.6, 0.4, 0.1)
+        else:
+            cr.set_source_rgba(*list(bg_color))
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
+
+        # draw rectangle
         cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
+        bg = Gdk.RGBA()
+        bg.parse('#33393B')
+        cr.set_source_rgba(*list(bg))
+        cr.rectangle(4, 4, allocation.width-8, allocation.height-8)
         # dessine fond pour le numéro de cicuit si selectioné
         if self.clicked:
             cr.set_source_rgb(0.4, 0.4, 0.4)
-            cr.rectangle(1, 1, allocation.width-2, 18)
+            cr.rectangle(4, 4, allocation.width-8, 18)
             cr.fill()
         # dessine un fond pour le nom du groupe
         cr.set_source_rgb(0.2, 0.2, 0.2)
-        cr.rectangle(8, 19, allocation.width-2, allocation.height-40)
+        cr.rectangle(4, 22, allocation.width-8, allocation.height-40)
         cr.fill()
 
         # draw group number
