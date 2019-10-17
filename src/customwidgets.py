@@ -336,6 +336,17 @@ class PatchWidget(Gtk.Widget):
             cr.move_to(self.width/2-width/2,3*(self.width/4-height/4))
             cr.show_text(text)
 
+        # Draw Output level
+        if self.app.dmx.frame[self.output-1]:
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                cairo.FONT_WEIGHT_BOLD)
+            cr.set_font_size(12*self.scale)
+            text = str(self.app.dmx.frame[self.output-1])
+            (x, y, width, height, dx, dy) = cr.text_extents(text)
+            cr.move_to(self.width/2-width/2,self.width/2-height/2)
+            cr.show_text(text)
+
     def do_realize(self):
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
