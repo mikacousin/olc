@@ -11,7 +11,8 @@ app_PYTHON = \
 	master.py \
 	midi.py \
 	osc.py \
-	patch.py \
+	patch_channels.py \
+	patch_outputs.py \
 	sequence.py \
 	settings.py \
 	window.py

@@ -15,13 +15,11 @@ flowboxchild:selected {
   background-color: alpha(@theme_bg_color, 0);
 }
 
-/*
 #olc * {
   outline-width: 0px;
   text-shadow: none;
-  -gtk-key-bindings: unbind-keys;
+  /*-gtk-key-bindings: unbind-keys;*/
 }
-*/
 
 #olc treeview {
   padding: 2px 2px 2px 2px;

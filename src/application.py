@@ -8,7 +8,7 @@ from ola import OlaClient
 
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
-from olc.patch import PatchTab
+from olc.patch_outputs import PatchOutputsTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
 from olc.sequence import Sequence, SequenceTab
@@ -359,7 +359,7 @@ class Application(Gtk.Application):
     def _patch(self, action, parameter):
         # Create Patch Tab
         if self.patch_tab == None:
-            self.patch_tab = PatchTab()
+            self.patch_tab = PatchOutputsTab()
 
             # Label with a close icon
             button = Gtk.Button()
@@ -367,7 +367,7 @@ class Application(Gtk.Application):
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
             button.connect('clicked', self.patch_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Patch'), False, False, 0)
+            label.pack_start(Gtk.Label('Patch Outputs'), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 

@@ -3,12 +3,10 @@ from gi.repository import Gio, Gtk, Gdk
 from olc.dmx import Dmx, PatchDmx
 from olc.customwidgets   import PatchWidget, PatchChannelWidget
 
-class PatchTab(Gtk.Grid):
+class PatchOutputsTab(Gtk.Grid):
     def __init__(self):
 
         self.app = Gio.Application.get_default()
-
-        self.view_outputs = True
 
         self.keystring = ""
         self.last_out_selected = ""
@@ -22,11 +20,6 @@ class PatchTab(Gtk.Grid):
         self.header = Gtk.HeaderBar()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         button = Gtk.Button()
-        icon = Gio.ThemedIcon(name='view-grid-symbolic')
-        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
-        button.add(image)
-        button.connect('clicked', self.on_view_changed)
-        box.add(button)
         button = Gtk.Button('Patch 1:1')
         button.connect('clicked', self.on_button_clicked)
         box.add(button)
@@ -52,8 +45,6 @@ class PatchTab(Gtk.Grid):
         for i in range(512):
             self.outputs.append(PatchWidget(i+1, self.app.patch))
             self.flowbox.add(self.outputs[i])
-            self.channels.append(PatchChannelWidget(i+1, self.app.patch))
-            self.flowbox.add(self.channels[i])
 
         self.flowbox.set_filter_func(self.filter_func, None)
 
@@ -63,28 +54,10 @@ class PatchTab(Gtk.Grid):
         self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
     def filter_func(self, child, user_data):
-        if self.view_outputs:
-            if child.get_children()[0].type == 'Output':
-                return child
-            else:
-                return False
+        if child.get_children()[0].type == 'Output':
+            return child
         else:
-            if child.get_children()[0].type == 'Channel':
-                return child
-            else:
-                return False
-
-    def on_view_changed(self, widget):
-        """ Change view type """
-
-        if self.view_outputs:
-            self.label.set_text('View: by Channels')
-            self.view_outputs = False
-            self.flowbox.invalidate_filter()
-        else:
-            self.label.set_text('View: by Outputs')
-            self.view_outputs = True
-            self.flowbox.invalidate_filter()
+            return False
 
     def on_button_clicked(self, widget):
 
@@ -140,56 +113,6 @@ class PatchTab(Gtk.Grid):
     def keypress_o(self):
         """ Select Output """
 
-        # Channels view
-        if not self.view_outputs:
-            # Find selected channels
-            sel = self.flowbox.get_selected_children()
-            children = []
-            # For each selected channel
-            for i in range(len(sel)):
-                children = sel[i].get_children()
-
-                for patchwidget in children:
-                    channel = patchwidget.channel - 1
-
-                    # Unpatch if no entry
-                    if self.keystring == "" or self.keystring == "0":
-                        for output in self.app.patch.channels[channel]:
-                            self.app.patch.outputs[output - 1] = 0
-                        del(self.app.patch.channels[channel][:])
-                    else:
-                        # We add i to automatically patch a range of channels
-                        output = int(self.keystring) - 1 + i
-
-                        if output >= 0 and output < 512:
-                            # Unpatch Output if already patched
-                            chan = self.app.patch.outputs[output]
-                            if chan != 0:
-                                self.app.patch.outputs[output] = 0
-                                self.app.patch.channels[chan - 1].remove(output + 1)
-                                self.channels[chan - 1].queue_draw()
-                            # Patch new channel
-                            self.app.patch.add_output(channel+1, output+1)
-
-                    # Update ui
-                    self.channels[channel].queue_draw()
-                    # Update list of channels
-                    level = self.app.dmx.frame[output]
-                    self.app.window.channels[channel].level = level
-                    self.app.window.channels[channel].queue_draw()
-                    self.app.window.flowbox.invalidate_filter()
-                # Select next channel
-                if channel < 511:
-                    self.flowbox.unselect_all()
-                    child = self.flowbox.get_child_at_index(((channel+1) * 2) + 1)
-                    self.app.window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_out_selected = str(channel+1)
-
-            self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
-            return
-
         self.flowbox.unselect_all()
 
         if self.keystring != "":
@@ -214,34 +137,6 @@ class PatchTab(Gtk.Grid):
     def keypress_greater(self):
         """ Output Thru """
 
-        # Channels view
-        if not self.view_outputs:
-            selected = self.flowbox.get_selected_children()
-            if len(selected) == 1:
-                patchwidget = selected[0].get_children()
-                channel = patchwidget[0].channel - 1
-                self.last_chan_selected = str(channel)
-            if not self.last_chan_selected:
-                return
-            to_chan = int(self.keystring)
-            if to_chan > int(self.last_chan_selected):
-                for chan in range(int(self.last_chan_selected), to_chan):
-                    child = self.flowbox.get_child_at_index((chan * 2) + 1)
-                    self.app.window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_chan_selected = self.keystring
-            else:
-                for chan in range(to_chan - 1, int(self.last_chan_selected)):
-                    child = self.flowbox.get_child_at_index((chan * 2) + 1)
-                    self.app.window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_chan_selected = self.keystring
-
-            self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
-            return
-
-        # Outputs view
         # If just one output is selected, start from it
         selected = self.flowbox.get_selected_children()
         if len(selected) == 1:
@@ -271,26 +166,8 @@ class PatchTab(Gtk.Grid):
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_c(self):
-        """ Select or Attribute Channel """
+        """ Attribute Channel """
 
-        # Channels view
-        if not self.view_outputs:
-            self.flowbox.unselect_all()
-            if self.keystring != "":
-                channel = int(self.keystring) - 1
-                if channel >= 0 and channel < 512:
-                    child = self.flowbox.get_child_at_index((channel * 2) + 1)
-                    self.app.window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_chan_selected = self.keystring
-            else:
-                widget = self.app.window.get_focus()
-                self.flowbox.select_child(widget)
-            self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
-            return
-
-        # Outputs view
         # Find Selected Output
         sel = self.flowbox.get_selected_children()
         children = []
