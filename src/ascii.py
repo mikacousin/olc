@@ -598,9 +598,23 @@ class Ascii(object):
                 path = Gtk.TreePath.new()
                 self.app.window.treeview1.set_cursor(path, None, False)
 
-            # Redraw Patch Tab if exist
-            if self.app.patch_tab != None:
-                self.app.patch_tab.flowbox.queue_draw()
+            # Redraw Patch Outputs Tab if exist
+            if self.app.patch_outputs_tab != None:
+                self.app.patch_outputs_tab.flowbox.queue_draw()
+
+            # Redraw Patch Channels Tab if exist
+            if self.app.patch_channels_tab != None:
+                self.app.patch_channels_tab.liststore.clear()
+                # Populate channels patch tab
+                for channel in range(512):
+                    outputs = ''
+                    for i in range(len(self.app.patch.channels[channel])):
+                        output = self.app.patch.channels[channel][i]
+                        if output:
+                            if i > 0:
+                                outputs += ', '
+                            outputs += str(output)
+                    self.app.patch_channels_tab.liststore.append([channel+1, outputs, ''])
 
         except GObject.GError as e:
             print("Error: " + e.message)

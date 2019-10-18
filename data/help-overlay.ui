@@ -19,17 +19,17 @@
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="patch">
+              <object class="GtkShortcutsShortcut" id="patch_outputs">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;P</property>
-                <property name="title" translatable="yes" context="shortcut window">Patch</property>
+                <property name="title" translatable="yes" context="shortcut window">Patch Outputs</property>
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="groups">
+              <object class="GtkShortcutsShortcut" id="patch_channels">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;G</property>
-                <property name="title" translatable="yes" context="shortcut window">Groups</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;P</property>
+                <property name="title" translatable="yes" context="shortcut window">Patch Channels</property>
               </object>
             </child>
             <child>
@@ -37,6 +37,13 @@
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;M</property>
                 <property name="title" translatable="yes" context="shortcut window">Masters</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="edit_sequence">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;T</property>
+                <property name="title" translatable="yes" context="shortcut window">Edit Sequence</property>
               </object>
             </child>
             <child>
@@ -123,7 +130,7 @@
             <child>
               <object class="GtkShortcutsShortcut" id="go">
                 <property name="visible">1</property>
-                <property name="accelerator">space</property>
+                <property name="accelerator">&lt;ctrl&gt;G</property>
                 <property name="title" translatable="yes" context="shortcut window">Go</property>
               </object>
             </child>

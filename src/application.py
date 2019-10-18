@@ -9,6 +9,7 @@ from ola import OlaClient
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
 from olc.patch_outputs import PatchOutputsTab
+from olc.patch_channels import PatchChannelsTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
 from olc.sequence import Sequence, SequenceTab
@@ -75,7 +76,8 @@ class Application(Gtk.Application):
         self.about_window = None
 
         # For Tabs
-        self.patch_tab = None
+        self.patch_outputs_tab = None
+        self.patch_channels_tab = None
         self.master_tab = None
         self.group_tab = None
         self.sequences_tab = None
@@ -111,11 +113,11 @@ class Application(Gtk.Application):
             self.window.fullscreen()
         """
 
-        # Add global shortcut for Go (Space bar)
+        # Add global shortcut for Go
         action = Gio.SimpleAction.new('go', None)
         action.connect('activate', self.sequence.sequence_go)
         self.add_action(action)
-        self.set_accels_for_action("app.go", ["space"])
+        self.set_accels_for_action("app.go", ["<Control>g"])
 
         # Create several DMX arrays
         self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters, self.window)
@@ -142,8 +144,9 @@ class Application(Gtk.Application):
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])
         self.set_accels_for_action("app.open", ["<Control>o"])
-        self.set_accels_for_action("app.patch", ["<Control>p"])
-        self.set_accels_for_action("app.groups", ["<Control>g"])
+        self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
+        self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
+        #self.set_accels_for_action("app.groups", ["<Control>g"])
         self.set_accels_for_action("app.masters", ["<Control>m"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.about", ["F3"])
@@ -169,9 +172,13 @@ class Application(Gtk.Application):
         saveAction.connect('activate', self._save)
         self.add_action(saveAction)
 
-        patchAction = Gio.SimpleAction.new('patch', None)
-        patchAction.connect('activate', self._patch)
-        self.add_action(patchAction)
+        patch_outputsAction = Gio.SimpleAction.new('patch_outputs', None)
+        patch_outputsAction.connect('activate', self._patch_outputs)
+        self.add_action(patch_outputsAction)
+
+        patch_channelsAction = Gio.SimpleAction.new('patch_channels', None)
+        patch_channelsAction.connect('activate', self._patch_channels)
+        self.add_action(patch_channelsAction)
 
         groupsAction = Gio.SimpleAction.new('groups', None)
         groupsAction.connect('activate', self._groups)
@@ -276,7 +283,7 @@ class Application(Gtk.Application):
         self.patch.patch_1on1()
         for channel in range(512):
             try:
-                self.patch_tab.liststore[channel][2] = str(channel + 1)
+                self.patch_outputs_tab.liststore[channel][2] = str(channel + 1)
             except:
                 pass
         # Redraw Masters Window
@@ -356,26 +363,48 @@ class Application(Gtk.Application):
     def _saveas(self, action, parameter):
         print("Save As")
 
-    def _patch(self, action, parameter):
-        # Create Patch Tab
-        if self.patch_tab == None:
-            self.patch_tab = PatchOutputsTab()
+    def _patch_outputs(self, action, parameter):
+        # Create Patch Outputs Tab
+        if self.patch_outputs_tab == None:
+            self.patch_outputs_tab = PatchOutputsTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect('clicked', self.patch_tab.on_close_icon)
+            button.connect('clicked', self.patch_outputs_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Patch Outputs'), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.patch_tab, label)
+            self.window.notebook.append_page(self.patch_outputs_tab, label)
             self.window.show_all()
             self.window.notebook.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.patch_tab)
+            page = self.window.notebook.page_num(self.patch_outputs_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _patch_channels(self, action, parameter):
+        # Create Patch Channels Tab
+        if self.patch_channels_tab == None:
+            self.patch_channels_tab = PatchChannelsTab()
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.patch_channels_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Patch Channels'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.patch_channels_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.patch_channels_tab)
             self.window.notebook.set_current_page(page)
 
     def _groups(self, action, parameter):

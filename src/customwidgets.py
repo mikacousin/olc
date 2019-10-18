@@ -153,121 +153,6 @@ class ChannelWidget(Gtk.Widget):
         self.set_realized(True)
         window.set_background_pattern(None)
 
-class PatchChannelWidget(Gtk.Widget):
-    __gtype_name__ = "PatchChannelWidget"
-
-    def __init__(self, channel, patch):
-
-        self.type = "Channel"
-        self.channel = channel
-        self.patch = patch
-
-        self.app = Gio.Application.get_default()
-
-        Gtk.Widget.__init__(self)
-        self.set_size_request(80,80)
-        self.connect('button-press-event', self.on_click)
-        self.connect('touch-event', self.on_click)
-
-    def on_click(self, tgt, ev):
-        # Deselect selected widgets
-        self.app.patch_tab.flowbox.unselect_all()
-        # Select clicked widget
-        child = self.app.patch_tab.flowbox.get_child_at_index((self.channel * 2) - 1)
-        self.app.window.set_focus(child)
-        self.app.patch_tab.flowbox.select_child(child)
-        self.app.patch_tab.last_out_selected = str(self.channel)
-
-    def do_draw(self, cr):
-        # paint background
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
-        cr.paint()
-
-        allocation = self.get_allocation()
-
-        if len(self.patch.channels[self.channel-1]) != 0:
-            if self.patch.channels[self.channel-1][0] != 0:
-                # draw frame
-                cr.rectangle(0, 0, allocation.width, allocation.height)
-                cr.fill()
-                cr.set_source_rgb(0.4, 0.3, 0.3)
-                cr.rectangle(0, 0, allocation.width, allocation.height)
-                cr.stroke()
-                # draw background
-                cr.set_source_rgb(0.4, 0.3, 0.3)
-                cr.rectangle(1, 1, allocation.width-2, 78)
-                cr.fill()
-            else:
-                # draw background
-                bg = Gdk.RGBA()
-                # TODO: How to get theme's background color ?
-                bg.parse("#232729")
-                cr.set_source_rgba(*list(bg))
-                cr.rectangle(1, 1, allocation.width-2, 78)
-                cr.fill()
-        else:
-            # draw background
-            bg = Gdk.RGBA()
-            # TODO: How to get theme's background color ?
-            bg.parse("#232729")
-            cr.set_source_rgba(*list(bg))
-            cr.rectangle(1, 1, allocation.width-2, 78)
-            cr.fill()
-
-        # draw channel number
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(12)
-        cr.move_to(40,15)
-        cr.show_text(str(self.channel))
-
-        if len(self.patch.channels[self.channel-1]) != 0:
-            if self.patch.channels[self.channel-1][0] != 0:
-                # draw output number
-                cr.set_source_rgb(0.7, 0.7, 0.7)
-                cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                    cairo.FONT_WEIGHT_BOLD)
-                cr.set_font_size(12)
-                cr.move_to(40,48)
-                # TODO: draw every outputs in the channel
-                outputs = ''
-                for i in range(len(self.patch.channels[self.channel-1])):
-                    #print("Channel :", self.channel, "Output :", self.patch.channels[self.channel-1][i])
-                    outputs += str(self.patch.channels[self.channel-1][i]) + ' '
-                #cr.show_text(str(self.patch.channels[self.channel-1][0]))
-                cr.show_text(outputs)
-
-        # indicate there's more than one output in the channel
-        if len(self.patch.channels[self.channel-1]) > 1:
-            cr.set_source_rgb(0.5, 0.5, 1.0)
-            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12)
-            cr.move_to(12,12)
-            cr.show_text('+')
-
-    def do_realize(self):
-        allocation = self.get_allocation()
-        attr = Gdk.WindowAttr()
-        attr.window_type = Gdk.WindowType.CHILD
-        attr.x = allocation.x
-        attr.y = allocation.y
-        attr.width = allocation.width
-        attr.height = allocation.height
-        attr.visual = self.get_visual()
-        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
-        WAT = Gdk.WindowAttributesType
-        mask = WAT.X | WAT.Y | WAT.VISUAL
-
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
-        self.set_window(window)
-        self.register_window(window)
-
-        self.set_realized(True)
-        window.set_background_pattern(None)
-
 class PatchWidget(Gtk.Widget):
     __gtype_name__ = "PatchWidget"
 
@@ -289,12 +174,12 @@ class PatchWidget(Gtk.Widget):
     def on_click(self, tgt, ev):
         # Deselect selected widgets
         self.app.window.flowbox.unselect_all()
-        self.app.patch_tab.flowbox.unselect_all()
+        self.app.patch_outputs_tab.flowbox.unselect_all()
         # Select clicked widget
-        child = self.app.patch_tab.flowbox.get_child_at_index((self.output-1) * 2)
+        child = self.app.patch_outputs_tab.flowbox.get_child_at_index(self.output-1)
         self.app.window.set_focus(child)
-        self.app.patch_tab.flowbox.select_child(child)
-        self.app.patch_tab.last_out_selected = str(self.output)
+        self.app.patch_outputs_tab.flowbox.select_child(child)
+        self.app.patch_outputs_tab.last_out_selected = str(self.output)
 
     def do_draw(self, cr):
         self.width = 60 * self.scale

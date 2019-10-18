@@ -1,7 +1,7 @@
 from gi.repository import Gio, Gtk, Gdk
 
 from olc.dmx import Dmx, PatchDmx
-from olc.customwidgets   import PatchWidget, PatchChannelWidget
+from olc.customwidgets   import PatchWidget
 
 class PatchOutputsTab(Gtk.Grid):
     def __init__(self):
@@ -67,22 +67,32 @@ class PatchOutputsTab(Gtk.Grid):
             self.app.patch.patch_empty()
             self.flowbox.queue_draw()
             self.app.window.flowbox.invalidate_filter()
+            if self.app.patch_channels_tab != None:
+                self.app.patch_channels_tab.liststore.clear()
+                for channel in range(512):
+                    outputs = ''
+                    self.app.patch_channels_tab.liststore.append([channel+1, outputs, ''])
 
         elif button_label == "Patch 1:1":
             self.app.patch.patch_1on1()
             self.flowbox.queue_draw()
 
+            if self.app.patch_channels_tab != None:
+                self.app.patch_channels_tab.liststore.clear()
             for channel in range(512):
                 level = self.app.dmx.frame[channel]
                 self.app.window.channels[channel].level = level
                 self.app.window.channels[channel].queue_draw()
+                # Populate Patch Channels Tab if exist
+                if self.app.patch_channels_tab != None:
+                    self.app.patch_channels_tab.liststore.append([channel+1, str(channel+1), ''])
             self.app.window.flowbox.invalidate_filter()
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
-        page = self.app.window.notebook.page_num(self.app.patch_tab)
+        page = self.app.window.notebook.page_num(self.app.patch_outputs_tab)
         self.app.window.notebook.remove_page(page)
-        self.app.patch_tab = None
+        self.app.patch_outputs_tab = None
 
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
@@ -104,7 +114,7 @@ class PatchOutputsTab(Gtk.Grid):
         """ Close Tab """
         page = self.app.window.notebook.get_current_page()
         self.app.window.notebook.remove_page(page)
-        self.app.patch_tab = None
+        self.app.patch_outputs_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ""
@@ -118,7 +128,7 @@ class PatchOutputsTab(Gtk.Grid):
         if self.keystring != "":
             output = int(self.keystring) - 1
             if output >= 0 and output < 512:
-                child = self.flowbox.get_child_at_index(output * 2)
+                child = self.flowbox.get_child_at_index(output)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
@@ -151,13 +161,13 @@ class PatchOutputsTab(Gtk.Grid):
 
         if to_out > int(self.last_out_selected):
             for out in range(int(self.last_out_selected), to_out):
-                child = self.flowbox.get_child_at_index(out * 2)
+                child = self.flowbox.get_child_at_index(out)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
         else:
             for out in range(to_out - 1, int(self.last_out_selected)):
-                child = self.flowbox.get_child_at_index(out * 2)
+                child = self.flowbox.get_child_at_index(out)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
@@ -195,6 +205,20 @@ class PatchOutputsTab(Gtk.Grid):
                         self.app.patch.add_output(channel+1, output+1)
                 # Update ui
                 self.outputs[output].queue_draw()
+                # Update Patch Channels Tab if exist
+                if self.app.patch_channels_tab != None:
+                    self.app.patch_channels_tab.liststore.clear()
+                    # Populate channels patch tab
+                    for channel in range(512):
+                        outputs = ''
+                        for i in range(len(self.app.patch.channels[channel])):
+                            out = self.app.patch.channels[channel][i]
+                            if out:
+                                if i > 0:
+                                    outputs += ', '
+                                outputs += str(out)
+                        self.app.patch_channels_tab.liststore.append([channel+1, outputs, ''])
+
                 # Update list of channels
                 level = self.app.dmx.frame[output]
                 self.app.window.channels[channel].level = level
@@ -203,7 +227,7 @@ class PatchOutputsTab(Gtk.Grid):
             # Select next output
             if output < 511:
                 self.flowbox.unselect_all()
-                child = self.flowbox.get_child_at_index((output+1) * 2)
+                child = self.flowbox.get_child_at_index(output+1)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output+1)

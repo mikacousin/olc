@@ -428,8 +428,8 @@ class ThreadGo(threading.Thread):
 
             self.app.dmx.send()
 
-            if self.app.patch_tab != None:
-                GLib.idle_add(self.app.patch_tab.flowbox.queue_draw)
+            if self.app.patch_outputs_tab != None:
+                GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
 
 
     def update_ui(self, position, subtitle):

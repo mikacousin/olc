@@ -497,8 +497,10 @@ class Window(Gtk.ApplicationWindow):
             return self.app.group_tab.on_key_press_event(widget, event)
         if child == self.app.master_tab:
             return self.app.master_tab.on_key_press_event(widget, event)
-        if child == self.app.patch_tab:
-            return self.app.patch_tab.on_key_press_event(widget, event)
+        if child == self.app.patch_outputs_tab:
+            return self.app.patch_outputs_tab.on_key_press_event(widget, event)
+        if child == self.app.patch_channels_tab:
+            return self.app.patch_channels_tab.on_key_press_event(widget, event)
         if child == self.app.sequences_tab:
             return self.app.sequences_tab.on_key_press_event(widget, event)
         if child == self.app.channeltime_tab:
