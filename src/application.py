@@ -54,9 +54,13 @@ class Application(Gtk.Application):
         self.patch = PatchDmx()
 
         # Create OlaClient
-        self.ola_client = OlaClient.OlaClient()
-        self.sock = self.ola_client.GetSocket()
-        self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
+        try:
+            self.ola_client = OlaClient.OlaClient()
+            self.sock = self.ola_client.GetSocket()
+            self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
+        except:
+            print("Can't connect to Ola !")
+            sys.exit()
 
         # Create Main Playback
         self.sequence = Sequence(1, self.patch, text="Main Playback")
