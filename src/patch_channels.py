@@ -331,6 +331,14 @@ class PatchChannelsTab(Gtk.Grid):
                 self.app.window.channels[channel].queue_draw()
                 self.app.window.flowbox.invalidate_filter()
 
+        # Select next channel
+        if channel < 511:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(channel+1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(channel+1)
+
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
