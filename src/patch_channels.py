@@ -325,6 +325,11 @@ class PatchChannelsTab(Gtk.Grid):
                         self.channels[old_channel-1].queue_draw()
                         self.channels[channel].queue_draw()
 
+                # Update list of channels
+                level = self.app.dmx.frame[output]
+                self.app.window.channels[channel].level = level
+                self.app.window.channels[channel].queue_draw()
+                self.app.window.flowbox.invalidate_filter()
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -354,6 +359,11 @@ class PatchChannelsTab(Gtk.Grid):
                         self.channels[old_channel-1].queue_draw()
                         self.channels[channel].queue_draw()
 
+                        # Update list of channels
+                        level = self.app.dmx.frame[self.app.patch.channels[channel][0]]
+                        self.app.window.channels[channel].level = level
+                        self.app.window.channels[channel].queue_draw()
+                        self.app.window.flowbox.invalidate_filter()
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -379,6 +389,10 @@ class PatchChannelsTab(Gtk.Grid):
                             self.app.patch.outputs[output] = 0
                             # Update ui
                             self.channels[channel].queue_draw()
+
+                # Update list of channels
+                self.app.window.channels[channel].queue_draw()
+                self.app.window.flowbox.invalidate_filter()
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
