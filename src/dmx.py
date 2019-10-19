@@ -85,6 +85,7 @@ class PatchDmx(object):
             self.channels[channel-1] = [output]
         else:
             self.channels[channel-1].append(output)
+            self.channels[channel-1] = sorted(self.channels[channel-1])
         self.outputs[output-1] = channel
 
     """

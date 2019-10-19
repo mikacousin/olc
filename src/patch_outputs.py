@@ -67,25 +67,15 @@ class PatchOutputsTab(Gtk.Grid):
             self.app.patch.patch_empty()
             self.flowbox.queue_draw()
             self.app.window.flowbox.invalidate_filter()
-            if self.app.patch_channels_tab != None:
-                self.app.patch_channels_tab.liststore.clear()
-                for channel in range(512):
-                    outputs = ''
-                    self.app.patch_channels_tab.liststore.append([channel+1, outputs, ''])
 
         elif button_label == "Patch 1:1":
             self.app.patch.patch_1on1()
             self.flowbox.queue_draw()
 
-            if self.app.patch_channels_tab != None:
-                self.app.patch_channels_tab.liststore.clear()
             for channel in range(512):
                 level = self.app.dmx.frame[channel]
                 self.app.window.channels[channel].level = level
                 self.app.window.channels[channel].queue_draw()
-                # Populate Patch Channels Tab if exist
-                if self.app.patch_channels_tab != None:
-                    self.app.patch_channels_tab.liststore.append([channel+1, str(channel+1), ''])
             self.app.window.flowbox.invalidate_filter()
 
     def on_close_icon(self, widget):
@@ -205,19 +195,6 @@ class PatchOutputsTab(Gtk.Grid):
                         self.app.patch.add_output(channel+1, output+1)
                 # Update ui
                 self.outputs[output].queue_draw()
-                # Update Patch Channels Tab if exist
-                if self.app.patch_channels_tab != None:
-                    self.app.patch_channels_tab.liststore.clear()
-                    # Populate channels patch tab
-                    for channel in range(512):
-                        outputs = ''
-                        for i in range(len(self.app.patch.channels[channel])):
-                            out = self.app.patch.channels[channel][i]
-                            if out:
-                                if i > 0:
-                                    outputs += ', '
-                                outputs += str(out)
-                        self.app.patch_channels_tab.liststore.append([channel+1, outputs, ''])
 
                 # Update list of channels
                 level = self.app.dmx.frame[output]

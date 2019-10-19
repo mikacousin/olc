@@ -604,17 +604,7 @@ class Ascii(object):
 
             # Redraw Patch Channels Tab if exist
             if self.app.patch_channels_tab != None:
-                self.app.patch_channels_tab.liststore.clear()
-                # Populate channels patch tab
-                for channel in range(512):
-                    outputs = ''
-                    for i in range(len(self.app.patch.channels[channel])):
-                        output = self.app.patch.channels[channel][i]
-                        if output:
-                            if i > 0:
-                                outputs += ', '
-                            outputs += str(output)
-                    self.app.patch_channels_tab.liststore.append([channel+1, outputs, ''])
+                self.app.patch_channels_tab.flowbox.queue_draw()
 
         except GObject.GError as e:
             print("Error: " + e.message)
