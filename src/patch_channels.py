@@ -313,7 +313,12 @@ class PatchChannelsTab(Gtk.Grid):
                     output = int(self.keystring) - 1
 
                     if output >= 0 and output < 512:
+                        # TODO: Bug quand plusieurs anciennes outputs
                         # Unpatch old values
+                        outputs = self.app.patch.channels[channel]
+                        for i in range(len(outputs)):
+                            out = self.app.patch.channels[channel][i] - 1
+                            self.app.patch.outputs[out] = 0
                         old_channel = self.app.patch.outputs[output]
                         if old_channel:
                             self.app.patch.outputs[channel] = 0
