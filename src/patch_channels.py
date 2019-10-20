@@ -44,7 +44,7 @@ class PatchChannelHeader(Gtk.Widget):
                 cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(self.outputs)
-        cr.move_to(65+(600/2)-w/2, 60/2-(h-20)/2)
+        cr.move_to(((65+600)/2)-w/2, 60/2-(h-20)/2)
         cr.show_text(self.outputs)
 
         # Draw another box
