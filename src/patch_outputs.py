@@ -151,7 +151,7 @@ class PatchOutputsTab(Gtk.Grid):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_out_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y+80)
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y + allocation.height)
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -170,7 +170,7 @@ class PatchOutputsTab(Gtk.Grid):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_out_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y-10)
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y - allocation.height/2)
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
