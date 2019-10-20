@@ -527,6 +527,103 @@ class Window(Gtk.ApplicationWindow):
         if func:
             return func()
 
+    def keypress_Right(self):
+        """ Next Channel """
+
+        if self.last_chan_selected == '':
+            # Find first patched channel
+            for i in range(512):
+                if self.app.patch.channels[i][0]:
+                    break
+            child = self.flowbox.get_child_at_index(i)
+            self.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(i)
+        elif int(self.last_chan_selected) < 511:
+            # Find next patched channel
+            next_chan = 0
+            for i in range(int(self.last_chan_selected)+1, 512):
+                if self.app.patch.channels[i][0]:
+                    next_chan = i
+                    break
+            if next_chan:
+                self.flowbox.unselect_all()
+                child = self.flowbox.get_child_at_index(next_chan)
+                self.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(next_chan)
+
+    def keypress_Left(self):
+        """ Previous Channel """
+
+        if self.last_chan_selected == '':
+            # Find first patched channel
+            for i in range(512):
+                if self.app.patch.channels[i][0]:
+                    break
+            child = self.flowbox.get_child_at_index(i)
+            self.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(i)
+        elif int(self.last_chan_selected) > 0:
+            # Find previous patched channel
+            chan = int(self.last_chan_selected)
+            for i in range(int(self.last_chan_selected), 0, -1):
+                if self.app.patch.channels[i-1][0]:
+                    chan = i - 1
+                    break
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(chan)
+            self.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(chan)
+
+    def keypress_Down(self):
+        """ Next Line """
+
+        if self.last_chan_selected == '':
+            # Find first patched channel
+            for i in range(512):
+                if self.app.patch.channels[i][0]:
+                    break
+            child = self.flowbox.get_child_at_index(i)
+            self.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(i)
+        else:
+            child = self.flowbox.get_child_at_index(int(self.last_chan_selected))
+            allocation = child.get_allocation()
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y + allocation.height)
+            if child:
+                self.flowbox.unselect_all()
+                index = child.get_index()
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(index)
+
+    def keypress_Up(self):
+        """ Previous Line """
+
+        if self.last_chan_selected == '':
+            # Find first patched channel
+            for i in range(512):
+                if self.app.patch.channels[i][0]:
+                    break
+            child = self.flowbox.get_child_at_index(i)
+            self.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(i)
+        else:
+            child = self.flowbox.get_child_at_index(int(self.last_chan_selected))
+            allocation = child.get_allocation()
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y - allocation.height/2)
+            if child:
+                self.flowbox.unselect_all()
+                index = child.get_index()
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(index)
+
     def keypress_a(self):
         """ All Channels """
 
@@ -711,6 +808,7 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Escape(self):
         self.flowbox.unselect_all()
+        self.last_chan_selected = ''
 
     def keypress_q(self):
         # TODO: Update Shortcuts window

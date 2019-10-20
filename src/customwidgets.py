@@ -34,7 +34,7 @@ class ChannelWidget(Gtk.Widget):
 
         self.app.window.set_focus(flowboxchild)
         flowbox.select_child(flowboxchild)
-        self.app.window.last_chan_selected = self.channel
+        self.app.window.last_chan_selected = str(int(self.channel) - 1)
 
     def do_draw(self, cr):
 
