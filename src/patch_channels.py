@@ -339,6 +339,41 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
+    def keypress_Down(self):
+        """ Select Next Channel """
+
+        if self.last_chan_selected == '':
+            child = self.flowbox.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = '0'
+        elif int(self.last_chan_selected) < 511:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(int(self.last_chan_selected) + 1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(int(self.last_chan_selected) + 1)
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_Up(self):
+        """ Select Prev Channel """
+        if self.last_chan_selected == '':
+            child = self.flowbox.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = '0'
+        elif int(self.last_chan_selected) > 0:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(int(self.last_chan_selected) - 1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(int(self.last_chan_selected) - 1)
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
     def keypress_c(self):
         """ Select Channel """
         self.flowbox.unselect_all()
@@ -349,7 +384,7 @@ class PatchChannelsTab(Gtk.Grid):
                 child = self.flowbox.get_child_at_index(channel)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
+                self.last_chan_selected = str(channel)
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)

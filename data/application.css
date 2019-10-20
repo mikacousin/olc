@@ -1,7 +1,6 @@
 @define-color seq_selected_bg #997004;
 @define-color grey #666666;
 
-/*
 @binding-set unbind-keys {
   unbind "Right";
   unbind "Left";
@@ -9,17 +8,16 @@
   unbind "Down";
   unbind "Tab";
 }
-*/
 
 flowboxchild:selected {
   outline-width: 0px;
   background-color: alpha(@theme_bg_color, 0);
 }
 
-#olc * {
+* {
   outline-width: 0px;
   text-shadow: none;
-  /*-gtk-key-bindings: unbind-keys;*/
+  -gtk-key-bindings: unbind-keys;
 }
 
 /*
