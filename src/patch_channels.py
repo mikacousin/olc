@@ -53,7 +53,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.set_source_rgb(0.3, 0.3, 0.3)
         self.draw_rounded_rectangle(cr, area, self.radius)
 
-        # Draw Outputs text
+        # Draw text text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
@@ -142,33 +142,91 @@ class PatchChannelWidget(Gtk.Widget):
         cr.move_to(60/2-w/2, 60/2-(h-20)/2)
         cr.show_text(str(self.channel))
 
-        # Draw outputs boxes
-        for i in range(len(self.patch.channels[self.channel-1])):
-            output = self.patch.channels[self.channel-1][i]
-            if output != 0:
-                area = (65+(i*65), 125+(i*65), 0, 60)
-                if self.get_parent().is_selected():
-                    cr.set_source_rgb(0.4, 0.5, 0.4)
-                else:
-                    cr.set_source_rgb(0.3, 0.4, 0.3)
-                cr.move_to(65+(i*65), 0)
-                self.draw_rounded_rectangle(cr, area, self.radius)
+        cr.set_source_rgb(0.3, 0.3, 0.3)
+        cr.move_to(65, 30)
+        area = (65, 600, 0, 60)
+        a,b,c,d = area
+        cr.arc(a + self.radius, c + self.radius, self.radius, 2*(math.pi/2), 3*(math.pi/2))
+        cr.arc(b - self.radius, c + self.radius, self.radius, 3*(math.pi/2), 4*(math.pi/2))
+        cr.arc(b - self.radius, d - self.radius, self.radius, 0*(math.pi/2), 1*(math.pi/2))
+        cr.arc(a + self.radius, d - self.radius, self.radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.close_path()
+        cr.stroke()
 
-                # Draw Output number
-                cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                        cairo.FONT_WEIGHT_BOLD)
-                cr.set_font_size(12)
-                if i == 7:
-                    # Draw '...' in the last box
-                    (x, y, w, h, dx, dy) = cr.text_extents('...')
-                    cr.move_to(65+(i*65)+(60/2)-w/2, 60/2-(h-20)/2)
-                    cr.show_text('...')
-                    break
-                else:
+        # Draw outputs boxes
+        nb_outputs = len(self.patch.channels[self.channel - 1])
+
+        if nb_outputs <= 8:
+            for i in range(len(self.patch.channels[self.channel-1])):
+                output = self.patch.channels[self.channel-1][i]
+                if output != 0:
+                    area = (65+(i*65), 125+(i*65), 0, 60)
+                    if self.get_parent().is_selected():
+                        cr.set_source_rgb(0.4, 0.5, 0.4)
+                    else:
+                        cr.set_source_rgb(0.3, 0.4, 0.3)
+                    cr.move_to(65+(i*65), 0)
+                    self.draw_rounded_rectangle(cr, area, self.radius)
+
+                    # Draw Output number
+                    cr.set_source_rgb(0.9, 0.9, 0.9)
+                    cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                            cairo.FONT_WEIGHT_BOLD)
+                    cr.set_font_size(12)
                     (x, y, w, h, dx, dy) = cr.text_extents(str(output))
                     cr.move_to(65+(i*65)+(60/2)-w/2, 60/2-(h-20)/2)
                     cr.show_text(str(output))
+        else:
+            # If more than 8 outputs
+            line = 0
+            for i in range(len(self.patch.channels[self.channel-1])):
+                if i > 14:
+                    line = 2
+                output = self.patch.channels[self.channel-1][i]
+                if output != 0:
+                    if line == 0:
+                        # First line
+                        area = (65+(i*35), 95+(i*35), 0, 30)
+                        if self.get_parent().is_selected():
+                            cr.set_source_rgb(0.4, 0.5, 0.4)
+                        else:
+                            cr.set_source_rgb(0.3, 0.4, 0.3)
+                        cr.move_to(65+(i*35), 0)
+                        self.draw_rounded_rectangle(cr, area, self.radius/2)
+
+                        # Draw Output number
+                        cr.set_source_rgb(0.9, 0.9, 0.9)
+                        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                                cairo.FONT_WEIGHT_BOLD)
+                        cr.set_font_size(12)
+                        (x, y, w, h, dx, dy) = cr.text_extents(str(output))
+                        cr.move_to(65+(i*35)+(30/2)-w/2, 30/2-(h-10)/2)
+                        cr.show_text(str(output))
+                    else:
+                        # Second line
+                        j = i - 15
+                        area = (65+(j*35), 95+(j*35), 30, 60)
+                        if self.get_parent().is_selected():
+                            cr.set_source_rgb(0.4, 0.5, 0.4)
+                        else:
+                            cr.set_source_rgb(0.3, 0.4, 0.3)
+                        cr.move_to(65+(j*35), 30)
+                        self.draw_rounded_rectangle(cr, area, self.radius/2)
+
+                        # Draw Output number
+                        cr.set_source_rgb(0.9, 0.9, 0.9)
+                        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                                cairo.FONT_WEIGHT_BOLD)
+                        cr.set_font_size(12)
+                        cr.move_to(65+(j*35)+(30/2)-w/2, (30/2-(h-10)/2)+30)
+                        if i == 29:
+                            # Draw '...' in the last box
+                            (x, y, w, h, dx, dy) = cr.text_extents('...')
+                            cr.show_text('...')
+                            break
+                        else:
+                            (x, y, w, h, dx, dy) = cr.text_extents(str(output))
+                            cr.show_text(str(output))
 
     def draw_rounded_rectangle(self, cr, area, radius):
         a,b,c,d = area
