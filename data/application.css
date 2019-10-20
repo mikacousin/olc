@@ -24,20 +24,11 @@ window {
   -gtk-key-bindings: unbind-keys;
 }
 
-/*
 #olc treeview {
   padding: 2px 2px 2px 2px;
   border-radius: 4px;
-  border-style: solid;
-  border-color: @grey;
-  border-width: 1px;
-  outline-width: 2px;
-  outline-color: @seq_selected_bg;
-  outline-style: solid;
 }
-*/
 
-/*
 #olc treeview:selected:hover {
   background-color: shade(@seq_selected_bg, 0.9);
   color: @theme_selected_fg_color;
@@ -49,15 +40,8 @@ window {
 }
 
 #olc treeview:selected {
-  border-style: solid;
-  border-color: @seq_selected_bg;
-  border-width: 1px;
   box-shadow: none;
   text-shadow: none;
   color: @theme_selected_fg_color;
-  background-color: alpha(@theme_bg_color, 0);
-  outline-width: 2px;
-  outline-color: @seq_selected_bg;
-  outline-style: solid;
+  background-color: @seq_selected_bg;
 }
-*/
