@@ -159,9 +159,16 @@ class PatchChannelWidget(Gtk.Widget):
                 cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                         cairo.FONT_WEIGHT_BOLD)
                 cr.set_font_size(12)
-                (x, y, w, h, dx, dy) = cr.text_extents(str(output))
-                cr.move_to(65+(i*65)+(60/2)-w/2, 60/2-(h-20)/2)
-                cr.show_text(str(output))
+                if i == 7:
+                    # Draw '...' in the last box
+                    (x, y, w, h, dx, dy) = cr.text_extents('...')
+                    cr.move_to(65+(i*65)+(60/2)-w/2, 60/2-(h-20)/2)
+                    cr.show_text('...')
+                    break
+                else:
+                    (x, y, w, h, dx, dy) = cr.text_extents(str(output))
+                    cr.move_to(65+(i*65)+(60/2)-w/2, 60/2-(h-20)/2)
+                    cr.show_text(str(output))
 
     def draw_rounded_rectangle(self, cr, area, radius):
         a,b,c,d = area
