@@ -110,6 +110,74 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
+    def keypress_Right(self):
+        """ Next Output """
+
+        if self.last_out_selected == '':
+            child = self.flowbox.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = '0'
+        elif int(self.last_out_selected) < 511:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(int(self.last_out_selected) + 1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = str(int(self.last_out_selected) + 1)
+
+    def keypress_Left(self):
+        """ Previous Output """
+
+        if self.last_out_selected == '':
+            child = self.flowbox.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = '0'
+        elif int(self.last_out_selected) > 0:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(int(self.last_out_selected) - 1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = str(int(self.last_out_selected) - 1)
+
+    def keypress_Down(self):
+        """ Next Line """
+
+        if self.last_out_selected == '':
+            child = self.flowbox.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = '0'
+        else:
+            child = self.flowbox.get_child_at_index(int(self.last_out_selected))
+            allocation = child.get_allocation()
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y+80)
+            if child:
+                self.flowbox.unselect_all()
+                index = child.get_index()
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_out_selected = str(index)
+
+    def keypress_Up(self):
+        """ Previous Line """
+
+        if self.last_out_selected == '':
+            child = self.flowbox.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = '0'
+        else:
+            child = self.flowbox.get_child_at_index(int(self.last_out_selected))
+            allocation = child.get_allocation()
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y-10)
+            if child:
+                self.flowbox.unselect_all()
+                index = child.get_index()
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_out_selected = str(index)
+
     def keypress_o(self):
         """ Select Output """
 

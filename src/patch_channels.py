@@ -358,7 +358,7 @@ class PatchChannelsTab(Gtk.Grid):
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_Up(self):
-        """ Select Prev Channel """
+        """ Select Previous Channel """
         if self.last_chan_selected == '':
             child = self.flowbox.get_child_at_index(0)
             self.app.window.set_focus(child)
