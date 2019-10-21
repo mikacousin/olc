@@ -68,6 +68,10 @@ class PatchOutputsTab(Gtk.Grid):
             self.flowbox.queue_draw()
             self.app.window.flowbox.invalidate_filter()
 
+            for output in range(512):
+                self.app.dmx.frame[output] = 0
+            self.app.dmx.send()
+
         elif button_label == "Patch 1:1":
             self.app.patch.patch_1on1()
             self.flowbox.queue_draw()
@@ -252,6 +256,7 @@ class PatchOutputsTab(Gtk.Grid):
                         channel -= 1
                         self.app.patch.outputs[output] = 0
                         self.app.patch.channels[channel].remove(output + 1)
+                        self.app.dmx.frame[output] = 0
                 else:
                     channel = int(self.keystring) - 1
 
@@ -276,6 +281,8 @@ class PatchOutputsTab(Gtk.Grid):
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output+1)
+
+        self.app.dmx.send()
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
