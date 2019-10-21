@@ -490,7 +490,7 @@ class SequentialWidget(Gtk.Widget):
         if self.delay_in:
             cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.set_line_width(3)
-            cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*24))
+            cr.move_to(16+wait_x, allocation.height-32-(len(self.channel_time)*8))
             cr.line_to(16+wait_x+(inter*self.delay_in), allocation.height-32-(len(self.channel_time)*8))
             cr.stroke()
             # Draw Delay In on the time line
