@@ -34,6 +34,7 @@ class Ascii(object):
             flag_group = False
 
             type_seq = "Normal"
+            Playback = False
             txt = False
             t_in = False
             t_out = False
@@ -74,7 +75,8 @@ class Ascii(object):
 
                 if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
                     p = line[10:].split(" ")
-                    if int(p[0]) < 2:
+                    if int(p[0]) < 2 and not Playback:
+                        Playback = True
                         type_seq = "Normal"
                     else:
                         type_seq = "Chaser"
@@ -255,7 +257,10 @@ class Ascii(object):
                         if line[:11] == '$$PARTTIME ':
                             #print("Channel Time")
                             p = line[11:]
-                            delay = float(p.split(" ")[0])
+                            d = p.split(" ")[0]
+                            if d == '.':
+                                d = 0
+                            delay = float(d)
                             # Times with ":" are in minutes
                             time_str = p.split(" ")[1]
                             if ':' in time_str:
