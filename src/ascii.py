@@ -116,7 +116,7 @@ class Ascii(object):
 
                     if line[:4] == "$CUE":
                         in_cue = True
-                        channels = array.array('B', [0] * 512)
+                        channels = array.array('B', [0] * MAX_CHANNELS)
                         i += 1
                         p = line[5:].split(" ")
                         seq = p[0]
@@ -193,13 +193,13 @@ class Ascii(object):
                         print(line)
                     if line[:3] == "CUE":
                         in_cue = True
-                        channels = array.array('B', [0] * 512)
+                        channels = array.array('B', [0] * MAX_CHANNELS)
                         i += 1
                         #print ("        Mémoire :", line[4:])
                         mem = line[4:]
                     if line[:4] == "$CUE":
                         in_cue = True
-                        channels = array.array('B', [0] * 512)
+                        channels = array.array('B', [0] * MAX_CHANNELS)
                         i += 1
                         #print ("        Mémoire :", line[5:])
                         mem = line[5:]
@@ -359,7 +359,7 @@ class Ascii(object):
                     flag_master = False
                     flag_group = True
                     #print ("Group :", line[7:])
-                    channels = array.array('B', [0] * 512)
+                    channels = array.array('B', [0] * MAX_CHANNELS)
                     group_nb = float(line[7:])
                 if line[:5] == 'GROUP':
                     flag_seq = False
@@ -367,7 +367,7 @@ class Ascii(object):
                     flag_master = False
                     flag_group = True
                     #print ("Group :", line[6:])
-                    channels = array.array('B', [0] * 512)
+                    channels = array.array('B', [0] * MAX_CHANNELS)
                     # TODO: Le numéro du groupe peut etre un float
                     group_nb = float(line[6:])
                 if flag_group:
@@ -413,7 +413,7 @@ class Ascii(object):
                         flag_patch = False
                         flag_group = False
                         flag_master = True
-                        channels = array.array('B', [0] * 512)
+                        channels = array.array('B', [0] * MAX_CHANNELS)
                     else:
                         self.app.masters.append(Master(item[0], item[1], item[2], item[3], self.app.groups, self.app.chasers))
                 if flag_master:

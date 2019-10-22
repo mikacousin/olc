@@ -2,6 +2,8 @@ from gi.repository import Gtk, Gio, Gdk
 import cairo
 import math
 
+from olc.define import MAX_CHANNELS
+
 class PatchChannelHeader(Gtk.Widget):
     __gtype_name__ = "PatchChannelHeader"
 
@@ -280,7 +282,7 @@ class PatchChannelsTab(Gtk.Grid):
 
         self.channels = []
 
-        for channel in range(512):
+        for channel in range(MAX_CHANNELS):
             self.channels.append(PatchChannelWidget(channel+1, self.app.patch))
             self.flowbox.add(self.channels[channel])
 

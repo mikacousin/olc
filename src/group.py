@@ -1,10 +1,11 @@
 import array
 from gi.repository import Gio, Gtk, Gdk
 
+from olc.define import MAX_CHANNELS
 from olc.customwidgets import ChannelWidget, GroupWidget
 
 class Group(object):
-    def __init__(self, index, channels=array.array('B', [0] * 512), text=""):
+    def __init__(self, index, channels=array.array('B', [0] * MAX_CHANNELS), text=""):
         self.index = index
         self.channels = channels
         self.text = str(text)
@@ -367,7 +368,7 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-        channels = array.array('B', [0] * 512)
+        channels = array.array('B', [0] * MAX_CHANNELS)
         txt = str(group_nb)
         self.app.groups.append(Group(group_nb, channels, txt))
         self.grps.append(GroupWidget(self.app.window, self.app.groups[-1].index,

@@ -3,7 +3,7 @@ import threading
 import time
 from gi.repository import Gtk, GLib, Gio, Gdk, Pango
 
-from olc.define import NB_UNIVERSES
+from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.cue import Cue
 from olc.dmx import PatchDmx
 from olc.customwidgets import ChannelWidget
@@ -19,7 +19,7 @@ class Sequence(object):
         # Flag pour savoir si on a un Go en cours
         self.on_go = False
         # Liste des channels présent dans le sequentiel
-        self.channels = array.array('B', [0] * 512)
+        self.channels = array.array('B', [0] * MAX_CHANNELS)
         # Flag for chasers
         self.run = False
         # Thread for chasers
@@ -92,7 +92,7 @@ class Sequence(object):
             self.app.window.header.set_subtitle(subtitle)
 
             # On vide le tableau des valeurs entrées par l'utilisateur
-            self.app.dmx.user = array.array('h', [-1] * 512)
+            self.app.dmx.user = array.array('h', [-1] * MAX_CHANNELS)
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
@@ -154,7 +154,7 @@ class Sequence(object):
             self.window.seq_grid.queue_draw()
 
             # On vide le tableau des valeurs entrées par l'utilisateur
-            self.app.dmx.user = array.array('h', [-1] * 512)
+            self.app.dmx.user = array.array('h', [-1] * MAX_CHANNELS)
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
@@ -310,7 +310,7 @@ class ThreadGo(threading.Thread):
         # Le Go est terminé
         self.app.sequence.on_go = False
         # On vide le tableau des valeurs entrées par l'utilisateur
-        self.app.dmx.user = array.array('h', [-1] * 512)
+        self.app.dmx.user = array.array('h', [-1] * MAX_CHANNELS)
 
         # On se positionne à la mémoire suivante
         position = self.app.sequence.position
@@ -478,7 +478,7 @@ class SequenceTab(Gtk.Grid):
         self.last_chan_selected = ""
 
         # To stock user modification on channels
-        self.user_channels = array.array('h', [-1] * 512)
+        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
@@ -1182,13 +1182,13 @@ class SequenceTab(Gtk.Grid):
         path = Gtk.TreePath.new_first()
         self.treeview2.set_cursor(path)
         # Reset user modifications
-        self.user_channels = array.array('h', [-1] * 512)
+        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
     def keypress_q(self):
         """ Prev Memory """
 
         # Reset user modifications
-        self.user_channels = array.array('h', [-1] * 512)
+        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
         path, focus_column = self.treeview2.get_cursor()
         if path != None:
@@ -1202,7 +1202,7 @@ class SequenceTab(Gtk.Grid):
         """ Next Memory """
 
         # Reset user modifications
-        self.user_channels = array.array('h', [-1] * 512)
+        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
         path, focus_column = self.treeview2.get_cursor()
         if path != None:
@@ -1472,7 +1472,7 @@ class SequenceTab(Gtk.Grid):
                 dialog.destroy()
 
                 # Reset user modifications
-                self.user_channels = array.array('h', [-1] * 512)
+                self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
     def keypress_N(self):
         """ New Chaser """
@@ -1591,8 +1591,8 @@ class SequenceTab(Gtk.Grid):
                     index = self.seq.cues[-1].index + 1
                     memory = float(self.seq.cues[-1].memory) + 1
 
-            channels = array.array('B', [0] * 512)
-            for channel in range(512):
+            channels = array.array('B', [0] * MAX_CHANNELS)
+            for channel in range(MAX_CHANNELS):
                 channels[channel] = self.channels[channel].level
 
             cue = Cue(index, str(memory), channels)
@@ -1712,7 +1712,7 @@ class SequenceTab(Gtk.Grid):
                 self.treeview2.set_cursor(path, None, False)
 
             # Reset user modifications
-            self.user_channels = array.array('h', [-1] * 512)
+            self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
 class Dialog(Gtk.Dialog):
 
@@ -1733,8 +1733,8 @@ if __name__ == "__main__":
 
     sequence = Sequence(1)
 
-    channels = array.array('B', [0] * 512)
-    for i in range(512):
+    channels = array.array('B', [0] * MAX_CHANNELS)
+    for i in range(MAX_CHANNELS):
         channels[i] = int(i / 2)
     cue = Cue(1, 1.0, channels, text="Top blabla")
     sequence.add_cue(cue)

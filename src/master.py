@@ -3,10 +3,11 @@ import threading
 import time
 from gi.repository import Gio, Gtk, GLib, Gdk
 
+from olc.define import MAX_CHANNELS
 from olc.settings import Settings
 
 class Master(object):
-    def __init__(self, page, number, content_type, content_value, groups, chasers, channels=array.array('B', [0] * 512), exclude_record=True, text="", value=0.0):
+    def __init__(self, page, number, content_type, content_value, groups, chasers, channels=array.array('B', [0] * MAX_CHANNELS), exclude_record=True, text="", value=0.0):
         self.page = page
         self.number = number
         self.content_type = int(content_type)
@@ -17,7 +18,7 @@ class Master(object):
         self.chasers = chasers
         self.channels = channels
         # To store DMX values of the master
-        self.dmx = array.array('B', [0] * 512)
+        self.dmx = array.array('B', [0] * MAX_CHANNELS)
         self.value = value
 
         # Type 3 : Chaser

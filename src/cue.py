@@ -1,7 +1,9 @@
 import array
 
+from olc.define import MAX_CHANNELS
+
 class Cue(object):
-    def __init__(self, index, memory, channels=array.array('B', [0] * 512), time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0, wait=0.0, text="", channel_time={}):
+    def __init__(self, index, memory, channels=array.array('B', [0] * MAX_CHANNELS), time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0, wait=0.0, text="", channel_time={}):
         self.index = index
         self.memory = memory
         self.channels = channels
@@ -36,8 +38,8 @@ class ChannelTime(object):
 
 if __name__ == "__main__":
 
-    channels = array.array('B', [0] * 512)
-    for i in range(512):
+    channels = array.array('B', [0] * MAX_CHANNELS)
+    for i in range(MAX_CHANNELS):
         channels[i] = int(i/2)
     cue = Cue(1, 10.0, channels, text="Mise")
 
@@ -46,5 +48,5 @@ if __name__ == "__main__":
     print("Delay In :", cue.delay_in, "\nDelay Out :", cue.delay_out)
     print("Text :", cue.text)
     print("")
-    for i in range(512):
+    for i in range(MAX_CHANNELS):
         print("Chanel :", i+1, "@", cue.channels[i])

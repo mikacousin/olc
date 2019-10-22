@@ -19,9 +19,9 @@ class Dmx(object):
         for universe in range(NB_UNIVERSES):
             self.frame.append(array.array('B', [0] * 512))
         # les valeurs du séquentiel
-        self.sequence = array.array('B', [0] * 512)
+        self.sequence = array.array('B', [0] * MAX_CHANNELS)
         # les valeurs modifiées par l'utilisateur
-        self.user = array.array('h', [-1] * 512)
+        self.user = array.array('h', [-1] * MAX_CHANNELS)
 
     def send(self):
         # Cette fonction envoi les valeurs DMX à Ola en prenant en compte
@@ -68,7 +68,7 @@ class PatchDmx(object):
         # List of channels
         self.channels = []
         for channel in range(MAX_CHANNELS):
-            # TODO: Modify if MAX_CHANNELS > 512
+            # TODO: Pas besoin de l'univers pour les channels
             self.channels.append([[channel + 1], 0])
 
         self.outputs = []
