@@ -1,6 +1,7 @@
 import array
 from gi.repository import Gio, Gtk, GObject, Pango
 
+from olc.define import MAX_CHANNELS, NB_UNIVERSES
 from olc.cue import Cue, ChannelTime
 from olc.sequence import Sequence
 from olc.group import Group
@@ -338,12 +339,19 @@ class Ascii(object):
                         q = p.split("<")
                         if q[0]:
                             r = q[1].split("@")
-                            if int(q[0]) <= 512 and int(r[0]) <=512:
-                                #print ("Chanel :", q[0], "-> Output :", r[0], "@", r[1])
-                                self.app.patch.add_output(int(q[0]), int(r[0]))
-                                self.app.window.flowbox.invalidate_filter()
+                            channel = int(q[0])
+                            output = int(r[0])
+                            univ = int(output/512)
+                            out = output - (512*univ)
+                            # print(channel, univ, out)
+                            if univ < NB_UNIVERSES:
+                                if channel < MAX_CHANNELS:
+                                    self.app.patch.add_output(channel, out, univ)
+                                    self.app.window.flowbox.invalidate_filter()
+                                else:
+                                    print("Plus de", MAX_CHANNELS, "Circuits")
                             else:
-                                print("Attention ! PLusieurs univers !!!")
+                                print("Plus de", NB_UNIVERSES, "univers")
 
                 if line[:6] == '$GROUP':
                     flag_seq = False

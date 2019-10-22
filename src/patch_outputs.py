@@ -1,5 +1,6 @@
 from gi.repository import Gio, Gtk, Gdk
 
+from olc.define import NB_UNIVERSES
 from olc.dmx import Dmx, PatchDmx
 from olc.customwidgets   import PatchWidget
 
@@ -42,8 +43,10 @@ class PatchOutputsTab(Gtk.Grid):
         self.outputs = []
         self.channels = []
 
-        for i in range(512):
-            self.outputs.append(PatchWidget(i+1, self.app.patch))
+        for universe in range(NB_UNIVERSES):
+            for i in range(512):
+                self.outputs.append(PatchWidget(universe, i+1, self.app.patch))
+        for i in range(len(self.outputs)):
             self.flowbox.add(self.outputs[i])
 
         self.flowbox.set_filter_func(self.filter_func, None)
@@ -68,18 +71,20 @@ class PatchOutputsTab(Gtk.Grid):
             self.flowbox.queue_draw()
             self.app.window.flowbox.invalidate_filter()
 
-            for output in range(512):
-                self.app.dmx.frame[output] = 0
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
+                    self.app.dmx.frame[univ][output] = 0
             self.app.dmx.send()
 
         elif button_label == "Patch 1:1":
             self.app.patch.patch_1on1()
             self.flowbox.queue_draw()
 
-            for channel in range(512):
-                level = self.app.dmx.frame[channel]
-                self.app.window.channels[channel].level = level
-                self.app.window.channels[channel].queue_draw()
+            for univ in range(NB_UNIVERSES):
+                for channel in range(512):
+                    level = self.app.dmx.frame[univ][channel]
+                    self.app.window.channels[channel].level = level
+                    self.app.window.channels[channel].queue_draw()
             self.app.window.flowbox.invalidate_filter()
 
     def on_close_icon(self, widget):
@@ -248,29 +253,30 @@ class PatchOutputsTab(Gtk.Grid):
 
             for patchwidget in children:
                 output = patchwidget.output - 1
+                univ = patchwidget.universe
 
                 # Unpatch if no entry
                 if self.keystring == "" or self.keystring == "0":
-                    channel = self.app.patch.outputs[output]
+                    channel = self.app.patch.outputs[univ][output]
                     if channel != 0:
                         channel -= 1
-                        self.app.patch.outputs[output] = 0
-                        self.app.patch.channels[channel].remove(output + 1)
-                        self.app.dmx.frame[output] = 0
+                        self.app.patch.outputs[univ][output] = 0
+                        self.app.patch.channels[channel][0].remove(output + 1)
+                        self.app.dmx.frame[univ][output] = 0
                 else:
                     channel = int(self.keystring) - 1
 
                     if channel >= 0 and channel < 512:
                         # Unpatch old value if exist
-                        if self.app.patch.outputs[output] != 0:
-                            self.app.patch.channels[self.app.patch.outputs[output]-1].remove(output + 1)
+                        if self.app.patch.outputs[univ][output] != 0:
+                            self.app.patch.channels[self.app.patch.outputs[univ][output]-1][0].remove(output + 1)
                         # Patch Channel : same channel for every outputs
-                        self.app.patch.add_output(channel+1, output+1)
+                        self.app.patch.add_output(channel+1, output+1, univ)
                 # Update ui
                 self.outputs[output].queue_draw()
 
                 # Update list of channels
-                level = self.app.dmx.frame[output]
+                level = self.app.dmx.frame[univ][output]
                 self.app.window.channels[channel].level = level
                 self.app.window.channels[channel].queue_draw()
                 self.app.window.flowbox.invalidate_filter()

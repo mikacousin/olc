@@ -6,6 +6,7 @@ app_PYTHON = \
 	channel_time.py \
 	cue.py \
 	customwidgets.py \
+	define.py \
 	dmx.py \
 	group.py \
 	master.py \

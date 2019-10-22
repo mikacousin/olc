@@ -3,7 +3,7 @@ import threading
 import time
 from gi.repository import Gtk, GLib, Gio, Gdk, Pango
 
-
+from olc.define import NB_UNIVERSES
 from olc.cue import Cue
 from olc.dmx import PatchDmx
 from olc.customwidgets import ChannelWidget
@@ -94,11 +94,12 @@ class Sequence(object):
             # On vide le tableau des valeurs entrées par l'utilisateur
             self.app.dmx.user = array.array('h', [-1] * 512)
 
-            for output in range(512):
-                channel = self.patch.outputs[output]
-                if channel:
-                    level = self.cues[position].channels[channel-1]
-                    self.app.dmx.sequence[channel-1] = level
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
+                    channel = self.patch.outputs[univ][output]
+                    if channel:
+                        level = self.cues[position].channels[channel-1]
+                        self.app.dmx.sequence[channel-1] = level
 
             self.app.dmx.send()
 
@@ -155,11 +156,12 @@ class Sequence(object):
             # On vide le tableau des valeurs entrées par l'utilisateur
             self.app.dmx.user = array.array('h', [-1] * 512)
 
-            for output in range(512):
-                channel = self.patch.outputs[output]
-                if channel:
-                    level = self.cues[position].channels[channel-1]
-                    self.app.dmx.sequence[channel-1] = level
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
+                    channel = self.patch.outputs[univ][output]
+                    if channel:
+                        level = self.cues[position].channels[channel-1]
+                        self.app.dmx.sequence[channel-1] = level
 
             self.app.dmx.send()
 
@@ -236,15 +238,18 @@ class ThreadGo(threading.Thread):
         self.name = name
         self._stopevent = threading.Event()
         # To save dmx levels when user send Go
-        self.dmxlevels = array.array('B', [0] * 512)
+        self.dmxlevels = []
+        for univ in range(NB_UNIVERSES):
+            self.dmxlevels.append(array.array('B', [0] * 512))
 
     def run(self):
         # Position dans le séquentiel
         position = self.app.sequence.position
 
         # Levels when Go is sent
-        for output in range(512):
-            self.dmxlevels[output] = self.app.dmx.frame[output]
+        for univ in range(NB_UNIVERSES):
+            for output in range(512):
+                self.dmxlevels[univ][output] = self.app.dmx.frame[univ][output]
 
         # If sequential is empty, just return
         if self.app.sequence.last == 0:
@@ -291,14 +296,15 @@ class ThreadGo(threading.Thread):
             return
 
         # Finish to load memory
-        for output in range(512):
-            channel = self.app.patch.outputs[output]
-            if channel:
-                if position < self.app.sequence.last - 1:
-                    level = self.app.sequence.cues[position+1].channels[channel-1]
-                else:
-                    level = self.app.sequence.cues[0].channels[channel-1]
-                self.app.dmx.sequence[channel-1] = level
+        for univ in range(NB_UNIVERSES):
+            for output in range(512):
+                channel = self.app.patch.outputs[univ][output]
+                if channel:
+                    if position < self.app.sequence.last - 1:
+                        level = self.app.sequence.cues[position+1].channels[channel-1]
+                    else:
+                        level = self.app.sequence.cues[0].channels[channel-1]
+                    self.app.dmx.sequence[channel-1] = level
         self.app.dmx.send()
 
         # Le Go est terminé
@@ -377,54 +383,56 @@ class ThreadGo(threading.Thread):
         # On attend que le temps d'un éventuel wait soit passé pour changer les levels
         if i > delay_wait:
 
-            for output in range(512):
+            for univ in range(NB_UNIVERSES):
 
-                # On utilise les valeurs dmx comme valeurs de départ
-                old_level = self.dmxlevels[output]
+                for output in range(512):
 
-                channel = self.app.patch.outputs[output]
+                    # On utilise les valeurs dmx comme valeurs de départ
+                    old_level = self.dmxlevels[univ][output]
 
-                if channel:
+                    channel = self.app.patch.outputs[univ][output]
 
-                    channel_time = self.app.sequence.cues[position+1].channel_time
+                    if channel:
 
-                    # If channel is in a channel time
-                    # TODO: If Time is 0, use TimeIn or TimeOut
-                    if channel in channel_time:
-                        #print(channel_time[channel].delay, channel_time[channel].time)
-                        ct_delay = channel_time[channel].delay * 1000
-                        ct_time = channel_time[channel].time * 1000
-                        if i > ct_delay+delay_wait and i < ct_delay+ct_time+delay_wait:
-                            next_level = self.app.sequence.cues[position+1].channels[channel-1]
-                            if next_level > old_level:
-                                level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay-delay_wait)) + old_level
+                        channel_time = self.app.sequence.cues[position+1].channel_time
+
+                        # If channel is in a channel time
+                        # TODO: If Time is 0, use TimeIn or TimeOut
+                        if channel in channel_time:
+                            #print(channel_time[channel].delay, channel_time[channel].time)
+                            ct_delay = channel_time[channel].delay * 1000
+                            ct_time = channel_time[channel].time * 1000
+                            if i > ct_delay+delay_wait and i < ct_delay+ct_time+delay_wait:
+                                next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                                if next_level > old_level:
+                                    level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay-delay_wait)) + old_level
+                                else:
+                                    level = old_level - abs(int(((next_level - old_level-1) / ct_time) * (i-ct_delay-delay_wait)))
+                                self.app.dmx.sequence[channel-1] = level
+                        # Else channel is normal
+                        else:
+                            # On boucle sur les mémoires et on revient à 0
+                            if position < self.app.sequence.last - 1:
+                                next_level = self.app.sequence.cues[position+1].channels[channel-1]
                             else:
-                                level = old_level - abs(int(((next_level - old_level-1) / ct_time) * (i-ct_delay-delay_wait)))
+                                next_level = self.app.sequence.cues[0].channels[channel-1]
+                                self.app.sequence.position = 0
+
+                            # Si le level augmente, on prends le temps de montée
+                            if next_level > old_level and i < delay_in+delay_wait+delay_d_in and i > delay_wait+delay_d_in:
+                                level = int(((next_level - old_level+1) / delay_in) * (i-delay_wait-delay_d_in)) + old_level
+                            elif next_level > old_level and i > delay_in+delay_wait+delay_d_in:
+                                level = next_level
+                            # Si le level descend, on prend le temps de descente
+                            elif next_level < old_level and i < delay_out+delay_wait+delay_d_out and i > delay_wait+delay_d_out:
+                                level = old_level - abs(int(((next_level - old_level-1) / delay_out) * (i-delay_wait-delay_d_out)))
+                            elif next_level < old_level and i > delay_out+delay_wait+delay_d_out:
+                                level = next_level
+                            # Sinon, la valeur est déjà bonne
+                            else:
+                                level = old_level
+
                             self.app.dmx.sequence[channel-1] = level
-                    # Else channel is normal
-                    else:
-                        # On boucle sur les mémoires et on revient à 0
-                        if position < self.app.sequence.last - 1:
-                            next_level = self.app.sequence.cues[position+1].channels[channel-1]
-                        else:
-                            next_level = self.app.sequence.cues[0].channels[channel-1]
-                            self.app.sequence.position = 0
-
-                        # Si le level augmente, on prends le temps de montée
-                        if next_level > old_level and i < delay_in+delay_wait+delay_d_in and i > delay_wait+delay_d_in:
-                            level = int(((next_level - old_level+1) / delay_in) * (i-delay_wait-delay_d_in)) + old_level
-                        elif next_level > old_level and i > delay_in+delay_wait+delay_d_in:
-                            level = next_level
-                        # Si le level descend, on prend le temps de descente
-                        elif next_level < old_level and i < delay_out+delay_wait+delay_d_out and i > delay_wait+delay_d_out:
-                            level = old_level - abs(int(((next_level - old_level-1) / delay_out) * (i-delay_wait-delay_d_out)))
-                        elif next_level < old_level and i > delay_out+delay_wait+delay_d_out:
-                            level = next_level
-                        # Sinon, la valeur est déjà bonne
-                        else:
-                            level = old_level
-
-                        self.app.dmx.sequence[channel-1] = level
 
             self.app.dmx.send()
 

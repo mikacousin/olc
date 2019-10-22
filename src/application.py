@@ -6,6 +6,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gio, GLib, Gdk, GObject
 from ola import OlaClient
 
+from olc.define import NB_UNIVERSES
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
 from olc.patch_outputs import PatchOutputsTab
@@ -46,9 +47,9 @@ class Application(Gtk.Application):
         self.settings = Settings.new()
 
         # TODO: Choisir son univers
-        #self.universe = 0
-        #self.universe = Gio.Application.get_default().settings.get_value('universe')
-        self.universe = self.settings.get_int('universe')
+        self.universes = []
+        for i in range(NB_UNIVERSES):
+            self.universes.append(i)
 
         # Create patch (1:1)
         self.patch = PatchDmx()
@@ -57,7 +58,9 @@ class Application(Gtk.Application):
         try:
             self.ola_client = OlaClient.OlaClient()
             self.sock = self.ola_client.GetSocket()
-            self.ola_client.RegisterUniverse(self.universe, self.ola_client.REGISTER, self.on_dmx)
+            for i in range(len(self.universes)):
+                func = getattr(self, 'on_dmx_' + str(i), None)
+                self.ola_client.RegisterUniverse(self.universes[i], self.ola_client.REGISTER, func)
         except:
             print("Can't connect to Ola !")
             sys.exit()
@@ -124,10 +127,11 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.go", ["<Control>g"])
 
         # Create several DMX arrays
-        self.dmx = Dmx(self.universe, self.patch, self.ola_client, self.sequence, self.masters, self.window)
+        self.dmx = Dmx(self.universes, self.patch, self.ola_client, self.sequence, self.masters, self.window)
 
         # Fetch dmx values on startup
-        self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
+        for i in range(len(self.universes)):
+            self.ola_client.FetchDmx(self.universes[i], self.fetch_dmx)
 
         # TODO: Test manual crossfade, must be deleted
         #self.win_crossfade = CrossfadeWindow()
@@ -225,11 +229,51 @@ class Application(Gtk.Application):
             self.ola_client.SocketReady()
         return True
 
-    def on_dmx(self, dmxframe):
+    def on_dmx_0(self, dmxframe):
         for output in range(len(dmxframe)):
-            channel = self.patch.outputs[output]
+            channel = self.patch.outputs[0][output]
             level = dmxframe[output]
-            self.dmx.frame[output] = level
+            self.dmx.frame[0][output] = level
+            self.window.channels[channel-1].level = level
+            if self.sequence.position < self.sequence.last:
+                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+            else:
+                next_level = self.sequence.cues[0].channels[channel-1]
+            self.window.channels[channel-1].next_level = next_level
+            self.window.channels[channel-1].queue_draw()
+
+    def on_dmx_1(self, dmxframe):
+        for output in range(len(dmxframe)):
+            channel = self.patch.outputs[1][output]
+            level = dmxframe[output]
+            self.dmx.frame[1][output] = level
+            self.window.channels[channel-1].level = level
+            if self.sequence.position < self.sequence.last:
+                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+            else:
+                next_level = self.sequence.cues[0].channels[channel-1]
+            self.window.channels[channel-1].next_level = next_level
+            self.window.channels[channel-1].queue_draw()
+
+    def on_dmx_2(self, dmxframe):
+        for output in range(len(dmxframe)):
+            channel = self.patch.outputs[2][output]
+            level = dmxframe[output]
+            self.dmx.frame[2][output] = level
+            self.window.channels[channel-1].level = level
+            if self.sequence.position < self.sequence.last:
+                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+            else:
+                next_level = self.sequence.cues[0].channels[channel-1]
+            self.window.channels[channel-1].next_level = next_level
+            self.window.channels[channel-1].queue_draw()
+        pass
+
+    def on_dmx_3(self, dmxframe):
+        for output in range(len(dmxframe)):
+            channel = self.patch.outputs[3][output]
+            level = dmxframe[output]
+            self.dmx.frame[3][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
                 next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
@@ -239,12 +283,19 @@ class Application(Gtk.Application):
             self.window.channels[channel-1].queue_draw()
 
     def fetch_dmx(self, request, univ, dmxframe):
-        for output in range(len(dmxframe)):
-            channel = self.patch.outputs[output]
-            level = dmxframe[output]
-            self.dmx.frame[output] = level
-            self.window.channels[channel-1].level = level
-            self.window.channels[channel-1].queue_draw()
+        if dmxframe:
+            for output in range(len(dmxframe)):
+                channel = self.patch.outputs[univ][output]
+                if channel:
+                    level = dmxframe[output]
+                    self.dmx.frame[univ][output] = level
+                    self.window.channels[channel-1].level = level
+                    if self.sequence.position < self.sequence.last:
+                        next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+                    else:
+                        next_level = self.sequence.cues[0].channels[channel-1]
+                    self.window.channels[channel-1].next_level = next_level
+                    self.window.channels[channel-1].queue_draw()
 
     def _new(self, action, parameter):
         # TODO: Verify this entire fonction
@@ -346,7 +397,8 @@ class Application(Gtk.Application):
             self.ascii.file = self.file
             self.ascii.load()
 
-            self.ola_client.FetchDmx(self.universe, self.fetch_dmx)
+            for i in range(len(self.universes)):
+                self.ola_client.FetchDmx(self.universes[i], self.fetch_dmx)
 
         elif response_id == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")

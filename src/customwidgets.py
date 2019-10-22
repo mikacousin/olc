@@ -156,9 +156,10 @@ class ChannelWidget(Gtk.Widget):
 class PatchWidget(Gtk.Widget):
     __gtype_name__ = "PatchWidget"
 
-    def __init__(self, output, patch):
+    def __init__(self, universe, output, patch):
 
         self.type = "Output"
+        self.universe = universe
         self.output = output
         self.patch = patch
 
@@ -187,7 +188,7 @@ class PatchWidget(Gtk.Widget):
         # paint background
         area = (0, self.width, 0, self.width)
 
-        if self.patch.outputs[self.output-1] != 0:
+        if self.patch.outputs[self.universe][self.output-1] != 0:
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
@@ -209,24 +210,24 @@ class PatchWidget(Gtk.Widget):
         cr.move_to(self.width/2-width/2,self.width/4-(height-20)/4)
         cr.show_text(text)
 
-        if self.patch.outputs[self.output-1] != 0:
+        if self.patch.outputs[self.universe][self.output-1] != 0:
             # draw channel number
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12*self.scale)
-            text = str(self.patch.outputs[self.output-1])
+            text = str(self.patch.outputs[self.universe][self.output-1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
             cr.move_to(self.width/2-width/2,3*(self.width/4-(height-20)/4))
             cr.show_text(text)
 
         # Draw Output level
-        if self.app.dmx.frame[self.output-1]:
+        if self.app.dmx.frame[self.universe][self.output-1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12*self.scale)
-            text = str(self.app.dmx.frame[self.output-1])
+            text = str(self.app.dmx.frame[self.universe][self.output-1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
             cr.move_to(self.width/2-width/2,self.width/2-(height-20)/2)
             cr.show_text(text)

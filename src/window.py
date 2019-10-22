@@ -5,6 +5,7 @@ import mido
 from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
 from ola import OlaClient
 
+from olc.define import MAX_CHANNELS, NB_UNIVERSES
 from olc.group import Group
 from olc.customwidgets import ChannelWidget, SequentialWidget, GroupWidget
 
@@ -67,7 +68,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.channels = []
 
-        for i in range(512):
+        for i in range(MAX_CHANNELS):
             self.channels.append(ChannelWidget(i+1, 0, 0))
             self.flowbox.add(self.channels[i])
 
@@ -386,9 +387,9 @@ class Window(Gtk.ApplicationWindow):
         """ Filter for channels window """
         if self.view_type == 0:
             i = child.get_index()
-            for j in range(len(self.patch.channels[i])):
-                if self.patch.channels[i][j] != 0:
-                    #print("Chanel:", i+1, "Output:", self.patch.channels[i][j])
+            for j in range(len(self.app.patch.channels[i][0])):
+                if self.app.patch.channels[i][0][j] != 0:
+                    #print("Chanel:", i+1, "Output:", self.app.patch.channels[i][j])
                     return child
                 else:
                     return False
@@ -629,13 +630,14 @@ class Window(Gtk.ApplicationWindow):
 
         self.flowbox.unselect_all()
 
-        for output in range(512):
-            level = self.app.dmx.frame[output]
-            channel = self.app.patch.outputs[output] - 1
-            if level > 0:
-                child = self.flowbox.get_child_at_index(channel)
-                self.set_focus(child)
-                self.flowbox.select_child(child)
+        for universe in range(NB_UNIVERSES):
+            for output in range(512):
+                level = self.app.dmx.frame[universe][output]
+                channel = self.app.patch.outputs[universe][output] - 1
+                if level > 0:
+                    child = self.flowbox.get_child_at_index(channel)
+                    self.set_focus(child)
+                    self.flowbox.select_child(child)
 
     def keypress_c(self):
         """ Channel """
@@ -648,7 +650,7 @@ class Window(Gtk.ApplicationWindow):
                 child = self.flowbox.get_child_at_index(channel)
                 self.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
+                self.last_chan_selected = str(channel)
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -746,8 +748,9 @@ class Window(Gtk.ApplicationWindow):
 
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
-                for output in self.app.patch.channels[channel]:
-                    level = self.app.dmx.frame[output - 1]
+                univ = self.app.patch.channels[channel][1]
+                for output in self.app.patch.channels[channel][0]:
+                    level = self.app.dmx.frame[univ][output - 1]
                     if level + lvl > 255:
                         self.app.dmx.user[channel] = 255
                     else:
@@ -770,8 +773,9 @@ class Window(Gtk.ApplicationWindow):
 
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
-                for output in self.app.patch.channels[channel]:
-                    level = self.app.dmx.frame[output - 1]
+                univ = self.app.patch.channels[channel][1]
+                for output in self.app.patch.channels[channel][0]:
+                    level = self.app.dmx.frame[univ][output - 1]
                     if level - lvl < 0:
                         self.app.dmx.user[channel] = 0
                     else:
@@ -785,6 +789,9 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_equal(self):
         """ @ Level """
+
+        if self.keystring == '':
+            return
 
         level = int(self.keystring)
 
@@ -847,11 +854,12 @@ class Window(Gtk.ApplicationWindow):
 
         if response == Gtk.ResponseType.OK:
 
-            for output in range(512):
-                channel = self.app.patch.outputs[output]
-                level = self.app.dmx.frame[output]
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
+                    channel = self.app.patch.outputs[univ][output]
+                    level = self.app.dmx.frame[univ][output]
 
-                self.app.sequence.cues[position].channels[channel-1] = level
+                    self.app.sequence.cues[position].channels[channel-1] = level
 
             # Tag filename as modified
             self.app.ascii.modified = True
