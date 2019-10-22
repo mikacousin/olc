@@ -159,9 +159,9 @@ class PatchChannelWidget(Gtk.Widget):
         nb_outputs = len(self.patch.channels[self.channel - 1])
 
         if nb_outputs <= 8:
-            univ = self.patch.channels[self.channel-1][1]
-            for i in range(len(self.patch.channels[self.channel-1][0])):
-                output = self.patch.channels[self.channel-1][0][i]
+            for i in range(len(self.patch.channels[self.channel-1])):
+                univ = self.patch.channels[self.channel-1][i][1]
+                output = self.patch.channels[self.channel-1][i][0]
                 if output != 0:
                     area = (65+(i*65), 125+(i*65), 0, 60)
                     if self.get_parent().is_selected():
@@ -185,7 +185,8 @@ class PatchChannelWidget(Gtk.Widget):
             for i in range(len(self.patch.channels[self.channel-1])):
                 if i > 14:
                     line = 2
-                output = self.patch.channels[self.channel-1][i]
+                output = self.patch.channels[self.channel-1][i][0]
+                univ = self.patch.channels[self.channel-1][i][1]
                 if output != 0:
                     if line == 0:
                         # First line
@@ -201,10 +202,10 @@ class PatchChannelWidget(Gtk.Widget):
                         cr.set_source_rgb(0.9, 0.9, 0.9)
                         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                                 cairo.FONT_WEIGHT_BOLD)
-                        cr.set_font_size(12)
-                        (x, y, w, h, dx, dy) = cr.text_extents(str(output))
-                        cr.move_to(65+(i*35)+(30/2)-w/2, 30/2-(h-10)/2)
-                        cr.show_text(str(output))
+                        cr.set_font_size(10)
+                        (x, y, w, h, dx, dy) = cr.text_extents(str(output)+'.'+str(univ))
+                        cr.move_to(65+(i*35)+(30/2)-w/2, 30/2-(h-20)/2)
+                        cr.show_text(str(output)+'.'+str(univ))
                     else:
                         # Second line
                         j = i - 15
@@ -220,16 +221,17 @@ class PatchChannelWidget(Gtk.Widget):
                         cr.set_source_rgb(0.9, 0.9, 0.9)
                         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                                 cairo.FONT_WEIGHT_BOLD)
-                        cr.set_font_size(12)
-                        cr.move_to(65+(j*35)+(30/2)-w/2, (30/2-(h-10)/2)+30)
+                        cr.set_font_size(10)
                         if i == 29:
                             # Draw '...' in the last box
                             (x, y, w, h, dx, dy) = cr.text_extents('...')
+                            cr.move_to(65+(j*35)+(30/2)-w/2, (30/2-(h-20)/2)+30)
                             cr.show_text('...')
                             break
                         else:
-                            (x, y, w, h, dx, dy) = cr.text_extents(str(output))
-                            cr.show_text(str(output))
+                            (x, y, w, h, dx, dy) = cr.text_extents(str(output)+'.'+str(univ))
+                            cr.move_to(65+(j*35)+(30/2)-w/2, (30/2-(h-20)/2)+30)
+                            cr.show_text(str(output)+'.'+str(univ))
 
     def draw_rounded_rectangle(self, cr, area, radius):
         a,b,c,d = area
@@ -350,7 +352,7 @@ class PatchChannelsTab(Gtk.Grid):
             self.app.window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = '0'
-        elif int(self.last_chan_selected) < 511:
+        elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected) + 1)
             self.app.window.set_focus(child)
@@ -383,7 +385,7 @@ class PatchChannelsTab(Gtk.Grid):
 
         if self.keystring != '':
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < 512:
+            if channel >= 0 and channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
@@ -404,52 +406,68 @@ class PatchChannelsTab(Gtk.Grid):
 
                 # Unpatch if no entry
                 if self.keystring == '' or self.keystring == '0':
-                    outputs = self.app.patch.channels[channel][0]
+                    outputs = self.app.patch.channels[channel]
                     for i in range(len(outputs)):
-                        output = self.app.patch.channels[channel][0][i] - 1
-                        univ = self.app.patch.channels[channel][1]
-                        self.app.patch.outputs[univ][output] = 0
-                        self.app.dmx.frame[univ][output] = 0
-                    self.app.patch.channels[channel] = [[0], 0]
+                        output = self.app.patch.channels[channel][i][0] - 1
+                        universe = self.app.patch.channels[channel][i][1]
+                        self.app.patch.outputs[universe][output] = 0
+                        self.app.dmx.frame[universe][output] = 0
+                    self.app.patch.channels[channel] = [[0, 0]]
                     # Update ui
                     self.channels[channel].queue_draw()
                 else:
                     # New values
-                    output = int(self.keystring) - 1
+                    if '.' in self.keystring:
+                        if self.keystring[0] == '.':
+                            # ".universe" for change universe
+                            output = self.app.patch.channels[channel][0][0] - 1
+                            universe = int(self.keystring[1:])
+                        else:
+                            # "output.universe"
+                            split = self.keystring.split('.')
+                            output = int(split[0]) - 1
+                            universe = int(split[1])
+                    else:
+                        # "output", universe is 0
+                        output = int(self.keystring) - 1
+                        universe = 0
 
                     if output >= 0 and output < 512:
                         # Unpatch old values
-                        outputs = self.app.patch.channels[channel][0]
-                        univ = self.app.patch.channels[channel][1]
+                        outputs = self.app.patch.channels[channel]
                         for i in range(len(outputs)):
-                            out = self.app.patch.channels[channel][0][i] - 1
+                            out = self.app.patch.channels[channel][i][0] - 1
+                            univ = self.app.patch.channels[channel][i][1]
                             self.app.patch.outputs[univ][out] = 0
-                        old_channel = self.app.patch.outputs[univ][output]
+                        old_channel = self.app.patch.outputs[universe][output]
                         if old_channel:
-                            self.app.patch.outputs[univ][channel] = 0
-                            self.app.patch.channels[old_channel - 1][0].remove(output + 1)
+                            self.app.patch.outputs[universe][output] = 0
+                            self.app.patch.channels[old_channel - 1].remove([output + 1, universe])
+                            if not len(self.app.patch.channels[old_channel - 1]):
+                                self.app.patch.channels[old_channel - 1] = [[0, 0]]
                         # Patch
-                        self.app.patch.channels[channel][0] = [output + 1]
-                        self.app.patch.outputs[univ][output] = channel + 1
+                        self.app.patch.channels[channel] = [[output + 1, universe]]
+                        self.app.patch.outputs[universe][output] = channel + 1
                         # Update ui
                         self.channels[old_channel-1].queue_draw()
                         self.channels[channel].queue_draw()
 
                 # Update list of channels
-                level = self.app.dmx.frame[univ][output]
+                level = self.app.dmx.frame[universe][output]
                 self.app.window.channels[channel].level = level
                 self.app.window.channels[channel].queue_draw()
                 self.app.window.flowbox.invalidate_filter()
 
         # Select next channel
-        if channel < 511:
-            self.flowbox.unselect_all()
-            child = self.flowbox.get_child_at_index(channel+1)
-            self.app.window.set_focus(child)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = str(channel+1)
+        if sel:
+            if channel < MAX_CHANNELS - 1:
+                self.flowbox.unselect_all()
+                child = self.flowbox.get_child_at_index(channel+1)
+                self.app.window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(channel+1)
 
-        self.app.dmx.send()
+            self.app.dmx.send()
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -463,19 +481,34 @@ class PatchChannelsTab(Gtk.Grid):
 
             for patchchannelwidget in children:
                 channel = patchchannelwidget.channel - 1
-                univ = self.app.patch.channels[channel][1]
 
                 if self.keystring != '' or self.keystring != '0':
                     # New values
-                    output = int(self.keystring) - 1
+                    if '.' in self.keystring:
+                        if self.keystring[0] == '.':
+                            # ".universe" for change universe
+                            output = self.app.patch.channels[channel][0][0] - 1
+                            universe = int(self.keystring[1:])
+                        else:
+                            # "output.universe"
+                            split = self.keystring.split('.')
+                            output = int(split[0]) - 1
+                            universe = int(split[1])
+                    else:
+                        # "output", universe is 0
+                        output = int(self.keystring) - 1
+                        universe = 0
 
                     if output >= 0 and output < 512:
                         # Unpatch old value
-                        old_channel = self.app.patch.outputs[univ][output]
+                        old_channel = self.app.patch.outputs[universe][output]
                         if old_channel:
-                            self.app.patch.channels[old_channel - 1][0].remove(output + 1)
+                            self.app.patch.outputs[universe][output] = 0
+                            self.app.patch.channels[old_channel - 1].remove([output + 1, universe])
+                            if not len(self.app.patch.channels[old_channel - 1]):
+                                self.app.patch.channels[old_channel - 1] = [[0, 0]]
                         # Patch
-                        self.app.patch.add_output(channel + 1, output + 1, univ)
+                        self.app.patch.add_output(channel + 1, output + 1, universe)
                         # Update ui
                         self.channels[old_channel-1].queue_draw()
                         self.channels[channel].queue_draw()
@@ -498,18 +531,29 @@ class PatchChannelsTab(Gtk.Grid):
 
             for patchchannelwidget in children:
                 channel = patchchannelwidget.channel - 1
-                univ = self.app.patch.channels[channel][1]
+                #univ = self.app.patch.channels[channel][1]
 
                 if self.keystring != '' or self.keystring != '0':
-                    output = int(self.keystring) - 1
+                    if '.' in self.keystring:
+                        if self.keystring[0] != '.':
+                            # "output.universe"
+                            split = self.keystring.split('.')
+                            output = int(split[0]) - 1
+                            universe = int(split[1])
+                    else:
+                        # "output", universe is 0
+                        output = int(self.keystring) - 1
+                        universe = 0
 
                     if output >= 0 and output < 512:
                         # Verify Output is patched to the Channel
-                        if output+1 in self.app.patch.channels[channel][0]:
+                        if [output+1, universe] in self.app.patch.channels[channel]:
                             # Remove Output
-                            self.app.patch.channels[channel][0].remove(output + 1)
-                            self.app.patch.outputs[univ][output] = 0
-                            self.app.dmx.frame[univ][output] = 0
+                            self.app.patch.channels[channel].remove([output + 1, universe])
+                            if not len(self.app.patch.channels[channel]):
+                                self.app.patch.channels[channel] = [[0, 0]]
+                            self.app.patch.outputs[universe][output] = 0
+                            self.app.dmx.frame[universe][output] = 0
                             # Update ui
                             self.channels[channel].queue_draw()
 

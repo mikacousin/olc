@@ -68,30 +68,32 @@ class PatchDmx(object):
         # List of channels
         self.channels = []
         for channel in range(MAX_CHANNELS):
-            # TODO: Pas besoin de l'univers pour les channels
-            self.channels.append([[channel + 1], 0])
+            univ = int(channel/512)
+            chan = channel - (512 * univ)
+            self.channels.append([[chan + 1, univ]])
 
         self.outputs = []
         for universe in range(NB_UNIVERSES):
             self.outputs.append([])
             for i in range(512):
-                if universe == 0:
-                    self.outputs[universe].append(i + 1)
+                channel = i + (512 * universe) + 1
+                if channel <= MAX_CHANNELS:
+                    self.outputs[universe].append(channel)
                 else:
                     self.outputs[universe].append(0)
 
         """
         for channel in range(MAX_CHANNELS):
-            print("Channel", self.channels[channel][0], "Univers", self.channels[channel][1])
+            print("Channel", channel, "Output", self.channels[channel][0], "Univers", self.channels[channel][1])
         for universe in range(NB_UNIVERSES):
             for i in range(512):
-                print("Univers", universe, "Output", self.outputs[universe][i])
+                print("Output", i, "Univers", universe, "Channel", self.outputs[universe][i])
         """
 
     def patch_empty(self):
         """ Set patch to Zero """
         for channel in range(MAX_CHANNELS):
-            self.channels[channel] = [[0], 0]
+            self.channels[channel] = [[0, 0]]
         for universe in range(NB_UNIVERSES):
             for output in range(512):
                 self.outputs[universe][output] = 0
@@ -99,19 +101,21 @@ class PatchDmx(object):
     def patch_1on1(self):
         """ Set patch 1:1 """
         for channel in range(MAX_CHANNELS):
-            self.channels[channel] = [[channel + 1], 0]
+            univ = int(channel / 512)
+            chan = channel - (512 * univ)
+            self.channels[channel] = [[chan + 1, univ]]
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 self.outputs[univ][output] = output + 1
 
     def add_output(self, channel, output, univ):
         """ Add an output to a channel """
-        if self.channels[channel-1] == [[0], 0]:
-            self.channels[channel-1] = [[output], univ]
+        if self.channels[channel-1] == [[0, 0]]:
+            self.channels[channel-1] = [[output, univ]]
         else:
-            self.channels[channel-1][0].append(output)
-            self.channels[channel-1][0] = sorted(self.channels[channel-1][0])
-            self.channels[channel-1][1] = univ
+            self.channels[channel-1].append([output, univ])
+            # TODO: Sort outputs
+            #self.channels[channel-1][0] = sorted(self.channels[channel-1][0])
         self.outputs[univ][output-1] = channel
 
     """
@@ -133,6 +137,7 @@ if __name__ == "__main__":
     #    print ("output :", i+1, "channel :", patch.outputs[i])
 
     patch.patch_empty()
+    #patch.patch_1on1()
 
     #for i in range(len(patch.channels)):
     #    print ("channel :", i+1, "output(s) :", patch.channels[i])
@@ -140,11 +145,12 @@ if __name__ == "__main__":
     #for i in range(len(patch.outputs)):
     #    print ("output :", i+1, "channel :", patch.outputs[i])
 
-    patch.add_output(510, 10)
-    patch.add_output(510, 20)
+    patch.add_output(1020, 10, 0)
+    patch.add_output(1020, 20, 1)
 
     for i in range(len(patch.channels)):
-        print ("channel :", i+1, "output(s) :", patch.channels[i])
+        for j in range(len(patch.channels[i])):
+            print ("channel :", i+1, "output(s) :", patch.channels[i][j][0], "universe :", patch.channels[i][j][1])
 
     for i in range(len(patch.outputs)):
         print ("output :", i+1, "channel :", patch.outputs[i])

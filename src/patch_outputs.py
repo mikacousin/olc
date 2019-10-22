@@ -1,6 +1,6 @@
 from gi.repository import Gio, Gtk, Gdk
 
-from olc.define import NB_UNIVERSES
+from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.dmx import Dmx, PatchDmx
 from olc.customwidgets   import PatchWidget
 
@@ -190,6 +190,8 @@ class PatchOutputsTab(Gtk.Grid):
     def keypress_o(self):
         """ Select Output """
 
+        # TODO: Select "output.unniverse"
+
         self.flowbox.unselect_all()
 
         if self.keystring != "":
@@ -198,7 +200,7 @@ class PatchOutputsTab(Gtk.Grid):
                 child = self.flowbox.get_child_at_index(output)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_out_selected = self.keystring
+                self.last_out_selected = str(int(self.keystring) - 1)
         else:
             # Verify focus is on Output Widget
             widget = self.app.window.get_focus()
@@ -266,10 +268,14 @@ class PatchOutputsTab(Gtk.Grid):
                 else:
                     channel = int(self.keystring) - 1
 
-                    if channel >= 0 and channel < 512:
+                    if channel >= 0 and channel < MAX_CHANNELS:
                         # Unpatch old value if exist
-                        if self.app.patch.outputs[univ][output] != 0:
-                            self.app.patch.channels[self.app.patch.outputs[univ][output]-1][0].remove(output + 1)
+                        old_channel = self.app.patch.outputs[univ][output]
+                        if old_channel != 0:
+                            self.app.patch.channels[old_channel - 1].remove([output + 1, univ])
+                            if not len(self.app.patch.channels[old_channel - 1]):
+                                self.app.patch.channels[old_channel - 1] = [[0, 0]]
+
                         # Patch Channel : same channel for every outputs
                         self.app.patch.add_output(channel+1, output+1, univ)
                 # Update ui
