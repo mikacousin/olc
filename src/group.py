@@ -17,6 +17,7 @@ class GroupTab(Gtk.Paned):
 
         self.keystring = ""
         self.last_chan_selected = ""
+        self.last_group_selected = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
@@ -32,7 +33,7 @@ class GroupTab(Gtk.Paned):
 
         self.channels = []
 
-        for i in range(512):
+        for i in range(MAX_CHANNELS):
             self.channels.append(ChannelWidget(i+1, 0, 0))
             self.flowbox1.add(self.channels[i])
 
@@ -48,13 +49,13 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.set_max_children_per_line(20)
         self.flowbox2.set_homogeneous(True)
         self.flowbox2.set_activate_on_single_click(True)
-        self.flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.flowbox2.set_filter_func(self.filter_groups, None)
 
         self.grps = []
 
         for i in range(len(self.app.groups)):
-            self.grps.append(GroupWidget(self.app.window, self.app.groups[i].index, self.app.groups[i].text,
+            self.grps.append(GroupWidget(i, self.app.groups[i].index, self.app.groups[i].text,
                 self.grps))
             self.flowbox2.add(self.grps[i])
 
@@ -64,15 +65,12 @@ class GroupTab(Gtk.Paned):
 
         self.flowbox1.set_filter_func(self.filter_channels, None)
 
-        self.flowbox2.connect('child_activated', self.on_group_selected)
-        self.flowbox2.connect('button_press_event', self.on_group_clicked)
-
     def filter_channels(self, child, user_data):
         """ Pour n'afficher que les channels du groupe """
         i = child.get_index() # Numéro du widget qu'on filtre (channel - 1)
         # On cherche le groupe actuellement séléctionné
         for j in range(len(self.grps)):
-            if self.grps[j].clicked:
+            if self.grps[j].get_parent().is_selected():
                 # Si le channel est dans le groupe, on l'affiche
                 if self.app.groups[j].channels[i] != 0 or self.channels[i].clicked == True:
                     # On récupère le level (next_level à la même valeur)
@@ -84,23 +82,6 @@ class GroupTab(Gtk.Paned):
 
     def filter_groups(self, child, user_data):
         return child
-
-    def on_group_clicked(self, widget, event):
-        for channel in range(512):
-            self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
-        self.flowbox1.invalidate_filter()
-        self.flowbox2.invalidate_filter()
-
-    def on_group_selected(self, flowbox, child):
-        for grp in range(len(self.grps)):
-            self.grps[grp].clicked = False
-        for channel in range(512):
-            self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
-        self.grps[child.get_index()].clicked = True
-        self.flowbox1.invalidate_filter()
-        self.flowbox2.invalidate_filter()
 
     def on_close_icon(self, widget):
         """ Close Tab with the icon clicked """
@@ -120,6 +101,10 @@ class GroupTab(Gtk.Paned):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
+        if keyname == 'period':
+            self.keystring += '.'
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -134,19 +119,133 @@ class GroupTab(Gtk.Paned):
         self.app.window.notebook.remove_page(page)
         self.app.group_tab = None
 
+    def keypress_Right(self):
+        """ Next Group """
+
+        if self.last_group_selected == '':
+            child = self.flowbox2.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox2.select_child(child)
+            self.last_group_selected = '0'
+            # Deselect all channels
+            for channel in range(MAX_CHANNELS):
+                self.channels[channel].clicked = False
+                self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.flowbox2.invalidate_filter()
+        elif int(self.last_group_selected) + 1 < len(self.grps):
+            child = self.flowbox2.get_child_at_index(int(self.last_group_selected) + 1)
+            self.app.window.set_focus(child)
+            self.flowbox2.select_child(child)
+            # Deselect all channels
+            for channel in range(MAX_CHANNELS):
+                self.channels[channel].clicked = False
+                self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.last_group_selected = str(int(self.last_group_selected) + 1)
+
+    def keypress_Left(self):
+        """ Previous Group """
+
+        if self.last_group_selected == '':
+            child = self.flowbox2.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox2.select_child(child)
+            self.last_group_selected = '0'
+            # Deselect all channels
+            for channel in range(MAX_CHANNELS):
+                self.channels[channel].clicked = False
+                self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.flowbox2.invalidate_filter()
+        elif int(self.last_group_selected) > 0:
+            child = self.flowbox2.get_child_at_index(int(self.last_group_selected) - 1)
+            self.app.window.set_focus(child)
+            self.flowbox2.select_child(child)
+            # Deselect all channels
+            for channel in range(MAX_CHANNELS):
+                self.channels[channel].clicked = False
+                self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.last_group_selected = str(int(self.last_group_selected) - 1)
+
+    def keypress_Down(self):
+        """ Group on Next Line """
+
+        if self.last_group_selected == '':
+            child = self.flowbox2.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox2.select_child(child)
+            self.last_group_selected = '0'
+            # Deselect all channels
+            for channel in range(MAX_CHANNELS):
+                self.channels[channel].clicked = False
+                self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.flowbox2.invalidate_filter()
+        else:
+            child = self.flowbox2.get_child_at_index(int(self.last_group_selected))
+            allocation = child.get_allocation()
+            child = self.flowbox2.get_child_at_pos(allocation.x, allocation.y + allocation.height)
+            if child:
+                self.flowbox2.unselect_all()
+                index = child.get_index()
+                self.app.window.set_focus(child)
+                self.flowbox2.select_child(child)
+                # Deselect all channels
+                for channel in range(MAX_CHANNELS):
+                    self.channels[channel].clicked = False
+                    self.channels[channel].queue_draw()
+                self.flowbox1.invalidate_filter()
+                self.last_group_selected = str(index)
+
+    def keypress_Up(self):
+        """ Group on Previous Line """
+
+        if self.last_group_selected == '':
+            child = self.flowbox2.get_child_at_index(0)
+            self.app.window.set_focus(child)
+            self.flowbox2.select_child(child)
+            self.last_group_selected = '0'
+            # Deselect all channels
+            for channel in range(MAX_CHANNELS):
+                self.channels[channel].clicked = False
+                self.channels[channel].queue_draw()
+            self.flowbox1.invalidate_filter()
+            self.flowbox2.invalidate_filter()
+        else:
+            child = self.flowbox2.get_child_at_index(int(self.last_group_selected))
+            allocation = child.get_allocation()
+            child = self.flowbox2.get_child_at_pos(allocation.x, allocation.y - allocation.height/2)
+            if child:
+                self.flowbox2.unselect_all()
+                index = child.get_index()
+                self.app.window.set_focus(child)
+                self.flowbox2.select_child(child)
+                # Deselect all channels
+                for channel in range(MAX_CHANNELS):
+                    self.channels[channel].clicked = False
+                    self.channels[channel].queue_draw()
+                self.flowbox1.invalidate_filter()
+                self.last_group_selected = str(index)
+
     def keypress_g(self):
         """ Select Group """
-        # Deselect group selected
-        for grp in range(len(self.grps)):
-            self.grps[grp].clicked = False
-        # Find the group with is number and select it
-        if self.keystring != "" and self.keystring != "0":
+
+        self.flowbox2.unselect_all()
+
+        if self.keystring != '':
             group = float(self.keystring)
             for grp in range(len(self.grps)):
                 if group == float(self.grps[grp].number):
-                    self.grps[grp].clicked = True
+                    index = self.grps[grp].index
+                    child = self.flowbox2.get_child_at_index(index)
+                    self.app.window.set_focus(child)
+                    self.flowbox2.select_child(child)
+                    break
+            self.last_group_selected = str(index)
         # Deselect all channels
-        for channel in range(512):
+        for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
         # Update display
@@ -161,10 +260,16 @@ class GroupTab(Gtk.Paned):
 
         self.flowbox1.unselect_all()
 
-        for group in range(len(self.grps)):
-            if self.grps[group].clicked:
-                for channel in range(512):
-                    level = self.app.groups[group].channels[channel]
+        sel2 = self.flowbox2.get_selected_children()
+        children2 = []
+        for flowboxchild2 in sel2:
+            children2 = flowboxchild2.get_children()
+
+            for groupwidget in children2:
+                index = groupwidget.index
+
+                for channel in range(MAX_CHANNELS):
+                    level = self.app.groups[index].channels[channel]
                     if level > 0:
                         self.channels[channel].clicked = True
                         child = self.flowbox1.get_child_at_index(channel)
@@ -248,7 +353,7 @@ class GroupTab(Gtk.Paned):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < 512:
+        if channel >= 0 and channel < MAX_CHANNELS:
             self.channels[channel].clicked = True
             self.flowbox1.invalidate_filter()
 
@@ -267,7 +372,7 @@ class GroupTab(Gtk.Paned):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < 512:
+        if channel >= 0 and channel < MAX_CHANNELS:
             self.channels[channel].clicked = False
             self.flowbox1.invalidate_filter()
 
@@ -291,18 +396,25 @@ class GroupTab(Gtk.Paned):
         else:
             if level > 255:
                 level = 255
-        for grp in range(len(self.grps)):
-            if self.grps[grp].clicked:
-                sel = self.flowbox1.get_selected_children()
 
-                for flowboxchild in sel:
-                    children = flowboxchild.get_children()
+        sel = self.flowbox2.get_selected_children()
+        children = []
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
 
-                    for channelwidget in children:
+            for groupwidget in children:
+                index = groupwidget.index
+
+                sel1 = self.flowbox1.get_selected_children()
+
+                for flowboxchild1 in sel1:
+                    children1 = flowboxchild1.get_children()
+
+                    for channelwidget in children1:
                         channel = int(channelwidget.channel) - 1
 
                         if level != -1:
-                            self.app.groups[grp].channels[channel] = level
+                            self.app.groups[index].channels[channel] = level
 
         self.flowbox1.invalidate_filter()
 
@@ -312,8 +424,15 @@ class GroupTab(Gtk.Paned):
     def keypress_colon(self):
         """ Level - % """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
-        for grp in range(len(self.grps)):
-            if self.grps[grp].clicked:
+
+        sel2 = self.flowbox2.get_selected_children()
+        children2 = []
+        for flowboxchild2 in sel2:
+            children2 = flowboxchild2.get_children()
+
+            for groupwidget in children2:
+                index = groupwidget.index
+
                 sel = self.flowbox1.get_selected_children()
 
                 for flowboxchild in sel:
@@ -322,21 +441,28 @@ class GroupTab(Gtk.Paned):
                     for channelwidget in children:
                         channel = int(channelwidget.channel) - 1
 
-                        level = self.app.groups[grp].channels[channel]
+                        level = self.app.groups[index].channels[channel]
 
                         if level - lvl < 0:
                             level = 0
                         else:
                             level = level - lvl
-                        self.app.groups[grp].channels[channel] = level
+                        self.app.groups[index].channels[channel] = level
 
         self.flowbox1.invalidate_filter()
 
     def keypress_exclam(self):
         """ Level + % """
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
-        for grp in range(len(self.grps)):
-            if self.grps[grp].clicked:
+
+        sel2 = self.flowbox2.get_selected_children()
+        children2 = []
+        for flowboxchild2 in sel2:
+            children2 = flowboxchild2.get_children()
+
+            for groupwidget in children2:
+                index = groupwidget.index
+
                 sel = self.flowbox1.get_selected_children()
 
                 for flowboxchild in sel:
@@ -345,12 +471,12 @@ class GroupTab(Gtk.Paned):
                     for channelwidget in children:
                         channel = int(channelwidget.channel) - 1
 
-                        level = self.app.groups[grp].channels[channel]
+                        level = self.app.groups[index].channels[channel]
                         if level + lvl > 255:
                             level = 255
                         else:
                             level = level + lvl
-                        self.app.groups[grp].channels[channel] = level
+                        self.app.groups[index].channels[channel] = level
 
         self.flowbox1.invalidate_filter()
 
@@ -371,11 +497,8 @@ class GroupTab(Gtk.Paned):
         channels = array.array('B', [0] * MAX_CHANNELS)
         txt = str(group_nb)
         self.app.groups.append(Group(group_nb, channels, txt))
-        self.grps.append(GroupWidget(self.app.window, self.app.groups[-1].index,
-            self.app.groups[-1].text, self.grps))
-        for grp in range(len(self.grps)):
-            self.grps[grp].clicked = False
-        self.grps[-1].clicked = True
+        i = self.grps[-1].index
+        self.grps.append(GroupWidget(i+1, self.app.groups[-1].index, self.app.groups[-1].text, self.grps))
         self.flowbox2.add(self.grps[-1])
         # Deselect all channels
         self.flowbox1.unselect_all()

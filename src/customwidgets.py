@@ -264,27 +264,27 @@ class PatchWidget(Gtk.Widget):
 class GroupWidget(Gtk.Widget):
     __gtype_name__ = 'GroupWidget'
 
-    def __init__(self, wingrps, number, name, grps):
+    def __init__(self, index, number, name, grps):
 
-        self.wingrps = wingrps
-        self.number = str(number)
+        self.index = index
+        self.number = number
         self.name = name
         self.grps = grps
-        self.clicked = False
+
+        self.app = Gio.Application.get_default()
 
         Gtk.Widget.__init__(self)
         self.set_size_request(80, 80)
         self.connect("button-press-event", self.on_click)
+        self.connect("touch-event", self.on_click)
 
     def on_click(self, tgt, ev):
-        for i in range(len(self.grps)):
-            self.grps[i].clicked = False
-        if self.clicked:
-            self.clicked = False
-        else:
-            self.clicked = True
-        self.queue_draw()
-        Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
+        self.app.group_tab.flowbox2.unselect_all()
+        child = self.app.group_tab.flowbox2.get_child_at_index(self.index)
+        self.app.window.set_focus(child)
+        self.app.group_tab.flowbox2.select_child(child)
+        self.app.group_tab.last_group_selected = str(self.index)
+        self.app.group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
 
@@ -297,7 +297,7 @@ class GroupWidget(Gtk.Widget):
         cr.fill()
 
         # draw rectangle
-        if self.clicked:
+        if self.get_parent().is_selected():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -310,7 +310,11 @@ class GroupWidget(Gtk.Widget):
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         cr.move_to(50,15)
-        cr.show_text(self.number)
+        if self.number.is_integer():
+            txt = str(int(self.number))
+        else:
+            txt = str(self.number)
+        cr.show_text(txt)
         # draw group name
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
