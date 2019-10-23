@@ -368,37 +368,37 @@ class Ascii(object):
                     flag_group = True
                     #print ("Group :", line[6:])
                     channels = array.array('B', [0] * MAX_CHANNELS)
-                    # TODO: Le numéro du groupe peut etre un float
                     group_nb = float(line[6:])
                 if flag_group:
-                    txt = ""
+                    #txt = ""
                     if line[:1] == "!":
                         flag_group = False
                     if line[:4] == 'TEXT':
                         txt = line[5:]
-                    if line[:6] == '$$TEXT':
                         #print ("    Text :", line[5:])
+                    if line[:6] == '$$TEXT':
                         txt = line[7:]
+                        #print ("    Text :", line[7:])
                     if line[:4] == 'CHAN':
                         #print ("    Chanels :")
                         p = line[5:].split(" ")
                         for q in p:
                             r = q.split("/")
-                            #print ("        ", r[0], "@", int(r[1][1:], 16))
                             if r[0] != "":
                                 channel = int(r[0])
                                 level = int(r[1][1:], 16)
-                                if channel <= 512:
+                                #print ("        ", r[0], "@", int(r[1][1:], 16))
+                                if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
                     if line == "":
                         #print("Group", group_nb, txt, "channels", channels)
                         # We don't create a group who already exist
-                        master_exist = False
+                        group_exist = False
                         for grp in range(len(self.app.groups)):
                             if group_nb == self.app.groups[grp].index:
                                 #print("Le groupe", txt, "existe déjà")
-                                master_exist = True
-                        if not master_exist:
+                                group_exist = True
+                        if not group_exist:
                             self.app.groups.append(Group(group_nb, channels, txt))
                         flag_group = False
                         txt = ""

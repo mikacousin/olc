@@ -271,7 +271,6 @@ class GroupWidget(Gtk.Widget):
         self.name = name
         self.grps = grps
         self.clicked = False
-        self.level = 0
 
         Gtk.Widget.__init__(self)
         self.set_size_request(80, 80)
@@ -338,18 +337,6 @@ class GroupWidget(Gtk.Widget):
             cr.show_text(self.name[10:])
         else:
             cr.show_text(self.name)
-        # draw level
-        cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_NORMAL)
-        cr.set_font_size(11)
-        cr.move_to(allocation.width-24,allocation.height-8)
-        cr.show_text("0")
-        # draw level bar
-        cr.rectangle(1, allocation.height-51, 6, (50/255)*self.level)
-        #cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.set_source_rgb(0.5, 0.5, 0.9)
-        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()
