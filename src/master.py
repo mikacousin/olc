@@ -3,7 +3,7 @@ import threading
 import time
 from gi.repository import Gio, Gtk, GLib, Gdk
 
-from olc.define import MAX_CHANNELS
+from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.settings import Settings
 
 class Master(object):
@@ -234,23 +234,24 @@ class MasterTab(Gtk.Grid):
                     for j in range(len(self.app.masters[i].groups)):
                         if self.app.masters[i].groups[j].index == grp:
                             # For each output
-                            for output in range(512):
-                                # If Output patched
-                                channel = self.app.patch.outputs[output]
-                                if channel:
-                                    if self.app.masters[i].groups[j].channels[channel-1] != 0:
-                                        # Get level saved in group
-                                        level_group = self.app.masters[i].groups[j].channels[channel-1]
-                                        # Level calculation
-                                        if level_scale == 0:
-                                            level = 0
-                                        else:
-                                            if self.percent_view:
-                                                level = int(round(level_group / (100 / level_scale)))
+                            for universe in range(NB_UNIVERSES):
+                                for output in range(512):
+                                    # If Output patched
+                                    channel = self.app.patch.outputs[universe][output]
+                                    if channel:
+                                        if self.app.masters[i].groups[j].channels[channel-1] != 0:
+                                            # Get level saved in group
+                                            level_group = self.app.masters[i].groups[j].channels[channel-1]
+                                            # Level calculation
+                                            if level_scale == 0:
+                                                level = 0
                                             else:
-                                                level = int(round(level_group / (255 / level_scale)))
-                                        # Update level in master array
-                                        self.app.masters[i].dmx[channel-1] = level
+                                                if self.percent_view:
+                                                    level = int(round(level_group / (100 / level_scale)))
+                                                else:
+                                                    level = int(round(level_group / (255 / level_scale)))
+                                            # Update level in master array
+                                            self.app.masters[i].dmx[channel-1] = level
 
                             # Update DMX levels
                             self.app.dmx.send()
@@ -282,10 +283,11 @@ class MasterTab(Gtk.Grid):
                                             # Stop Chaser
                                             self.app.chasers[k].run = False
                                             self.app.chasers[k].thread.stop()
-                                            for output in range(512):
-                                                channel = self.app.patch.outputs[output]
-                                                #if self.app.chasers[k].channels[channel-1] != 0:
-                                                self.app.masters[i].dmx[channel-1] = 0
+                                            for universe in range(NB_UNIVERSES):
+                                                for output in range(512):
+                                                    channel = self.app.patch.outputs[universe][output]
+                                                    #if self.app.chasers[k].channels[channel-1] != 0:
+                                                    self.app.masters[i].dmx[channel-1] = 0
                                             self.app.dmx.send()
 
 class ThreadChaser(threading.Thread):
@@ -344,55 +346,56 @@ class ThreadChaser(threading.Thread):
 
         self.percent_view = self.app.settings.get_boolean('percent')
 
-        for output in range(512):
+        for universe in range(NB_UNIVERSES):
+            for output in range(512):
 
-            channel = self.app.patch.outputs[output]
+                channel = self.app.patch.outputs[universe][output]
 
-            # On ne modifie que les channels présents dans le chaser
-            if self.app.chasers[self.chaser].channels[channel-1] != 0:
-                # Niveau duquel on part
-                old_level = self.app.chasers[self.chaser].cues[position].channels[channel-1]
-                # Niveau dans le sequentiel
-                seq_level = self.app.sequence.cues[self.app.sequence.position].channels[channel-1]
+                # On ne modifie que les channels présents dans le chaser
+                if self.app.chasers[self.chaser].channels[channel-1] != 0:
+                    # Niveau duquel on part
+                    old_level = self.app.chasers[self.chaser].cues[position].channels[channel-1]
+                    # Niveau dans le sequentiel
+                    seq_level = self.app.sequence.cues[self.app.sequence.position].channels[channel-1]
 
-                if old_level < seq_level:
-                    old_level = seq_level
+                    if old_level < seq_level:
+                        old_level = seq_level
 
-                # On boucle sur les mémoires et on revient au premier pas
-                if position < self.app.chasers[self.chaser].last-1:
-                    next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel-1]
-                    if next_level < seq_level:
-                        next_level = seq_level
-                else:
-                    next_level = self.app.chasers[self.chaser].cues[1].channels[channel-1]
-                    if next_level < seq_level:
-                        next_level = seq_level
-                    self.app.chasers[self.chaser].position = 1
+                    # On boucle sur les mémoires et on revient au premier pas
+                    if position < self.app.chasers[self.chaser].last-1:
+                        next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel-1]
+                        if next_level < seq_level:
+                            next_level = seq_level
+                    else:
+                        next_level = self.app.chasers[self.chaser].cues[1].channels[channel-1]
+                        if next_level < seq_level:
+                            next_level = seq_level
+                        self.app.chasers[self.chaser].position = 1
 
-                # Si le level augmente, on prend le temps de montée
-                if next_level > old_level and i < delay_in:
-                    level = int(((next_level - old_level+1) / delay_in) * i) + old_level
-                # si le level descend, on prend le temps de descente
-                elif next_level < old_level and i < delay_out:
-                    level = old_level - abs(int(((next_level - old_level-1) / delay_out) * i))
-                # sinon, la valeur est déjà bonne
-                else:
-                    level = next_level
+                    # Si le level augmente, on prend le temps de montée
+                    if next_level > old_level and i < delay_in:
+                        level = int(((next_level - old_level+1) / delay_in) * i) + old_level
+                    # si le level descend, on prend le temps de descente
+                    elif next_level < old_level and i < delay_out:
+                        level = old_level - abs(int(((next_level - old_level-1) / delay_out) * i))
+                    # sinon, la valeur est déjà bonne
+                    else:
+                        level = next_level
 
-                #print(old_level, next_level, level, channel+1)
+                    #print(old_level, next_level, level, channel+1)
 
-                # On limite le niveau par la valeur du Master
-                if self.percent_view:
-                    level = int(round(level / (100 / self.level_scale)))
-                else:
-                    level = int(round(level / (255 / self.level_scale)))
+                    # On limite le niveau par la valeur du Master
+                    if self.percent_view:
+                        level = int(round(level / (100 / self.level_scale)))
+                    else:
+                        level = int(round(level / (255 / self.level_scale)))
 
-                # Mise à jour de la valeur des masters
-                #self.app.dmx.masters[channel-1] = level
-                self.master.dmx[channel-1] = level
+                    # Mise à jour de la valeur des masters
+                    #self.app.dmx.masters[channel-1] = level
+                    self.master.dmx[channel-1] = level
 
-                #if self.app.chasers[0].cues[position].channels[channel] != 0:
-                #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])
+                    #if self.app.chasers[0].cues[position].channels[channel] != 0:
+                    #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])
 
         #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
         self.app.dmx.send()
