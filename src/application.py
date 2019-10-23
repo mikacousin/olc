@@ -154,7 +154,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.open", ["<Control>o"])
         self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
         self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
-        #self.set_accels_for_action("app.groups", ["<Control>g"])
+        self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.masters", ["<Control>m"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.about", ["F3"])
