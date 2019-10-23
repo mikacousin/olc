@@ -169,6 +169,10 @@ class Sequence(object):
         """ Jump to cue number """
         self.app = app
         old_pos = self.app.sequence.position
+
+        if not keystring:
+            return
+
         # Scan all cues
         for i in range(len(self.cues)):
             # Until we find the good one
