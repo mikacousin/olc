@@ -387,6 +387,10 @@ class GroupTab(Gtk.Paned):
 
     def keypress_equal(self):
         """ @ Level """
+
+        if self.keystring == '':
+            return
+
         level = int(self.keystring)
         if Gio.Application.get_default().settings.get_boolean('percent'):
             if level >= 0 and level <= 100:
@@ -495,10 +499,13 @@ class GroupTab(Gtk.Paned):
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
         channels = array.array('B', [0] * MAX_CHANNELS)
-        txt = str(group_nb)
-        self.app.groups.append(Group(group_nb, channels, txt))
-        i = self.grps[-1].index
-        self.grps.append(GroupWidget(i+1, self.app.groups[-1].index, self.app.groups[-1].text, self.grps))
+        txt = str(float(group_nb))
+        self.app.groups.append(Group(float(group_nb), channels, txt))
+        if len(self.grps):
+            i = self.grps[-1].index + 1
+        else:
+            i = 0
+        self.grps.append(GroupWidget(i, self.app.groups[-1].index, self.app.groups[-1].text, self.grps))
         self.flowbox2.add(self.grps[-1])
         # Deselect all channels
         self.flowbox1.unselect_all()
