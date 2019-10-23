@@ -205,7 +205,7 @@ class PatchWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
             cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12*self.scale)
-        text = str(self.output)
+        text = str(self.output)+'.'+str(self.universe)
         (x, y, width, height, dx, dy) = cr.text_extents(text)
         cr.move_to(self.width/2-width/2,self.width/4-(height-20)/4)
         cr.show_text(text)

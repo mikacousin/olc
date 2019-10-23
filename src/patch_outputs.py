@@ -105,6 +105,10 @@ class PatchOutputsTab(Gtk.Grid):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
+        if keyname == 'period':
+            self.keystring += '.'
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
@@ -190,17 +194,24 @@ class PatchOutputsTab(Gtk.Grid):
     def keypress_o(self):
         """ Select Output """
 
-        # TODO: Select "output.unniverse"
-
         self.flowbox.unselect_all()
 
         if self.keystring != "":
-            output = int(self.keystring) - 1
-            if output >= 0 and output < 512:
-                child = self.flowbox.get_child_at_index(output)
+            if '.' in self.keystring:
+                if self.keystring[0] != '.':
+                    split = self.keystring.split('.')
+                    output = int(split[0]) - 1
+                    univ = int(split[1])
+            else:
+                output = int(self.keystring) - 1
+                univ = 0
+
+            if output >= 0 and output < 512 and univ >= 0 and univ < NB_UNIVERSES:
+                index = output + (univ * 512)
+                child = self.flowbox.get_child_at_index(index)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_out_selected = str(int(self.keystring) - 1)
+                self.last_out_selected = str(output)
         else:
             # Verify focus is on Output Widget
             widget = self.app.window.get_focus()
