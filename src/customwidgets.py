@@ -284,7 +284,6 @@ class GroupWidget(Gtk.Widget):
         else:
             self.clicked = True
         self.queue_draw()
-        #self.wingrps.grp_flowbox1.invalidate_filter()
         Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
@@ -293,33 +292,19 @@ class GroupWidget(Gtk.Widget):
 
         # paint background
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        if self.clicked:
-            cr.set_source_rgb(0.6, 0.4, 0.1)
-        else:
-            cr.set_source_rgba(*list(bg_color))
+        cr.set_source_rgba(*list(bg_color))
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
 
         # draw rectangle
-        cr.set_source_rgb(0.3, 0.3, 0.3)
-        cr.rectangle(0, 0, allocation.width, allocation.height)
-        cr.stroke()
-        bg = Gdk.RGBA()
-        bg.parse('#33393B')
-        cr.set_source_rgba(*list(bg))
-        cr.rectangle(4, 4, allocation.width-8, allocation.height-8)
-        # dessine fond pour le numéro de cicuit si selectioné
         if self.clicked:
-            cr.set_source_rgb(0.4, 0.4, 0.4)
-            cr.rectangle(4, 4, allocation.width-8, 18)
-            cr.fill()
-        # dessine un fond pour le nom du groupe
-        cr.set_source_rgb(0.2, 0.2, 0.2)
-        cr.rectangle(4, 22, allocation.width-8, allocation.height-40)
-        cr.fill()
+            cr.set_source_rgb(0.6, 0.4, 0.1)
+        else:
+            cr.set_source_rgb(0.3, 0.3, 0.3)
+        area = (0, allocation.width, 0, allocation.height)
+        self.draw_rounded_rectangle(cr, area, 10)
 
         # draw group number
-        #cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.set_source_rgb(0.5, 0.5, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
             cairo.FONT_WEIGHT_BOLD)
@@ -337,6 +322,15 @@ class GroupWidget(Gtk.Widget):
             cr.show_text(self.name[10:])
         else:
             cr.show_text(self.name)
+
+    def draw_rounded_rectangle(self, cr, area, radius):
+        a,b,c,d = area
+        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
+        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
+        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
+        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.close_path()
+        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()
