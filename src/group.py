@@ -141,9 +141,9 @@ class GroupTab(Gtk.Paned):
             self.grps[grp].clicked = False
         # Find the group with is number and select it
         if self.keystring != "" and self.keystring != "0":
-            group = int(self.keystring)
+            group = float(self.keystring)
             for grp in range(len(self.grps)):
-                if group == int(self.grps[grp].number):
+                if group == float(self.grps[grp].number):
                     self.grps[grp].clicked = True
         # Deselect all channels
         for channel in range(512):
