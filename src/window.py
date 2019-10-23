@@ -388,7 +388,7 @@ class Window(Gtk.ApplicationWindow):
         if self.view_type == 0:
             i = child.get_index()
             for j in range(len(self.app.patch.channels[i][0])):
-                if self.app.patch.channels[i][0][j] != 0:
+                if self.app.patch.channels[i][j][0] != 0:
                     #print("Chanel:", i+1, "Output:", self.app.patch.channels[i][j])
                     return child
                 else:
@@ -533,17 +533,17 @@ class Window(Gtk.ApplicationWindow):
 
         if self.last_chan_selected == '':
             # Find first patched channel
-            for i in range(512):
+            for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0]:
                     break
             child = self.flowbox.get_child_at_index(i)
             self.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = str(i)
-        elif int(self.last_chan_selected) < 511:
+        elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
             # Find next patched channel
             next_chan = 0
-            for i in range(int(self.last_chan_selected)+1, 512):
+            for i in range(int(self.last_chan_selected)+1, MAX_CHANNELS):
                 if self.app.patch.channels[i][0]:
                     next_chan = i
                     break
@@ -748,9 +748,10 @@ class Window(Gtk.ApplicationWindow):
 
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
-                univ = self.app.patch.channels[channel][1]
-                for output in self.app.patch.channels[channel][0]:
-                    level = self.app.dmx.frame[univ][output - 1]
+                for output in self.app.patch.channels[channel]:
+                    out = output[0]
+                    univ = output[1]
+                    level = self.app.dmx.frame[univ][out - 1]
                     if level + lvl > 255:
                         self.app.dmx.user[channel] = 255
                     else:
@@ -773,9 +774,10 @@ class Window(Gtk.ApplicationWindow):
 
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
-                univ = self.app.patch.channels[channel][1]
-                for output in self.app.patch.channels[channel][0]:
-                    level = self.app.dmx.frame[univ][output - 1]
+                for output in self.app.patch.channels[channel]:
+                    out = output[0]
+                    univ = output[1]
+                    level = self.app.dmx.frame[univ][out - 1]
                     if level - lvl < 0:
                         self.app.dmx.user[channel] = 0
                     else:

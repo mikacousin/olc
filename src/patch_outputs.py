@@ -263,7 +263,7 @@ class PatchOutputsTab(Gtk.Grid):
                     if channel != 0:
                         channel -= 1
                         self.app.patch.outputs[univ][output] = 0
-                        self.app.patch.channels[channel][0].remove(output + 1)
+                        self.app.patch.channels[channel].remove([output + 1, univ])
                         self.app.dmx.frame[univ][output] = 0
                 else:
                     channel = int(self.keystring) - 1
