@@ -287,7 +287,7 @@ class ThreadGo(threading.Thread):
         while i < delay and not self._stopevent.isSet():
             # Update DMX levels
             self.update_levels(delay, delay_in, delay_out, delay_d_in, delay_d_out, delay_wait, i, position)
-            # Sleep for 20ms TODO: find godd value for sleeping
+            # Sleep for 50ms
             time.sleep(0.05)
             i = (time.time() * 1000) - start_time
 
