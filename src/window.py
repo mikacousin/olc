@@ -539,7 +539,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == '':
             # Find first patched channel
             for i in range(MAX_CHANNELS):
-                if self.app.patch.channels[i][0]:
+                if self.app.patch.channels[i][0] != [0, 0]:
                     break
             child = self.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -549,7 +549,7 @@ class Window(Gtk.ApplicationWindow):
             # Find next patched channel
             next_chan = 0
             for i in range(int(self.last_chan_selected)+1, MAX_CHANNELS):
-                if self.app.patch.channels[i][0]:
+                if self.app.patch.channels[i][0] != [0, 0]:
                     next_chan = i
                     break
             if next_chan:
@@ -564,8 +564,8 @@ class Window(Gtk.ApplicationWindow):
 
         if self.last_chan_selected == '':
             # Find first patched channel
-            for i in range(512):
-                if self.app.patch.channels[i][0]:
+            for i in range(MAX_CHANNELS):
+                if self.app.patch.channels[i][0] != [0, 0]:
                     break
             child = self.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -575,7 +575,7 @@ class Window(Gtk.ApplicationWindow):
             # Find previous patched channel
             chan = int(self.last_chan_selected)
             for i in range(int(self.last_chan_selected), 0, -1):
-                if self.app.patch.channels[i-1][0]:
+                if self.app.patch.channels[i-1][0] != [0, 0]:
                     chan = i - 1
                     break
             self.flowbox.unselect_all()
@@ -590,7 +590,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == '':
             # Find first patched channel
             for i in range(512):
-                if self.app.patch.channels[i][0]:
+                if self.app.patch.channels[i][0] != [0, 0]:
                     break
             child = self.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -613,7 +613,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == '':
             # Find first patched channel
             for i in range(512):
-                if self.app.patch.channels[i][0]:
+                if self.app.patch.channels[i][0] != [0, 0]:
                     break
             child = self.flowbox.get_child_at_index(i)
             self.set_focus(child)
