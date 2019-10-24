@@ -74,7 +74,6 @@ class PatchOutputsTab(Gtk.Grid):
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
                     self.app.dmx.frame[univ][output] = 0
-            self.app.dmx.send()
 
         elif button_label == "Patch 1:1":
             self.app.patch.patch_1on1()
@@ -304,8 +303,6 @@ class PatchOutputsTab(Gtk.Grid):
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output+1)
-
-        self.app.dmx.send()
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)

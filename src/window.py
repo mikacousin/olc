@@ -219,8 +219,9 @@ class Window(Gtk.ApplicationWindow):
         except:
             self.inport = mido.open_input()
 
-        # Scan MIDI every 100ms
+        # Every 100ms : Send DMX and Scan MIDI
         self.timeout_id = GObject.timeout_add(100, self.on_timeout, None)
+
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
         GLib.unix_fd_add_full(0, self.app.sock.fileno(), GLib.IOCondition(27), self.app.on_fd_read, None)
 
@@ -403,6 +404,10 @@ class Window(Gtk.ApplicationWindow):
             state = "off"
 
     def on_timeout(self, user_data):
+
+        # Send DMX
+        self.app.dmx.send()
+
         # Scan MIDI messages
         for msg in self.inport.iter_pending():
             #print(msg)
@@ -757,8 +762,6 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         self.app.dmx.user[channel] = level + lvl
 
-        self.app.dmx.send()
-
     def keypress_colon(self):
         """ Level - (% level) of selected channels """
 
@@ -783,8 +786,6 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         self.app.dmx.user[channel] = level - lvl
 
-
-        self.app.dmx.send()
 
     def keypress_KP_Enter(self):
         self.keypress_equal()
@@ -814,8 +815,6 @@ class Window(Gtk.ApplicationWindow):
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
-
-        self.app.dmx.send()
 
     def keypress_BackSpace(self):
         self.keystring = ""

@@ -101,8 +101,6 @@ class Sequence(object):
                         level = self.cues[position].channels[channel-1]
                         self.app.dmx.sequence[channel-1] = level
 
-            self.app.dmx.send()
-
     def sequence_minus(self, app):
         self.app = app
 
@@ -162,8 +160,6 @@ class Sequence(object):
                     if channel:
                         level = self.cues[position].channels[channel-1]
                         self.app.dmx.sequence[channel-1] = level
-
-            self.app.dmx.send()
 
     def sequence_goto(self, app, keystring):
         """ Jump to cue number """
@@ -292,7 +288,7 @@ class ThreadGo(threading.Thread):
             # Update DMX levels
             self.update_levels(delay, delay_in, delay_out, delay_d_in, delay_d_out, delay_wait, i, position)
             # Sleep for 20ms TODO: find godd value for sleeping
-            time.sleep(0.02)
+            time.sleep(0.05)
             i = (time.time() * 1000) - start_time
 
         # Stop thread if we send stop message
@@ -309,7 +305,6 @@ class ThreadGo(threading.Thread):
                     else:
                         level = self.app.sequence.cues[0].channels[channel-1]
                     self.app.dmx.sequence[channel-1] = level
-        self.app.dmx.send()
 
         # Le Go est terminé
         self.app.sequence.on_go = False
@@ -437,8 +432,6 @@ class ThreadGo(threading.Thread):
                                 level = old_level
 
                             self.app.dmx.sequence[channel-1] = level
-
-            self.app.dmx.send()
 
             if self.app.patch_outputs_tab != None:
                 GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)

@@ -63,7 +63,6 @@ class Master(object):
                     level = int(round(self.channels[channel] / (255 / self.value)))
 
                 self.dmx[channel] = level
-            self.app.dmx.send()
 
         # Master Type is Group
         elif self.content_type == 13:
@@ -85,9 +84,6 @@ class Master(object):
                                     level = int(round(level_group / (255 / self.value)))
                                 # Update level in master array
                                 self.dmx[channel-1] = level
-
-                    # Update DMX levels
-                    self.app.dmx.send()
 
         # Master type is Chaser
         elif self.content_type == 3:
@@ -120,7 +116,6 @@ class Master(object):
                                     channel = self.app.patch.outputs[output]
                                     #if self.app.chasers[k].channels[channel-1] != 0:
                                     self.dmx[channel-1] = 0
-                                self.app.dmx.send()
 
 class MasterTab(Gtk.Grid):
     def __init__(self):
@@ -226,7 +221,6 @@ class MasterTab(Gtk.Grid):
                             else:
                                 level = int(round(self.app.masters[i].channels[channel] / (255 / level_scale)))
                         self.app.masters[i].dmx[channel] = level
-                    self.app.dmx.send()
 
                 # Master Type is Group
                 elif self.app.masters[i].content_type == 13:
@@ -252,9 +246,6 @@ class MasterTab(Gtk.Grid):
                                                     level = int(round(level_group / (255 / level_scale)))
                                             # Update level in master array
                                             self.app.masters[i].dmx[channel-1] = level
-
-                            # Update DMX levels
-                            self.app.dmx.send()
 
                 # Master type is Chaser
                 elif self.app.masters[i].content_type == 3:
@@ -283,12 +274,8 @@ class MasterTab(Gtk.Grid):
                                             # Stop Chaser
                                             self.app.chasers[k].run = False
                                             self.app.chasers[k].thread.stop()
-                                            for universe in range(NB_UNIVERSES):
-                                                for output in range(512):
-                                                    channel = self.app.patch.outputs[universe][output]
-                                                    #if self.app.chasers[k].channels[channel-1] != 0:
-                                                    self.app.masters[i].dmx[channel-1] = 0
-                                            self.app.dmx.send()
+                                            for channel in range(MAX_CHANNELS):
+                                                self.app.dmx.masters[i].dmx[channel] = 0
 
 class ThreadChaser(threading.Thread):
     def __init__(self, app, master, chaser, level_scale, percent_view, name=''):
@@ -330,8 +317,8 @@ class ThreadChaser(threading.Thread):
             # Boucle sur le temps de monté ou de descente (le plus grand)
             while i < delay and self.app.chasers[self.chaser].run:
                 # Mise à jour des niveaux
-                GLib.idle_add(self.update_levels, delay, delay_in, delay_out, i, position)
-                time.sleep(0.02)
+                self.update_levels(delay, delay_in, delay_out, i, position)
+                time.sleep(0.05)
                 i = (time.time() * 1000) - start_time
 
             position += 1
@@ -396,6 +383,3 @@ class ThreadChaser(threading.Thread):
 
                     #if self.app.chasers[0].cues[position].channels[channel] != 0:
                     #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])
-
-        #self.app.ola_client.SendDmx(self.app.universe, self.app.dmxframe.dmx_frame)
-        self.app.dmx.send()

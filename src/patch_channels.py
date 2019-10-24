@@ -467,8 +467,6 @@ class PatchChannelsTab(Gtk.Grid):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(channel+1)
 
-            self.app.dmx.send()
-
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
@@ -517,8 +515,6 @@ class PatchChannelsTab(Gtk.Grid):
                         self.app.window.channels[channel].queue_draw()
                         self.app.window.flowbox.invalidate_filter()
 
-        self.app.dmx.send()
-
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
@@ -560,8 +556,6 @@ class PatchChannelsTab(Gtk.Grid):
                 # Update list of channels
                 self.app.window.channels[channel].queue_draw()
                 self.app.window.flowbox.invalidate_filter()
-
-        self.app.dmx.send()
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)

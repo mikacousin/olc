@@ -734,7 +734,6 @@ class CrossfadeWindow(Gtk.Window):
 
                     app.dmx.sequence[channel-1] = lvl
 
-            app.dmx.send()
         elif scale == self.scaleA:
             # If sequential is empty, don't do anything
             if app.sequence.last == 0:
@@ -775,7 +774,6 @@ class CrossfadeWindow(Gtk.Window):
 
                     app.dmx.sequence[channel-1] = lvl
 
-            app.dmx.send()
         elif scale == self.scaleB:
             # If sequential is empty, don't do anything
             if app.sequence.last == 0:
@@ -815,8 +813,6 @@ class CrossfadeWindow(Gtk.Window):
                             lvl = old_level
 
                     app.dmx.sequence[channel-1] = lvl
-
-            app.dmx.send()
 
         if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
             if app.sequence.on_go == True:
