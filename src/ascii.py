@@ -619,6 +619,8 @@ class Ascii(object):
             if self.app.patch_channels_tab != None:
                 self.app.patch_channels_tab.flowbox.queue_draw()
 
+            # TODO: Redraw Track Channels Tab if exist
+
         except GObject.GError as e:
             print("Error: " + e.message)
 

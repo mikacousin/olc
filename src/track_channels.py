@@ -10,10 +10,10 @@ class TrackChannelsHeader(Gtk.Widget):
     def __init__(self, channels):
         Gtk.Widget.__init__(self)
 
-        self.width = 600
+        self.channels = channels
+        self.width = 535 + (len(channels) * 65)
         self.height = 60
         self.radius = 10
-        self.channels = channels
 
         self.app = Gio.Application.get_default()
 
@@ -23,7 +23,7 @@ class TrackChannelsHeader(Gtk.Widget):
 
         # Draw Step box
         area = (0, 60, 0, 60)
-        cr.set_source_rgb(0.3, 0.3, 0.3)
+        cr.set_source_rgb(0.2, 0.3, 0.2)
         self.draw_rounded_rectangle(cr, area, self.radius)
 
         # Draw Step text
@@ -38,7 +38,7 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Memory box
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
-        cr.set_source_rgb(0.3, 0.3, 0.3)
+        cr.set_source_rgb(0.2, 0.3, 0.2)
         self.draw_rounded_rectangle(cr, area, self.radius)
 
         # Draw Memory text
@@ -53,7 +53,7 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Text box
         cr.move_to(130, 0)
         area = (130, 530, 0, 60)
-        cr.set_source_rgb(0.3, 0.3, 0.3)
+        cr.set_source_rgb(0.2, 0.3, 0.2)
         self.draw_rounded_rectangle(cr, area, self.radius)
 
         # Draw Text
@@ -69,7 +69,7 @@ class TrackChannelsHeader(Gtk.Widget):
             # Draw Level boxes
             cr.move_to(535+(i*65), 0)
             area = (535+(i*65), 595+(i*65), 0, 60)
-            cr.set_source_rgb(0.3, 0.3, 0.3)
+            cr.set_source_rgb(0.2, 0.3, 0.2)
             self.draw_rounded_rectangle(cr, area, self.radius)
 
             # Draw Channel number
@@ -116,13 +116,13 @@ class TrackChannelsWidget(Gtk.Widget):
     def __init__(self, step, memory, text, levels):
         Gtk.Widget.__init__(self)
 
-        self.width = 600
-        self.height = 60
-        self.radius = 10
         self.step = step
         self.memory = memory
         self.text = text
         self.levels = levels
+        self.width = 535 + (len(self.levels) * 65)
+        self.height = 60
+        self.radius = 10
 
         self.app = Gio.Application.get_default()
 
@@ -138,8 +138,13 @@ class TrackChannelsWidget(Gtk.Widget):
         self.app.window.set_focus(child)
         self.app.track_channels_tab.flowbox.select_child(child)
         self.app.track_channels_tab.last_step_selected = str(self.step)
+        chan = int((ev.x - 535) / 65)
+        if chan >= 0 and chan < len(self.levels):
+            self.app.track_channels_tab.channel_selected = chan
 
     def do_draw(self, cr):
+
+        self.set_size_request(535 + (len(self.levels) * 65), self.height)
 
         """
         # Draw Grey background if selected
@@ -290,7 +295,10 @@ class TrackChannelsTab(Gtk.Grid):
         # Levels in each steps
         levels = []
         self.steps = []
-        for step in range(self.app.sequence.last):
+        self.steps.append(TrackChannelsHeader(self.channels))
+        levels.append([])
+        self.flowbox.add(self.steps[0])
+        for step in range(1, self.app.sequence.last):
             memory = self.app.sequence.cues[step].memory
             text = self.app.sequence.cues[step].text
             levels.append([])
@@ -303,16 +311,13 @@ class TrackChannelsTab(Gtk.Grid):
         self.flowbox.set_filter_func(self.filter_func, None)
 
         self.scrollable = Gtk.ScrolledWindow()
-        self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrollable.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self.scrollable.add(self.flowbox)
 
-        self.header = TrackChannelsHeader(self.channels)
-
-        self.attach(self.header, 0, 0, 1, 1)
-        self.attach_next_to(self.scrollable, self.header, Gtk.PositionType.BOTTOM, 1, 10)
+        self.attach(self.scrollable, 0, 0, 1, 1)
 
     def filter_func(self, child, user_data):
-        if child == self.steps[0].get_parent() or child == self.steps[self.app.sequence.last-1].get_parent():
+        if child == self.steps[self.app.sequence.last-1].get_parent():
             return False
         else:
             return child
@@ -467,8 +472,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.channel_selected = 0
 
         # Update Track Channels Tab
-        self.header.channels = self.channels
-        self.header.queue_draw()
+        self.steps[0].channels = self.channels
 
         levels = []
         for step in range(self.app.sequence.last):
@@ -533,8 +537,7 @@ class TrackChannelsTab(Gtk.Grid):
                 self.channel_selected = 0
 
             # Update Track Channels Tab
-            self.header.channels = self.channels
-            self.header.queue_draw()
+            self.steps[0].channels = self.channels
 
             levels = []
             for step in range(self.app.sequence.last):
@@ -578,8 +581,7 @@ class TrackChannelsTab(Gtk.Grid):
                 self.channel_selected = 0
 
             # Update Track Channels Tab
-            self.header.channels = self.channels
-            self.header.queue_draw()
+            self.steps[0].channels = self.channels
 
             levels = []
             for step in range(self.app.sequence.last):
@@ -623,8 +625,7 @@ class TrackChannelsTab(Gtk.Grid):
                 self.channel_selected = 0
 
             # Update Track Channels Tab
-            self.header.channels = self.channels
-            self.header.queue_draw()
+            self.steps[0].channels = self.channels
 
             levels = []
             for step in range(self.app.sequence.last):
