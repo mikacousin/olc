@@ -21,6 +21,7 @@ from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 from olc.ascii import Ascii
 from olc.midi import MidiTab
+from olc.track_channels import TrackChannelsTab
 
 class Application(Gtk.Application):
 
@@ -90,6 +91,7 @@ class Application(Gtk.Application):
         self.sequences_tab = None
         self.channeltime_tab = None
         self.midi_tab = None
+        self.track_channels_tab = None
 
     def do_activate(self):
 
@@ -120,11 +122,17 @@ class Application(Gtk.Application):
             self.window.fullscreen()
         """
 
-        # Add global shortcut for Go
+        # Add global shortcuts
+        # Go
         action = Gio.SimpleAction.new('go', None)
         action.connect('activate', self.sequence.sequence_go)
         self.add_action(action)
         self.set_accels_for_action("app.go", ["<Control>g"])
+        # Track Channels
+        action = Gio.SimpleAction.new('track_channels', None)
+        action.connect('activate', self._track_channels)
+        self.add_action(action)
+        self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
 
         # Create several DMX arrays
         self.dmx = Dmx(self.universes, self.patch, self.ola_client, self.sequence, self.masters, self.window)
@@ -461,6 +469,28 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(-1)
         else:
             page = self.window.notebook.page_num(self.patch_channels_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _track_channels(self, action, parameter):
+        # Create Track Channels Tab
+        if self.track_channels_tab == None:
+            self.track_channels_tab = TrackChannelsTab()
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.track_channels_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Track Channels'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.track_channels_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.track_channels_tab)
             self.window.notebook.set_current_page(page)
 
     def _groups(self, action, parameter):

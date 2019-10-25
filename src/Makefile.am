@@ -16,4 +16,5 @@ app_PYTHON = \
 	patch_outputs.py \
 	sequence.py \
 	settings.py \
+	track_channels.py \
 	window.py
