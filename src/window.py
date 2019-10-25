@@ -513,6 +513,8 @@ class Window(Gtk.ApplicationWindow):
             return self.app.channeltime_tab.on_key_press_event(widget, event)
         if child == self.app.midi_tab:
             return self.app.midi_tab.on_key_press_event(widget, event)
+        if child == self.app.track_channels_tab:
+            return self.app.track_channels_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)
@@ -651,7 +653,7 @@ class Window(Gtk.ApplicationWindow):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < 512:
+            if channel >= 0 and channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
                 self.set_focus(child)
                 self.flowbox.select_child(child)
@@ -710,7 +712,7 @@ class Window(Gtk.ApplicationWindow):
             return
 
         channel = int(self.keystring)-1
-        if channel >= 0 and channel < 512:
+        if channel >= 0 and channel < MAX_CHANNELS:
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.select_child(child)
@@ -729,7 +731,7 @@ class Window(Gtk.ApplicationWindow):
             return
 
         channel = int(self.keystring)-1
-        if channel >= 0 and channel < 512:
+        if channel >= 0 and channel < MAX_CHANNELS:
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.unselect_child(child)

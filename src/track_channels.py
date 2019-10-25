@@ -2,6 +2,8 @@ from gi.repository import Gtk, Gio, Gdk
 import cairo
 import math
 
+from olc.define import MAX_CHANNELS
+
 class TrackChannelsHeader(Gtk.Widget):
     __gtype_name__ = 'TrackChannelsHeader'
 
@@ -135,6 +137,7 @@ class TrackChannelsWidget(Gtk.Widget):
         child = self.app.track_channels_tab.flowbox.get_child_at_index(self.step)
         self.app.window.set_focus(child)
         self.app.track_channels_tab.flowbox.select_child(child)
+        self.app.track_channels_tab.last_step_selected = str(self.step)
 
     def do_draw(self, cr):
 
@@ -149,7 +152,7 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Step box
         area = (0, 60, 0, 60)
         if self.get_parent().is_selected():
-            cr.set_source_rgb(0.6, 0.4, 0.1)
+            cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         self.draw_rounded_rectangle(cr, area, self.radius)
@@ -167,7 +170,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
         if self.get_parent().is_selected():
-            cr.set_source_rgb(0.6, 0.4, 0.1)
+            cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         self.draw_rounded_rectangle(cr, area, self.radius)
@@ -185,7 +188,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(130, 0)
         area = (130, 530, 0, 60)
         if self.get_parent().is_selected():
-            cr.set_source_rgb(0.6, 0.4, 0.1)
+            cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         self.draw_rounded_rectangle(cr, area, self.radius)
@@ -203,22 +206,25 @@ class TrackChannelsWidget(Gtk.Widget):
             # Draw Level boxes
             cr.move_to(535+(i*65), 0)
             area = (535+(i*65), 595+(i*65), 0, 60)
-            if self.get_parent().is_selected():
+            if self.get_parent().is_selected() and i == self.app.track_channels_tab.channel_selected:
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
             self.draw_rounded_rectangle(cr, area, self.radius)
 
             # Draw Level number
-            if self.percent_level:
-                level = str(int(round(((self.levels[i] / 255) * 100))))
-            cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                    cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12)
-            (x, y, w, h, dx, dy) = cr.text_extents(level)
-            cr.move_to(535+(i*65)+(60/2-w/2), 60/2-(h-20)/2)
-            cr.show_text(level)
+            if self.levels[i]:
+                if self.percent_level:
+                    level = str(int(round(((self.levels[i] / 255) * 100))))
+                else:
+                    level = str(self.levels[i])
+                cr.set_source_rgb(0.9, 0.9, 0.9)
+                cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
+                        cairo.FONT_WEIGHT_BOLD)
+                cr.set_font_size(12)
+                (x, y, w, h, dx, dy) = cr.text_extents(level)
+                cr.move_to(535+(i*65)+(60/2-w/2), 60/2-(h-20)/2)
+                cr.show_text(level)
 
     def draw_rounded_rectangle(self, cr, area, radius):
         a,b,c,d = area
@@ -256,6 +262,11 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.percent_level = self.app.settings.get_boolean('percent')
 
+        self.keystring = ''
+        self.last_step_selected = ''
+
+        self.channel_selected = 0
+
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
         self.set_row_homogeneous(True)
@@ -267,14 +278,14 @@ class TrackChannelsTab(Gtk.Grid):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         # Find selected channels
-        channels = []
+        self.channels = []
         sel = self.app.window.flowbox.get_selected_children()
         for flowboxchild in sel:
             children = flowboxchild.get_children()
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
                 if self.app.patch.channels[channel][0] != [0, 0]:
-                    channels.append(channel)
+                    self.channels.append(channel)
 
         # Levels in each steps
         levels = []
@@ -283,8 +294,8 @@ class TrackChannelsTab(Gtk.Grid):
             memory = self.app.sequence.cues[step].memory
             text = self.app.sequence.cues[step].text
             levels.append([])
-            for channel in range(len(channels)):
-                level = self.app.sequence.cues[step].channels[channels[channel]]
+            for channel in range(len(self.channels)):
+                level = self.app.sequence.cues[step].channels[self.channels[channel]]
                 levels[step].append(level)
             self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
             self.flowbox.add(self.steps[step])
@@ -295,16 +306,334 @@ class TrackChannelsTab(Gtk.Grid):
         self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.scrollable.add(self.flowbox)
 
-        self.header = TrackChannelsHeader(channels)
+        self.header = TrackChannelsHeader(self.channels)
 
         self.attach(self.header, 0, 0, 1, 1)
         self.attach_next_to(self.scrollable, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
     def filter_func(self, child, user_data):
-        return child
+        if child == self.steps[0].get_parent() or child == self.steps[self.app.sequence.last-1].get_parent():
+            return False
+        else:
+            return child
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
         page = self.app.window.notebook.page_num(self.app.track_channels_tab)
         self.app.window.notebook.remove_page(page)
         self.app.track_channels_tab = None
+
+    def on_key_press_event(self, widget, event):
+
+        keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+            self.keystring += keyname
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+            self.keystring += keyname[3:]
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+        func = getattr(self, 'keypress_' + keyname, None)
+        if func:
+            return func()
+
+    def keypress_Escape(self):
+        """ Close Tab """
+        page = self.app.window.notebook.get_current_page()
+        self.app.window.notebook.remove_page(page)
+        self.app.track_channels_tab = None
+
+    def keypress_BackSpace(self):
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_Right(self):
+        """ Next Channel """
+
+        if self.last_step_selected == '':
+            child = self.flowbox.get_child_at_index(1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_step_selected = '1'
+        else:
+            sel = self.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for widget in children:
+                    if self.channel_selected + 1 < len(widget.levels):
+                        self.channel_selected += 1
+                        widget.queue_draw()
+
+    def keypress_Left(self):
+        """ Previous Channel """
+
+        if self.last_step_selected == '':
+            child = self.flowbox.get_child_at_index(1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_step_selected = '1'
+        else:
+            sel = self.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for widget in children:
+                    if self.channel_selected > 0:
+                        self.channel_selected -= 1
+                        widget.queue_draw()
+
+    def keypress_Down(self):
+        """ Next Step """
+
+        if self.last_step_selected == '':
+            child = self.flowbox.get_child_at_index(1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_step_selected = '1'
+        elif int(self.last_step_selected) < self.app.sequence.last - 2:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(int(self.last_step_selected) + 1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            index = child.get_index()
+            self.last_step_selected = str(index)
+
+    def keypress_Up(self):
+        """ Previous Step """
+
+        if self.last_step_selected == '':
+            child = self.flowbox.get_child_at_index(1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_step_selected = '1'
+        elif int(self.last_step_selected) > 1:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(int(self.last_step_selected) - 1)
+            self.app.window.set_focus(child)
+            self.flowbox.select_child(child)
+            index = child.get_index()
+            self.last_step_selected = str(index)
+
+    def keypress_m(self):
+        """ Modify Level """
+
+        # Find selected Channel
+        sel = self.flowbox.get_selected_children()
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+            for widget in children:
+                step = widget.step
+                channel = self.channels[self.channel_selected]
+                level = int(self.keystring)
+
+                if self.app.settings.get_boolean('percent'):
+                    if level >= 0 and level <= 100:
+                        level = int(round((level / 100) * 255))
+                    else:
+                        level = -1
+
+                if level >= 0 and level <= 255:
+                    self.app.sequence.cues[step].channels[channel] = level
+                    widget.levels[self.channel_selected] = level
+                    widget.queue_draw()
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_c(self):
+        """ Select Channel """
+
+        self.app.window.flowbox.unselect_all()
+
+        if self.keystring != '' and self.keystring != '0':
+            channel = int(self.keystring) - 1
+            if channel >= 0 and channel < MAX_CHANNELS:
+                child = self.app.window.flowbox.get_child_at_index(channel)
+                self.app.window.set_focus(child)
+                self.app.window.flowbox.select_child(child)
+                self.app.window.last_chan_selected = str(channel)
+
+        # Find selected channels
+        self.channels = []
+        sel = self.app.window.flowbox.get_selected_children()
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+            for channelwidget in children:
+                channel = int(channelwidget.channel) - 1
+                if self.app.patch.channels[channel][0] != [0, 0]:
+                    self.channels.append(channel)
+
+        self.channel_selected = 0
+
+        # Update Track Channels Tab
+        self.header.channels = self.channels
+        self.header.queue_draw()
+
+        levels = []
+        for step in range(self.app.sequence.last):
+            levels.append([])
+            for channel in range(len(self.channels)):
+                level = self.app.sequence.cues[step].channels[self.channels[channel]]
+                levels[step].append(level)
+            self.steps[step].levels = levels[step]
+        self.flowbox.queue_draw()
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_KP_Divide(self):
+        self.keypress_greater()
+
+    def keypress_greater(self):
+        """ Channel Thru """
+
+        sel = self.app.window.flowbox.get_selected_children()
+
+        if len(sel) == 1:
+            flowboxchild = sel[0]
+            channelwidget = flowboxchild.get_children()[0]
+            self.app.window.last_chan_selected = channelwidget.channel
+
+        if not self.app.window.last_chan_selected:
+            sel = self.app.window.flowbox.get_selected_children()
+            if len(sel):
+                for flowboxchild in sel:
+                    children = flowboxchild.get_children()
+                    for channelwidget in children:
+                        channel = int(channelwidget.channel)
+                self.app.window.last_chan_selected = str(channel)
+
+        if self.app.window.last_chan_selected:
+            to_chan = int(self.keystring)
+            if to_chan > int(self.app.window.last_chan_selected):
+                for channel in range(int(self.app.window.last_chan_selected) - 1, to_chan):
+                    child = self.app.window.flowbox.get_child_at_index(channel)
+                    self.app.window.set_focus(child)
+                    self.app.window.flowbox.select_child(child)
+            else:
+                for channel in range(to_chan - 1, int(self.app.window.last_chan_selected)):
+                    child = self.app.window.flowbox.get_child_at_index(channel)
+                    self.app.window.set_focus(child)
+                    self.app.window.flowbox.select_child(child)
+
+            self.app.window.last_chan_selected = self.keystring
+
+            # Find selected channels
+            self.channels = []
+            sel = self.app.window.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for channelwidget in children:
+                    channel = int(channelwidget.channel) - 1
+                    if self.app.patch.channels[channel][0] != [0, 0]:
+                        self.channels.append(channel)
+
+            if self.channel_selected > len(self.channels) - 1:
+                self.channel_selected = 0
+
+            # Update Track Channels Tab
+            self.header.channels = self.channels
+            self.header.queue_draw()
+
+            levels = []
+            for step in range(self.app.sequence.last):
+                levels.append([])
+                for channel in range(len(self.channels)):
+                    level = self.app.sequence.cues[step].channels[self.channels[channel]]
+                    levels[step].append(level)
+                self.steps[step].levels = levels[step]
+            self.flowbox.queue_draw()
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_KP_Add(self):
+        self.keypress_plus()
+
+    def keypress_plus(self):
+        """ Channel + """
+
+        if self.keystring == '':
+            return
+
+        channel = int(self.keystring) - 1
+        if channel >= 0 and channel < MAX_CHANNELS:
+            child = self.app.window.flowbox.get_child_at_index(channel)
+            self.app.window.set_focus(child)
+            self.app.window.flowbox.select_child(child)
+            self.app.window.last_chan_selected = self.keystring
+
+            # Find selected channels
+            self.channels = []
+            sel = self.app.window.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for channelwidget in children:
+                    channel = int(channelwidget.channel) - 1
+                    if self.app.patch.channels[channel][0] != [0, 0]:
+                        self.channels.append(channel)
+
+            if self.channel_selected > len(self.channels) - 1:
+                self.channel_selected = 0
+
+            # Update Track Channels Tab
+            self.header.channels = self.channels
+            self.header.queue_draw()
+
+            levels = []
+            for step in range(self.app.sequence.last):
+                levels.append([])
+                for channel in range(len(self.channels)):
+                    level = self.app.sequence.cues[step].channels[self.channels[channel]]
+                    levels[step].append(level)
+                self.steps[step].levels = levels[step]
+            self.flowbox.queue_draw()
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_KP_Subtract(self):
+        self.keypress_minus()
+
+    def keypress_minus(self):
+        """ Channel - """
+
+        if self.keystring == '':
+            return
+
+        channel = int(self.keystring) - 1
+        if channel >= 0 and channel < MAX_CHANNELS:
+            child = self.app.window.flowbox.get_child_at_index(channel)
+            self.app.window.set_focus(child)
+            self.app.window.flowbox.unselect_child(child)
+            self.app.window.last_chan_selected = self.keystring
+
+            # Find selected channels
+            self.channels = []
+            sel = self.app.window.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for channelwidget in children:
+                    channel = int(channelwidget.channel) - 1
+                    if self.app.patch.channels[channel][0] != [0, 0]:
+                        self.channels.append(channel)
+
+            if self.channel_selected > len(self.channels) - 1:
+                self.channel_selected = 0
+
+            # Update Track Channels Tab
+            self.header.channels = self.channels
+            self.header.queue_draw()
+
+            levels = []
+            for step in range(self.app.sequence.last):
+                levels.append([])
+                for channel in range(len(self.channels)):
+                    level = self.app.sequence.cues[step].channels[self.channels[channel]]
+                    levels[step].append(level)
+                self.steps[step].levels = levels[step]
+            self.flowbox.queue_draw()
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
