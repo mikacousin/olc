@@ -203,9 +203,9 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str(self.text))
+        (x, y, w, h, dx, dy) = cr.text_extents(self.text)
         cr.move_to(135, 60/2-(h-20)/2)
-        cr.show_text(str(self.text))
+        cr.show_text(self.text)
 
         for i in range(len(self.levels)):
             # Draw Level boxes
@@ -331,6 +331,7 @@ class TrackChannelsTab(Gtk.Grid):
     def on_key_press_event(self, widget, event):
 
         keyname = Gdk.keyval_name(event.keyval)
+        #print(keyname)
 
         if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
             self.keystring += keyname
