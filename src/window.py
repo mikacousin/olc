@@ -426,6 +426,8 @@ class Window(Gtk.ApplicationWindow):
             if msg.type == 'note_on' and msg.note == 13 and msg.velocity == 127:
                 self.keypress_w()
 
+            # TODO: Configuration for inuk.asc
+
             # Flash 1
             if msg.type == 'note_on' and msg.note == 1 and msg.velocity == 127:
                 if self.app.master_tab != None:
@@ -482,7 +484,10 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         val = (msg.value / 127) * 255
                     self.app.master_tab.scale[10].set_value(val)
-                self.app.masters[10].value = (msg.value / 127) * 255
+                if self.percent_view:
+                    self.app.masters[10].value = (msg.value / 127) * 100
+                else:
+                    self.app.masters[10].value = (msg.value / 127) * 255
                 self.app.masters[10].level_changed()
 
             # Fader 2
@@ -493,7 +498,10 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         val = (msg.value / 127) * 255
                     self.app.master_tab.scale[11].set_value(val)
-                self.app.masters[11].value = (msg.value / 127) * 255
+                if self.percent_view:
+                    self.app.masters[11].value = (msg.value / 127) * 100
+                else:
+                    self.app.masters[11].value = (msg.value / 127) * 255
                 self.app.masters[11].level_changed()
 
             # Fader 3
@@ -504,10 +512,6 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         val = (msg.value / 127) * 255
                     self.app.master_tab.scale[0].set_value(val)
-                if self.percent_view:
-                    self.app.masters[0].value = (msg.value / 127) * 100
-                else:
-                    self.app.masters[0].value = (msg.value / 127) * 255
                 self.app.masters[0].level_changed()
 
             # Fader 4
@@ -518,10 +522,6 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         val = (msg.value / 127) * 255
                     self.app.master_tab.scale[1].set_value(val)
-                if self.percent_view:
-                    self.app.masters[1].value = (msg.value / 127) * 100
-                else:
-                    self.app.masters[1].value = (msg.value / 127) * 255
                 self.app.masters[1].level_changed()
 
             # Fader 5
