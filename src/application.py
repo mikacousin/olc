@@ -3,7 +3,7 @@ import array
 import select
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, Gio, GLib, Gdk, GObject
+from gi.repository import Gtk, Gio, GLib, Gdk, GObject, Pango
 from ola import OlaClient
 
 from olc.define import NB_UNIVERSES
@@ -142,8 +142,8 @@ class Application(Gtk.Application):
             self.ola_client.FetchDmx(self.universes[i], self.fetch_dmx)
 
         # TODO: Test manual crossfade, must be deleted
-        #self.win_crossfade = CrossfadeWindow()
-        #self.win_crossfade.show_all()
+        self.win_crossfade = CrossfadeWindow()
+        self.win_crossfade.show_all()
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
@@ -734,35 +734,36 @@ class CrossfadeWindow(Gtk.Window):
             app.window.sequential.pos_xB = app.window.sequential.pos_xA
             app.window.sequential.queue_draw()
             # Update levels
-            for output in range(512):
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
 
-                channel = app.patch.outputs[output]
+                    channel = app.patch.outputs[univ][output]
 
-                old_level = app.sequence.cues[position].channels[channel-1]
+                    old_level = app.sequence.cues[position].channels[channel-1]
 
-                if channel:
-                    if position < app.sequence.last - 1:
-                        next_level = app.sequence.cues[position+1].channels[channel-1]
-                    else:
-                        next_level = app.sequence.cues[0].channels[channel-1]
-
-                    if app.dmx.user[channel-1] != -1:
-                        user_level = app.dmx.user[channel-1]
-                        if next_level < user_level:
-                            lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
-                        elif next_level > user_level:
-                            lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                    if channel:
+                        if position < app.sequence.last - 1:
+                            next_level = app.sequence.cues[position+1].channels[channel-1]
                         else:
-                            lvl = user_level
-                    else:
-                        if next_level < old_level:
-                            lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
-                        elif next_level > old_level:
-                            lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
-                        else:
-                            lvl = old_level
+                            next_level = app.sequence.cues[0].channels[channel-1]
 
-                    app.dmx.sequence[channel-1] = lvl
+                        if app.dmx.user[channel-1] != -1:
+                            user_level = app.dmx.user[channel-1]
+                            if next_level < user_level:
+                                lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
+                            elif next_level > user_level:
+                                lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                            else:
+                                lvl = user_level
+                        else:
+                            if next_level < old_level:
+                                lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
+                            elif next_level > old_level:
+                                lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
+                            else:
+                                lvl = old_level
+
+                        app.dmx.sequence[channel-1] = lvl
 
         elif scale == self.scaleA:
             # If sequential is empty, don't do anything
@@ -778,31 +779,33 @@ class CrossfadeWindow(Gtk.Window):
             app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
             app.window.sequential.queue_draw()
             # Update levels
-            for output in range(512):
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
 
-                channel = app.patch.outputs[output]
+                    channel = app.patch.outputs[univ][output]
 
-                old_level = app.sequence.cues[position].channels[channel-1]
+                    old_level = app.sequence.cues[position].channels[channel-1]
 
-                if channel:
-                    if position < app.sequence.last - 1:
-                        next_level = app.sequence.cues[position+1].channels[channel-1]
-                    else:
-                        next_level = app.sequence.cues[0].channels[channel-1]
-
-                    if app.dmx.user[channel-1] != -1:
-                        user_level = app.dmx.user[channel-1]
-                        if next_level < user_level:
-                            lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
+                    if channel:
+                        if position < app.sequence.last - 1:
+                            next_level = app.sequence.cues[position+1].channels[channel-1]
                         else:
-                            lvl = user_level
-                    else:
-                        if next_level < old_level:
-                            lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
-                        else:
-                            lvl = old_level
+                            next_level = app.sequence.cues[0].channels[channel-1]
 
-                    app.dmx.sequence[channel-1] = lvl
+                        if app.dmx.user[channel-1] != -1:
+                            user_level = app.dmx.user[channel-1]
+                            if next_level < user_level:
+                                lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
+                            else:
+                                lvl = user_level
+                        else:
+                            if next_level < old_level:
+                                lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
+                            else:
+                                lvl = old_level
+
+                        if lvl != old_level:
+                            app.dmx.sequence[channel-1] = lvl
 
         elif scale == self.scaleB:
             # If sequential is empty, don't do anything
@@ -818,31 +821,33 @@ class CrossfadeWindow(Gtk.Window):
             app.window.sequential.pos_xB = ((allocation.width - 32) / delay) * pos
             app.window.sequential.queue_draw()
             # Update levels
-            for output in range(512):
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
 
-                channel = app.patch.outputs[output]
+                    channel = app.patch.outputs[univ][output]
 
-                old_level = app.sequence.cues[position].channels[channel-1]
+                    old_level = app.sequence.cues[position].channels[channel-1]
 
-                if channel:
-                    if position < app.sequence.last - 1:
-                        next_level = app.sequence.cues[position+1].channels[channel-1]
-                    else:
-                        next_level = app.sequence.cues[0].channels[channel-1]
-
-                    if app.dmx.user[channel-1] != -1:
-                        user_level = app.dmx.user[channel-1]
-                        if next_level > user_level:
-                            lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                    if channel:
+                        if position < app.sequence.last - 1:
+                            next_level = app.sequence.cues[position+1].channels[channel-1]
                         else:
-                            lvl = user_level
-                    else:
-                        if next_level > old_level:
-                            lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
-                        else:
-                            lvl = old_level
+                            next_level = app.sequence.cues[0].channels[channel-1]
 
-                    app.dmx.sequence[channel-1] = lvl
+                        if app.dmx.user[channel-1] != -1:
+                            user_level = app.dmx.user[channel-1]
+                            if next_level > user_level:
+                                lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                            else:
+                                lvl = user_level
+                        else:
+                            if next_level > old_level:
+                                lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
+                            else:
+                                lvl = old_level
+
+                        if lvl != old_level:
+                            app.dmx.sequence[channel-1] = lvl
 
         if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
             if app.sequence.on_go == True:
@@ -865,10 +870,14 @@ class CrossfadeWindow(Gtk.Window):
                     app.sequence.position += 1
                     t_in = app.sequence.cues[position+1].time_in
                     t_out = app.sequence.cues[position+1].time_out
+                    d_in = app.sequence.cues[position+1].delay_in
+                    d_out = app.sequence.cues[position+1].delay_out
                     t_wait = app.sequence.cues[position+1].wait
                     app.window.sequential.total_time = app.sequence.cues[position + 1].total_time
                     app.window.sequential.time_in = t_in
                     app.window.sequential.time_out = t_out
+                    app.window.sequential.delay_in = d_in
+                    app.window.sequential.delay_out = d_out
                     app.window.sequential.wait = t_wait
                     app.window.sequential.channel_time = app.sequence.cues[position + 1].channel_time
                     app.window.sequential.pos_xA = 0
@@ -878,14 +887,26 @@ class CrossfadeWindow(Gtk.Window):
                     app.window.header.set_subtitle(subtitle)
 
                     if position == 0:
-                        app.window.cues_liststore1[-2][7] = "#232729"
-                        app.window.cues_liststore1[position][7] = "#997004"
+                        app.window.cues_liststore1[position][9] = "#232729"
+                        app.window.cues_liststore1[position+1][9] = "#232729"
+                        app.window.cues_liststore1[position+2][9] = "#997004"
+                        app.window.cues_liststore1[position+3][9] = "#555555"
+                        app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+                        app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+                        app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+                        app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
                     else:
-                        app.window.cues_liststore1[position - 1][7] = "#232729"
-                        app.window.cues_liststore1[position][7] = "#997004"
+                        app.window.cues_liststore1[position][9] = "#232729"
+                        app.window.cues_liststore1[position+1][9] = "#232729"
+                        app.window.cues_liststore1[position+2][9] = "#997004"
+                        app.window.cues_liststore1[position+3][9] = "#555555"
+                        app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+                        app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+                        app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+                        app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
                     app.window.step_filter1.refilter()
                     app.window.step_filter2.refilter()
-                    path = Gtk.TreePath.new_from_indices([0])
+                    path = Gtk.TreePath.new_first()
                     app.window.treeview1.set_cursor(path, None, False)
                     app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
