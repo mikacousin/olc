@@ -70,20 +70,21 @@ class Master(object):
             for j in range(len(self.groups)):
                 if self.groups[j].index == grp:
                     # For each output
-                    for output in range(512):
-                        # If Output patched
-                        channel = self.app.patch.outputs[output]
-                        if channel:
-                            if self.groups[j].channels[channel-1] != 0:
-                                # Get level saved in group
-                                level_group = self.groups[j].channels[channel-1]
-                                # Level calculation
-                                if self.value == 0:
-                                    level = 0
-                                else:
-                                    level = int(round(level_group / (255 / self.value)))
-                                # Update level in master array
-                                self.dmx[channel-1] = level
+                    for univ in range(NB_UNIVERSES):
+                        for output in range(512):
+                            # If Output patched
+                            channel = self.app.patch.outputs[univ][output]
+                            if channel:
+                                if self.groups[j].channels[channel-1] != 0:
+                                    # Get level saved in group
+                                    level_group = self.groups[j].channels[channel-1]
+                                    # Level calculation
+                                    if self.value == 0:
+                                        level = 0
+                                    else:
+                                        level = int(round(level_group / (255 / self.value)))
+                                    # Update level in master array
+                                    self.dmx[channel-1] = level
 
         # Master type is Chaser
         elif self.content_type == 3:
@@ -112,10 +113,11 @@ class Master(object):
                                 # Stop Chaser
                                 self.app.chasers[k].run = False
                                 self.app.chasers[k].thread.stop()
-                                for output in range(512):
-                                    channel = self.app.patch.outputs[output]
-                                    #if self.app.chasers[k].channels[channel-1] != 0:
-                                    self.dmx[channel-1] = 0
+                                for univ in range(NB_UNIVERSES):
+                                    for output in range(512):
+                                        channel = self.app.patch.outputs[univ][output]
+                                        #if self.app.chasers[k].channels[channel-1] != 0:
+                                        self.dmx[channel-1] = 0
 
 class MasterTab(Gtk.Grid):
     def __init__(self):
