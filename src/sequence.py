@@ -771,7 +771,7 @@ class SequenceTab(Gtk.Grid):
             if text[0] == ".":
                 text = '0' + text
 
-            self.liststore2[path][6] = text
+            self.liststore2[path][7] = text
 
             # Find selected sequence
             seq_path, focus_column = self.treeview1.get_cursor()
@@ -805,8 +805,8 @@ class SequenceTab(Gtk.Grid):
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
-                self.app.window.cues_liststore1[path][6] = text
-                self.app.window.cues_liststore2[path][6] = text
+                self.app.window.cues_liststore1[path][7] = text
+                self.app.window.cues_liststore2[path][7] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.time_in = float(text)
                     self.app.window.sequential.total_time = self.seq.cues[step].total_time
