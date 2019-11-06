@@ -44,10 +44,10 @@ class Sequence(object):
     def sequence_plus(self, app):
         self.app = app
 
-        if self.on_go:
+        if self.app.sequence.on_go:
             # Stop actual Thread
-            self.thread.stop()
-            self.on_go = False
+            self.app.sequence.thread.stop()
+            self.app.sequence.on_go = False
             # Stop at the end
             if self.position > self.last - 3:
                 self.position = self.last - 3
@@ -219,8 +219,8 @@ class Sequence(object):
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.app.sequence.on_go:
             # Stop actual Thread
-            self.thread.stop()
-            self.thread.join()
+            self.app.sequence.thread.stop()
+            self.app.sequence.thread.join()
             self.app.sequence.on_go = False
             # Launch another Go
             position = self.app.sequence.position
@@ -298,8 +298,8 @@ class Sequence(object):
         else:
             # On indique qu'un Go est en cours
             self.app.sequence.on_go = True
-            self.thread = ThreadGo(self.app)
-            self.thread.start()
+            self.app.sequence.thread = ThreadGo(self.app)
+            self.app.sequence.thread.start()
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
