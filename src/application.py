@@ -659,7 +659,7 @@ class Application(Gtk.Application):
 class CrossfadeWindow(Gtk.Window):
     def __init__(self):
 
-        self.link = True
+        self.link = False
 
         Gtk.Window.__init__(self, title='Crossfade')
         self.set_default_size(200, 400)
@@ -684,7 +684,7 @@ class CrossfadeWindow(Gtk.Window):
         self.scaleB.connect('value-changed', self.scale_moved)
 
         self.button = Gtk.CheckButton('Link crossfade')
-        self.button.set_active(True)
+        self.button.set_active(False)
         self.button.connect('toggled', self.on_button_toggled)
 
         self.grid.attach(self.button, 0, 0, 2, 1)

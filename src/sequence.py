@@ -45,12 +45,15 @@ class Sequence(object):
         self.app = app
 
         if self.app.sequence.on_go:
-            # Stop actual Thread
-            self.app.sequence.thread.stop()
-            self.app.sequence.on_go = False
-            # Stop at the end
-            if self.position > self.last - 3:
-                self.position = self.last - 3
+            try:
+                # Stop actual Thread
+                self.app.sequence.thread.stop()
+                self.app.sequence.on_go = False
+                # Stop at the end
+                if self.position > self.last - 3:
+                    self.position = self.last - 3
+            except:
+                pass
 
         position = self.position
         position += 1
@@ -105,12 +108,15 @@ class Sequence(object):
         self.app = app
 
         if self.on_go:
-            # Stop actual Thread
-            self.thread.stop()
-            self.on_go = False
-            # Stop at the begining
-            if self.position < 1:
-                self.position = 1
+            try:
+                # Stop actual Thread
+                self.app.sequence.thread.stop()
+                self.app.sequence.on_go = False
+                # Stop at the begining
+                if self.app.sequence.position < 1:
+                    self.app.sequence.position = 1
+            except:
+                pass
 
         position = self.position
         position -= 1
