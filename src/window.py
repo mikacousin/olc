@@ -557,6 +557,16 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[3].value = (msg.value / 127) * 255
                 self.app.masters[3].level_changed()
 
+            # Fader 8
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 8:
+                val = (msg.value / 127) * 255
+                self.app.win_crossfade.scaleA.set_value(val)
+
+            # Fader 9
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 9:
+                val = (msg.value / 127) * 255
+                self.app.win_crossfade.scaleB.set_value(val)
+
         return True
 
     def button_clicked_cb(self, button):

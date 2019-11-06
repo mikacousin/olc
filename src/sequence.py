@@ -217,16 +217,87 @@ class Sequence(object):
     def sequence_go(self, action, param):
         self.app = Gio.Application.get_default()
         # Si un Go est en cours, on bascule sur la mémoire suivante
-        if self.on_go:
+        if self.app.sequence.on_go:
             # Stop actual Thread
             self.thread.stop()
             self.thread.join()
-            self.on_go = False
+            self.app.sequence.on_go = False
             # Launch another Go
+            position = self.app.sequence.position
+            position += 1
+            if position < self.app.sequence.last - 1:
+                self.app.sequence.position += 1
+                t_in = self.app.sequence.cues[position+1].time_in
+                t_out = self.app.sequence.cues[position+1].time_out
+                d_in = self.app.sequence.cues[position+1].delay_in
+                d_out = self.app.sequence.cues[position+1].delay_out
+                t_wait = self.app.sequence.cues[position+1].wait
+                self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
+                self.app.window.sequential.time_in = t_in
+                self.app.window.sequential.time_out = t_out
+                self.app.window.sequential.delay_in = d_in
+                self.app.window.sequential.delay_out = d_out
+                self.app.window.sequential.wait = t_wait
+                self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
+                self.app.window.sequential.pos_xA = 0
+                self.app.window.sequential.pos_xB = 0
+
+                # Set main window's subtitle
+                subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+            else:
+                self.app.sequence.position = 0
+                position = 0
+                t_in = self.app.sequence.cues[position+1].time_in
+                t_out = self.app.sequence.cues[position+1].time_out
+                d_in = self.app.sequence.cues[position+1].delay_in
+                d_out = self.app.sequence.cues[position+1].delay_out
+                t_wait = self.app.sequence.cues[position+1].wait
+                self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
+                self.app.window.sequential.time_in = t_in
+                self.app.window.sequential.time_out = t_out
+                self.app.window.sequential.delay_in = d_in
+                self.app.window.sequential.delay_out = d_out
+                self.app.window.sequential.wait = t_wait
+                self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
+                self.app.window.sequential.pos_xA = 0
+                self.app.window.sequential.pos_xB = 0
+
+                # Set main window's subtitle
+                subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+
+            # Update Sequential Tab
+            if position == 0:
+                self.app.window.cues_liststore1[position][9] = "#232729"
+                self.app.window.cues_liststore1[position+1][9] = "#232729"
+                self.app.window.cues_liststore1[position+2][9] = "#997004"
+                self.app.window.cues_liststore1[position+3][9] = "#555555"
+                self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+                self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
+            else:
+                self.app.window.cues_liststore1[position][9] = "#232729"
+                self.app.window.cues_liststore1[position+1][9] = "#232729"
+                self.app.window.cues_liststore1[position+2][9] = "#997004"
+                self.app.window.cues_liststore1[position+3][9] = "#555555"
+                self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+                self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+                self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
+            self.app.window.step_filter1.refilter()
+            self.app.window.step_filter2.refilter()
+            path = Gtk.TreePath.new_from_indices([0])
+            self.app.window.treeview1.set_cursor(path, None, False)
+            self.app.window.treeview2.set_cursor(path, None, False)
+            self.app.window.seq_grid.queue_draw()
+            # Update Main Window's Subtitle
+            self.app.window.header.set_subtitle(subtitle)
+
             self.sequence_go(None, None)
+
         else:
             # On indique qu'un Go est en cours
-            self.on_go = True
+            self.app.sequence.on_go = True
             self.thread = ThreadGo(self.app)
             self.thread.start()
 
