@@ -225,8 +225,11 @@ class Sequence(object):
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.app.sequence.on_go:
             # Stop actual Thread
-            self.app.sequence.thread.stop()
-            self.app.sequence.thread.join()
+            try:
+                self.app.sequence.thread.stop()
+                self.app.sequence.thread.join()
+            except:
+                pass
             self.app.sequence.on_go = False
             # Launch another Go
             position = self.app.sequence.position

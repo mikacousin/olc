@@ -415,7 +415,7 @@ class Window(Gtk.ApplicationWindow):
             #print(msg)
 
             # Go
-            if msg.type == 'note_on' and msg.note == 11 and msg.velocity == 127:
+            if msg.type == 'note_on' and msg.note == 103 and msg.velocity == 127:
                 self.app.sequence.sequence_go(self.app, None)
 
             # Seq -
@@ -477,7 +477,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[2].level_changed()
 
             # Fader 1
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 1:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 0:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
@@ -491,7 +491,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[10].level_changed()
 
             # Fader 2
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 2:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 1:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
@@ -505,27 +505,29 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[11].level_changed()
 
             # Fader 3
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 3:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 2:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
                     else:
                         val = (msg.value / 127) * 255
                     self.app.master_tab.scale[0].set_value(val)
+                self.app.masters[0].value = (msg.value / 127) * 255
                 self.app.masters[0].level_changed()
 
             # Fader 4
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 4:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 3:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
                     else:
                         val = (msg.value / 127) * 255
                     self.app.master_tab.scale[1].set_value(val)
+                self.app.masters[1].value = (msg.value / 127) * 255
                 self.app.masters[1].level_changed()
 
             # Fader 5
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 5:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 4:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
@@ -536,7 +538,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[8].level_changed()
 
             # Fader 6
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 6:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 5:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
@@ -547,7 +549,7 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[4].level_changed()
 
             # Fader 7
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 7:
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 6:
                 if self.app.master_tab != None:
                     if self.percent_view:
                         val = (msg.value / 127) * 100
@@ -924,11 +926,6 @@ class Window(Gtk.ApplicationWindow):
     def keypress_w(self):
         """ Seq + """
         self.app.sequence.sequence_plus(self.app)
-
-    # TODO: Delete this, Go is a global shortcut
-    #def keypress_space(self):
-    #    """ Go """
-    #    self.app.sequence.sequence_go(self.app)
 
     def keypress_G(self):
         """ Goto """

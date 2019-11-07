@@ -683,89 +683,30 @@ class CrossfadeWindow(Gtk.Window):
         self.scaleB.set_inverted(True)
         self.scaleB.connect('value-changed', self.scale_moved)
 
-        self.button = Gtk.CheckButton('Link crossfade')
-        self.button.set_active(False)
-        self.button.connect('toggled', self.on_button_toggled)
-
-        self.grid.attach(self.button, 0, 0, 2, 1)
-        self.grid.attach_next_to(self.scaleA, self.button, Gtk.PositionType.BOTTOM, 1, 1)
+        #self.grid.attach(self.button, 0, 0, 2, 1)
+        self.grid.attach(self.scaleA, 0, 0, 1, 1)
+        #self.grid.attach_next_to(self.scaleA, self.button, Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.scaleB, self.scaleA, Gtk.PositionType.RIGHT, 1, 1)
 
         self.add(self.grid)
 
-    def on_button_toggled(self, button):
-        if button.get_active():
-            self.link = True
-        else:
-            self.link = False
-
     def scale_moved(self, scale):
-        # TODO: Bug avec In monté puis après monter Out (les levels des channels tombent à 0)
-        # TODO: Bug si on arrive sur un wait
         app = Gio.Application.get_default()
         level = scale.get_value()
         position = app.sequence.position
 
-        # TODO: Pouvoir prendre la main pendant un Go
+        # If Go is sent, stop it
+        try:
+            if app.sequence.thread.is_alive():
+                app.sequence.thread.stop()
+                app.sequence.thread.join()
+        except:
+            pass
 
-        # TODO: Si on prend la main sur le crossfade, impossible de faire un Go, Seq+, Seq- si on va pas au bout
         if level != 255 and level != 0:
             app.sequence.on_go = True
 
-        if self.link:
-            # Update scales position
-            if scale == self.scaleA:
-                self.scaleB.set_value(level)
-            else:
-                self.scaleA.set_value(level)
-
-            # If sequential is empty, don't do anything
-            if app.sequence.last == 0:
-                app.sequence.on_go = False
-                return
-
-            # Update sliders position
-            delay = app.sequence.cues[position+1].time_out * 1000
-            wait = app.sequence.cues[position+1].wait * 1000
-            pos = (level / 255) * delay
-            # Get SequentialWindow's width to place cursor
-            allocation = app.window.sequential.get_allocation()
-            app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
-            app.window.sequential.pos_xB = app.window.sequential.pos_xA
-            app.window.sequential.queue_draw()
-            # Update levels
-            for univ in range(NB_UNIVERSES):
-                for output in range(512):
-
-                    channel = app.patch.outputs[univ][output]
-
-                    old_level = app.sequence.cues[position].channels[channel-1]
-
-                    if channel:
-                        if position < app.sequence.last - 1:
-                            next_level = app.sequence.cues[position+1].channels[channel-1]
-                        else:
-                            next_level = app.sequence.cues[0].channels[channel-1]
-
-                        if app.dmx.user[channel-1] != -1:
-                            user_level = app.dmx.user[channel-1]
-                            if next_level < user_level:
-                                lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
-                            elif next_level > user_level:
-                                lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
-                            else:
-                                lvl = user_level
-                        else:
-                            if next_level < old_level:
-                                lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
-                            elif next_level > old_level:
-                                lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
-                            else:
-                                lvl = old_level
-
-                        app.dmx.sequence[channel-1] = lvl
-
-        elif scale == self.scaleA:
+        if scale == self.scaleA:
             # If sequential is empty, don't do anything
             if app.sequence.last == 0:
                 app.sequence.on_go = False
@@ -795,17 +736,16 @@ class CrossfadeWindow(Gtk.Window):
                         if app.dmx.user[channel-1] != -1:
                             user_level = app.dmx.user[channel-1]
                             if next_level < user_level:
-                                lvl = user_level - abs(int(((next_level - user_level) / (delay + wait)) * (pos - wait)))
+                                lvl = user_level - abs(int(round(((next_level - user_level) / (delay + wait)) * (pos - wait))))
                             else:
                                 lvl = user_level
                         else:
                             if next_level < old_level:
-                                lvl = old_level - abs(int(((next_level - old_level) / (delay + wait)) * (pos - wait)))
+                                lvl = old_level - abs(int(round(((next_level - old_level) / (delay + wait)) * (pos - wait))))
                             else:
                                 lvl = old_level
 
-                        if lvl != old_level:
-                            app.dmx.sequence[channel-1] = lvl
+                        app.dmx.sequence[channel-1] = lvl
 
         elif scale == self.scaleB:
             # If sequential is empty, don't do anything
@@ -837,17 +777,16 @@ class CrossfadeWindow(Gtk.Window):
                         if app.dmx.user[channel-1] != -1:
                             user_level = app.dmx.user[channel-1]
                             if next_level > user_level:
-                                lvl = int(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level
+                                lvl = int(round(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level)
                             else:
                                 lvl = user_level
                         else:
                             if next_level > old_level:
-                                lvl = int(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level
+                                lvl = int(round(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level)
                             else:
                                 lvl = old_level
 
-                        if lvl != old_level:
-                            app.dmx.sequence[channel-1] = lvl
+                        app.dmx.sequence[channel-1] = lvl
 
         if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
             if app.sequence.on_go == True:
@@ -913,7 +852,7 @@ class CrossfadeWindow(Gtk.Window):
 
                     # If Wait
                     if app.sequence.cues[position+1].wait:
-                        app.window.keypress_space()
+                        app.sequence.sequence_go(None, None)
                 # Else, we return to first cue
                 # TODO: Update code
                 else:
