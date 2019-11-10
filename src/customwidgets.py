@@ -369,7 +369,6 @@ class SequentialWidget(Gtk.Widget):
         self.wait = wait
         self.channel_time = channel_time
 
-        #self.pos_x = 0
         self.pos_xA = 0
         self.pos_xB = 0
 
@@ -521,20 +520,43 @@ class SequentialWidget(Gtk.Widget):
             cr.stroke()
             cr.set_dash([])
             # draw Time Cursor
-            if self.pos_xA > inter*delay + wait_x:
-                if self.pos_xA > (inter*delay)+(inter*time)+wait_x:
-                    self.pos_xCT = (inter * delay) + (inter * time) + wait_x
+            app = Gio.Application.get_default()
+            position = app.sequence.position
+            old_level = app.sequence.cues[position].channels[channel - 1]
+            next_level = app.sequence.cues[position + 1].channels[channel - 1]
+            # Time Cursor follow In or Out Crossfade
+            if next_level < old_level:
+                # Out Crossfade
+                if self.pos_xA > inter*delay + wait_x:
+                    if self.pos_xA > (inter*delay)+(inter*time)+wait_x:
+                        self.pos_xCT = (inter * delay) + (inter * time) + wait_x
+                    else:
+                        self.pos_xCT = self.pos_xA
+                    cr.set_source_rgb(0.9, 0.6, 0.2)
+                    cr.move_to(16+self.pos_xCT, allocation.height-12-(self.ct_nb*12))
+                    cr.line_to(16+self.pos_xCT, allocation.height-4-(self.ct_nb*12))
+                    cr.stroke()
                 else:
-                    self.pos_xCT = self.pos_xA
-                cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+self.pos_xCT, allocation.height-12-(self.ct_nb*12))
-                cr.line_to(16+self.pos_xCT, allocation.height-4-(self.ct_nb*12))
-                cr.stroke()
+                    cr.set_source_rgb(0.9, 0.6, 0.2)
+                    cr.move_to(16+(inter*delay)+wait_x, allocation.height-12-(self.ct_nb*12))
+                    cr.line_to(16+(inter*delay)+wait_x, allocation.height-4-(self.ct_nb*12))
+                    cr.stroke()
             else:
-                cr.set_source_rgb(0.9, 0.6, 0.2)
-                cr.move_to(16+(inter*delay)+wait_x, allocation.height-12-(self.ct_nb*12))
-                cr.line_to(16+(inter*delay)+wait_x, allocation.height-4-(self.ct_nb*12))
-                cr.stroke()
+                # In Crossfade
+                if self.pos_xB > inter*delay + wait_x:
+                    if self.pos_xB > (inter*delay)+(inter*time)+wait_x:
+                        self.pos_xCT = (inter * delay) + (inter * time) + wait_x
+                    else:
+                        self.pos_xCT = self.pos_xB
+                    cr.set_source_rgb(0.9, 0.6, 0.2)
+                    cr.move_to(16+self.pos_xCT, allocation.height-12-(self.ct_nb*12))
+                    cr.line_to(16+self.pos_xCT, allocation.height-4-(self.ct_nb*12))
+                    cr.stroke()
+                else:
+                    cr.set_source_rgb(0.9, 0.6, 0.2)
+                    cr.move_to(16+(inter*delay)+wait_x, allocation.height-12-(self.ct_nb*12))
+                    cr.line_to(16+(inter*delay)+wait_x, allocation.height-4-(self.ct_nb*12))
+                    cr.stroke()
             # draw time number
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.move_to(12+(inter*delay)+(inter*time)+wait_x,16)

@@ -683,9 +683,7 @@ class CrossfadeWindow(Gtk.Window):
         self.scaleB.set_inverted(True)
         self.scaleB.connect('value-changed', self.scale_moved)
 
-        #self.grid.attach(self.button, 0, 0, 2, 1)
         self.grid.attach(self.scaleA, 0, 0, 1, 1)
-        #self.grid.attach_next_to(self.scaleA, self.button, Gtk.PositionType.BOTTOM, 1, 1)
         self.grid.attach_next_to(self.scaleB, self.scaleA, Gtk.PositionType.RIGHT, 1, 1)
 
         self.add(self.grid)
@@ -695,16 +693,15 @@ class CrossfadeWindow(Gtk.Window):
         level = scale.get_value()
         position = app.sequence.position
 
-        # If Go is sent, stop it
-        try:
-            if app.sequence.thread.is_alive():
-                app.sequence.thread.stop()
-                app.sequence.thread.join()
-        except:
-            pass
-
         if level != 255 and level != 0:
             app.sequence.on_go = True
+            # If Go is sent, stop it
+            try:
+                if app.sequence.thread.is_alive():
+                    app.sequence.thread.stop()
+                    app.sequence.thread.join()
+            except:
+                pass
 
         if scale == self.scaleA:
             # If sequential is empty, don't do anything
@@ -712,40 +709,81 @@ class CrossfadeWindow(Gtk.Window):
                 app.sequence.on_go = False
                 return
             # Update slider A position
-            delay = app.sequence.cues[position+1].time_out * 1000
+            total_time = app.sequence.cues[position+1].total_time * 1000
+            time_out = app.sequence.cues[position+1].time_out * 1000
+            delay_out = app.sequence.cues[position+1].delay_out * 1000
             wait = app.sequence.cues[position+1].wait * 1000
-            pos = (level / 255) * delay
+            pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = app.window.sequential.get_allocation()
-            app.window.sequential.pos_xA = ((allocation.width - 32) / delay) * pos
+            app.window.sequential.pos_xA = ((allocation.width - 32) / total_time) * pos
             app.window.sequential.queue_draw()
             # Update levels
-            for univ in range(NB_UNIVERSES):
-                for output in range(512):
+            if pos >= wait:
+                for univ in range(NB_UNIVERSES):
+                    for output in range(512):
 
-                    channel = app.patch.outputs[univ][output]
+                        lvl = -1
+                        channel = app.patch.outputs[univ][output]
 
-                    old_level = app.sequence.cues[position].channels[channel-1]
+                        old_level = app.sequence.cues[position].channels[channel-1]
 
-                    if channel:
-                        if position < app.sequence.last - 1:
-                            next_level = app.sequence.cues[position+1].channels[channel-1]
-                        else:
-                            next_level = app.sequence.cues[0].channels[channel-1]
+                        if channel:
 
-                        if app.dmx.user[channel-1] != -1:
-                            user_level = app.dmx.user[channel-1]
-                            if next_level < user_level:
-                                lvl = user_level - abs(int(round(((next_level - user_level) / (delay + wait)) * (pos - wait))))
+                            if position < app.sequence.last - 1:
+                                next_level = app.sequence.cues[position+1].channels[channel-1]
                             else:
-                                lvl = user_level
-                        else:
-                            if next_level < old_level:
-                                lvl = old_level - abs(int(round(((next_level - old_level) / (delay + wait)) * (pos - wait))))
-                            else:
-                                lvl = old_level
+                                next_level = app.sequence.cues[0].channels[channel-1]
 
-                        app.dmx.sequence[channel-1] = lvl
+                            channel_time = app.sequence.cues[position+1].channel_time
+
+                            if channel in channel_time:
+                                # Channel Time
+                                ct_delay = channel_time[channel].delay * 1000
+                                ct_time = channel_time[channel].time * 1000
+                                if next_level < old_level:
+
+                                    if pos < ct_delay + wait:
+                                        lvl = old_level
+
+                                    elif pos >= ct_delay + wait and pos < ct_delay + ct_time + wait:
+                                        lvl = old_level - abs(int(round(((next_level - old_level) / ct_time)
+                                            * (pos - ct_delay - wait))))
+
+                                    elif pos >= ct_delay + ct_time + wait:
+                                        lvl = next_level
+
+                            elif app.dmx.user[channel-1] != -1:
+                                # User changed channel's value
+                                user_level = app.dmx.user[channel-1]
+                                if next_level < user_level and pos <= wait + delay_out:
+                                    lvl = old_level
+
+                                elif (next_level < user_level and pos < time_out + wait + delay_out and
+                                        pos > wait_delay_out):
+
+                                    lvl = user_level - abs(int(round(((next_level - user_level) / time_out)
+                                        * (pos - wait - delay_out))))
+
+                                elif next_level < user_level and pos >= time_out + wait + delay_out:
+                                    lvl = next_level
+
+                            else:
+                                # Normal sequential
+                                if next_level < old_level and pos <= wait + delay_out:
+                                    lvl = old_level
+
+                                elif (next_level < old_level and pos < time_out + wait + delay_out and
+                                        pos > wait + delay_out):
+
+                                    lvl = old_level - abs(int(round(((next_level - old_level) / time_out)
+                                        * (pos - wait - delay_out))))
+
+                                elif next_level < old_level and pos >= time_out + wait + delay_out:
+                                    lvl = next_level
+
+                            if lvl != -1:
+                                app.dmx.sequence[channel-1] = lvl
 
         elif scale == self.scaleB:
             # If sequential is empty, don't do anything
@@ -753,57 +791,90 @@ class CrossfadeWindow(Gtk.Window):
                 app.sequence.on_go = False
                 return
             # Update slider B position
-            delay = app.sequence.cues[position+1].time_in * 1000
+            total_time = app.sequence.cues[position+1].total_time * 1000
+            time_in = app.sequence.cues[position+1].time_in * 1000
+            delay_in = app.sequence.cues[position+1].delay_in * 1000
             wait = app.sequence.cues[position+1].wait * 1000
-            pos = (level / 255) * delay
+            pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = app.window.sequential.get_allocation()
-            app.window.sequential.pos_xB = ((allocation.width - 32) / delay) * pos
+            app.window.sequential.pos_xB = ((allocation.width - 32) / total_time) * pos
             app.window.sequential.queue_draw()
             # Update levels
-            for univ in range(NB_UNIVERSES):
-                for output in range(512):
+            if pos >= wait:
+                for univ in range(NB_UNIVERSES):
+                    for output in range(512):
 
-                    channel = app.patch.outputs[univ][output]
+                        lvl = -1
+                        channel = app.patch.outputs[univ][output]
 
-                    old_level = app.sequence.cues[position].channels[channel-1]
+                        old_level = app.sequence.cues[position].channels[channel-1]
 
-                    if channel:
-                        if position < app.sequence.last - 1:
-                            next_level = app.sequence.cues[position+1].channels[channel-1]
-                        else:
-                            next_level = app.sequence.cues[0].channels[channel-1]
-
-                        if app.dmx.user[channel-1] != -1:
-                            user_level = app.dmx.user[channel-1]
-                            if next_level > user_level:
-                                lvl = int(round(((next_level - user_level) / (delay + wait)) * (pos - wait)) + user_level)
+                        if channel:
+                            if position < app.sequence.last - 1:
+                                next_level = app.sequence.cues[position+1].channels[channel-1]
                             else:
-                                lvl = user_level
-                        else:
-                            if next_level > old_level:
-                                lvl = int(round(((next_level - old_level) / (delay + wait)) * (pos - wait)) + old_level)
-                            else:
-                                lvl = old_level
+                                next_level = app.sequence.cues[0].channels[channel-1]
 
-                        app.dmx.sequence[channel-1] = lvl
+                            channel_time = app.sequence.cues[position+1].channel_time
+
+                            if channel in channel_time:
+                                # Channel Time
+                                ct_delay = channel_time[channel].delay * 1000
+                                ct_time = channel_time[channel].time * 1000
+                                if next_level > old_level:
+
+                                    if pos < ct_delay + wait:
+                                        lvl = old_level
+
+                                    elif pos >= ct_delay + wait and pos < ct_delay + ct_time + wait:
+                                        lvl = int(round(((next_level - old_level) / ct_time)
+                                            * (pos - ct_delay - wait)) + old_level)
+
+                                    elif pos >= ct_delay + ct_time + wait:
+                                        lvl = next_level
+
+                            elif app.dmx.user[channel-1] != -1:
+                                # User change channel's value
+                                user_level = app.dmx.user[channel-1]
+                                if next_level > user_level and pos <= wait + delay_in:
+                                    lvl = old_level
+
+                                elif (next_level > user_level and pos < time_in + wait + delay_in and
+                                        pos > wait + delay_in):
+
+                                    lvl = int(round(((next_level - user_level) / time_in)
+                                        * (pos - wait - delay_in)) + user_level)
+
+                                elif next_level > user_level and pos >= time_in + wait + delay_in:
+                                    lvl = next_level
+
+                            else:
+                                # Normal channel
+                                if next_level > old_level and pos <= wait + delay_in:
+                                    lvl = old_level
+
+                                elif (next_level > old_level and pos < time_in + wait + delay_in and
+                                        pos > wait + delay_in):
+
+                                    lvl = int(round(((next_level - old_level) / time_in)
+                                        * (pos - wait - delay_in)) + old_level)
+
+                                elif next_level > old_level and pos >= time_in + wait + delay_in:
+                                    lvl = next_level
+
+                            if lvl != -1:
+                                app.dmx.sequence[channel-1] = lvl
 
         if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
             if app.sequence.on_go == True:
                 app.sequence.on_go = False
-                if self.scaleA.get_inverted():
-                    self.scaleA.set_inverted(False)
-                    self.scaleB.set_inverted(False)
-                else:
-                    self.scaleA.set_inverted(True)
-                    self.scaleB.set_inverted(True)
-                self.scaleA.set_value(0)
-                self.scaleB.set_value(0)
                 # Empty array of levels enter by user
                 app.dmx.user = array.array('h', [-1] * 512)
                 # Go to next cue
                 position = app.sequence.position
                 position += 1
+
                 # If exist
                 if position < app.sequence.last - 1:
                     app.sequence.position += 1
@@ -850,9 +921,20 @@ class CrossfadeWindow(Gtk.Window):
                     app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
 
+                    if self.scaleA.get_inverted():
+                        self.scaleA.set_inverted(False)
+                        self.scaleB.set_inverted(False)
+                    else:
+                        self.scaleA.set_inverted(True)
+                        self.scaleB.set_inverted(True)
+                    self.scaleA.set_value(0)
+                    self.scaleB.set_value(0)
+
                     # If Wait
                     if app.sequence.cues[position+1].wait:
+                        app.sequence.on_go = False
                         app.sequence.sequence_go(None, None)
+
                 # Else, we return to first cue
                 # TODO: Update code
                 else:
