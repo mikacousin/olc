@@ -559,21 +559,21 @@ class Window(Gtk.ApplicationWindow):
                 self.app.masters[3].value = (msg.value / 127) * 255
                 self.app.masters[3].level_changed()
 
-            # Fader 8
+            # Fader 8 : Manual Crossfade Out
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 100:
-                if self.app.win_crossfade.scaleA.get_inverted():
+                if self.app.crossfade.scaleA.get_inverted():
                     val = (msg.value / 127) * 255
                 else:
                     val = abs(((msg.value - 127) / 127) * 255)
-                self.app.win_crossfade.scaleA.set_value(val)
+                self.app.crossfade.scaleA.set_value(val)
 
-            # Fader 9
+            # Fader 9 : Manual Crossfade In
             if msg.type == 'control_change' and msg.channel == 0 and msg.control == 101:
-                if self.app.win_crossfade.scaleA.get_inverted():
+                if self.app.crossfade.scaleA.get_inverted():
                     val = (msg.value / 127) * 255
                 else:
                     val = abs(((msg.value - 127) / 127) * 255)
-                self.app.win_crossfade.scaleB.set_value(val)
+                self.app.crossfade.scaleB.set_value(val)
 
         return True
 

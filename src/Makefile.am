@@ -4,6 +4,7 @@ app_PYTHON = \
 	application.py \
 	ascii.py \
 	channel_time.py \
+	crossfade.py \
 	cue.py \
 	customwidgets.py \
 	define.py \
