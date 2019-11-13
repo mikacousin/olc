@@ -18,4 +18,5 @@ app_PYTHON = \
 	sequence.py \
 	settings.py \
 	track_channels.py \
+	virtual_console.py \
 	window.py

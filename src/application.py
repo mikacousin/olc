@@ -20,9 +20,10 @@ from olc.channel_time import ChanneltimeTab
 from olc.customwidgets import GroupWidget
 from olc.osc import OscServer
 from olc.ascii import Ascii
-from olc.midi import MidiTab
+from olc.midi import Midi
 from olc.track_channels import TrackChannelsTab
 from olc.crossfade import CrossFade
+from olc.virtual_console import VirtualConsoleWindow
 
 class Application(Gtk.Application):
 
@@ -91,7 +92,6 @@ class Application(Gtk.Application):
         self.group_tab = None
         self.sequences_tab = None
         self.channeltime_tab = None
-        self.midi_tab = None
         self.track_channels_tab = None
 
     def do_activate(self):
@@ -144,6 +144,15 @@ class Application(Gtk.Application):
 
         # For Manual crossfade
         self.crossfade = CrossFade()
+
+        # Virtual Console Window
+        self.virtual_console = VirtualConsoleWindow()
+        self.virtual_console.show_all()
+
+        # Open MIDI Input
+        self.midi = Midi()
+        port = self.settings.get_string('midi-in')
+        self.midi.open_input(port)
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
@@ -211,10 +220,6 @@ class Application(Gtk.Application):
         settingsAction = Gio.SimpleAction.new('settings', None)
         settingsAction.connect('activate', self._settings)
         self.add_action(settingsAction)
-
-        midiAction = Gio.SimpleAction.new('midi', None)
-        midiAction.connect('activate', self._midi)
-        self.add_action(midiAction)
 
         shortcutsAction = Gio.SimpleAction.new('show-help-overlay', None)
         shortcutsAction.connect('activate', self._shortcuts)
@@ -537,27 +542,6 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.master_tab)
             self.window.notebook.set_current_page(page)
 
-    def _midi(self, action, parameter):
-        # Create Midi Tab
-        if self.midi_tab == None:
-            self.midi_tab = MidiTab()
-
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect('clicked', self.midi_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label('Midi'), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.notebook.append_page(self.midi_tab, label)
-            self.window.show_all()
-            self.window.notebook.set_current_page(-1)
-        else:
-            page = self.window.notebook.page_num(self.midi_tab)
-            self.window.notebook.set_current_page(page)
-
     def _sequences(self, action, parameter):
         # Create Sequences Tab
         if self.sequences_tab == None:
@@ -650,44 +634,6 @@ class Application(Gtk.Application):
                 self.chasers[i].thread.stop()
                 self.chasers[i].thread.join()
         self.quit()
-
-#######################################################################
-#TODO: Must be deleted, just for testing manual crosfade
-#######################################################################
-
-"""
-class CrossfadeWindow(Gtk.Window):
-    def __init__(self):
-
-        self.link = False
-
-        Gtk.Window.__init__(self, title='Crossfade')
-        self.set_default_size(200, 400)
-
-        self.grid = Gtk.Grid()
-        self.grid.set_column_homogeneous(True)
-
-        self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleA = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adA)
-        self.scaleA.set_draw_value(False)
-        self.scaleA.set_vexpand(True)
-        #self.scaleA.set_value_pos(Gtk.PositionType.BOTTOM)
-        self.scaleA.set_inverted(True)
-        self.scaleA.connect('value-changed', self.scale_moved)
-
-        self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleB = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adB)
-        self.scaleB.set_draw_value(False)
-        self.scaleB.set_vexpand(True)
-        #self.scaleB.set_value_pos(Gtk.PositionType.BOTTOM)
-        self.scaleB.set_inverted(True)
-        self.scaleB.connect('value-changed', self.scale_moved)
-
-        self.grid.attach(self.scaleA, 0, 0, 1, 1)
-        self.grid.attach_next_to(self.scaleB, self.scaleA, Gtk.PositionType.RIGHT, 1, 1)
-
-        self.add(self.grid)
-"""
 
 if __name__ == "__main__":
     app = Application()

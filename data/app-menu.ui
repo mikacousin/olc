@@ -42,10 +42,6 @@
         <attribute name="action">app.settings</attribute>
         <attribute name="label" translatable="yes">_Preferences</attribute>
       </item>
-      <item>
-        <attribute name="action">app.midi</attribute>
-        <attribute name="label" translatable="yes">_Midi</attribute>
-      </item>
     </section>
     <section>
       <item>

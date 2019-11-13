@@ -1,277 +1,233 @@
-from gi.repository import Gio, Gtk, Gdk
-import cairo
+import mido
+from gi.repository import Gio
 
-class MidiTab(Gtk.Grid):
+class Midi(object):
 
     def __init__(self):
+        self.inport = None
 
-        self.app = Gio.Application.get_default()
+        self.midi_learn = ''
 
-        Gtk.Grid.__init__(self)
-        self.set_column_homogeneous(True)
-        self.set_row_homogeneous(True)
-
-        self.surface = UC33Widget()
-        self.attach(self.surface, 0, 0, 1, 1)
-
+        # Default MIDI values : Channel, Note
         """
-        self.background = Gtk.Image.new_from_file('/usr/local/share/open-lighting-console/uc33.png')
-
-        self.knob = []
-        for i in range(24):
-            self.knob.append(KnobWidget())
-
-        self.attach(self.background, 0, 0, 10, 5)
-        self.attach(self.knob[0], 0, 0, 1, 1)
-        self.attach_next_to(self.knob[8], self.knob[0], Gtk.PositionType.BOTTOM, 1, 1)
-        self.attach_next_to(self.knob[16], self.knob[8], Gtk.PositionType.BOTTOM, 1, 1)
-        for i in range(7):
-            self.attach_next_to(self.knob[i + 1], self.knob[i], Gtk.PositionType.RIGHT, 1, 1)
-            self.attach_next_to(self.knob[i + 9], self.knob[i + 8], Gtk.PositionType.RIGHT, 1, 1)
-            self.attach_next_to(self.knob[i + 17], self.knob[i + 16], Gtk.PositionType.RIGHT, 1, 1)
+        self.go = [0, 103]
+        self.seq_minus = [0, 12]
+        self.seq_plus = [0, 13]
         """
-
-    def on_close_icon(self, Widget):
-        """ Close Tab on close click """
-        page = self.app.window.notebook.page_num(self.app.midi_tab)
-        self.app.window.notebook.remove_page(page)
-        self.app.midi_tab = None
-
-    def on_key_press_event(self, widget, event):
-        keyname = Gdk.keyval_name(event.keyval)
-        #print(keyname)
-
-        func = getattr(self, 'keypress_' + keyname, None)
-        if func:
-            return func()
-
-    def keypress_Escape(self):
-        """ Close Tab """
-        page = self.app.window.notebook.get_current_page()
-        self.app.window.notebook.remove_page(page)
-        self.app.midi_tab = None
-
-class KnobWidget(Gtk.Widget):
-    __gtype_name__ = 'KnobWidget'
-
-    def __init__(self):
-
-        Gtk.Widget.__init__(self)
+        self.midi_table = [['Go', 0, 103],
+                ['Seq_minus', 0, 12],
+                ['Seq_plus', 0, 13]]
 
         self.app = Gio.Application.get_default()
 
-    def do_draw(self, cr):
+    def open_input(self, port):
+        input_names = mido.get_input_names()
+        if port in input_names:
+            self.inport = mido.open_input(port)
+        else:
+            self.inport = mido.open_input()
 
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
-        cr.paint()
+    def close_input(self):
+        if self.inport:
+            self.inport.close()
 
-        ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/knob.png')
-        cr.set_source_surface(ims, 0, 0)
-        cr.paint()
+    def scan(self):
 
-    def do_realize(self):
-        allocation = self.get_allocation()
-        attr = Gdk.WindowAttr()
-        attr.window_type = Gdk.WindowType.CHILD
-        attr.x = allocation.x
-        attr.y = allocation.y
-        attr.width = allocation.width
-        attr.height = allocation.height
-        attr.visual = self.get_visual()
-        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
-        WAT = Gdk.WindowAttributesType
-        mask = WAT.X | WAT.Y | WAT.VISUAL
+        self.percent_view = self.app.settings.get_boolean('percent')
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
-        self.set_window(window)
-        self.register_window(window)
+        for msg in self.inport.iter_pending():
+            #print(msg)
 
-        self.set_realized(True)
-        window.set_background_pattern(None)
+            # TODO: MIDI Configuration (actually for inuk.asc)
 
-class UC33Widget(Gtk.Widget):
-    __gtype_name__ = 'UC33Widget'
+            # Go
+            if self.midi_learn == 'Go':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[0] = ['Go', msg.channel, msg.note]
+            elif (msg.type == 'note_on' and msg.channel == self.midi_table[0][1]
+                    and msg.note == self.midi_table[0][2]
+                    and msg.velocity == 127):
+                self.app.sequence.sequence_go(self.app, None)
 
-    def __init__(self):
+            # Seq -
+            if self.midi_learn == 'Seq_minus':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[1] = ['Seq_minus', msg.channel, msg.note]
+            elif (msg.type == 'note_on' and msg.channel == self.midi_table[1][1]
+                    and msg.note == self.midi_table[1][2]
+                    and msg.velocity == 127):
+                self.app.window.keypress_q()
 
-        Gtk.Widget.__init__(self)
+            # Seq +
+            if self.midi_learn == 'Seq_plus':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[2] = ['Seq_plus', msg.channel, msg.note]
+            elif (msg.type == 'note_on' and msg.channel == self.midi_table[2][1]
+                    and msg.note == self.midi_table[2][2]
+                    and msg.velocity == 127):
+                self.app.window.keypress_w()
 
-        self.app = Gio.Application.get_default()
+            # Flash 1
+            if msg.type == 'note_on' and msg.note == 1 and msg.velocity == 127:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = 100
+                    else:
+                        val = 255
+                    self.app.master_tab.scale[5].set_value(val)
+                self.app.masters[5].value = 255
+                self.app.masters[5].level_changed()
+            elif msg.type == 'note_on' and msg.note == 1 and msg.velocity == 0:
+                if self.app.master_tab != None:
+                    self.app.master_tab.scale[5].set_value(0)
+                self.app.masters[5].value = 0
+                self.app.masters[5].level_changed()
 
-        self.selected = None
+            # Flash 3
+            if msg.type == 'note_on' and msg.note == 3 and msg.velocity == 127:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = 100
+                    else:
+                        val = 255
+                    self.app.master_tab.scale[14].set_value(val)
+                self.app.masters[14].value = 255
+                self.app.masters[14].level_changed()
+            elif msg.type == 'note_on' and msg.note == 3 and msg.velocity == 0:
+                if self.app.master_tab != None:
+                    self.app.master_tab.scale[14].set_value(0)
+                self.app.masters[14].value = 0
+                self.app.masters[14].level_changed()
 
-        self.widgets = []
-        self.widgets.append([53, 93, 30, 30, "Knob"]) # x, y, width, height, type
-        self.widgets.append([108, 93, 30, 30, "Knob"])
-        self.widgets.append([163, 93, 30, 30, "Knob"])
-        self.widgets.append([218, 93, 30, 30, "Knob"])
-        self.widgets.append([273, 93, 30, 30, "Knob"])
-        self.widgets.append([328, 93, 30, 30, "Knob"])
-        self.widgets.append([383, 93, 30, 30, "Knob"])
-        self.widgets.append([438, 93, 30, 30, "Knob"])
-        self.widgets.append([53, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([108, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([163, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([218, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([273, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([328, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([383, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([438, 93 + 55, 30, 30, "Knob"])
-        self.widgets.append([53, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([108, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([163, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([218, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([273, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([328, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([383, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([438, 93 + (2 * 55), 30, 30, "Knob"])
-        self.widgets.append([55, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([110, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([165, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([220, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([275, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([330, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([385, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([440, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([495, 250, 28, 180, "SliderTrack"])
-        self.widgets.append([55, 360, 28, 180, "Slider"])
-        self.widgets.append([110, 360, 28, 180, "Slider"])
-        self.widgets.append([165, 360, 28, 180, "Slider"])
-        self.widgets.append([220, 360, 28, 180, "Slider"])
-        self.widgets.append([275, 360, 28, 180, "Slider"])
-        self.widgets.append([330, 360, 28, 180, "Slider"])
-        self.widgets.append([385, 360, 28, 180, "Slider"])
-        self.widgets.append([440, 360, 28, 180, "Slider"])
-        self.widgets.append([495, 360, 28, 180, "Slider"])
-        self.widgets.append([584, 279, 26, 21, "Button"])
-        self.widgets.append([584 + 34, 279, 26, 21, "Button"])
-        self.widgets.append([584 + (2 * 34), 279, 26, 21, "Button"])
-        self.widgets.append([584, 279 + 26, 26, 21, "Button"])
-        self.widgets.append([584 + 34, 279 + 26, 26, 21, "Button"])
-        self.widgets.append([584 + (2 * 34), 279 + 26, 26, 21, "Button"])
-        self.widgets.append([584, 279 + (2 *26), 26, 21, "Button"])
-        self.widgets.append([584 + 34, 279 + (2 * 26), 26, 21, "Button"])
-        self.widgets.append([584 + (2 * 34), 279 + (2 * 26), 26, 21, "Button"])
+            # Flash 7
+            if msg.type == 'note_on' and msg.note == 7 and msg.velocity == 127:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = 100
+                    else:
+                        val = 255
+                    self.app.master_tab.scale[2].set_value(val)
+                self.app.masters[2].value = 255
+                self.app.masters[2].level_changed()
+            elif msg.type == 'note_on' and msg.note == 7 and msg.velocity == 0:
+                if self.app.master_tab != None:
+                    self.app.master_tab.scale[2].set_value(0)
+                self.app.masters[2].value = 0
+                self.app.masters[2].level_changed()
 
-        self.widgets.append([584 + 34, 278 + (3 * 27), 26, 21, "Button"])
+            # Fader 1
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 0:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[10].set_value(val)
+                if self.percent_view:
+                    self.app.masters[10].value = (msg.value / 127) * 100
+                else:
+                    self.app.masters[10].value = (msg.value / 127) * 255
+                self.app.masters[10].level_changed()
 
-        self.widgets.append([568, 279 + (3 *26) + 39, 26, 21, "Button"])
-        self.widgets.append([568 + 32, 279 + (3 *26) + 39, 26, 21, "Button"])
-        self.widgets.append([568 + (2 * 32), 279 + (3 *26) + 39, 26, 21, "Button"])
-        self.widgets.append([568 + (3 * 32), 279 + (3 *26) + 39, 26, 21, "Button"])
+            # Fader 2
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 1:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[11].set_value(val)
+                if self.percent_view:
+                    self.app.masters[11].value = (msg.value / 127) * 100
+                else:
+                    self.app.masters[11].value = (msg.value / 127) * 255
+                self.app.masters[11].level_changed()
 
-        self.knobs = []
-        for i in range(24):
-            self.knobs.append(0)
+            # Fader 3
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 2:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[0].set_value(val)
+                self.app.masters[0].value = (msg.value / 127) * 255
+                self.app.masters[0].level_changed()
 
-        self.connect('button-press-event', self.on_click)
+            # Fader 4
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 3:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[1].set_value(val)
+                self.app.masters[1].value = (msg.value / 127) * 255
+                self.app.masters[1].level_changed()
 
-    def on_click(self, tgt, ev):
+            # Fader 5
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 4:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[8].set_value(val)
+                self.app.masters[8].value = (msg.value / 127) * 255
+                self.app.masters[8].level_changed()
 
-        for widget in self.widgets:
-            if ev.x > widget[0] and ev.x < widget[0] + widget[2] and ev.y > widget[1] and ev.y < widget[1] + widget[3]:
-                self.selected = widget
-                self.queue_draw()
+            # Fader 6
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 5:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[4].set_value(val)
+                self.app.masters[4].value = (msg.value / 127) * 255
+                self.app.masters[4].level_changed()
 
-        # TODO: Popover
-        group_store = Gtk.ListStore(str)
-        for group in self.app.groups:
-            group_store.append([group.text])
-        group_combo = Gtk.ComboBox.new_with_model(group_store)
-        group_combo.connect('changed', self.on_group_combo_changed)
-        renderer_text = Gtk.CellRendererText()
-        group_combo.pack_start(renderer_text, True)
-        group_combo.add_attribute(renderer_text, 'text', 0)
+            # Fader 7
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 6:
+                if self.app.master_tab != None:
+                    if self.percent_view:
+                        val = (msg.value / 127) * 100
+                    else:
+                        val = (msg.value / 127) * 255
+                    self.app.master_tab.scale[3].set_value(val)
+                self.app.masters[3].value = (msg.value / 127) * 255
+                self.app.masters[3].level_changed()
 
-        rec = Gdk.Rectangle()
-        rec.x = self.selected[0]
-        rec.y = self.selected[1]
-        rec.width = self.selected[2]
-        rec.height = self.selected[3]
-        popover = Gtk.Popover.new(self)
-        popover.set_pointing_to(rec)
-        #popover.set_position(Gtk.PositionType.BOTTOM)
-        popover.add(group_combo)
-        popover.show_all()
+            # Fader 8 : Manual Crossfade Out
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 100:
+                if self.app.crossfade.scaleA.get_inverted():
+                    val = (msg.value / 127) * 255
+                else:
+                    val = abs(((msg.value - 127) / 127) * 255)
+                self.app.crossfade.scaleA.set_value(val)
 
-    def on_group_combo_changed(self, combo):
-        tree_iter = combo.get_active_iter()
-        if tree_iter != None:
-            model = combo.get_model()
-            group = model[tree_iter][0]
-            print("Selected group:", group)
-
-    def do_draw(self, cr):
-
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
-        cr.paint()
-
-        allocation = self.get_allocation()
-
-        cr.rectangle(0, 0, allocation.width, allocation.height)
-        cr.fill()
-        cr.set_source_rgb(0.3, 0.3, 0.3)
-        cr.rectangle(0, 0, allocation.width, allocation.height)
-        cr.stroke()
-
-        ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/uc33.png')
-        cr.set_source_surface(ims, 10, 10)
-        cr.paint()
-
-        for widget in self.widgets:
-            if widget[4] == 'Knob':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/knob.png')
-            elif widget[4] == 'SliderTrack':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/slider_track.png')
-            elif widget[4] == 'Slider':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/slider.png')
-            elif widget[4] == 'Button':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/button.png')
-            cr.set_source_surface(ims, widget[0], widget[1])
-            cr.paint()
-
-        if self.selected != None:
-            if self.selected[4] == 'Knob':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/knob_selected.png')
-                cr.set_source_surface(ims, self.selected[0], self.selected[1])
-                cr.paint()
-            elif self.selected[4] == 'SliderTrack':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/slider_track_selected.png')
-                cr.set_source_surface(ims, self.selected[0], self.selected[1])
-                cr.paint()
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/slider_selected.png')
-                cr.set_source_surface(ims, self.selected[0], self.selected[1] + 110)
-                cr.paint()
-            elif self.selected[4] == 'Slider':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/slider_track_selected.png')
-                cr.set_source_surface(ims, self.selected[0], self.selected[1] - 110)
-                cr.paint()
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/slider_selected.png')
-                cr.set_source_surface(ims, self.selected[0], self.selected[1])
-                cr.paint()
-            elif self.selected[4] == 'Button':
-                ims = cairo.ImageSurface.create_from_png('/usr/local/share/open-lighting-console/button_selected.png')
-                cr.set_source_surface(ims, self.selected[0], self.selected[1])
-                cr.paint()
-
-    def do_realize(self):
-        allocation = self.get_allocation()
-        attr = Gdk.WindowAttr()
-        attr.window_type = Gdk.WindowType.CHILD
-        attr.x = allocation.x
-        attr.y = allocation.y
-        attr.width = allocation.width
-        attr.height = allocation.height
-        attr.visual = self.get_visual()
-        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
-        WAT = Gdk.WindowAttributesType
-        mask = WAT.X | WAT.Y | WAT.VISUAL
-
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
-        self.set_window(window)
-        self.register_window(window)
-
-        self.set_realized(True)
-        window.set_background_pattern(None)
+            # Fader 9 : Manual Crossfade In
+            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 101:
+                if self.app.crossfade.scaleA.get_inverted():
+                    val = (msg.value / 127) * 255
+                else:
+                    val = abs(((msg.value - 127) / 127) * 255)
+                self.app.crossfade.scaleB.set_value(val)

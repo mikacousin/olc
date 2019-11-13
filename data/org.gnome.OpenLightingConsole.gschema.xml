@@ -36,6 +36,11 @@
       <summary>OSC client port</summary>
       <description>Port use by OSC to send data to the client</description>
     </key>
+    <key name="midi-in" type="s">
+      <default>"None"</default>
+      <summary>MIDI In</summary>
+      <description></description>
+    </key>
   </schema>
 </schemalist>
 

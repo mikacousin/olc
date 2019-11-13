@@ -1,3 +1,5 @@
+import mido
+
 from gi.repository import Gio, Gtk, GLib
 
 class Settings(Gio.Settings):
@@ -50,6 +52,15 @@ class SettingsDialog:
         self.spin_univers.set_adjustment(adjustment)
         self.spin_univers.set_value(Gio.Application.get_default().settings.get_int('universe'))
 
+        self.midi_in = builder.get_object('midi_in')
+        self.midi_in.connect('changed', self._on_midi_in_changed)
+        default = Gio.Application.get_default().settings.get_string('midi-in')
+        self.midi_in.append_text(default)
+        for midi_in in mido.get_input_names():
+            self.midi_in.append_text(midi_in)
+        self.midi_in.set_entry_text_column(0)
+        self.midi_in.set_active(0)
+
         builder.connect_signals(self)
 
     def _on_change_percent(self, widget):
@@ -100,3 +111,10 @@ class SettingsDialog:
         Gio.Application.get_default().settings.set_value('osc-host', GLib.Variant('s', ip))
         Gio.Application.get_default().settings.set_value('osc-client-port', GLib.Variant('i', client_port))
         Gio.Application.get_default().settings.set_value('osc-server-port', GLib.Variant('i', server_port))
+
+    def _on_midi_in_changed(self, combo):
+        text = combo.get_active_text()
+        if text is not None:
+            Gio.Application.get_default().settings.set_value('midi-in', GLib.Variant('s', text))
+            Gio.Application.get_default().midi.close_input()
+            Gio.Application.get_default().midi.open_input(text)
