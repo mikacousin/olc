@@ -1,12 +1,18 @@
 import cairo
 import math
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk, Gio, GObject
 
 class FaderWidget(Gtk.Widget):
     __gtype_name__ = "FaderWidget"
 
-    def __init__(self, red=0.2, green=0.2, blue=0.2):
+    __gsignals__ = {
+            "clicked" : (GObject.SIGNAL_ACTION, None, ())
+            }
+
+    def __init__(self, text='None', red=0.2, green=0.2, blue=0.2):
         Gtk.Widget.__init__(self)
+
+        self.app = Gio.Application.get_default()
 
         self.width = 60
         self.height = 360
@@ -16,10 +22,26 @@ class FaderWidget(Gtk.Widget):
         self.green = green
         self.blue = blue
 
+        self.pressed = False
         self.value = 0
         self.inverted = False
 
+        self.text = text
+
         self.set_size_request(self.width + 1, self.height + 1)
+
+        self.connect('button-press-event', self.on_press)
+        self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
+        self.connect('button-release-event', self.on_release)
+
+    def on_press(self, tgt, ev):
+        self.pressed = True
+        self.queue_draw()
+
+    def on_release(self, tgt, ev):
+        self.pressed = False
+        self.queue_draw()
+        self.emit('clicked')
 
     def do_draw(self, cr):
         # Draw vertical box
@@ -33,7 +55,10 @@ class FaderWidget(Gtk.Widget):
             h = (((self.height - 20) / 255) * self.value)
         else:
             h = self.height - 20 - (((self.height - 20) / 255) * self.value)
-        cr.set_source_rgb(0.2, 0.2, 0.2)
+        if self.app.midi.midi_learn == self.text:
+            cr.set_source_rgb(0.3, 0.2, 0.2)
+        else:
+            cr.set_source_rgb(0.2, 0.2, 0.2)
         area = (1, self.width - 2, h, h + 20)
         self.rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)

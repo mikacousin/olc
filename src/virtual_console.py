@@ -205,7 +205,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scaleA.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.scaleA.connect('button-release-event', self.scale_released)
         """
-        self.scaleA = FaderWidget(red=0.3, green=0.3, blue=0.7)
+        self.scaleA = FaderWidget(text='Crossfade_out', red=0.3, green=0.3, blue=0.7)
+        self.scaleA.connect('clicked', self.scale_clicked)
 
         """
         self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
@@ -217,7 +218,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scaleB.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.scaleB.connect('button-release-event', self.scale_released)
         """
-        self.scaleB = FaderWidget(red=0.6, green=0.2, blue=0.2)
+        self.scaleB = FaderWidget(text='Crossfade_in', red=0.6, green=0.2, blue=0.2)
+        self.scaleB.connect('clicked', self.scale_clicked)
 
         self.crossfade_pad.attach(self.live, 0, 4, 1, 1)
         self.crossfade_pad.attach(self.format, 0, 5, 1, 1)
@@ -315,6 +317,7 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             value = scale.get_value()
 
+            # TODO: Code quand on dirige le fader avec la souris
             """
             if scale == self.scaleA:
                 self.app.crossfade.scaleA.set_value(value)
@@ -332,7 +335,7 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.scaleA.set_value(0)
                 self.scaleB.set_value(0)
 
-    def scale_released(self, scale, event):
+    def scale_clicked(self, scale):
         if self.midi_learn:
             if scale == self.scaleA:
                 self.app.midi.midi_learn = 'Crossfade_out'
