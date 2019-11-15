@@ -103,7 +103,7 @@ class VirtualConsoleWindow(Gtk.Window):
         #self.scaleGM.set_draw_value(False)
         self.scaleGM.set_vexpand(True)
         self.scaleGM.set_inverted(True)
-        self.output = ButtonWidget('Output')
+        self.output = ButtonWidget('Output', 'Output')
         self.output.connect('clicked', self.on_output)
         self.output_pad.attach(self.scaleGM, 0, 0, 1, 4)
         self.label = Gtk.Label('')
@@ -289,7 +289,11 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.sequence.sequence_minus(self.app)
 
     def on_output(self, widget):
-        pass
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Output'
+            self.queue_draw()
+        else:
+            self.app._patch_outputs(None, None)
 
     def scale_moved(self, scale):
         if self.midi_learn:

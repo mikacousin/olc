@@ -8,10 +8,11 @@ class Midi(object):
 
         self.midi_learn = ''
 
-        # Default MIDI values : Channel, Note
+        # Default MIDI values : Channel, Note / Channel, CC
         self.midi_table = [['Go', 0, 103],
                 ['Seq_minus', 0, 12],
                 ['Seq_plus', 0, 13],
+                ['Output', 0, 0],
                 ['Crossfade_out', 0, 100],
                 ['Crossfade_in', 0, 101]]
 
@@ -35,8 +36,6 @@ class Midi(object):
         for msg in self.inport.iter_pending():
             #print(msg)
 
-            # TODO: MIDI Configuration (actually for inuk.asc)
-
             # Go
             for index in range(len(self.midi_table)):
                 if self.midi_table[index][0] == 'Go':
@@ -50,7 +49,8 @@ class Midi(object):
                             self.midi_table[i][2] = 0
                     # Learn new values
                     self.midi_table[index] = ['Go', msg.channel, msg.note]
-            elif (msg.type == 'note_on' and msg.channel == self.midi_table[index][1]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
                 self.app.sequence.sequence_go(self.app, None)
@@ -68,7 +68,8 @@ class Midi(object):
                             self.midi_table[i][2] = 0
                     # Learn new values
                     self.midi_table[index] = ['Seq_minus', msg.channel, msg.note]
-            elif (msg.type == 'note_on' and msg.channel == self.midi_table[index][1]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
                 self.app.window.keypress_q()
@@ -86,10 +87,30 @@ class Midi(object):
                             self.midi_table[i][2] = 0
                     # Learn new values
                     self.midi_table[index] = ['Seq_plus', msg.channel, msg.note]
-            elif (msg.type == 'note_on' and msg.channel == self.midi_table[index][1]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
                 self.app.window.keypress_w()
+
+            # Output
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Output':
+                    break
+            if self.midi_learn == 'Output':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Output', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                self.app._patch_outputs(None, None)
 
             # Manual Crossfade Out
             for index in range(len(self.midi_table)):
@@ -104,7 +125,8 @@ class Midi(object):
                             self.midi_table[i][2] = 0
                     # Learn new values
                     self.midi_table[index] = ['Crossfade_out', msg.channel, msg.control]
-            elif (msg.type == 'control_change' and msg.channel == self.midi_table[index][1]
+            elif (not self.midi_learn and msg.type == 'control_change'
+                    and msg.channel == self.midi_table[index][1]
                     and msg.control == self.midi_table[index][2]):
                 if self.app.crossfade.scaleA.get_inverted():
                     val = (msg.value / 127) * 255
@@ -125,7 +147,8 @@ class Midi(object):
                             self.midi_table[i][2] = 0
                     # Learn new values
                     self.midi_table[index] = ['Crossfade_in', msg.channel, msg.control]
-            elif (msg.type == 'control_change' and msg.channel == self.midi_table[index][1]
+            elif (not self.midi_learn and msg.type == 'control_change'
+                    and msg.channel == self.midi_table[index][1]
                     and msg.control == self.midi_table[index][2]):
                 if self.app.crossfade.scaleB.get_inverted():
                     val = (msg.value / 127) * 255
