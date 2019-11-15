@@ -2,7 +2,7 @@ from gi.repository import Gio, Gtk, Gdk
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.dmx import Dmx, PatchDmx
-from olc.customwidgets   import PatchWidget
+from olc.widgets_patch_outputs import PatchWidget
 
 class PatchOutputsTab(Gtk.Grid):
     def __init__(self):

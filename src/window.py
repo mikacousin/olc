@@ -7,7 +7,9 @@ from ola import OlaClient
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES
 from olc.group import Group
-from olc.customwidgets import ChannelWidget, SequentialWidget, GroupWidget
+from olc.widgets_sequential import SequentialWidget
+from olc.widgets_group import GroupWidget
+from olc.widgets_channel import ChannelWidget
 
 class Window(Gtk.ApplicationWindow):
 

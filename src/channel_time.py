@@ -1,6 +1,6 @@
 from gi.repository import Gio, Gtk, Gdk
 
-from olc.customwidgets import ChannelWidget
+from olc.widgets_channel import ChannelWidget
 from olc.cue import ChannelTime
 
 class ChanneltimeTab(Gtk.Paned):

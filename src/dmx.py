@@ -3,7 +3,7 @@ import array
 from gi.repository import Gio
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
-from olc.customwidgets import ChannelWidget
+from olc.widgets_channel import ChannelWidget
 
 class Dmx(object):
     def __init__(self, universes, patch, ola_client, sequence, masters, window):

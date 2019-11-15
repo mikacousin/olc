@@ -6,7 +6,7 @@ from olc.cue import Cue, ChannelTime
 from olc.sequence import Sequence
 from olc.group import Group
 from olc.master import Master
-from olc.customwidgets import GroupWidget
+from olc.widgets_group import GroupWidget
 
 class Ascii(object):
     def __init__(self, filename):

@@ -2,7 +2,8 @@ import array
 from gi.repository import Gio, Gtk, Gdk
 
 from olc.define import MAX_CHANNELS
-from olc.customwidgets import ChannelWidget, GroupWidget
+from olc.widgets_channel import ChannelWidget
+from olc.widgets_group import GroupWidget
 
 class Group(object):
     def __init__(self, index, channels=array.array('B', [0] * MAX_CHANNELS), text=""):

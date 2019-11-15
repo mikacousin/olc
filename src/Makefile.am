@@ -6,7 +6,6 @@ app_PYTHON = \
 	channel_time.py \
 	crossfade.py \
 	cue.py \
-	customwidgets.py \
 	define.py \
 	dmx.py \
 	group.py \
@@ -20,5 +19,11 @@ app_PYTHON = \
 	track_channels.py \
 	virtual_console.py \
 	widgets_button.py \
+	widgets_channel.py \
 	widgets_go.py \
+	widgets_group.py \
+	widgets_patch_channels.py \
+	widgets_patch_outputs.py \
+	widgets_sequential.py \
+	widgets_track_channels.py \
 	window.py

@@ -17,7 +17,7 @@ from olc.sequence import Sequence, SequenceTab
 from olc.group import Group, GroupTab
 from olc.master import Master, MasterTab
 from olc.channel_time import ChanneltimeTab
-from olc.customwidgets import GroupWidget
+from olc.widgets_group import GroupWidget
 from olc.osc import OscServer
 from olc.ascii import Ascii
 from olc.midi import Midi

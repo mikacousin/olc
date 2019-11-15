@@ -6,7 +6,7 @@ from gi.repository import Gtk, GLib, Gio, Gdk, Pango
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.cue import Cue
 from olc.dmx import PatchDmx
-from olc.customwidgets import ChannelWidget
+from olc.widgets_channel import ChannelWidget
 
 class Sequence(object):
     def __init__(self, index, patch, type_seq="Normal", text=""):
