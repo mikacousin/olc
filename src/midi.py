@@ -9,14 +9,11 @@ class Midi(object):
         self.midi_learn = ''
 
         # Default MIDI values : Channel, Note
-        """
-        self.go = [0, 103]
-        self.seq_minus = [0, 12]
-        self.seq_plus = [0, 13]
-        """
         self.midi_table = [['Go', 0, 103],
                 ['Seq_minus', 0, 12],
-                ['Seq_plus', 0, 13]]
+                ['Seq_plus', 0, 13],
+                ['Crossfade_out', 0, 100],
+                ['Crossfade_in', 0, 101]]
 
         self.app = Gio.Application.get_default()
 
@@ -41,6 +38,9 @@ class Midi(object):
             # TODO: MIDI Configuration (actually for inuk.asc)
 
             # Go
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Go':
+                    break
             if self.midi_learn == 'Go':
                 if msg.type == 'note_on':
                     # Delete if used
@@ -49,13 +49,16 @@ class Midi(object):
                             self.midi_table[i][1] = 0
                             self.midi_table[i][2] = 0
                     # Learn new values
-                    self.midi_table[0] = ['Go', msg.channel, msg.note]
-            elif (msg.type == 'note_on' and msg.channel == self.midi_table[0][1]
-                    and msg.note == self.midi_table[0][2]
+                    self.midi_table[index] = ['Go', msg.channel, msg.note]
+            elif (msg.type == 'note_on' and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
                 self.app.sequence.sequence_go(self.app, None)
 
             # Seq -
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Seq_minus':
+                    break
             if self.midi_learn == 'Seq_minus':
                 if msg.type == 'note_on':
                     # Delete if used
@@ -64,13 +67,16 @@ class Midi(object):
                             self.midi_table[i][1] = 0
                             self.midi_table[i][2] = 0
                     # Learn new values
-                    self.midi_table[1] = ['Seq_minus', msg.channel, msg.note]
-            elif (msg.type == 'note_on' and msg.channel == self.midi_table[1][1]
-                    and msg.note == self.midi_table[1][2]
+                    self.midi_table[index] = ['Seq_minus', msg.channel, msg.note]
+            elif (msg.type == 'note_on' and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
                 self.app.window.keypress_q()
 
             # Seq +
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Seq_plus':
+                    break
             if self.midi_learn == 'Seq_plus':
                 if msg.type == 'note_on':
                     # Delete if used
@@ -79,12 +85,55 @@ class Midi(object):
                             self.midi_table[i][1] = 0
                             self.midi_table[i][2] = 0
                     # Learn new values
-                    self.midi_table[2] = ['Seq_plus', msg.channel, msg.note]
-            elif (msg.type == 'note_on' and msg.channel == self.midi_table[2][1]
-                    and msg.note == self.midi_table[2][2]
+                    self.midi_table[index] = ['Seq_plus', msg.channel, msg.note]
+            elif (msg.type == 'note_on' and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
                 self.app.window.keypress_w()
 
+            # Manual Crossfade Out
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Crossfade_out':
+                    break
+            if self.midi_learn == 'Crossfade_out':
+                if msg.type == 'control_change':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.control:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Crossfade_out', msg.channel, msg.control]
+            elif (msg.type == 'control_change' and msg.channel == self.midi_table[index][1]
+                    and msg.control == self.midi_table[index][2]):
+                if self.app.crossfade.scaleA.get_inverted():
+                    val = (msg.value / 127) * 255
+                else:
+                    val = abs(((msg.value - 127) / 127) * 255)
+                self.app.crossfade.scaleA.set_value(val)
+
+            # Manual Crossfade In
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Crossfade_in':
+                    break
+            if self.midi_learn == 'Crossfade_in':
+                if msg.type == 'control_change':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.control:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Crossfade_in', msg.channel, msg.control]
+            elif (msg.type == 'control_change' and msg.channel == self.midi_table[index][1]
+                    and msg.control == self.midi_table[index][2]):
+                if self.app.crossfade.scaleB.get_inverted():
+                    val = (msg.value / 127) * 255
+                else:
+                    val = abs(((msg.value - 127) / 127) * 255)
+                self.app.crossfade.scaleB.set_value(val)
+
+            """
             # Flash 1
             if msg.type == 'note_on' and msg.note == 1 and msg.velocity == 127:
                 if self.app.master_tab != None:
@@ -215,19 +264,4 @@ class Midi(object):
                     self.app.master_tab.scale[3].set_value(val)
                 self.app.masters[3].value = (msg.value / 127) * 255
                 self.app.masters[3].level_changed()
-
-            # Fader 8 : Manual Crossfade Out
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 100:
-                if self.app.crossfade.scaleA.get_inverted():
-                    val = (msg.value / 127) * 255
-                else:
-                    val = abs(((msg.value - 127) / 127) * 255)
-                self.app.crossfade.scaleA.set_value(val)
-
-            # Fader 9 : Manual Crossfade In
-            if msg.type == 'control_change' and msg.channel == 0 and msg.control == 101:
-                if self.app.crossfade.scaleA.get_inverted():
-                    val = (msg.value / 127) * 255
-                else:
-                    val = abs(((msg.value - 127) / 127) * 255)
-                self.app.crossfade.scaleB.set_value(val)
+            """

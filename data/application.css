@@ -1,5 +1,6 @@
 @define-color seq_selected_bg #997004;
 @define-color grey #666666;
+@define-color myred #880000;
 
 @binding-set unbind-keys {
   unbind "Right";
@@ -44,4 +45,9 @@ window {
   text-shadow: none;
   color: @theme_selected_fg_color;
   background-color: @seq_selected_bg;
+}
+
+#midi_toggle:checked {
+  background-image: none;
+  background-color: @myred;
 }

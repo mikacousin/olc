@@ -19,4 +19,6 @@ app_PYTHON = \
 	settings.py \
 	track_channels.py \
 	virtual_console.py \
+	widgets_button.py \
+	widgets_go.py \
 	window.py
