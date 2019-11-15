@@ -1,7 +1,7 @@
 import array
 from gi.repository import Gtk, Gio, Pango
 
-from olc.define import NB_UNIVERSES
+from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
 class Scale(object):
     def __init__(self):
@@ -220,7 +220,7 @@ class CrossFade(object):
             if app.sequence.on_go == True:
                 app.sequence.on_go = False
                 # Empty array of levels enter by user
-                app.dmx.user = array.array('h', [-1] * 512)
+                app.dmx.user = array.array('h', [-1] * MAX_CHANNELS)
                 # Go to next cue
                 position = app.sequence.position
                 position += 1
