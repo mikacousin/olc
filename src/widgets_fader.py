@@ -1,0 +1,95 @@
+import cairo
+import math
+from gi.repository import Gtk, Gdk, Gio
+
+class FaderWidget(Gtk.Widget):
+    __gtype_name__ = "FaderWidget"
+
+    def __init__(self, red=0.2, green=0.2, blue=0.2):
+        Gtk.Widget.__init__(self)
+
+        self.width = 60
+        self.height = 360
+        self.radius = 10
+
+        self.red = red
+        self.green = green
+        self.blue = blue
+
+        self.value = 0
+        self.inverted = False
+
+        self.set_size_request(self.width + 1, self.height + 1)
+
+    def do_draw(self, cr):
+        # Draw vertical box
+        cr.set_source_rgb(self.red, self.green, self.blue)
+        area = ((self.width / 2) - 3, (self.width / 2) + 3, 1, self.height - 2)
+        self.rounded_rectangle_fill(cr, area, self.radius / 2)
+        cr.set_source_rgb(0.1, 0.1, 0.1)
+        self.rounded_rectangle(cr, area, self.radius / 2)
+        # Draw Cursor
+        if self.inverted:
+            h = (((self.height - 20) / 255) * self.value)
+        else:
+            h = self.height - 20 - (((self.height - 20) / 255) * self.value)
+        cr.set_source_rgb(0.2, 0.2, 0.2)
+        area = (1, self.width - 2, h, h + 20)
+        self.rounded_rectangle_fill(cr, area, self.radius)
+        cr.set_source_rgb(0.1, 0.1, 0.1)
+        self.rounded_rectangle(cr, area, self.radius)
+
+    def rounded_rectangle_fill(self, cr, area, radius):
+        a,b,c,d = area
+        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
+        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
+        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
+        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.close_path()
+        cr.fill()
+
+    def rounded_rectangle(self, cr, area, radius):
+        a,b,c,d = area
+        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
+        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
+        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
+        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.close_path()
+        cr.stroke()
+
+    def do_realize(self):
+        allocation = self.get_allocation()
+        attr = Gdk.WindowAttr()
+        attr.window_type = Gdk.WindowType.CHILD
+        attr.x = allocation.x
+        attr.y = allocation.y
+        attr.width = allocation.width
+        attr.height = allocation.height
+        attr.visual = self.get_visual()
+        attr.event_mask = (self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK
+                | Gdk.EventMask.TOUCH_MASK)
+        WAT = Gdk.WindowAttributesType
+        mask = WAT.X | WAT.Y | WAT.VISUAL
+
+        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        self.set_window(window)
+        self.register_window(window)
+
+        self.set_realized(True)
+        window.set_background_pattern(None)
+
+    def get_value(self):
+        return self.value
+
+    def set_value(self, value):
+        if value >= 0 and value < 256:
+            self.value = value
+            self.queue_draw()
+
+    def get_inverted(self):
+        return self.inverted
+
+    def set_inverted(self, inv):
+        if inv == False or inv == True:
+            self.inverted = inv
+            self.queue_draw()

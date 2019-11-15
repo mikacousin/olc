@@ -5,6 +5,7 @@ import math
 
 from olc.widgets_button import ButtonWidget
 from olc.widgets_go import GoWidget
+from olc.widgets_fader import FaderWidget
 
 class VirtualConsoleWindow(Gtk.Window):
     def __init__(self):
@@ -193,6 +194,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.goto = ButtonWidget('Goto')
         self.a = ButtonWidget('A')
         self.b = ButtonWidget('B')
+
+        """
         self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
         self.scaleA = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adA)
         self.scaleA.set_draw_value(False)
@@ -201,6 +204,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scaleA.connect('value-changed', self.scale_moved)
         self.scaleA.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.scaleA.connect('button-release-event', self.scale_released)
+        """
+        self.scaleA = FaderWidget(red=0.3, green=0.3, blue=0.7)
+
+        """
         self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
         self.scaleB = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adB)
         self.scaleB.set_draw_value(False)
@@ -209,6 +216,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scaleB.connect('value-changed', self.scale_moved)
         self.scaleB.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.scaleB.connect('button-release-event', self.scale_released)
+        """
+        self.scaleB = FaderWidget(red=0.6, green=0.2, blue=0.2)
+
         self.crossfade_pad.attach(self.live, 0, 4, 1, 1)
         self.crossfade_pad.attach(self.format, 0, 5, 1, 1)
         self.crossfade_pad.attach(self.blind, 0, 6, 1, 1)
@@ -305,10 +315,12 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             value = scale.get_value()
 
+            """
             if scale == self.scaleA:
                 self.app.crossfade.scaleA.set_value(value)
             elif scale == self.scaleB:
                 self.app.crossfade.scaleB.set_value(value)
+            """
 
             if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
                 if self.scaleA.get_inverted():

@@ -133,6 +133,9 @@ class Midi(object):
                 else:
                     val = abs(((msg.value - 127) / 127) * 255)
                 self.app.crossfade.scaleA.set_value(val)
+                # TODO: Tester si virtual_console existe
+                self.app.virtual_console.scaleA.set_value(val)
+                self.app.virtual_console.scale_moved(self.app.virtual_console.scaleA)
 
             # Manual Crossfade In
             for index in range(len(self.midi_table)):
@@ -155,6 +158,9 @@ class Midi(object):
                 else:
                     val = abs(((msg.value - 127) / 127) * 255)
                 self.app.crossfade.scaleB.set_value(val)
+                # TODO: Tester si virtual_console existe
+                self.app.virtual_console.scaleB.set_value(val)
+                self.app.virtual_console.scale_moved(self.app.virtual_console.scaleB)
 
             """
             # Flash 1

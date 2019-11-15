@@ -20,6 +20,7 @@ app_PYTHON = \
 	virtual_console.py \
 	widgets_button.py \
 	widgets_channel.py \
+	widgets_fader.py \
 	widgets_go.py \
 	widgets_group.py \
 	widgets_patch_channels.py \
