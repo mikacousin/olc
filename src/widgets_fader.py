@@ -6,7 +6,8 @@ class FaderWidget(Gtk.Widget):
     __gtype_name__ = "FaderWidget"
 
     __gsignals__ = {
-            "clicked" : (GObject.SIGNAL_ACTION, None, ())
+            "clicked" : (GObject.SIGNAL_ACTION, None, ()),
+            "value-changed" : (GObject.SIGNAL_ACTION, None, ())
             }
 
     def __init__(self, text='None', red=0.2, green=0.2, blue=0.2):
@@ -24,7 +25,7 @@ class FaderWidget(Gtk.Widget):
 
         self.pressed = False
         self.value = 0
-        self.inverted = False
+        self.inverted = True
         self.on_fader = False
 
         self.text = text
@@ -42,9 +43,9 @@ class FaderWidget(Gtk.Widget):
         self.queue_draw()
 
         if self.inverted:
-            h = (((self.height - 20) / 255) * self.value)
-        else:
             h = self.height - 20 - (((self.height - 20) / 255) * self.value)
+        else:
+            h = (((self.height - 20) / 255) * self.value)
 
         if ev.y > h  and ev.y < h + 20:
             self.on_fader = True
@@ -57,15 +58,16 @@ class FaderWidget(Gtk.Widget):
     def on_motion(self, tgt, ev):
         if self.pressed and self.on_fader and not self.app.midi.midi_learn:
             if self.inverted:
-                val = ((self.height - 20) / 360) * ev.y
-            else:
                 val = self.height - 20 - (((self.height - 20) / 360) * ev.y)
+            else:
+                val = ((self.height - 20) / 360) * ev.y
             if val < 0:
                 val = 0
             elif val > 255:
                 val = 255
             self.value = val
             self.queue_draw()
+            self.emit('value-changed')
 
     def do_draw(self, cr):
         # Draw vertical box
@@ -76,9 +78,9 @@ class FaderWidget(Gtk.Widget):
         self.rounded_rectangle(cr, area, self.radius / 2)
         # Draw Cursor
         if self.inverted:
-            h = (((self.height - 20) / 255) * self.value)
-        else:
             h = self.height - 20 - (((self.height - 20) / 255) * self.value)
+        else:
+            h = (((self.height - 20) / 255) * self.value)
         if self.app.midi.midi_learn == self.text:
             if self.pressed:
                 cr.set_source_rgb(0.2, 0.1, 0.1)

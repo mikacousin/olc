@@ -1,6 +1,25 @@
 import mido
 from gi.repository import Gio
 
+class MidiFader(object):
+    def __init__(self):
+        self.value = 0
+        self.inverted = True
+
+    def get_inverted(self):
+        return self.inverted
+
+    def set_inverted(self, inv):
+        if inv == False or inv == True:
+            self.inverted = inv
+
+    def get_value(self):
+        return self.value
+
+    def set_value(self, value):
+        if value >= 0 and value < 128:
+            self.value = value
+
 class Midi(object):
 
     def __init__(self):
@@ -9,14 +28,18 @@ class Midi(object):
         self.midi_learn = ''
 
         # Default MIDI values : Channel, Note / Channel, CC
-        self.midi_table = [['Go', 0, 103],
+        self.midi_table = [['Go', 0, 11],
                 ['Seq_minus', 0, 12],
                 ['Seq_plus', 0, 13],
                 ['Output', 0, 0],
-                ['Crossfade_out', 0, 100],
-                ['Crossfade_in', 0, 101]]
+                ['Crossfade_out', 0, 8],
+                ['Crossfade_in', 0, 9]]
 
         self.app = Gio.Application.get_default()
+
+        # Create xfade Faders
+        self.xfade_out = MidiFader()
+        self.xfade_in = MidiFader()
 
     def open_input(self, port):
         input_names = mido.get_input_names()
@@ -128,14 +151,7 @@ class Midi(object):
             elif (not self.midi_learn and msg.type == 'control_change'
                     and msg.channel == self.midi_table[index][1]
                     and msg.control == self.midi_table[index][2]):
-                if self.app.crossfade.scaleA.get_inverted():
-                    val = (msg.value / 127) * 255
-                else:
-                    val = abs(((msg.value - 127) / 127) * 255)
-                self.app.crossfade.scaleA.set_value(val)
-                # TODO: Tester si virtual_console existe
-                self.app.virtual_console.scaleA.set_value(val)
-                self.app.virtual_console.scale_moved(self.app.virtual_console.scaleA)
+                self.xfade(self.xfade_out, msg.value)
 
             # Manual Crossfade In
             for index in range(len(self.midi_table)):
@@ -153,14 +169,38 @@ class Midi(object):
             elif (not self.midi_learn and msg.type == 'control_change'
                     and msg.channel == self.midi_table[index][1]
                     and msg.control == self.midi_table[index][2]):
-                if self.app.crossfade.scaleB.get_inverted():
-                    val = (msg.value / 127) * 255
-                else:
-                    val = abs(((msg.value - 127) / 127) * 255)
-                self.app.crossfade.scaleB.set_value(val)
-                # TODO: Tester si virtual_console existe
+                self.xfade(self.xfade_in, msg.value)
+
+    def xfade(self, fader, value):
+        if fader.get_inverted():
+            val = (value / 127) * 255
+            fader.set_value(value)
+        else:
+            val = abs(((value - 127) / 127) * 255)
+            fader.set_value(abs(value - 127))
+
+        if self.app.virtual_console:
+            if fader == self.xfade_out:
+                self.app.virtual_console.scaleA.set_value(val)
+                self.app.virtual_console.scale_moved(self.app.virtual_console.scaleA)
+            elif fader == self.xfade_in:
                 self.app.virtual_console.scaleB.set_value(val)
                 self.app.virtual_console.scale_moved(self.app.virtual_console.scaleB)
+        else:
+            if fader == self.xfade_out:
+                self.app.crossfade.scaleA.set_value(val)
+            elif fader == self.xfade_in:
+                self.app.crossfade.scaleB.set_value(val)
+
+        if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
+            if self.xfade_out.get_inverted():
+                self.xfade_out.set_inverted(False)
+                self.xfade_in.set_inverted(False)
+            else:
+                self.xfade_out.set_inverted(True)
+                self.xfade_in.set_inverted(True)
+            self.xfade_out.set_value(0)
+            self.xfade_in.set_value(0)
 
             """
             # Flash 1

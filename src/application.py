@@ -84,6 +84,7 @@ class Application(Gtk.Application):
 
         # For Windows
         self.about_window = None
+        self.virtual_console = None
 
         # For Tabs
         self.patch_outputs_tab = None
@@ -144,10 +145,6 @@ class Application(Gtk.Application):
 
         # For Manual crossfade
         self.crossfade = CrossFade()
-
-        # Virtual Console Window
-        self.virtual_console = VirtualConsoleWindow()
-        self.virtual_console.show_all()
 
         # Open MIDI Input
         self.midi = Midi()
@@ -216,6 +213,10 @@ class Application(Gtk.Application):
         sequencesAction = Gio.SimpleAction.new('sequences', None)
         sequencesAction.connect('activate', self._sequences)
         self.add_action(sequencesAction)
+
+        virtual_consoleAction = Gio.SimpleAction.new('virtual_console', None)
+        virtual_consoleAction.connect('activate', self._virtual_console)
+        self.add_action(virtual_consoleAction)
 
         settingsAction = Gio.SimpleAction.new('settings', None)
         settingsAction.connect('activate', self._settings)
@@ -584,6 +585,11 @@ class Application(Gtk.Application):
         else:
             page = self.window.notebook.page_num(self.channeltime_tab)
             self.window.notebook.set_current_page(page)
+
+    def _virtual_console(self, action, parameter):
+        # Virtual Console Window
+        self.virtual_console = VirtualConsoleWindow()
+        self.virtual_console.show_all()
 
     def _settings(self, action, parameter):
         # TODO: Don't open multiple Settings Windows

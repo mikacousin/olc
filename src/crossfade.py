@@ -6,7 +6,6 @@ from olc.define import NB_UNIVERSES, MAX_CHANNELS
 class Scale(object):
     def __init__(self):
         self.value = 0
-        self.inverted = True
 
         self.app = Gio.Application.get_default()
 
@@ -17,13 +16,6 @@ class Scale(object):
 
     def get_value(self):
         return self.value
-
-    def set_inverted(self, inverted):
-        if inverted == True or inverted == False:
-            self.inverted = inverted
-
-    def get_inverted(self):
-        return self.inverted
 
 class CrossFade(object):
     """ For Manual Crossfade """
@@ -274,12 +266,6 @@ class CrossFade(object):
                     app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
 
-                    if self.scaleA.get_inverted():
-                        self.scaleA.set_inverted(False)
-                        self.scaleB.set_inverted(False)
-                    else:
-                        self.scaleA.set_inverted(True)
-                        self.scaleB.set_inverted(True)
                     self.scaleA.set_value(0)
                     self.scaleB.set_value(0)
 
@@ -338,12 +324,6 @@ class CrossFade(object):
                     app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
 
-                    if self.scaleA.get_inverted():
-                        self.scaleA.set_inverted(False)
-                        self.scaleB.set_inverted(False)
-                    else:
-                        self.scaleA.set_inverted(True)
-                        self.scaleB.set_inverted(True)
                     self.scaleA.set_value(0)
                     self.scaleB.set_value(0)
 

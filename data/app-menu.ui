@@ -39,6 +39,12 @@
     </section>
     <section>
       <item>
+        <attribute name="action">app.virtual_console</attribute>
+        <attribute name="label" translatable="yes">_Virtual Console</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name="action">app.settings</attribute>
         <attribute name="label" translatable="yes">_Preferences</attribute>
       </item>
