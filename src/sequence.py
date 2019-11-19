@@ -459,6 +459,12 @@ class ThreadGo(threading.Thread):
         self.app.window.sequential.pos_xB = ((allocation.width - 32) / delay) * i
         GLib.idle_add(self.app.window.sequential.queue_draw)
 
+        # Move Virtual Console's XFade
+        if self.app.virtual_console:
+            val = round((256 / delay) * i)
+            GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
+            GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
+
         # On attend que le temps d'un éventuel wait soit passé pour changer les levels
         if i > delay_wait:
 
@@ -516,7 +522,6 @@ class ThreadGo(threading.Thread):
             if self.app.patch_outputs_tab != None:
                 GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
 
-
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
         if position == 0:
@@ -545,6 +550,16 @@ class ThreadGo(threading.Thread):
         self.app.window.seq_grid.queue_draw()
         # Update Main Window's Subtitle
         self.app.window.header.set_subtitle(subtitle)
+        # Virtual Console's Xfade
+        if self.app.virtual_console:
+            if self.app.virtual_console.scaleA.get_inverted():
+                self.app.virtual_console.scaleA.set_inverted(False)
+                self.app.virtual_console.scaleB.set_inverted(False)
+            else:
+                self.app.virtual_console.scaleA.set_inverted(True)
+                self.app.virtual_console.scaleB.set_inverted(True)
+            self.app.virtual_console.scaleA.set_value(0)
+            self.app.virtual_console.scaleB.set_value(0)
 
 class SequenceTab(Gtk.Grid):
     def __init__(self):
