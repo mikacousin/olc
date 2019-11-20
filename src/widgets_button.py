@@ -40,22 +40,28 @@ class ButtonWidget(Gtk.Widget):
 
     def do_draw(self, cr):
         # Draw rounded box
-        if self.pressed:
-            if self.app.midi.midi_learn == self.text:
-                cr.set_source_rgb(0.2, 0.1, 0.1)
-            else:
-                cr.set_source_rgb(0.1, 0.1, 0.1)
+        if self.text == 'None':
+            cr.set_source_rgb(0.4, 0.4, 0.4)
         else:
-            if self.app.midi.midi_learn == self.text:
-                cr.set_source_rgb(0.3, 0.2, 0.2)
+            if self.pressed:
+                if self.app.midi.midi_learn == self.text:
+                    cr.set_source_rgb(0.2, 0.1, 0.1)
+                else:
+                    cr.set_source_rgb(0.1, 0.1, 0.1)
             else:
-                cr.set_source_rgb(0.2, 0.2, 0.2)
+                if self.app.midi.midi_learn == self.text:
+                    cr.set_source_rgb(0.3, 0.2, 0.2)
+                else:
+                    cr.set_source_rgb(0.2, 0.2, 0.2)
         area = (1, self.width-2, 1, self.height-2)
         self.rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         self.rounded_rectangle(cr, area, self.radius)
         # Draw Text
-        cr.set_source_rgb(0.8, 0.8, 0.8)
+        if self.text == 'None':
+            cr.set_source_rgb(0.5, 0.5, 0.5)
+        else:
+            cr.set_source_rgb(0.8, 0.8, 0.8)
         cr.select_font_face('Monaco', cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)

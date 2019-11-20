@@ -31,17 +31,28 @@ class VirtualConsoleWindow(Gtk.Window):
         self.num_pad = Gtk.Grid()
         #self.num_pad.set_column_homogeneous(True)
         #self.num_pad.set_row_homogeneous(True)
-        self.zero = ButtonWidget('0')
-        self.one = ButtonWidget('1')
-        self.two = ButtonWidget('2')
-        self.three = ButtonWidget('3')
-        self.four = ButtonWidget('4')
-        self.five = ButtonWidget('5')
-        self.six = ButtonWidget('6')
-        self.seven = ButtonWidget('7')
-        self.height = ButtonWidget('8')
-        self.nine = ButtonWidget('9')
-        self.dot = ButtonWidget('.')
+        self.zero = ButtonWidget('0', 'Zero')
+        self.zero.connect('clicked', self.on_zero)
+        self.one = ButtonWidget('1', '1')
+        self.one.connect('clicked', self.on_1)
+        self.two = ButtonWidget('2', '2')
+        self.two.connect('clicked', self.on_2)
+        self.three = ButtonWidget('3', '3')
+        self.three.connect('clicked', self.on_3)
+        self.four = ButtonWidget('4', '4')
+        self.four.connect('clicked', self.on_4)
+        self.five = ButtonWidget('5', '5')
+        self.five.connect('clicked', self.on_5)
+        self.six = ButtonWidget('6', '6')
+        self.six.connect('clicked', self.on_6)
+        self.seven = ButtonWidget('7', '7')
+        self.seven.connect('clicked', self.on_7)
+        self.eight = ButtonWidget('8', '8')
+        self.eight.connect('clicked', self.on_8)
+        self.nine = ButtonWidget('9', '9')
+        self.nine.connect('clicked', self.on_9)
+        self.dot = ButtonWidget('.', 'Dot')
+        self.dot.connect('clicked', self.on_dot)
         self.clear = ButtonWidget('C')
         self.num_pad.attach(self.zero, 0, 3, 1, 1)
         self.num_pad.attach(self.clear, 1, 3, 1, 1)
@@ -53,7 +64,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.num_pad.attach(self.five, 1, 1, 1, 1)
         self.num_pad.attach(self.six, 2, 1, 1, 1)
         self.num_pad.attach(self.seven, 0, 0, 1, 1)
-        self.num_pad.attach(self.height, 1, 0, 1, 1)
+        self.num_pad.attach(self.eight, 1, 0, 1, 1)
         self.num_pad.attach(self.nine, 2, 0, 1, 1)
 
         # Time keys
@@ -123,7 +134,8 @@ class VirtualConsoleWindow(Gtk.Window):
         #self.rec_pad.set_row_homogeneous(True)
         self.update = ButtonWidget('Update')
         self.record = ButtonWidget('Record')
-        self.track = ButtonWidget('Track')
+        self.track = ButtonWidget('Track', 'Track')
+        self.track.connect('clicked', self.on_track)
         self.rec_pad.attach(self.update, 0, 0, 1, 1)
         self.rec_pad.attach(self.record, 2, 0, 1, 1)
         self.rec_pad.attach(self.track, 0, 2, 1, 1)
@@ -191,7 +203,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.live = ButtonWidget('Live')
         self.format = ButtonWidget('Format')
         self.blind = ButtonWidget('Blind')
-        self.goto = ButtonWidget('Goto')
+        self.goto = ButtonWidget('Goto', 'Goto')
+        self.goto.connect('clicked', self.on_goto)
         self.a = ButtonWidget('A')
         self.b = ButtonWidget('B')
 
@@ -308,6 +321,110 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app._patch_outputs(None, None)
+
+    def on_track(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Track'
+            self.queue_draw()
+        else:
+            self.app._track_channels(None, None)
+
+    def on_goto(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Goto'
+            self.queue_draw()
+        else:
+            self.app.sequence.sequence_goto(self.app, self.app.window.keystring)
+            self.app.window.keystring = ''
+            self.app.window.statusbar.push(self.app.window.context_id, '')
+
+    def on_zero(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Zero'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '0'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_1(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '1'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '1'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_2(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '2'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '2'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_3(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '3'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '3'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_4(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '4'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '4'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_5(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '5'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '5'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_6(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '6'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '6'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_7(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '7'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '7'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_8(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '8'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '8'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_9(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = '9'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '9'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def on_dot(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Dot'
+            self.queue_draw()
+        else:
+            self.app.window.keystring += '.'
+            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
 
     def scale_moved(self, scale):
         if self.midi_learn:

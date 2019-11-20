@@ -1,5 +1,5 @@
 import mido
-from gi.repository import Gio
+from gi.repository import Gio, Gdk
 
 class MidiFader(object):
     def __init__(self):
@@ -31,7 +31,20 @@ class Midi(object):
         self.midi_table = [['Go', 0, 11],
                 ['Seq_minus', 0, 12],
                 ['Seq_plus', 0, 13],
-                ['Output', 0, 0],
+                ['Output', 0, -1],
+                ['Track', 0, -1],
+                ['Goto', 0, -1],
+                ['Zero', 0, 0],
+                ['1', 0, 1],
+                ['2', 0, 2],
+                ['3', 0, 3],
+                ['4', 0, 4],
+                ['5', 0, 5],
+                ['6', 0, 6],
+                ['7', 0, 7],
+                ['8', 0, 8],
+                ['9', 0, 9],
+                ['Dot', 0, -1],
                 ['Crossfade_out', 0, 8],
                 ['Crossfade_in', 0, 9]]
 
@@ -76,7 +89,18 @@ class Midi(object):
                     and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
-                self.app.sequence.sequence_go(self.app, None)
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.go.emit('button-press-event', event)
+                else:
+                    self.app.sequence.sequence_go(self.app, None)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.go.emit('button-release-event', event)
 
             # Seq -
             for index in range(len(self.midi_table)):
@@ -95,7 +119,18 @@ class Midi(object):
                     and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
-                self.app.window.keypress_q()
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.seq_minus.emit('button-press-event', event)
+                else:
+                    self.app.window.keypress_q()
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.seq_minus.emit('button-release-event', event)
 
             # Seq +
             for index in range(len(self.midi_table)):
@@ -114,7 +149,18 @@ class Midi(object):
                     and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
-                self.app.window.keypress_w()
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.seq_plus.emit('button-press-event', event)
+                else:
+                    self.app.window.keypress_w()
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.seq_plus.emit('button-release-event', event)
 
             # Output
             for index in range(len(self.midi_table)):
@@ -133,7 +179,421 @@ class Midi(object):
                     and msg.channel == self.midi_table[index][1]
                     and msg.note == self.midi_table[index][2]
                     and msg.velocity == 127):
-                self.app._patch_outputs(None, None)
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.output.emit('button-press-event', event)
+                else:
+                    self.app._patch_outputs(None, None)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.output.emit('button-release-event', event)
+
+            # Track
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Track':
+                    break
+            if self.midi_learn == 'Track':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Track', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.track.emit('button-press-event', event)
+                else:
+                    self.app._track_channels(None, None)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.track.emit('button-release-event', event)
+
+            # Goto
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Goto':
+                    break
+            if self.midi_learn == 'Goto':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Goto', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.goto.emit('button-press-event', event)
+                else:
+                    self.app.sequence.sequence_goto(self.app, self.app.window.keystring)
+                    self.app.window.keystring = ''
+                    self.app.window.statusbar.push(self.app.window.context_id, '')
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.goto.emit('button-release-event', event)
+
+            # 0
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Zero':
+                    break
+            if self.midi_learn == 'Zero':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Zero', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.zero.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '0'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.zero.emit('button-release-event', event)
+
+            # 1
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '1':
+                    break
+            if self.midi_learn == '1':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['1', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.one.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '1'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.one.emit('button-release-event', event)
+
+            # 2
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '2':
+                    break
+            if self.midi_learn == '2':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['2', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.two.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '2'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.two.emit('button-release-event', event)
+
+            # 3
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '3':
+                    break
+            if self.midi_learn == '3':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['3', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.three.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '3'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.three.emit('button-release-event', event)
+
+            # 4
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '4':
+                    break
+            if self.midi_learn == '4':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['4', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.four.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '4'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.four.emit('button-release-event', event)
+
+            # 5
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '5':
+                    break
+            if self.midi_learn == '5':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['5', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.five.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '5'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.five.emit('button-release-event', event)
+
+            # 6
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '6':
+                    break
+            if self.midi_learn == '6':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['6', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.six.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '6'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.six.emit('button-release-event', event)
+
+            # 7
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '7':
+                    break
+            if self.midi_learn == '7':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['7', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.seven.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '7'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.seven.emit('button-release-event', event)
+
+            # 8
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '8':
+                    break
+            if self.midi_learn == '8':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['8', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.eight.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '8'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.eight.emit('button-release-event', event)
+
+            # 9
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == '9':
+                    break
+            if self.midi_learn == '9':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['9', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.nine.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '9'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.nine.emit('button-release-event', event)
+
+            # .
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Dot':
+                    break
+            if self.midi_learn == 'Dot':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = 0
+                    # Learn new values
+                    self.midi_table[index] = ['Dot', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.dot.emit('button-press-event', event)
+                else:
+                    self.app.window.keystring += '.'
+                    self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.dot.emit('button-release-event', event)
 
             # Manual Crossfade Out
             for index in range(len(self.midi_table)):
