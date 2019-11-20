@@ -53,7 +53,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.nine.connect('clicked', self.on_9)
         self.dot = ButtonWidget('.', 'Dot')
         self.dot.connect('clicked', self.on_dot)
-        self.clear = ButtonWidget('C')
+        self.clear = ButtonWidget('C', 'Clear')
+        self.clear.connect('clicked', self.on_clear)
         self.num_pad.attach(self.zero, 0, 3, 1, 1)
         self.num_pad.attach(self.clear, 1, 3, 1, 1)
         self.num_pad.attach(self.dot, 2, 3, 1, 1)
@@ -132,7 +133,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.rec_pad = Gtk.Grid()
         #self.rec_pad.set_column_homogeneous(True)
         #self.rec_pad.set_row_homogeneous(True)
-        self.update = ButtonWidget('Update')
+        self.update = ButtonWidget('Update', 'Update')
+        self.update.connect('clicked', self.on_update)
         self.record = ButtonWidget('Record')
         self.track = ButtonWidget('Track', 'Track')
         self.track.connect('clicked', self.on_track)
@@ -150,12 +152,18 @@ class VirtualConsoleWindow(Gtk.Window):
         self.thru_pad = Gtk.Grid()
         #self.thru_pad.set_column_homogeneous(True)
         #self.thru_pad.set_row_homogeneous(True)
-        self.thru = ButtonWidget('Thru')
-        self.channel = ButtonWidget('Ch')
-        self.plus = ButtonWidget('+')
-        self.minus = ButtonWidget('-')
-        self.all = ButtonWidget('All')
-        self.at = ButtonWidget('@')
+        self.thru = ButtonWidget('Thru', 'Thru')
+        self.thru.connect('clicked', self.on_thru)
+        self.channel = ButtonWidget('Ch', 'Ch')
+        self.channel.connect('clicked', self.on_channel)
+        self.plus = ButtonWidget('+', 'Plus')
+        self.plus.connect('clicked', self.on_plus)
+        self.minus = ButtonWidget('-', 'Minus')
+        self.minus.connect('clicked', self.on_minus)
+        self.all = ButtonWidget('All', 'All')
+        self.all.connect('clicked', self.on_all)
+        self.at = ButtonWidget('@', 'At')
+        self.at.connect('clicked', self.on_at)
         self.percent_plus = ButtonWidget('+%')
         self.percent_minus = ButtonWidget('-%')
         self.thru_pad.attach(self.thru, 0, 0, 1, 1)
@@ -337,6 +345,78 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.sequence.sequence_goto(self.app, self.app.window.keystring)
             self.app.window.keystring = ''
             self.app.window.statusbar.push(self.app.window.context_id, '')
+
+    def on_channel(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Ch'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_c
+            self.app.window.on_key_press_event(None, event)
+
+    def on_thru(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Thru'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_greater
+            self.app.window.on_key_press_event(None, event)
+
+    def on_plus(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Plus'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_plus
+            self.app.window.on_key_press_event(None, event)
+
+    def on_minus(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Minus'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_minus
+            self.app.window.on_key_press_event(None, event)
+
+    def on_all(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'All'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_a
+            self.app.window.on_key_press_event(None, event)
+
+    def on_at(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'At'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_equal
+            self.app.window.on_key_press_event(None, event)
+
+    def on_update(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Update'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_U
+            self.app.window.on_key_press_event(None, event)
+
+    def on_clear(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Clear'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_BackSpace
+            self.app.window.on_key_press_event(None, event)
 
     def on_zero(self, widget):
         if self.midi_learn:
