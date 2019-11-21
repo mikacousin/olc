@@ -669,7 +669,7 @@ class Window(Gtk.ApplicationWindow):
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         percent = Gio.Application.get_default().settings.get_boolean('percent')
         if percent:
-            lvl = int((lvl/100)*255)
+            lvl = round((lvl/100)*255)
 
         sel = self.flowbox.get_selected_children()
 
@@ -693,7 +693,7 @@ class Window(Gtk.ApplicationWindow):
         lvl = Gio.Application.get_default().settings.get_int('percent-level')
         percent = Gio.Application.get_default().settings.get_boolean('percent')
         if percent:
-            lvl = int((lvl/100)*255)
+            lvl = round((lvl/100)*255)
 
         sel = self.flowbox.get_selected_children()
 

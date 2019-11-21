@@ -90,11 +90,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_pad = Gtk.Grid()
         #self.seq_pad.set_column_homogeneous(True)
         #self.seq_pad.set_row_homogeneous(True)
-        self.seq = ButtonWidget('Seq')
+        self.seq = ButtonWidget('Seq', 'Seq')
+        self.seq.connect('clicked', self.on_seq)
         self.empty1 = ButtonWidget(' ')
         self.empty2 = ButtonWidget(' ')
         self.preset = ButtonWidget('Preset')
-        self.group = ButtonWidget('Group')
+        self.group = ButtonWidget('Group', 'Group')
+        self.group.connect('clicked', self.on_group)
         self.effect = ButtonWidget('Effect')
         self.seq_pad.attach(self.seq, 0, 2, 1, 1)
         self.seq_pad.attach(self.empty1, 1, 2, 1, 1)
@@ -164,8 +166,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.all.connect('clicked', self.on_all)
         self.at = ButtonWidget('@', 'At')
         self.at.connect('clicked', self.on_at)
-        self.percent_plus = ButtonWidget('+%')
-        self.percent_minus = ButtonWidget('-%')
+        self.percent_plus = ButtonWidget('+%', 'PercentPlus')
+        self.percent_plus.connect('clicked', self.on_percent_plus)
+        self.percent_minus = ButtonWidget('-%', 'PercentMinus')
+        self.percent_minus.connect('clicked', self.on_percent_minus)
         self.thru_pad.attach(self.thru, 0, 0, 1, 1)
         self.thru_pad.attach(self.channel, 0, 1, 1, 1)
         self.thru_pad.attach(self.plus, 0, 2, 1, 1)
@@ -189,10 +193,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.delete = ButtonWidget('Delete')
         self.esc = ButtonWidget('Esc')
         self.modify = ButtonWidget('Modify')
-        self.up = ButtonWidget('^')
-        self.down = ButtonWidget('v')
-        self.left = ButtonWidget('<')
-        self.right = ButtonWidget('>')
+        self.up = ButtonWidget('^', 'Up')
+        self.up.connect('clicked', self.on_up)
+        self.down = ButtonWidget('v', 'Down')
+        self.down.connect('clicked', self.on_down)
+        self.left = ButtonWidget('<', 'Left')
+        self.left.connect('clicked', self.on_left)
+        self.right = ButtonWidget('>', 'Right')
+        self.right.connect('clicked', self.on_right)
         self.modify_pad.attach(self.insert, 0, 0, 1, 1)
         self.modify_pad.attach(self.delete, 2, 0, 1, 1)
         self.modify_pad.attach(self.esc, 0, 2, 1, 1)
@@ -330,6 +338,20 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             self.app._patch_outputs(None, None)
 
+    def on_seq(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Seq'
+            self.queue_draw()
+        else:
+            self.app._sequences(None, None)
+
+    def on_group(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Group'
+            self.queue_draw()
+        else:
+            self.app._groups(None, None)
+
     def on_track(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = 'Track'
@@ -400,6 +422,24 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_equal
             self.app.window.on_key_press_event(None, event)
 
+    def on_percent_plus(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'PercentPlus'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_exclam
+            self.app.window.on_key_press_event(None, event)
+
+    def on_percent_minus(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'PercentMinus'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_colon
+            self.app.window.on_key_press_event(None, event)
+
     def on_update(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = 'Update'
@@ -407,6 +447,42 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_U
+            self.app.window.on_key_press_event(None, event)
+
+    def on_right(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Right'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_Right
+            self.app.window.on_key_press_event(None, event)
+
+    def on_left(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Left'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_Left
+            self.app.window.on_key_press_event(None, event)
+
+    def on_up(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Up'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_Up
+            self.app.window.on_key_press_event(None, event)
+
+    def on_down(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Down'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_Down
             self.app.window.on_key_press_event(None, event)
 
     def on_clear(self, widget):
