@@ -253,6 +253,7 @@ class Window(Gtk.ApplicationWindow):
         GLib.unix_fd_add_full(0, self.fd, GLib.IOCondition.IN, self.incoming_connection_cb, None)
 
         self.connect('key_press_event', self.on_key_press_event)
+        self.connect('scroll-event', self.on_scroll)
 
         self.set_icon_name('olc')
 
@@ -417,6 +418,19 @@ class Window(Gtk.ApplicationWindow):
         else:
             self.view_type = 0
         self.flowbox.invalidate_filter()
+
+    def on_scroll(self, widget, event):
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK:
+            (scroll, direction) = event.get_scroll_direction()
+            if scroll and direction == Gdk.ScrollDirection.UP:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale < 2:
+                        self.channels[i].scale += 0.1
+            if scroll and direction == Gdk.ScrollDirection.DOWN:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale >= 1.1:
+                        self.channels[i].scale -= 0.1
 
     def on_key_press_event(self, widget, event):
 
@@ -748,18 +762,6 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Escape(self):
         self.flowbox.unselect_all()
         self.last_chan_selected = ''
-
-    def keypress_m(self):
-        for i in range(MAX_CHANNELS):
-            if self.channels[i].scale < 2:
-                self.channels[i].scale += 0.1
-        #self.flowbox.queue_draw()
-
-    def keypress_l(self):
-        for i in range(MAX_CHANNELS):
-            if self.channels[i].scale >= 1.1:
-                self.channels[i].scale -= 0.1
-        #self.flowbox.queue_draw()
 
     def keypress_q(self):
         # TODO: Update Shortcuts window
