@@ -34,10 +34,11 @@ class PatchWidget(Gtk.Widget):
     def do_draw(self, cr):
         self.width = 60 * self.scale
         self.set_size_request(self.width,self.width)
+        allocation = self.get_allocation()
         # paint background
-        area = (0, self.width, 0, self.width)
+        area = (0, allocation.width, 0, allocation.height)
 
-        if self.patch.outputs[self.universe][self.output-1] != 0:
+        if self.patch.outputs[self.universe][self.output - 1] != 0:
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
@@ -53,32 +54,32 @@ class PatchWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
             cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(12*self.scale)
-        text = str(self.output)+'.'+str(self.universe)
+        cr.set_font_size(12 * self.scale)
+        text = str(self.output) + '.' + str(self.universe)
         (x, y, width, height, dx, dy) = cr.text_extents(text)
-        cr.move_to(self.width/2-width/2,self.width/4-(height-20)/4)
+        cr.move_to(allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4)
         cr.show_text(text)
 
-        if self.patch.outputs[self.universe][self.output-1] != 0:
+        if self.patch.outputs[self.universe][self.output - 1] != 0:
             # draw channel number
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12*self.scale)
-            text = str(self.patch.outputs[self.universe][self.output-1])
+            cr.set_font_size(12 * self.scale)
+            text = str(self.patch.outputs[self.universe][self.output - 1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
-            cr.move_to(self.width/2-width/2,3*(self.width/4-(height-20)/4))
+            cr.move_to(allocation.width / 2 - width / 2, 3 * (allocation.height / 4 - (height - 20) / 4))
             cr.show_text(text)
 
         # Draw Output level
-        if self.app.dmx.frame[self.universe][self.output-1]:
+        if self.app.dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
-            cr.set_font_size(12*self.scale)
-            text = str(self.app.dmx.frame[self.universe][self.output-1])
+            cr.set_font_size(12 * self.scale)
+            text = str(self.app.dmx.frame[self.universe][self.output - 1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
-            cr.move_to(self.width/2-width/2,self.width/2-(height-20)/2)
+            cr.move_to(allocation.width / 2 - width / 2, allocation.height / 2 - (height - 20) / 2)
             cr.show_text(text)
 
     def do_realize(self):
