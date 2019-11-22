@@ -15,7 +15,7 @@ class PatchWidget(Gtk.Widget):
         self.app = Gio.Application.get_default()
 
         Gtk.Widget.__init__(self)
-        self.scale = 1.2
+        self.scale = 1.0
         self.width = 60 * self.scale
         self.set_size_request(self.width,self.width)
         self.connect('button-press-event', self.on_click)

@@ -37,7 +37,7 @@ class PatchOutputsTab(Gtk.Grid):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
+        #self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.outputs = []
@@ -121,6 +121,18 @@ class PatchOutputsTab(Gtk.Grid):
     def keypress_BackSpace(self):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_w(self):
+        for i in range(len(self.outputs)):
+            if self.outputs[i].scale <= 2:
+                self.outputs[i].scale += 0.1
+        self.flowbox.queue_draw()
+
+    def keypress_x(self):
+        for i in range(len(self.outputs)):
+            if self.outputs[i].scale >= 1.1:
+                self.outputs[i].scale -= 0.1
+        self.flowbox.queue_draw()
 
     def keypress_Right(self):
         """ Next Output """
