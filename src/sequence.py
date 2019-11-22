@@ -611,7 +611,7 @@ class SequenceTab(Gtk.Grid):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.channels = []
-        for i in range(512):
+        for i in range(MAX_CHANNELS):
             self.channels.append(ChannelWidget(i+1, 0, 0))
             self.flowbox.add(self.channels[i])
 
@@ -1590,6 +1590,8 @@ class SequenceTab(Gtk.Grid):
     def keypress_R(self):
         """ New Cue """
 
+        # TODO: Doesn't work anymore
+
         # If user enter a memory number, use it
         mem = -1
 
@@ -1677,8 +1679,8 @@ class SequenceTab(Gtk.Grid):
             else:
                 # Find the next free index and memory
                 if self.seq.index == 1:
-                    index = self.seq.cues[-2].index + 1
-                    memory = float(self.seq.cues[-2].memory) + 1
+                    index = self.app.sequence.cues[-2].index + 1
+                    memory = float(self.app.sequence.cues[-2].memory) + 1
                 else:
                     index = self.seq.cues[-1].index + 1
                     memory = float(self.seq.cues[-1].memory) + 1
@@ -1702,7 +1704,7 @@ class SequenceTab(Gtk.Grid):
             # Update Main Playback
             if self.seq.index == 1:
 
-                if self.seq.cues[i].wait.is_integer():
+                if self.seq.cues[index].wait.is_integer():
                     wait = str(int(self.seq.cues[index].wait))
                     if wait == "0":
                         wait = ""
@@ -1712,16 +1714,28 @@ class SequenceTab(Gtk.Grid):
                     t_out = str(int(self.seq.cues[index].time_out))
                 else:
                     t_out = str(self.seq.cues[index].time_out)
+                if self.seq.cues[index].delay_out.is_integer():
+                    d_out = str(int(self.seq.cues[index].delay_out))
+                    if d_out == '0':
+                        d_out = ''
+                else:
+                    d_out = str(self.seq.cues[index].delay_out)
                 if self.seq.cues[index].time_in.is_integer():
                     t_in = str(int(self.seq.cues[index].time_in))
                 else:
                     t_in = str(self.seq.cues[index].time_in)
+                if self.seq.cues[index].delay_in.is_integer():
+                    d_in = str(int(self.seq.cues[index].delay_in))
+                    if d_in == '0':
+                        d_in = ''
+                else:
+                    d_in = str(self.seq.cues[index].delay_in)
                 channel_time = str(len(self.seq.cues[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
                 self.liststore2.insert(index - 1, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, t_out, t_in, channel_time])
+                    self.seq.cues[index].text, wait, d_out, t_out, d_in, t_in, channel_time])
 
                 # Update indexes of cues in listsore
                 for i in range(index, self.seq.last - 2):
@@ -1745,18 +1759,31 @@ class SequenceTab(Gtk.Grid):
                     t_out = str(int(self.seq.cues[index].time_out))
                 else:
                     t_out = str(self.seq.cues[index].time_out)
+                if self.seq.cues[index].delay_out.is_integer():
+                    d_out = str(int(self.seq.cues[index].delay_out))
+                    if d_out == '0':
+                        d_out = ''
+                else:
+                    d_out = str(self.seq.cues[index].delay_out)
                 if self.seq.cues[index].time_in.is_integer():
                     t_in = str(int(self.seq.cues[index].time_in))
                 else:
                     t_in = str(self.seq.cues[index].time_in)
+                if self.seq.cues[index].delay_in.is_integer():
+                    d_in = str(int(self.seq.cues[index].delay_in))
+                    if d_in == '0':
+                        d_in = ''
+                else:
+                    d_in = str(self.seq.cues[index].delay_in)
                 channel_time = str(len(self.seq.cues[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
                 self.app.window.cues_liststore1.insert(index, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, t_out, t_in, channel_time, bg])
+                    self.seq.cues[index].text, wait, d_out, t_out, d_in, t_in, channel_time,
+                    bg, Pango.Weight.NORMAL, 42])
                 self.app.window.cues_liststore2.insert(index, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, t_out, t_in, channel_time])
+                    self.seq.cues[index].text, wait, d_out, t_out, d_in, t_in, channel_time])
 
                 # Update indexes of cues in listsore
                 for i in range(index + 1, self.seq.last):
