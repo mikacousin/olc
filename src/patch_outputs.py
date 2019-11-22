@@ -33,6 +33,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled.connect('scroll-event', self.on_scroll)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
@@ -61,6 +62,21 @@ class PatchOutputsTab(Gtk.Grid):
             return child
         else:
             return False
+
+    def on_scroll(self, widget, event):
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK:
+            (scroll, direction) = event.get_scroll_direction()
+            if scroll and direction == Gdk.ScrollDirection.UP:
+                for i in range(len(self.outputs)):
+                    if self.outputs[i].scale <= 2:
+                        self.outputs[i].scale += 0.1
+                self.flowbox.queue_draw()
+            if scroll and direction == Gdk.ScrollDirection.DOWN:
+                for i in range(len(self.outputs)):
+                    if self.outputs[i].scale >= 1.1:
+                        self.outputs[i].scale -= 0.1
+                self.flowbox.queue_draw()
 
     def on_button_clicked(self, widget):
 
@@ -121,18 +137,6 @@ class PatchOutputsTab(Gtk.Grid):
     def keypress_BackSpace(self):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
-
-    def keypress_m(self):
-        for i in range(len(self.outputs)):
-            if self.outputs[i].scale <= 2:
-                self.outputs[i].scale += 0.1
-        self.flowbox.queue_draw()
-
-    def keypress_l(self):
-        for i in range(len(self.outputs)):
-            if self.outputs[i].scale >= 1.1:
-                self.outputs[i].scale -= 0.1
-        self.flowbox.queue_draw()
 
     def keypress_Right(self):
         """ Next Output """

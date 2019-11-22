@@ -420,6 +420,13 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.invalidate_filter()
 
     def on_scroll(self, widget, event):
+        # Send Events to notebook's pages
+        page = self.notebook.get_current_page()
+        child = self.notebook.get_nth_page(page)
+        if child == self.app.patch_outputs_tab:
+            return self.app.patch_outputs_tab.on_scroll(widget, event)
+
+        # Zoom In/Out Channels in Live View
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK:
             (scroll, direction) = event.get_scroll_direction()
