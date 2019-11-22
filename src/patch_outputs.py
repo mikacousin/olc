@@ -122,13 +122,13 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-    def keypress_w(self):
+    def keypress_m(self):
         for i in range(len(self.outputs)):
             if self.outputs[i].scale <= 2:
                 self.outputs[i].scale += 0.1
         self.flowbox.queue_draw()
 
-    def keypress_x(self):
+    def keypress_l(self):
         for i in range(len(self.outputs)):
             if self.outputs[i].scale >= 1.1:
                 self.outputs[i].scale -= 0.1

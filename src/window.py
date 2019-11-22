@@ -61,7 +61,7 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
+        #self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.flowbox.set_filter_func(self.filter_func, None) # Fonction de filtrage
 
@@ -748,6 +748,18 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Escape(self):
         self.flowbox.unselect_all()
         self.last_chan_selected = ''
+
+    def keypress_m(self):
+        for i in range(MAX_CHANNELS):
+            if self.channels[i].scale < 2:
+                self.channels[i].scale += 0.1
+        #self.flowbox.queue_draw()
+
+    def keypress_l(self):
+        for i in range(MAX_CHANNELS):
+            if self.channels[i].scale >= 1.1:
+                self.channels[i].scale -= 0.1
+        #self.flowbox.queue_draw()
 
     def keypress_q(self):
         # TODO: Update Shortcuts window

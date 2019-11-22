@@ -15,13 +15,15 @@ class ChannelWidget(Gtk.Widget):
         self.color_level_red = 0.9
         self.color_level_green = 0.9
         self.color_level_blue = 0.9
+        self.scale = 1.0
+        self.width = 80 * self.scale
 
         self.app = Gio.Application.get_default()
 
         self.percent_level = self.app.settings.get_boolean('percent')
 
         self.connect("button-press-event", self.on_click)
-        self.set_size_request(80, 80)
+        self.set_size_request(self.width, self.width)
 
     def on_click(self, tgt, ev):
         # Select clicked widget
@@ -35,6 +37,8 @@ class ChannelWidget(Gtk.Widget):
         self.app.window.last_chan_selected = str(int(self.channel) - 1)
 
     def do_draw(self, cr):
+        self.width = 80 * self.scale
+        self.set_size_request(self.width, self.width)
 
         self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
 
@@ -59,73 +63,75 @@ class ChannelWidget(Gtk.Widget):
         # TODO: Get background color
         bg.parse('#33393B')
         cr.set_source_rgba(*list(bg))
-        cr.rectangle(4, 4, allocation.width-8, 72)
+        #cr.rectangle(4, 4, allocation.width-8, 72)
+        cr.rectangle(4, 4, allocation.width - 8, allocation.height - 8)
         cr.fill()
         # draw background of channel number
         flowboxchild = self.get_parent()
         if flowboxchild.is_selected():
             cr.set_source_rgb(0.4, 0.4, 0.4)
-            cr.rectangle(4, 4, allocation.width-8, 18)
+            cr.rectangle(4, 4, allocation.width-8, 18 * self.scale)
             cr.fill()
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            cr.rectangle(4, 4, allocation.width-8, 18)
+            cr.rectangle(4, 4, allocation.width-8, 18 * self.scale)
             cr.fill()
         # draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(12)
-        cr.move_to(50,15)
+        cr.set_font_size(12 * self.scale)
+        cr.move_to(50 * self.scale, 15 * self.scale)
         cr.show_text(self.channel)
         # draw level
         cr.set_source_rgb(self.color_level_red, self.color_level_green, self.color_level_blue)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
             cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(13)
-        cr.move_to(6,48)
+        cr.set_font_size(13 * self.scale)
+        cr.move_to(6 * self.scale, 48 * self.scale)
         if self.level != 0 or self.next_level != 0:     # Don't show 0 level
             if self.percent_level:
                 cr.show_text(str(int(round((self.level/255)*100))))    # Level in %
             else:
                 cr.show_text(str(self.level))                  # Level in 0 to 255 value
         # draw level bar
-        cr.rectangle(allocation.width-9, allocation.height-2, 6, -(50/255)*self.level)
+        cr.rectangle(allocation.width - 9, allocation.height - 2,
+                6 * self.scale, -((50 / 255) * self.scale) * self.level)
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
         # draw down icon
         if self.next_level < self.level:
-            offset_x = 6
-            offset_y = -6
-            cr.move_to(offset_x + 11, offset_y + allocation.height-6)
-            cr.line_to(offset_x + 6, offset_y + allocation.height-16)
-            cr.line_to(offset_x + 16, offset_y + allocation.height-16)
+            offset_x = 6 * self.scale
+            offset_y = -6 * self.scale
+            cr.move_to(offset_x + 11 * self.scale, offset_y + allocation.height-6 * self.scale)
+            cr.line_to(offset_x + 6 * self.scale, offset_y + allocation.height-16 * self.scale)
+            cr.line_to(offset_x + 16 * self.scale, offset_y + allocation.height-16 * self.scale)
             cr.close_path()
             cr.set_source_rgb(0.5, 0.5, 0.9)
             cr.fill()
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
                 cairo.FONT_WEIGHT_NORMAL)
-            cr.set_font_size(10)
-            cr.move_to(offset_x + 24, offset_y + allocation.height-6)
+            cr.set_font_size(10 * self.scale)
+            cr.move_to(offset_x + (24 * self.scale), offset_y + allocation.height - (6 * self.scale))
             if self.percent_level:
                 cr.show_text(str(int(round((self.next_level/255)*100))))   # Level in %
             else:
                 cr.show_text(str(self.next_level))                 # Level in 0 to 255 value
         # draw up icon
         if self.next_level > self.level:
-            offset_x = 6
-            offset_y = 15
-            cr.move_to(offset_x + 11, offset_y + 6)
-            cr.line_to(offset_x + 6, offset_y + 16)
-            cr.line_to(offset_x + 16, offset_y + 16)
+            offset_x = 6 * self.scale
+            offset_y = 15 * self.scale
+            cr.move_to(offset_x + 11 * self.scale, offset_y + 6 * self.scale)
+            cr.line_to(offset_x + 6 * self.scale, offset_y + 16 * self.scale)
+            cr.line_to(offset_x + 16 * self.scale, offset_y + 16 * self.scale)
             cr.close_path()
             cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.fill()
             #cr.set_source_rgb(0.5, 0.5, 0.9)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, 
                 cairo.FONT_WEIGHT_NORMAL)
-            cr.set_font_size(10)
-            cr.move_to(offset_x + 24, offset_y + 16)
+            cr.set_font_size(10 * self.scale)
+            cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
             if self.percent_level:
                 cr.show_text(str(int(round((self.next_level/255)*100))))   # Level in %
             else:
