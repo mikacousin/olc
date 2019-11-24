@@ -30,11 +30,12 @@ class ChannelWidget(Gtk.Widget):
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
 
-        flowbox.unselect_all()
-
         self.app.window.set_focus(flowboxchild)
-        flowbox.select_child(flowboxchild)
-        self.app.window.last_chan_selected = str(int(self.channel) - 1)
+        if flowboxchild.is_selected():
+            flowbox.unselect_child(flowboxchild)
+        else:
+            flowbox.select_child(flowboxchild)
+            self.app.window.last_chan_selected = str(int(self.channel) - 1)
 
     def do_draw(self, cr):
         self.width = 80 * self.scale
