@@ -582,7 +582,7 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.unselect_all()
 
         for universe in range(NB_UNIVERSES):
-            for output in range(MAX_CHANNELS):
+            for output in range(512):
                 level = self.app.dmx.frame[universe][output]
                 channel = self.app.patch.outputs[universe][output] - 1
                 if level > 0:
