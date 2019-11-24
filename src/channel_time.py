@@ -1,5 +1,6 @@
 from gi.repository import Gio, Gtk, Gdk
 
+from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
 from olc.cue import ChannelTime
 
@@ -27,8 +28,8 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.channels = []
 
-        for i in range(512):
-            self.channels.append(ChannelWidget(i+1, 0, 0))
+        for i in range(MAX_CHANNELS):
+            self.channels.append(ChannelWidget(i + 1, 0, 0))
             self.flowbox.add(self.channels[i])
 
         self.scrolled1.add(self.flowbox)
@@ -280,7 +281,7 @@ class ChanneltimeTab(Gtk.Paned):
 
     def on_channeltime_changed(self, treeview):
         """ Select a Channel Time """
-        for channel in range(512):
+        for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             #self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
@@ -344,7 +345,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < 512:
+            if channel >= 0 and channel < MAX_CHANNELS:
                 self.channels[channel].clicked = True
                 self.flowbox.invalidate_filter()
 
@@ -353,7 +354,7 @@ class ChanneltimeTab(Gtk.Paned):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
         else:
-            for channel in range(512):
+            for channel in range(MAX_CHANNELS):
                 self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 

@@ -104,7 +104,7 @@ class Ascii(object):
                             self.chasers.append(Sequence(index_seq, self.patch))
                     """
                     #print ("Sequence :", p[0], "Type :", type_seq)
-                    i = 1
+                    #i = 1
                     flag_seq = True
                     flag_patch = False
                     flag_master = False
@@ -117,7 +117,7 @@ class Ascii(object):
                     if line[:4] == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                        i += 1
+                        #i += 1
                         p = line[5:].split(" ")
                         seq = p[0]
                         mem = float(p[1])
@@ -178,7 +178,7 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, delay_out=d_out, delay_in=d_in, wait=wait, text=txt)
+                            cue = Cue(seq, mem, channels, time_in=t_in, time_out=t_out, delay_out=d_out, delay_in=d_in, wait=wait, text=txt)
 
                             self.app.chasers[-1].add_cue(cue)
 
@@ -194,13 +194,13 @@ class Ascii(object):
                     if line[:3] == "CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                        i += 1
+                        #i += 1
                         #print ("        Mémoire :", line[4:])
                         mem = line[4:]
                     if line[:4] == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                        i += 1
+                        #i += 1
                         #print ("        Mémoire :", line[5:])
                         mem = line[5:]
 
@@ -285,8 +285,8 @@ class Ascii(object):
                                 #print ("            ", r[0], "@", int(r[1][1:], 16))
                                 if r[0] != "":
                                     channel = int(r[0])
-                                    # For now, ignore channels greater than 512
-                                    if channel < 512:
+                                    # Ignore channels greater than MAX_CHANNELS
+                                    if channel < MAX_CHANNELS:
                                         level = int(r[1][1:], 16)
                                         channels[channel-1] = level
                         #if txt and t_out and t_in and channels:
@@ -300,7 +300,7 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(i, mem, channels, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, text=txt, channel_time=channel_time)
+                            cue = Cue(1, mem, channels, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, text=txt, channel_time=channel_time)
 
                             # print("StepId :", cue.index, "Memory :", cue.memory)
                             # print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
@@ -309,7 +309,7 @@ class Ascii(object):
                             # for channel in channel_time.keys():
                             #     print("Channel Time :", channel, channel_time[channel].delay, channel_time[channel].time)
                             # print("")
-                            # for channel in range(512):
+                            # for channel in range(MAX_CHANNELS):
                             #     print("Channel :", channel+1, "@", cue.channels[channel])
 
                             self.app.sequence.add_cue(cue)
@@ -341,8 +341,8 @@ class Ascii(object):
                             r = q[1].split("@")
                             channel = int(q[0])
                             output = int(r[0])
-                            univ = int(output/512)
-                            out = output - (512*univ)
+                            univ = int(output / 512)
+                            out = output - (512 * univ)
                             # print(channel, univ, out)
                             if univ < NB_UNIVERSES:
                                 if channel < MAX_CHANNELS:
@@ -426,7 +426,7 @@ class Ascii(object):
                             if r[0] != "":
                                 channel = int(r[0])
                                 level = int(r[1][1:], 16)
-                                if channel <= 512:
+                                if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
                     if line == "":
                         self.app.masters.append(Master(item[0], item[1], item[2], item[3], self.app.groups, self.app.chasers, channels=channels))
@@ -443,7 +443,7 @@ class Ascii(object):
             self.app.window.header.set_subtitle(subtitle)
 
             # Add an empty cue at the end
-            cue = Cue(self.app.sequence.last+1, "0", text="End")
+            cue = Cue(1, "0.0", text="End")
             self.app.sequence.add_cue(cue)
 
             # Redraw crossfade :

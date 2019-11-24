@@ -535,7 +535,7 @@ class Window(Gtk.ApplicationWindow):
 
         if self.last_chan_selected == '':
             # Find first patched channel
-            for i in range(512):
+            for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
                     break
             child = self.flowbox.get_child_at_index(i)
@@ -558,7 +558,7 @@ class Window(Gtk.ApplicationWindow):
 
         if self.last_chan_selected == '':
             # Find first patched channel
-            for i in range(512):
+            for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
                     break
             child = self.flowbox.get_child_at_index(i)
@@ -582,7 +582,7 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.unselect_all()
 
         for universe in range(NB_UNIVERSES):
-            for output in range(512):
+            for output in range(MAX_CHANNELS):
                 level = self.app.dmx.frame[universe][output]
                 channel = self.app.patch.outputs[universe][output] - 1
                 if level > 0:

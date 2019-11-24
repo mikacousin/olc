@@ -3,8 +3,12 @@ import array
 from olc.define import MAX_CHANNELS
 
 class Cue(object):
-    def __init__(self, index, memory, channels=array.array('B', [0] * MAX_CHANNELS), time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0, wait=0.0, text="", channel_time={}):
-        self.index = index
+    def __init__(self, sequence, memory, channels=array.array('B', [0] * MAX_CHANNELS),
+            time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0, wait=0.0,
+            text="", channel_time={}):
+        # Sequence == 0 : Global Memory
+        # Sequence != 0 : Cue in a sequence
+        self.sequence = sequence
         self.memory = memory
         self.channels = channels
         self.time_in = time_in
@@ -40,9 +44,9 @@ if __name__ == "__main__":
     channels = array.array('B', [0] * MAX_CHANNELS)
     for i in range(MAX_CHANNELS):
         channels[i] = int(i/2)
-    cue = Cue(1, 10.0, channels, text="Mise")
+    cue = Cue(0, 10.0, channels, text="Mise")
 
-    print("Step :", cue.index, "Memory :",cue.memory)
+    print("Memory :", cue.memory)
     print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
     print("Delay In :", cue.delay_in, "\nDelay Out :", cue.delay_out)
     print("Text :", cue.text)

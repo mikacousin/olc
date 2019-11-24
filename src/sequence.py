@@ -28,13 +28,13 @@ class Sequence(object):
         # On a besoin de connaitre le patch
         self.patch = patch
 
-        # create an empty cue 0
-        cue = Cue(1, "0.0", text="Start")
+        # create an empty cue 0.0
+        cue = Cue(0, "0.0", text="Start")
         self.add_cue(cue)
 
     def add_cue(self, cue):
         self.cues.append(cue)
-        self.last = cue.index
+        self.last = len(self.cues)
         # On enregistre la liste des circuits présents dans la mémoire
         for i in range(MAX_CHANNELS):
             if cue.channels[i] != 0:
@@ -580,6 +580,6 @@ if __name__ == "__main__":
         print("time out :", cue.time_out)
         print("text :", cue.text)
         print("Chanels :")
-        for i in range(512):
+        for i in range(MAX_CHANNELS):
             print(i+1, "@", cue.channels[i])
         print("")

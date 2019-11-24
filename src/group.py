@@ -284,7 +284,7 @@ class GroupTab(Gtk.Paned):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < 512:
+            if channel >= 0 and channel < MAX_CHANNELS:
 
                 # Only patched channel
                 if self.app.patch.channels[channel][0] != 0:
@@ -296,7 +296,7 @@ class GroupTab(Gtk.Paned):
                     self.flowbox1.select_child(child)
                     self.last_chan_selected = self.keystring
         else:
-            for channel in range(512):
+            for channel in range(MAX_CHANNELS):
                 self.channels[channel].clicked = False
             self.flowbox1.invalidate_filter()
 
@@ -510,7 +510,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.add(self.grps[-1])
         # Deselect all channels
         self.flowbox1.unselect_all()
-        for channel in range(512):
+        for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()

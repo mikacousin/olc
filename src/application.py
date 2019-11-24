@@ -71,7 +71,7 @@ class Application(Gtk.Application):
 
         # Create Main Playback
         self.sequence = Sequence(1, self.patch, text="Main Playback")
-        last = Cue(self.sequence.last + 1, "0.0", text="End")
+        last = Cue(0, "0.0", text="End")
         self.sequence.add_cue(last)
 
         # Create List for Chasers
@@ -318,7 +318,7 @@ class Application(Gtk.Application):
         # Redraw Sequential Window
         self.sequence = Sequence(1, self.patch)
         self.sequence.window = self.window
-        cue = Cue(self.sequence.last+1, "0", text="Last Cue")
+        cue = Cue(0, "0.0", text="End")
         self.sequence.add_cue(cue)
         self.sequence.position = 0
         self.window.sequential.time_in = self.sequence.cues[1].time_in
@@ -351,11 +351,8 @@ class Application(Gtk.Application):
         self.window.seq_grid.queue_draw()
         # Redraw Patch Window
         self.patch.patch_1on1()
-        for channel in range(512):
-            try:
-                self.patch_outputs_tab.liststore[channel][2] = str(channel + 1)
-            except:
-                pass
+        if self.patch_outputs_tab != None:
+            self.patch_outputs_tab.flowbox.queue_draw()
         # Redraw Masters Window
         try:
             for i in range(len(self.masters)):

@@ -507,7 +507,7 @@ class SequenceTab(Gtk.Grid):
 
     def on_memory_changed(self, treeview):
         """ Select memory """
-        for channel in range(512):
+        for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
@@ -770,7 +770,7 @@ class SequenceTab(Gtk.Grid):
                 step = int(self.liststore2[selected][0])
                 channels = self.seq.cues[step].channels
 
-                for channel in range(512):
+                for channel in range(MAX_CHANNELS):
                     if channels[channel] != 0:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
@@ -787,7 +787,7 @@ class SequenceTab(Gtk.Grid):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < 512:
+            if channel >= 0 and channel < MAX_CHANNELS:
 
                 # Only patched channel
                 if self.app.patch.channels[channel][0] != 0:
@@ -799,7 +799,7 @@ class SequenceTab(Gtk.Grid):
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
         else:
-            for channel in range(512):
+            for channel in range(MAX_CHANNELS):
                 self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 
@@ -849,7 +849,7 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < 512:
+        if channel >= 0 and channel < MAX_CHANNELS:
             self.channels[channel].clicked = True
             self.flowbox.invalidate_filter()
 
@@ -868,7 +868,7 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < 512:
+        if channel >= 0 and channel < MAX_CHANNELS:
             self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 
@@ -985,7 +985,7 @@ class SequenceTab(Gtk.Grid):
 
                 if response == Gtk.ResponseType.OK:
                     # Update levels in the cue
-                    for channel in range(512):
+                    for channel in range(MAX_CHANNELS):
                         channels[channel] = self.channels[channel].level
                         if channels[channel] != 0:
                             self.seq.channels[channel] = 1
@@ -997,7 +997,7 @@ class SequenceTab(Gtk.Grid):
                     # Update Main playback display
                     if self.seq == self.app.sequence:
                         if step == self.app.sequence.position + 1:
-                            for channel in range(512):
+                            for channel in range(MAX_CHANNELS):
                                 self.app.window.channels[channel].next_level = self.seq.cues[step].channels[channel]
                                 self.app.window.channels[channel].queue_draw()
 
@@ -1052,7 +1052,7 @@ class SequenceTab(Gtk.Grid):
 
                     if response == Gtk.ResponseType.OK:
                         # Update memory's levels
-                        for channel in range(512):
+                        for channel in range(MAX_CHANNELS):
                             self.seq.cues[i].channels[channel] = self.channels[channel].level
                             if self.seq.cues[i].channels[channel] != 0:
                                 self.seq.channels[channel] = 1
@@ -1068,7 +1068,7 @@ class SequenceTab(Gtk.Grid):
                         # Update Main playback
                         if self.seq == self.app.sequence:
                             if i == self.app.sequence.position + 1:
-                                for channel in range(512):
+                                for channel in range(MAX_CHANNELS):
                                     self.app.window.channels[channel].next_level = self.seq.cues[i].channels[channel]
                                     self.app.window.channels[channel].queue_draw()
 

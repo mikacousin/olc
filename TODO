@@ -1,4 +1,7 @@
-- Voir si on peut avoir la meme memoire à deux endroits
+- Vérifier le systeme des mémoires : globales, pas liées à une séquence
+- Séquentiel : liste de mémoires (une peut être à plusieurs endroits)
+- Outputs Curves
+- Grand Master
 - Create new masters
 - Add GoBack and Pause
 - Edit Chasers
@@ -6,4 +9,5 @@
 - Launch olad if not
 - Ola Configuration
 - 2D view
+- Devices
 - Midi configuration
