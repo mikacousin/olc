@@ -15,6 +15,7 @@ app_PYTHON = \
 	patch_channels.py \
 	patch_outputs.py \
 	sequence.py \
+	sequence_edition.py \
 	settings.py \
 	track_channels.py \
 	virtual_console.py \

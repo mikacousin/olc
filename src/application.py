@@ -13,7 +13,8 @@ from olc.patch_outputs import PatchOutputsTab
 from olc.patch_channels import PatchChannelsTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
-from olc.sequence import Sequence, SequenceTab
+from olc.sequence import Sequence
+from olc.sequence_edition import SequenceTab
 from olc.group import Group, GroupTab
 from olc.master import Master, MasterTab
 from olc.channel_time import ChanneltimeTab
