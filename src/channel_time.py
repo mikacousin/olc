@@ -2,7 +2,27 @@ from gi.repository import Gio, Gtk, Gdk
 
 from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
-from olc.cue import ChannelTime
+
+class ChannelTime(object):
+    def __init__(self, delay=0.0, time=0.0):
+        self.delay = delay
+        self.time = time
+
+        print(type(self.delay))
+
+    def get_delay(self):
+        return self.delay
+
+    def get_time(self):
+        return self.time
+
+    def set_delay(self, delay):
+        if isinstance(delay, float) and delay >= 0:
+            self.delay = delay
+
+    def set_time(self, time):
+        if isinstance(time, float) and time >= 0:
+            self.time = time
 
 class ChanneltimeTab(Gtk.Paned):
     def __init__(self, sequence, step):

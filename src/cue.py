@@ -2,6 +2,8 @@ import array
 
 from olc.define import MAX_CHANNELS
 
+from olc.channel_time import ChannelTime
+
 class Cue(object):
     def __init__(self, sequence, memory, channels=array.array('B', [0] * MAX_CHANNELS),
             time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0, wait=0.0,
@@ -33,11 +35,6 @@ class Cue(object):
 
     def get_level(self, channel):
         return self.channels[channel]
-
-class ChannelTime(object):
-    def __init__(self, delay=0.0, time=0.0):
-        self.delay = delay
-        self.time = time
 
 if __name__ == "__main__":
 
