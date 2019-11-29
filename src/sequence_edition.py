@@ -80,7 +80,7 @@ class SequenceTab(Gtk.Grid):
                             if self.liststore1[i][0] == self.app.chasers[j].index:
                                 self.seq = self.app.chasers[j]
             # Liststore with infos from the sequence
-            for i in range(self.seq.last):
+            for i in range(self.seq.last)[1:]:
                 if self.seq.steps[i].wait.is_integer():
                     wait = str(int(self.seq.steps[i].wait))
                     if wait == "0":
@@ -588,7 +588,7 @@ class SequenceTab(Gtk.Grid):
                                 self.seq = self.app.chasers[j]
             # Liststore with infos from the sequence
             if self.seq == self.app.sequence:
-                for i in range(self.seq.last):
+                for i in range(self.seq.last)[1:]:
                     if self.seq.steps[i].wait.is_integer():
                         wait = str(int(self.seq.steps[i].wait))
                         if wait == "0":
@@ -621,7 +621,7 @@ class SequenceTab(Gtk.Grid):
                     self.liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                         wait, d_out, t_out, d_in, t_in, channel_time])
             else:
-                for i in range(self.seq.last):
+                for i in range(self.seq.last)[1:]:
                     if self.seq.steps[i].wait.is_integer():
                         wait = str(int(self.seq.steps[i].wait))
                         if wait == "0":

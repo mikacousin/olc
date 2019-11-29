@@ -100,7 +100,7 @@ class Window(Gtk.ApplicationWindow):
         self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int, int)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
-        if self.seq.last:
+        if self.seq.last > 1:
             position = self.seq.position
             t_total = self.seq.steps[position].total_time
             t_in = self.seq.steps[position].time_in
@@ -118,8 +118,6 @@ class Window(Gtk.ApplicationWindow):
             d_out = 0.0
             t_wait = 0.0
             channel_time = {}
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
 
         # Crossfade widget
         self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait, channel_time)
@@ -154,13 +152,17 @@ class Window(Gtk.ApplicationWindow):
             if channel_time == "0":
                 channel_time = ""
             bg = "#232729"
-            if i == 0 or i == self.app.sequence.last-1:
+            #if i == 0 or i == self.app.sequence.last-1:
+            if i == 0:
                 self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 42])
             else:
                 self.cues_liststore1.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                     wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL, 42])
             self.cues_liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                 wait, d_out, t_out, d_in, t_in, channel_time])
+
+        if self.app.sequence.last == 1:
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
 
         # Filter for the first part of the cue list
         self.step_filter1 = self.cues_liststore1.filter_new()

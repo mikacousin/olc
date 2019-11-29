@@ -322,14 +322,14 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.midi_learn = 'Seq_plus'
             self.queue_draw()
         else:
-            self.app.sequence.sequence_plus(self.app)
+            self.app.sequence.sequence_plus()
 
     def on_seq_minus(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = 'Seq_minus'
             self.queue_draw()
         else:
-            self.app.sequence.sequence_minus(self.app)
+            self.app.sequence.sequence_minus()
 
     def on_output(self, widget):
         if self.midi_learn:
@@ -364,7 +364,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.midi_learn = 'Goto'
             self.queue_draw()
         else:
-            self.app.sequence.sequence_goto(self.app, self.app.window.keystring)
+            self.app.sequence.sequence_goto(self.app.window.keystring)
             self.app.window.keystring = ''
             self.app.window.statusbar.push(self.app.window.context_id, '')
 

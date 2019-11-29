@@ -1,7 +1,7 @@
 from olc.channel_time import ChannelTime
 
 class Step(object):
-    def __init__(self, sequence=0, cue=0.0,
+    def __init__(self, sequence=0, cue=None,
             time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0,
             wait=0.0, channel_time={}, text=''):
 

@@ -432,14 +432,11 @@ class Ascii(object):
             # Set main window's title with the file name
             self.app.window.header.set_title(self.basename)
             # Set main window's subtitle
-            subtitle = "Mem. : 0 - Next Mem. : "+self.app.sequence.steps[0].cue.memory+" "+self.app.sequence.steps[0].cue.text
+            subtitle = ('Mem. : 0 - Next Mem. : '
+                    + str(self.app.sequence.steps[0].cue.memory)
+                    + ' '
+                    + self.app.sequence.steps[0].cue.text)
             self.app.window.header.set_subtitle(subtitle)
-
-            """
-            # Add an empty cue at the end
-            cue = Cue(1, "0.0", text="End")
-            self.app.sequence.add_cue(cue)
-            """
 
             # Redraw crossfade :
             # On se place au début de la séquence

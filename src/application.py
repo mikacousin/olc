@@ -252,7 +252,7 @@ class Application(Gtk.Application):
             level = dmxframe[output]
             self.dmx.frame[0][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.position < self.sequence.last:
+            if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -267,7 +267,7 @@ class Application(Gtk.Application):
             level = dmxframe[output]
             self.dmx.frame[1][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.position < self.sequence.last:
+            if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -282,7 +282,7 @@ class Application(Gtk.Application):
             level = dmxframe[output]
             self.dmx.frame[2][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.position < self.sequence.last:
+            if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -298,7 +298,7 @@ class Application(Gtk.Application):
             level = dmxframe[output]
             self.dmx.frame[3][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.position < self.sequence.last:
+            if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -315,7 +315,7 @@ class Application(Gtk.Application):
                     level = dmxframe[output]
                     self.dmx.frame[univ][output] = level
                     self.window.channels[channel-1].level = level
-                    if self.sequence.position < self.sequence.last:
+                    if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
                         next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
                     elif self.sequence.last:
                         next_level = self.sequence.steps[0].cue.channels[channel-1]

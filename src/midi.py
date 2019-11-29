@@ -319,7 +319,7 @@ class Midi(object):
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.goto.emit('button-press-event', event)
                 else:
-                    self.app.sequence.sequence_goto(self.app, self.app.window.keystring)
+                    self.app.sequence.sequence_goto(self.app.window.keystring)
                     self.app.window.keystring = ''
                     self.app.window.statusbar.push(self.app.window.context_id, '')
             elif (not self.midi_learn and msg.type == 'note_on'

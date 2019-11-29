@@ -5,6 +5,7 @@ from gi.repository import Gtk, Gio, GLib, Pango
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.cue import Cue
+from olc.step import Step
 from olc.widgets_channel import ChannelWidget
 
 class Sequence(object):
@@ -27,6 +28,11 @@ class Sequence(object):
         self.window = None
         # On a besoin de connaitre le patch
         self.patch = patch
+
+        # Step and Cue 0
+        cue = Cue(0, 0.0)
+        step = Step(sequence=self.index, cue=cue)
+        self.add_step(step)
 
         self.app = Gio.Application.get_default()
 
@@ -87,7 +93,12 @@ class Sequence(object):
             self.window.seq_grid.queue_draw()
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.steps[position].cue.memory+" "+self.steps[position].text+" - Next Mem. : "+self.steps[position+1].cue.memory+" "+self.steps[position+1].text
+            subtitle = ('Mem. : '
+                    + str(self.steps[position].cue.memory) + ' '
+                    + self.steps[position].text
+                    + ' - Next Mem. : '
+                    + str(self.steps[position + 1].cue.memory) + ' '
+                    + self.steps[position + 1].text)
             self.app.window.header.set_subtitle(subtitle)
 
             # On vide le tableau des valeurs entrées par l'utilisateur
@@ -133,7 +144,12 @@ class Sequence(object):
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.steps[position].cue.memory+" "+self.steps[position].text+" - Next Mem. : "+self.steps[position+1].cue.memory+" "+self.steps[position+1].text
+            subtitle = ('Mem. : '
+                    + str(self.steps[position].cue.memory) + ' '
+                    + self.steps[position].text
+                    + ' - Next Mem. : '
+                    + str(self.steps[position + 1].cue.memory) + ' '
+                    + self.steps[position + 1].text)
             self.app.window.header.set_subtitle(subtitle)
 
             # Update ui
@@ -408,7 +424,12 @@ class ThreadGo(threading.Thread):
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
+            subtitle = ('Mem. : '
+                    + str(self.app.sequence.steps[position].cue.memory) + ' '
+                    + self.app.sequence.steps[position].text
+                    + ' - Next Mem. : '
+                    + str(self.app.sequence.steps[position+1].cue.memory) + ' '
+                    + self.app.sequence.steps[position+1].text)
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
@@ -477,6 +498,7 @@ class ThreadGo(threading.Thread):
 
                         # If channel is in a channel time
                         # TODO: If Time is 0, use TimeIn or TimeOut
+                        # TODO: Bug if user had change a level
                         if channel in channel_time:
                             #print(channel_time[channel].delay, channel_time[channel].time)
                             ct_delay = channel_time[channel].delay * 1000

@@ -299,8 +299,8 @@ class ThreadChaser(threading.Thread):
                 t_in = self.app.chasers[self.chaser].steps[position+1].time_in
                 t_out = self.app.chasers[self.chaser].steps[position+1].time_out
             else:
-                t_in = self.app.chasers[self.chaser].steps[0].time_in
-                t_out = self.app.chasers[self.chaser].steps[0].time_out
+                t_in = self.app.chasers[self.chaser].steps[1].time_in
+                t_out = self.app.chasers[self.chaser].steps[1].time_out
 
             # Quel est le temps le plus long
             if t_in > t_out:
@@ -325,7 +325,7 @@ class ThreadChaser(threading.Thread):
 
             position += 1
             if position == self.app.chasers[self.chaser].last:
-                position = 0
+                position = 1
 
 
     def stop(self):
@@ -356,7 +356,7 @@ class ThreadChaser(threading.Thread):
                         if next_level < seq_level:
                             next_level = seq_level
                     else:
-                        next_level = self.app.chasers[self.chaser].steps[0].cue.channels[channel-1]
+                        next_level = self.app.chasers[self.chaser].steps[1].cue.channels[channel-1]
                         if next_level < seq_level:
                             next_level = seq_level
                         self.app.chasers[self.chaser].position = 1
