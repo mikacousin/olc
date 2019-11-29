@@ -22,6 +22,10 @@
         <attribute name="accel">&lt;Primary&gt;p</attribute>
       </item>
       <item>
+        <attribute name="action">app.memories</attribute>
+        <attribute name="label" translatable="yes">_Memories</attribute>
+      </item>
+      <item>
         <attribute name="action">app.groups</attribute>
         <attribute name="label" translatable="yes">_Groups</attribute>
         <attribute name="accel">&lt;Primary&gt;g</attribute>

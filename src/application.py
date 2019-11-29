@@ -13,6 +13,7 @@ from olc.patch_outputs import PatchOutputsTab
 from olc.patch_channels import PatchChannelsTab
 from olc.dmx import Dmx, PatchDmx
 from olc.cue import Cue
+from olc.cues_edition import CuesEditionTab
 from olc.sequence import Sequence
 from olc.sequence_edition import SequenceTab
 from olc.group import Group, GroupTab
@@ -93,6 +94,7 @@ class Application(Gtk.Application):
         self.patch_outputs_tab = None
         self.patch_channels_tab = None
         self.master_tab = None
+        self.memories_tab = None
         self.group_tab = None
         self.sequences_tab = None
         self.channeltime_tab = None
@@ -204,6 +206,10 @@ class Application(Gtk.Application):
         patch_channelsAction = Gio.SimpleAction.new('patch_channels', None)
         patch_channelsAction.connect('activate', self._patch_channels)
         self.add_action(patch_channelsAction)
+
+        memoriesAction = Gio.SimpleAction.new('memories', None)
+        memoriesAction.connect('activate', self._memories)
+        self.add_action(memoriesAction)
 
         groupsAction = Gio.SimpleAction.new('groups', None)
         groupsAction.connect('activate', self._groups)
@@ -505,6 +511,28 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(-1)
         else:
             page = self.window.notebook.page_num(self.track_channels_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _memories(self, action, parameter):
+        # Create Memories Tab
+        if self.memories_tab == None:
+            self.memories_tab = CuesEditionTab()
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.memories_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Memories'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.memories_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.memories_tab)
             self.window.notebook.set_current_page(page)
 
     def _groups(self, action, parameter):

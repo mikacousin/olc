@@ -94,7 +94,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq.connect('clicked', self.on_seq)
         self.empty1 = ButtonWidget(' ')
         self.empty2 = ButtonWidget(' ')
-        self.preset = ButtonWidget('Preset')
+        self.preset = ButtonWidget('Preset', 'Preset')
+        self.preset.connect('clicked', self.on_preset)
         self.group = ButtonWidget('Group', 'Group')
         self.group.connect('clicked', self.on_group)
         self.effect = ButtonWidget('Effect')
@@ -344,6 +345,13 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app._sequences(None, None)
+
+    def on_preset(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Preset'
+            self.queue_draw()
+        else:
+            self.app._memories(None, None)
 
     def on_group(self, widget):
         if self.midi_learn:

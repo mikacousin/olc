@@ -34,6 +34,7 @@ class Midi(object):
                 ['Output', 0, -1],
                 ['Seq', 0, -1],
                 ['Group', 0, -1],
+                ['Preset', 0, -1],
                 ['Track', 0, -1],
                 ['Goto', 0, -1],
                 ['Zero', 0, 0],
@@ -267,6 +268,36 @@ class Midi(object):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
                     self.app.virtual_console.group.emit('button-release-event', event)
+
+            # Preset
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Preset':
+                    break
+            if self.midi_learn == 'Preset':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = -1
+                    # Learn new values
+                    self.midi_table[index] = ['Preset', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.preset.emit('button-press-event', event)
+                else:
+                    self.app._groups(None, None)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.preset.emit('button-release-event', event)
 
             # Track
             for index in range(len(self.midi_table)):

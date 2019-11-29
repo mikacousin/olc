@@ -302,9 +302,14 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
+                            # Create Cue
                             cue = Cue(0, mem, channels, text=txt)
+                            # Add cue to the list
+                            self.app.memories.append(cue)
+                            # Create Step
                             step = Step(1, cue, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, channel_time=channel_time, text=txt)
 
+                            # Add Step to the Sequence
                             self.app.sequence.add_step(step)
                             in_cue = False
                             txt = False
