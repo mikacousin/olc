@@ -296,11 +296,11 @@ class ThreadChaser(threading.Thread):
         while self.app.chasers[self.chaser].run:
             # On récupère les temps du pas suivant
             if position != self.app.chasers[self.chaser].last-1:
-                t_in = self.app.chasers[self.chaser].cues[position+1].time_in
-                t_out = self.app.chasers[self.chaser].cues[position+1].time_out
+                t_in = self.app.chasers[self.chaser].steps[position+1].time_in
+                t_out = self.app.chasers[self.chaser].steps[position+1].time_out
             else:
-                t_in = self.app.chasers[self.chaser].cues[1].time_in
-                t_out = self.app.chasers[self.chaser].cues[1].time_out
+                t_in = self.app.chasers[self.chaser].steps[1].time_in
+                t_out = self.app.chasers[self.chaser].steps[1].time_out
 
             # Quel est le temps le plus long
             if t_in > t_out:
@@ -343,20 +343,20 @@ class ThreadChaser(threading.Thread):
                 # On ne modifie que les channels présents dans le chaser
                 if self.app.chasers[self.chaser].channels[channel-1] != 0:
                     # Niveau duquel on part
-                    old_level = self.app.chasers[self.chaser].cues[position].channels[channel-1]
+                    old_level = self.app.chasers[self.chaser].steps[position].cue.channels[channel-1]
                     # Niveau dans le sequentiel
-                    seq_level = self.app.sequence.cues[self.app.sequence.position].channels[channel-1]
+                    seq_level = self.app.sequence.steps[self.app.sequence.position].cue.channels[channel-1]
 
                     if old_level < seq_level:
                         old_level = seq_level
 
                     # On boucle sur les mémoires et on revient au premier pas
                     if position < self.app.chasers[self.chaser].last-1:
-                        next_level = self.app.chasers[self.chaser].cues[position+1].channels[channel-1]
+                        next_level = self.app.chasers[self.chaser].steps[position+1].cue.channels[channel-1]
                         if next_level < seq_level:
                             next_level = seq_level
                     else:
-                        next_level = self.app.chasers[self.chaser].cues[1].channels[channel-1]
+                        next_level = self.app.chasers[self.chaser].steps[1].cue.channels[channel-1]
                         if next_level < seq_level:
                             next_level = seq_level
                         self.app.chasers[self.chaser].position = 1
@@ -382,6 +382,3 @@ class ThreadChaser(threading.Thread):
                     # Mise à jour de la valeur des masters
                     #self.app.dmx.masters[channel-1] = level
                     self.master.dmx[channel-1] = level
-
-                    #if self.app.chasers[0].cues[position].channels[channel] != 0:
-                    #   print("Channel :", channel+1, "@", self.app.chasers[0].cues[position].channels[channel])

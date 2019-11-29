@@ -81,36 +81,36 @@ class SequenceTab(Gtk.Grid):
                                 self.seq = self.app.chasers[j]
             # Liststore with infos from the sequence
             for i in range(self.seq.last)[1:]:
-                if self.seq.cues[i].wait.is_integer():
-                    wait = str(int(self.seq.cues[i].wait))
+                if self.seq.steps[i].wait.is_integer():
+                    wait = str(int(self.seq.steps[i].wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.seq.cues[i].wait)
-                if self.seq.cues[i].time_out.is_integer():
-                    t_out = str(int(self.seq.cues[i].time_out))
+                    wait = str(self.seq.steps[i].wait)
+                if self.seq.steps[i].time_out.is_integer():
+                    t_out = str(int(self.seq.steps[i].time_out))
                 else:
-                    t_out = str(self.seq.cues[i].time_out)
-                if self.seq.cues[i].delay_out.is_integer():
-                    d_out = str(int(self.seq.cues[i].delay_out))
+                    t_out = str(self.seq.steps[i].time_out)
+                if self.seq.steps[i].delay_out.is_integer():
+                    d_out = str(int(self.seq.steps[i].delay_out))
                     if d_out == "0":
                         d_out = ""
                 else:
-                    d_out = str(self.seq.cues[i].delay_out)
-                if self.seq.cues[i].time_in.is_integer():
-                    t_in = str(int(self.seq.cues[i].time_in))
+                    d_out = str(self.seq.steps[i].delay_out)
+                if self.seq.steps[i].time_in.is_integer():
+                    t_in = str(int(self.seq.steps[i].time_in))
                 else:
-                    t_in = str(self.seq.cues[i].time_in)
-                if self.seq.cues[i].delay_in.is_integer():
-                    d_in = str(int(self.seq.cues[i].delay_in))
+                    t_in = str(self.seq.steps[i].time_in)
+                if self.seq.steps[i].delay_in.is_integer():
+                    d_in = str(int(self.seq.steps[i].delay_in))
                     if d_in == "0":
                         d_in = ""
                 else:
-                    d_in = str(self.seq.cues[i].delay_in)
-                channel_time = str(len(self.seq.cues[i].channel_time))
+                    d_in = str(self.seq.steps[i].delay_in)
+                channel_time = str(len(self.seq.steps[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
-                self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                self.liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                     wait, d_out, t_out, d_in, t_in, channel_time])
 
         self.filter2 = self.liststore2.filter_new()
@@ -225,16 +225,16 @@ class SequenceTab(Gtk.Grid):
             step = int(self.liststore2[path][0])
 
             # Update Wait value
-            self.seq.cues[step].wait = float(text)
+            self.seq.steps[step].wait = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
+                self.seq.steps[step].total_time = self.seq.steps[step].time_in + self.seq.steps[step].wait + self.seq.steps[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
-            for channel in self.seq.cues[step].channel_time.keys():
-                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
-                if t > self.seq.cues[step].total_time:
-                    self.seq.cues[step].total_time = t
+                self.seq.steps[step].total_time = self.seq.steps[step].time_out + self.seq.steps[step].wait + self.seq.steps[step].delay_out
+            for channel in self.seq.steps[step].channel_time.keys():
+                t = self.seq.steps[step].channel_time[channel].delay + self.seq.steps[step].channel_time[channel].time + self.seq.steps[step].wait
+                if t > self.seq.steps[step].total_time:
+                    self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -251,7 +251,7 @@ class SequenceTab(Gtk.Grid):
                     self.app.window.cues_liststore2[path][3] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.wait = float(text)
-                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
                     self.app.window.sequential.queue_draw()
 
     def out_edited(self, widget, path, text):
@@ -277,16 +277,16 @@ class SequenceTab(Gtk.Grid):
             step = int(self.liststore2[path][0])
 
             # Update Time Out value
-            self.seq.cues[step].time_out = float(text)
+            self.seq.steps[step].time_out = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
+                self.seq.steps[step].total_time = self.seq.steps[step].time_in + self.seq.steps[step].wait + self.seq.steps[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
-            for channel in self.seq.cues[step].channel_time.keys():
-                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
-                if t > self.seq.cues[step].total_time:
-                    self.seq.cues[step].total_time = t
+                self.seq.steps[step].total_time = self.seq.steps[step].time_out + self.seq.steps[step].wait + self.seq.steps[step].delay_out
+            for channel in self.seq.steps[step].channel_time.keys():
+                t = self.seq.steps[step].channel_time[channel].delay + self.seq.steps[step].channel_time[channel].time + self.seq.steps[step].wait
+                if t > self.seq.steps[step].total_time:
+                    self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -299,7 +299,7 @@ class SequenceTab(Gtk.Grid):
                 self.app.window.cues_liststore2[path][5] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.time_out = float(text)
-                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
                     self.app.window.sequential.queue_draw()
 
     def in_edited(self, widget, path, text):
@@ -325,16 +325,16 @@ class SequenceTab(Gtk.Grid):
             step = int(self.liststore2[path][0])
 
             # Update Time In value
-            self.seq.cues[step].time_in = float(text)
+            self.seq.steps[step].time_in = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
+                self.seq.steps[step].total_time = self.seq.steps[step].time_in + self.seq.steps[step].wait + self.seq.steps[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
-            for channel in self.seq.cues[step].channel_time.keys():
-                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
-                if t > self.seq.cues[step].total_time:
-                    self.seq.cues[step].total_time = t
+                self.seq.steps[step].total_time = self.seq.steps[step].time_out + self.seq.steps[step].wait + self.seq.steps[step].delay_out
+            for channel in self.seq.steps[step].channel_time.keys():
+                t = self.seq.steps[step].channel_time[channel].delay + self.seq.steps[step].channel_time[channel].time + self.seq.steps[step].wait
+                if t > self.seq.steps[step].total_time:
+                    self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -347,7 +347,7 @@ class SequenceTab(Gtk.Grid):
                 self.app.window.cues_liststore2[path][7] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.time_in = float(text)
-                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
                     self.app.window.sequential.queue_draw()
 
     def delay_out_edited(self, widget, path, text):
@@ -379,16 +379,16 @@ class SequenceTab(Gtk.Grid):
             step = int(self.liststore2[path][0])
 
             # Update Delay Out value
-            self.seq.cues[step].delay_out = float(text)
+            self.seq.steps[step].delay_out = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
+                self.seq.steps[step].total_time = self.seq.steps[step].time_in + self.seq.steps[step].wait + self.seq.steps[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
-            for channel in self.seq.cues[step].channel_time.keys():
-                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
-                if t > self.seq.cues[step].total_time:
-                    self.seq.cues[step].total_time = t
+                self.seq.steps[step].total_time = self.seq.steps[step].time_out + self.seq.steps[step].wait + self.seq.steps[step].delay_out
+            for channel in self.seq.steps[step].channel_time.keys():
+                t = self.seq.steps[step].channel_time[channel].delay + self.seq.steps[step].channel_time[channel].time + self.seq.steps[step].wait
+                if t > self.seq.steps[step].total_time:
+                    self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -405,7 +405,7 @@ class SequenceTab(Gtk.Grid):
                     self.app.window.cues_liststore2[path][4] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.delay_out = float(text)
-                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
                     self.app.window.sequential.queue_draw()
 
     def delay_in_edited(self, widget, path, text):
@@ -437,16 +437,16 @@ class SequenceTab(Gtk.Grid):
             step = int(self.liststore2[path][0])
 
             # Update Delay Out value
-            self.seq.cues[step].delay_in = float(text)
+            self.seq.steps[step].delay_in = float(text)
             # Update Total Time
-            if self.seq.cues[step].time_in + self.seq.cues[step].delay_in > self.seq.cues[step].time_out + self.seq.cues[step].delay_out:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_in + self.seq.cues[step].wait + self.seq.cues[step].delay_in
+            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
+                self.seq.steps[step].total_time = self.seq.steps[step].time_in + self.seq.steps[step].wait + self.seq.steps[step].delay_in
             else:
-                self.seq.cues[step].total_time = self.seq.cues[step].time_out + self.seq.cues[step].wait + self.seq.cues[step].delay_out
-            for channel in self.seq.cues[step].channel_time.keys():
-                t = self.seq.cues[step].channel_time[channel].delay + self.seq.cues[step].channel_time[channel].time + self.seq.cues[step].wait
-                if t > self.seq.cues[step].total_time:
-                    self.seq.cues[step].total_time = t
+                self.seq.steps[step].total_time = self.seq.steps[step].time_out + self.seq.steps[step].wait + self.seq.steps[step].delay_out
+            for channel in self.seq.steps[step].channel_time.keys():
+                t = self.seq.steps[step].channel_time[channel].delay + self.seq.steps[step].channel_time[channel].time + self.seq.steps[step].wait
+                if t > self.seq.steps[step].total_time:
+                    self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -463,7 +463,7 @@ class SequenceTab(Gtk.Grid):
                     self.app.window.cues_liststore2[path][6] = text
                 if self.app.sequence.position+1 == step:
                     self.app.window.sequential.delay_in = float(text)
-                    self.app.window.sequential.total_time = self.seq.cues[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
                     self.app.window.sequential.queue_draw()
 
     def text_edited(self, widget, path, text):
@@ -484,7 +484,7 @@ class SequenceTab(Gtk.Grid):
         step = int(self.liststore2[path][0])
 
         # Update text value
-        self.seq.cues[step].text = text
+        self.seq.steps[step].text = text
 
         # Tag filename as modified
         self.app.ascii.modified = True
@@ -498,11 +498,11 @@ class SequenceTab(Gtk.Grid):
 
             # Update window's subtitle if needed
             if self.app.sequence.position == step:
-                subtitle = "Mem. : " + self.seq.cues[step].memory + " " + self.seq.cues[step].text + " - Next Mem. : " + self.seq.cues[step + 1].memory + " " + self.seq.cues[step + 1].text
+                subtitle = "Mem. : " + self.seq.steps[step].cue.memory + " " + self.seq.steps[step].text + " - Next Mem. : " + self.seq.steps[step + 1].cue.memory + " " + self.seq.steps[step + 1].text
                 self.app.window.header.set_subtitle(subtitle)
 
             if self.app.sequence.position + 1 == step:
-                subtitle = "Mem. : " + self.seq.cues[step - 1].memory + " " + self.seq.cues[step - 1].text + " - Next Mem. : " + self.seq.cues[step].memory + " " + self.seq.cues[step].text
+                subtitle = "Mem. : " + self.seq.steps[step - 1].cue.memory + " " + self.seq.steps[step - 1].text + " - Next Mem. : " + self.seq.steps[step].cue.memory + " " + self.seq.steps[step].text
                 self.app.window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, treeview):
@@ -535,7 +535,7 @@ class SequenceTab(Gtk.Grid):
         if treeiter != None:
             step = int(model[treeiter][0])
             # Display channels in step
-            channels = self.seq.cues[step].channels
+            channels = self.seq.steps[step].cue.channels
 
             if channels[i] != 0 or self.channels[i].clicked:
                 if self.user_channels[i] == -1:
@@ -589,69 +589,69 @@ class SequenceTab(Gtk.Grid):
             # Liststore with infos from the sequence
             if self.seq == self.app.sequence:
                 for i in range(self.seq.last)[1:-1]:
-                    if self.seq.cues[i].wait.is_integer():
-                        wait = str(int(self.seq.cues[i].wait))
+                    if self.seq.steps[i].wait.is_integer():
+                        wait = str(int(self.seq.steps[i].wait))
                         if wait == "0":
                             wait = ""
                     else:
-                        wait = str(self.seq.cues[i].wait)
-                    if self.seq.cues[i].time_out.is_integer():
-                        t_out = str(int(self.seq.cues[i].time_out))
+                        wait = str(self.seq.steps[i].wait)
+                    if self.seq.steps[i].time_out.is_integer():
+                        t_out = str(int(self.seq.steps[i].time_out))
                     else:
-                        t_out = str(self.seq.cues[i].time_out)
-                    if self.seq.cues[i].delay_out.is_integer():
-                        d_out = str(int(self.seq.cues[i].delay_out))
+                        t_out = str(self.seq.steps[i].time_out)
+                    if self.seq.steps[i].delay_out.is_integer():
+                        d_out = str(int(self.seq.steps[i].delay_out))
                         if d_out == "0":
                             d_out = ""
                     else:
-                        d_out = str(self.seq.cues[i].delay_out)
-                    if self.seq.cues[i].time_in.is_integer():
-                        t_in = str(int(self.seq.cues[i].time_in))
+                        d_out = str(self.seq.steps[i].delay_out)
+                    if self.seq.steps[i].time_in.is_integer():
+                        t_in = str(int(self.seq.steps[i].time_in))
                     else:
-                        t_in = str(self.seq.cues[i].time_in)
-                    if self.seq.cues[i].delay_in.is_integer():
-                        d_in = str(int(self.seq.cues[i].delay_in))
+                        t_in = str(self.seq.steps[i].time_in)
+                    if self.seq.steps[i].delay_in.is_integer():
+                        d_in = str(int(self.seq.steps[i].delay_in))
                         if d_in == "0":
                             d_in = ""
                     else:
-                        d_in = str(self.seq.cues[i].delay_in)
-                    channel_time = str(len(self.seq.cues[i].channel_time))
+                        d_in = str(self.seq.steps[i].delay_in)
+                    channel_time = str(len(self.seq.steps[i].channel_time))
                     if channel_time == "0":
                         channel_time = ""
-                    self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    self.liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                         wait, d_out, t_out, d_in, t_in, channel_time])
             else:
                 for i in range(self.seq.last)[1:]:
-                    if self.seq.cues[i].wait.is_integer():
-                        wait = str(int(self.seq.cues[i].wait))
+                    if self.seq.steps[i].wait.is_integer():
+                        wait = str(int(self.seq.steps[i].wait))
                         if wait == "0":
                             wait = ""
                     else:
-                        wait = str(self.seq.cues[i].wait)
-                    if self.seq.cues[i].time_out.is_integer():
-                        t_out = str(int(self.seq.cues[i].time_out))
+                        wait = str(self.seq.steps[i].wait)
+                    if self.seq.steps[i].time_out.is_integer():
+                        t_out = str(int(self.seq.steps[i].time_out))
                     else:
-                        t_out = str(self.seq.cues[i].time_out)
-                    if self.seq.cues[i].delay_out.is_integer():
-                        d_out = str(int(self.seq.cues[i].delay_out))
+                        t_out = str(self.seq.steps[i].time_out)
+                    if self.seq.steps[i].delay_out.is_integer():
+                        d_out = str(int(self.seq.steps[i].delay_out))
                         if d_out == "0":
                             d_out = ""
                     else:
-                        d_out = str(self.seq.cues[i].delay_out)
-                    if self.seq.cues[i].time_in.is_integer():
-                        t_in = str(int(self.seq.cues[i].time_in))
+                        d_out = str(self.seq.steps[i].delay_out)
+                    if self.seq.steps[i].time_in.is_integer():
+                        t_in = str(int(self.seq.steps[i].time_in))
                     else:
-                        t_in = str(self.seq.cues[i].time_in)
-                    if self.seq.cues[i].delay_in.is_integer():
-                        d_in = str(int(self.seq.cues[i].delay_in))
+                        t_in = str(self.seq.steps[i].time_in)
+                    if self.seq.steps[i].delay_in.is_integer():
+                        d_in = str(int(self.seq.steps[i].delay_in))
                         if d_in == "0":
                             d_in = ""
                     else:
-                        d_in = str(self.seq.cues[i].delay_in)
-                    channel_time = str(len(self.seq.cues[i].channel_time))
+                        d_in = str(self.seq.steps[i].delay_in)
+                    channel_time = str(len(self.seq.steps[i].channel_time))
                     if channel_time == "0":
                         channel_time = ""
-                    self.liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                    self.liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                         wait, d_out, t_out, d_in, t_in, channel_time])
 
             self.treeview2.set_model(self.liststore2)
@@ -768,7 +768,7 @@ class SequenceTab(Gtk.Grid):
             if path != None:
                 selected = path.get_indices()[0]
                 step = int(self.liststore2[selected][0])
-                channels = self.seq.cues[step].channels
+                channels = self.seq.steps[step].cue.channels
 
                 for channel in range(MAX_CHANNELS):
                     if channels[channel] != 0:
@@ -975,9 +975,9 @@ class SequenceTab(Gtk.Grid):
             if path != None:
                 selected = path.get_indices()[0]
                 step = int(self.liststore2[selected][0])
-                channels = self.seq.cues[step].channels
+                channels = self.seq.steps[step].cue.channels
 
-                memory = self.seq.cues[step].memory
+                memory = self.seq.steps[step].cue.memory
 
                 # Dialog to confirm Update
                 dialog = Dialog(self.app.window, memory)
@@ -998,7 +998,7 @@ class SequenceTab(Gtk.Grid):
                     if self.seq == self.app.sequence:
                         if step == self.app.sequence.position + 1:
                             for channel in range(MAX_CHANNELS):
-                                self.app.window.channels[channel].next_level = self.seq.cues[step].channels[channel]
+                                self.app.window.channels[channel].next_level = self.seq.steps[step].cue.channels[channel]
                                 self.app.window.channels[channel].queue_draw()
 
                 elif response == Gtk.ResponseType.CANCEL:
@@ -1042,8 +1042,8 @@ class SequenceTab(Gtk.Grid):
             mem = float(self.keystring)
 
             # Memory elready exist ?
-            for i in range(len(self.seq.cues)):
-                if self.seq.cues[i].memory == str(mem):
+            for i in range(len(self.seq.steps)):
+                if self.seq.steps[i].cue.memory == float(mem):
                     # Update memory
 
                     # Dialog to confirm Update
@@ -1053,8 +1053,8 @@ class SequenceTab(Gtk.Grid):
                     if response == Gtk.ResponseType.OK:
                         # Update memory's levels
                         for channel in range(MAX_CHANNELS):
-                            self.seq.cues[i].channels[channel] = self.channels[channel].level
-                            if self.seq.cues[i].channels[channel] != 0:
+                            self.seq.steps[i].cue.channels[channel] = self.channels[channel].level
+                            if self.seq.steps[i].cue.channels[channel] != 0:
                                 self.seq.channels[channel] = 1
 
                         # Tag filename as modified
@@ -1069,7 +1069,7 @@ class SequenceTab(Gtk.Grid):
                         if self.seq == self.app.sequence:
                             if i == self.app.sequence.position + 1:
                                 for channel in range(MAX_CHANNELS):
-                                    self.app.window.channels[channel].next_level = self.seq.cues[i].channels[channel]
+                                    self.app.window.channels[channel].next_level = self.seq.steps[i].cue.channels[channel]
                                     self.app.window.channels[channel].queue_draw()
 
                     elif response == Gtk.ResponseType.CANCEL:
@@ -1104,13 +1104,13 @@ class SequenceTab(Gtk.Grid):
             # Insert new memory if a number is given
             if mem != -1:
                 # Find step where insert new memory
-                for i in range(len(self.seq.cues)):
-                    if float(self.seq.cues[i].memory) > mem:
+                for i in range(len(self.seq.steps)):
+                    if float(self.seq.steps[i].cue.memory) > mem:
                         break
 
                 # For chasers if the new cue is at the end
                 if self.seq.index != 1:
-                    if float(self.seq.cues[i].memory) < mem:
+                    if float(self.seq.steps[i].cue.memory) < mem:
                         index = i + 1
                     else:
                         index = i
@@ -1122,11 +1122,11 @@ class SequenceTab(Gtk.Grid):
             else:
                 # Find the next free index and memory
                 if self.seq.index == 1:
-                    index = self.app.sequence.cues[-2].index + 1
-                    memory = float(self.app.sequence.cues[-2].memory) + 1
+                    index = self.app.sequence.steps[-2].index + 1
+                    memory = float(self.app.sequence.steps[-2].cue.memory) + 1
                 else:
-                    index = self.seq.cues[-1].index + 1
-                    memory = float(self.seq.cues[-1].memory) + 1
+                    index = self.seq.steps[-1].index + 1
+                    memory = float(self.seq.steps[-1].cue.memory) + 1
 
             channels = array.array('B', [0] * MAX_CHANNELS)
             for channel in range(MAX_CHANNELS):
@@ -1134,8 +1134,8 @@ class SequenceTab(Gtk.Grid):
 
             cue = Cue(index, str(memory), channels)
 
-            # Insert Cue
-            self.seq.cues.insert(index, cue)
+            # Insert Step
+            self.seq.steps.insert(index, cue)
             self.seq.last += 1
 
             ### Update Display
@@ -1147,38 +1147,38 @@ class SequenceTab(Gtk.Grid):
             # Update Main Playback
             if self.seq.index == 1:
 
-                if self.seq.cues[index].wait.is_integer():
-                    wait = str(int(self.seq.cues[index].wait))
+                if self.seq.steps[index].wait.is_integer():
+                    wait = str(int(self.seq.steps[index].wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.seq.cues[index].wait)
-                if self.seq.cues[index].time_out.is_integer():
-                    t_out = str(int(self.seq.cues[index].time_out))
+                    wait = str(self.seq.steps[index].wait)
+                if self.seq.steps[index].time_out.is_integer():
+                    t_out = str(int(self.seq.steps[index].time_out))
                 else:
-                    t_out = str(self.seq.cues[index].time_out)
-                if self.seq.cues[index].delay_out.is_integer():
-                    d_out = str(int(self.seq.cues[index].delay_out))
+                    t_out = str(self.seq.steps[index].time_out)
+                if self.seq.steps[index].delay_out.is_integer():
+                    d_out = str(int(self.seq.steps[index].delay_out))
                     if d_out == '0':
                         d_out = ''
                 else:
-                    d_out = str(self.seq.cues[index].delay_out)
-                if self.seq.cues[index].time_in.is_integer():
-                    t_in = str(int(self.seq.cues[index].time_in))
+                    d_out = str(self.seq.steps[index].delay_out)
+                if self.seq.steps[index].time_in.is_integer():
+                    t_in = str(int(self.seq.steps[index].time_in))
                 else:
-                    t_in = str(self.seq.cues[index].time_in)
-                if self.seq.cues[index].delay_in.is_integer():
-                    d_in = str(int(self.seq.cues[index].delay_in))
+                    t_in = str(self.seq.steps[index].time_in)
+                if self.seq.steps[index].delay_in.is_integer():
+                    d_in = str(int(self.seq.steps[index].delay_in))
                     if d_in == '0':
                         d_in = ''
                 else:
-                    d_in = str(self.seq.cues[index].delay_in)
-                channel_time = str(len(self.seq.cues[index].channel_time))
+                    d_in = str(self.seq.steps[index].delay_in)
+                channel_time = str(len(self.seq.steps[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
-                self.liststore2.insert(index - 1, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, d_out, t_out, d_in, t_in, channel_time])
+                self.liststore2.insert(index - 1, [str(index), str(self.seq.steps[index].cue.memory),
+                    self.seq.steps[index].text, wait, d_out, t_out, d_in, t_in, channel_time])
 
                 # Update indexes of cues in listsore
                 for i in range(index, self.seq.last - 2):
@@ -1192,41 +1192,41 @@ class SequenceTab(Gtk.Grid):
 
                 bg = "#232729"
 
-                if self.seq.cues[index].wait.is_integer():
-                    wait = str(int(self.seq.cues[index].wait))
+                if self.seq.steps[index].wait.is_integer():
+                    wait = str(int(self.seq.steps[index].wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.seq.cues[index].wait)
-                if self.seq.cues[index].time_out.is_integer():
-                    t_out = str(int(self.seq.cues[index].time_out))
+                    wait = str(self.seq.steps[index].wait)
+                if self.seq.steps[index].time_out.is_integer():
+                    t_out = str(int(self.seq.steps[index].time_out))
                 else:
-                    t_out = str(self.seq.cues[index].time_out)
-                if self.seq.cues[index].delay_out.is_integer():
-                    d_out = str(int(self.seq.cues[index].delay_out))
+                    t_out = str(self.seq.steps[index].time_out)
+                if self.seq.steps[index].delay_out.is_integer():
+                    d_out = str(int(self.seq.steps[index].delay_out))
                     if d_out == '0':
                         d_out = ''
                 else:
-                    d_out = str(self.seq.cues[index].delay_out)
-                if self.seq.cues[index].time_in.is_integer():
-                    t_in = str(int(self.seq.cues[index].time_in))
+                    d_out = str(self.seq.steps[index].delay_out)
+                if self.seq.steps[index].time_in.is_integer():
+                    t_in = str(int(self.seq.steps[index].time_in))
                 else:
-                    t_in = str(self.seq.cues[index].time_in)
-                if self.seq.cues[index].delay_in.is_integer():
-                    d_in = str(int(self.seq.cues[index].delay_in))
+                    t_in = str(self.seq.steps[index].time_in)
+                if self.seq.steps[index].delay_in.is_integer():
+                    d_in = str(int(self.seq.steps[index].delay_in))
                     if d_in == '0':
                         d_in = ''
                 else:
-                    d_in = str(self.seq.cues[index].delay_in)
-                channel_time = str(len(self.seq.cues[index].channel_time))
+                    d_in = str(self.seq.steps[index].delay_in)
+                channel_time = str(len(self.seq.steps[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
-                self.app.window.cues_liststore1.insert(index, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, d_out, t_out, d_in, t_in, channel_time,
+                self.app.window.cues_liststore1.insert(index, [str(index), str(self.seq.steps[index].cue.memory),
+                    self.seq.steps[index].text, wait, d_out, t_out, d_in, t_in, channel_time,
                     bg, Pango.Weight.NORMAL, 42])
-                self.app.window.cues_liststore2.insert(index, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, d_out, t_out, d_in, t_in, channel_time])
+                self.app.window.cues_liststore2.insert(index, [str(index), str(self.seq.steps[index].cue.memory),
+                    self.seq.steps[index].text, wait, d_out, t_out, d_in, t_in, channel_time])
 
                 # Update indexes of cues in listsore
                 for i in range(index + 1, self.seq.last):
@@ -1235,35 +1235,35 @@ class SequenceTab(Gtk.Grid):
 
                 # Update Crossfade
                 if self.app.sequence.position + 1 == index:
-                    self.app.window.sequential.time_in = self.seq.cues[index].time_in
-                    self.app.window.sequential.time_out = self.seq.cues[index].time_out
-                    self.app.window.sequential.wait = self.seq.cues[index].wait
-                    self.app.window.sequential.total_time = self.seq.cues[index].total_time
+                    self.app.window.sequential.time_in = self.seq.steps[index].time_in
+                    self.app.window.sequential.time_out = self.seq.steps[index].time_out
+                    self.app.window.sequential.wait = self.seq.steps[index].wait
+                    self.app.window.sequential.total_time = self.seq.steps[index].total_time
                     self.app.window.sequential.queue_draw()
 
             else:
                 # Update Chasers
 
-                if self.seq.cues[index].wait.is_integer():
-                    wait = str(int(self.seq.cues[index].wait))
+                if self.seq.steps[index].wait.is_integer():
+                    wait = str(int(self.seq.steps[index].wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.seq.cues[index].wait)
-                if self.seq.cues[index].time_out.is_integer():
-                    t_out = str(int(self.seq.cues[index].time_out))
+                    wait = str(self.seq.steps[index].wait)
+                if self.seq.steps[index].time_out.is_integer():
+                    t_out = str(int(self.seq.steps[index].time_out))
                 else:
-                    t_out = str(self.seq.cues[index].time_out)
-                if self.seq.cues[index].time_in.is_integer():
-                    t_in = str(int(self.seq.cues[index].time_in))
+                    t_out = str(self.seq.steps[index].time_out)
+                if self.seq.steps[index].time_in.is_integer():
+                    t_in = str(int(self.seq.steps[index].time_in))
                 else:
-                    t_in = str(self.seq.cues[index].time_in)
-                channel_time = str(len(self.seq.cues[index].channel_time))
+                    t_in = str(self.seq.steps[index].time_in)
+                channel_time = str(len(self.seq.steps[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
-                self.liststore2.insert(index - 1, [str(index), str(self.seq.cues[index].memory),
-                    self.seq.cues[index].text, wait, t_out, t_in, channel_time])
+                self.liststore2.insert(index - 1, [str(index), str(self.seq.steps[index].cue.memory),
+                    self.seq.steps[index].text, wait, t_out, t_in, channel_time])
 
                 # Update indexes of cues in listsore
                 for i in range(index, self.seq.last - 1):

@@ -95,58 +95,71 @@ class Window(Gtk.ApplicationWindow):
         self.seq = self.app.sequence
         
         # Sequential part of the window
-        position = self.seq.position
-        t_total = self.seq.cues[position].total_time
-        t_in = self.seq.cues[position].time_in
-        t_out = self.seq.cues[position].time_out
-        d_in = self.seq.cues[position].delay_in
-        d_out = self.seq.cues[position].delay_out
-        t_wait = self.seq.cues[position].wait
-        channel_time = self.seq.cues[position].channel_time
-
-        # Crossfade widget
-        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait, channel_time)
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
         self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int, int)
         self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
+        if self.seq.last:
+            position = self.seq.position
+            t_total = self.seq.steps[position].total_time
+            t_in = self.seq.steps[position].time_in
+            t_out = self.seq.steps[position].time_out
+            d_in = self.seq.steps[position].delay_in
+            d_out = self.seq.steps[position].delay_out
+            t_wait = self.seq.steps[position].wait
+            channel_time = self.seq.steps[position].channel_time
+        else:
+            position = 0
+            t_total = 5.0
+            t_in = 5.0
+            t_out = 5.0
+            d_in = 0.0
+            d_out = 0.0
+            t_wait = 0.0
+            channel_time = {}
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+
+        # Crossfade widget
+        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait, channel_time)
+
         self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
         self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
 
         for i in range(self.app.sequence.last):
-            if self.seq.cues[i].wait.is_integer():
-                wait = str(int(self.seq.cues[i].wait))
+            if self.seq.steps[i].wait.is_integer():
+                wait = str(int(self.seq.steps[i].wait))
                 if wait == "0":
                     wait = ""
             else:
-                wait = str(self.seq.cues[i].wait)
-            if self.seq.cues[i].time_out.is_integer():
-                t_out = str(int(self.seq.cues[i].time_out))
+                wait = str(self.seq.steps[i].wait)
+            if self.seq.steps[i].time_out.is_integer():
+                t_out = str(int(self.seq.steps[i].time_out))
             else:
-                t_out = str(self.seq.cues[i].time_out)
-            if self.seq.cues[i].delay_out.is_integer():
-                d_out = str(int(self.seq.cues[i].delay_out))
+                t_out = str(self.seq.steps[i].time_out)
+            if self.seq.steps[i].delay_out.is_integer():
+                d_out = str(int(self.seq.steps[i].delay_out))
             else:
-                d_out = str(self.seq.cues[i].delay_out)
-            if self.seq.cues[i].time_in.is_integer():
-                t_in = str(int(self.seq.cues[i].time_in))
+                d_out = str(self.seq.steps[i].delay_out)
+            if self.seq.steps[i].time_in.is_integer():
+                t_in = str(int(self.seq.steps[i].time_in))
             else:
-                t_in = str(self.seq.cues[i].time_in)
-            if self.seq.cues[i].delay_in.is_integer():
-                d_in = str(int(self.seq.cues[i].delay_in))
+                t_in = str(self.seq.steps[i].time_in)
+            if self.seq.steps[i].delay_in.is_integer():
+                d_in = str(int(self.seq.steps[i].delay_in))
             else:
-                d_in = str(self.seq.cues[i].delay_in)
-            channel_time = str(len(self.seq.cues[i].channel_time))
+                d_in = str(self.seq.steps[i].delay_in)
+            channel_time = str(len(self.seq.steps[i].channel_time))
             if channel_time == "0":
                 channel_time = ""
             bg = "#232729"
             if i == 0 or i == self.app.sequence.last-1:
                 self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 42])
             else:
-                self.cues_liststore1.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+                self.cues_liststore1.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                     wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL, 42])
-            self.cues_liststore2.append([str(i), str(self.seq.cues[i].memory), self.seq.cues[i].text,
+            self.cues_liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
                 wait, d_out, t_out, d_in, t_in, channel_time])
 
         # Filter for the first part of the cue list
@@ -773,22 +786,22 @@ class Window(Gtk.ApplicationWindow):
     def keypress_q(self):
         # TODO: Update Shortcuts window
         """ Seq - """
-        self.app.sequence.sequence_minus(self.app)
+        self.app.sequence.sequence_minus()
 
     def keypress_w(self):
         """ Seq + """
-        self.app.sequence.sequence_plus(self.app)
+        self.app.sequence.sequence_plus()
 
     def keypress_G(self):
         """ Goto """
-        self.app.sequence.sequence_goto(self.app, self.keystring)
+        self.app.sequence.sequence_goto(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_U(self):
         """ Update Cue """
         position = self.app.sequence.position
-        memory = self.app.sequence.cues[position].memory
+        memory = self.app.sequence.steps[position].cue.memory
 
         # Confirmation Dialog
         dialog = Dialog(self, memory)
@@ -801,7 +814,7 @@ class Window(Gtk.ApplicationWindow):
                     channel = self.app.patch.outputs[univ][output]
                     level = self.app.dmx.frame[univ][output]
 
-                    self.app.sequence.cues[position].channels[channel-1] = level
+                    self.app.sequence.steps[position].cue.channels[channel-1] = level
 
             # Tag filename as modified
             self.app.ascii.modified = True

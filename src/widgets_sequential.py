@@ -170,8 +170,8 @@ class SequentialWidget(Gtk.Widget):
             # draw Time Cursor
             app = Gio.Application.get_default()
             position = app.sequence.position
-            old_level = app.sequence.cues[position].channels[channel - 1]
-            next_level = app.sequence.cues[position + 1].channels[channel - 1]
+            old_level = app.sequence.steps[position].cue.channels[channel - 1]
+            next_level = app.sequence.steps[position + 1].cue.channels[channel - 1]
             # Time Cursor follow In or Out Crossfade
             if next_level < old_level:
                 # Out Crossfade

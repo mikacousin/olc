@@ -47,10 +47,10 @@ class CrossFade(object):
                 app.sequence.on_go = False
                 return
             # Update slider A position
-            total_time = app.sequence.cues[position + 1].total_time * 1000
-            time_out = app.sequence.cues[position + 1].time_out * 1000
-            delay_out = app.sequence.cues[position + 1].delay_out * 1000
-            wait = app.sequence.cues[position + 1].wait * 1000
+            total_time = app.sequence.steps[position + 1].total_time * 1000
+            time_out = app.sequence.steps[position + 1].time_out * 1000
+            delay_out = app.sequence.steps[position + 1].delay_out * 1000
+            wait = app.sequence.steps[position + 1].wait * 1000
             pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = app.window.sequential.get_allocation()
@@ -64,16 +64,16 @@ class CrossFade(object):
                         lvl = -1
                         channel = app.patch.outputs[univ][output]
 
-                        old_level = app.sequence.cues[position].channels[channel - 1]
+                        old_level = app.sequence.steps[position].cue.channels[channel - 1]
 
                         if channel:
 
                             if position < app.sequence.last - 1:
-                                next_level = app.sequence.cues[position + 1].channels[channel - 1]
+                                next_level = app.sequence.steps[position + 1].cue.channels[channel - 1]
                             else:
-                                next_level = app.sequence.cues[0].channels[channel - 1]
+                                next_level = app.sequence.steps[0].cue.channels[channel - 1]
 
-                            channel_time = app.sequence.cues[position+1].channel_time
+                            channel_time = app.sequence.steps[position+1].channel_time
 
                             if channel in channel_time:
                                 # Channel Time
@@ -131,10 +131,10 @@ class CrossFade(object):
                 app.sequence.on_go = False
                 return
             # Update slider B position
-            total_time = app.sequence.cues[position + 1].total_time * 1000
-            time_in = app.sequence.cues[position + 1].time_in * 1000
-            delay_in = app.sequence.cues[position + 1].delay_in * 1000
-            wait = app.sequence.cues[position + 1].wait * 1000
+            total_time = app.sequence.steps[position + 1].total_time * 1000
+            time_in = app.sequence.steps[position + 1].time_in * 1000
+            delay_in = app.sequence.steps[position + 1].delay_in * 1000
+            wait = app.sequence.steps[position + 1].wait * 1000
             pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = app.window.sequential.get_allocation()
@@ -148,15 +148,15 @@ class CrossFade(object):
                         lvl = -1
                         channel = app.patch.outputs[univ][output]
 
-                        old_level = app.sequence.cues[position].channels[channel - 1]
+                        old_level = app.sequence.steps[position].cue.channels[channel - 1]
 
                         if channel:
                             if position < app.sequence.last - 1:
-                                next_level = app.sequence.cues[position + 1].channels[channel - 1]
+                                next_level = app.sequence.steps[position + 1].cue.channels[channel - 1]
                             else:
-                                next_level = app.sequence.cues[0].channels[channel - 1]
+                                next_level = app.sequence.steps[0].cue.channels[channel - 1]
 
-                            channel_time = app.sequence.cues[position + 1].channel_time
+                            channel_time = app.sequence.steps[position + 1].channel_time
 
                             if channel in channel_time:
                                 # Channel Time
@@ -220,25 +220,25 @@ class CrossFade(object):
                 # If exist
                 if position < app.sequence.last - 1:
                     app.sequence.position += 1
-                    t_in = app.sequence.cues[position + 1].time_in
-                    t_out = app.sequence.cues[position + 1].time_out
-                    d_in = app.sequence.cues[position + 1].delay_in
-                    d_out = app.sequence.cues[position + 1].delay_out
-                    t_wait = app.sequence.cues[position + 1].wait
-                    app.window.sequential.total_time = app.sequence.cues[position + 1].total_time
+                    t_in = app.sequence.steps[position + 1].time_in
+                    t_out = app.sequence.steps[position + 1].time_out
+                    d_in = app.sequence.steps[position + 1].delay_in
+                    d_out = app.sequence.steps[position + 1].delay_out
+                    t_wait = app.sequence.steps[position + 1].wait
+                    app.window.sequential.total_time = app.sequence.steps[position + 1].total_time
                     app.window.sequential.time_in = t_in
                     app.window.sequential.time_out = t_out
                     app.window.sequential.delay_in = d_in
                     app.window.sequential.delay_out = d_out
                     app.window.sequential.wait = t_wait
-                    app.window.sequential.channel_time = app.sequence.cues[position + 1].channel_time
+                    app.window.sequential.channel_time = app.sequence.steps[position + 1].channel_time
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
 
-                    subtitle = ("Mem. :" + app.sequence.cues[position].memory + " "
-                            + app.sequence.cues[position].text + " - Next Mem. : "
-                            + app.sequence.cues[position + 1].memory + " "
-                            + app.sequence.cues[position + 1].text)
+                    subtitle = ("Mem. :" + app.sequence.steps[position].cue.memory + " "
+                            + app.sequence.steps[position].text + " - Next Mem. : "
+                            + app.sequence.steps[position + 1].cue.memory + " "
+                            + app.sequence.steps[position + 1].text)
                     app.window.header.set_subtitle(subtitle)
 
                     if position == 0:
@@ -270,7 +270,7 @@ class CrossFade(object):
                     self.scaleB.set_value(0)
 
                     # If Wait
-                    if app.sequence.cues[position + 1].wait:
+                    if app.sequence.steps[position + 1].wait:
                         app.sequence.on_go = False
                         app.sequence.sequence_go(None, None)
 
@@ -278,25 +278,25 @@ class CrossFade(object):
                 else:
                     app.sequence.position = 0
                     position = 0
-                    t_in = app.sequence.cues[position + 1].time_in
-                    t_out = app.sequence.cues[position + 1].time_out
-                    d_in = app.sequence.cues[position + 1].delay_in
-                    d_out = app.sequence.cues[position + 1].delay_out
-                    t_wait = app.sequence.cues[position + 1].wait
-                    app.window.sequential.total_time = app.sequence.cues[position + 1].total_time
+                    t_in = app.sequence.steps[position + 1].time_in
+                    t_out = app.sequence.steps[position + 1].time_out
+                    d_in = app.sequence.steps[position + 1].delay_in
+                    d_out = app.sequence.steps[position + 1].delay_out
+                    t_wait = app.sequence.steps[position + 1].wait
+                    app.window.sequential.total_time = app.sequence.steps[position + 1].total_time
                     app.window.sequential.time_in = t_in
                     app.window.sequential.time_out = t_out
                     app.window.sequential.delay_in = d_in
                     app.window.sequential.delay_out = d_out
                     app.window.sequential.wait = t_wait
-                    app.window.sequential.channel_time = app.sequence.cues[position + 1].channel_time
+                    app.window.sequential.channel_time = app.sequence.steps[position + 1].channel_time
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
 
-                    subtitle = ("Mem. :" + app.sequence.cues[position].memory + " "
-                            + app.sequence.cues[position].text+" - Next Mem. : "
-                            + app.sequence.cues[position + 1].memory + " "
-                            + app.sequence.cues[position + 1].text)
+                    subtitle = ("Mem. :" + app.sequence.steps[position].cue.memory + " "
+                            + app.sequence.steps[position].text+" - Next Mem. : "
+                            + app.sequence.steps[position + 1].cue.memory + " "
+                            + app.sequence.steps[position + 1].text)
                     app.window.header.set_subtitle(subtitle)
 
                     if position == 0:
@@ -328,6 +328,6 @@ class CrossFade(object):
                     self.scaleB.set_value(0)
 
                     # If Wait
-                    if app.sequence.cues[position + 1].wait:
+                    if app.sequence.steps[position + 1].wait:
                         app.sequence.on_go = False
                         app.sequence.sequence_go(None, None)

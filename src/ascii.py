@@ -2,7 +2,9 @@ import array
 from gi.repository import Gio, Gtk, GObject, Pango
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES
-from olc.cue import Cue, ChannelTime
+from olc.cue import Cue
+from olc.step import Step
+from olc.channel_time import ChannelTime
 from olc.sequence import Sequence
 from olc.group import Group
 from olc.master import Master
@@ -178,9 +180,10 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(seq, mem, channels, time_in=t_in, time_out=t_out, delay_out=d_out, delay_in=d_in, wait=wait, text=txt)
+                            cue = Cue(seq, mem, channels, text=txt)
+                            step = Step(seq, cue, time_in=t_in, time_out=t_out, delay_out=d_out, delay_in=d_in, wait=wait, text=txt)
 
-                            self.app.chasers[-1].add_cue(cue)
+                            self.app.chasers[-1].add_step(step)
 
                             in_cue = False
                             t_out = False
@@ -202,7 +205,7 @@ class Ascii(object):
                         channels = array.array('B', [0] * MAX_CHANNELS)
                         #i += 1
                         #print ("        Mémoire :", line[5:])
-                        mem = line[5:]
+                        mem = float(line[5:])
 
                     if in_cue:
                         if line[:4] == "TEXT":
@@ -289,7 +292,6 @@ class Ascii(object):
                                     if channel < MAX_CHANNELS:
                                         level = int(r[1][1:], 16)
                                         channels[channel-1] = level
-                        #if txt and t_out and t_in and channels:
                         if line == "":
                             #print("Fin Cue", mem)
                             if not wait:
@@ -300,19 +302,10 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
-                            cue = Cue(1, mem, channels, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, text=txt, channel_time=channel_time)
+                            cue = Cue(0, mem, channels, text=txt)
+                            step = Step(1, cue, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, channel_time=channel_time, text=txt)
 
-                            # print("StepId :", cue.index, "Memory :", cue.memory)
-                            # print("Time In :", cue.time_in, "\nTime Out :", cue.time_out)
-                            # print("Delay In :", cue.delay_in, "\nDelay Out :", cue.delay_out)
-                            # print("Text :", cue.text)
-                            # for channel in channel_time.keys():
-                            #     print("Channel Time :", channel, channel_time[channel].delay, channel_time[channel].time)
-                            # print("")
-                            # for channel in range(MAX_CHANNELS):
-                            #     print("Channel :", channel+1, "@", cue.channels[channel])
-
-                            self.app.sequence.add_cue(cue)
+                            self.app.sequence.add_step(step)
                             in_cue = False
                             txt = False
                             t_out = False
@@ -439,24 +432,30 @@ class Ascii(object):
             # Set main window's title with the file name
             self.app.window.header.set_title(self.basename)
             # Set main window's subtitle
-            subtitle = "Mem. : 0 - Next Mem. : "+self.app.sequence.cues[1].memory+" "+self.app.sequence.cues[1].text
+            subtitle = "Mem. : 0 - Next Mem. : "+self.app.sequence.steps[0].cue.memory+" "+self.app.sequence.steps[0].cue.text
             self.app.window.header.set_subtitle(subtitle)
 
+            """
             # Add an empty cue at the end
             cue = Cue(1, "0.0", text="End")
             self.app.sequence.add_cue(cue)
+            """
 
             # Redraw crossfade :
             # On se place au début de la séquence
             self.app.sequence.position = 0
             # On récupère les temps de la mémoire suivante
-            t_in = self.app.sequence.cues[1].time_in
-            t_out = self.app.sequence.cues[1].time_out
-            t_wait = self.app.sequence.cues[1].wait
-            t_total = self.app.sequence.cues[1].total_time
+            t_in = self.app.sequence.steps[1].time_in
+            t_out = self.app.sequence.steps[1].time_out
+            d_in = self.app.sequence.steps[1].delay_in
+            d_out = self.app.sequence.steps[1].delay_out
+            t_wait = self.app.sequence.steps[1].wait
+            t_total = self.app.sequence.steps[1].total_time
             self.app.window.sequential.time_in = t_in
             self.app.window.sequential.time_out = t_out
             self.app.window.sequential.wait = t_wait
+            self.app.window.sequential.delay_in = d_in
+            self.app.window.sequential.delay_out = d_out
             self.app.window.sequential.total_time = t_total
 
             # On met à jour la liste des mémoires
@@ -467,33 +466,33 @@ class Ascii(object):
             self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
             for i in range(self.app.sequence.last):
                 # Si on a des entiers, on les affiche comme tels
-                if self.app.sequence.cues[i].wait.is_integer():
-                    wait = str(int(self.app.sequence.cues[i].wait))
+                if self.app.sequence.steps[i].wait.is_integer():
+                    wait = str(int(self.app.sequence.steps[i].wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.app.sequence.cues[i].wait)
-                if self.app.sequence.cues[i].time_out.is_integer():
-                    t_out = int(self.app.sequence.cues[i].time_out)
+                    wait = str(self.app.sequence.steps[i].wait)
+                if self.app.sequence.steps[i].time_out.is_integer():
+                    t_out = int(self.app.sequence.steps[i].time_out)
                 else:
-                    t_out = self.app.sequence.cues[i].time_out
-                if self.app.sequence.cues[i].delay_out.is_integer():
-                    d_out = str(int(self.app.sequence.cues[i].delay_out))
+                    t_out = self.app.sequence.steps[i].time_out
+                if self.app.sequence.steps[i].delay_out.is_integer():
+                    d_out = str(int(self.app.sequence.steps[i].delay_out))
                 else:
-                    d_out = str(self.app.sequence.cues[i].delay_out)
+                    d_out = str(self.app.sequence.steps[i].delay_out)
                 if d_out == "0":
                     d_out = ""
-                if self.app.sequence.cues[i].time_in.is_integer():
-                    t_in = int(self.app.sequence.cues[i].time_in)
+                if self.app.sequence.steps[i].time_in.is_integer():
+                    t_in = int(self.app.sequence.steps[i].time_in)
                 else:
-                    t_in = self.app.sequence.cues[i].time_in
-                if self.app.sequence.cues[i].delay_in.is_integer():
-                    d_in = str(int(self.app.sequence.cues[i].delay_in))
+                    t_in = self.app.sequence.steps[i].time_in
+                if self.app.sequence.steps[i].delay_in.is_integer():
+                    d_in = str(int(self.app.sequence.steps[i].delay_in))
                 else:
-                    d_in = str(self.app.sequence.cues[i].delay_in)
+                    d_in = str(self.app.sequence.steps[i].delay_in)
                 if d_in == "0":
                     d_in = ""
-                channel_time = str(len(self.app.sequence.cues[i].channel_time))
+                channel_time = str(len(self.app.sequence.steps[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
@@ -511,10 +510,10 @@ class Ascii(object):
                     self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 99])
                     self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
                 else:
-                    self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.cues[i].memory),
-                        str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight, 99])
-                    self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.cues[i].memory),
-                        str(self.app.sequence.cues[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
+                    self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
+                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight, 99])
+                    self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.steps[i].cue.memory),
+                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
 
             self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
             self.app.window.step_filter1.set_visible_func(self.app.window.step_filter_func1)
@@ -644,24 +643,24 @@ class Ascii(object):
         stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
         stream.write(bytes('! Main sequence\n\n', 'utf8'))
         stream.write(bytes('$SEQUENCE 1 0\n\n', 'utf8'))
-        for cue in range(len(self.app.sequence.cues)):
-            if self.app.sequence.cues[cue].memory != '0':
-                stream.write(bytes('CUE ' + self.app.sequence.cues[cue].memory + '\n', 'utf8'))
-                stream.write(bytes('DOWN ' + str(self.app.sequence.cues[cue].time_out) + '\n', 'utf8'))
-                stream.write(bytes('UP ' + str(self.app.sequence.cues[cue].time_in) + '\n', 'utf8'))
-                stream.write(bytes('$$WAIT ' + str(self.app.sequence.cues[cue].wait) + '\n', 'utf8'))
+        for cue in range(len(self.app.sequence.steps)):
+            if self.app.sequence.steps[cue].cue.memory != '0':
+                stream.write(bytes('CUE ' + self.app.sequence.steps[cue].cue.memory + '\n', 'utf8'))
+                stream.write(bytes('DOWN ' + str(self.app.sequence.steps[cue].time_out) + '\n', 'utf8'))
+                stream.write(bytes('UP ' + str(self.app.sequence.steps[cue].time_in) + '\n', 'utf8'))
+                stream.write(bytes('$$WAIT ' + str(self.app.sequence.steps[cue].wait) + '\n', 'utf8'))
                 #  Chanel Time if any
-                for chan in self.app.sequence.cues[cue].channel_time.keys():
-                    stream.write(bytes('$$PARTTIME ' + str(self.app.sequence.cues[cue].channel_time[chan].delay) +
-                        ' ' + str(self.app.sequence.cues[cue].channel_time[chan].time) + '\n', 'utf8'))
+                for chan in self.app.sequence.steps[cue].channel_time.keys():
+                    stream.write(bytes('$$PARTTIME ' + str(self.app.sequence.steps[cue].channel_time[chan].delay) +
+                        ' ' + str(self.app.sequence.steps[cue].channel_time[chan].time) + '\n', 'utf8'))
                     stream.write(bytes('$$PARTTIMECHAN ' + str(chan) + '\n', 'utf8'))
-                stream.write(bytes('TEXT ' + ascii(self.app.sequence.cues[cue].text)[1:-1] +
+                stream.write(bytes('TEXT ' + ascii(self.app.sequence.steps[cue].text)[1:-1] +
                     '\n', 'utf8').decode('utf8').encode('ascii'))
-                stream.write(bytes('$$TEXT ' + self.app.sequence.cues[cue].text + '\n', 'utf8'))
+                stream.write(bytes('$$TEXT ' + self.app.sequence.steps[cue].text + '\n', 'utf8'))
                 channels = ""
                 i = 1
-                for chan in range(len(self.app.sequence.cues[cue].channels)):
-                    level = self.app.sequence.cues[cue].channels[chan]
+                for chan in range(len(self.app.sequence.steps[cue].cue.channels)):
+                    level = self.app.sequence.steps[cue].cue.channels[chan]
                     if level != 0:
                         level = 'H' + format(level, '02X')
                         channels += " " + str(chan+1) + "/" + level
@@ -680,16 +679,16 @@ class Ascii(object):
         for chaser in range(len(self.app.chasers)):
             stream.write(bytes('$SEQUENCE ' + str(self.app.chasers[chaser].index) + '\n', 'utf8'))
             stream.write(bytes('TEXT ' + self.app.chasers[chaser].text + '\n\n', 'utf8'))
-            for cue in range(len(self.app.chasers[chaser].cues)):
-                if self.app.chasers[chaser].cues[cue].memory != '0':
-                    stream.write(bytes('$CUE ' + str(self.app.chasers[chaser].index) + ' ' + self.app.chasers[chaser].cues[cue].memory + '\n', 'utf8'))
-                    stream.write(bytes('DOWN ' + str(self.app.chasers[chaser].cues[cue].time_out) + '\n', 'utf8'))
-                    stream.write(bytes('UP ' + str(self.app.chasers[chaser].cues[cue].time_in) + '\n', 'utf8'))
-                    stream.write(bytes('$$WAIT ' + str(self.app.chasers[chaser].cues[cue].wait) + '\n', 'utf8'))
+            for cue in range(len(self.app.chasers[chaser].steps)):
+                if self.app.chasers[chaser].steps[cue].cue.memory != '0':
+                    stream.write(bytes('$CUE ' + str(self.app.chasers[chaser].index) + ' ' + self.app.chasers[chaser].steps[cue].cue.memory + '\n', 'utf8'))
+                    stream.write(bytes('DOWN ' + str(self.app.chasers[chaser].steps[cue].time_out) + '\n', 'utf8'))
+                    stream.write(bytes('UP ' + str(self.app.chasers[chaser].steps[cue].time_in) + '\n', 'utf8'))
+                    stream.write(bytes('$$WAIT ' + str(self.app.chasers[chaser].steps[cue].wait) + '\n', 'utf8'))
                     channels = ""
                     i = 1
-                    for chan in range(len(self.app.chasers[chaser].cues[cue].channels)):
-                        level = self.app.chasers[chaser].cues[cue].channels[chan]
+                    for chan in range(len(self.app.chasers[chaser].steps[cue].channels)):
+                        level = self.app.chasers[chaser].steps[cue].cue.channels[chan]
                         if level != 0:
                             level = 'H' + format(level, '02X')
                             channels += " " + str(chan+1) + "/" + level

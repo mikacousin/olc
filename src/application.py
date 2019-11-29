@@ -70,9 +70,11 @@ class Application(Gtk.Application):
             sys.exit()
 
         # Create Main Playback
+        # TODO: Use steps, not only cues
         self.sequence = Sequence(1, self.patch, text="Main Playback")
-        last = Cue(0, "0.0", text="End")
-        self.sequence.add_cue(last)
+
+        # Create List of Global Memories
+        self.memories = []
 
         # Create List for Chasers
         self.chasers = []
@@ -251,9 +253,11 @@ class Application(Gtk.Application):
             self.dmx.frame[0][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
-                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            elif self.sequence.last:
+                next_level = self.sequence.steps[0].cue.channels[channel-1]
             else:
-                next_level = self.sequence.cues[0].channels[channel-1]
+                next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
 
@@ -264,9 +268,11 @@ class Application(Gtk.Application):
             self.dmx.frame[1][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
-                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            elif self.sequence.last:
+                next_level = self.sequence.steps[0].cue.channels[channel-1]
             else:
-                next_level = self.sequence.cues[0].channels[channel-1]
+                next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
 
@@ -277,9 +283,11 @@ class Application(Gtk.Application):
             self.dmx.frame[2][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
-                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            elif self.sequence.last:
+                next_level = self.sequence.steps[0].cue.channels[channel-1]
             else:
-                next_level = self.sequence.cues[0].channels[channel-1]
+                next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
         pass
@@ -291,9 +299,11 @@ class Application(Gtk.Application):
             self.dmx.frame[3][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.position < self.sequence.last:
-                next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            elif self.sequence.last:
+                next_level = self.sequence.steps[0].cue.channels[channel-1]
             else:
-                next_level = self.sequence.cues[0].channels[channel-1]
+                next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
 
@@ -306,9 +316,11 @@ class Application(Gtk.Application):
                     self.dmx.frame[univ][output] = level
                     self.window.channels[channel-1].level = level
                     if self.sequence.position < self.sequence.last:
-                        next_level = self.sequence.cues[self.sequence.position+1].channels[channel-1]
+                        next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+                    elif self.sequence.last:
+                        next_level = self.sequence.steps[0].cue.channels[channel-1]
                     else:
-                        next_level = self.sequence.cues[0].channels[channel-1]
+                        next_level = level
                     self.window.channels[channel-1].next_level = next_level
                     self.window.channels[channel-1].queue_draw()
 
@@ -318,30 +330,28 @@ class Application(Gtk.Application):
         # Redraw Sequential Window
         self.sequence = Sequence(1, self.patch)
         self.sequence.window = self.window
-        cue = Cue(0, "0.0", text="End")
-        self.sequence.add_cue(cue)
         self.sequence.position = 0
-        self.window.sequential.time_in = self.sequence.cues[1].time_in
-        self.window.sequential.time_out = self.sequence.cues[1].time_out
-        self.window.sequential.wait = self.sequence.cues[1].wait
+        self.window.sequential.time_in = self.sequence.steps[1].time_in
+        self.window.sequential.time_out = self.sequence.steps[1].time_out
+        self.window.sequential.wait = self.sequence.steps[1].wait
         self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
         for i in range(self.sequence.last):
-            if self.sequence.cues[i].wait.is_integer():
-                wait = str(int(self.sequence.cues[i].wait))
+            if self.sequence.steps[i].wait.is_integer():
+                wait = str(int(self.sequence.steps[i].wait))
                 if wait == "0":
                     wait = ""
             else:
-                wait = str(self.sequence.cues[i].wait)
-            if self.sequence.cues[i].time_out.is_integer():
-                t_out = int(self.sequence.cues[i].time_out)
+                wait = str(self.sequence.steps[i].wait)
+            if self.sequence.steps[i].time_out.is_integer():
+                t_out = int(self.sequence.steps[i].time_out)
             else:
-                t_out = self.sequence.cues[i].time_out
-            if self.sequence.cues[i].time_in.is_integer():
-                t_in = int(self.sequence.cues[i].time_in)
+                t_out = self.sequence.steps[i].time_out
+            if self.sequence.steps[i].time_in.is_integer():
+                t_in = int(self.sequence.steps[i].time_in)
             else:
-                t_in = self.sequence.cues[i].time_in
-            self.window.cues_liststore.append([str(i), str(self.sequence.cues[i].memory),
-                str(self.sequence.cues[i].text), wait,
+                t_in = self.sequence.steps[i].time_in
+            self.window.cues_liststore.append([str(i), str(self.sequence.steps[i].cue.memory),
+                str(self.sequence.steps[i].text), wait,
                 str(t_out), str(t_in), ""])
         self.window.step_filter = self.window.cues_liststore.filter_new()
         self.window.step_filter.set_visible_func(self.window.step_filter_func)

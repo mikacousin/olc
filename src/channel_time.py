@@ -8,8 +8,6 @@ class ChannelTime(object):
         self.delay = delay
         self.time = time
 
-        print(type(self.delay))
-
     def get_delay(self):
         return self.delay
 
@@ -64,23 +62,23 @@ class ChanneltimeTab(Gtk.Paned):
         # List of Channels Times
         self.liststore = Gtk.ListStore(int, str, str)
 
-        self.cue = self.sequence.cues[int(step)]
+        self.step = self.sequence.steps[int(step)]
 
-        for channel in self.cue.channel_time.keys():
+        for channel in self.step.channel_time.keys():
 
-            if self.cue.channel_time[channel].delay.is_integer():
-                delay = str(int(self.cue.channel_time[channel].delay))
+            if self.step.channel_time[channel].delay.is_integer():
+                delay = str(int(self.step.channel_time[channel].delay))
                 if delay == "0":
                     delay = ""
             else:
-                delay = str(self.cue.channel_time[channel].delay)
+                delay = str(self.step.channel_time[channel].delay)
 
-            if self.cue.channel_time[channel].time.is_integer():
-                time = str(int(self.cue.channel_time[channel].time))
+            if self.step.channel_time[channel].time.is_integer():
+                time = str(int(self.step.channel_time[channel].time))
                 if time == "0":
                     time = ""
             else:
-                time = str(self.cue.channel_time[channel].time)
+                time = str(self.step.channel_time[channel].time)
 
             self.liststore.append([channel, delay, time])
 

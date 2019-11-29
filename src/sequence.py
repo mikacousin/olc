@@ -12,7 +12,7 @@ class Sequence(object):
         self.index = index
         self.type_seq = type_seq
         self.text = text
-        self.cues = []
+        self.steps = []
         self.position = 0
         self.last = 0
         # Flag pour savoir si on a un Go en cours
@@ -28,20 +28,17 @@ class Sequence(object):
         # On a besoin de connaitre le patch
         self.patch = patch
 
-        # create an empty cue 0.0
-        cue = Cue(0, "0.0", text="Start")
-        self.add_cue(cue)
+        self.app = Gio.Application.get_default()
 
-    def add_cue(self, cue):
-        self.cues.append(cue)
-        self.last = len(self.cues)
-        # On enregistre la liste des circuits présents dans la mémoire
-        for i in range(MAX_CHANNELS):
-            if cue.channels[i] != 0:
-                self.channels[i] = 1  # Si présent on le note
+    def add_step(self, step):
+        self.steps.append(step)
+        self.last = len(self.steps)
+        # Channels used in sequential
+        for channel in range(MAX_CHANNELS):
+            if step.cue.channels[channel] != 0:
+                self.channels[channel] = 1
 
-    def sequence_plus(self, app):
-        self.app = app
+    def sequence_plus(self):
 
         if self.app.sequence.on_go:
             try:
@@ -58,18 +55,18 @@ class Sequence(object):
         position += 1
         if position < self.last-1:     # Stop on the last cue
             self.position += 1
-            t_in = self.cues[position+1].time_in
-            t_out = self.cues[position+1].time_out
-            d_in = self.cues[position+1].delay_in
-            d_out = self.cues[position+1].delay_out
-            t_wait = self.cues[position+1].wait
-            self.window.sequential.total_time = self.cues[position+1].total_time
+            t_in = self.steps[position+1].time_in
+            t_out = self.steps[position+1].time_out
+            d_in = self.steps[position+1].delay_in
+            d_out = self.steps[position+1].delay_out
+            t_wait = self.steps[position+1].wait
+            self.window.sequential.total_time = self.steps[position+1].total_time
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
             self.window.sequential.delay_in = d_in
             self.window.sequential.delay_out = d_out
             self.window.sequential.wait = t_wait
-            self.window.sequential.channel_time = self.cues[position+1].channel_time
+            self.window.sequential.channel_time = self.steps[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
             self.app.window.sequential.pos_xB = 0
 
@@ -90,7 +87,7 @@ class Sequence(object):
             self.window.seq_grid.queue_draw()
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
+            subtitle = "Mem. : "+self.steps[position].cue.memory+" "+self.steps[position].text+" - Next Mem. : "+self.steps[position+1].cue.memory+" "+self.steps[position+1].text
             self.app.window.header.set_subtitle(subtitle)
 
             # On vide le tableau des valeurs entrées par l'utilisateur
@@ -100,11 +97,10 @@ class Sequence(object):
                 for output in range(512):
                     channel = self.patch.outputs[univ][output]
                     if channel:
-                        level = self.cues[position].channels[channel-1]
+                        level = self.steps[position].cue.channels[channel-1]
                         self.app.dmx.sequence[channel-1] = level
 
-    def sequence_minus(self, app):
-        self.app = app
+    def sequence_minus(self):
 
         if self.on_go:
             try:
@@ -121,23 +117,23 @@ class Sequence(object):
         position -= 1
         if position >= 0:
             self.position -= 1
-            t_in = self.cues[position+1].time_in   # Always use times for next cue
-            t_out = self.cues[position+1].time_out
-            d_in = self.cues[position+1].delay_in
-            d_out = self.cues[position+1].delay_out
-            t_wait = self.cues[position+1].wait
-            self.window.sequential.total_time = self.cues[position+1].total_time
+            t_in = self.steps[position+1].time_in   # Always use times for next cue
+            t_out = self.steps[position+1].time_out
+            d_in = self.steps[position+1].delay_in
+            d_out = self.steps[position+1].delay_out
+            t_wait = self.steps[position+1].wait
+            self.window.sequential.total_time = self.steps[position+1].total_time
             self.window.sequential.time_in = t_in
             self.window.sequential.time_out = t_out
             self.window.sequential.delay_in = d_in
             self.window.sequential.delay_out = d_out
             self.window.sequential.wait = t_wait
-            self.window.sequential.channel_time = self.cues[position+1].channel_time
+            self.window.sequential.channel_time = self.steps[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.cues[position].memory+" "+self.cues[position].text+" - Next Mem. : "+self.cues[position+1].memory+" "+self.cues[position+1].text
+            subtitle = "Mem. : "+self.steps[position].cue.memory+" "+self.steps[position].text+" - Next Mem. : "+self.steps[position+1].cue.memory+" "+self.steps[position+1].text
             self.app.window.header.set_subtitle(subtitle)
 
             # Update ui
@@ -163,37 +159,36 @@ class Sequence(object):
                 for output in range(512):
                     channel = self.patch.outputs[univ][output]
                     if channel:
-                        level = self.cues[position].channels[channel-1]
+                        level = self.steps[position].cue.channels[channel-1]
                         self.app.dmx.sequence[channel-1] = level
 
-    def sequence_goto(self, app, keystring):
+    def sequence_goto(self, keystring):
         """ Jump to cue number """
-        self.app = app
         old_pos = self.app.sequence.position
 
         if not keystring:
             return
 
         # Scan all cues
-        for i in range(len(self.cues)):
+        for i in range(len(self.steps)):
             # Until we find the good one
-            if float(self.cues[i].memory) == float(keystring):
+            if float(self.steps[i].cue.memory) == float(keystring):
                 # Position to the one just before
                 self.app.sequence.position = i - 1
                 position = self.app.sequence.position
                 # Redraw Sequential window with new times
-                t_in = self.app.sequence.cues[position+1].time_in
-                t_out = self.app.sequence.cues[position+1].time_out
-                d_in = self.cues[position+1].delay_in
-                d_out = self.cues[position+1].delay_out
-                t_wait = self.app.sequence.cues[position+1].wait
-                self.window.sequential.total_time = self.cues[position+1].total_time
+                t_in = self.app.sequence.steps[position+1].time_in
+                t_out = self.app.sequence.steps[position+1].time_out
+                d_in = self.steps[position+1].delay_in
+                d_out = self.steps[position+1].delay_out
+                t_wait = self.app.sequence.steps[position+1].wait
+                self.window.sequential.total_time = self.steps[position+1].total_time
                 self.app.window.sequential.time_in = t_in
                 self.app.window.sequential.time_out = t_out
                 self.window.sequential.delay_in = d_in
                 self.window.sequential.delay_out = d_out
                 self.app.window.sequential.wait = t_wait
-                self.window.sequential.channel_time = self.cues[position+1].channel_time
+                self.window.sequential.channel_time = self.steps[position+1].channel_time
                 self.app.window.sequential.pos_xA = 0
                 self.app.window.sequential.pos_xB = 0
 
@@ -235,43 +230,43 @@ class Sequence(object):
             position += 1
             if position < self.app.sequence.last - 1:
                 self.app.sequence.position += 1
-                t_in = self.app.sequence.cues[position+1].time_in
-                t_out = self.app.sequence.cues[position+1].time_out
-                d_in = self.app.sequence.cues[position+1].delay_in
-                d_out = self.app.sequence.cues[position+1].delay_out
-                t_wait = self.app.sequence.cues[position+1].wait
-                self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
+                t_in = self.app.sequence.steps[position+1].time_in
+                t_out = self.app.sequence.steps[position+1].time_out
+                d_in = self.app.sequence.steps[position+1].delay_in
+                d_out = self.app.sequence.steps[position+1].delay_out
+                t_wait = self.app.sequence.steps[position+1].wait
+                self.app.window.sequential.total_time = self.app.sequence.steps[position+1].total_time
                 self.app.window.sequential.time_in = t_in
                 self.app.window.sequential.time_out = t_out
                 self.app.window.sequential.delay_in = d_in
                 self.app.window.sequential.delay_out = d_out
                 self.app.window.sequential.wait = t_wait
-                self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
+                self.app.window.sequential.channel_time = self.app.sequence.steps[position+1].channel_time
                 self.app.window.sequential.pos_xA = 0
                 self.app.window.sequential.pos_xB = 0
 
                 # Set main window's subtitle
-                subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+                subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
             else:
                 self.app.sequence.position = 0
                 position = 0
-                t_in = self.app.sequence.cues[position+1].time_in
-                t_out = self.app.sequence.cues[position+1].time_out
-                d_in = self.app.sequence.cues[position+1].delay_in
-                d_out = self.app.sequence.cues[position+1].delay_out
-                t_wait = self.app.sequence.cues[position+1].wait
-                self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
+                t_in = self.app.sequence.steps[position+1].time_in
+                t_out = self.app.sequence.steps[position+1].time_out
+                d_in = self.app.sequence.steps[position+1].delay_in
+                d_out = self.app.sequence.steps[position+1].delay_out
+                t_wait = self.app.sequence.steps[position+1].wait
+                self.app.window.sequential.total_time = self.app.sequence.steps[position+1].total_time
                 self.app.window.sequential.time_in = t_in
                 self.app.window.sequential.time_out = t_out
                 self.app.window.sequential.delay_in = d_in
                 self.app.window.sequential.delay_out = d_out
                 self.app.window.sequential.wait = t_wait
-                self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
+                self.app.window.sequential.channel_time = self.app.sequence.steps[position+1].channel_time
                 self.app.window.sequential.pos_xA = 0
                 self.app.window.sequential.pos_xB = 0
 
                 # Set main window's subtitle
-                subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+                subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
 
             # Update Sequential Tab
             if position == 0:
@@ -335,12 +330,12 @@ class ThreadGo(threading.Thread):
             return
 
         # On récupère les temps de montée et de descente de la mémoire suivante
-        t_in = self.app.sequence.cues[position+1].time_in
-        t_out = self.app.sequence.cues[position+1].time_out
-        d_in = self.app.sequence.cues[position+1].delay_in
-        d_out = self.app.sequence.cues[position+1].delay_out
-        t_wait = self.app.sequence.cues[position+1].wait
-        t_total = self.app.sequence.cues[position+1].total_time
+        t_in = self.app.sequence.steps[position+1].time_in
+        t_out = self.app.sequence.steps[position+1].time_out
+        d_in = self.app.sequence.steps[position+1].delay_in
+        d_out = self.app.sequence.steps[position+1].delay_out
+        t_wait = self.app.sequence.steps[position+1].wait
+        t_total = self.app.sequence.steps[position+1].total_time
 
         # Quel est le temps le plus long
         if t_in + d_in > t_out + d_out:
@@ -380,9 +375,9 @@ class ThreadGo(threading.Thread):
                 channel = self.app.patch.outputs[univ][output]
                 if channel:
                     if position < self.app.sequence.last - 1:
-                        level = self.app.sequence.cues[position+1].channels[channel-1]
+                        level = self.app.sequence.steps[position+1].cue.channels[channel-1]
                     else:
-                        level = self.app.sequence.cues[0].channels[channel-1]
+                        level = self.app.sequence.steps[0].cue.channels[channel-1]
                     self.app.dmx.sequence[channel-1] = level
 
         # Le Go est terminé
@@ -397,52 +392,52 @@ class ThreadGo(threading.Thread):
         # Si elle existe
         if position < self.app.sequence.last-1:
             self.app.sequence.position += 1
-            t_in = self.app.sequence.cues[position+1].time_in
-            t_out = self.app.sequence.cues[position+1].time_out
-            d_in = self.app.sequence.cues[position+1].delay_in
-            d_out = self.app.sequence.cues[position+1].delay_out
-            t_wait = self.app.sequence.cues[position+1].wait
-            self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
+            t_in = self.app.sequence.steps[position+1].time_in
+            t_out = self.app.sequence.steps[position+1].time_out
+            d_in = self.app.sequence.steps[position+1].delay_in
+            d_out = self.app.sequence.steps[position+1].delay_out
+            t_wait = self.app.sequence.steps[position+1].wait
+            self.app.window.sequential.total_time = self.app.sequence.steps[position+1].total_time
             self.app.window.sequential.time_in = t_in
             self.app.window.sequential.time_out = t_out
             self.app.window.sequential.delay_in = d_in
             self.app.window.sequential.delay_out = d_out
             self.app.window.sequential.wait = t_wait
-            self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
+            self.app.window.sequential.channel_time = self.app.sequence.steps[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+            subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
 
             # Si la mémoire a un Wait
-            if self.app.sequence.cues[position+1].wait:
+            if self.app.sequence.steps[position+1].wait:
                 self.app.sequence.sequence_go(None, None)
 
         # Sinon, on revient au début
         else:
             self.app.sequence.position = 0
             position = 0
-            t_in = self.app.sequence.cues[position+1].time_in
-            t_out = self.app.sequence.cues[position+1].time_out
-            d_in = self.app.sequence.cues[position+1].delay_in
-            d_out = self.app.sequence.cues[position+1].delay_out
-            t_wait = self.app.sequence.cues[position+1].wait
-            self.app.window.sequential.total_time = self.app.sequence.cues[position+1].total_time
+            t_in = self.app.sequence.steps[position+1].time_in
+            t_out = self.app.sequence.steps[position+1].time_out
+            d_in = self.app.sequence.steps[position+1].delay_in
+            d_out = self.app.sequence.steps[position+1].delay_out
+            t_wait = self.app.sequence.steps[position+1].wait
+            self.app.window.sequential.total_time = self.app.sequence.steps[position+1].total_time
             self.app.window.sequential.time_in = t_in
             self.app.window.sequential.time_out = t_out
             self.app.window.sequential.delay_in = d_in
             self.app.window.sequential.delay_out = d_out
             self.app.window.sequential.wait = t_wait
-            self.app.window.sequential.channel_time = self.app.sequence.cues[position+1].channel_time
+            self.app.window.sequential.channel_time = self.app.sequence.steps[position+1].channel_time
             self.app.window.sequential.pos_xA = 0
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.app.sequence.cues[position].memory+" "+self.app.sequence.cues[position].text+" - Next Mem. : "+self.app.sequence.cues[position+1].memory+" "+self.app.sequence.cues[position+1].text
+            subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
@@ -478,7 +473,7 @@ class ThreadGo(threading.Thread):
 
                     if channel:
 
-                        channel_time = self.app.sequence.cues[position+1].channel_time
+                        channel_time = self.app.sequence.steps[position+1].channel_time
 
                         # If channel is in a channel time
                         # TODO: If Time is 0, use TimeIn or TimeOut
@@ -487,7 +482,7 @@ class ThreadGo(threading.Thread):
                             ct_delay = channel_time[channel].delay * 1000
                             ct_time = channel_time[channel].time * 1000
                             if i > ct_delay+delay_wait and i < ct_delay+ct_time+delay_wait:
-                                next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                                next_level = self.app.sequence.steps[position+1].cue.channels[channel-1]
                                 if next_level > old_level:
                                     level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay-delay_wait)) + old_level
                                 else:
@@ -497,9 +492,9 @@ class ThreadGo(threading.Thread):
                         else:
                             # On boucle sur les mémoires et on revient à 0
                             if position < self.app.sequence.last - 1:
-                                next_level = self.app.sequence.cues[position+1].channels[channel-1]
+                                next_level = self.app.sequence.steps[position+1].cue.channels[channel-1]
                             else:
-                                next_level = self.app.sequence.cues[0].channels[channel-1]
+                                next_level = self.app.sequence.steps[0].cue.channels[channel-1]
                                 self.app.sequence.position = 0
 
                             # Si le level augmente, on prends le temps de montée
@@ -559,27 +554,3 @@ class ThreadGo(threading.Thread):
                 self.app.virtual_console.scaleB.set_inverted(True)
             self.app.virtual_console.scaleA.set_value(0)
             self.app.virtual_console.scaleB.set_value(0)
-
-if __name__ == "__main__":
-
-    sequence = Sequence(1)
-
-    channels = array.array('B', [0] * MAX_CHANNELS)
-    for i in range(MAX_CHANNELS):
-        channels[i] = int(i / 2)
-    cue = Cue(1, 1.0, channels, text="Top blabla")
-    sequence.add_cue(cue)
-
-    print("Sequence :", sequence.index, "Type :", sequence.type_seq, "\n")
-    print("Position in sequence :", sequence.position)
-    print("Index of the last Cue :", sequence.last)
-    for cue in sequence.cues:
-        print("Index :", cue.index)
-        print("memory :", cue.memory)
-        print("time in :", cue.time_in)
-        print("time out :", cue.time_out)
-        print("text :", cue.text)
-        print("Chanels :")
-        for i in range(MAX_CHANNELS):
-            print(i+1, "@", cue.channels[i])
-        print("")

@@ -6,6 +6,7 @@ app_PYTHON = \
 	channel_time.py \
 	crossfade.py \
 	cue.py \
+	cues_edition.py \
 	define.py \
 	dmx.py \
 	group.py \
@@ -17,6 +18,7 @@ app_PYTHON = \
 	sequence.py \
 	sequence_edition.py \
 	settings.py \
+	step.py \
 	track_channels.py \
 	virtual_console.py \
 	widgets_button.py \
