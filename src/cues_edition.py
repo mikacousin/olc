@@ -35,10 +35,14 @@ class CuesEditionTab(Gtk.Paned):
         self.add(self.scrolled)
 
         # List of Cues
-        self.liststore = Gtk.ListStore(str, str)
+        self.liststore = Gtk.ListStore(str, str, int)
 
         for i in range(len(self.app.memories)):
-            self.liststore.append([str(self.app.memories[i].memory), self.app.memories[i].text])
+            channels = 0
+            for chan in range(MAX_CHANNELS):
+                if self.app.memories[i].channels[chan]:
+                    channels += 1
+            self.liststore.append([str(self.app.memories[i].memory), self.app.memories[i].text, channels])
 
         self.filter = self.liststore.filter_new()
         self.filter.set_visible_func(self.filter_cue_func)
@@ -47,7 +51,7 @@ class CuesEditionTab(Gtk.Paned):
         self.treeview.set_enable_search(False)
         self.treeview.connect('cursor-changed', self.on_cue_changed)
 
-        for i, column_title in enumerate(['Memory', 'Text']):
+        for i, column_title in enumerate(['Memory', 'Text', 'Channels']):
             renderer = Gtk.CellRendererText()
 
             column = Gtk.TreeViewColumn(column_title, renderer, text = i)
