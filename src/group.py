@@ -287,7 +287,7 @@ class GroupTab(Gtk.Paned):
             if channel >= 0 and channel < MAX_CHANNELS:
 
                 # Only patched channel
-                if self.app.patch.channels[channel][0] != 0:
+                if self.app.patch.channels[channel][0] != [0, 0]:
                     self.channels[channel].clicked = True
                     self.flowbox1.invalidate_filter()
 
