@@ -438,8 +438,11 @@ class Window(Gtk.ApplicationWindow):
         # Send Events to notebook's pages
         page = self.notebook.get_current_page()
         child = self.notebook.get_nth_page(page)
+
         if child == self.app.patch_outputs_tab:
             return self.app.patch_outputs_tab.on_scroll(widget, event)
+        if child == self.app.memories_tab:
+            return self.app.memories_tab.on_scroll(widget, event)
 
         # Zoom In/Out Channels in Live View
         accel_mask = Gtk.accelerator_get_default_mod_mask()
