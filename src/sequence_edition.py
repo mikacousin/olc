@@ -849,7 +849,8 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < MAX_CHANNELS:
+        if (channel >= 0 and channel < MAX_CHANNELS
+                and self.app.patch.channels[channel][0] != [0, 0]):
             self.channels[channel].clicked = True
             self.flowbox.invalidate_filter()
 
@@ -868,7 +869,8 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < MAX_CHANNELS:
+        if (channel >= 0 and channel < MAX_CHANNELS
+                and self.app.patch.channels[channel][0] != [0, 0]):
             self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 

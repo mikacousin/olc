@@ -673,7 +673,8 @@ class Window(Gtk.ApplicationWindow):
             return
 
         channel = int(self.keystring)-1
-        if channel >= 0 and channel < MAX_CHANNELS:
+        if (channel >= 0 and channel < MAX_CHANNELS
+                and self.app.patch.channels[channel][0] != [0, 0]):
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.select_child(child)
@@ -692,7 +693,8 @@ class Window(Gtk.ApplicationWindow):
             return
 
         channel = int(self.keystring)-1
-        if channel >= 0 and channel < MAX_CHANNELS:
+        if (channel >= 0 and channel < MAX_CHANNELS
+                and self.app.patch.channels[channel][0] != [0, 0]):
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.unselect_child(child)

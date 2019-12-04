@@ -354,7 +354,8 @@ class GroupTab(Gtk.Paned):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < MAX_CHANNELS:
+        if (channel >= 0 and channel < MAX_CHANNELS
+                and self.app.patch.channels[channel][0] != [0, 0]):
             self.channels[channel].clicked = True
             self.flowbox1.invalidate_filter()
 
@@ -373,7 +374,8 @@ class GroupTab(Gtk.Paned):
             return
 
         channel = int(self.keystring) - 1
-        if channel >= 0 and channel < MAX_CHANNELS:
+        if (channel >= 0 and channel < MAX_CHANNELS
+                and self.app.patch.channels[channel][0] != [0, 0]):
             self.channels[channel].clicked = False
             self.flowbox1.invalidate_filter()
 
