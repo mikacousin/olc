@@ -823,7 +823,7 @@ class SequenceTab(Gtk.Grid):
             if to_chan > int(self.last_chan_selected):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     # Only patched channels
-                    if self.app.patch.channels[channel][0] != 0:
+                    if self.app.patch.channels[channel][0] != [0, 0]:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
                         self.app.window.set_focus(child)
@@ -832,7 +832,7 @@ class SequenceTab(Gtk.Grid):
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     # Only patched channels
-                    if self.app.patch.channels[channel][0] != 0:
+                    if self.app.patch.channels[channel][0] != [0, 0]:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
                         self.app.window.set_focus(child)
