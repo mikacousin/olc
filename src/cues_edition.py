@@ -71,6 +71,10 @@ class CuesEditionTab(Gtk.Paned):
 
         self.flowbox.set_filter_func(self.filter_channel_func, None)
 
+        # Select first Memory
+        path = Gtk.TreePath.new_first()
+        self.treeview.set_cursor(path, None, False)
+
     def filter_channel_func(self, child, user_data):
         """ Filter channels """
         # Find selected row
@@ -121,6 +125,7 @@ class CuesEditionTab(Gtk.Paned):
         self.app.memories_tab = None
 
     def on_key_press_event(self, widget, event):
+
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
@@ -138,6 +143,12 @@ class CuesEditionTab(Gtk.Paned):
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
             return func()
+
+    def keypress_Escape(self):
+        """ Close Tab """
+        page = self.app.window.notebook.get_current_page()
+        self.app.window.notebook.remove_page(page)
+        self.app.memories_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ''
@@ -356,3 +367,30 @@ class CuesEditionTab(Gtk.Paned):
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
+
+    def keypress_U(self):
+        """ Update Memory """
+
+        self.flowbox.unselect_all()
+
+        # Find selected memory
+        path, focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+
+            # Memory's channels
+            channels = self.app.memories[row].channels
+
+            # Update levels
+            for chan in range(MAX_CHANNELS):
+                channels[chan] = self.channels[chan].level
+                if channels[chan] != 0:
+                    self.app.sequence.channels[chan] = 1
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+    def keypress_R(self):
+        """ Record Memory """
+        pass
