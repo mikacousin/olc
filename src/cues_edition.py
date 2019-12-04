@@ -245,6 +245,31 @@ class CuesEditionTab(Gtk.Paned):
             self.keystring = ''
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
+    def keypress_a(self):
+        """ All Channels """
+
+        self.flowbox.unselect_all()
+
+        # Find selected memory
+        path, focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+
+            # Memory's channels
+            channels = self.app.memories[row].channels
+
+            # Select channels with a level
+            for chan in range(MAX_CHANNELS):
+                if ((channels[chan] and self.user_channels[chan] != 0)
+                        or self.user_channels[chan] > 0):
+                    self.channels[chan].clicked = True
+                    child = self.flowbox.get_child_at_index(chan)
+                    self.app.window.set_focus(child)
+                    self.flowbox.select_child(child)
+                else:
+                    self.channels[chan].clicked = False
+            self.flowbox.invalidate_filter()
+
     def keypress_equal(self):
         """ @ level """
 
