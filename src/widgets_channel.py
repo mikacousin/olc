@@ -23,6 +23,7 @@ class ChannelWidget(Gtk.Widget):
         self.percent_level = self.app.settings.get_boolean('percent')
 
         self.connect("button-press-event", self.on_click)
+        self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
     def on_click(self, tgt, ev):
