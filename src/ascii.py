@@ -69,6 +69,7 @@ class Ascii(object):
 
                 if line[:9] == "CLEAR ALL":
                     # Clear All
+                    del(self.app.memories[:])
                     del(self.app.chasers[:])
                     del(self.app.groups[:])
                     del(self.app.masters[:])
@@ -619,6 +620,18 @@ class Ascii(object):
             # Redraw Patch Channels Tab if exist
             if self.app.patch_channels_tab != None:
                 self.app.patch_channels_tab.flowbox.queue_draw()
+
+            # Redraw List of Memories Tab if exist
+            if self.app.memories_tab != None:
+                self.app.memories_tab.liststore.clear()
+                for i in range(len(self.app.memories)):
+                    channels = 0
+                    for chan in range(MAX_CHANNELS):
+                        if self.app.memories[i].channels[chan]:
+                            channels += 1
+                    self.app.memories_tab.liststore.append([str(self.app.memories[i].memory),
+                        self.app.memories[i].text, channels])
+                self.app.memories_tab.flowbox.invalidate_filter()
 
             # TODO: Redraw Track Channels Tab if exist
 

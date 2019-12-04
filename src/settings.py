@@ -86,6 +86,10 @@ class SettingsDialog:
         if Gio.Application.get_default().group_tab != None:
             Gio.Application.get_default().group_tab.flowbox1.invalidate_filter()
 
+        # Redraw Memories Tab if exist
+        if Gio.Application.get_default().memories_tab != None:
+            Gio.Application.get_default().memories_tab.flowbox.invalidate_filter()
+
         # Redraw Masters Window if exist
         if Gio.Application.get_default().master_tab != None:
             for i in range(len(Gio.Application.get_default().master_tab.scale)):
