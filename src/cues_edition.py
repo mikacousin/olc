@@ -1,5 +1,5 @@
 import array
-from gi.repository import Gtk, Gio, Gdk
+from gi.repository import Gtk, Gio, Gdk, Pango
 
 from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
@@ -411,6 +411,121 @@ class CuesEditionTab(Gtk.Paned):
             self.app.ascii.modified = True
             self.app.window.header.set_title(self.app.ascii.basename + "*")
 
+    def keypress_Delete(self):
+        """ Deletes selected Memory """
+
+        self.flowbox.unselect_all()
+
+        # Find selected memory
+        path, focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+
+            # Find Steps using selected memory
+            steps = []
+            for i in range(len(self.app.sequence.steps)):
+                if self.app.sequence.steps[i].cue.memory == self.app.memories[row].memory:
+                    steps.append(i)
+
+            # Delete Steps
+            for step in steps:
+                self.app.sequence.steps.pop(step)
+                self.app.sequence.last -= 1
+
+            # Delete memory from the Memories List
+            self.app.memories.pop(row)
+
+            # Remove it from the ListStore
+            treeiter = self.liststore.get_iter(path)
+            self.liststore.remove(treeiter)
+
+            # Update Main Playback
+            self.app.window.cues_liststore1.clear()
+            self.app.window.cues_liststore2.clear()
+            self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
+            self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+            for i in range(len(self.app.sequence.steps)):
+                # Display int as int
+                if self.app.sequence.steps[i].wait.is_integer():
+                    wait = str(int(self.app.sequence.steps[i].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.app.sequence.steps[i].wait)
+                if self.app.sequence.steps[i].time_out.is_integer():
+                    t_out = int(self.app.sequence.steps[i].time_out)
+                else:
+                    t_out = self.app.sequence.steps[i].time_out
+                if self.app.sequence.steps[i].delay_out.is_integer():
+                    d_out = str(int(self.app.sequence.steps[i].delay_out))
+                else:
+                    d_out = str(self.app.sequence.steps[i].delay_out)
+                if d_out == "0":
+                    d_out = ""
+                if self.app.sequence.steps[i].time_in.is_integer():
+                    t_in = int(self.app.sequence.steps[i].time_in)
+                else:
+                    t_in = self.app.sequence.steps[i].time_in
+                if self.app.sequence.steps[i].delay_in.is_integer():
+                    d_in = str(int(self.app.sequence.steps[i].delay_in))
+                else:
+                    d_in = str(self.app.sequence.steps[i].delay_in)
+                if d_in == "0":
+                    d_in = ""
+                channel_time = str(len(self.app.sequence.steps[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
+                if i == 0:
+                    bg = "#997004"
+                elif i == 1:
+                    bg = "#555555"
+                else:
+                    bg = "#232729"
+                # Actual and Next Cue in Bold
+                if i == 0 or i == 1:
+                    weight = Pango.Weight.HEAVY
+                else:
+                    weight = Pango.Weight.NORMAL
+                if i == 0:
+                    self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '',
+                        bg, Pango.Weight.NORMAL, 99])
+                    self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
+                else:
+                    self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
+                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in,
+                        str(t_in), channel_time, bg, weight, 99])
+                    self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.steps[i].cue.memory),
+                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in,
+                        str(t_in), channel_time])
+
+            position = self.app.sequence.position
+            self.app.window.cues_liststore1[position][9] = "#232729"
+            self.app.window.cues_liststore1[position + 1][9] = "#232729"
+            self.app.window.cues_liststore1[position + 2][9] = "#997004"
+            self.app.window.cues_liststore1[position + 3][9] = "#555555"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
+
+            self.app.window.step_filter1.refilter()
+            self.app.window.step_filter2.refilter()
+
+            # Update Sequence Edition Tab if exist
+            if self.app.sequences_tab != None:
+                self.app.sequences_tab.liststore1.clear()
+
+                self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
+                    self.app.sequence.text])
+
+                for chaser in range(len(self.app.chasers)):
+                    self.app.sequences_tab.liststore1.append([self.app.chasers[chaser].index,
+                        self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
+
+                self.app.sequences_tab.treeview1.set_model(self.app.sequences_tab.liststore1)
+                pth = Gtk.TreePath.new()
+                self.app.window.treeview1.set_cursor(pth, None, False)
+
     def keypress_R(self):
-        """ Record Memory """
+        """ Records a copy of the current Memory with a new number """
         pass
