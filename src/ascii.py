@@ -509,7 +509,7 @@ class Ascii(object):
                     weight = Pango.Weight.HEAVY
                 else:
                     weight = Pango.Weight.NORMAL
-                if i == 0 or i == self.app.sequence.last-1:
+                if i == 0:
                     self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 99])
                     self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
                 else:
