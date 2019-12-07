@@ -200,7 +200,7 @@ class Ascii(object):
                         channels = array.array('B', [0] * MAX_CHANNELS)
                         #i += 1
                         #print ("        Mémoire :", line[4:])
-                        mem = line[4:]
+                        mem = float(line[4:])
                     if line[:4] == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
