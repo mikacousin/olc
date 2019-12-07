@@ -604,3 +604,103 @@ class CuesEditionTab(Gtk.Paned):
 
         self.keystring = ''
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_Insert(self):
+        """ Insert a new Memory """
+
+        if self.keystring == '':
+            """ Insert memory with the next free number """
+            mem = False
+            # Find Next free number
+            if len(self.app.memories) > 1:
+                for i in range(len(self.app.memories) - 1):
+
+                    if int(self.app.memories[i + 1].memory) - int(self.app.memories[i].memory) > 1:
+                        mem = self.app.memories[i].memory + 1
+                        break
+            elif len(self.app.memories) == 1:
+                # Just one memory
+                mem = self.app.memories[0].memory + 1
+                i = 1
+            else:
+                # The list is empty
+                i = 0
+                mem = 1.0
+
+            # Free number is at the end
+            if not mem:
+                mem = self.app.memories[-1].memory + 1
+                i += 1
+
+            # Find selected memory for channels levels
+            path, focus_column = self.treeview.get_cursor()
+            if path:
+                row = path.get_indices()[0]
+                channels = self.app.memories[row].channels
+            else:
+                channels = array.array('B', [0] * MAX_CHANNELS)
+
+            # Create new memory
+            cue = Cue(0, mem, channels)
+            self.app.memories.insert(i + 1, cue)
+            nb_chan = 0
+            for chan in range(MAX_CHANNELS):
+                if channels[chan]:
+                    nb_chan += 1
+            self.liststore.insert(i + 1, [str(mem), '', nb_chan])
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+        else:
+            """ Insert memory with the given number """
+
+            mem = float(self.keystring)
+
+            # Memory already exist ?
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory == mem:
+                    return False
+
+            # Find selected memory
+            path, focus_column = self.treeview.get_cursor()
+            if path:
+                row = path.get_indices()[0]
+
+                sequence = self.app.memories[row].sequence
+                memory = self.app.memories[row].memory
+                channels = self.app.memories[row].channels
+                #text = self.app.memories[row].text
+            else:
+                sequence = 0
+                channels = array.array('B', [0] * MAX_CHANNELS)
+
+            # Find Memory's position
+            found = False
+            i = 0
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory > mem:
+                    found = True
+                    break
+            if not found:
+                # Memory is at the end
+                i += 1
+
+            # Create Memory
+            cue = Cue(sequence, mem, channels)
+            self.app.memories.insert(i, cue)
+
+            # Update display
+            nb_chan = 0
+            for chan in range(MAX_CHANNELS):
+                if channels[chan]:
+                    nb_chan += 1
+            self.liststore.insert(i, [str(mem), '', nb_chan])
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+            self.keystring = ''
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
