@@ -3,6 +3,7 @@ from gi.repository import Gtk, Gio, Gdk, Pango
 
 from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
+from olc.cue import Cue
 
 class CuesEditionTab(Gtk.Paned):
     def __init__(self):
@@ -401,11 +402,17 @@ class CuesEditionTab(Gtk.Paned):
             # Memory's channels
             channels = self.app.memories[row].channels
 
-            # Update levels
+            # Update levels and count channels
+            nb_chan = 0
             for chan in range(MAX_CHANNELS):
                 channels[chan] = self.channels[chan].level
                 if channels[chan] != 0:
                     self.app.sequence.channels[chan] = 1
+                    nb_chan += 1
+
+            # Update Display
+            treeiter = self.liststore.get_iter(row)
+            self.liststore.set_value(treeiter, 2, nb_chan)
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -413,6 +420,8 @@ class CuesEditionTab(Gtk.Paned):
 
     def keypress_Delete(self):
         """ Deletes selected Memory """
+
+        # TODO: Ask confirmation
 
         self.flowbox.unselect_all()
 
@@ -438,6 +447,10 @@ class CuesEditionTab(Gtk.Paned):
             # Remove it from the ListStore
             treeiter = self.liststore.get_iter(path)
             self.liststore.remove(treeiter)
+
+            # Tag filename as modified
+            self.app.ascii.modified = True
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Main Playback
             self.app.window.cues_liststore1.clear()
@@ -528,4 +541,66 @@ class CuesEditionTab(Gtk.Paned):
 
     def keypress_R(self):
         """ Records a copy of the current Memory with a new number """
-        pass
+
+        if self.keystring != '':
+            mem = float(self.keystring)
+        else:
+            return False
+
+        # Memory already exist ?
+        for i in range(len(self.app.memories)):
+            if self.app.memories[i].memory == mem:
+                # Find selected memory
+                path, focus_column = self.treeview.get_cursor()
+                if path:
+                    row = path.get_indices()[0]
+                    # Copy channels
+                    self.app.memories[i].channels = self.app.memories[row].channels
+                    # Count channels
+                    nb_chan = 0
+                    for chan in range(MAX_CHANNELS):
+                        if self.app.memories[i].channels[chan]:
+                            nb_chan += 1
+                    # Update Display
+                    treeiter = self.liststore.get_iter(i)
+                    self.liststore.set_value(treeiter, 2, nb_chan)
+
+                    # Tag filename as modified
+                    self.app.ascii.modified = True
+                    self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+                self.keystring = ''
+                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+                return
+
+        # Find selected memory
+        path, focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+
+            sequence = self.app.memories[row].sequence
+            memory = self.app.memories[row].memory
+            channels = self.app.memories[row].channels
+            #text = self.app.memories[row].text
+
+            cue = Cue(sequence, mem, channels)
+
+            # Insert Memory
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory > mem:
+                    break
+            if i:
+                self.app.memories.insert(i, cue)
+                nb_chan = 0
+                for chan in range(MAX_CHANNELS):
+                    if channels[chan]:
+                        nb_chan += 1
+                self.liststore.insert(i, [str(mem), '', nb_chan])
+
+                # Tag filename as modified
+                self.app.ascii.modified = True
+                self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
