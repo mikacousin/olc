@@ -13,6 +13,7 @@ class Dmx(object):
         self.seq = sequence
         self.masters = masters
         self.window = window
+        self.grand_master = 255
 
         # les valeurs DMX echangées avec Ola
         self.frame = []
@@ -50,6 +51,8 @@ class Dmx(object):
                             self.window.channels[channel-1].color_level_green = 0.7
                             self.window.channels[channel-1].color_level_blue = 0.4
 
+                    # Grand Master
+                    level = round(level * (self.grand_master / 255))
                     # On met à jour le niveau pour cet output
                     self.frame[universe][output] = level
 
@@ -125,32 +128,3 @@ class PatchDmx(object):
                 return out
         return -1
     """
-
-if __name__ == "__main__":
-
-    patch = PatchDmx()
-
-    #for i in range(len(patch.channels)):
-    #    print ("channel :", i+1, "output(s) :", patch.channels[i])
-
-    #for i in range(len(patch.outputs)):
-    #    print ("output :", i+1, "channel :", patch.outputs[i])
-
-    patch.patch_empty()
-    #patch.patch_1on1()
-
-    #for i in range(len(patch.channels)):
-    #    print ("channel :", i+1, "output(s) :", patch.channels[i])
-
-    #for i in range(len(patch.outputs)):
-    #    print ("output :", i+1, "channel :", patch.outputs[i])
-
-    patch.add_output(1020, 10, 0)
-    patch.add_output(1020, 20, 1)
-
-    for i in range(len(patch.channels)):
-        for j in range(len(patch.channels[i])):
-            print ("channel :", i+1, "output(s) :", patch.channels[i][j][0], "universe :", patch.channels[i][j][1])
-
-    for i in range(len(patch.outputs)):
-        print ("output :", i+1, "channel :", patch.outputs[i])

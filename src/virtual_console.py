@@ -114,8 +114,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.output_pad = Gtk.Grid()
         #self.output_pad.set_column_homogeneous(True)
         #self.output_pad.set_row_homogeneous(True)
-        self.adGM = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        self.adGM = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
         self.scaleGM = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adGM)
+        self.scaleGM.connect('value-changed', self.GM_moved)
         #self.scaleGM.set_draw_value(False)
         self.scaleGM.set_vexpand(True)
         self.scaleGM.set_inverted(True)
@@ -625,3 +626,12 @@ class VirtualConsoleWindow(Gtk.Window):
             elif scale == self.scaleB:
                 self.app.midi.midi_learn = 'Crossfade_in'
             self.queue_draw()
+
+    def GM_moved(self, scale):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'GM'
+            self.queue_draw()
+        else:
+            value = scale.get_value()
+
+            self.app.dmx.grand_master = value

@@ -62,6 +62,7 @@ class Midi(object):
                 ['PercentPlus', 0, -1],
                 ['PercentMinus', 0, -1],
                 ['Update', 0, -1],
+                ['GM', 0, -1],
                 ['Crossfade_out', 0, 8],
                 ['Crossfade_in', 0, 9]]
 
@@ -1149,6 +1150,28 @@ class Midi(object):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
                     self.app.virtual_console.dot.emit('button-release-event', event)
+
+            # Grand Master
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'GM':
+                    break
+            if self.midi_learn == 'GM':
+                if msg.type == 'control_change':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.control:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = -1
+                    # Learn new values
+                    self.midi_table[index] = ['GM', msg.channel, msg.control]
+            elif (not self.midi_learn and msg.type == 'control_change'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.control == self.midi_table[index][2]):
+                val = (msg.value / 127) * 255
+                if self.app.virtual_console:
+                    self.app.virtual_console.scaleGM.set_value(val)
+                else:
+                    self.app.dmx.grand_master = val
 
             # Manual Crossfade Out
             for index in range(len(self.midi_table)):

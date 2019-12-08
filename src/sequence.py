@@ -487,8 +487,8 @@ class ThreadGo(threading.Thread):
 
                 for output in range(512):
 
-                    # On utilise les valeurs dmx comme valeurs de départ
-                    old_level = self.dmxlevels[univ][output]
+                    # DMX values with Grand Master correction
+                    old_level = round(self.dmxlevels[univ][output] * (255 / self.app.dmx.grand_master))
 
                     channel = self.app.patch.outputs[univ][output]
 
