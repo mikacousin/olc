@@ -15,6 +15,8 @@ class Dmx(object):
         self.window = window
         self.grand_master = 255
 
+        self.app = Gio.Application.get_default()
+
         # les valeurs DMX echangées avec Ola
         self.frame = []
         for universe in range(NB_UNIVERSES):
@@ -41,7 +43,7 @@ class Dmx(object):
                     self.window.channels[channel-1].color_level_green = 0.9
                     self.window.channels[channel-1].color_level_blue = 0.9
                     # Si on est pas sur un Go, on utilise les valeurs de l'utilisateur
-                    if not self.seq.on_go and self.user[channel-1] != -1:
+                    if not self.app.sequence.on_go and self.user[channel-1] != -1:
                         level = self.user[channel-1]
                     # Si c'est le niveau d'un master le plus grand, on l'utilise
                     for master in range(len(self.masters)):
