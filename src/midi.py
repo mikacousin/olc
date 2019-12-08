@@ -1170,8 +1170,10 @@ class Midi(object):
                 val = (msg.value / 127) * 255
                 if self.app.virtual_console:
                     self.app.virtual_console.scaleGM.set_value(val)
+                    self.app.virtual_console.GM_moved(self.app.virtual_console.scaleGM)
                 else:
                     self.app.dmx.grand_master = val
+                    self.app.window.gm.queue_draw()
 
             # Manual Crossfade Out
             for index in range(len(self.midi_table)):

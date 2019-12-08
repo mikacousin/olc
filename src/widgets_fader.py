@@ -58,9 +58,9 @@ class FaderWidget(Gtk.Widget):
     def on_motion(self, tgt, ev):
         if self.pressed and self.on_fader and not self.app.midi.midi_learn:
             if self.inverted:
-                val = self.height - 20 - (((self.height - 20) / 360) * ev.y)
+                val = self.height - 20 - (((self.height - 20) / self.height) * ev.y)
             else:
-                val = ((self.height - 20) / 360) * ev.y
+                val = ((self.height - 20) / self.height) * ev.y
             if val < 0:
                 val = 0
             elif val > 255:

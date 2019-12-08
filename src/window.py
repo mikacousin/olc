@@ -10,6 +10,7 @@ from olc.group import Group
 from olc.widgets_sequential import SequentialWidget
 from olc.widgets_group import GroupWidget
 from olc.widgets_channel import ChannelWidget
+from olc.widgets_GM import GMWidget
 
 class Window(Gtk.ApplicationWindow):
 
@@ -34,6 +35,8 @@ class Window(Gtk.ApplicationWindow):
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         #Gtk.StyleContext.add_class(box.get_style_context(), "linked")
+        self.gm = GMWidget()
+        box.add(self.gm)
         button = Gtk.Button()
         icon = Gio.ThemedIcon(name="view-grid-symbolic")
         image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)

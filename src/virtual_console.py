@@ -114,8 +114,15 @@ class VirtualConsoleWindow(Gtk.Window):
         self.output_pad = Gtk.Grid()
         #self.output_pad.set_column_homogeneous(True)
         #self.output_pad.set_row_homogeneous(True)
+        """
         self.adGM = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
         self.scaleGM = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adGM)
+        """
+        self.scaleGM = FaderWidget(text='GM')
+        self.scaleGM.value = 255
+        self.scaleGM.height = 240
+        #self.scaleA = FaderWidget(text='Crossfade_out', red=0.3, green=0.3, blue=0.7)
+        self.scaleGM.connect('clicked', self.scale_clicked)
         self.scaleGM.connect('value-changed', self.GM_moved)
         #self.scaleGM.set_draw_value(False)
         self.scaleGM.set_vexpand(True)
@@ -625,6 +632,8 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.app.midi.midi_learn = 'Crossfade_out'
             elif scale == self.scaleB:
                 self.app.midi.midi_learn = 'Crossfade_in'
+            elif scale == self.scaleGM:
+                self.app.midi.midi_learn = 'GM'
             self.queue_draw()
 
     def GM_moved(self, scale):
@@ -635,3 +644,4 @@ class VirtualConsoleWindow(Gtk.Window):
             value = scale.get_value()
 
             self.app.dmx.grand_master = value
+            self.app.window.gm.queue_draw()

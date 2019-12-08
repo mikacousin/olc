@@ -25,6 +25,7 @@ app_PYTHON = \
 	widgets_channel.py \
 	widgets_fader.py \
 	widgets_go.py \
+	widgets_GM.py \
 	widgets_group.py \
 	widgets_patch_channels.py \
 	widgets_patch_outputs.py \

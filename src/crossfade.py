@@ -235,9 +235,9 @@ class CrossFade(object):
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
 
-                    subtitle = ("Mem. :" + app.sequence.steps[position].cue.memory + " "
+                    subtitle = ("Mem. :" + str(app.sequence.steps[position].cue.memory) + " "
                             + app.sequence.steps[position].text + " - Next Mem. : "
-                            + app.sequence.steps[position + 1].cue.memory + " "
+                            + str(app.sequence.steps[position + 1].cue.memory) + " "
                             + app.sequence.steps[position + 1].text)
                     app.window.header.set_subtitle(subtitle)
 
