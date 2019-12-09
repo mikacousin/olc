@@ -494,45 +494,75 @@ class ThreadGo(threading.Thread):
 
                     if channel:
 
+                        if position < self.app.sequence.last - 1:
+                            next_level = self.app.sequence.steps[position + 1].cue.channels[channel - 1]
+                        else:
+                            next_level = self.app.sequence.steps[0].cue.channels[channel - 1]
+
                         channel_time = self.app.sequence.steps[position+1].channel_time
 
                         # If channel is in a channel time
-                        # TODO: If Time is 0, use TimeIn or TimeOut
                         if channel in channel_time:
-                            #print(channel_time[channel].delay, channel_time[channel].time)
                             ct_delay = channel_time[channel].delay * 1000
                             ct_time = channel_time[channel].time * 1000
-                            if i > ct_delay+delay_wait and i < ct_delay+ct_time+delay_wait:
-                                next_level = self.app.sequence.steps[position+1].cue.channels[channel-1]
-                                if next_level > old_level:
-                                    level = int(((next_level - old_level+1) / ct_time) * (i-ct_delay-delay_wait)) + old_level
-                                else:
-                                    level = old_level - abs(int(((next_level - old_level-1) / ct_time) * (i-ct_delay-delay_wait)))
-                                self.app.dmx.sequence[channel-1] = level
+
+                            if next_level > old_level:
+
+                                if i < ct_delay + delay_wait:
+                                    level = old_level
+
+                                elif i >= ct_delay + delay_wait and i <  ct_delay + ct_time + delay_wait:
+                                    level = int(((next_level - old_level + 1) / ct_time)
+                                            * (i - ct_delay - delay_wait)) + old_level
+
+                                elif i >= ct_delay + ct_time + delay_wait:
+                                    level = next_level
+
+                            else:
+                                if i < ct_delay + delay_wait:
+                                    level = old_level
+
+                                elif i >= ct_delay + delay_wait and i <  ct_delay + ct_time + delay_wait:
+                                    level = old_level - abs(int(((next_level - old_level - 1) / ct_time)
+                                        * (i - ct_delay - delay_wait)))
+
+                                elif i >= ct_delay + ct_time + delay_wait:
+                                    level = next_level
+
+                            self.app.dmx.sequence[channel - 1] = level
+
                         # Else channel is normal
                         else:
                             # On boucle sur les mémoires et on revient à 0
                             if position < self.app.sequence.last - 1:
-                                next_level = self.app.sequence.steps[position+1].cue.channels[channel-1]
+                                next_level = self.app.sequence.steps[position + 1].cue.channels[channel - 1]
                             else:
-                                next_level = self.app.sequence.steps[0].cue.channels[channel-1]
+                                next_level = self.app.sequence.steps[0].cue.channels[channel - 1]
                                 self.app.sequence.position = 0
 
                             # Si le level augmente, on prends le temps de montée
-                            if next_level > old_level and i < delay_in+delay_wait+delay_d_in and i > delay_wait+delay_d_in:
-                                level = int(((next_level - old_level+1) / delay_in) * (i-delay_wait-delay_d_in)) + old_level
+                            if (next_level > old_level and i < delay_in+delay_wait+delay_d_in
+                                    and i > delay_wait+delay_d_in):
+                                level = int(((next_level - old_level + 1) / delay_in)
+                                        * (i - delay_wait - delay_d_in)) + old_level
+
                             elif next_level > old_level and i > delay_in+delay_wait+delay_d_in:
                                 level = next_level
+
                             # Si le level descend, on prend le temps de descente
-                            elif next_level < old_level and i < delay_out+delay_wait+delay_d_out and i > delay_wait+delay_d_out:
-                                level = old_level - abs(int(((next_level - old_level-1) / delay_out) * (i-delay_wait-delay_d_out)))
-                            elif next_level < old_level and i > delay_out+delay_wait+delay_d_out:
+                            elif (next_level < old_level and i < delay_out+delay_wait+delay_d_out
+                                    and i > delay_wait+delay_d_out):
+                                level = old_level - abs(int(((next_level - old_level - 1) / delay_out)
+                                    * (i - delay_wait - delay_d_out)))
+
+                            elif next_level < old_level and i > delay_out + delay_wait + delay_d_out:
                                 level = next_level
+
                             # Sinon, la valeur est déjà bonne
                             else:
                                 level = old_level
 
-                            self.app.dmx.sequence[channel-1] = level
+                            self.app.dmx.sequence[channel - 1] = level
 
             if self.app.patch_outputs_tab != None:
                 GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
