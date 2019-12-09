@@ -298,6 +298,7 @@ class ChanneltimeTab(Gtk.Paned):
             else:
                 self.channels[i].level = 0
                 self.channels[i].next_level = 0
+                return False
 
     def on_channeltime_changed(self, treeview):
         """ Select a Channel Time """
@@ -363,20 +364,21 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.flowbox.unselect_all()
 
+        for channel in range(MAX_CHANNELS):
+            self.channels[channel].clicked = False
+
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
             if channel >= 0 and channel < MAX_CHANNELS:
                 self.channels[channel].clicked = True
-                self.flowbox.invalidate_filter()
+                #self.flowbox.invalidate_filter()
 
                 child = self.flowbox.get_child_at_index(channel)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
-        else:
-            for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-            self.flowbox.invalidate_filter()
+
+        self.flowbox.invalidate_filter()
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -411,7 +413,7 @@ class ChanneltimeTab(Gtk.Paned):
             self.treeview.set_cursor(path)
             self.app.window.set_focus(self.treeview)
 
-    def keypress_A(self):
+    def keypress_Insert(self):
         """ Add Channel Time """
 
         # Find selected channels
@@ -424,11 +426,11 @@ class ChanneltimeTab(Gtk.Paned):
                 channel = int(channelwidget.channel)
 
                 # If not already exist
-                if not channel in self.cue.channel_time:
+                if not channel in self.step.channel_time:
                     # Add Channel Time
                     delay = 0.0
                     time = 0.0
-                    self.cue.channel_time[channel] = ChannelTime(delay, time)
+                    self.step.channel_time[channel] = ChannelTime(delay, time)
 
                     # Update ui
                     self.liststore.append([channel, "", ""])
