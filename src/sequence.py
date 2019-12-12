@@ -33,11 +33,21 @@ class Sequence(object):
         cue = Cue(0, 0.0)
         step = Step(sequence=self.index, cue=cue)
         self.add_step(step)
+        # Last Step
+        self.add_step(step)
 
         self.app = Gio.Application.get_default()
 
     def add_step(self, step):
         self.steps.append(step)
+        self.last = len(self.steps)
+        # Channels used in sequential
+        for channel in range(MAX_CHANNELS):
+            if step.cue.channels[channel] != 0:
+                self.channels[channel] = 1
+
+    def insert_step(self, index, step):
+        self.steps.insert(index, step)
         self.last = len(self.steps)
         # Channels used in sequential
         for channel in range(MAX_CHANNELS):

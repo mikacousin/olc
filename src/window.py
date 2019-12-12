@@ -6,6 +6,8 @@ from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
 from ola import OlaClient
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES
+from olc.cue import Cue
+from olc.step import Step
 from olc.group import Group
 from olc.widgets_sequential import SequentialWidget
 from olc.widgets_group import GroupWidget
@@ -155,8 +157,8 @@ class Window(Gtk.ApplicationWindow):
             if channel_time == "0":
                 channel_time = ""
             bg = "#232729"
-            #if i == 0 or i == self.app.sequence.last-1:
-            if i == 0:
+            #if i == 0:
+            if i == 0 or i == self.app.sequence.last - 1:
                 self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 42])
             else:
                 self.cues_liststore1.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
@@ -809,6 +811,210 @@ class Window(Gtk.ApplicationWindow):
         self.app.sequence.sequence_goto(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
+
+    def keypress_R(self):
+        """ Record new Step and new Preset """
+
+        found = False
+
+        if self.keystring == '':
+            """ Use next free number """
+
+            # Find next free number
+            position =self.app.sequence.position
+            memory = self.app.sequence.steps[position].cue.memory
+            #print('En scène, step:', position, 'mémoire:', memory)
+
+            if position < self.app.sequence.last - 1:
+                next_memory = self.app.sequence.steps[position + 1].cue.memory
+                if next_memory == 0.0:
+                    #print('Dernière mémoire')
+                    mem = memory + 1
+                else:
+                    #print('Mémoire suivante:', next_memory)
+                    if (next_memory - memory) <= 1:
+                        mem = ((next_memory - memory) / 2) + memory
+                    else:
+                        mem = memory + 1
+            else:
+                #print('Dernière mémoire')
+                mem = memory + 1
+
+        else:
+            """ Use given number """
+
+            mem = float(self.keystring)
+
+            # Preset already exist ?
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory == mem:
+                    found = True
+                    break
+
+        if not found:
+
+            # Find Preset's position
+            found = False
+            i = 0
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory > mem:
+                    found = True
+                    break
+            if not found:
+                # Preset is at the end
+                i += 1
+
+            # Create Preset
+            channels = array.array('B', [0] * MAX_CHANNELS)
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
+                    channel = self.app.patch.outputs[univ][output]
+                    level = self.app.dmx.frame[univ][output]
+                    channels[channel-1] = level
+            cue = Cue(1, mem, channels)
+            self.app.memories.insert(i, cue)
+
+            # Update Presets Tab if exist
+            if self.app.memories_tab != None:
+                nb_chan = 0
+                for chan in range(MAX_CHANNELS):
+                    if channels[chan]:
+                        nb_chan += 1
+                self.app.memories_tab.liststore.insert(i, [str(mem), '', nb_chan])
+
+            # Find Step's position
+            for i in range(self.app.sequence.last):
+                if self.app.sequence.steps[i].cue.memory > mem:
+                    break
+            self.app.sequence.position = i
+
+            # Create Step
+            step = Step(1, cue=cue)
+            self.app.sequence.insert_step(self.app.sequence.position, step)
+
+            # Update Main Playback
+            self.cues_liststore1.clear()
+            self.cues_liststore2.clear()
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+            for i in range(self.app.sequence.last):
+                if self.app.sequence.steps[i].wait.is_integer():
+                    wait = str(int(self.app.sequence.steps[i].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.app.sequence.steps[i].wait)
+                if self.app.sequence.steps[i].time_out.is_integer():
+                    t_out = int(self.app.sequence.steps[i].time_out)
+                else:
+                    t_out = self.app.sequence.steps[i].time_out
+                if self.app.sequence.steps[i].delay_out.is_integer():
+                    d_out = str(int(self.app.sequence.steps[i].delay_out))
+                else:
+                    d_out = str(self.app.sequence.steps[i].delay_out)
+                if d_out == "0":
+                    d_out = ""
+                if self.app.sequence.steps[i].time_in.is_integer():
+                    t_in = int(self.app.sequence.steps[i].time_in)
+                else:
+                    t_in = self.app.sequence.steps[i].time_in
+                if self.app.sequence.steps[i].delay_in.is_integer():
+                    d_in = str(int(self.app.sequence.steps[i].delay_in))
+                else:
+                    d_in = str(self.app.sequence.steps[i].delay_in)
+                if d_in == "0":
+                    d_in = ""
+                channel_time = str(len(self.app.sequence.steps[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
+                if i == 0:
+                    bg = "#997004"
+                elif i == 1:
+                    bg = "#555555"
+                else:
+                    bg = "#232729"
+                # Actual and Next Cue in Bold
+                if i == 0 or i == 1:
+                    weight = Pango.Weight.HEAVY
+                else:
+                    weight = Pango.Weight.NORMAL
+                if i == 0 or i == self.app.sequence.last - 1:
+                    self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '',
+                        bg, Pango.Weight.NORMAL, 99])
+                    self.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
+                else:
+                    self.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
+                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in),
+                        channel_time, bg, weight, 99])
+                    self.cues_liststore2.append([str(i), str(self.app.sequence.steps[i].cue.memory),
+                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in),
+                        channel_time])
+
+            self.cues_liststore1[self.app.sequence.position][9] = '#232729'
+            self.cues_liststore1[self.app.sequence.position + 1][9] = '#232729'
+            self.cues_liststore1[self.app.sequence.position + 2][9] = '#997004'
+            self.cues_liststore1[self.app.sequence.position + 3][9] = '#555555'
+            self.cues_liststore1[self.app.sequence.position][10] = Pango.Weight.NORMAL
+            self.cues_liststore1[self.app.sequence.position + 1][10] = Pango.Weight.NORMAL
+            self.cues_liststore1[self.app.sequence.position + 2][10] = Pango.Weight.HEAVY
+            self.cues_liststore1[self.app.sequence.position + 3][10] = Pango.Weight.HEAVY
+
+            self.step_filter1.refilter()
+            self.step_filter2.refilter()
+
+            path1 = Gtk.TreePath.new_from_indices([self.app.sequence.position + 2])
+            path2 = Gtk.TreePath.new_from_indices([self.app.sequence.position])
+            self.treeview1.set_cursor(path1, None, False)
+            self.treeview2.set_cursor(path2, None, False)
+            self.seq_grid.queue_draw()
+
+            """
+            # Test
+            print('Position', self.app.sequence.position)
+            print('Last', self.app.sequence.last)
+            for i in range(len(self.app.memories)):
+                print('Preset', i, self.app.memories[i].memory)
+            for i in range(self.app.sequence.last):
+                print('Step', i, self.app.sequence.steps[i].cue.memory)
+            """
+
+        else:
+            # Update Preset
+            for univ in range(NB_UNIVERSES):
+                for output in range(512):
+                    channel = self.app.patch.outputs[univ][output]
+                    level = self.app.dmx.frame[univ][output]
+
+                    self.app.memories[i].channels[channel - 1] = level
+
+            # Update Presets Tab if exist
+            if self.app.memories_tab != None:
+                nb_chan = 0
+                for chan in range(MAX_CHANNELS):
+                    if self.app.memories[i].channels[chan]:
+                        nb_chan += 1
+                treeiter = self.app.memories_tab.liststore.get_iter(i)
+                self.app.memories_tab.liststore.set_value(treeiter, 2, nb_chan)
+                self.app.memories_tab.flowbox.invalidate_filter()
+
+        # Update Sequential edition Tabs
+        if self.app.sequences_tab != None:
+            # Main Playback selected ?
+            path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
+            if path != None:
+                selected = path.get_indices()[0]
+                sequence = self.app.sequences_tab.liststore1[selected][0]
+                if sequence == self.app.sequence.index:
+                    # Yes, update it
+                    selection = self.app.sequences_tab.treeview1.get_selection()
+                    self.app.sequences_tab.on_sequence_changed(selection)
+
+        # Tag filename as modified
+        self.app.ascii.modified = True
+        self.app.window.header.set_title(self.app.ascii.basename + "*")
+
+        self.keystring = ''
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_U(self):
         """ Update Cue """

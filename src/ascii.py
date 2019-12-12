@@ -75,6 +75,7 @@ class Ascii(object):
                     del(self.app.masters[:])
                     self.app.patch.patch_empty()
                     self.app.sequence = Sequence(1, self.app.patch, text="Main Playback")
+                    del(self.app.sequence.steps[1:])
                     self.app.sequence.window = self.app.window
 
                 if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
@@ -86,6 +87,7 @@ class Ascii(object):
                         type_seq = "Chaser"
                         index_seq = int(p[0])
                         self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = type_seq))
+                        del(self.app.chasers[-1].steps[1:])
                     """
                     try:
                         test_type = p[1]
@@ -434,6 +436,10 @@ class Ascii(object):
 
             fstream.close()
 
+            # Add Empty Step at the end
+            cue = Cue(0, 0.0)
+            step = Step(1, cue=cue)
+            self.app.sequence.add_step(step)
 
             # Set main window's title with the file name
             self.app.window.header.set_title(self.basename)
@@ -509,7 +515,7 @@ class Ascii(object):
                     weight = Pango.Weight.HEAVY
                 else:
                     weight = Pango.Weight.NORMAL
-                if i == 0:
+                if i == 0 or i == self.app.sequence.last - 1:
                     self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 99])
                     self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
                 else:
@@ -610,8 +616,11 @@ class Ascii(object):
                         self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
 
                 self.app.sequences_tab.treeview1.set_model(self.app.sequences_tab.liststore1)
-                path = Gtk.TreePath.new()
-                self.app.window.treeview1.set_cursor(path, None, False)
+                path = Gtk.TreePath.new_first()
+                self.app.sequences_tab.treeview1.set_cursor(path, None, False)
+                # TODO: List of steps of selected sequence
+                selection = self.app.sequences_tab.treeview1.get_selection()
+                self.app.sequences_tab.on_sequence_changed(selection)
 
             # Redraw Patch Outputs Tab if exist
             if self.app.patch_outputs_tab != None:
