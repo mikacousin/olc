@@ -470,8 +470,6 @@ class Window(Gtk.ApplicationWindow):
         child = self.notebook.get_nth_page(page)
         if child == self.app.group_tab:
             return self.app.group_tab.on_key_press_event(widget, event)
-        if child == self.app.master_tab:
-            return self.app.master_tab.on_key_press_event(widget, event)
         if child == self.app.patch_outputs_tab:
             return self.app.patch_outputs_tab.on_key_press_event(widget, event)
         if child == self.app.patch_channels_tab:

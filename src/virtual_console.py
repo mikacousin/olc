@@ -6,6 +6,7 @@ import math
 from olc.widgets_button import ButtonWidget
 from olc.widgets_go import GoWidget
 from olc.widgets_fader import FaderWidget
+from olc.widgets_flash import FlashWidget
 
 class VirtualConsoleWindow(Gtk.Window):
     def __init__(self):
@@ -120,7 +121,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         self.scaleGM = FaderWidget(text='GM')
         self.scaleGM.value = 255
-        self.scaleGM.height = 240
+        self.scaleGM.height = 160
         #self.scaleA = FaderWidget(text='Crossfade_out', red=0.3, green=0.3, blue=0.7)
         self.scaleGM.connect('clicked', self.scale_clicked)
         self.scaleGM.connect('value-changed', self.GM_moved)
@@ -292,6 +293,27 @@ class VirtualConsoleWindow(Gtk.Window):
         self.label = Gtk.Label('')
         self.go_pad.attach(self.label, 2, 3, 1, 1)
 
+        # Masters
+        self.masters_pad = Gtk.Grid()
+        self.masters = []
+        self.flashes = []
+        for page in range(2):
+            for i in range(20):
+                self.masters.append(FaderWidget(text='Master ' + str(i + (page * 20) + 1)))
+                self.masters[i + (page * 20)].connect('value-changed', self.master_moved)
+                self.masters[i + (page * 20)].connect('clicked', self.master_clicked)
+                self.flashes.append(FlashWidget(''))
+                self.flashes[i + (page * 20)].connect('button-press-event', self.flash_on)
+                self.flashes[i + (page * 20)].connect('button-release-event', self.flash_off)
+                self.flashes[i + (page * 20)].connect('clicked', self.on_flash)
+                self.masters_pad.attach(self.masters[i + (page * 20)], i, 0 + (page * 2), 1, 1)
+                self.masters_pad.attach(self.flashes[i + (page * 20)], i, 1 + (page * 2), 1, 1)
+                text = 'Flash ' + str(i + (page * 20) + 1)
+                self.flashes[i + (page * 20)].text = text
+            for i in range(len(self.app.masters)):
+                if self.app.masters[i].page == page + 1:
+                    self.flashes[self.app.masters[i].number - 1 + (page * 20)].label = self.app.masters[i].text
+
         # General Grid
         self.grid = Gtk.Grid()
         #self.grid.set_column_homogeneous(True)
@@ -307,6 +329,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.grid.attach(self.modify_pad, 3, 0, 1, 1)
         self.grid.attach(self.crossfade_pad, 4, 0, 1, 2)
         self.grid.attach(self.go_pad, 5, 1, 1, 1)
+        self.grid.attach(self.masters_pad, 6, 0, 1, 2)
 
         self.add(self.grid)
 
@@ -597,6 +620,58 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             self.app.window.keystring += '.'
             self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+
+    def flash_on(self, widget, event):
+        if not self.midi_learn:
+            for i in range(len(self.flashes)):
+                if self.flashes[i] == widget:
+                    self.masters[i].set_value(255)
+                    for j in range(len(self.app.masters)):
+                        if self.app.masters[j].text == self.flashes[i].label:
+                            self.app.masters[j].value = 255
+                            self.app.masters[j].level_changed()
+
+    def flash_off(self, widget, event):
+        if not self.midi_learn:
+            for i in range(len(self.flashes)):
+                if self.flashes[i] == widget:
+                    self.masters[i].set_value(0)
+                    for j in range(len(self.app.masters)):
+                        if self.app.masters[j].text == self.flashes[i].label:
+                            self.app.masters[j].value = 0
+                            self.app.masters[j].level_changed()
+
+    def on_flash(self, widget):
+        if self.midi_learn:
+            index = self.flashes.index(widget) + 1
+            text = 'Flash ' + str(index)
+            self.app.midi.midi_learn = text
+            self.queue_draw()
+
+    def master_moved(self, master):
+        if self.midi_learn:
+            index = self.masters.index(master) + 1
+            text = 'Master ' + str(index)
+            self.app.midi.midi_learn = text
+            self.queue_draw()
+        else:
+            found = False
+            value = master.get_value()
+            index = self.masters.index(master)
+            for i in range(len(self.app.masters)):
+                if self.app.masters[i].text == self.flashes[index].label:
+                    found = True
+                    break
+            if found:
+                self.app.masters[i].value = value
+                self.app.masters[i].level_changed()
+
+    def master_clicked(self, master):
+        if self.midi_learn:
+            index = self.masters.index(master) + 1
+            text = 'Master ' + str(index)
+            self.app.midi.midi_learn = text
+            self.queue_draw()
 
     def scale_moved(self, scale):
         if self.midi_learn:

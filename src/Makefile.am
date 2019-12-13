@@ -11,6 +11,7 @@ app_PYTHON = \
 	dmx.py \
 	group.py \
 	master.py \
+	masters_edition.py \
 	midi.py \
 	osc.py \
 	patch_channels.py \
@@ -24,6 +25,7 @@ app_PYTHON = \
 	widgets_button.py \
 	widgets_channel.py \
 	widgets_fader.py \
+	widgets_flash.py \
 	widgets_go.py \
 	widgets_GM.py \
 	widgets_group.py \

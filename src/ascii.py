@@ -416,7 +416,7 @@ class Ascii(object):
                         flag_master = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
                     else:
-                        self.app.masters.append(Master(item[0], item[1], item[2], item[3], self.app.groups, self.app.chasers))
+                        self.app.masters.append(Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers))
                 if flag_master:
                     if line[:1] == "!":
                         flag_master = False
@@ -430,7 +430,7 @@ class Ascii(object):
                                 if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
                     if line == "":
-                        self.app.masters.append(Master(item[0], item[1], item[2], item[3], self.app.groups, self.app.chasers, channels=channels))
+                        self.app.masters.append(Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels))
                         flag_master = False
 
 
@@ -566,44 +566,6 @@ class Ascii(object):
                 self.app.group_tab.flowbox2.invalidate_filter()
                 self.app.window.show_all()
 
-            # Redraw Masters Tab if exist
-            if self.app.master_tab != None:
-                del(self.app.master_tab.scale[:])
-                del(self.app.master_tab.ad[:])
-                del(self.app.master_tab.flash[:])
-                for i in range(len(self.app.masters)):
-                    if Gio.Application.get_default().settings.get_boolean('percent'):
-                        self.app.master_tab.ad.append(Gtk.Adjustment(0, 0, 100, 1, 10, 0))
-                    else:
-                        self.app.master_tab.ad.append(Gtk.Adjustment(0, 0, 255, 1, 10, 0))
-                    self.app.master_tab.scale.append(Gtk.Scale(orientation=Gtk.Orientation.VERTICAL,
-                        adjustment=self.app.master_tab.ad[i]))
-                    self.app.master_tab.scale[i].set_digits(0)
-                    self.app.master_tab.scale[i].set_vexpand(True)
-                    self.app.master_tab.scale[i].set_value_pos(Gtk.PositionType.BOTTOM)
-                    self.app.master_tab.scale[i].set_inverted(True)
-                    self.app.master_tab.scale[i].connect("value-changed", self.app.master_tab.scale_moved)
-                    # Button to flash Master
-                    self.app.master_tab.flash.append(Gtk.Button.new_with_label(self.app.masters[i].text))
-                    self.app.master_tab.flash[i].connect("button-press-event", self.app.master_tab.flash_on)
-                    self.app.master_tab.flash[i].connect("button-release-event", self.app.master_tab.flash_off)
-                    # Place Masters in Window
-                    if i == 0:
-                        self.app.master_tab.attach(self.app.master_tab.scale[i], 0, 0, 1, 1)
-                        self.app.master_tab.attach_next_to(self.app.master_tab.flash[i],
-                                self.app.master_tab.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-                    elif not i % 4:
-                        self.app.master_tab.attach_next_to(self.app.master_tab.scale[i],
-                                self.app.master_tab.flash[i-4], Gtk.PositionType.BOTTOM, 1, 1)
-                        self.app.master_tab.attach_next_to(self.app.master_tab.flash[i],
-                                self.app.master_tab.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-                    else:
-                        self.app.master_tab.attach_next_to(self.app.master_tab.scale[i],
-                                self.app.master_tab.scale[i-1], Gtk.PositionType.RIGHT, 1, 1)
-                        self.app.master_tab.attach_next_to(self.app.master_tab.flash[i],
-                                self.app.master_tab.scale[i], Gtk.PositionType.BOTTOM, 1, 1)
-                self.app.window.show_all()
-
             # Redraw Sequences Tab if exist
             if self.app.sequences_tab != None:
                 self.app.sequences_tab.liststore1.clear()
@@ -641,6 +603,15 @@ class Ascii(object):
                     self.app.memories_tab.liststore.append([str(self.app.memories[i].memory),
                         self.app.memories[i].text, channels])
                 self.app.memories_tab.flowbox.invalidate_filter()
+
+            # Redraw Masters if Virtual Console is open
+            if self.app.virtual_console:
+                for page in range(2):
+                    for i in range(len(self.app.masters)):
+                        if self.app.masters[i].page == page + 1:
+                            self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].label = self.app.masters[i].text
+                            self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].queue_draw()
+
 
             # TODO: Redraw Track Channels Tab if exist
 

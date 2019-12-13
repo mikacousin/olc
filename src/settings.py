@@ -90,19 +90,6 @@ class SettingsDialog:
         if Gio.Application.get_default().memories_tab != None:
             Gio.Application.get_default().memories_tab.flowbox.invalidate_filter()
 
-        # Redraw Masters Window if exist
-        if Gio.Application.get_default().master_tab != None:
-            for i in range(len(Gio.Application.get_default().master_tab.scale)):
-                val = Gio.Application.get_default().master_tab.scale[i].get_value()
-                if state:
-                    val = (val/255)*100
-                    ad = Gtk.Adjustment(val, 0, 100, 1, 10, 0)
-                else:
-                    val = (val/100)*255
-                    ad = Gtk.Adjustment(val, 0, 255, 1, 10, 0)
-                Gio.Application.get_default().master_tab.scale[i].set_adjustment(ad)
-                Gio.Application.get_default().master_tab.scale[i].set_value(val)
-
     def _on_btn_clicked(self, button):
         ip = self.entry_client_ip.get_text()
         client_port = self.spin_client_port.get_value_as_int()

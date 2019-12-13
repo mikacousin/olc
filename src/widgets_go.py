@@ -14,8 +14,8 @@ class GoWidget(Gtk.Widget):
 
         self.app = Gio.Application.get_default()
 
-        self.width = 120
-        self.height = 60
+        self.width = 100
+        self.height = 50
         self.radius = 10
 
         self.pressed = False
@@ -56,7 +56,7 @@ class GoWidget(Gtk.Widget):
         cr.set_source_rgb(0.8, 0.8, 0.8)
         cr.select_font_face('Monaco', cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
-        cr.set_font_size(12)
+        cr.set_font_size(10)
         (x, y, w, h, dx, dy) = cr.text_extents('Go')
         cr.move_to(self.width/2-w/2, self.height/2-(h-(self.radius*2))/2)
         cr.show_text('Go')

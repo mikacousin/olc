@@ -2,8 +2,8 @@ import cairo
 import math
 from gi.repository import Gtk, Gdk, Gio, GObject
 
-class ButtonWidget(Gtk.Widget):
-    __gtype_name__ = "ButtonWidget"
+class FlashWidget(Gtk.Widget):
+    __gtype_name__ = "FlashWidget"
 
     __gsignals__ = {
             "clicked" : (GObject.SIGNAL_ACTION, None, ())
@@ -14,10 +14,10 @@ class ButtonWidget(Gtk.Widget):
 
         self.app = Gio.Application.get_default()
 
-        self.width = 50
-        self.height = 50
+        self.width = 40
+        self.height = 40
         self.radius = 10
-        self.font_size = 10
+        self.font_size = 8
 
         self.pressed = False
         self.label = label
@@ -58,7 +58,7 @@ class ButtonWidget(Gtk.Widget):
         self.rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         self.rounded_rectangle(cr, area, self.radius)
-        # Draw Text
+        # Draw Text on 2 lines
         if self.text == 'None':
             cr.set_source_rgb(0.5, 0.5, 0.5)
         else:
@@ -66,9 +66,14 @@ class ButtonWidget(Gtk.Widget):
         cr.select_font_face('Monaco', cairo.FONT_SLANT_NORMAL,
                 cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(self.font_size)
-        (x, y, w, h, dx, dy) = cr.text_extents(self.label)
-        cr.move_to(self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2)
-        cr.show_text(self.label)
+        # First line
+        (x, y, w, h, dx, dy) = cr.text_extents(self.label[:6])
+        cr.move_to(self.width / 2 - w / 2, self.height / 3)
+        cr.show_text(self.label[:6])
+        # Second line
+        (x, y, w, h, dx, dy) = cr.text_extents(self.label[6:12])
+        cr.move_to(self.width / 2 - w / 2, (self.height / 3) * 2)
+        cr.show_text(self.label[6:12])
 
     def rounded_rectangle_fill(self, cr, area, radius):
         a,b,c,d = area

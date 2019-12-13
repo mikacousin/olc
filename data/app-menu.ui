@@ -17,7 +17,7 @@
         <attribute name="accel">&lt;Primary&gt;s</attribute>
       </item>
       <item>
-        <attribute name="action">app.patch</attribute>
+        <attribute name="action">app.patch_outputs</attribute>
         <attribute name="label" translatable="yes">_Patch</attribute>
         <attribute name="accel">&lt;Primary&gt;p</attribute>
       </item>
@@ -31,14 +31,14 @@
         <attribute name="accel">&lt;Primary&gt;g</attribute>
       </item>
       <item>
-        <attribute name="action">app.masters</attribute>
-        <attribute name="label" translatable="yes">_Masters</attribute>
-        <attribute name="accel">&lt;Primary&gt;m</attribute>
-      </item>
-      <item>
         <attribute name="action">app.sequences</attribute>
         <attribute name="label" translatable="yes">_Sequences</attribute>
         <attribute name="accel">&lt;Primary&gt;t</attribute>
+      </item>
+        <item>
+        <attribute name="action">app.masters</attribute>
+        <attribute name="label" translatable="yes">_Masters</attribute>
+        <attribute name="accel">&lt;Primary&gt;m</attribute>
       </item>
     </section>
     <section>

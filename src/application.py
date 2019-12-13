@@ -17,7 +17,8 @@ from olc.cues_edition import CuesEditionTab
 from olc.sequence import Sequence
 from olc.sequence_edition import SequenceTab
 from olc.group import Group, GroupTab
-from olc.master import Master, MasterTab
+from olc.master import Master
+from olc.masters_edition import MastersTab
 from olc.channel_time import ChanneltimeTab
 from olc.widgets_group import GroupWidget
 from olc.osc import OscServer
@@ -36,7 +37,6 @@ class Application(Gtk.Application):
         GLib.set_application_name('OpenLightingConsole')
         GLib.set_prgname('olc')
 
-        # TODO: Test css et unbind des bindings pour la gestion clavier
         cssProviderFile = Gio.File.new_for_uri('resource://org/gnome/OpenLightingConsole/application.css')
         cssProvider = Gtk.CssProvider()
         cssProvider.load_from_file(cssProviderFile)
@@ -71,7 +71,6 @@ class Application(Gtk.Application):
             sys.exit()
 
         # Create Main Playback
-        # TODO: Use steps, not only cues
         self.sequence = Sequence(1, self.patch, text="Main Playback")
 
         # Create List of Global Memories
@@ -93,7 +92,7 @@ class Application(Gtk.Application):
         # For Tabs
         self.patch_outputs_tab = None
         self.patch_channels_tab = None
-        self.master_tab = None
+        self.masters_tab = None
         self.memories_tab = None
         self.group_tab = None
         self.sequences_tab = None
@@ -174,15 +173,14 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
         self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
-        self.set_accels_for_action("app.masters", ["<Control>m"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
+        self.set_accels_for_action("app.masters", ["<Control>m"])
         self.set_accels_for_action("app.about", ["F3"])
 
     def setup_app_menu(self):
         """ Setup application menu, return Gio.Menu """
         builder = Gtk.Builder()
 
-        #builder.add_from_resource('/org/gnome/OpenLightingConsole/app-menu.ui')
         builder.add_from_resource('/org/gnome/OpenLightingConsole/gtk/menus.ui')
 
         menu = builder.get_object('app-menu')
@@ -215,13 +213,13 @@ class Application(Gtk.Application):
         groupsAction.connect('activate', self._groups)
         self.add_action(groupsAction)
 
-        mastersAction = Gio.SimpleAction.new('masters', None)
-        mastersAction.connect('activate', self._masters)
-        self.add_action(mastersAction)
-
         sequencesAction = Gio.SimpleAction.new('sequences', None)
         sequencesAction.connect('activate', self._sequences)
         self.add_action(sequencesAction)
+
+        mastersAction = Gio.SimpleAction.new('masters', None)
+        mastersAction.connect('activate', self._masters)
+        self.add_action(mastersAction)
 
         virtual_consoleAction = Gio.SimpleAction.new('virtual_console', None)
         virtual_consoleAction.connect('activate', self._virtual_console)
@@ -557,28 +555,6 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.group_tab)
             self.window.notebook.set_current_page(page)
 
-    def _masters(self, action, parameter):
-        # Create Masters Tab
-        if self.master_tab == None:
-            self.master_tab = MasterTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect('clicked', self.master_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label('Masters'), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.notebook.append_page(self.master_tab, label)
-            self.window.show_all()
-            self.window.notebook.set_current_page(-1)
-        else:
-            page = self.window.notebook.page_num(self.master_tab)
-            self.window.notebook.set_current_page(page)
-
     def _sequences(self, action, parameter):
         # Create Sequences Tab
         if self.sequences_tab == None:
@@ -620,6 +596,28 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(-1)
         else:
             page = self.window.notebook.page_num(self.channeltime_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _masters(self, action, parameter):
+        # Create Masters Tab
+        if self.masters_tab == None:
+            self.masters_tab = MastersTab()
+
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect('clicked', self.masters_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label('Master List'), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.masters_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.masters_tab)
             self.window.notebook.set_current_page(page)
 
     def _virtual_console(self, action, parameter):

@@ -15,8 +15,8 @@ class FaderWidget(Gtk.Widget):
 
         self.app = Gio.Application.get_default()
 
-        self.width = 60
-        self.height = 360
+        self.width = 40
+        self.height = 240
         self.radius = 10
 
         self.red = red
