@@ -179,26 +179,31 @@ class MastersTab(Gtk.Paned):
 
             # Type : Group
             elif self.app.masters[row].content_type == 13:
+                found = False
                 group = self.app.masters[row].content_value
                 for i in range(len(self.app.groups)):
                     if self.app.groups[i].index == group:
+                        found = True
                         break
-                channels = self.app.groups[i].channels
-                if channels[index] or self.channels[index].clicked:
-                    if self.user_channels[index] == -1:
-                        self.channels[index].level = channels[index]
-                        self.channels[index].next_level = channels[index]
-                    else:
-                        self.channels[index].level = self.user_channels[index]
-                        self.channels[index].next_level = self.user_channels[index]
-                    return child
-                else:
-                    if self.user_channels[index] == -1:
-                        return False
-                    else:
-                        self.channels[index].level = self.user_channels[index]
-                        self.channels[index].next_level = self.user_channels[index]
+                if found:
+                    channels = self.app.groups[i].channels
+                    if channels[index] or self.channels[index].clicked:
+                        if self.user_channels[index] == -1:
+                            self.channels[index].level = channels[index]
+                            self.channels[index].next_level = channels[index]
+                        else:
+                            self.channels[index].level = self.user_channels[index]
+                            self.channels[index].next_level = self.user_channels[index]
                         return child
+                    else:
+                        if self.user_channels[index] == -1:
+                            return False
+                        else:
+                            self.channels[index].level = self.user_channels[index]
+                            self.channels[index].next_level = self.user_channels[index]
+                            return child
+                else:
+                    return False
 
         else:
             return False
@@ -213,7 +218,42 @@ class MastersTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
     def on_content_type_changed(self, widget, path, text):
+        # Update display
         self.liststore[path][1] = text
+
+        # Find content type
+        content_type = 0
+
+        if text == '':
+            content_type = 0
+        elif text == 'Channels':
+            content_type = 2
+        elif text == 'Sequence':
+            content_type = 3
+        elif text == 'Group':
+            content_type = 13
+
+        # Update content type
+        index = int(path)
+
+        if self.app.masters[index].content_type != content_type:
+
+            self.app.masters[index].content_type = content_type
+
+            # Update content value
+            self.app.masters[index].content_value = -1
+            self.app.masters[index].channels = array.array('B', [0] * MAX_CHANNELS)
+            self.app.masters[index].text = ''
+
+            # Update ui
+            self.flowbox.invalidate_filter()
+            self.liststore[path][2] = ''
+            self.liststore[path][3] = ''
+
+            # Update Virtual Console
+            if self.app.virtual_console:
+                self.app.virtual_console.flashes[index].label = ''
+                self.app.virtual_console.flashes[index].queue_draw()
 
     def on_mode_changed(self, widget, path, text):
         self.liststore[path][3] = text
@@ -232,6 +272,37 @@ class MastersTab(Gtk.Paned):
             else:
                 self.liststore[path][2] = text
 
+            # Update content value
+            index = int(path)
+            content_value = float(text)
+
+            self.app.masters[index].content_value = content_value
+
+            if self.app.masters[index].content_type == 0:
+                self.app.masters[index].text = ''
+
+            elif self.app.masters[index].content_type == 2:
+                self.app.masters[index].text = ''
+
+            elif self.app.masters[index].content_type == 3:
+                self.app.masters[index].text = ''
+                for i in range(len(self.app.chasers)):
+                    if self.app.chasers[i].index == content_value:
+                        self.app.masters[index].text = self.app.chasers[i].text
+
+            elif self.app.masters[index].content_type == 13:
+                self.app.masters[index].text = ''
+                for i in range(len(self.app.groups)):
+                    if self.app.groups[i].index == content_value:
+                        self.app.masters[index].text = self.app.groups[i].text
+
+            self.flowbox.invalidate_filter()
+
+            # Update Virtual Console
+            if self.app.virtual_console:
+                self.app.virtual_console.flashes[index].label = self.app.masters[index].text
+                self.app.virtual_console.flashes[index].queue_draw()
+
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
         page = self.app.window.notebook.page_num(self.app.masters_tab)
@@ -239,6 +310,13 @@ class MastersTab(Gtk.Paned):
         self.app.masters_tab = None
 
     def on_key_press_event(self, widget, event):
+
+        # Hack to know if user is editing something
+        widget = self.app.window.get_focus()
+        if not widget:
+            return
+        if widget.get_path().is_type(Gtk.Entry):
+            return
 
         keyname = Gdk.keyval_name(event.keyval)
 
@@ -534,3 +612,45 @@ class MastersTab(Gtk.Paned):
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
+
+    def keypress_R(self):
+        """ Record Master """
+
+        self.flowbox.unselect_all()
+
+        # Find selected Master
+        path, focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+
+            # Type : Channels
+            if self.app.masters[row].content_type == 2:
+                channels = self.app.masters[row].channels
+
+                nb_chan = 0
+                for chan in range(MAX_CHANNELS):
+                    channels[chan] = self.channels[chan].level
+                    if channels[chan]:
+                        nb_chan += 1
+
+                # Update Display
+                self.liststore[path][2] = str(nb_chan)
+                self.flowbox.invalidate_filter()
+
+            # Type = Group
+            elif self.app.masters[row].content_type == 13:
+                found = False
+                for i in range(len(self.app.groups)):
+                    if self.app.groups[i].index == self.app.masters[row].content_value:
+                        found = True
+                        break
+                if found:
+                    channels = self.app.groups[i].channels
+                    for chan in range(MAX_CHANNELS):
+                        channels[chan] = self.channels[chan].level
+                    # Update Group Tab if open
+                    if self.app.group_tab != None:
+                        self.app.group_tab.flowbox1.invalidate_filter()
+
+            self.keystring = ''
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
