@@ -82,8 +82,11 @@ class Application(Gtk.Application):
         # Create List of Groups
         self.groups = []
 
-        # Create List of Masters
+        # Create 2 pages of 20 Masters
         self.masters = []
+        for page in range(2):
+            for i in range(20):
+                self.masters.append(Master(page + 1, i + 1, 0, 0, self.groups, self.chasers))
 
         # For Windows
         self.about_window = None

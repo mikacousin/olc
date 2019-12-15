@@ -73,6 +73,9 @@ class Ascii(object):
                     del(self.app.chasers[:])
                     del(self.app.groups[:])
                     del(self.app.masters[:])
+                    for page in range(2):
+                        for i in range(20):
+                            self.app.masters.append(Master(page + 1, i + 1, 0, 0, self.app.groups, self.app.chasers))
                     self.app.patch.patch_empty()
                     self.app.sequence = Sequence(1, self.app.patch, text="Main Playback")
                     del(self.app.sequence.steps[1:])
@@ -405,32 +408,37 @@ class Ascii(object):
                         txt = ""
 
                 if line[:13] == '$MASTPAGEITEM':
-                    # TODO: DLight use Type "2" for Groups
                     #print("Master!")
                     item = line[14:].split(" ")
                     #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
-                    if item[2] == "2":
+                    # DLight use Type "2" for Groups
+                    if console == 'DLIGHT' and item[2] == '2':
+                        item[2] = '13'
+                    if item[2] == '2':
                         flag_seq = False
                         flag_patch = False
                         flag_group = False
                         flag_master = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                    else:
-                        self.app.masters.append(Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers))
+                    # Only 20 Masters per pages
+                    elif int(item[1]) <= 20:
+                        index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
+                        self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers)
                 if flag_master:
-                    if line[:1] == "!":
+                    if line[:1] == '!':
                         flag_master = False
                     if line[:4] == 'CHAN':
-                        p = line[5:].split(" ")
+                        p = line[5:].split(' ')
                         for q in p:
-                            r = q.split("/")
-                            if r[0] != "":
+                            r = q.split('/')
+                            if r[0] != '':
                                 channel = int(r[0])
                                 level = int(r[1][1:], 16)
                                 if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
-                    if line == "":
-                        self.app.masters.append(Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels))
+                    if line == '' and int(item[1]) <= 20:
+                        index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
+                        self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels)
                         flag_master = False
 
 
@@ -613,6 +621,7 @@ class Ascii(object):
                             self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].queue_draw()
 
 
+            # TODO: Redraw Edit Masters Tab if exist
             # TODO: Redraw Track Channels Tab if exist
 
         except GObject.GError as e:

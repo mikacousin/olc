@@ -113,6 +113,7 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_cue_changed(self, treeview):
         """ Selected Cue """
+        self.flowbox.unselect_all()
         self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False

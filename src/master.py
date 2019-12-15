@@ -21,9 +21,17 @@ class Master(object):
         self.dmx = array.array('B', [0] * MAX_CHANNELS)
         self.value = value
 
+        # Type 0 : None
+        if self.content_type == 0:
+            pass
+        # Type 2 : Channels
+        elif self.content_type == 2:
+            self.text += 'Ch'
+            for channel in range(len(self.channels)):
+                if channels[channel] != 0:
+                    self.text += ' ' + str(channel + 1)
         # Type 3 : Chaser
-        if self.content_type == 3:
-            #print("Type : Sequence", self.content_value)
+        elif self.content_type == 3:
             for i in range(len(self.chasers)):
                 if self.chasers[i].index == self.content_value:
                     if self.chasers[i] == self.content_value:
@@ -31,20 +39,9 @@ class Master(object):
                     self.text = self.chasers[i].text
         # Type 13 : Group
         elif self.content_type == 13:
-            #print("Type : Groupe", self.content_value)
             for i in range(len(self.groups)):
-                #print(self.groups[i].index, self.content_value)
                 if self.groups[i].index == self.content_value:
-                    #print(self.groups[i].text)
                     self.text = self.groups[i].text
-        # Type 2 : Channels
-        elif self.content_type == 2:
-            #print("Type : Channels")
-            self.text += 'Ch'
-            for channel in range(len(self.channels)):
-                if channels[channel] != 0:
-                    #print(channel+1, self.channels[channel])
-                    self.text += ' ' + str(channel + 1)
         else:
             print("Type : Inconnu")
 

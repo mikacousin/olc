@@ -482,6 +482,8 @@ class Window(Gtk.ApplicationWindow):
             return self.app.track_channels_tab.on_key_press_event(widget, event)
         if child == self.app.memories_tab:
             return self.app.memories_tab.on_key_press_event(widget, event)
+        if child == self.app.masters_tab:
+            return self.app.masters_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         #print (keyname)
