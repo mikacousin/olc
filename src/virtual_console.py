@@ -636,20 +636,16 @@ class VirtualConsoleWindow(Gtk.Window):
             for i in range(len(self.flashes)):
                 if self.flashes[i] == widget:
                     self.masters[i].set_value(255)
-                    for j in range(len(self.app.masters)):
-                        if self.app.masters[j].text == self.flashes[i].label:
-                            self.app.masters[j].value = 255
-                            self.app.masters[j].level_changed()
+                    self.app.masters[i].value = 255
+                    self.app.masters[i].level_changed()
 
     def flash_off(self, widget, event):
         if not self.midi_learn:
             for i in range(len(self.flashes)):
                 if self.flashes[i] == widget:
                     self.masters[i].set_value(0)
-                    for j in range(len(self.app.masters)):
-                        if self.app.masters[j].text == self.flashes[i].label:
-                            self.app.masters[j].value = 0
-                            self.app.masters[j].level_changed()
+                    self.app.masters[i].value = 0
+                    self.app.masters[i].level_changed()
 
     def on_flash(self, widget):
         if self.midi_learn:
@@ -668,13 +664,8 @@ class VirtualConsoleWindow(Gtk.Window):
             found = False
             value = master.get_value()
             index = self.masters.index(master)
-            for i in range(len(self.app.masters)):
-                if self.app.masters[i].text == self.flashes[index].label:
-                    found = True
-                    break
-            if found:
-                self.app.masters[i].value = value
-                self.app.masters[i].level_changed()
+            self.app.masters[index].value = value
+            self.app.masters[index].level_changed()
 
     def master_clicked(self, master):
         if self.midi_learn:
