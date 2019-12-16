@@ -621,7 +621,52 @@ class Ascii(object):
                             self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].queue_draw()
 
 
-            # TODO: Redraw Edit Masters Tab if exist
+            # Redraw Edit Masters Tab if exist
+            if self.app.masters_tab != None:
+                self.app.masters_tab.liststore.clear()
+                for page in range(2):
+                    for i in range(20):
+                        index = i + (page * 20)
+
+                        # Type : None
+                        if self.app.masters[index].content_type == 0:
+                            self.app.masters_tab.liststore.append([index + 1, '', '', ''])
+
+                        # Type : Preset
+                        elif self.app.masters[index].content_type == 1:
+                            content_value = str(self.app.masters[index].content_value)
+                            self.app.masters_tab.liststore.append([index + 1, 'Preset', content_value, ''])
+
+                        # Type : Channels
+                        elif self.app.masters[index].content_type == 2:
+                            nb_chan = 0
+                            for chan in range(MAX_CHANNELS):
+                                if self.app.masters[index].channels[chan]:
+                                    nb_chan += 1
+                            self.app.masters_tab.liststore.append([index + 1, 'Channels', str(nb_chan), ''])
+
+                        # Type : Sequence
+                        elif self.app.masters[index].content_type == 3:
+                            if self.app.masters[index].content_value.is_integer():
+                                content_value = str(int(self.app.masters[index].content_value))
+                            else:
+                                content_value = str(self.app.masters[index].content_value)
+                            self.app.masters_tab.liststore.append([index + 1, 'Sequence', content_value, ''])
+
+                        # Type : Group
+                        elif self.app.masters[index].content_type == 13:
+                            if self.app.masters[index].content_value.is_integer():
+                                content_value = str(int(self.app.masters[index].content_value))
+                            else:
+                                content_value = str(self.app.masters[index].content_value)
+                            self.app.masters_tab.liststore.append([index + 1, 'Group', content_value, 'Exclusif'])
+
+                        # Type : Unknown
+                        else:
+                            self.app.masters_tab.liststore.append([index + 1, 'Unknown', '', ''])
+
+                self.app.masters_tab.flowbox.invalidate_filter()
+
             # TODO: Redraw Track Channels Tab if exist
 
         except GObject.GError as e:

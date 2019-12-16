@@ -39,7 +39,7 @@ class MastersTab(Gtk.Paned):
 
         # Content Type
         self.content_type = Gtk.ListStore(str)
-        types = ['', 'Channels', 'Sequence', 'Group']
+        types = ['', 'Preset', 'Channels', 'Sequence', 'Group']
         for item in types:
             self.content_type.append([item])
 
@@ -59,6 +59,11 @@ class MastersTab(Gtk.Paned):
                 # Type : None
                 if self.app.masters[index].content_type == 0:
                     self.liststore.append([index + 1, '', '', ''])
+
+                # Type : Preset
+                elif self.app.masters[index].content_type == 1:
+                    content_value = str(self.app.masters[index].content_value)
+                    self.liststore.append([index + 1, 'Preset', content_value, ''])
 
                 # Type : Channels
                 elif self.app.masters[index].content_type == 2:
@@ -152,6 +157,34 @@ class MastersTab(Gtk.Paned):
             if self.app.masters[row].content_type == 0:
                 return False
 
+            # Type : Preset
+            elif self.app.masters[row].content_type == 1:
+                found = False
+                preset = self.app.masters[row].content_value
+                for i in range(len(self.app.memories)):
+                    if self.app.memories[i].memory == preset:
+                        found = True
+                        break
+                if found:
+                    channels = self.app.memories[i].channels
+                    if channels[index] or self.channels[index].clicked:
+                        if self.user_channels[index] == -1:
+                            self.channels[index].level = channels[index]
+                            self.channels[index].next_level = channels[index]
+                        else:
+                            self.channels[index].level = self.user_channels[index]
+                            self.channels[index].next_level = self.user_channels[index]
+                        return child
+                    else:
+                        if self.user_channels[index] == -1:
+                            return False
+                        else:
+                            self.channels[index].level = self.user_channels[index]
+                            self.channels[index].next_level = self.user_channels[index]
+                            return child
+                else:
+                    return False
+
             # Type : Channels
             elif self.app.masters[row].content_type == 2:
                 channels = self.app.masters[row].channels
@@ -226,6 +259,8 @@ class MastersTab(Gtk.Paned):
 
         if text == '':
             content_type = 0
+        elif text == 'Preset':
+            content_type = 1
         elif text == 'Channels':
             content_type = 2
         elif text == 'Sequence':
@@ -281,6 +316,13 @@ class MastersTab(Gtk.Paned):
             if self.app.masters[index].content_type == 0:
                 self.app.masters[index].text = ''
 
+            elif self.app.masters[index].content_type == 1:
+                self.liststore[path][2] = str(float(self.liststore[path][2]))
+                self.app.masters[index].text = ''
+                for i in range(len(self.app.memories)):
+                    if self.app.memories[i].memory == content_value:
+                        self.app.masters[index].text = self.app.memories[i].text
+
             elif self.app.masters[index].content_type == 2:
                 self.app.masters[index].text = ''
 
@@ -312,6 +354,7 @@ class MastersTab(Gtk.Paned):
     def on_key_press_event(self, widget, event):
 
         # Hack to know if user is editing something
+        # TODO: Bug with CellRendererCombo (entry blocked)
         widget = self.app.window.get_focus()
         if not widget:
             return
@@ -504,15 +547,31 @@ class MastersTab(Gtk.Paned):
             self.flowbox.unselect_all()
 
             # Master's channels
-            if self.app.masters[row].content_type == 2:
+            if self.app.masters[row].content_type == 1:
+                preset = self.app.masters[row].content_value
+                found = False
+                for i in range(len(self.app.memories)):
+                    if self.app.memories[i].memory == preset:
+                        found = True
+                        break
+                if found:
+                    channels = self.app.memories[i].channels
+                else:
+                    return False
+            elif self.app.masters[row].content_type == 2:
                 channels = self.app.masters[row].channels
 
             elif self.app.masters[row].content_type == 13:
                 group = self.app.masters[row].content_value
+                found = False
                 for i in range(len(self.app.groups)):
                     if self.app.groups[i].index == group:
+                        found = True
                         break
-                channels = self.app.groups[i].channels
+                if found:
+                    channels = self.app.groups[i].channels
+                else:
+                    return False
 
             # Select channels with a level
             for chan in range(MAX_CHANNELS):
@@ -613,6 +672,9 @@ class MastersTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
+    def keypress_U(self):
+        self.keypress_R()
+
     def keypress_R(self):
         """ Record Master """
 
@@ -623,19 +685,48 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
+            # Type : None
+            if self.app.masters[row].content_type == 0:
+                return False
+
+            # Type : Preset
+            if self.app.masters[row].content_type == 1:
+                found = False
+                for i in range(len(self.app.memories)):
+                    if self.app.memories[i].memory == self.app.masters[row].content_value:
+                        found = True
+                        break
+                if found:
+                    channels = self.app.memories[i].channels
+                    for chan in range(MAX_CHANNELS):
+                        channels[chan] = self.channels[chan].level
+                    # Update Preset Tab if open
+                    if self.app.memories_tab != None:
+                        self.app.memories_tab.flowbox.invalidate_filter()
+
             # Type : Channels
             if self.app.masters[row].content_type == 2:
                 channels = self.app.masters[row].channels
 
                 nb_chan = 0
+                text = 'Ch'
                 for chan in range(MAX_CHANNELS):
                     channels[chan] = self.channels[chan].level
                     if channels[chan]:
                         nb_chan += 1
+                        text += ' ' + str(chan + 1)
+
+                self.app.masters[row].text = text
 
                 # Update Display
                 self.liststore[path][2] = str(nb_chan)
                 self.flowbox.invalidate_filter()
+
+                # Update Virtual Console
+                if self.app.virtual_console:
+                    self.app.virtual_console.flashes[row].label = self.app.masters[row].text
+                    self.app.virtual_console.flashes[row].queue_draw()
+
 
             # Type = Group
             elif self.app.masters[row].content_type == 13:

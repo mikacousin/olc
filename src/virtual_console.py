@@ -147,7 +147,8 @@ class VirtualConsoleWindow(Gtk.Window):
         #self.rec_pad.set_row_homogeneous(True)
         self.update = ButtonWidget('Update', 'Update')
         self.update.connect('clicked', self.on_update)
-        self.record = ButtonWidget('Record')
+        self.record = ButtonWidget('Record', 'Record')
+        self.record.connect('clicked', self.on_record)
         self.track = ButtonWidget('Track', 'Track')
         self.track.connect('clicked', self.on_track)
         self.rec_pad.attach(self.update, 0, 0, 1, 1)
@@ -486,6 +487,15 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_U
+            self.app.window.on_key_press_event(None, event)
+
+    def on_record(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Record'
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_R
             self.app.window.on_key_press_event(None, event)
 
     def on_right(self, widget):

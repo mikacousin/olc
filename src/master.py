@@ -21,9 +21,16 @@ class Master(object):
         self.dmx = array.array('B', [0] * MAX_CHANNELS)
         self.value = value
 
+        self.app = Gio.Application.get_default()
+
         # Type 0 : None
         if self.content_type == 0:
             pass
+        # Type 1 : Preset
+        elif self.content_type == 1:
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory == self.content_value:
+                    self.text = self.app.memories[i].text
         # Type 2 : Channels
         elif self.content_type == 2:
             self.text += 'Ch'
@@ -47,12 +54,39 @@ class Master(object):
 
     def level_changed(self):
 
-        self.app = Gio.Application.get_default()
-
         self.percent_view = self.app.settings.get_boolean('percent')
 
+        # Type : None
+        if self.content_type == 0:
+            return
+
+        # Type : Preset
+        if self.content_type == 1:
+            preset = self.content_value
+
+            found = False
+            for i in range(len(self.app.memories)):
+                if self.app.memories[i].memory == preset:
+                    found = True
+                    break
+            if found:
+                for univ in range(NB_UNIVERSES):
+                    for output in range(512):
+                        # Only patched channels
+                        channel = self.app.patch.outputs[univ][output]
+                        if channel:
+                            if self.app.memories[i].channels[channel - 1]:
+                                # Preset's level
+                                level = self.app.memories[i].channels[channel - 1]
+                                # Level in master
+                                if self.value == 0:
+                                    level = 0
+                                else:
+                                    level = int(round(level / (255 / self.value)))
+                                self.dmx[channel - 1] = level
+
         # Master type is Channels
-        if self.content_type == 2:
+        elif self.content_type == 2:
             for channel in range(len(self.channels)):
                 if self.value == 0:
                     level = 0
