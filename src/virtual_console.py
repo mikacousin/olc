@@ -626,6 +626,8 @@ class VirtualConsoleWindow(Gtk.Window):
         if not self.midi_learn:
             for i in range(len(self.flashes)):
                 if self.flashes[i] == widget:
+                    # Save Master's value
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.masters[i].set_value(255)
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
@@ -634,8 +636,9 @@ class VirtualConsoleWindow(Gtk.Window):
         if not self.midi_learn:
             for i in range(len(self.flashes)):
                 if self.flashes[i] == widget:
-                    self.masters[i].set_value(0)
-                    self.app.masters[i].value = 0
+                    # Restore Master's value
+                    self.masters[i].set_value(self.app.masters[i].old_value)
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
     def on_flash(self, widget):

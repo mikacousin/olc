@@ -20,6 +20,7 @@ class Master(object):
         # To store DMX values of the master
         self.dmx = array.array('B', [0] * MAX_CHANNELS)
         self.value = value
+        self.old_value = 0
 
         self.app = Gio.Application.get_default()
 
