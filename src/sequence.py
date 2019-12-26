@@ -272,7 +272,10 @@ class Sequence(object):
                 self.app.window.sequential.pos_xB = 0
 
                 # Set main window's subtitle
-                subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
+                subtitle = ("Mem. : " + str(self.app.sequence.steps[position].cue.memory)
+                        + " " + self.app.sequence.steps[position].text + " - Next Mem. : "
+                        + str(self.app.sequence.steps[position+1].cue.memory)
+                        + " " + self.app.sequence.steps[position+1].text)
             else:
                 self.app.sequence.position = 0
                 position = 0
@@ -292,7 +295,10 @@ class Sequence(object):
                 self.app.window.sequential.pos_xB = 0
 
                 # Set main window's subtitle
-                subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
+                subtitle = ("Mem. : " + str(self.app.sequence.steps[position].cue.memory)
+                        + " " + self.app.sequence.steps[position].text+" - Next Mem. : "
+                        + str(self.app.sequence.steps[position+1].cue.memory)
+                        + " " + self.app.sequence.steps[position+1].text)
 
             # Update Sequential Tab
             if position == 0:
@@ -438,8 +444,8 @@ class ThreadGo(threading.Thread):
                     + str(self.app.sequence.steps[position].cue.memory) + ' '
                     + self.app.sequence.steps[position].text
                     + ' - Next Mem. : '
-                    + str(self.app.sequence.steps[position+1].cue.memory) + ' '
-                    + self.app.sequence.steps[position+1].text)
+                    + str(self.app.sequence.steps[position + 1].cue.memory) + ' '
+                    + self.app.sequence.steps[position + 1].text)
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
@@ -468,7 +474,10 @@ class ThreadGo(threading.Thread):
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = "Mem. : "+self.app.sequence.steps[position].cue.memory+" "+self.app.sequence.steps[position].text+" - Next Mem. : "+self.app.sequence.steps[position+1].cue.memory+" "+self.app.sequence.steps[position+1].text
+            subtitle = ('Mem. : ' + str(self.app.sequence.steps[position].cue.memory)
+                    + ' ' + self.app.sequence.steps[position].text
+                    + ' - Next Mem. : ' + str(self.app.sequence.steps[position + 1].cue.memory)
+                    + ' ' + self.app.sequence.steps[position + 1].text)
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
@@ -486,7 +495,7 @@ class ThreadGo(threading.Thread):
 
         # Move Virtual Console's XFade
         if self.app.virtual_console:
-            val = round((256 / delay) * i)
+            val = round((255 / delay) * i)
             GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
             GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
 

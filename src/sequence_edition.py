@@ -498,11 +498,17 @@ class SequenceTab(Gtk.Grid):
 
             # Update window's subtitle if needed
             if self.app.sequence.position == step:
-                subtitle = "Mem. : " + self.seq.steps[step].cue.memory + " " + self.seq.steps[step].text + " - Next Mem. : " + self.seq.steps[step + 1].cue.memory + " " + self.seq.steps[step + 1].text
+                subtitle = ('Mem. : ' + str(self.seq.steps[step].cue.memory)
+                        + ' ' + self.seq.steps[step].text + ' - Next Mem. : '
+                        + str(self.seq.steps[step + 1].cue.memory) + ' '
+                        + self.seq.steps[step + 1].text)
                 self.app.window.header.set_subtitle(subtitle)
 
             if self.app.sequence.position + 1 == step:
-                subtitle = "Mem. : " + self.seq.steps[step - 1].cue.memory + " " + self.seq.steps[step - 1].text + " - Next Mem. : " + self.seq.steps[step].cue.memory + " " + self.seq.steps[step].text
+                subtitle = ('Mem. : ' + str(self.seq.steps[step - 1].cue.memory)
+                        + ' ' + self.seq.steps[step - 1].text
+                        + ' - Next Mem. : ' + str(self.seq.steps[step].cue.memory)
+                        + ' ' + self.seq.steps[step].text)
                 self.app.window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, treeview):

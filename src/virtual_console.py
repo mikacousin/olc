@@ -1,5 +1,5 @@
 import mido
-from gi.repository import Gtk, Gio, Gdk
+from gi.repository import Gtk, Gio, Gdk, GLib
 import cairo
 import math
 
@@ -115,17 +115,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.output_pad = Gtk.Grid()
         #self.output_pad.set_column_homogeneous(True)
         #self.output_pad.set_row_homogeneous(True)
-        """
-        self.adGM = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
-        self.scaleGM = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adGM)
-        """
-        self.scaleGM = FaderWidget(text='GM')
+        ad = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
+        self.scaleGM = FaderWidget(text='GM', orientation=Gtk.Orientation.VERTICAL, adjustment=ad)
         self.scaleGM.value = 255
-        self.scaleGM.height = 160
-        #self.scaleA = FaderWidget(text='Crossfade_out', red=0.3, green=0.3, blue=0.7)
+        #self.scaleGM.height = 160
         self.scaleGM.connect('clicked', self.scale_clicked)
         self.scaleGM.connect('value-changed', self.GM_moved)
-        #self.scaleGM.set_draw_value(False)
+        self.scaleGM.set_draw_value(False)
         self.scaleGM.set_vexpand(True)
         self.scaleGM.set_inverted(True)
         self.output = ButtonWidget('Output', 'Output')
@@ -235,32 +231,22 @@ class VirtualConsoleWindow(Gtk.Window):
         self.a = ButtonWidget('A')
         self.b = ButtonWidget('B')
 
-        """
         self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleA = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adA)
+        self.scaleA = FaderWidget('Crossfade_out', red=0.3, green=0.3, blue=0.7,
+                orientation=Gtk.Orientation.VERTICAL, adjustment=self.adA)
+        self.scaleA.connect('clicked', self.scale_clicked)
         self.scaleA.set_draw_value(False)
         self.scaleA.set_vexpand(True)
         self.scaleA.set_inverted(True)
         self.scaleA.connect('value-changed', self.scale_moved)
-        self.scaleA.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
-        self.scaleA.connect('button-release-event', self.scale_released)
-        """
-        self.scaleA = FaderWidget(text='Crossfade_out', red=0.3, green=0.3, blue=0.7)
-        self.scaleA.connect('clicked', self.scale_clicked)
-        self.scaleA.connect('value-changed', self.scale_moved)
 
-        """
         self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleB = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=self.adB)
+        self.scaleB = FaderWidget(text='Crossfade_in', red=0.6, green=0.2, blue=0.2,
+                orientation=Gtk.Orientation.VERTICAL, adjustment=self.adB)
+        self.scaleB.connect('clicked', self.scale_clicked)
         self.scaleB.set_draw_value(False)
         self.scaleB.set_vexpand(True)
         self.scaleB.set_inverted(True)
-        self.scaleB.connect('value-changed', self.scale_moved)
-        self.scaleB.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
-        self.scaleB.connect('button-release-event', self.scale_released)
-        """
-        self.scaleB = FaderWidget(text='Crossfade_in', red=0.6, green=0.2, blue=0.2)
-        self.scaleB.connect('clicked', self.scale_clicked)
         self.scaleB.connect('value-changed', self.scale_moved)
 
         self.crossfade_pad.attach(self.live, 0, 4, 1, 1)
@@ -300,7 +286,12 @@ class VirtualConsoleWindow(Gtk.Window):
         self.flashes = []
         for page in range(2):
             for i in range(20):
-                self.masters.append(FaderWidget(text='Master ' + str(i + (page * 20) + 1)))
+                ad = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+                self.masters.append(FaderWidget(text='Master ' + str(i + (page * 20) + 1),
+                    orientation=Gtk.Orientation.VERTICAL, adjustment=ad))
+                self.masters[i + (page * 20)].set_vexpand(True)
+                self.masters[i + (page * 20)].set_draw_value(False)
+                self.masters[i + (page * 20)].set_inverted(True)
                 self.masters[i + (page * 20)].connect('value-changed', self.master_moved)
                 self.masters[i + (page * 20)].connect('clicked', self.master_clicked)
                 self.flashes.append(FlashWidget(''))
@@ -686,10 +677,16 @@ class VirtualConsoleWindow(Gtk.Window):
 
             if scale == self.scaleA:
                 self.app.crossfade.scaleA.set_value(value)
+                if self.app.crossfade.manual:
+                    self.app.crossfade.scale_moved(self.app.crossfade.scaleA)
             elif scale == self.scaleB:
                 self.app.crossfade.scaleB.set_value(value)
+                if self.app.crossfade.manual:
+                    self.app.crossfade.scale_moved(self.app.crossfade.scaleB)
 
-            if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
+            if (self.scaleA.get_value() == 255
+                    and self.scaleB.get_value() == 255
+                    and self.app.crossfade.manual):
                 if self.scaleA.get_inverted():
                     self.scaleA.set_inverted(False)
                     self.scaleB.set_inverted(False)

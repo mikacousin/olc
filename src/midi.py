@@ -4005,6 +4005,9 @@ class Midi(object):
                 self.xfade(self.xfade_in, msg.value)
 
     def xfade(self, fader, value):
+
+        self.app.crossfade.manual = True
+
         if fader.get_inverted():
             val = (value / 127) * 255
             fader.set_value(value)
@@ -4022,8 +4025,10 @@ class Midi(object):
         else:
             if fader == self.xfade_out:
                 self.app.crossfade.scaleA.set_value(val)
+                self.app.crossfade.scale_moved(self.app.crossfade.scaleA)
             elif fader == self.xfade_in:
                 self.app.crossfade.scaleB.set_value(val)
+                self.app.crossfade.scale_moved(self.app.crossfade.scaleB)
 
         if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
             if self.xfade_out.get_inverted():

@@ -7,12 +7,9 @@ class Scale(object):
     def __init__(self):
         self.value = 0
 
-        self.app = Gio.Application.get_default()
-
     def set_value(self, value):
         if value >= 0 and value < 256:
             self.value = value
-            self.app.crossfade.scale_moved(self)
 
     def get_value(self):
         return self.value
@@ -24,6 +21,8 @@ class CrossFade(object):
         self.scaleA = Scale()
         self.scaleB = Scale()
 
+        self.manual = False
+
     def scale_moved(self, scale):
         app = Gio.Application.get_default()
         level = scale.get_value()
@@ -32,12 +31,13 @@ class CrossFade(object):
         if level != 255 and level != 0:
             app.sequence.on_go = True
             # If Go is sent, stop it
-            try:
-                if app.sequence.thread.is_alive():
-                    app.sequence.thread.stop()
-                    app.sequence.thread.join()
-            except:
-                pass
+            if app.crossfade.manual:
+                try:
+                    if app.sequence.thread.is_alive():
+                        app.sequence.thread.stop()
+                        app.sequence.thread.join()
+                except:
+                    pass
 
         if scale == self.scaleA:
             # Scale for Out
@@ -210,6 +210,7 @@ class CrossFade(object):
             # In and Out Crossfades at Full
 
             if app.sequence.on_go == True:
+                self.manual = False
                 app.sequence.on_go = False
                 # Empty array of levels enter by user
                 app.dmx.user = array.array('h', [-1] * MAX_CHANNELS)
@@ -269,6 +270,16 @@ class CrossFade(object):
                     self.scaleA.set_value(0)
                     self.scaleB.set_value(0)
 
+                    if app.virtual_console:
+                        if app.virtual_console.scaleA.get_inverted():
+                            app.virtual_console.scaleA.set_inverted(False)
+                            app.virtual_console.scaleB.set_inverted(False)
+                        else:
+                            app.virtual_console.scaleA.set_inverted(True)
+                            app.virtual_console.scaleB.set_inverted(True)
+                        app.virtual_console.scaleA.set_value(0)
+                        app.virtual_console.scaleB.set_value(0)
+
                     # If Wait
                     if app.sequence.steps[position + 1].wait:
                         app.sequence.on_go = False
@@ -293,9 +304,9 @@ class CrossFade(object):
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
 
-                    subtitle = ("Mem. :" + app.sequence.steps[position].cue.memory + " "
+                    subtitle = ("Mem. :" + str(app.sequence.steps[position].cue.memory) + " "
                             + app.sequence.steps[position].text+" - Next Mem. : "
-                            + app.sequence.steps[position + 1].cue.memory + " "
+                            + str(app.sequence.steps[position + 1].cue.memory) + " "
                             + app.sequence.steps[position + 1].text)
                     app.window.header.set_subtitle(subtitle)
 
@@ -326,6 +337,16 @@ class CrossFade(object):
 
                     self.scaleA.set_value(0)
                     self.scaleB.set_value(0)
+
+                    if app.virtual_console:
+                        if app.virtual_console.scaleA.get_inverted():
+                            app.virtual_console.scaleA.set_inverted(False)
+                            app.virtual_console.scaleB.set_inverted(False)
+                        else:
+                            app.virtual_console.scaleA.set_inverted(True)
+                            app.virtual_console.scaleB.set_inverted(True)
+                        app.virtual_console.scaleA.set_value(0)
+                        app.virtual_console.scaleB.set_value(0)
 
                     # If Wait
                     if app.sequence.steps[position + 1].wait:
