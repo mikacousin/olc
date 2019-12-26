@@ -317,7 +317,8 @@ class MastersTab(Gtk.Paned):
                 self.app.masters[index].text = ''
 
             elif self.app.masters[index].content_type == 1:
-                self.liststore[path][2] = str(float(self.liststore[path][2]))
+                if self.liststore[path][2] != '':
+                    self.liststore[path][2] = str(float(self.liststore[path][2]))
                 self.app.masters[index].text = ''
                 for i in range(len(self.app.memories)):
                     if self.app.memories[i].memory == content_value:
