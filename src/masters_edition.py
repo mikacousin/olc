@@ -131,6 +131,7 @@ class MastersTab(Gtk.Paned):
         self.scrollable = Gtk.ScrolledWindow()
         self.scrollable.set_vexpand(True)
         self.scrollable.set_hexpand(True)
+        self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.ALWAYS)
         self.scrollable.add(self.treeview)
 
         self.add(self.scrollable)
