@@ -206,17 +206,12 @@ class Window(Gtk.ApplicationWindow):
                 column.set_min_width(600)
                 column.set_resizable(True)
             self.treeview2.append_column(column)
-        # Put Cues List in a scrolled window
-        self.scrollable2 = Gtk.ScrolledWindow()
-        self.scrollable2.set_vexpand(True)
-        self.scrollable2.set_hexpand(True)
-        self.scrollable2.add(self.treeview2)
         # Put Cues lists and sequential in a grid
         self.seq_grid = Gtk.Grid()
         self.seq_grid.set_row_homogeneous(False)
         self.seq_grid.attach(self.treeview1, 0, 0, 1, 1)
         self.seq_grid.attach_next_to(self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
-        self.seq_grid.attach_next_to(self.scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.attach_next_to(self.treeview2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
 
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
