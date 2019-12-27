@@ -64,7 +64,7 @@ class Midi(object):
                 ['Update', 0, -1],
                 ['Record', 0, -1],
                 ['GM', 0, -1],
-                ['Flash 1', 0, -1],
+                ['Flash 1', 0, 10],
                 ['Flash 2', 0, -1],
                 ['Flash 3', 0, -1],
                 ['Flash 4', 0, -1],
@@ -104,7 +104,7 @@ class Midi(object):
                 ['Flash 38', 0, -1],
                 ['Flash 39', 0, -1],
                 ['Flash 40', 0, -1],
-                ['Master 1', 0, -1],
+                ['Master 1', 0, 1],
                 ['Master 2', 0, -1],
                 ['Master 3', 0, -1],
                 ['Master 4', 0, -1],
@@ -1288,6 +1288,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 1:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1301,7 +1302,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 1:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 2
@@ -1328,6 +1329,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 2:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1341,7 +1343,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 2:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 3
@@ -1368,6 +1370,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 3:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1381,7 +1384,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 3:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 4
@@ -1408,6 +1411,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 4:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1421,7 +1425,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 4:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 5
@@ -1448,6 +1452,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 5:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1461,7 +1466,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 5:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 6
@@ -1488,6 +1493,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 6:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1501,7 +1507,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 6:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 7
@@ -1528,6 +1534,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 7:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1541,7 +1548,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 7:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 8
@@ -1568,6 +1575,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 8:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1581,7 +1589,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 8:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 9
@@ -1608,6 +1616,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 9:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1621,7 +1630,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 9:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 10
@@ -1648,6 +1657,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 10:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1661,7 +1671,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 10:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 11
@@ -1688,6 +1698,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 11:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1701,7 +1712,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 11:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 12
@@ -1728,6 +1739,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 12:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1741,7 +1753,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 12:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 13
@@ -1768,6 +1780,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 13:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1781,7 +1794,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 13:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 14
@@ -1808,6 +1821,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 14:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1821,7 +1835,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 14:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 15
@@ -1848,6 +1862,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 15:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1861,7 +1876,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 15:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 16
@@ -1888,6 +1903,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 16:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1901,7 +1917,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 16:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 17
@@ -1928,6 +1944,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 17:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1941,7 +1958,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 17:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 18
@@ -1968,6 +1985,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 18:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -1981,7 +1999,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 18:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 19
@@ -2008,6 +2026,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 19:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2021,7 +2040,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 19:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 20
@@ -2048,6 +2067,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 20:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2061,7 +2081,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 1 and self.app.masters[i].number == 20:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 21
@@ -2088,6 +2108,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 1:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2101,7 +2122,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 1:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 22
@@ -2128,6 +2149,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 2:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2141,7 +2163,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 2:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 23
@@ -2168,6 +2190,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 3:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2181,7 +2204,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 3:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 24
@@ -2208,6 +2231,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 4:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2221,7 +2245,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 4:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 25
@@ -2248,6 +2272,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 5:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2261,7 +2286,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 5:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 26
@@ -2288,6 +2313,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 6:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2301,7 +2327,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 6:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 27
@@ -2328,6 +2354,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 7:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2341,7 +2368,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 7:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 28
@@ -2368,6 +2395,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 8:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2381,7 +2409,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 8:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 29
@@ -2408,6 +2436,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 9:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2421,7 +2450,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 9:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 30
@@ -2448,6 +2477,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 10:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2461,7 +2491,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 10:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 31
@@ -2488,6 +2518,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 11:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2501,7 +2532,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 11:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 32
@@ -2528,6 +2559,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 12:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2541,7 +2573,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 12:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 33
@@ -2568,6 +2600,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 13:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2581,7 +2614,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 13:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 34
@@ -2608,6 +2641,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 14:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2621,7 +2655,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 14:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 35
@@ -2648,6 +2682,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 15:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2661,7 +2696,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 15:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 36
@@ -2688,6 +2723,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 16:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2701,7 +2737,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 16:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 37
@@ -2728,6 +2764,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 17:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2741,7 +2778,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 17:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 38
@@ -2768,6 +2805,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 18:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2781,7 +2819,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 18:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 39
@@ -2808,6 +2846,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 19:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2821,7 +2860,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 19:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Flash 40
@@ -2848,6 +2887,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 20:
                             break
+                    self.app.masters[i].old_value = self.app.masters[i].value
                     self.app.masters[i].value = 255
                     self.app.masters[i].level_changed()
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -2861,7 +2901,7 @@ class Midi(object):
                     for i in range(len(self.app.masters)):
                         if self.app.masters[i].page == 2 and self.app.masters[i].number == 20:
                             break
-                    self.app.masters[i].value = 0
+                    self.app.masters[i].value = self.app.masters[i].old_value
                     self.app.masters[i].level_changed()
 
             # Master 1
