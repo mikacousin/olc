@@ -270,7 +270,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_plus.connect('clicked', self.on_seq_plus)
         self.seq_minus = ButtonWidget('Seq-', 'Seq_minus')
         self.seq_minus.connect('clicked', self.on_seq_minus)
-        self.goback = ButtonWidget('Go Back')
+        self.goback = ButtonWidget('Go Back', 'Go_Back')
+        self.goback.connect('clicked', self.on_go_back)
         self.pause = ButtonWidget('Pause')
         self.go_pad.attach(self.seq_minus, 0, 0, 1, 1)
         self.go_pad.attach(self.seq_plus, 1, 0, 1, 1)
@@ -340,6 +341,13 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.sequence.sequence_go(None, None)
+
+    def on_go_back(self, widget):
+        if self.midi_learn:
+            self.app.midi.midi_learn = 'Go_Back'
+            self.queue_draw()
+        else:
+            self.app.sequence.go_back(None, None)
 
     def on_seq_plus(self, widget):
         if self.midi_learn:

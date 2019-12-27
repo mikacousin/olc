@@ -21,6 +21,11 @@
       <summary>Default Time</summary>
       <description></description>
     </key>
+    <key name="go-back-time" type="d">
+      <default>2</default>
+      <summary>Go Back Time</summary>
+      <description></description>
+    </key>
     <key name="osc-host" type="s">
       <default>"10.0.0.3"</default>
       <summary>OSC client's IP address</summary>

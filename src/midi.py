@@ -29,6 +29,7 @@ class Midi(object):
 
         # Default MIDI values : Channel, Note / Channel, CC
         self.midi_table = [['Go', 0, 11],
+                ['Go_Back', 0, -1],
                 ['Seq_minus', 0, 12],
                 ['Seq_plus', 0, 13],
                 ['Output', 0, -1],
@@ -200,6 +201,36 @@ class Midi(object):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
                     self.app.virtual_console.go.emit('button-release-event', event)
+
+            # Go Back
+            for index in range(len(self.midi_table)):
+                if self.midi_table[index][0] == 'Go_Back':
+                    break
+            if self.midi_learn == 'Go_Back':
+                if msg.type == 'note_on':
+                    # Delete if used
+                    for i, message in enumerate(self.midi_table):
+                        if message[1] == msg.channel and message[2] == msg.note:
+                            self.midi_table[i][1] = 0
+                            self.midi_table[i][2] = -1
+                    # Learn new values
+                    self.midi_table[index] = ['Go_Back', msg.channel, msg.note]
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 127):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                    self.app.virtual_console.goback.emit('button-press-event', event)
+                else:
+                    self.app.sequence.go_back(self.app, None)
+            elif (not self.midi_learn and msg.type == 'note_on'
+                    and msg.channel == self.midi_table[index][1]
+                    and msg.note == self.midi_table[index][2]
+                    and msg.velocity == 0):
+                if self.app.virtual_console:
+                    event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                    self.app.virtual_console.goback.emit('button-release-event', event)
 
             # Seq -
             for index in range(len(self.midi_table)):

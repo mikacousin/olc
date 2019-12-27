@@ -34,6 +34,11 @@ class SettingsDialog:
         self.spin_default_time.set_adjustment(adjustment)
         self.spin_default_time.set_value(Gio.Application.get_default().settings.get_double('default-time'))
 
+        self.spin_go_back_time = builder.get_object('spin_go_back_time')
+        adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
+        self.spin_go_back_time.set_adjustment(adjustment)
+        self.spin_go_back_time.set_value(Gio.Application.get_default().settings.get_double('go-back-time'))
+
         self.entry_client_ip = builder.get_object('entry_client_ip')
         self.entry_client_ip.set_text(Gio.Application.get_default().settings.get_string('osc-host'))
 
@@ -70,6 +75,10 @@ class SettingsDialog:
     def _on_change_default_time(self, widget):
         time = self.spin_default_time.get_value()
         Gio.Application.get_default().settings.set_value('default-time', GLib.Variant('d', time))
+
+    def _on_change_go_back_time(self, widget):
+        time = self.spin_go_back_time.get_value()
+        Gio.Application.get_default().settings.set_value('go-back-time', GLib.Variant('d', time))
 
     def _update_ui_percent(self, widget, state):
         """ Change levels view (0-100) or (0-255) """

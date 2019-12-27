@@ -142,6 +142,11 @@ class Application(Gtk.Application):
         action.connect('activate', self._track_channels)
         self.add_action(action)
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
+        # Go Back
+        action = Gio.SimpleAction.new('go_back', None)
+        action.connect('activate', self.sequence.go_back)
+        self.add_action(action)
+        self.set_accels_for_action("app.go_back", ["<Control>b"])
 
         # Create several DMX arrays
         self.dmx = Dmx(self.universes, self.patch, self.ola_client, self.sequence, self.masters, self.window)

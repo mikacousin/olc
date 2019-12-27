@@ -241,7 +241,6 @@ class Sequence(object):
                 break
 
     def sequence_go(self, action, param):
-        self.app = Gio.Application.get_default()
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.app.sequence.on_go:
             # Stop actual Thread
@@ -335,6 +334,45 @@ class Sequence(object):
             self.app.sequence.on_go = True
             self.app.sequence.thread = ThreadGo(self.app)
             self.app.sequence.thread.start()
+
+    def go_back(self, action, param):
+
+        # Just return if we are at the beginning
+        position = self.app.sequence.position
+        if position == 0:
+            return False
+
+        if self.app.sequence.on_go:
+            try:
+                self.app.sequence.thread.stop()
+                self.app.sequence.thread.join()
+            except:
+                pass
+            self.app.sequence.on_go = False
+
+        go_back_time = self.app.settings.get_double('go-back-time')
+
+        self.app.window.sequential.total_time = self.app.sequence.steps[position - 1].total_time
+        self.app.window.sequential.time_in = self.app.sequence.steps[position - 1].time_in
+        self.app.window.sequential.time_out = self.app.sequence.steps[position - 1].time_out
+        self.app.window.sequential.delay_in = self.app.sequence.steps[position - 1].delay_in
+        self.app.window.sequential.delay_out = self.app.sequence.steps[position - 1].delay_out
+        self.app.window.sequential.wait = self.app.sequence.steps[position - 1].wait
+        self.app.window.sequential.channel_time = self.app.sequence.steps[position - 1].channel_time
+        self.app.window.sequential.pos_xA = 0
+        self.app.window.sequential.pos_xB = 0
+
+        self.app.window.seq_grid.queue_draw()
+
+        subtitle = ("Mem. : " + str(self.app.sequence.steps[position].cue.memory)
+                        + " " + self.app.sequence.steps[position].text+" - Next Mem. : "
+                        + str(self.app.sequence.steps[position - 1].cue.memory)
+                        + " " + self.app.sequence.steps[position - 1].text)
+        self.app.window.header.set_subtitle(subtitle)
+
+        self.app.sequence.on_go = True
+        self.app.sequence.thread = ThreadGoBack()
+        self.app.sequence.thread.start()
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
@@ -585,6 +623,164 @@ class ThreadGo(threading.Thread):
 
             if self.app.patch_outputs_tab != None:
                 GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
+
+    def update_ui(self, position, subtitle):
+        # Update Sequential Tab
+        if position == 0:
+            self.app.window.cues_liststore1[position][9] = "#232729"
+            self.app.window.cues_liststore1[position+1][9] = "#232729"
+            self.app.window.cues_liststore1[position+2][9] = "#997004"
+            self.app.window.cues_liststore1[position+3][9] = "#555555"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
+        else:
+            self.app.window.cues_liststore1[position][9] = "#232729"
+            self.app.window.cues_liststore1[position+1][9] = "#232729"
+            self.app.window.cues_liststore1[position+2][9] = "#997004"
+            self.app.window.cues_liststore1[position+3][9] = "#555555"
+            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
+            self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
+        self.app.window.step_filter1.refilter()
+        self.app.window.step_filter2.refilter()
+        path = Gtk.TreePath.new_from_indices([0])
+        self.app.window.treeview1.set_cursor(path, None, False)
+        self.app.window.treeview2.set_cursor(path, None, False)
+        self.app.window.seq_grid.queue_draw()
+        # Update Main Window's Subtitle
+        self.app.window.header.set_subtitle(subtitle)
+        # Virtual Console's Xfade
+        if self.app.virtual_console:
+            if self.app.virtual_console.scaleA.get_inverted():
+                self.app.virtual_console.scaleA.set_inverted(False)
+                self.app.virtual_console.scaleB.set_inverted(False)
+            else:
+                self.app.virtual_console.scaleA.set_inverted(True)
+                self.app.virtual_console.scaleB.set_inverted(True)
+            self.app.virtual_console.scaleA.set_value(0)
+            self.app.virtual_console.scaleB.set_value(0)
+
+# Thread Object for Go Back
+class ThreadGoBack(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self._stopevent = threading.Event()
+
+        self.app = Gio.Application.get_default()
+
+        self.dmxlevels = []
+        for univ in range(NB_UNIVERSES):
+            self.dmxlevels.append(array.array('B', [0] * 512))
+
+    def run(self):
+        # If sequential is empty, just return
+        if self.app.sequence.last == 2:
+            return
+
+        position = self.app.sequence.position
+
+        # Levels when Go Back starts
+        for univ in range(NB_UNIVERSES):
+            for output in range(512):
+                self.dmxlevels[univ][output] = self.app.dmx.frame[univ][output]
+
+        # Go Back's default time
+        go_back_time = self.app.settings.get_double('go-back-time') * 1000
+
+        # Actual time in ms
+        start_time = time.time() * 1000
+        i = (time.time() * 1000) - start_time
+
+        while i < go_back_time and not self._stopevent.isSet():
+            # Update DMX levels
+            self.update_levels(go_back_time, i, position)
+            # Sleep 50ms
+            time.sleep(0.05)
+            i = (time.time() * 1000) - start_time
+
+        # Finish to load preset
+        for univ in range(NB_UNIVERSES):
+            for output in range(512):
+                channel = self.app.patch.outputs[univ][output]
+                if channel:
+                    # TODO: Handle first position
+                    level = self.app.sequence.steps[position - 1].cue.channels[channel - 1]
+                    self.app.dmx.sequence[channel - 1] = level
+
+        self.app.sequence.go = False
+
+        self.app.dmx.user = array.array('h', [-1] * MAX_CHANNELS)
+
+        # TODO: Gérer la position
+        position -= 1
+
+        self.app.sequence.position = position
+        self.app.window.sequential.time_in = self.app.sequence.steps[position + 1].time_in
+        self.app.window.sequential.time_out = self.app.sequence.steps[position + 1].time_out
+        self.app.window.sequential.delay_in = self.app.sequence.steps[position + 1].delay_in
+        self.app.window.sequential.delay_out = self.app.sequence.steps[position + 1].delay_out
+        self.app.window.sequential.wait = self.app.sequence.steps[position + 1].wait
+        self.app.window.sequential.total_time = self.app.sequence.steps[position + 1].total_time
+        self.app.window.sequential.channel_time = self.app.sequence.steps[position + 1].channel_time
+        self.app.window.sequential.pos_xA = 0
+        self.app.window.sequential.pos_xB = 0
+
+        # Set main window's subtitle
+        subtitle = ('Mem. : '
+                + str(self.app.sequence.steps[position].cue.memory) + ' '
+                + self.app.sequence.steps[position].text
+                + ' - Next Mem. : '
+                + str(self.app.sequence.steps[position + 1].cue.memory) + ' '
+                + self.app.sequence.steps[position + 1].text)
+
+        # Update Gtk in the main thread
+        GLib.idle_add(self.update_ui, position, subtitle)
+
+        if self.app.sequence.steps[position + 1].wait:
+            self.app.sequence.sequence_go(None, None)
+
+    def stop(self):
+        self._stopevent.set()
+
+    def update_levels(self, go_back_time, i, position):
+        # Update sliders position
+        allocation = self.app.window.sequential.get_allocation()
+        self.app.window.sequential.pos_xA = ((allocation.width - 32) / go_back_time) * i
+        self.app.window.sequential.pos_xB = ((allocation.width - 32) / go_back_time) * i
+        GLib.idle_add(self.app.window.sequential.queue_draw)
+
+        # Move Virtual Console's XFade
+        if self.app.virtual_console:
+            val = round((255 / go_back_time) * i)
+            GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
+            GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
+
+        for univ in range(NB_UNIVERSES):
+
+            for output in range(512):
+
+                old_level = round(self.dmxlevels[univ][output] * (255 / self.app.dmx.grand_master))
+
+                channel = self.app.patch.outputs[univ][output]
+
+                if channel:
+
+                    next_level = self.app.sequence.steps[position - 1].cue.channels[channel - 1]
+
+                    if next_level > old_level:
+                        level = round(((next_level - old_level) / go_back_time) * i) + old_level
+                    elif next_level < old_level:
+                        level = old_level - abs(round(((next_level - old_level) / go_back_time) * i))
+                    else:
+                        level = next_level
+
+                    self.app.dmx.sequence[channel - 1] = level
+
+        if self.app.patch_outputs_tab != None:
+            GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
 
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
