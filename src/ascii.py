@@ -1,4 +1,5 @@
 import array
+from io import StringIO
 from gi.repository import Gio, Gtk, GObject, Pango
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES
@@ -27,8 +28,17 @@ class Ascii(object):
         self.basename = self.file.get_basename()
         self.default_time = Gio.Application.get_default().settings.get_double('default-time')
         try:
-            fstream = self.file.read(None)
-            dstream = Gio.DataInputStream.new(fstream)
+            status, contents, etag_out = self.file.load_contents(None)
+
+            if not status:
+                print('Error')
+                return False
+
+            contents = contents.decode('iso-8859-1')
+
+            file_io = StringIO(contents)
+
+            readlines = file_io.readlines()
 
             flag_seq = False
             in_cue = False
@@ -41,6 +51,8 @@ class Ascii(object):
             txt = False
             t_in = False
             t_out = False
+            d_in = False
+            d_out = False
             wait = False
             channels = False
             mem = False
@@ -49,25 +61,19 @@ class Ascii(object):
 
             console = ""
 
-            while True:
+            for line in readlines:
 
-                line, size = dstream.read_line(None)
-                if console == "CONGO":
-                    line = line.decode('iso-8859-1').encode('utf8')
-                    line = str(line, 'utf8')
-                else:
-                    line = str(line)[2:-1]
-                line = line.replace('\\t', '\t')
-                line = line.replace('\\r', '')
+                line = line.replace('\r', '')
+                line = line.replace('\n', '')
 
                 # Marker for end of file
-                if "ENDDATA" in line:
+                if line[:7].upper() == "ENDDATA":
                     break
 
-                if line[:7] == "CONSOLE":
+                if line[:7].upper() == "CONSOLE":
                     console = line[8:]
 
-                if line[:9] == "CLEAR ALL":
+                if line[:9].upper() == "CLEAR ALL":
                     # Clear All
                     del(self.app.memories[:])
                     del(self.app.chasers[:])
@@ -81,7 +87,7 @@ class Ascii(object):
                     del(self.app.sequence.steps[1:])
                     self.app.sequence.window = self.app.window
 
-                if line[:9] == "$SEQUENCE" or line[:9] == "$Sequence":
+                if line[:9].upper() == "$SEQUENCE":
                     p = line[10:].split(" ")
                     if int(p[0]) < 2 and not Playback:
                         Playback = True
@@ -91,26 +97,6 @@ class Ascii(object):
                         index_seq = int(p[0])
                         self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = type_seq))
                         del(self.app.chasers[-1].steps[1:])
-                    """
-                    try:
-                        test_type = p[1]
-                        print("try:", p[1])
-                        if p[1] == "0":
-                            type_seq = "Normal"
-                        elif p[1] == "1":
-                            type_seq = "Chaser"
-                            index_seq = int(p[0])
-                            self.chasers.append(Sequence(index_seq, self.patch))
-                            #print ("Sequence :", index_seq, "Type :", type_seq)
-                    except:
-                        print("except:", p[0])
-                        if p[0] == "0":
-                            type_seq = "Normal"
-                        else:
-                            type_seq = "Chaser"
-                            index_seq = int(p[0])
-                            self.chasers.append(Sequence(index_seq, self.patch))
-                    """
                     #print ("Sequence :", p[0], "Type :", type_seq)
                     #i = 1
                     flag_seq = True
@@ -119,10 +105,10 @@ class Ascii(object):
                     flag_group = False
 
                 if flag_seq and type_seq == "Chaser":
-                    if line[:4] == 'TEXT':
+                    if line[:4].upper() == 'TEXT':
                         self.app.chasers[-1].text = line[5:]
 
-                    if line[:4] == "$CUE":
+                    if line[:4].upper() == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
                         #i += 1
@@ -132,7 +118,7 @@ class Ascii(object):
                         #print ("CUE in Sequence", seq, "Memory", mem)
 
                     if in_cue:
-                        if line[:4] == 'DOWN':
+                        if line[:4].upper() == 'DOWN':
                             p = line[5:]
                             time = p.split(" ")[0]
                             delay = p.split(" ")[1]
@@ -148,7 +134,7 @@ class Ascii(object):
                                 d_out = float(delay)
                             # print("Time Out:", t_out)
                             # print("Delay Out:", d_out)
-                        if line[:2] == 'UP':
+                        if line[:2].upper() == 'UP':
                             p = line[3:]
                             time = p.split(" ")[0]
                             delay = p.split(" ")[1]
@@ -164,7 +150,7 @@ class Ascii(object):
                                 d_in = float(delay)
                             # print("Time In:", t_in)
                             # print("Delay In:", d_in)
-                        if line[:4] == 'CHAN':
+                        if line[:4].upper() == 'CHAN':
                             #print ("        Chanels :")
                             p = line[5:].split(" ")
                             for q in p:
@@ -200,13 +186,13 @@ class Ascii(object):
                     if line[:0] == "!":
                         flag_seq = False
                         print(line)
-                    if line[:3] == "CUE":
+                    if line[:3].upper() == "CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
                         #i += 1
                         #print ("        Mémoire :", line[4:])
                         mem = float(line[4:])
-                    if line[:4] == "$CUE":
+                    if line[:4].upper() == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
                         #i += 1
@@ -214,20 +200,23 @@ class Ascii(object):
                         mem = float(line[5:])
 
                     if in_cue:
-                        if line[:4] == "TEXT":
+                        if line[:4].upper() == "TEXT" and not txt:
                             #print ("        Text :", line[5:])
                             txt = line[5:]
-                        if line[:6] == "$$TEXT" and not txt:
+                        if line[:6].upper() == "$$TEXT":
                             #print ("        $$Text :", line[7:])
                             txt = line[7:]
-                        if (line[:12] == "$$PRESETTEXT" or line[:12] == "$$PresetText") and not txt:
+                        if line[:12].upper() == "$$PRESETTEXT":
                             #print ("        $$PrestText :", line[13:])
                             txt = line[13:]
-                        if line[:4] == 'DOWN':
+                        if line[:4].upper() == 'DOWN':
                             #print ("        Time Out :", line[5:])
                             p = line[5:]
                             time = p.split(" ")[0]
-                            delay = p.split(" ")[1]
+                            if len(p.split(' ')) == 2:
+                                delay = p.split(" ")[1]
+                            else:
+                                delay = '0'
                             # Si on a un tps avec ":" on est en minutes
                             if ":" in time:
                                 t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
@@ -239,11 +228,14 @@ class Ascii(object):
                                 d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:
                                 d_out = float(delay)
-                        if line[:2] == 'UP':
+                        if line[:2].upper() == 'UP':
                             #print ("        Time In :", line[3:])
                             p = line[3:]
                             time = p.split(" ")[0]
-                            delay = p.split(" ")[1]
+                            if len(p.split(' ')) == 2:
+                                delay = p.split(" ")[1]
+                            else:
+                                delay = '0'
                             # Si on a un tps avec ":" on est en minutes
                             if ":" in time:
                                 t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
@@ -255,7 +247,7 @@ class Ascii(object):
                                 d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
                             else:
                                 d_in = float(delay)
-                        if line[:6] == '$$WAIT' or line[:6] == '$$Wait':
+                        if line[:6].upper() == '$$WAIT':
                             #print ("        Wait :", line[7:])
                             #wait = float(line[7:].split(" ")[0])
                             time = line[7:].split(" ")[0]
@@ -264,7 +256,7 @@ class Ascii(object):
                                 wait = float(time.split(":")[0])*60 + float(time.split(":")[1])
                             else:
                                 wait = float(time)
-                        if line[:11] == '$$PARTTIME ':
+                        if line[:11].upper() == '$$PARTTIME ':
                             #print("Channel Time")
                             p = line[11:]
                             d = p.split(" ")[0]
@@ -278,14 +270,14 @@ class Ascii(object):
                             else:
                                 time = float(time_str)
                             #print("Temps:", time, "Delay:", delay)
-                        if line[:14] == '$$PARTTIMECHAN':
+                        if line[:14].upper() == '$$PARTTIMECHAN':
                             p = line[15:].split(' ')
                             # We could have several channels
                             for chan in p:
                                 if chan.isdigit():
                                     #print("PARTTIMECHAN: Channel N°", chan)
                                     channel_time[int(chan)] = ChannelTime(delay, time)
-                        if line[:4] == 'CHAN':
+                        if line[:4].upper() == 'CHAN':
                             #print ("        Chanels :")
                             #p = line[5:-1].split(" ")
                             p = line[5:].split(" ")
@@ -308,6 +300,10 @@ class Ascii(object):
                                 t_out = 5.0
                             if not t_in:
                                 t_in = 5.0
+                            if not d_in:
+                                d_in = 0.0
+                            if not d_out:
+                                d_out = 0.0
                             # Create Cue
                             cue = Cue(0, mem, channels, text=txt)
                             # Add cue to the list
@@ -327,7 +323,7 @@ class Ascii(object):
                             chan_t = False
                             channel_time = {}
 
-                if line[:11] == 'CLEAR PATCH':
+                if line[:11].upper() == 'CLEAR PATCH':
                     flag_seq = False
                     flag_patch = True
                     flag_master = False
@@ -338,7 +334,7 @@ class Ascii(object):
                 if flag_patch:
                     if line[:0] == "!":
                         flag_patch = False
-                if line[:7] == 'PATCH 1':
+                if line[:7].upper() == 'PATCH 1':
                     for p in line[8:-1].split(" "):
                         q = p.split("<")
                         if q[0]:
@@ -357,7 +353,7 @@ class Ascii(object):
                             else:
                                 print("Plus de", NB_UNIVERSES, "univers")
 
-                if line[:6] == '$GROUP':
+                if line[:6].upper() == '$GROUP':
                     flag_seq = False
                     flag_patch = False
                     flag_master = False
@@ -365,7 +361,7 @@ class Ascii(object):
                     #print ("Group :", line[7:])
                     channels = array.array('B', [0] * MAX_CHANNELS)
                     group_nb = float(line[7:])
-                if line[:5] == 'GROUP':
+                if line[:5].upper() == 'GROUP':
                     flag_seq = False
                     flag_patch = False
                     flag_master = False
@@ -377,13 +373,13 @@ class Ascii(object):
                     #txt = ""
                     if line[:1] == "!":
                         flag_group = False
-                    if line[:4] == 'TEXT':
+                    if line[:4].upper() == 'TEXT':
                         txt = line[5:]
                         #print ("    Text :", line[5:])
-                    if line[:6] == '$$TEXT':
+                    if line[:6].upper() == '$$TEXT':
                         txt = line[7:]
                         #print ("    Text :", line[7:])
-                    if line[:4] == 'CHAN':
+                    if line[:4].upper() == 'CHAN':
                         #print ("    Chanels :")
                         p = line[5:].split(" ")
                         for q in p:
@@ -407,7 +403,7 @@ class Ascii(object):
                         flag_group = False
                         txt = ""
 
-                if line[:13] == '$MASTPAGEITEM':
+                if line[:13].upper() == '$MASTPAGEITEM':
                     #print("Master!")
                     item = line[14:].split(" ")
                     #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
@@ -427,7 +423,7 @@ class Ascii(object):
                 if flag_master:
                     if line[:1] == '!':
                         flag_master = False
-                    if line[:4] == 'CHAN':
+                    if line[:4].upper() == 'CHAN':
                         p = line[5:].split(' ')
                         for q in p:
                             r = q.split('/')
@@ -441,8 +437,6 @@ class Ascii(object):
                         self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels)
                         flag_master = False
 
-
-            fstream.close()
 
             # Add Empty Step at the end
             cue = Cue(0, 0.0)
