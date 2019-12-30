@@ -97,8 +97,6 @@ class Ascii(object):
                         index_seq = int(p[0])
                         self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = type_seq))
                         del(self.app.chasers[-1].steps[1:])
-                    #print ("Sequence :", p[0], "Type :", type_seq)
-                    #i = 1
                     flag_seq = True
                     flag_patch = False
                     flag_master = False
@@ -111,47 +109,34 @@ class Ascii(object):
                     if line[:4].upper() == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                        #i += 1
                         p = line[5:].split(" ")
                         seq = p[0]
                         mem = float(p[1])
-                        #print ("CUE in Sequence", seq, "Memory", mem)
 
                     if in_cue:
                         if line[:4].upper() == 'DOWN':
                             p = line[5:]
                             time = p.split(" ")[0]
                             delay = p.split(" ")[1]
-                            if ":" in time:
-                                t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
-                            else:
-                                t_out = float(time)
+
+                            t_out = self.get_time(time)
                             if t_out == 0:
                                 t_out = self.default_time
-                            if ":" in delay:
-                                d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
-                            else:
-                                d_out = float(delay)
-                            # print("Time Out:", t_out)
-                            # print("Delay Out:", d_out)
+
+                            d_out = self.get_time(delay)
+
                         if line[:2].upper() == 'UP':
                             p = line[3:]
                             time = p.split(" ")[0]
                             delay = p.split(" ")[1]
-                            if ":" in time:
-                                t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
-                            else:
-                                t_in = float(time)
+
+                            t_in = self.get_time(time)
                             if t_in == 0:
                                 t_in = self.default_time
-                            if ":" in delay:
-                                d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
-                            else:
-                                d_in = float(delay)
-                            # print("Time In:", t_in)
-                            # print("Delay In:", d_in)
+
+                            d_in = self.get_time(delay)
+
                         if line[:4].upper() == 'CHAN':
-                            #print ("        Chanels :")
                             p = line[5:].split(" ")
                             for q in p:
                                 r = q.split("/")
@@ -159,10 +144,8 @@ class Ascii(object):
                                     channel = int(r[0])
                                     level = int(r[1][1:], 16)
                                     channels[channel-1] = level
-                                    #print ("            ", r[0], "@", int(r[1][1:], 16))
 
-                        if line == "":
-                            #print("Fin de la Cue")
+                        if line == '':
 
                             if not wait:
                                 wait = 0.0
@@ -189,101 +172,70 @@ class Ascii(object):
                     if line[:3].upper() == "CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                        #i += 1
-                        #print ("        Mémoire :", line[4:])
                         mem = float(line[4:])
                     if line[:4].upper() == "$CUE":
                         in_cue = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
-                        #i += 1
-                        #print ("        Mémoire :", line[5:])
                         mem = float(line[5:])
 
                     if in_cue:
                         if line[:4].upper() == "TEXT" and not txt:
-                            #print ("        Text :", line[5:])
                             txt = line[5:]
                         if line[:6].upper() == "$$TEXT":
-                            #print ("        $$Text :", line[7:])
                             txt = line[7:]
                         if line[:12].upper() == "$$PRESETTEXT":
-                            #print ("        $$PrestText :", line[13:])
                             txt = line[13:]
                         if line[:4].upper() == 'DOWN':
-                            #print ("        Time Out :", line[5:])
                             p = line[5:]
                             time = p.split(" ")[0]
                             if len(p.split(' ')) == 2:
                                 delay = p.split(" ")[1]
                             else:
                                 delay = '0'
-                            # Si on a un tps avec ":" on est en minutes
-                            if ":" in time:
-                                t_out = float(time.split(":")[0])*60 + float(time.split(":")[1])
-                            else:
-                                t_out = float(time)
+
+                            t_out = self.get_time(time)
                             if t_out == 0:
                                 t_out = self.default_time
-                            if ":" in delay:
-                                d_out = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
-                            else:
-                                d_out = float(delay)
+
+                            d_out = self.get_time(delay)
+
                         if line[:2].upper() == 'UP':
-                            #print ("        Time In :", line[3:])
                             p = line[3:]
                             time = p.split(" ")[0]
                             if len(p.split(' ')) == 2:
                                 delay = p.split(" ")[1]
                             else:
                                 delay = '0'
-                            # Si on a un tps avec ":" on est en minutes
-                            if ":" in time:
-                                t_in = float(time.split(":")[0])*60 + float(time.split(":")[1])
-                            else:
-                                t_in = float(time)
+
+                            t_in = self.get_time(time)
                             if t_in == 0:
                                 t_in = self.default_time
-                            if ":" in delay:
-                                d_in = float(delay.split(":")[0])*60 + float(delay.split(":")[1])
-                            else:
-                                d_in = float(delay)
+
+                            d_in = self.get_time(delay)
+
                         if line[:6].upper() == '$$WAIT':
-                            #print ("        Wait :", line[7:])
-                            #wait = float(line[7:].split(" ")[0])
                             time = line[7:].split(" ")[0]
-                            # Si on a un tps avec ":" on est en minutes
-                            if ":" in time:
-                                wait = float(time.split(":")[0])*60 + float(time.split(":")[1])
-                            else:
-                                wait = float(time)
+                            wait = self.get_time(time)
+
                         if line[:11].upper() == '$$PARTTIME ':
-                            #print("Channel Time")
                             p = line[11:]
                             d = p.split(" ")[0]
                             if d == '.':
                                 d = 0
                             delay = float(d)
-                            # Times with ":" are in minutes
                             time_str = p.split(" ")[1]
-                            if ':' in time_str:
-                                time = float(time_str.split(':')[0])*60 + float(time_str.split(':')[1])
-                            else:
-                                time = float(time_str)
-                            #print("Temps:", time, "Delay:", delay)
+                            time = self.get_time(time_str)
+
                         if line[:14].upper() == '$$PARTTIMECHAN':
                             p = line[15:].split(' ')
                             # We could have several channels
                             for chan in p:
                                 if chan.isdigit():
-                                    #print("PARTTIMECHAN: Channel N°", chan)
                                     channel_time[int(chan)] = ChannelTime(delay, time)
                         if line[:4].upper() == 'CHAN':
-                            #print ("        Chanels :")
-                            #p = line[5:-1].split(" ")
                             p = line[5:].split(" ")
                             for q in p:
                                 r = q.split("/")
-                                #print ("            ", r[0], "@", int(r[1][1:], 16))
                                 if r[0] != "":
                                     channel = int(r[0])
                                     # Ignore channels greater than MAX_CHANNELS
@@ -291,7 +243,6 @@ class Ascii(object):
                                         level = int(r[1][1:], 16)
                                         channels[channel-1] = level
                         if line == "":
-                            #print("Fin Cue", mem)
                             if not wait:
                                 wait = 0.0
                             if not txt:
@@ -309,7 +260,9 @@ class Ascii(object):
                             # Add cue to the list
                             self.app.memories.append(cue)
                             # Create Step
-                            step = Step(1, cue, time_in=t_in, time_out=t_out, delay_in=d_in, delay_out=d_out, wait=wait, channel_time=channel_time, text=txt)
+                            step = Step(1, cue, time_in=t_in, time_out=t_out,
+                                    delay_in=d_in, delay_out=d_out, wait=wait,
+                                    channel_time=channel_time, text=txt)
 
                             # Add Step to the Sequence
                             self.app.sequence.add_step(step)
@@ -328,7 +281,6 @@ class Ascii(object):
                     flag_patch = True
                     flag_master = False
                     flag_group = False
-                    #print ("\nPatch :")
                     self.app.patch.patch_empty()    # Empty patch
                     self.app.window.flowbox.invalidate_filter()
                 if flag_patch:
@@ -358,7 +310,6 @@ class Ascii(object):
                     flag_patch = False
                     flag_master = False
                     flag_group = True
-                    #print ("Group :", line[7:])
                     channels = array.array('B', [0] * MAX_CHANNELS)
                     group_nb = float(line[7:])
                 if line[:5].upper() == 'GROUP':
@@ -366,37 +317,29 @@ class Ascii(object):
                     flag_patch = False
                     flag_master = False
                     flag_group = True
-                    #print ("Group :", line[6:])
                     channels = array.array('B', [0] * MAX_CHANNELS)
                     group_nb = float(line[6:])
                 if flag_group:
-                    #txt = ""
                     if line[:1] == "!":
                         flag_group = False
                     if line[:4].upper() == 'TEXT':
                         txt = line[5:]
-                        #print ("    Text :", line[5:])
                     if line[:6].upper() == '$$TEXT':
                         txt = line[7:]
-                        #print ("    Text :", line[7:])
                     if line[:4].upper() == 'CHAN':
-                        #print ("    Chanels :")
                         p = line[5:].split(" ")
                         for q in p:
                             r = q.split("/")
                             if r[0] != "":
                                 channel = int(r[0])
                                 level = int(r[1][1:], 16)
-                                #print ("        ", r[0], "@", int(r[1][1:], 16))
                                 if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
                     if line == "":
-                        #print("Group", group_nb, txt, "channels", channels)
                         # We don't create a group who already exist
                         group_exist = False
                         for grp in range(len(self.app.groups)):
                             if group_nb == self.app.groups[grp].index:
-                                #print("Le groupe", txt, "existe déjà")
                                 group_exist = True
                         if not group_exist:
                             self.app.groups.append(Group(group_nb, channels, txt))
@@ -404,9 +347,7 @@ class Ascii(object):
                         txt = ""
 
                 if line[:13].upper() == '$MASTPAGEITEM':
-                    #print("Master!")
                     item = line[14:].split(" ")
-                    #print("Page :", p[0], "Master :", p[1], "Type :", p[2], "Contient :", p[3])
                     # DLight use Type "2" for Groups
                     if console == 'DLIGHT' and item[2] == '2':
                         item[2] = '13'
@@ -869,3 +810,20 @@ class Ascii(object):
 
         self.modified = False
         self.app.window.header.set_title(self.basename)
+
+    def get_time(self, string):
+        """ String format : [[hours:]minutes:]seconds[.tenths]
+            Return time in seconds """
+        if ":" in string:
+            tsplit = string.split(':')
+            if len(tsplit) == 2:
+                time = int(tsplit[0])*60 + float(tsplit[1])
+            elif len(tsplit) == 3:
+                time = int(tsplit[0])*3600 + int(tsplit[1])*60 + float(tsplit[2])
+            else:
+                print('Time format Error')
+                time = 0
+        else:
+            time = float(string)
+
+        return time
