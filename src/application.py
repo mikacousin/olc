@@ -260,7 +260,7 @@ class Application(Gtk.Application):
 
     def on_dmx_0(self, dmxframe):
         for output in range(len(dmxframe)):
-            channel = self.patch.outputs[0][output]
+            channel = self.patch.outputs[0][output][0]
             level = dmxframe[output]
             self.dmx.frame[0][output] = level
             self.window.channels[channel-1].level = level
@@ -272,10 +272,12 @@ class Application(Gtk.Application):
                 next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
+            if self.patch_outputs_tab:
+                self.patch_outputs_tab.outputs[output].queue_draw()
 
     def on_dmx_1(self, dmxframe):
         for output in range(len(dmxframe)):
-            channel = self.patch.outputs[1][output]
+            channel = self.patch.outputs[1][output][0]
             level = dmxframe[output]
             self.dmx.frame[1][output] = level
             self.window.channels[channel-1].level = level
@@ -287,10 +289,12 @@ class Application(Gtk.Application):
                 next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
+            if self.patch_outputs_tab:
+                self.patch_outputs_tab.outputs[output+512].queue_draw()
 
     def on_dmx_2(self, dmxframe):
         for output in range(len(dmxframe)):
-            channel = self.patch.outputs[2][output]
+            channel = self.patch.outputs[2][output][0]
             level = dmxframe[output]
             self.dmx.frame[2][output] = level
             self.window.channels[channel-1].level = level
@@ -302,11 +306,12 @@ class Application(Gtk.Application):
                 next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
-        pass
+            if self.patch_outputs_tab:
+                self.patch_outputs_tab.outputs[output+1024].queue_draw()
 
     def on_dmx_3(self, dmxframe):
         for output in range(len(dmxframe)):
-            channel = self.patch.outputs[3][output]
+            channel = self.patch.outputs[3][output][0]
             level = dmxframe[output]
             self.dmx.frame[3][output] = level
             self.window.channels[channel-1].level = level
@@ -318,11 +323,13 @@ class Application(Gtk.Application):
                 next_level = level
             self.window.channels[channel-1].next_level = next_level
             self.window.channels[channel-1].queue_draw()
+            if self.patch_outputs_tab:
+                self.patch_outputs_tab.outputs[output+1536].queue_draw()
 
     def fetch_dmx(self, request, univ, dmxframe):
         if dmxframe:
             for output in range(len(dmxframe)):
-                channel = self.patch.outputs[univ][output]
+                channel = self.patch.outputs[univ][output][0]
                 if channel:
                     level = dmxframe[output]
                     self.dmx.frame[univ][output] = level
@@ -335,6 +342,8 @@ class Application(Gtk.Application):
                         next_level = level
                     self.window.channels[channel-1].next_level = next_level
                     self.window.channels[channel-1].queue_draw()
+                    if self.patch_outputs_tab:
+                        self.patch_outputs_tab.outputs[output+(512*univ)].queue_draw()
 
     def _new(self, action, parameter):
         # TODO: Verify this entire fonction

@@ -34,7 +34,7 @@ class Dmx(object):
             # Pour chaque output
             for output in range(512):
                 # On récupère le channel correspondant
-                channel = self.patch.outputs[universe][output]
+                channel = self.patch.outputs[universe][output][0]
                 # Si il est patché
                 if channel:
                     # On part du niveau du séquentiel
@@ -53,6 +53,8 @@ class Dmx(object):
                             self.window.channels[channel-1].color_level_green = 0.7
                             self.window.channels[channel-1].color_level_blue = 0.4
 
+                    # Proportional patch level
+                    level = level * (self.patch.outputs[universe][output][1] / 100)
                     # Grand Master
                     level = round(level * (self.grand_master / 255))
                     # On met à jour le niveau pour cet output
@@ -66,8 +68,6 @@ class PatchDmx(object):
     To store and manipulate DMX patch
     """
     def __init__(self):
-        # TODO: Add level limitation for Outputs (see ascii files)
-
         # 2 lists to store patch (default 1:1)
         #
         # List of channels
@@ -83,16 +83,16 @@ class PatchDmx(object):
             for i in range(512):
                 channel = i + (512 * universe) + 1
                 if channel <= MAX_CHANNELS:
-                    self.outputs[universe].append(channel)
+                    self.outputs[universe].append([channel, 100])
                 else:
-                    self.outputs[universe].append(0)
+                    self.outputs[universe].append([0, 100])
 
         """
         for channel in range(MAX_CHANNELS):
-            print("Channel", channel, "Output", self.channels[channel][0], "Univers", self.channels[channel][1])
+            print("Channel", channel, "Output", self.channels[channel][0][0], "Univers", self.channels[channel][0][1])
         for universe in range(NB_UNIVERSES):
             for i in range(512):
-                print("Output", i, "Univers", universe, "Channel", self.outputs[universe][i])
+                print("Output", i + 1, "Univers", universe, "Channel", self.outputs[universe][i][0], "Level", self.outputs[universe][i][1])
         """
 
     def patch_empty(self):
@@ -101,7 +101,7 @@ class PatchDmx(object):
             self.channels[channel] = [[0, 0]]
         for universe in range(NB_UNIVERSES):
             for output in range(512):
-                self.outputs[universe][output] = 0
+                self.outputs[universe][output][0] = 0
 
     def patch_1on1(self):
         """ Set patch 1:1 """
@@ -111,9 +111,9 @@ class PatchDmx(object):
             self.channels[channel] = [[chan + 1, univ]]
         for univ in range(NB_UNIVERSES):
             for output in range(512):
-                self.outputs[univ][output] = output + 1
+                self.outputs[univ][output][0] = output + 1
 
-    def add_output(self, channel, output, univ):
+    def add_output(self, channel, output, univ, level=100):
         """ Add an output to a channel """
         if self.channels[channel-1] == [[0, 0]]:
             self.channels[channel-1] = [[output, univ]]
@@ -121,7 +121,8 @@ class PatchDmx(object):
             self.channels[channel-1].append([output, univ])
             # Sort outputs
             self.channels[channel-1] = sorted(self.channels[channel-1])
-        self.outputs[univ][output-1] = channel
+        self.outputs[univ][output-1][0] = channel
+        self.outputs[univ][output-1][1] = level
 
     """
     def is_channel_patched(self, channel):

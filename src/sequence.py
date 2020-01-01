@@ -116,7 +116,7 @@ class Sequence(object):
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.patch.outputs[univ][output]
+                    channel = self.patch.outputs[univ][output][0]
                     if channel:
                         level = self.steps[position].cue.channels[channel-1]
                         self.app.dmx.sequence[channel-1] = level
@@ -183,7 +183,7 @@ class Sequence(object):
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.patch.outputs[univ][output]
+                    channel = self.patch.outputs[univ][output][0]
                     if channel:
                         level = self.steps[position].cue.channels[channel-1]
                         self.app.dmx.sequence[channel-1] = level
@@ -442,7 +442,7 @@ class ThreadGo(threading.Thread):
         # Finish to load memory
         for univ in range(NB_UNIVERSES):
             for output in range(512):
-                channel = self.app.patch.outputs[univ][output]
+                channel = self.app.patch.outputs[univ][output][0]
                 if channel:
                     if position < self.app.sequence.last - 1:
                         level = self.app.sequence.steps[position+1].cue.channels[channel-1]
@@ -547,7 +547,7 @@ class ThreadGo(threading.Thread):
                     # DMX values with Grand Master correction
                     old_level = round(self.dmxlevels[univ][output] * (255 / self.app.dmx.grand_master))
 
-                    channel = self.app.patch.outputs[univ][output]
+                    channel = self.app.patch.outputs[univ][output][0]
 
                     if channel:
 
@@ -704,7 +704,7 @@ class ThreadGoBack(threading.Thread):
         # Finish to load preset
         for univ in range(NB_UNIVERSES):
             for output in range(512):
-                channel = self.app.patch.outputs[univ][output]
+                channel = self.app.patch.outputs[univ][output][0]
                 if channel:
                     # TODO: Handle first position
                     level = self.app.sequence.steps[position - 1].cue.channels[channel - 1]
@@ -764,7 +764,7 @@ class ThreadGoBack(threading.Thread):
 
                 old_level = round(self.dmxlevels[univ][output] * (255 / self.app.dmx.grand_master))
 
-                channel = self.app.patch.outputs[univ][output]
+                channel = self.app.patch.outputs[univ][output][0]
 
                 if channel:
 
@@ -779,8 +779,8 @@ class ThreadGoBack(threading.Thread):
 
                     self.app.dmx.sequence[channel - 1] = level
 
-        if self.app.patch_outputs_tab != None:
-            GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
+        #if self.app.patch_outputs_tab != None:
+        #    GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
 
     def update_ui(self, position, subtitle):
         # Update Sequential Tab

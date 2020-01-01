@@ -151,7 +151,7 @@ class PatchChannelsTab(Gtk.Grid):
                     for i in range(len(outputs)):
                         output = self.app.patch.channels[channel][i][0] - 1
                         universe = self.app.patch.channels[channel][i][1]
-                        self.app.patch.outputs[universe][output] = 0
+                        self.app.patch.outputs[universe][output][0] = 0
                         self.app.dmx.frame[universe][output] = 0
                     self.app.patch.channels[channel] = [[0, 0]]
                     # Update ui
@@ -179,16 +179,16 @@ class PatchChannelsTab(Gtk.Grid):
                         for i in range(len(outputs)):
                             out = self.app.patch.channels[channel][i][0] - 1
                             univ = self.app.patch.channels[channel][i][1]
-                            self.app.patch.outputs[univ][out] = 0
-                        old_channel = self.app.patch.outputs[universe][output]
+                            self.app.patch.outputs[univ][out][0] = 0
+                        old_channel = self.app.patch.outputs[universe][output][0]
                         if old_channel:
-                            self.app.patch.outputs[universe][output] = 0
+                            self.app.patch.outputs[universe][output][0] = 0
                             self.app.patch.channels[old_channel - 1].remove([output + 1, universe])
                             if not len(self.app.patch.channels[old_channel - 1]):
                                 self.app.patch.channels[old_channel - 1] = [[0, 0]]
                         # Patch
                         self.app.patch.channels[channel] = [[output + 1, universe]]
-                        self.app.patch.outputs[universe][output] = channel + 1
+                        self.app.patch.outputs[universe][output][0] = channel + 1
                         # Update ui
                         self.channels[old_channel-1].queue_draw()
                         self.channels[channel].queue_draw()
@@ -240,9 +240,9 @@ class PatchChannelsTab(Gtk.Grid):
 
                     if output >= 0 and output < 512:
                         # Unpatch old value
-                        old_channel = self.app.patch.outputs[universe][output]
+                        old_channel = self.app.patch.outputs[universe][output][0]
                         if old_channel:
-                            self.app.patch.outputs[universe][output] = 0
+                            self.app.patch.outputs[universe][output][0] = 0
                             self.app.patch.channels[old_channel - 1].remove([output + 1, universe])
                             if not len(self.app.patch.channels[old_channel - 1]):
                                 self.app.patch.channels[old_channel - 1] = [[0, 0]]
@@ -289,7 +289,7 @@ class PatchChannelsTab(Gtk.Grid):
                             self.app.patch.channels[channel].remove([output + 1, universe])
                             if not len(self.app.patch.channels[channel]):
                                 self.app.patch.channels[channel] = [[0, 0]]
-                            self.app.patch.outputs[universe][output] = 0
+                            self.app.patch.outputs[universe][output][0] = 0
                             self.app.dmx.frame[universe][output] = 0
                             # Update ui
                             self.channels[channel].queue_draw()

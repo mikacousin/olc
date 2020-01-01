@@ -74,7 +74,7 @@ class Master(object):
                 for univ in range(NB_UNIVERSES):
                     for output in range(512):
                         # Only patched channels
-                        channel = self.app.patch.outputs[univ][output]
+                        channel = self.app.patch.outputs[univ][output][0]
                         if channel:
                             if self.app.memories[i].channels[channel - 1]:
                                 # Preset's level
@@ -105,7 +105,7 @@ class Master(object):
                     for univ in range(NB_UNIVERSES):
                         for output in range(512):
                             # If Output patched
-                            channel = self.app.patch.outputs[univ][output]
+                            channel = self.app.patch.outputs[univ][output][0]
                             if channel:
                                 if self.groups[j].channels[channel-1] != 0:
                                     # Get level saved in group
@@ -207,7 +207,7 @@ class ThreadChaser(threading.Thread):
         for universe in range(NB_UNIVERSES):
             for output in range(512):
 
-                channel = self.app.patch.outputs[universe][output]
+                channel = self.app.patch.outputs[universe][output][0]
 
                 # On ne modifie que les channels présents dans le chaser
                 if self.app.chasers[self.chaser].channels[channel-1] != 0:

@@ -285,10 +285,10 @@ class PatchOutputsTab(Gtk.Grid):
 
                 # Unpatch if no entry
                 if self.keystring == "" or self.keystring == "0":
-                    channel = self.app.patch.outputs[univ][output]
+                    channel = self.app.patch.outputs[univ][output][0]
                     if channel != 0:
                         channel -= 1
-                        self.app.patch.outputs[univ][output] = 0
+                        self.app.patch.outputs[univ][output][0] = 0
                         self.app.patch.channels[channel].remove([output + 1, univ])
                         self.app.dmx.frame[univ][output] = 0
                 else:
@@ -296,7 +296,7 @@ class PatchOutputsTab(Gtk.Grid):
 
                     if channel >= 0 and channel < MAX_CHANNELS:
                         # Unpatch old value if exist
-                        old_channel = self.app.patch.outputs[univ][output]
+                        old_channel = self.app.patch.outputs[univ][output][0]
                         if old_channel != 0:
                             self.app.patch.channels[old_channel - 1].remove([output + 1, univ])
                             if not len(self.app.patch.channels[old_channel - 1]):
@@ -305,20 +305,65 @@ class PatchOutputsTab(Gtk.Grid):
                         # Patch Channel : same channel for every outputs
                         self.app.patch.add_output(channel+1, output+1, univ)
                 # Update ui
-                self.outputs[output].queue_draw()
+                self.outputs[output + (512 * univ)].queue_draw()
 
                 # Update list of channels
-                level = self.app.dmx.frame[univ][output]
-                self.app.window.channels[channel].level = level
-                self.app.window.channels[channel].queue_draw()
-                self.app.window.flowbox.invalidate_filter()
+                if channel >= 0 and channel < MAX_CHANNELS:
+                    level = self.app.dmx.frame[univ][output]
+                    self.app.window.channels[channel].level = level
+                    self.app.window.channels[channel].queue_draw()
+                    self.app.window.flowbox.invalidate_filter()
             # Select next output
             if output < 511:
                 self.flowbox.unselect_all()
-                child = self.flowbox.get_child_at_index(output+1)
+                child = self.flowbox.get_child_at_index(output+1+(512*univ))
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_out_selected = str(output+1)
+                self.last_out_selected = str(output+1+(512*univ))
+
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_exclam(self):
+        """ Proportional level + """
+
+        sel = self.flowbox.get_selected_children()
+        children = []
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+
+            for patchwidget in children:
+                output = patchwidget.output - 1
+                univ = patchwidget.universe
+
+                self.app.patch.outputs[univ][output][1] += 1
+
+                if self.app.patch.outputs[univ][output][1] > 100:
+                    self.app.patch.outputs[univ][output][1] = 100
+
+                self.outputs[output + (512 * univ)].queue_draw()
+
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+    def keypress_colon(self):
+        """ Proportional level - """
+
+        sel = self.flowbox.get_selected_children()
+        children = []
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+
+            for patchwidget in children:
+                output = patchwidget.output - 1
+                univ = patchwidget.universe
+
+                self.app.patch.outputs[univ][output][1] -= 1
+
+                if self.app.patch.outputs[univ][output][1] < 0:
+                    self.app.patch.outputs[univ][output][1] = 0
+
+                self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)

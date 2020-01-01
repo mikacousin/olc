@@ -610,7 +610,7 @@ class Window(Gtk.ApplicationWindow):
         for universe in range(NB_UNIVERSES):
             for output in range(512):
                 level = self.app.dmx.frame[universe][output]
-                channel = self.app.patch.outputs[universe][output] - 1
+                channel = self.app.patch.outputs[universe][output][0] - 1
                 if level > 0:
                     child = self.flowbox.get_child_at_index(channel)
                     self.set_focus(child)
@@ -869,7 +869,7 @@ class Window(Gtk.ApplicationWindow):
             channels = array.array('B', [0] * MAX_CHANNELS)
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.app.patch.outputs[univ][output]
+                    channel = self.app.patch.outputs[univ][output][0]
                     level = self.app.dmx.frame[univ][output]
                     channels[channel-1] = level
             cue = Cue(1, mem, channels)
@@ -983,7 +983,7 @@ class Window(Gtk.ApplicationWindow):
             # Update Preset
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.app.patch.outputs[univ][output]
+                    channel = self.app.patch.outputs[univ][output][0]
                     level = self.app.dmx.frame[univ][output]
 
                     self.app.memories[i].channels[channel - 1] = level
@@ -1030,7 +1030,7 @@ class Window(Gtk.ApplicationWindow):
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.app.patch.outputs[univ][output]
+                    channel = self.app.patch.outputs[univ][output][0]
                     level = self.app.dmx.frame[univ][output]
 
                     self.app.sequence.steps[position].cue.channels[channel-1] = level

@@ -62,7 +62,7 @@ class CrossFade(object):
                     for output in range(512):
 
                         lvl = -1
-                        channel = app.patch.outputs[univ][output]
+                        channel = app.patch.outputs[univ][output][0]
 
                         old_level = app.sequence.steps[position].cue.channels[channel - 1]
 
@@ -146,7 +146,7 @@ class CrossFade(object):
                     for output in range(512):
 
                         lvl = -1
-                        channel = app.patch.outputs[univ][output]
+                        channel = app.patch.outputs[univ][output][0]
 
                         old_level = app.sequence.steps[position].cue.channels[channel - 1]
 

@@ -295,10 +295,11 @@ class Ascii(object):
                             output = int(r[0])
                             univ = int(output / 512)
                             out = output - (512 * univ)
-                            # print(channel, univ, out)
+                            level = int(r[1])
+                            # print(channel, univ, out, level)
                             if univ < NB_UNIVERSES:
                                 if channel < MAX_CHANNELS:
-                                    self.app.patch.add_output(channel, out, univ)
+                                    self.app.patch.add_output(channel, out, univ, level)
                                     self.app.window.flowbox.invalidate_filter()
                                 else:
                                     print("Plus de", MAX_CHANNELS, "Circuits")
@@ -611,6 +612,10 @@ class Ascii(object):
 
     def save(self):
         """ Save ASCII File """
+
+        # TODO: Rewrite all this function
+        print("Don't save for now !!!")
+        return False
 
         stream = self.file.replace('', False, Gio.FileCreateFlags.NONE, None)
 
