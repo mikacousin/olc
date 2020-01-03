@@ -641,6 +641,7 @@ class Application(Gtk.Application):
         # Virtual Console Window
         self.virtual_console = VirtualConsoleWindow()
         self.virtual_console.show_all()
+        self.add_window(self.virtual_console)
 
     def _settings(self, action, parameter):
         # TODO: Don't open multiple Settings Windows
