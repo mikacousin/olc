@@ -288,8 +288,9 @@ class MastersTab(Gtk.Paned):
 
             # Update Virtual Console
             if self.app.virtual_console:
-                self.app.virtual_console.flashes[index].label = ''
-                self.app.virtual_console.flashes[index].queue_draw()
+                if self.app.virtual_console.props.visible:
+                    self.app.virtual_console.flashes[index].label = ''
+                    self.app.virtual_console.flashes[index].queue_draw()
 
     def on_mode_changed(self, widget, path, text):
         self.liststore[path][3] = text

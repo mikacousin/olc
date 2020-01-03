@@ -550,11 +550,12 @@ class Ascii(object):
 
             # Redraw Masters if Virtual Console is open
             if self.app.virtual_console:
-                for page in range(2):
-                    for i in range(len(self.app.masters)):
-                        if self.app.masters[i].page == page + 1:
-                            self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].label = self.app.masters[i].text
-                            self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].queue_draw()
+                if self.app.virtual_console.props.visible:
+                    for page in range(2):
+                        for i in range(len(self.app.masters)):
+                            if self.app.masters[i].page == page + 1:
+                                self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].label = self.app.masters[i].text
+                                self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].queue_draw()
 
 
             # Redraw Edit Masters Tab if exist

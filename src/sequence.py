@@ -533,9 +533,10 @@ class ThreadGo(threading.Thread):
 
         # Move Virtual Console's XFade
         if self.app.virtual_console:
-            val = round((255 / delay) * i)
-            GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
-            GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
+            if self.app.virtual_console.props.visible:
+                val = round((255 / delay) * i)
+                GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
+                GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
 
         # On attend que le temps d'un éventuel wait soit passé pour changer les levels
         if i > delay_wait:
@@ -654,14 +655,15 @@ class ThreadGo(threading.Thread):
         self.app.window.header.set_subtitle(subtitle)
         # Virtual Console's Xfade
         if self.app.virtual_console:
-            if self.app.virtual_console.scaleA.get_inverted():
-                self.app.virtual_console.scaleA.set_inverted(False)
-                self.app.virtual_console.scaleB.set_inverted(False)
-            else:
-                self.app.virtual_console.scaleA.set_inverted(True)
-                self.app.virtual_console.scaleB.set_inverted(True)
-            self.app.virtual_console.scaleA.set_value(0)
-            self.app.virtual_console.scaleB.set_value(0)
+            if self.app.virtual_console.props.visible:
+                if self.app.virtual_console.scaleA.get_inverted():
+                    self.app.virtual_console.scaleA.set_inverted(False)
+                    self.app.virtual_console.scaleB.set_inverted(False)
+                else:
+                    self.app.virtual_console.scaleA.set_inverted(True)
+                    self.app.virtual_console.scaleB.set_inverted(True)
+                self.app.virtual_console.scaleA.set_value(0)
+                self.app.virtual_console.scaleB.set_value(0)
 
 # Thread Object for Go Back
 class ThreadGoBack(threading.Thread):
@@ -754,9 +756,10 @@ class ThreadGoBack(threading.Thread):
 
         # Move Virtual Console's XFade
         if self.app.virtual_console:
-            val = round((255 / go_back_time) * i)
-            GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
-            GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
+            if self.app.virtual_console.props.visible:
+                val = round((255 / go_back_time) * i)
+                GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
+                GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
 
         for univ in range(NB_UNIVERSES):
 
@@ -812,11 +815,12 @@ class ThreadGoBack(threading.Thread):
         self.app.window.header.set_subtitle(subtitle)
         # Virtual Console's Xfade
         if self.app.virtual_console:
-            if self.app.virtual_console.scaleA.get_inverted():
-                self.app.virtual_console.scaleA.set_inverted(False)
-                self.app.virtual_console.scaleB.set_inverted(False)
-            else:
-                self.app.virtual_console.scaleA.set_inverted(True)
-                self.app.virtual_console.scaleB.set_inverted(True)
-            self.app.virtual_console.scaleA.set_value(0)
-            self.app.virtual_console.scaleB.set_value(0)
+            if self.app.virtual_console.props.visible:
+                if self.app.virtual_console.scaleA.get_inverted():
+                    self.app.virtual_console.scaleA.set_inverted(False)
+                    self.app.virtual_console.scaleB.set_inverted(False)
+                else:
+                    self.app.virtual_console.scaleA.set_inverted(True)
+                    self.app.virtual_console.scaleB.set_inverted(True)
+                self.app.virtual_console.scaleA.set_value(0)
+                self.app.virtual_console.scaleB.set_value(0)
