@@ -412,6 +412,23 @@ class Ascii(object):
                         flag_group = False
                         txt = ""
 
+                if flag_master:
+                    if line[:1] == '!':
+                        flag_master = False
+                    if line[:4].upper() == 'CHAN':
+                        p = line[5:].split(' ')
+                        for q in p:
+                            r = q.split('/')
+                            if r[0] != '':
+                                channel = int(r[0])
+                                level = int(r[1][1:], 16)
+                                if channel <= MAX_CHANNELS:
+                                    channels[channel-1] = level
+                    if (line == '' or line[:13].upper() == '$MASTPAGEITEM') and int(item[1]) <= 20:
+                        index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
+                        self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels)
+                        flag_master = False
+
                 if line[:13].upper() == '$MASTPAGEITEM':
                     item = line[14:].split(" ")
                     # DLight use Type "2" for Groups
@@ -428,23 +445,6 @@ class Ascii(object):
                     elif int(item[1]) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
                         self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers)
-                if flag_master:
-                    if line[:1] == '!':
-                        flag_master = False
-                    if line[:4].upper() == 'CHAN':
-                        p = line[5:].split(' ')
-                        for q in p:
-                            r = q.split('/')
-                            if r[0] != '':
-                                channel = int(r[0])
-                                level = int(r[1][1:], 16)
-                                if channel <= MAX_CHANNELS:
-                                    channels[channel-1] = level
-                    if line == '' and int(item[1]) <= 20:
-                        index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
-                        self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels)
-                        flag_master = False
-
 
             # Add Empty Step at the end
             cue = Cue(0, 0.0)
