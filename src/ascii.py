@@ -45,6 +45,7 @@ class Ascii(object):
             flag_patch = False
             flag_master = False
             flag_group = False
+            flag_preset = False
 
             type_seq = "Normal"
             Playback = False
@@ -101,6 +102,7 @@ class Ascii(object):
                     flag_patch = False
                     flag_master = False
                     flag_group = False
+                    flag_preset = False
 
                 if flag_seq and type_seq == "Chaser":
                     if line[:4].upper() == 'TEXT':
@@ -281,6 +283,7 @@ class Ascii(object):
                     flag_patch = True
                     flag_master = False
                     flag_group = False
+                    flag_preset = False
                     self.app.patch.patch_empty()    # Empty patch
                     self.app.window.flowbox.invalidate_filter()
                 if flag_patch:
@@ -306,20 +309,78 @@ class Ascii(object):
                             else:
                                 print("Plus de", NB_UNIVERSES, "univers")
 
+                if line[:5].upper() == 'GROUP' and console == 'CONGO':
+                    # On Congo, Preset not in sequence
+                    flag_seq = False
+                    flag_patch = False
+                    flag_master = False
+                    flag_group = False
+                    flag_preset = True
+                    channels = array.array('B', [0] * MAX_CHANNELS)
+                    preset_nb = float(line[6:])
+                if line[:7].upper() == '$PRESET' and (console == 'DLIGHT' or console == 'VLC'):
+                    # On DLight, Preset not in sequence
+                    flag_seq = False
+                    flag_patch = False
+                    flag_master = False
+                    flag_group = False
+                    flag_preset = True
+                    channels = array.array('B', [0] * MAX_CHANNELS)
+                    preset_nb = float(line[8:])
+                if flag_preset:
+                    if line[:1] == "!":
+                        flag_preset = False
+                    if line[:4].upper() == 'TEXT':
+                        txt = line[5:]
+                    if line[:6].upper() == '$$TEXT':
+                        txt = line[7:]
+                    if line[:4].upper() == 'CHAN':
+                        p = line[5:].split(" ")
+                        for q in p:
+                            r = q.split("/")
+                            if r[0] != "":
+                                channel = int(r[0])
+                                level = int(r[1][1:], 16)
+                                if channel <= MAX_CHANNELS:
+                                    channels[channel-1] = level
+                    if line == "":
+                        # Find Preset's position
+                        found = False
+                        i = 0
+                        for i in range(len(self.app.memories)):
+                            if self.app.memories[i].memory > preset_nb:
+                                found = True
+                                break
+                        if not found:
+                            # Preset is at the end
+                            i += 1
+
+                        if not txt:
+                            txt = ''
+
+                        # Create Preset
+                        cue = Cue(0, preset_nb, channels, text=txt)
+                        # Add preset to the list
+                        self.app.memories.insert(i, cue)
+                        flag_preset = False
+                        txt = ''
+
+                if line[:5].upper() == 'GROUP' and console != 'CONGO':
+                    flag_seq = False
+                    flag_patch = False
+                    flag_master = False
+                    flag_preset = False
+                    flag_group = True
+                    channels = array.array('B', [0] * MAX_CHANNELS)
+                    group_nb = float(line[6:])
                 if line[:6].upper() == '$GROUP':
                     flag_seq = False
                     flag_patch = False
                     flag_master = False
+                    flag_preset = False
                     flag_group = True
                     channels = array.array('B', [0] * MAX_CHANNELS)
                     group_nb = float(line[7:])
-                if line[:5].upper() == 'GROUP':
-                    flag_seq = False
-                    flag_patch = False
-                    flag_master = False
-                    flag_group = True
-                    channels = array.array('B', [0] * MAX_CHANNELS)
-                    group_nb = float(line[6:])
                 if flag_group:
                     if line[:1] == "!":
                         flag_group = False
@@ -356,6 +417,7 @@ class Ascii(object):
                         flag_seq = False
                         flag_patch = False
                         flag_group = False
+                        flag_preset = False
                         flag_master = True
                         channels = array.array('B', [0] * MAX_CHANNELS)
                     # Only 20 Masters per pages
