@@ -398,6 +398,10 @@ class Ascii(object):
                                 if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
                     if line == "":
+
+                        if not txt:
+                            txt = ''
+
                         # We don't create a group who already exist
                         group_exist = False
                         for grp in range(len(self.app.groups)):
