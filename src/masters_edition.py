@@ -162,12 +162,12 @@ class MastersTab(Gtk.Paned):
             elif self.app.masters[row].content_type == 1:
                 found = False
                 preset = self.app.masters[row].content_value
-                for i in range(len(self.app.memories)):
-                    if self.app.memories[i].memory == preset:
+                for mem in self.app.memories:
+                    if mem.memory == preset:
                         found = True
                         break
                 if found:
-                    channels = self.app.memories[i].channels
+                    channels = mem.channels
                     if channels[index] or self.channels[index].clicked:
                         if self.user_channels[index] == -1:
                             self.channels[index].level = channels[index]
@@ -215,12 +215,12 @@ class MastersTab(Gtk.Paned):
             elif self.app.masters[row].content_type == 13:
                 found = False
                 group = self.app.masters[row].content_value
-                for i in range(len(self.app.groups)):
-                    if self.app.groups[i].index == group:
+                for grp in self.app.groups:
+                    if grp.index == group:
                         found = True
                         break
                 if found:
-                    channels = self.app.groups[i].channels
+                    channels = grp.channels
                     if channels[index] or self.channels[index].clicked:
                         if self.user_channels[index] == -1:
                             self.channels[index].level = channels[index]
@@ -322,24 +322,24 @@ class MastersTab(Gtk.Paned):
                 if self.liststore[path][2] != '':
                     self.liststore[path][2] = str(float(self.liststore[path][2]))
                 self.app.masters[index].text = ''
-                for i in range(len(self.app.memories)):
-                    if self.app.memories[i].memory == content_value:
-                        self.app.masters[index].text = self.app.memories[i].text
+                for mem in self.app.memories:
+                    if mem.memory == content_value:
+                        self.app.masters[index].text = mem.text
 
             elif self.app.masters[index].content_type == 2:
                 self.app.masters[index].text = ''
 
             elif self.app.masters[index].content_type == 3:
                 self.app.masters[index].text = ''
-                for i in range(len(self.app.chasers)):
-                    if self.app.chasers[i].index == content_value:
-                        self.app.masters[index].text = self.app.chasers[i].text
+                for chaser in self.app.chasers:
+                    if chaser.index == content_value:
+                        self.app.masters[index].text = chaser.text
 
             elif self.app.masters[index].content_type == 13:
                 self.app.masters[index].text = ''
-                for i in range(len(self.app.groups)):
-                    if self.app.groups[i].index == content_value:
-                        self.app.masters[index].text = self.app.groups[i].text
+                for grp in self.app.groups:
+                    if grp.index == content_value:
+                        self.app.masters[index].text = grp.text
 
             self.flowbox.invalidate_filter()
 
@@ -553,12 +553,12 @@ class MastersTab(Gtk.Paned):
             if self.app.masters[row].content_type == 1:
                 preset = self.app.masters[row].content_value
                 found = False
-                for i in range(len(self.app.memories)):
-                    if self.app.memories[i].memory == preset:
+                for mem in self.app.memories:
+                    if mem.memory == preset:
                         found = True
                         break
                 if found:
-                    channels = self.app.memories[i].channels
+                    channels = mem.channels
                 else:
                     return False
             elif self.app.masters[row].content_type == 2:
@@ -567,12 +567,12 @@ class MastersTab(Gtk.Paned):
             elif self.app.masters[row].content_type == 13:
                 group = self.app.masters[row].content_value
                 found = False
-                for i in range(len(self.app.groups)):
-                    if self.app.groups[i].index == group:
+                for grp in self.app.groups:
+                    if grp.index == group:
                         found = True
                         break
                 if found:
-                    channels = self.app.groups[i].channels
+                    channels = grp.channels
                 else:
                     return False
 
@@ -695,12 +695,12 @@ class MastersTab(Gtk.Paned):
             # Type : Preset
             if self.app.masters[row].content_type == 1:
                 found = False
-                for i in range(len(self.app.memories)):
-                    if self.app.memories[i].memory == self.app.masters[row].content_value:
+                for mem in self.app.memories:
+                    if mem.memory == self.app.masters[row].content_value:
                         found = True
                         break
                 if found:
-                    channels = self.app.memories[i].channels
+                    channels = mem.channels
                     for chan in range(MAX_CHANNELS):
                         channels[chan] = self.channels[chan].level
                     # Update Preset Tab if open
@@ -734,12 +734,12 @@ class MastersTab(Gtk.Paned):
             # Type = Group
             elif self.app.masters[row].content_type == 13:
                 found = False
-                for i in range(len(self.app.groups)):
-                    if self.app.groups[i].index == self.app.masters[row].content_value:
+                for grp in self.app.groups:
+                    if grp.index == self.app.masters[row].content_value:
                         found = True
                         break
                 if found:
-                    channels = self.app.groups[i].channels
+                    channels = grp.channels
                     for chan in range(MAX_CHANNELS):
                         channels[chan] = self.channels[chan].level
                     # Update Group Tab if open

@@ -405,8 +405,8 @@ class Window(Gtk.ApplicationWindow):
         """ Filter for channels window """
         if self.view_type == 0:
             i = child.get_index()
-            for j in range(len(self.app.patch.channels[i][0])):
-                if self.app.patch.channels[i][j][0] != 0:
+            for channel in self.app.patch.channels[i][0]:
+                if channel != 0:
                     #print("Chanel:", i+1, "Output:", self.app.patch.channels[i][j])
                     return child
                 else:
@@ -847,8 +847,8 @@ class Window(Gtk.ApplicationWindow):
             mem = float(self.keystring)
 
             # Preset already exist ?
-            for i in range(len(self.app.memories)):
-                if self.app.memories[i].memory == mem:
+            for item in self.app.memories:
+                if item.memory == mem:
                     found = True
                     break
 
@@ -857,8 +857,8 @@ class Window(Gtk.ApplicationWindow):
             # Find Preset's position
             found = False
             i = 0
-            for i in range(len(self.app.memories)):
-                if self.app.memories[i].memory > mem:
+            for item in self.app.memories:
+                if item.memory > mem:
                     found = True
                     break
             if not found:
@@ -973,8 +973,8 @@ class Window(Gtk.ApplicationWindow):
             # Test
             print('Position', self.app.sequence.position)
             print('Last', self.app.sequence.last)
-            for i in range(len(self.app.memories)):
-                print('Preset', i, self.app.memories[i].memory)
+            for i, item in enumerate(self.app.memories):
+                print('Preset', i, item.memory)
             for i in range(self.app.sequence.last):
                 print('Step', i, self.app.sequence.steps[i].cue.memory)
             """

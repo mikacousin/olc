@@ -46,9 +46,9 @@ class Dmx(object):
                     if not self.app.sequence.on_go and self.user[channel-1] != -1:
                         level = self.user[channel-1]
                     # Si c'est le niveau d'un master le plus grand, on l'utilise
-                    for master in range(len(self.masters)):
-                        if self.masters[master].dmx[channel-1] > level:
-                            level = self.masters[master].dmx[channel-1]
+                    for master in self.masters:
+                        if master.dmx[channel-1] > level:
+                            level = master.dmx[channel-1]
                             self.window.channels[channel-1].color_level_red = 0.4
                             self.window.channels[channel-1].color_level_green = 0.7
                             self.window.channels[channel-1].color_level_blue = 0.4

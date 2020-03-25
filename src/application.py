@@ -63,9 +63,9 @@ class Application(Gtk.Application):
         try:
             self.ola_client = OlaClient.OlaClient()
             self.sock = self.ola_client.GetSocket()
-            for i in range(len(self.universes)):
+            for i, univ in enumerate(self.universes):
                 func = getattr(self, 'on_dmx_' + str(i), None)
-                self.ola_client.RegisterUniverse(self.universes[i], self.ola_client.REGISTER, func)
+                self.ola_client.RegisterUniverse(univ, self.ola_client.REGISTER, func)
         except:
             print("Can't connect to Ola !")
             sys.exit()
@@ -152,8 +152,8 @@ class Application(Gtk.Application):
         self.dmx = Dmx(self.universes, self.patch, self.ola_client, self.sequence, self.masters, self.window)
 
         # Fetch dmx values on startup
-        for i in range(len(self.universes)):
-            self.ola_client.FetchDmx(self.universes[i], self.fetch_dmx)
+        for univ in self.universes:
+            self.ola_client.FetchDmx(univ, self.fetch_dmx)
 
         # For Manual crossfade
         self.crossfade = CrossFade()
@@ -259,9 +259,8 @@ class Application(Gtk.Application):
         return True
 
     def on_dmx_0(self, dmxframe):
-        for output in range(len(dmxframe)):
+        for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[0][output][0]
-            level = dmxframe[output]
             self.dmx.frame[0][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
@@ -276,9 +275,8 @@ class Application(Gtk.Application):
                 self.patch_outputs_tab.outputs[output].queue_draw()
 
     def on_dmx_1(self, dmxframe):
-        for output in range(len(dmxframe)):
+        for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[1][output][0]
-            level = dmxframe[output]
             self.dmx.frame[1][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
@@ -293,9 +291,8 @@ class Application(Gtk.Application):
                 self.patch_outputs_tab.outputs[output+512].queue_draw()
 
     def on_dmx_2(self, dmxframe):
-        for output in range(len(dmxframe)):
+        for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[2][output][0]
-            level = dmxframe[output]
             self.dmx.frame[2][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
@@ -310,9 +307,8 @@ class Application(Gtk.Application):
                 self.patch_outputs_tab.outputs[output+1024].queue_draw()
 
     def on_dmx_3(self, dmxframe):
-        for output in range(len(dmxframe)):
+        for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[3][output][0]
-            level = dmxframe[output]
             self.dmx.frame[3][output] = level
             self.window.channels[channel-1].level = level
             if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
@@ -328,10 +324,9 @@ class Application(Gtk.Application):
 
     def fetch_dmx(self, request, univ, dmxframe):
         if dmxframe:
-            for output in range(len(dmxframe)):
+            for output, level in enumerate(dmxframe):
                 channel = self.patch.outputs[univ][output][0]
                 if channel:
-                    level = dmxframe[output]
                     self.dmx.frame[univ][output] = level
                     self.window.channels[channel-1].level = level
                     if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
@@ -386,7 +381,7 @@ class Application(Gtk.Application):
             self.patch_outputs_tab.flowbox.queue_draw()
         # Redraw Masters Window
         try:
-            for i in range(len(self.masters)):
+            for i, _ in enumerate(self.masters):
                 self.win_masters.scale[i].destroy()
                 self.win_masters.flash[i].destroy()
             del(self.win_masters.scale[:])
@@ -396,8 +391,8 @@ class Application(Gtk.Application):
             pass
         del(self.masters[:])
         # Redraw Groups Window
-        for i in range(len(self.win_groups.grps)):
-            self.win_groups.grps[i].destroy()
+        for grp in self.win_groups.grps:
+            grp.destroy()
         del(self.groups[:])
         del(self.win_groups.grps[:])
         self.win_groups.flowbox1.invalidate_filter()
@@ -440,8 +435,8 @@ class Application(Gtk.Application):
             self.ascii.file = self.file
             self.ascii.load()
 
-            for i in range(len(self.universes)):
-                self.ola_client.FetchDmx(self.universes[i], self.fetch_dmx)
+            for univ in self.universes:
+                self.ola_client.FetchDmx(univ, self.fetch_dmx)
 
         elif response_id == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")
@@ -686,11 +681,11 @@ class Application(Gtk.Application):
 
     def _exit(self, action, parameter):
         # Stop Chasers Threads
-        for i in range(len(self.chasers)):
-            if self.chasers[i].run:
-                self.chasers[i].run = False
-                self.chasers[i].thread.stop()
-                self.chasers[i].thread.join()
+        for chaser in self.chasers:
+            if chaser.run:
+                chaser.run = False
+                chaser.thread.stop()
+                chaser.thread.join()
         self.quit()
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ class GroupTab(Gtk.Paned):
 
         self.grps = []
 
-        for i in range(len(self.app.groups)):
+        for i, _ in enumerate(self.app.groups):
             self.grps.append(GroupWidget(i, self.app.groups[i].index, self.app.groups[i].text,
                 self.grps))
             self.flowbox2.add(self.grps[i])
@@ -70,7 +70,7 @@ class GroupTab(Gtk.Paned):
         """ Pour n'afficher que les channels du groupe """
         i = child.get_index() # Numéro du widget qu'on filtre (channel - 1)
         # On cherche le groupe actuellement séléctionné
-        for j in range(len(self.grps)):
+        for j, _ in enumerate(self.grps):
             if self.grps[j].get_parent().is_selected():
                 # Si le channel est dans le groupe, on l'affiche
                 if self.app.groups[j].channels[i] != 0 or self.channels[i].clicked == True:
@@ -237,9 +237,9 @@ class GroupTab(Gtk.Paned):
 
         if self.keystring != '':
             group = float(self.keystring)
-            for grp in range(len(self.grps)):
-                if group == float(self.grps[grp].number):
-                    index = self.grps[grp].index
+            for grp in self.grps:
+                if group == float(grp.number):
+                    index = grp.index
                     child = self.flowbox2.get_child_at_index(index)
                     self.app.window.set_focus(child)
                     self.flowbox2.select_child(child)

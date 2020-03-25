@@ -158,9 +158,9 @@ class PatchChannelWidget(Gtk.Widget):
         nb_outputs = len(self.patch.channels[self.channel - 1])
 
         if nb_outputs <= 8:
-            for i in range(len(self.patch.channels[self.channel-1])):
-                univ = self.patch.channels[self.channel-1][i][1]
-                output = self.patch.channels[self.channel-1][i][0]
+            for i, item in enumerate(self.patch.channels[self.channel-1]):
+                univ = item[1]
+                output = item[0]
                 if output != 0:
                     area = (65+(i*65), 125+(i*65), 0, 60)
                     if self.get_parent().is_selected():
@@ -181,11 +181,11 @@ class PatchChannelWidget(Gtk.Widget):
         else:
             # If more than 8 outputs
             line = 0
-            for i in range(len(self.patch.channels[self.channel-1])):
+            for i, item in enumerate(self.patch.channels[self.channel-1]):
                 if i > 14:
                     line = 2
-                output = self.patch.channels[self.channel-1][i][0]
-                univ = self.patch.channels[self.channel-1][i][1]
+                output = item[0]
+                univ = item[1]
                 if output != 0:
                     if line == 0:
                         # First line

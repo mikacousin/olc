@@ -63,7 +63,7 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.move_to(135, 60/2-(h-20)/2)
         cr.show_text(str('Text'))
 
-        for i in range(len(self.channels)):
+        for i, channel in enumerate(self.channels):
             # Draw Level boxes
             cr.move_to(535+(i*65), 0)
             area = (535+(i*65), 595+(i*65), 0, 60)
@@ -75,9 +75,9 @@ class TrackChannelsHeader(Gtk.Widget):
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                     cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12)
-            (x, y, w, h, dx, dy) = cr.text_extents(str(self.channels[i] + 1))
+            (x, y, w, h, dx, dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535+(i*65)+(60/2-w/2), 60/2-(h-20)/2)
-            cr.show_text(str(self.channels[i] + 1))
+            cr.show_text(str(channel + 1))
 
     def draw_rounded_rectangle(self, cr, area, radius):
         a,b,c,d = area
@@ -206,7 +206,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(135, 60/2-(h-20)/2)
         cr.show_text(self.text)
 
-        for i in range(len(self.levels)):
+        for i, lvl in enumerate(self.levels):
             # Draw Level boxes
             cr.move_to(535+(i*65), 0)
             area = (535+(i*65), 595+(i*65), 0, 60)
@@ -217,11 +217,11 @@ class TrackChannelsWidget(Gtk.Widget):
             self.draw_rounded_rectangle(cr, area, self.radius)
 
             # Draw Level number
-            if self.levels[i]:
+            if lvl:
                 if self.percent_level:
-                    level = str(int(round(((self.levels[i] / 255) * 100))))
+                    level = str(int(round(((lvl / 255) * 100))))
                 else:
-                    level = str(self.levels[i])
+                    level = str(lvl)
                 cr.set_source_rgb(0.9, 0.9, 0.9)
                 cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
                         cairo.FONT_WEIGHT_BOLD)

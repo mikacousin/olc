@@ -45,8 +45,8 @@ class TrackChannelsTab(Gtk.Grid):
             memory = self.app.sequence.steps[step].cue.memory
             text = self.app.sequence.steps[step].text
             levels.append([])
-            for channel in range(len(self.channels)):
-                level = self.app.sequence.steps[step].cue.channels[self.channels[channel]]
+            for channel in self.channels:
+                level = self.app.sequence.steps[step].cue.channels[channel]
                 levels[step].append(level)
             self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
             self.flowbox.add(self.steps[step])
@@ -221,8 +221,8 @@ class TrackChannelsTab(Gtk.Grid):
         levels = []
         for step in range(self.app.sequence.last):
             levels.append([])
-            for channel in range(len(self.channels)):
-                level = self.app.sequence.steps[step].cue.channels[self.channels[channel]]
+            for channel in self.channels:
+                level = self.app.sequence.steps[step].cue.channels[channel]
                 levels[step].append(level)
             self.steps[step].levels = levels[step]
         self.flowbox.queue_draw()
@@ -286,8 +286,8 @@ class TrackChannelsTab(Gtk.Grid):
             levels = []
             for step in range(self.app.sequence.last):
                 levels.append([])
-                for channel in range(len(self.channels)):
-                    level = self.app.sequence.steps[step].cue.channels[self.channels[channel]]
+                for channel in self.channels:
+                    level = self.app.sequence.steps[step].cue.channels[channel]
                     levels[step].append(level)
                 self.steps[step].levels = levels[step]
             self.flowbox.queue_draw()
@@ -330,8 +330,8 @@ class TrackChannelsTab(Gtk.Grid):
             levels = []
             for step in range(self.app.sequence.last):
                 levels.append([])
-                for channel in range(len(self.channels)):
-                    level = self.app.sequence.steps[step].cue.channels[self.channels[channel]]
+                for channel in self.channels:
+                    level = self.app.sequence.steps[step].cue.channels[channel]
                     levels[step].append(level)
                 self.steps[step].levels = levels[step]
             self.flowbox.queue_draw()
@@ -374,8 +374,8 @@ class TrackChannelsTab(Gtk.Grid):
             levels = []
             for step in range(self.app.sequence.last):
                 levels.append([])
-                for channel in range(len(self.channels)):
-                    level = self.app.sequence.steps[step].cue.channels[self.channels[channel]]
+                for channel in self.channels:
+                    level = self.app.sequence.steps[step].cue.channels[channel]
                     levels[step].append(level)
                 self.steps[step].levels = levels[step]
             self.flowbox.queue_draw()

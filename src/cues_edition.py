@@ -42,12 +42,12 @@ class CuesEditionTab(Gtk.Paned):
         # List of Cues
         self.liststore = Gtk.ListStore(str, str, int)
 
-        for i in range(len(self.app.memories)):
+        for mem in self.app.memories:
             channels = 0
             for chan in range(MAX_CHANNELS):
-                if self.app.memories[i].channels[chan]:
+                if mem.channels[chan]:
                     channels += 1
-            self.liststore.append([str(self.app.memories[i].memory), self.app.memories[i].text, channels])
+            self.liststore.append([str(mem.memory), mem.text, channels])
 
         self.filter = self.liststore.filter_new()
         self.filter.set_visible_func(self.filter_cue_func)
@@ -433,7 +433,7 @@ class CuesEditionTab(Gtk.Paned):
 
             # Find Steps using selected memory
             steps = []
-            for i in range(len(self.app.sequence.steps)):
+            for i, _ in enumerate(self.app.sequence.steps):
                 if self.app.sequence.steps[i].cue.memory == self.app.memories[row].memory:
                     steps.append(i)
 
@@ -458,35 +458,35 @@ class CuesEditionTab(Gtk.Paned):
             self.app.window.cues_liststore2.clear()
             self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
             self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
-            for i in range(len(self.app.sequence.steps)):
+            for i, step in enumerate(self.app.sequence.steps):
                 # Display int as int
-                if self.app.sequence.steps[i].wait.is_integer():
-                    wait = str(int(self.app.sequence.steps[i].wait))
+                if step.wait.is_integer():
+                    wait = str(int(step.wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.app.sequence.steps[i].wait)
-                if self.app.sequence.steps[i].time_out.is_integer():
-                    t_out = int(self.app.sequence.steps[i].time_out)
+                    wait = str(step.wait)
+                if step.time_out.is_integer():
+                    t_out = int(step.time_out)
                 else:
-                    t_out = self.app.sequence.steps[i].time_out
-                if self.app.sequence.steps[i].delay_out.is_integer():
-                    d_out = str(int(self.app.sequence.steps[i].delay_out))
+                    t_out = step.time_out
+                if step.delay_out.is_integer():
+                    d_out = str(int(step.delay_out))
                 else:
-                    d_out = str(self.app.sequence.steps[i].delay_out)
+                    d_out = str(step.delay_out)
                 if d_out == "0":
                     d_out = ""
-                if self.app.sequence.steps[i].time_in.is_integer():
-                    t_in = int(self.app.sequence.steps[i].time_in)
+                if step.time_in.is_integer():
+                    t_in = int(step.time_in)
                 else:
-                    t_in = self.app.sequence.steps[i].time_in
-                if self.app.sequence.steps[i].delay_in.is_integer():
-                    d_in = str(int(self.app.sequence.steps[i].delay_in))
+                    t_in = step.time_in
+                if step.delay_in.is_integer():
+                    d_in = str(int(step.delay_in))
                 else:
-                    d_in = str(self.app.sequence.steps[i].delay_in)
+                    d_in = str(step.delay_in)
                 if d_in == "0":
                     d_in = ""
-                channel_time = str(len(self.app.sequence.steps[i].channel_time))
+                channel_time = str(len(step.channel_time))
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
@@ -505,11 +505,11 @@ class CuesEditionTab(Gtk.Paned):
                         bg, Pango.Weight.NORMAL, 99])
                     self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
                 else:
-                    self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
-                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in,
+                    self.app.window.cues_liststore1.append([str(i), str(step.cue.memory),
+                        str(step.text), wait, d_out, str(t_out), d_in,
                         str(t_in), channel_time, bg, weight, 99])
-                    self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.steps[i].cue.memory),
-                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in,
+                    self.app.window.cues_liststore2.append([str(i), str(step.cue.memory),
+                        str(step.text), wait, d_out, str(t_out), d_in,
                         str(t_in), channel_time])
 
             position = self.app.sequence.position
@@ -532,9 +532,9 @@ class CuesEditionTab(Gtk.Paned):
                 self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
                     self.app.sequence.text])
 
-                for chaser in range(len(self.app.chasers)):
-                    self.app.sequences_tab.liststore1.append([self.app.chasers[chaser].index,
-                        self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
+                for chaser in self.app.chasers:
+                    self.app.sequences_tab.liststore1.append([chaser.index,
+                        chaser.type_seq, chaser.text])
 
                 self.app.sequences_tab.treeview1.set_model(self.app.sequences_tab.liststore1)
                 pth = Gtk.TreePath.new()
@@ -549,7 +549,7 @@ class CuesEditionTab(Gtk.Paned):
             return False
 
         # Memory already exist ?
-        for i in range(len(self.app.memories)):
+        for i, _ in enumerate(self.app.memories):
             if self.app.memories[i].memory == mem:
                 # Find selected memory
                 path, focus_column = self.treeview.get_cursor()
@@ -588,7 +588,7 @@ class CuesEditionTab(Gtk.Paned):
             cue = Cue(sequence, mem, channels)
 
             # Insert Memory
-            for i in range(len(self.app.memories)):
+            for i, _ in enumerate(self.app.memories):
                 if self.app.memories[i].memory > mem:
                     break
             if i:
@@ -614,8 +614,7 @@ class CuesEditionTab(Gtk.Paned):
             mem = False
             # Find Next free number
             if len(self.app.memories) > 1:
-                for i in range(len(self.app.memories) - 1):
-
+                for i, _ in enumerate(self.app.memories[:-1]):
                     if int(self.app.memories[i + 1].memory) - int(self.app.memories[i].memory) > 1:
                         mem = self.app.memories[i].memory + 1
                         break
@@ -660,8 +659,8 @@ class CuesEditionTab(Gtk.Paned):
             mem = float(self.keystring)
 
             # Memory already exist ?
-            for i in range(len(self.app.memories)):
-                if self.app.memories[i].memory == mem:
+            for item in self.app.memories:
+                if item.memory == mem:
                     return False
 
             # Find selected memory
@@ -680,7 +679,7 @@ class CuesEditionTab(Gtk.Paned):
             # Find Memory's position
             found = False
             i = 0
-            for i in range(len(self.app.memories)):
+            for i, _ in enumerate(self.app.memories):
                 if self.app.memories[i].memory > mem:
                     found = True
                     break

@@ -29,27 +29,25 @@ class Master(object):
             pass
         # Type 1 : Preset
         elif self.content_type == 1:
-            for i in range(len(self.app.memories)):
-                if self.app.memories[i].memory == self.content_value:
-                    self.text = self.app.memories[i].text
+            for mem in self.app.memories:
+                if mem.memory == self.content_value:
+                    self.text = mem.text
         # Type 2 : Channels
         elif self.content_type == 2:
             self.text += 'Ch'
-            for channel in range(len(self.channels)):
-                if channels[channel] != 0:
+            for channel, level in enumerate(self.channels):
+                if level:
                     self.text += ' ' + str(channel + 1)
         # Type 3 : Chaser
         elif self.content_type == 3:
-            for i in range(len(self.chasers)):
-                if self.chasers[i].index == self.content_value:
-                    if self.chasers[i] == self.content_value:
-                        self.text = self.chasers[i].text
-                    self.text = self.chasers[i].text
+            for chaser in self.chasers:
+                if chaser.index == self.content_value:
+                    self.text = chaser.text
         # Type 13 : Group
         elif self.content_type == 13:
-            for i in range(len(self.groups)):
-                if self.groups[i].index == self.content_value:
-                    self.text = self.groups[i].text
+            for grp in self.groups:
+                if grp.index == self.content_value:
+                    self.text = grp.text
         else:
             print("Type : Inconnu")
 
@@ -66,8 +64,8 @@ class Master(object):
             preset = self.content_value
 
             found = False
-            for i in range(len(self.app.memories)):
-                if self.app.memories[i].memory == preset:
+            for mem in self.app.memories:
+                if mem.memory == preset:
                     found = True
                     break
             if found:
@@ -76,9 +74,9 @@ class Master(object):
                         # Only patched channels
                         channel = self.app.patch.outputs[univ][output][0]
                         if channel:
-                            if self.app.memories[i].channels[channel - 1]:
+                            if mem.channels[channel - 1]:
                                 # Preset's level
-                                level = self.app.memories[i].channels[channel - 1]
+                                level = mem.channels[channel - 1]
                                 # Level in master
                                 if self.value == 0:
                                     level = 0
@@ -88,28 +86,28 @@ class Master(object):
 
         # Master type is Channels
         elif self.content_type == 2:
-            for channel in range(len(self.channels)):
+            for channel, lvl in enumerate(self.channels):
                 if self.value == 0:
                     level = 0
                 else:
-                    level = int(round(self.channels[channel] / (255 / self.value)))
+                    level = int(round(lvl / (255 / self.value)))
 
                 self.dmx[channel] = level
 
         # Master Type is Group
         elif self.content_type == 13:
             grp = self.content_value
-            for j in range(len(self.groups)):
-                if self.groups[j].index == grp:
+            for group in self.groups:
+                if group.index == grp:
                     # For each output
                     for univ in range(NB_UNIVERSES):
                         for output in range(512):
                             # If Output patched
                             channel = self.app.patch.outputs[univ][output][0]
                             if channel:
-                                if self.groups[j].channels[channel-1] != 0:
+                                if group.channels[channel-1] != 0:
                                     # Get level saved in group
-                                    level_group = self.groups[j].channels[channel-1]
+                                    level_group = group.channels[channel-1]
                                     # Level calculation
                                     if self.value == 0:
                                         level = 0
@@ -121,27 +119,26 @@ class Master(object):
         # Master type is Chaser
         elif self.content_type == 3:
             nb = self.content_value
-            for j in range(len(self.chasers)):
-                if self.chasers[j].index == nb:
-                    #print("Chaser", self.masters[i].chasers[j].text)
+            for chsr in self.chasers:
+                if chsr.index == nb:
 
                     # On cherche le chaser
-                    for k in range(len(self.app.chasers)):
-                        if self.app.chasers[k].index == nb:
+                    for k, chaser in enumerate(self.app.chasers):
+                        if chaser.index == nb:
 
                             # Si il ne tournait pas et master > 0
-                            if self.value and self.app.chasers[k].run == False:
+                            if self.value and chaser.run == False:
                                 # Start Chaser
                                 self.app.chasers[k].run = True
                                 self.app.chasers[k].thread = ThreadChaser(self.app,
                                         self, k, self.value, self.percent_view)
                                 self.app.chasers[k].thread.start()
                             # Si il tournait déjà et master > 0
-                            elif self.value and self.app.chasers[k].run == True:
+                            elif self.value and chaser.run == True:
                                 # Update Max Level
                                 self.app.chasers[k].thread.level_scale = self.value
                             # Si il tournait et que le master passe à 0
-                            elif self.value == 0 and self.app.chasers[k].run == True:
+                            elif self.value == 0 and chaser.run == True:
                                 # Stop Chaser
                                 self.app.chasers[k].run = False
                                 self.app.chasers[k].thread.stop()

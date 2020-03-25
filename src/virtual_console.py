@@ -303,9 +303,9 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.masters_pad.attach(self.flashes[i + (page * 20)], i, 1 + (page * 2), 1, 1)
                 text = 'Flash ' + str(i + (page * 20) + 1)
                 self.flashes[i + (page * 20)].text = text
-            for i in range(len(self.app.masters)):
-                if self.app.masters[i].page == page + 1:
-                    self.flashes[self.app.masters[i].number - 1 + (page * 20)].label = self.app.masters[i].text
+            for master in self.app.masters:
+                if master.page == page + 1:
+                    self.flashes[master.number - 1 + (page * 20)].label = master.text
 
         # General Grid
         self.grid = Gtk.Grid()
@@ -632,8 +632,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def flash_on(self, widget, event):
         if not self.midi_learn:
-            for i in range(len(self.flashes)):
-                if self.flashes[i] == widget:
+            for i, flash in enumerate(self.flashes):
+                if flash == widget:
                     # Save Master's value
                     self.app.masters[i].old_value = self.app.masters[i].value
                     self.masters[i].set_value(255)
@@ -642,8 +642,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def flash_off(self, widget, event):
         if not self.midi_learn:
-            for i in range(len(self.flashes)):
-                if self.flashes[i] == widget:
+            for i, flash in enumerate(self.flashes):
+                if flash == widget:
                     # Restore Master's value
                     self.masters[i].set_value(self.app.masters[i].old_value)
                     self.app.masters[i].value = self.app.masters[i].old_value

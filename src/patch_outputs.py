@@ -47,8 +47,8 @@ class PatchOutputsTab(Gtk.Grid):
         for universe in range(NB_UNIVERSES):
             for i in range(512):
                 self.outputs.append(PatchWidget(universe, i+1, self.app.patch))
-        for i in range(len(self.outputs)):
-            self.flowbox.add(self.outputs[i])
+        for output in self.outputs:
+            self.flowbox.add(output)
 
         self.flowbox.set_filter_func(self.filter_func, None)
 
@@ -68,14 +68,14 @@ class PatchOutputsTab(Gtk.Grid):
         if event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK:
             (scroll, direction) = event.get_scroll_direction()
             if scroll and direction == Gdk.ScrollDirection.UP:
-                for i in range(len(self.outputs)):
-                    if self.outputs[i].scale <= 2:
-                        self.outputs[i].scale += 0.1
+                for output in self.outputs:
+                    if output.scale <= 2:
+                        output.scale += 0.1
                 self.flowbox.queue_draw()
             if scroll and direction == Gdk.ScrollDirection.DOWN:
-                for i in range(len(self.outputs)):
-                    if self.outputs[i].scale >= 1.1:
-                        self.outputs[i].scale -= 0.1
+                for output in self.outputs:
+                    if output.scale >= 1.1:
+                        output.scale -= 0.1
                 self.flowbox.queue_draw()
 
     def on_button_clicked(self, widget):

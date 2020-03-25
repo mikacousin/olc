@@ -147,10 +147,10 @@ class PatchChannelsTab(Gtk.Grid):
 
                 # Unpatch if no entry
                 if self.keystring == '' or self.keystring == '0':
-                    outputs = self.app.patch.channels[channel]
-                    for i in range(len(outputs)):
-                        output = self.app.patch.channels[channel][i][0] - 1
-                        universe = self.app.patch.channels[channel][i][1]
+                    # outputs = self.app.patch.channels[channel]
+                    for item in self.app.patch.channels[channel]:
+                        output = item[0] - 1
+                        universe = item[1]
                         self.app.patch.outputs[universe][output][0] = 0
                         self.app.dmx.frame[universe][output] = 0
                     self.app.patch.channels[channel] = [[0, 0]]
@@ -175,10 +175,10 @@ class PatchChannelsTab(Gtk.Grid):
 
                     if output >= 0 and output < 512:
                         # Unpatch old values
-                        outputs = self.app.patch.channels[channel]
-                        for i in range(len(outputs)):
-                            out = self.app.patch.channels[channel][i][0] - 1
-                            univ = self.app.patch.channels[channel][i][1]
+                        # outputs = self.app.patch.channels[channel]
+                        for item in self.app.patch.channels[channel]:
+                            out = item[0] - 1
+                            univ = item[1]
                             self.app.patch.outputs[univ][out][0] = 0
                         old_channel = self.app.patch.outputs[universe][output][0]
                         if old_channel:

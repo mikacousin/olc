@@ -196,9 +196,9 @@ class Sequence(object):
             return
 
         # Scan all cues
-        for i in range(len(self.steps)):
+        for i, step in enumerate(self.steps):
             # Until we find the good one
-            if float(self.steps[i].cue.memory) == float(keystring):
+            if float(step.cue.memory) == float(keystring):
                 # Position to the one just before
                 self.app.sequence.position = i - 1
                 position = self.app.sequence.position

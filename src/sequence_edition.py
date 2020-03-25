@@ -24,8 +24,8 @@ class SequenceTab(Gtk.Grid):
 
         self.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq, self.app.sequence.text])
 
-        for chaser in range(len(self.app.chasers)):
-            self.liststore1.append([self.app.chasers[chaser].index, self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
+        for chaser in self.app.chasers:
+            self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
@@ -69,16 +69,16 @@ class SequenceTab(Gtk.Grid):
             selected = path.get_indices()[0]
 
             # Find it
-            for i in range(len(self.liststore1)):
+            for i, item in enumerate(self.liststore1):
                 #print(i, path.get_indices()[0])
                 if i == selected:
                     #print("Index :", self.liststore1[i][0])
-                    if self.liststore1[i][0] == self.app.sequence.index:
+                    if item[0] == self.app.sequence.index:
                         self.seq = self.app.sequence
                     else:
-                        for j in range(len(self.app.chasers)):
-                            if self.liststore1[i][0] == self.app.chasers[j].index:
-                                self.seq = self.app.chasers[j]
+                        for chaser in self.app.chasers:
+                            if item[0] == chaser.index:
+                                self.seq = chaser
             # Liststore with infos from the sequence
             for i in range(self.seq.last)[1:-1]:
                 if self.seq.steps[i].wait.is_integer():
@@ -188,9 +188,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        seq = chaser
 
             # Edit Channel Time
             step = self.liststore2[path][0]
@@ -218,9 +218,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Cue
             step = int(self.liststore2[path][0])
 
@@ -270,9 +270,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Cue
             step = int(self.liststore2[path][0])
 
@@ -318,9 +318,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Cue
             step = int(self.liststore2[path][0])
 
@@ -372,9 +372,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Cue
             step = int(self.liststore2[path][0])
 
@@ -430,9 +430,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Cue
             step = int(self.liststore2[path][0])
 
@@ -477,9 +477,9 @@ class SequenceTab(Gtk.Grid):
         if sequence == self.app.sequence.index:
             self.seq = self.app.sequence
         else:
-            for i in range(len(self.app.chasers)):
-                if sequence == self.app.chasers[i].index:
-                    self.seq = self.app.chasers[i]
+            for chaser in self.app.chasers:
+                if sequence == chaser.index:
+                    self.seq = chaser
         # Find Cue
         step = int(self.liststore2[path][0])
 
@@ -531,9 +531,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
         # Find Step
         i = child.get_index()
         selection = self.treeview2.get_selection()
@@ -584,14 +584,14 @@ class SequenceTab(Gtk.Grid):
         if treeiter != None:
             selected = model[treeiter][0]
             # Find it
-            for i in range(len(self.liststore1)):
+            for i, item in enumerate(self.liststore1):
                 if i + 1 == selected:
-                    if self.liststore1[i][0] == self.app.sequence.index:
+                    if item[0] == self.app.sequence.index:
                         self.seq = self.app.sequence
                     else:
-                        for j in range(len(self.app.chasers)):
-                            if self.liststore1[i][0] == self.app.chasers[j].index:
-                                self.seq = self.app.chasers[j]
+                        for chaser in self.app.chasers:
+                            if item[0] == chaser.index:
+                                self.seq = chaser
             # Liststore with infos from the sequence
             if self.seq == self.app.sequence:
                 for i in range(self.seq.last)[1:-1]:
@@ -766,9 +766,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Step
             path, focus_column = self.treeview2.get_cursor()
             if path != None:
@@ -975,9 +975,9 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
             # Find Step
             path, focus_column = self.treeview2.get_cursor()
             if path != None:
@@ -1050,8 +1050,8 @@ class SequenceTab(Gtk.Grid):
             mem = float(self.keystring)
 
             # Memory elready exist ?
-            for i in range(len(self.seq.steps)):
-                if self.seq.steps[i].cue.memory == float(mem):
+            for i, step in enumerate(self.seq.steps):
+                if step.cue.memory == float(mem):
                     # Update memory
 
                     # Dialog to confirm Update
@@ -1061,8 +1061,8 @@ class SequenceTab(Gtk.Grid):
                     if response == Gtk.ResponseType.OK:
                         # Update memory's levels
                         for channel in range(MAX_CHANNELS):
-                            self.seq.steps[i].cue.channels[channel] = self.channels[channel].level
-                            if self.seq.steps[i].cue.channels[channel] != 0:
+                            step.cue.channels[channel] = self.channels[channel].level
+                            if step.cue.channels[channel] != 0:
                                 self.seq.channels[channel] = 1
 
                         # Tag filename as modified
@@ -1077,7 +1077,7 @@ class SequenceTab(Gtk.Grid):
                         if self.seq == self.app.sequence:
                             if i == self.app.sequence.position + 1:
                                 for channel in range(MAX_CHANNELS):
-                                    self.app.window.channels[channel].next_level = self.seq.steps[i].cue.channels[channel]
+                                    self.app.window.channels[channel].next_level = step.cue.channels[channel]
                                     self.app.window.channels[channel].queue_draw()
 
                     elif response == Gtk.ResponseType.CANCEL:
@@ -1105,20 +1105,20 @@ class SequenceTab(Gtk.Grid):
             if sequence == self.app.sequence.index:
                 self.seq = self.app.sequence
             else:
-                for i in range(len(self.app.chasers)):
-                    if sequence == self.app.chasers[i].index:
-                        self.seq = self.app.chasers[i]
+                for chaser in self.app.chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
 
             # Insert new memory if a number is given
             if mem != -1:
                 # Find step where insert new memory
-                for i in range(len(self.seq.steps)):
-                    if float(self.seq.steps[i].cue.memory) > mem:
+                for i, step in enumerate(self.seq.steps):
+                    if float(step.cue.memory) > mem:
                         break
 
                 # For chasers if the new cue is at the end
                 if self.seq.index != 1:
-                    if float(self.seq.steps[i].cue.memory) < mem:
+                    if float(step.cue.memory) < mem:
                         index = i + 1
                     else:
                         index = i

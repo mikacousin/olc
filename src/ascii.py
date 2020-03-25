@@ -347,7 +347,7 @@ class Ascii(object):
                         # Find Preset's position
                         found = False
                         i = 0
-                        for i in range(len(self.app.memories)):
+                        for i, _ in enumerate(self.app.memories):
                             if self.app.memories[i].memory > preset_nb:
                                 found = True
                                 break
@@ -404,8 +404,8 @@ class Ascii(object):
 
                         # We don't create a group who already exist
                         group_exist = False
-                        for grp in range(len(self.app.groups)):
-                            if group_nb == self.app.groups[grp].index:
+                        for grp in self.app.groups:
+                            if group_nb == grp.index:
                                 group_exist = True
                         if not group_exist:
                             self.app.groups.append(Group(group_nb, channels, txt))
@@ -564,12 +564,12 @@ class Ascii(object):
                 self.app.group_tab.flowbox2.set_max_children_per_line(20)
                 self.app.group_tab.flowbox2.set_homogeneous(True)
                 self.app.group_tab.flowbox2.set_activate_on_single_click(True)
-                self.app.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.NONE)
+                self.app.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
                 self.app.group_tab.flowbox2.set_filter_func(self.app.group_tab.filter_groups, None)
                 self.app.group_tab.scrolled2.add(self.app.group_tab.flowbox2)
                 # Add Groups to FlowBox
-                for i in range(len(self.app.groups)):
-                    self.app.group_tab.grps.append(GroupWidget(self.app.window, self.app.groups[i].index,
+                for i, _ in enumerate(self.app.groups):
+                    self.app.group_tab.grps.append(GroupWidget(i, self.app.groups[i].index,
                         self.app.groups[i].text, self.app.group_tab.grps))
                     self.app.group_tab.flowbox2.add(self.app.group_tab.grps[i])
                 self.app.group_tab.flowbox1.invalidate_filter()
@@ -583,9 +583,9 @@ class Ascii(object):
                 self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
                     self.app.sequence.text])
 
-                for chaser in range(len(self.app.chasers)):
-                    self.app.sequences_tab.liststore1.append([self.app.chasers[chaser].index,
-                        self.app.chasers[chaser].type_seq, self.app.chasers[chaser].text])
+                for chaser in self.app.chasers:
+                    self.app.sequences_tab.liststore1.append([chaser.index,
+                        chaser.type_seq, chaser.text])
 
                 self.app.sequences_tab.treeview1.set_model(self.app.sequences_tab.liststore1)
                 path = Gtk.TreePath.new_first()
@@ -605,23 +605,23 @@ class Ascii(object):
             # Redraw List of Memories Tab if exist
             if self.app.memories_tab != None:
                 self.app.memories_tab.liststore.clear()
-                for i in range(len(self.app.memories)):
+                for mem in self.app.memories:
                     channels = 0
                     for chan in range(MAX_CHANNELS):
-                        if self.app.memories[i].channels[chan]:
+                        if mem.channels[chan]:
                             channels += 1
-                    self.app.memories_tab.liststore.append([str(self.app.memories[i].memory),
-                        self.app.memories[i].text, channels])
+                    self.app.memories_tab.liststore.append([str(mem.memory),
+                        mem.text, channels])
                 self.app.memories_tab.flowbox.invalidate_filter()
 
             # Redraw Masters if Virtual Console is open
             if self.app.virtual_console:
                 if self.app.virtual_console.props.visible:
                     for page in range(2):
-                        for i in range(len(self.app.masters)):
-                            if self.app.masters[i].page == page + 1:
-                                self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].label = self.app.masters[i].text
-                                self.app.virtual_console.flashes[self.app.masters[i].number - 1 + (page *20)].queue_draw()
+                        for master in self.app.masters:
+                            if master.page == page + 1:
+                                self.app.virtual_console.flashes[master.number - 1 + (page *20)].label = master.text
+                                self.app.virtual_console.flashes[master.number - 1 + (page *20)].queue_draw()
 
 
             # Redraw Edit Masters Tab if exist
@@ -699,7 +699,7 @@ class Ascii(object):
         stream.write(bytes('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n', 'utf8'))
         stream.write(bytes('! Main sequence\n\n', 'utf8'))
         stream.write(bytes('$SEQUENCE 1 0\n\n', 'utf8'))
-        for cue in range(len(self.app.sequence.steps)):
+        for cue, _ in enumerate(self.app.sequence.steps):
             if self.app.sequence.steps[cue].cue.memory != '0':
                 stream.write(bytes('CUE ' + self.app.sequence.steps[cue].cue.memory + '\n', 'utf8'))
                 stream.write(bytes('DOWN ' + str(self.app.sequence.steps[cue].time_out) + '\n', 'utf8'))
@@ -715,7 +715,7 @@ class Ascii(object):
                 stream.write(bytes('$$TEXT ' + self.app.sequence.steps[cue].text + '\n', 'utf8'))
                 channels = ""
                 i = 1
-                for chan in range(len(self.app.sequence.steps[cue].cue.channels)):
+                for chan, _ in enumerate(self.app.sequence.steps[cue].cue.channels):
                     level = self.app.sequence.steps[cue].cue.channels[chan]
                     if level != 0:
                         level = 'H' + format(level, '02X')
@@ -732,10 +732,10 @@ class Ascii(object):
         # Chasers
         stream.write(bytes('! Additional Sequences\n\n', 'utf8'))
 
-        for chaser in range(len(self.app.chasers)):
+        for chaser, _ in enumerate(self.app.chasers):
             stream.write(bytes('$SEQUENCE ' + str(self.app.chasers[chaser].index) + '\n', 'utf8'))
             stream.write(bytes('TEXT ' + self.app.chasers[chaser].text + '\n\n', 'utf8'))
-            for cue in range(len(self.app.chasers[chaser].steps)):
+            for cue, _ in enumerate(self.app.chasers[chaser].steps):
                 if self.app.chasers[chaser].steps[cue].cue.memory != '0':
                     stream.write(bytes('$CUE ' + str(self.app.chasers[chaser].index) + ' ' + self.app.chasers[chaser].steps[cue].cue.memory + '\n', 'utf8'))
                     stream.write(bytes('DOWN ' + str(self.app.chasers[chaser].steps[cue].time_out) + '\n', 'utf8'))
@@ -743,7 +743,7 @@ class Ascii(object):
                     stream.write(bytes('$$WAIT ' + str(self.app.chasers[chaser].steps[cue].wait) + '\n', 'utf8'))
                     channels = ""
                     i = 1
-                    for chan in range(len(self.app.chasers[chaser].steps[cue].channels)):
+                    for chan, _ in enumerate(self.app.chasers[chaser].steps[cue].channels):
                         level = self.app.chasers[chaser].steps[cue].cue.channels[chan]
                         if level != 0:
                             level = 'H' + format(level, '02X')
@@ -765,14 +765,14 @@ class Ascii(object):
         stream.write(bytes('! TEXT   Standard ASCII Light Cues\n', 'utf8'))
         stream.write(bytes('! $$TEXT  Unicode encoded version of the same text\n', 'utf8'))
 
-        for group in range(len(self.app.groups)):
+        for group, _ in enumerate(self.app.groups):
             stream.write(bytes('GROUP ' + str(self.app.groups[group].index) + '\n', 'utf8'))
             stream.write(bytes('TEXT ' + ascii(self.app.groups[group].text)[1:-1] +
                 '\n', 'utf8').decode('utf8').encode('ascii'))
             stream.write(bytes('$$TEXT ' + self.app.groups[group].text + '\n', 'utf8'))
             channels = ""
             i = 1
-            for chan in range(len(self.app.groups[group].channels)):
+            for chan, _ in enumerate(self.app.groups[group].channels):
                 level = self.app.groups[group].channels[chan]
                 if level != 0:
                     level = 'H' + format(level, '02X')
@@ -795,14 +795,14 @@ class Ascii(object):
         stream.write(bytes('! $$TEXT  Unicode encoded version of the same text\n', 'utf8'))
         stream.write(bytes('CLEAR $GROUP\n\n', 'utf8'))
 
-        for group in range(len(self.app.groups)):
+        for group, _ in enumerate(self.app.groups):
             stream.write(bytes('$GROUP ' + str(self.app.groups[group].index) + '\n', 'utf8'))
             stream.write(bytes('TEXT ' + ascii(self.app.groups[group].text)[1:-1] +
                 '\n', 'utf8').decode('utf8').encode('ascii'))
             stream.write(bytes('$$TEXT ' + self.app.groups[group].text + '\n', 'utf8'))
             channels = ""
             i = 1
-            for chan in range(len(self.app.groups[group].channels)):
+            for chan, _ in enumerate(self.app.groups[group].channels):
                 level = self.app.groups[group].channels[chan]
                 if level != 0:
                     level = 'H' + format(level, '02X')
@@ -830,7 +830,7 @@ class Ascii(object):
         stream.write(bytes('CLEAR $MASTPAGE\n\n', 'utf8'))
         stream.write(bytes('$MASTPAGE 1 0 0 0\n', 'utf8'))
         page = 1
-        for master in range(len(self.app.masters)):
+        for master, _ in enumerate(self.app.masters):
             if self.app.masters[master].page != page:
                 page = self.app.masters[master].page
                 stream.write(bytes('\n$MASTPAGE ' + str(page) + ' 0 0 0\n', 'utf8'))
@@ -844,7 +844,7 @@ class Ascii(object):
             if self.app.masters[master].content_type == 2:
                 channels = ""
                 i = 1
-                for chan in range(len(self.app.masters[master].channels)):
+                for chan, _ in enumerate(self.app.masters[master].channels):
                     level = self.app.masters[master].channels[chan]
                     if level != 0:
                         level = 'H' + format(level, '02X')
@@ -866,7 +866,7 @@ class Ascii(object):
         # TODO: Prise en charge du niveau de l'output
         patch = ""
         i = 1
-        for output in range(len(self.app.patch.outputs)):
+        for output, _ in enumerate(self.app.patch.outputs):
             if self.app.patch.outputs[output] != 0:
                 patch += " " + str(self.app.patch.outputs[output]) + "<" + str(output+1) + "@100"
                 if not i % 4 and patch != "":
