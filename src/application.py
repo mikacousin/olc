@@ -25,21 +25,24 @@ from olc.track_channels import TrackChannelsTab
 from olc.crossfade import CrossFade
 from olc.virtual_console import VirtualConsoleWindow
 
+
 class Application(Gtk.Application):
 
     def __init__(self):
         Gtk.Application.__init__(self,
-                application_id='org.gnome.olc',
-                flags=Gio.ApplicationFlags.FLAGS_NONE)
+                                 application_id='org.gnome.olc',
+                                 flags=Gio.ApplicationFlags.FLAGS_NONE)
         GLib.set_application_name('OpenLightingConsole')
         GLib.set_prgname('olc')
 
-        cssProviderFile = Gio.File.new_for_uri('resource://org/gnome/OpenLightingConsole/application.css')
+        cssProviderFile = Gio.File.new_for_uri(
+            'resource://org/gnome/OpenLightingConsole/application.css')
         cssProvider = Gtk.CssProvider()
         cssProvider.load_from_file(cssProviderFile)
         screen = Gdk.Screen.get_default()
         styleContext = Gtk.StyleContext()
-        styleContext.add_provider_for_screen(screen, cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        styleContext.add_provider_for_screen(screen, cssProvider,
+                                             Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()
@@ -62,7 +65,9 @@ class Application(Gtk.Application):
             self.sock = self.ola_client.GetSocket()
             for i, univ in enumerate(self.universes):
                 func = getattr(self, 'on_dmx_' + str(i), None)
-                self.ola_client.RegisterUniverse(univ, self.ola_client.REGISTER, func)
+                self.ola_client.RegisterUniverse(univ,
+                                                 self.ola_client.REGISTER,
+                                                 func)
         except:
             print("Can't connect to Ola !")
             sys.exit()
@@ -83,7 +88,8 @@ class Application(Gtk.Application):
         self.masters = []
         for page in range(2):
             for i in range(20):
-                self.masters.append(Master(page + 1, i + 1, 0, 0, self.groups, self.chasers))
+                self.masters.append(Master(page + 1, i + 1, 0, 0,
+                                           self.groups, self.chasers))
 
         # For Windows
         self.about_window = None
@@ -146,7 +152,8 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.go_back", ["<Control>b"])
 
         # Create several DMX arrays
-        self.dmx = Dmx(self.universes, self.patch, self.ola_client, self.sequence, self.masters, self.window)
+        self.dmx = Dmx(self.universes, self.patch, self.ola_client,
+                       self.sequence, self.masters, self.window)
 
         # Fetch dmx values on startup
         for univ in self.universes:
