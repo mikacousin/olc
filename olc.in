@@ -4,19 +4,17 @@ import sys
 import os
 import locale
 import gettext
+from gi.repository import Gio
+from olc.application import Application
 
 # Make sure we'll find the pygobject module, even in JHBuild
 sys.path.insert(1, '@pyexecdir@')
 # Make sure we'll find the olc modules, even in JHBuild
 sys.path.insert(1, '@pythondir@')
 
-from gi.repository import Gio
-
 localedir = '@localedir@'
 
 pkgdatadir = '@pkgdatadir@'
-
-from olc.application import Application
 
 if __name__ == "__main__":
 
