@@ -3,6 +3,7 @@ from gi.repository import Gio, Gtk, Gdk
 from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
 
+
 class ChannelTime(object):
     def __init__(self, delay=0.0, time=0.0):
         self.delay = delay
@@ -22,6 +23,7 @@ class ChannelTime(object):
         if isinstance(time, float) and time >= 0:
             self.time = time
 
+
 class ChanneltimeTab(Gtk.Paned):
     def __init__(self, sequence, position):
 
@@ -36,7 +38,8 @@ class ChanneltimeTab(Gtk.Paned):
         self.set_position(300)
 
         self.scrolled1 = Gtk.ScrolledWindow()
-        self.scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled1.set_policy(Gtk.PolicyType.NEVER,
+                                  Gtk.PolicyType.AUTOMATIC)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
@@ -55,7 +58,8 @@ class ChanneltimeTab(Gtk.Paned):
         self.add1(self.scrolled1)
 
         self.scrolled2 = Gtk.ScrolledWindow()
-        self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled2.set_policy(Gtk.PolicyType.NEVER,
+                                  Gtk.PolicyType.AUTOMATIC)
         self.scrolled2.set_vexpand(True)
         self.scrolled2.set_hexpand(True)
 
@@ -119,7 +123,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         # Find selected Channel Time
         path, focus_column = self.treeview.get_cursor()
-        if path != None:
+        if path:
             selected = path.get_indices()[0]
             channel = self.liststore[selected][0]
             # Delete Channel Time if Delay and Time are 0
@@ -146,7 +150,7 @@ class ChanneltimeTab(Gtk.Paned):
                 # Update Delay value
                 self.step.channel_time[channel].delay = float(text)
             # Update Sequence Tab if Open on the good sequence
-            if self.app.sequences_tab != None:
+            if self.app.sequences_tab:
                 # Start to find the selected sequence
                 seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
                 selected = seq_path.get_indices()
@@ -165,7 +169,9 @@ class ChanneltimeTab(Gtk.Paned):
             else:
                 self.step.total_time = self.step.time_out + self.step.wait
             for channel in self.step.channel_time.keys():
-                t = self.step.channel_time[channel].delay + self.step.channel_time[channel].time + self.step.wait
+                t = (self.step.channel_time[channel].delay
+                     + self.step.channel_time[channel].time
+                     + self.step.wait)
                 if t > self.step.total_time:
                     self.step.total_time = t
 
@@ -198,7 +204,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         # Find selected Channel Time
         path, focus_column = self.treeview.get_cursor()
-        if path != None:
+        if path:
             selected = path.get_indices()[0]
             channel = self.liststore[selected][0]
             # Delete Channel Time if Delay and Time are 0
@@ -225,7 +231,7 @@ class ChanneltimeTab(Gtk.Paned):
                 # Update Time value
                 self.step.channel_time[channel].time = float(text)
             # Update Sequence Tab if Open on the good sequence
-            if self.app.sequences_tab != None:
+            if self.app.sequences_tab:
                 # Start to find the selected sequence
                 seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
                 selected = seq_path.get_indices()
@@ -244,7 +250,9 @@ class ChanneltimeTab(Gtk.Paned):
             else:
                 self.step.total_time = self.step.time_out + self.step.wait
             for channel in self.step.channel_time.keys():
-                t = self.step.channel_time[channel].delay + self.step.channel_time[channel].time + self.step.wait
+                t = (self.step.channel_time[channel].delay
+                     + self.step.channel_time[channel].time
+                     + self.step.wait)
                 if t > self.step.total_time:
                     self.step.total_time = t
 
@@ -271,7 +279,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         # Find selected Channel Time
         path, focus_column = self.treeview.get_cursor()
-        if path != None:
+        if path:
             selected = path.get_indices()[0]
             channel = self.liststore[selected][0]
 
@@ -389,7 +397,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         path, focus_column = self.treeview.get_cursor()
-        if path != None:
+        if path:
             if path.prev():
                 self.treeview.set_cursor(path)
                 self.app.window.set_focus(self.treeview)
@@ -404,7 +412,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         path, focus_column = self.treeview.get_cursor()
-        if path != None:
+        if path:
             path.next()
             self.treeview.set_cursor(path)
             self.app.window.set_focus(self.treeview)
@@ -426,7 +434,7 @@ class ChanneltimeTab(Gtk.Paned):
                 channel = int(channelwidget.channel)
 
                 # If not already exist
-                if not channel in self.step.channel_time:
+                if channel not in self.step.channel_time:
                     # Add Channel Time
                     delay = 0.0
                     time = 0.0
