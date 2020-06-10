@@ -1,6 +1,7 @@
 import mido
 from gi.repository import Gio, Gdk
 
+
 class MidiFader(object):
     def __init__(self):
         self.value = 0
@@ -10,7 +11,7 @@ class MidiFader(object):
         return self.inverted
 
     def set_inverted(self, inv):
-        if inv == False or inv == True:
+        if inv is False or inv is True:
             self.inverted = inv
 
     def get_value(self):
@@ -19,6 +20,7 @@ class MidiFader(object):
     def set_value(self, value):
         if value >= 0 and value < 128:
             self.value = value
+
 
 class Midi(object):
 
@@ -29,124 +31,124 @@ class Midi(object):
 
         # Default MIDI values : Channel, Note / Channel, CC
         self.midi_table = [['Go', 0, 11],
-                ['Go_Back', 0, -1],
-                ['Seq_minus', 0, 12],
-                ['Seq_plus', 0, 13],
-                ['Output', 0, -1],
-                ['Seq', 0, -1],
-                ['Group', 0, -1],
-                ['Preset', 0, -1],
-                ['Track', 0, -1],
-                ['Goto', 0, -1],
-                ['Zero', 0, 0],
-                ['1', 0, 1],
-                ['2', 0, 2],
-                ['3', 0, 3],
-                ['4', 0, 4],
-                ['5', 0, 5],
-                ['6', 0, 6],
-                ['7', 0, 7],
-                ['8', 0, 8],
-                ['9', 0, 9],
-                ['Clear', 0, -1],
-                ['Dot', 0, -1],
-                ['Right', 0, -1],
-                ['Left', 0, -1],
-                ['Up', 0, -1],
-                ['Down', 0, -1],
-                ['Ch', 0, -1],
-                ['Thru', 0, -1],
-                ['Plus', 0, -1],
-                ['Minus', 0, -1],
-                ['All', 0, -1],
-                ['At', 0, -1],
-                ['PercentPlus', 0, -1],
-                ['PercentMinus', 0, -1],
-                ['Update', 0, -1],
-                ['Record', 0, -1],
-                ['GM', 0, -1],
-                ['Flash 1', 0, -1],
-                ['Flash 2', 0, -1],
-                ['Flash 3', 0, -1],
-                ['Flash 4', 0, -1],
-                ['Flash 5', 0, -1],
-                ['Flash 6', 0, -1],
-                ['Flash 7', 0, -1],
-                ['Flash 8', 0, -1],
-                ['Flash 9', 0, -1],
-                ['Flash 10', 0, -1],
-                ['Flash 11', 0, -1],
-                ['Flash 12', 0, -1],
-                ['Flash 13', 0, -1],
-                ['Flash 14', 0, -1],
-                ['Flash 15', 0, -1],
-                ['Flash 16', 0, -1],
-                ['Flash 17', 0, -1],
-                ['Flash 18', 0, -1],
-                ['Flash 19', 0, -1],
-                ['Flash 20', 0, -1],
-                ['Flash 21', 0, -1],
-                ['Flash 22', 0, -1],
-                ['Flash 23', 0, -1],
-                ['Flash 24', 0, -1],
-                ['Flash 25', 0, -1],
-                ['Flash 26', 0, -1],
-                ['Flash 27', 0, -1],
-                ['Flash 28', 0, -1],
-                ['Flash 29', 0, -1],
-                ['Flash 30', 0, -1],
-                ['Flash 31', 0, -1],
-                ['Flash 32', 0, -1],
-                ['Flash 33', 0, -1],
-                ['Flash 34', 0, -1],
-                ['Flash 35', 0, -1],
-                ['Flash 36', 0, -1],
-                ['Flash 37', 0, -1],
-                ['Flash 38', 0, -1],
-                ['Flash 39', 0, -1],
-                ['Flash 40', 0, -1],
-                ['Master 1', 0, -1],
-                ['Master 2', 0, -1],
-                ['Master 3', 0, -1],
-                ['Master 4', 0, -1],
-                ['Master 5', 0, -1],
-                ['Master 6', 0, -1],
-                ['Master 7', 0, -1],
-                ['Master 8', 0, -1],
-                ['Master 9', 0, -1],
-                ['Master 10', 0, -1],
-                ['Master 11', 0, -1],
-                ['Master 12', 0, -1],
-                ['Master 13', 0, -1],
-                ['Master 14', 0, -1],
-                ['Master 15', 0, -1],
-                ['Master 16', 0, -1],
-                ['Master 17', 0, -1],
-                ['Master 18', 0, -1],
-                ['Master 19', 0, -1],
-                ['Master 20', 0, -1],
-                ['Master 21', 0, -1],
-                ['Master 22', 0, -1],
-                ['Master 23', 0, -1],
-                ['Master 24', 0, -1],
-                ['Master 25', 0, -1],
-                ['Master 26', 0, -1],
-                ['Master 27', 0, -1],
-                ['Master 28', 0, -1],
-                ['Master 29', 0, -1],
-                ['Master 30', 0, -1],
-                ['Master 31', 0, -1],
-                ['Master 32', 0, -1],
-                ['Master 33', 0, -1],
-                ['Master 34', 0, -1],
-                ['Master 35', 0, -1],
-                ['Master 36', 0, -1],
-                ['Master 37', 0, -1],
-                ['Master 38', 0, -1],
-                ['Master 39', 0, -1],
-                ['Master 40', 0, -1],
-                ['Crossfade_out', 0, 8],
-                ['Crossfade_in', 0, 9]]
+                           ['Go_Back', 0, -1],
+                           ['Seq_minus', 0, 12],
+                           ['Seq_plus', 0, 13],
+                           ['Output', 0, -1],
+                           ['Seq', 0, -1],
+                           ['Group', 0, -1],
+                           ['Preset', 0, -1],
+                           ['Track', 0, -1],
+                           ['Goto', 0, -1],
+                           ['Zero', 0, 0],
+                           ['1', 0, 1],
+                           ['2', 0, 2],
+                           ['3', 0, 3],
+                           ['4', 0, 4],
+                           ['5', 0, 5],
+                           ['6', 0, 6],
+                           ['7', 0, 7],
+                           ['8', 0, 8],
+                           ['9', 0, 9],
+                           ['Clear', 0, -1],
+                           ['Dot', 0, -1],
+                           ['Right', 0, -1],
+                           ['Left', 0, -1],
+                           ['Up', 0, -1],
+                           ['Down', 0, -1],
+                           ['Ch', 0, -1],
+                           ['Thru', 0, -1],
+                           ['Plus', 0, -1],
+                           ['Minus', 0, -1],
+                           ['All', 0, -1],
+                           ['At', 0, -1],
+                           ['PercentPlus', 0, -1],
+                           ['PercentMinus', 0, -1],
+                           ['Update', 0, -1],
+                           ['Record', 0, -1],
+                           ['GM', 0, -1],
+                           ['Flash 1', 0, -1],
+                           ['Flash 2', 0, -1],
+                           ['Flash 3', 0, -1],
+                           ['Flash 4', 0, -1],
+                           ['Flash 5', 0, -1],
+                           ['Flash 6', 0, -1],
+                           ['Flash 7', 0, -1],
+                           ['Flash 8', 0, -1],
+                           ['Flash 9', 0, -1],
+                           ['Flash 10', 0, -1],
+                           ['Flash 11', 0, -1],
+                           ['Flash 12', 0, -1],
+                           ['Flash 13', 0, -1],
+                           ['Flash 14', 0, -1],
+                           ['Flash 15', 0, -1],
+                           ['Flash 16', 0, -1],
+                           ['Flash 17', 0, -1],
+                           ['Flash 18', 0, -1],
+                           ['Flash 19', 0, -1],
+                           ['Flash 20', 0, -1],
+                           ['Flash 21', 0, -1],
+                           ['Flash 22', 0, -1],
+                           ['Flash 23', 0, -1],
+                           ['Flash 24', 0, -1],
+                           ['Flash 25', 0, -1],
+                           ['Flash 26', 0, -1],
+                           ['Flash 27', 0, -1],
+                           ['Flash 28', 0, -1],
+                           ['Flash 29', 0, -1],
+                           ['Flash 30', 0, -1],
+                           ['Flash 31', 0, -1],
+                           ['Flash 32', 0, -1],
+                           ['Flash 33', 0, -1],
+                           ['Flash 34', 0, -1],
+                           ['Flash 35', 0, -1],
+                           ['Flash 36', 0, -1],
+                           ['Flash 37', 0, -1],
+                           ['Flash 38', 0, -1],
+                           ['Flash 39', 0, -1],
+                           ['Flash 40', 0, -1],
+                           ['Master 1', 0, -1],
+                           ['Master 2', 0, -1],
+                           ['Master 3', 0, -1],
+                           ['Master 4', 0, -1],
+                           ['Master 5', 0, -1],
+                           ['Master 6', 0, -1],
+                           ['Master 7', 0, -1],
+                           ['Master 8', 0, -1],
+                           ['Master 9', 0, -1],
+                           ['Master 10', 0, -1],
+                           ['Master 11', 0, -1],
+                           ['Master 12', 0, -1],
+                           ['Master 13', 0, -1],
+                           ['Master 14', 0, -1],
+                           ['Master 15', 0, -1],
+                           ['Master 16', 0, -1],
+                           ['Master 17', 0, -1],
+                           ['Master 18', 0, -1],
+                           ['Master 19', 0, -1],
+                           ['Master 20', 0, -1],
+                           ['Master 21', 0, -1],
+                           ['Master 22', 0, -1],
+                           ['Master 23', 0, -1],
+                           ['Master 24', 0, -1],
+                           ['Master 25', 0, -1],
+                           ['Master 26', 0, -1],
+                           ['Master 27', 0, -1],
+                           ['Master 28', 0, -1],
+                           ['Master 29', 0, -1],
+                           ['Master 30', 0, -1],
+                           ['Master 31', 0, -1],
+                           ['Master 32', 0, -1],
+                           ['Master 33', 0, -1],
+                           ['Master 34', 0, -1],
+                           ['Master 35', 0, -1],
+                           ['Master 36', 0, -1],
+                           ['Master 37', 0, -1],
+                           ['Master 38', 0, -1],
+                           ['Master 39', 0, -1],
+                           ['Master 40', 0, -1],
+                           ['Crossfade_out', 0, 8],
+                           ['Crossfade_in', 0, 9]]
 
         self.app = Gio.Application.get_default()
 
@@ -170,7 +172,7 @@ class Midi(object):
         self.percent_view = self.app.settings.get_boolean('percent')
 
         for msg in self.inport.iter_pending():
-            #print(msg)
+            # print(msg)
 
             # Go
             for index, item in enumerate(self.midi_table):
@@ -180,7 +182,8 @@ class Midi(object):
                 if msg.type == 'note_on':
                     # Delete if used
                     for i, message in enumerate(self.midi_table):
-                        if message[1] == msg.channel and message[2] == msg.note:
+                        if (message[1] == msg.channel
+                                and message[2] == msg.note):
                             self.midi_table[i][1] = 0
                             self.midi_table[i][2] = -1
                     # Learn new values
@@ -191,7 +194,8 @@ class Midi(object):
                     and msg.velocity == 127):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.go.emit('button-press-event', event)
+                    self.app.virtual_console.go.emit('button-press-event',
+                                                     event)
                 else:
                     self.app.sequence.sequence_go(self.app, None)
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -200,7 +204,8 @@ class Midi(object):
                     and msg.velocity == 0):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.go.emit('button-release-event', event)
+                    self.app.virtual_console.go.emit('button-release-event',
+                                                     event)
 
             # Go Back
             for index, item in enumerate(self.midi_table):
@@ -210,7 +215,8 @@ class Midi(object):
                 if msg.type == 'note_on':
                     # Delete if used
                     for i, message in enumerate(self.midi_table):
-                        if message[1] == msg.channel and message[2] == msg.note:
+                        if (message[1] == msg.channel
+                                and message[2] == msg.note):
                             self.midi_table[i][1] = 0
                             self.midi_table[i][2] = -1
                     # Learn new values
@@ -221,7 +227,8 @@ class Midi(object):
                     and msg.velocity == 127):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.goback.emit('button-press-event', event)
+                    self.app.virtual_console.goback.emit('button-press-event',
+                                                         event)
                 else:
                     self.app.sequence.go_back(self.app, None)
             elif (not self.midi_learn and msg.type == 'note_on'
@@ -230,7 +237,8 @@ class Midi(object):
                     and msg.velocity == 0):
                 if self.app.virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.goback.emit('button-release-event', event)
+                    self.app.virtual_console.goback.emit('button-release-event',
+                                                         event)
 
             # Seq -
             for index, item in enumerate(self.midi_table):
@@ -4101,7 +4109,8 @@ class Midi(object):
                 self.app.crossfade.scaleB.set_value(val)
                 self.app.crossfade.scale_moved(self.app.crossfade.scaleB)
 
-        if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
+        if (self.xfade_out.get_value() == 127
+                and self.xfade_in.get_value() == 127):
             if self.xfade_out.get_inverted():
                 self.xfade_out.set_inverted(False)
                 self.xfade_in.set_inverted(False)
