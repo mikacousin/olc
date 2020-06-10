@@ -11,10 +11,11 @@ from olc.group import Group
 from olc.master import Master
 from olc.widgets_group import GroupWidget
 
+
 class Ascii(object):
     def __init__(self, filename):
         self.file = filename
-        if filename != None:
+        if filename:
             self.basename = self.file.get_basename()
         else:
             self.basename = ""
@@ -57,10 +58,10 @@ class Ascii(object):
             wait = False
             channels = False
             mem = False
-            chan_t = False
             channel_time = {}
 
             console = ""
+            item = ''
 
             for line in readlines:
 
@@ -82,9 +83,12 @@ class Ascii(object):
                     del(self.app.masters[:])
                     for page in range(2):
                         for i in range(20):
-                            self.app.masters.append(Master(page + 1, i + 1, 0, 0, self.app.groups, self.app.chasers))
+                            self.app.masters.append(Master(page + 1, i + 1, 0,
+                                                           0, self.app.groups,
+                                                           self.app.chasers))
                     self.app.patch.patch_empty()
-                    self.app.sequence = Sequence(1, self.app.patch, text="Main Playback")
+                    self.app.sequence = Sequence(1, self.app.patch,
+                                                 text="Main Playback")
                     del(self.app.sequence.steps[1:])
                     self.app.sequence.window = self.app.window
 
@@ -96,7 +100,9 @@ class Ascii(object):
                     else:
                         type_seq = "Chaser"
                         index_seq = int(p[0])
-                        self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq = type_seq))
+                        self.app.chasers.append(Sequence(index_seq,
+                                                         self.app.patch,
+                                                         type_seq=type_seq))
                         del(self.app.chasers[-1].steps[1:])
                     flag_seq = True
                     flag_patch = False
@@ -158,7 +164,9 @@ class Ascii(object):
                             if not t_in:
                                 t_in = 5.0
                             cue = Cue(seq, mem, channels, text=txt)
-                            step = Step(seq, cue, time_in=t_in, time_out=t_out, delay_out=d_out, delay_in=d_in, wait=wait, text=txt)
+                            step = Step(seq, cue, time_in=t_in, time_out=t_out,
+                                        delay_out=d_out, delay_in=d_in,
+                                        wait=wait, text=txt)
 
                             self.app.chasers[-1].add_step(step)
 
@@ -263,8 +271,9 @@ class Ascii(object):
                             self.app.memories.append(cue)
                             # Create Step
                             step = Step(1, cue, time_in=t_in, time_out=t_out,
-                                    delay_in=d_in, delay_out=d_out, wait=wait,
-                                    channel_time=channel_time, text=txt)
+                                        delay_in=d_in, delay_out=d_out,
+                                        wait=wait, channel_time=channel_time,
+                                        text=txt)
 
                             # Add Step to the Sequence
                             self.app.sequence.add_step(step)
@@ -275,7 +284,6 @@ class Ascii(object):
                             wait = False
                             mem = False
                             channels = False
-                            chan_t = False
                             channel_time = {}
 
                 if line[:11].upper() == 'CLEAR PATCH':
@@ -302,7 +310,8 @@ class Ascii(object):
                             # print(channel, univ, out, level)
                             if univ < NB_UNIVERSES:
                                 if channel < MAX_CHANNELS:
-                                    self.app.patch.add_output(channel, out, univ, level)
+                                    self.app.patch.add_output(channel, out,
+                                                              univ, level)
                                     self.app.window.flowbox.invalidate_filter()
                                 else:
                                     print("Plus de", MAX_CHANNELS, "Circuits")
@@ -318,7 +327,8 @@ class Ascii(object):
                     flag_preset = True
                     channels = array.array('B', [0] * MAX_CHANNELS)
                     preset_nb = float(line[6:])
-                if line[:7].upper() == '$PRESET' and (console == 'DLIGHT' or console == 'VLC'):
+                if (line[:7].upper() == '$PRESET'
+                        and (console == 'DLIGHT' or console == 'VLC')):
                     # On DLight, Preset not in sequence
                     flag_seq = False
                     flag_patch = False
@@ -408,7 +418,8 @@ class Ascii(object):
                             if group_nb == grp.index:
                                 group_exist = True
                         if not group_exist:
-                            self.app.groups.append(Group(group_nb, channels, txt))
+                            self.app.groups.append(Group(group_nb, channels,
+                                                         txt))
                         flag_group = False
                         txt = ""
 
@@ -424,9 +435,15 @@ class Ascii(object):
                                 level = int(r[1][1:], 16)
                                 if channel <= MAX_CHANNELS:
                                     channels[channel-1] = level
-                    if (line == '' or line[:13].upper() == '$MASTPAGEITEM') and int(item[1]) <= 20:
+                    if ((line == '' or line[:13].upper() == '$MASTPAGEITEM')
+                            and int(item[1]) <= 20):
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
-                        self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers, channels=channels)
+                        self.app.masters[index] = Master(int(item[0]),
+                                                         int(item[1]),
+                                                         item[2], item[3],
+                                                         self.app.groups,
+                                                         self.app.chasers,
+                                                         channels=channels)
                         flag_master = False
 
                 if line[:13].upper() == '$MASTPAGEITEM':
@@ -444,7 +461,12 @@ class Ascii(object):
                     # Only 20 Masters per pages
                     elif int(item[1]) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
-                        self.app.masters[index] = Master(int(item[0]), int(item[1]), item[2], item[3], self.app.groups, self.app.chasers)
+                        self.app.masters[index] = Master(int(item[0]),
+                                                         int(item[1]),
+                                                         item[2],
+                                                         item[3],
+                                                         self.app.groups,
+                                                         self.app.chasers)
 
             # Add Empty Step at the end
             cue = Cue(0, 0.0)
@@ -455,9 +477,9 @@ class Ascii(object):
             self.app.window.header.set_title(self.basename)
             # Set main window's subtitle
             subtitle = ('Mem. : 0 - Next Mem. : '
-                    + str(self.app.sequence.steps[0].cue.memory)
-                    + ' '
-                    + self.app.sequence.steps[0].cue.text)
+                        + str(self.app.sequence.steps[0].cue.memory)
+                        + ' '
+                        + self.app.sequence.steps[0].cue.text)
             self.app.window.header.set_subtitle(subtitle)
 
             # Redraw crossfade :
@@ -481,8 +503,12 @@ class Ascii(object):
             self.app.window.cues_liststore1.clear()
             self.app.window.cues_liststore2.clear()
             # 2 lignes vides au début
-            self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
-            self.app.window.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+            self.app.window.cues_liststore1.append(['', '', '', '', '', '',
+                                                    '', '', '',
+                                                    '#232729', 0, 0])
+            self.app.window.cues_liststore1.append(['', '', '', '', '', '',
+                                                    '', '', '',
+                                                    '#232729', 0, 1])
             for i in range(self.app.sequence.last):
                 # Si on a des entiers, on les affiche comme tels
                 if self.app.sequence.steps[i].wait.is_integer():
@@ -526,8 +552,13 @@ class Ascii(object):
                 else:
                     weight = Pango.Weight.NORMAL
                 if i == 0 or i == self.app.sequence.last - 1:
-                    self.app.window.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 99])
-                    self.app.window.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
+                    self.app.window.cues_liststore1.append([str(i), '', '', '',
+                                                            '', '', '', '', '',
+                                                            bg,
+                                                            Pango.Weight.NORMAL,
+                                                            99])
+                    self.app.window.cues_liststore2.append([str(i), '', '', '',
+                                                           '', '', '', '', ''])
                 else:
                     self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
                         str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight, 99])
@@ -553,7 +584,7 @@ class Ascii(object):
             self.app.window.seq_grid.queue_draw()
 
             # Redraw Group Tab if exist
-            if self.app.group_tab != None:
+            if self.app.group_tab:
                 # Remove Old Groups
                 del(self.app.group_tab.grps[:])
                 self.app.group_tab.scrolled2.remove(self.app.group_tab.flowbox2)
@@ -577,7 +608,7 @@ class Ascii(object):
                 self.app.window.show_all()
 
             # Redraw Sequences Tab if exist
-            if self.app.sequences_tab != None:
+            if self.app.sequences_tab:
                 self.app.sequences_tab.liststore1.clear()
 
                 self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
@@ -595,15 +626,15 @@ class Ascii(object):
                 self.app.sequences_tab.on_sequence_changed(selection)
 
             # Redraw Patch Outputs Tab if exist
-            if self.app.patch_outputs_tab != None:
+            if self.app.patch_outputs_tab:
                 self.app.patch_outputs_tab.flowbox.queue_draw()
 
             # Redraw Patch Channels Tab if exist
-            if self.app.patch_channels_tab != None:
+            if self.app.patch_channels_tab:
                 self.app.patch_channels_tab.flowbox.queue_draw()
 
             # Redraw List of Memories Tab if exist
-            if self.app.memories_tab != None:
+            if self.app.memories_tab:
                 self.app.memories_tab.liststore.clear()
                 for mem in self.app.memories:
                     channels = 0
@@ -611,7 +642,8 @@ class Ascii(object):
                         if mem.channels[chan]:
                             channels += 1
                     self.app.memories_tab.liststore.append([str(mem.memory),
-                        mem.text, channels])
+                                                            mem.text,
+                                                            channels])
                 self.app.memories_tab.flowbox.invalidate_filter()
 
             # Redraw Masters if Virtual Console is open
@@ -623,9 +655,8 @@ class Ascii(object):
                                 self.app.virtual_console.flashes[master.number - 1 + (page *20)].label = master.text
                                 self.app.virtual_console.flashes[master.number - 1 + (page *20)].queue_draw()
 
-
             # Redraw Edit Masters Tab if exist
-            if self.app.masters_tab != None:
+            if self.app.masters_tab:
                 self.app.masters_tab.liststore.clear()
                 for page in range(2):
                     for i in range(20):
