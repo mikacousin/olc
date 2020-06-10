@@ -1,8 +1,8 @@
 from gi.repository import Gio, Gtk, Gdk
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
-from olc.dmx import Dmx, PatchDmx
 from olc.widgets_patch_outputs import PatchWidget
+
 
 class PatchOutputsTab(Gtk.Grid):
     def __init__(self):
@@ -32,13 +32,14 @@ class PatchOutputsTab(Gtk.Grid):
         self.header.pack_end(box)
 
         self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled.set_policy(Gtk.PolicyType.NEVER,
+                                 Gtk.PolicyType.AUTOMATIC)
         self.scrolled.connect('scroll-event', self.on_scroll)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        #self.flowbox.set_homogeneous(True)
+        # self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.outputs = []
@@ -55,7 +56,8 @@ class PatchOutputsTab(Gtk.Grid):
         self.scrolled.add(self.flowbox)
 
         self.attach(self.header, 0, 0, 1, 1)
-        self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
+        self.attach_next_to(self.scrolled, self.header,
+                            Gtk.PositionType.BOTTOM, 1, 10)
 
     def filter_func(self, child, user_data):
         if child.get_children()[0].type == 'Output':
@@ -65,7 +67,8 @@ class PatchOutputsTab(Gtk.Grid):
 
     def on_scroll(self, widget, event):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK:
+        if (event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK
+                | Gdk.ModifierType.SHIFT_MASK):
             (scroll, direction) = event.get_scroll_direction()
             if scroll and direction == Gdk.ScrollDirection.UP:
                 for output in self.outputs:
@@ -110,19 +113,28 @@ class PatchOutputsTab(Gtk.Grid):
 
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
-        #print(keyname)
+        # print(keyname)
 
-        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+        if (keyname == '1' or keyname == '2' or keyname == '3'
+                or keyname == '4' or keyname == '5' or keyname == '6'
+                or keyname == '7' or keyname == '8' or keyname == '9'
+                or keyname == '0'):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
-        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+        if (keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3'
+                or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6'
+                or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9'
+                or keyname == 'KP_0'):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         if keyname == 'period':
             self.keystring += '.'
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
@@ -136,7 +148,8 @@ class PatchOutputsTab(Gtk.Grid):
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_Right(self):
         """ Next Output """
@@ -179,7 +192,8 @@ class PatchOutputsTab(Gtk.Grid):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_out_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y + allocation.height)
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y
+                                                  + allocation.height)
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -198,7 +212,8 @@ class PatchOutputsTab(Gtk.Grid):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_out_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y - allocation.height/2)
+            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y
+                                                  - allocation.height/2)
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -221,7 +236,9 @@ class PatchOutputsTab(Gtk.Grid):
                 output = int(self.keystring) - 1
                 univ = 0
 
-            if output >= 0 and output < 512 and univ >= 0 and univ < NB_UNIVERSES:
+            if (output >= 0 and output < 512
+                    and univ >= 0
+                    and univ < NB_UNIVERSES):
                 index = output + (univ * 512)
                 child = self.flowbox.get_child_at_index(index)
                 self.app.window.set_focus(child)
@@ -234,7 +251,8 @@ class PatchOutputsTab(Gtk.Grid):
                 self.flowbox.select_child(widget)
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -268,7 +286,8 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = self.keystring
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_c(self):
         """ Attribute Channel """
@@ -322,7 +341,8 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = str(output+1+(512*univ))
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_exclam(self):
         """ Proportional level + """
@@ -344,7 +364,8 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_colon(self):
         """ Proportional level - """
@@ -366,4 +387,5 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
