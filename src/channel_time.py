@@ -157,7 +157,8 @@ class ChanneltimeTab(Gtk.Paned):
                 sequence = self.app.sequences_tab.liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
-                    path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
+                    path = Gtk.TreePath.new_from_indices([int(self.position)
+                                                          - 1])
                     ct_nb = len(self.step.channel_time)
                     if ct_nb == 0:
                         self.app.sequences_tab.liststore2[path][8] = ""
@@ -191,7 +192,8 @@ class ChanneltimeTab(Gtk.Paned):
                     self.app.window.sequential.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def time_edited(self, widget, path, text):
         if text == "":
@@ -238,7 +240,8 @@ class ChanneltimeTab(Gtk.Paned):
                 sequence = self.app.sequences_tab.liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
-                    path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
+                    path = Gtk.TreePath.new_from_indices(
+                        [int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
                     if ct_nb == 0:
                         self.app.sequences_tab.liststore2[path][8] = ""
@@ -272,7 +275,8 @@ class ChanneltimeTab(Gtk.Paned):
                     self.app.window.sequential.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def filter_channels(self, child, user_data):
         """ Filter Channels """
@@ -312,7 +316,7 @@ class ChanneltimeTab(Gtk.Paned):
         """ Select a Channel Time """
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
-            #self.channels[channel].queue_draw()
+            # self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
     def on_close_icon(self, widget):
@@ -332,17 +336,26 @@ class ChanneltimeTab(Gtk.Paned):
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
 
-        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+        if (keyname == '1' or keyname == '2' or keyname == '3'
+                or keyname == '4' or keyname == '5' or keyname == '6'
+                or keyname == '7' or keyname == '8' or keyname == '9'
+                or keyname == '0'):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
-        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+        if (keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3'
+                or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6'
+                or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9'
+                or keyname == 'KP_0'):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         if keyname == 'period':
             self.keystring += '.'
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
@@ -364,7 +377,8 @@ class ChanneltimeTab(Gtk.Paned):
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_c(self):
         """ Channel """
@@ -379,7 +393,7 @@ class ChanneltimeTab(Gtk.Paned):
             channel = int(self.keystring) - 1
             if channel >= 0 and channel < MAX_CHANNELS:
                 self.channels[channel].clicked = True
-                #self.flowbox.invalidate_filter()
+                # self.flowbox.invalidate_filter()
 
                 child = self.flowbox.get_child_at_index(channel)
                 self.app.window.set_focus(child)
@@ -389,7 +403,8 @@ class ChanneltimeTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_q(self):
         """ Prev Channel Time """
@@ -442,6 +457,7 @@ class ChanneltimeTab(Gtk.Paned):
 
                     # Update ui
                     self.liststore.append([channel, "", ""])
-                    path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
+                    path = Gtk.TreePath.new_from_indices(
+                            [len(self.liststore) - 1])
                     self.treeview.set_cursor(path)
                     self.app.window.set_focus(self.treeview)
