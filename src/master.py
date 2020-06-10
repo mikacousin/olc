@@ -1,13 +1,15 @@
 import array
 import threading
 import time
-from gi.repository import Gio, Gtk, GLib, Gdk
+from gi.repository import Gio
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
-from olc.settings import Settings
+
 
 class Master(object):
-    def __init__(self, page, number, content_type, content_value, groups, chasers, channels=array.array('B', [0] * MAX_CHANNELS), exclude_record=True, text="", value=0.0):
+    def __init__(self, page, number, content_type, content_value, groups,
+                 chasers, channels=array.array('B', [0] * MAX_CHANNELS),
+                 exclude_record=True, text="", value=0.0):
         self.page = page
         self.number = number
         self.content_type = int(content_type)
@@ -81,7 +83,8 @@ class Master(object):
                                 if self.value == 0:
                                     level = 0
                                 else:
-                                    level = int(round(level / (255 / self.value)))
+                                    level = int(round(level /
+                                                      (255 / self.value)))
                                 self.dmx[channel - 1] = level
 
         # Master type is Channels
@@ -112,7 +115,8 @@ class Master(object):
                                     if self.value == 0:
                                         level = 0
                                     else:
-                                        level = int(round(level_group / (255 / self.value)))
+                                        level = int(round(level_group /
+                                                          (255 / self.value)))
                                     # Update level in master array
                                     self.dmx[channel-1] = level
 
@@ -127,26 +131,28 @@ class Master(object):
                         if chaser.index == nb:
 
                             # Si il ne tournait pas et master > 0
-                            if self.value and chaser.run == False:
+                            if self.value and chaser.run is False:
                                 # Start Chaser
                                 self.app.chasers[k].run = True
                                 self.app.chasers[k].thread = ThreadChaser(self.app,
                                         self, k, self.value, self.percent_view)
                                 self.app.chasers[k].thread.start()
                             # Si il tournait déjà et master > 0
-                            elif self.value and chaser.run == True:
+                            elif self.value and chaser.run is True:
                                 # Update Max Level
                                 self.app.chasers[k].thread.level_scale = self.value
                             # Si il tournait et que le master passe à 0
-                            elif self.value == 0 and chaser.run == True:
+                            elif self.value == 0 and chaser.run is True:
                                 # Stop Chaser
                                 self.app.chasers[k].run = False
                                 self.app.chasers[k].thread.stop()
                                 for channel in range(MAX_CHANNELS):
                                     self.dmx[channel - 1] = 0
 
+
 class ThreadChaser(threading.Thread):
-    def __init__(self, app, master, chaser, level_scale, percent_view, name=''):
+    def __init__(self, app, master, chaser, level_scale,
+                 percent_view, name=''):
         threading.Thread.__init__(self)
         self.app = app
         self.master = master
@@ -176,7 +182,7 @@ class ThreadChaser(threading.Thread):
                 t_max = t_out
                 t_min = t_in
 
-            start_time = time.time() * 1000 # actual time in ms
+            start_time = time.time() * 1000  # actual time in ms
             delay = t_max * 1000
             delay_in = t_in * 1000
             delay_out = t_out * 1000
@@ -192,7 +198,6 @@ class ThreadChaser(threading.Thread):
             position += 1
             if position == self.app.chasers[self.chaser].last:
                 position = 1
-
 
     def stop(self):
         self._stopevent.set()
@@ -229,19 +234,22 @@ class ThreadChaser(threading.Thread):
 
                     # Si le level augmente, on prend le temps de montée
                     if next_level > old_level and i < delay_in:
-                        level = int(((next_level - old_level+1) / delay_in) * i) + old_level
+                        level = int(((next_level - old_level+1) /
+                                     delay_in) * i) + old_level
                     # si le level descend, on prend le temps de descente
                     elif next_level < old_level and i < delay_out:
-                        level = old_level - abs(int(((next_level - old_level-1) / delay_out) * i))
+                        level = old_level - abs(int(((next_level -
+                                                      old_level-1) /
+                                                     delay_out) * i))
                     # sinon, la valeur est déjà bonne
                     else:
                         level = next_level
 
-                    #print(old_level, next_level, level, channel+1)
+                    # print(old_level, next_level, level, channel+1)
 
                     # On limite le niveau par la valeur du Master
                     level = int(round(level / (255 / self.level_scale)))
 
                     # Mise à jour de la valeur des masters
-                    #self.app.dmx.masters[channel-1] = level
+                    # self.app.dmx.masters[channel-1] = level
                     self.master.dmx[channel-1] = level
