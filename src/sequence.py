@@ -6,7 +6,7 @@ from gi.repository import Gtk, Gio, GLib, Pango
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.cue import Cue
 from olc.step import Step
-from olc.widgets_channel import ChannelWidget
+
 
 class Sequence(object):
     def __init__(self, index, patch, type_seq="Normal", text=""):
@@ -94,7 +94,8 @@ class Sequence(object):
             self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
             self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
             self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
-            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY  # Next Cue in Bold
+            # Next Cue in Bold
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -104,11 +105,11 @@ class Sequence(object):
 
             # Set main window's subtitle
             subtitle = ('Mem. : '
-                    + str(self.steps[position].cue.memory) + ' '
-                    + self.steps[position].text
-                    + ' - Next Mem. : '
-                    + str(self.steps[position + 1].cue.memory) + ' '
-                    + self.steps[position + 1].text)
+                        + str(self.steps[position].cue.memory) + ' '
+                        + self.steps[position].text
+                        + ' - Next Mem. : '
+                        + str(self.steps[position + 1].cue.memory) + ' '
+                        + self.steps[position + 1].text)
             self.app.window.header.set_subtitle(subtitle)
 
             # On vide le tableau des valeurs entrées par l'utilisateur
@@ -138,7 +139,8 @@ class Sequence(object):
         position -= 1
         if position >= 0:
             self.position -= 1
-            t_in = self.steps[position+1].time_in   # Always use times for next cue
+            # Always use times for next cue
+            t_in = self.steps[position+1].time_in
             t_out = self.steps[position+1].time_out
             d_in = self.steps[position+1].delay_in
             d_out = self.steps[position+1].delay_out
@@ -155,11 +157,11 @@ class Sequence(object):
 
             # Set main window's subtitle
             subtitle = ('Mem. : '
-                    + str(self.steps[position].cue.memory) + ' '
-                    + self.steps[position].text
-                    + ' - Next Mem. : '
-                    + str(self.steps[position + 1].cue.memory) + ' '
-                    + self.steps[position + 1].text)
+                        + str(self.steps[position].cue.memory) + ' '
+                        + self.steps[position].text
+                        + ' - Next Mem. : '
+                        + str(self.steps[position + 1].cue.memory) + ' '
+                        + self.steps[position + 1].text)
             self.app.window.header.set_subtitle(subtitle)
 
             # Update ui
@@ -170,7 +172,8 @@ class Sequence(object):
             self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
             self.app.window.cues_liststore1[position+1][10] = Pango.Weight.NORMAL
             self.app.window.cues_liststore1[position+2][10] = Pango.Weight.HEAVY
-            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY  # Next Cue in Bold
+            # Next Cue in Bold
+            self.app.window.cues_liststore1[position+3][10] = Pango.Weight.HEAVY
             self.window.step_filter1.refilter()
             self.window.step_filter2.refilter()
             path = Gtk.TreePath.new_first()
@@ -271,10 +274,12 @@ class Sequence(object):
                 self.app.window.sequential.pos_xB = 0
 
                 # Set main window's subtitle
-                subtitle = ("Mem. : " + str(self.app.sequence.steps[position].cue.memory)
-                        + " " + self.app.sequence.steps[position].text + " - Next Mem. : "
-                        + str(self.app.sequence.steps[position+1].cue.memory)
-                        + " " + self.app.sequence.steps[position+1].text)
+                subtitle = ("Mem. : "
+                            + str(self.app.sequence.steps[position].cue.memory)
+                            + " " + self.app.sequence.steps[position].text
+                            + " - Next Mem. : "
+                            + str(self.app.sequence.steps[position+1].cue.memory)
+                            + " " + self.app.sequence.steps[position+1].text)
             else:
                 self.app.sequence.position = 0
                 position = 0
@@ -294,10 +299,12 @@ class Sequence(object):
                 self.app.window.sequential.pos_xB = 0
 
                 # Set main window's subtitle
-                subtitle = ("Mem. : " + str(self.app.sequence.steps[position].cue.memory)
-                        + " " + self.app.sequence.steps[position].text+" - Next Mem. : "
-                        + str(self.app.sequence.steps[position+1].cue.memory)
-                        + " " + self.app.sequence.steps[position+1].text)
+                subtitle = ("Mem. : "
+                            + str(self.app.sequence.steps[position].cue.memory)
+                            + " " + self.app.sequence.steps[position].text
+                            + " - Next Mem. : "
+                            + str(self.app.sequence.steps[position+1].cue.memory)
+                            + " " + self.app.sequence.steps[position+1].text)
 
             # Update Sequential Tab
             if position == 0:
@@ -364,15 +371,18 @@ class Sequence(object):
 
         self.app.window.seq_grid.queue_draw()
 
-        subtitle = ("Mem. : " + str(self.app.sequence.steps[position].cue.memory)
-                        + " " + self.app.sequence.steps[position].text+" - Next Mem. : "
-                        + str(self.app.sequence.steps[position - 1].cue.memory)
-                        + " " + self.app.sequence.steps[position - 1].text)
+        subtitle = ("Mem. : "
+                    + str(self.app.sequence.steps[position].cue.memory)
+                    + " " + self.app.sequence.steps[position].text
+                    + " - Next Mem. : "
+                    + str(self.app.sequence.steps[position - 1].cue.memory)
+                    + " " + self.app.sequence.steps[position - 1].text)
         self.app.window.header.set_subtitle(subtitle)
 
         self.app.sequence.on_go = True
         self.app.sequence.thread = ThreadGoBack()
         self.app.sequence.thread.start()
+
 
 # Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
@@ -430,7 +440,8 @@ class ThreadGo(threading.Thread):
         # Boucle sur le temps de montée ou de descente (le plus grand)
         while i < delay and not self._stopevent.isSet():
             # Update DMX levels
-            self.update_levels(delay, delay_in, delay_out, delay_d_in, delay_d_out, delay_wait, i, position)
+            self.update_levels(delay, delay_in, delay_out, delay_d_in,
+                               delay_d_out, delay_wait, i, position)
             # Sleep for 50ms
             time.sleep(0.05)
             i = (time.time() * 1000) - start_time
@@ -479,11 +490,12 @@ class ThreadGo(threading.Thread):
 
             # Set main window's subtitle
             subtitle = ('Mem. : '
-                    + str(self.app.sequence.steps[position].cue.memory) + ' '
-                    + self.app.sequence.steps[position].text
-                    + ' - Next Mem. : '
-                    + str(self.app.sequence.steps[position + 1].cue.memory) + ' '
-                    + self.app.sequence.steps[position + 1].text)
+                        + str(self.app.sequence.steps[position].cue.memory)
+                        + ' ' + self.app.sequence.steps[position].text
+                        + ' - Next Mem. : '
+                        + str(self.app.sequence.steps[position + 1].cue.memory)
+                        + ' '
+                        + self.app.sequence.steps[position + 1].text)
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
@@ -512,10 +524,12 @@ class ThreadGo(threading.Thread):
             self.app.window.sequential.pos_xB = 0
 
             # Set main window's subtitle
-            subtitle = ('Mem. : ' + str(self.app.sequence.steps[position].cue.memory)
-                    + ' ' + self.app.sequence.steps[position].text
-                    + ' - Next Mem. : ' + str(self.app.sequence.steps[position + 1].cue.memory)
-                    + ' ' + self.app.sequence.steps[position + 1].text)
+            subtitle = ('Mem. : '
+                        + str(self.app.sequence.steps[position].cue.memory)
+                        + ' ' + self.app.sequence.steps[position].text
+                        + ' - Next Mem. : '
+                        + str(self.app.sequence.steps[position + 1].cue.memory)
+                        + ' ' + self.app.sequence.steps[position + 1].text)
 
             # Update Gtk in the main thread
             GLib.idle_add(self.update_ui, position, subtitle)
@@ -523,7 +537,8 @@ class ThreadGo(threading.Thread):
     def stop(self):
         self._stopevent.set()
 
-    def update_levels(self, delay, delay_in, delay_out, delay_d_in, delay_d_out, delay_wait, i, position):
+    def update_levels(self, delay, delay_in, delay_out, delay_d_in,
+                      delay_d_out, delay_wait, i, position):
         # Update sliders position
         # Get width of the sequential widget to place cursors correctly
         allocation = self.app.window.sequential.get_allocation()
@@ -538,7 +553,8 @@ class ThreadGo(threading.Thread):
                 GLib.idle_add(self.app.virtual_console.scaleA.set_value, val)
                 GLib.idle_add(self.app.virtual_console.scaleB.set_value, val)
 
-        # On attend que le temps d'un éventuel wait soit passé pour changer les levels
+        # On attend que le temps d'un éventuel wait soit passé pour changer
+        # les levels
         if i > delay_wait:
 
             for univ in range(NB_UNIVERSES):
@@ -546,7 +562,8 @@ class ThreadGo(threading.Thread):
                 for output in range(512):
 
                     # DMX values with Grand Master correction
-                    old_level = round(self.dmxlevels[univ][output] * (255 / self.app.dmx.grand_master))
+                    old_level = (round(self.dmxlevels[univ][output]
+                                       * (255 / self.app.dmx.grand_master)))
 
                     channel = self.app.patch.outputs[univ][output][0]
 
@@ -569,9 +586,9 @@ class ThreadGo(threading.Thread):
                                 if i < ct_delay + delay_wait:
                                     level = old_level
 
-                                elif i >= ct_delay + delay_wait and i <  ct_delay + ct_time + delay_wait:
-                                    level = int(((next_level - old_level + 1) / ct_time)
-                                            * (i - ct_delay - delay_wait)) + old_level
+                                elif (i >= ct_delay + delay_wait
+                                        and i < ct_delay+ct_time+delay_wait):
+                                    level = int(((next_level - old_level + 1) / ct_time) * (i - ct_delay - delay_wait)) + old_level
 
                                 elif i >= ct_delay + ct_time + delay_wait:
                                     level = next_level
@@ -580,9 +597,9 @@ class ThreadGo(threading.Thread):
                                 if i < ct_delay + delay_wait:
                                     level = old_level
 
-                                elif i >= ct_delay + delay_wait and i <  ct_delay + ct_time + delay_wait:
-                                    level = old_level - abs(int(((next_level - old_level - 1) / ct_time)
-                                        * (i - ct_delay - delay_wait)))
+                                elif (i >= ct_delay + delay_wait
+                                        and i < ct_delay+ct_time+delay_wait):
+                                    level = old_level - abs(int(((next_level - old_level - 1) / ct_time) * (i - ct_delay - delay_wait)))
 
                                 elif i >= ct_delay + ct_time + delay_wait:
                                     level = next_level
@@ -598,22 +615,26 @@ class ThreadGo(threading.Thread):
                                 next_level = self.app.sequence.steps[0].cue.channels[channel - 1]
                                 self.app.sequence.position = 0
 
-                            # Si le level augmente, on prends le temps de montée
-                            if (next_level > old_level and i < delay_in+delay_wait+delay_d_in
+                            # Si le level augmente,
+                            # on prends le temps de montée
+                            if (next_level > old_level
+                                    and i < delay_in+delay_wait+delay_d_in
                                     and i > delay_wait+delay_d_in):
-                                level = int(((next_level - old_level + 1) / delay_in)
-                                        * (i - delay_wait - delay_d_in)) + old_level
+                                level = int(((next_level - old_level + 1) / delay_in) * (i - delay_wait - delay_d_in)) + old_level
 
-                            elif next_level > old_level and i > delay_in+delay_wait+delay_d_in:
+                            elif (next_level > old_level
+                                  and i > delay_in+delay_wait+delay_d_in):
                                 level = next_level
 
-                            # Si le level descend, on prend le temps de descente
-                            elif (next_level < old_level and i < delay_out+delay_wait+delay_d_out
-                                    and i > delay_wait+delay_d_out):
-                                level = old_level - abs(int(((next_level - old_level - 1) / delay_out)
-                                    * (i - delay_wait - delay_d_out)))
+                            # Si le level descend,
+                            # on prend le temps de descente
+                            elif (next_level < old_level
+                                  and i < delay_out+delay_wait+delay_d_out
+                                  and i > delay_wait+delay_d_out):
+                                level = old_level - abs(int(((next_level - old_level - 1) / delay_out) * (i - delay_wait - delay_d_out)))
 
-                            elif next_level < old_level and i > delay_out + delay_wait + delay_d_out:
+                            elif (next_level < old_level
+                                  and i > delay_out+delay_wait+delay_d_out):
                                 level = next_level
 
                             # Sinon, la valeur est déjà bonne
@@ -622,7 +643,7 @@ class ThreadGo(threading.Thread):
 
                             self.app.dmx.sequence[channel - 1] = level
 
-            if self.app.patch_outputs_tab != None:
+            if self.app.patch_outputs_tab:
                 GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
 
     def update_ui(self, position, subtitle):
@@ -664,6 +685,7 @@ class ThreadGo(threading.Thread):
                     self.app.virtual_console.scaleB.set_inverted(True)
                 self.app.virtual_console.scaleA.set_value(0)
                 self.app.virtual_console.scaleB.set_value(0)
+
 
 # Thread Object for Go Back
 class ThreadGoBack(threading.Thread):
@@ -732,11 +754,12 @@ class ThreadGoBack(threading.Thread):
 
         # Set main window's subtitle
         subtitle = ('Mem. : '
-                + str(self.app.sequence.steps[position].cue.memory) + ' '
-                + self.app.sequence.steps[position].text
-                + ' - Next Mem. : '
-                + str(self.app.sequence.steps[position + 1].cue.memory) + ' '
-                + self.app.sequence.steps[position + 1].text)
+                    + str(self.app.sequence.steps[position].cue.memory) + ' '
+                    + self.app.sequence.steps[position].text
+                    + ' - Next Mem. : '
+                    + str(self.app.sequence.steps[position + 1].cue.memory)
+                    + ' '
+                    + self.app.sequence.steps[position + 1].text)
 
         # Update Gtk in the main thread
         GLib.idle_add(self.update_ui, position, subtitle)
@@ -782,8 +805,8 @@ class ThreadGoBack(threading.Thread):
 
                     self.app.dmx.sequence[channel - 1] = level
 
-        #if self.app.patch_outputs_tab != None:
-        #    GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
+        # if self.app.patch_outputs_tab != None:
+        #     GLib.idle_add(self.app.patch_outputs_tab.flowbox.queue_draw)
 
     def update_ui(self, position, subtitle):
         # Update Sequential Tab
