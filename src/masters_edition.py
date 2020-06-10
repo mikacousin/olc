@@ -4,6 +4,7 @@ from gi.repository import Gtk, Gio, Gdk
 from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
 
+
 class MastersTab(Gtk.Paned):
     def __init__(self):
 
@@ -14,12 +15,13 @@ class MastersTab(Gtk.Paned):
 
         self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
 
-        Gtk.Paned.__init__(self, orientation = Gtk.Orientation.VERTICAL)
+        Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
         # Channels used in selected Master
         self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled.set_policy(Gtk.PolicyType.NEVER,
+                                 Gtk.PolicyType.AUTOMATIC)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
@@ -63,7 +65,8 @@ class MastersTab(Gtk.Paned):
                 # Type : Preset
                 elif self.app.masters[index].content_type == 1:
                     content_value = str(self.app.masters[index].content_value)
-                    self.liststore.append([index + 1, 'Preset', content_value, ''])
+                    self.liststore.append([index + 1, 'Preset',
+                                          content_value, ''])
 
                 # Type : Channels
                 elif self.app.masters[index].content_type == 2:
@@ -71,7 +74,8 @@ class MastersTab(Gtk.Paned):
                     for chan in range(MAX_CHANNELS):
                         if self.app.masters[index].channels[chan]:
                             nb_chan += 1
-                    self.liststore.append([index + 1, 'Channels', str(nb_chan), ''])
+                    self.liststore.append([index + 1, 'Channels',
+                                          str(nb_chan), ''])
 
                 # Type : Sequence
                 elif self.app.masters[index].content_type == 3:
@@ -79,7 +83,8 @@ class MastersTab(Gtk.Paned):
                         content_value = str(int(self.app.masters[index].content_value))
                     else:
                         content_value = str(self.app.masters[index].content_value)
-                    self.liststore.append([index + 1, 'Sequence', content_value, ''])
+                    self.liststore.append([index + 1, 'Sequence',
+                                          content_value, ''])
 
                 # Type : Group
                 elif self.app.masters[index].content_type == 13:
@@ -87,7 +92,8 @@ class MastersTab(Gtk.Paned):
                         content_value = str(int(self.app.masters[index].content_value))
                     else:
                         content_value = str(self.app.masters[index].content_value)
-                    self.liststore.append([index + 1, 'Group', content_value, 'Exclusif'])
+                    self.liststore.append([index + 1, 'Group',
+                                          content_value, 'Exclusif'])
 
                 # Type : Unknown
                 else:
@@ -96,12 +102,12 @@ class MastersTab(Gtk.Paned):
         self.filter = self.liststore.filter_new()
         self.filter.set_visible_func(self.filter_master)
 
-        self.treeview = Gtk.TreeView(model = self.filter)
+        self.treeview = Gtk.TreeView(model=self.filter)
         self.treeview.set_enable_search(False)
         self.treeview.connect('cursor-changed', self.on_master_changed)
 
         renderer = Gtk.CellRendererText()
-        column = Gtk.TreeViewColumn('Master', renderer, text = 0)
+        column = Gtk.TreeViewColumn('Master', renderer, text=0)
         self.treeview.append_column(column)
 
         renderer = Gtk.CellRendererCombo()
@@ -110,13 +116,13 @@ class MastersTab(Gtk.Paned):
         renderer.set_property('text-column', 0)
         renderer.set_property('has-entry', False)
         renderer.connect('edited', self.on_content_type_changed)
-        column = Gtk.TreeViewColumn('Content type', renderer, text = 1)
+        column = Gtk.TreeViewColumn('Content type', renderer, text=1)
         self.treeview.append_column(column)
 
         renderer = Gtk.CellRendererText()
         renderer.set_property('editable', True)
         renderer.connect('edited', self.on_content_value_edited)
-        column = Gtk.TreeViewColumn('Content', renderer, text = 2)
+        column = Gtk.TreeViewColumn('Content', renderer, text=2)
         self.treeview.append_column(column)
 
         renderer = Gtk.CellRendererCombo()
@@ -125,13 +131,14 @@ class MastersTab(Gtk.Paned):
         renderer.set_property('text-column', 0)
         renderer.set_property('has-entry', False)
         renderer.connect('edited', self.on_mode_changed)
-        column = Gtk.TreeViewColumn('Mode', renderer, text = 3)
+        column = Gtk.TreeViewColumn('Mode', renderer, text=3)
         self.treeview.append_column(column)
 
         self.scrollable = Gtk.ScrolledWindow()
         self.scrollable.set_vexpand(True)
         self.scrollable.set_hexpand(True)
-        self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrollable.set_policy(Gtk.PolicyType.NEVER,
+                                   Gtk.PolicyType.AUTOMATIC)
         self.scrollable.add(self.treeview)
 
         self.add(self.scrollable)
@@ -206,7 +213,6 @@ class MastersTab(Gtk.Paned):
                         self.channels[index].next_level = self.user_channels[index]
                         return child
 
-
             # Type : Sequence
             elif self.app.masters[row].content_type == 3:
                 return False
@@ -278,7 +284,8 @@ class MastersTab(Gtk.Paned):
 
             # Update content value
             self.app.masters[index].content_value = -1
-            self.app.masters[index].channels = array.array('B', [0] * MAX_CHANNELS)
+            self.app.masters[index].channels = array.array('B',
+                                                           [0] * MAX_CHANNELS)
             self.app.masters[index].text = ''
 
             # Update ui
@@ -366,17 +373,26 @@ class MastersTab(Gtk.Paned):
 
         keyname = Gdk.keyval_name(event.keyval)
 
-        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+        if (keyname == '1' or keyname == '2' or keyname == '3'
+                or keyname == '4' or keyname == '5' or keyname == '6'
+                or keyname == '7' or keyname == '8' or keyname == '9'
+                or keyname == '0'):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
-        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+        if (keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3'
+                or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6'
+                or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9'
+                or keyname == 'KP_0'):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         if keyname == 'period':
             self.keystring += '.'
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
@@ -390,7 +406,8 @@ class MastersTab(Gtk.Paned):
 
     def keypress_BackSpace(self):
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_c(self):
         """ Channel """
@@ -400,9 +417,11 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if self.app.masters[row].content_type == 0 or self.app.masters[row].content_type == 3:
+            if (self.app.masters[row].content_type == 0
+                    or self.app.masters[row].content_type == 3):
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
                 return False
 
             self.flowbox.unselect_all()
@@ -426,7 +445,8 @@ class MastersTab(Gtk.Paned):
                 self.flowbox.invalidate_filter()
 
             self.keystring = ''
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -439,9 +459,11 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if self.app.masters[row].content_type == 0 or self.app.masters[row].content_type == 3:
+            if (self.app.masters[row].content_type == 0
+                    or self.app.masters[row].content_type == 3):
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
                 return False
 
             selected_children = self.flowbox.get_selected_children()
@@ -454,7 +476,8 @@ class MastersTab(Gtk.Paned):
                 to_chan = int(self.keystring)
                 if to_chan > 0 and to_chan < MAX_CHANNELS:
                     if to_chan > int(self.last_chan_selected):
-                        for channel in range(int(self.last_chan_selected) - 1, to_chan):
+                        for channel in range(int(self.last_chan_selected) - 1,
+                                             to_chan):
                             # Only patched channels
                             if self.app.patch.channels[channel][0] != [0, 0]:
                                 self.channels[channel].clicked = True
@@ -462,7 +485,8 @@ class MastersTab(Gtk.Paned):
                                 self.app.window.set_focus(child)
                                 self.flowbox.select_child(child)
                     else:
-                        for channel in range(to_chan - 1, int(self.last_chan_selected)):
+                        for channel in range(to_chan - 1,
+                                             int(self.last_chan_selected)):
                             # Only patched channels
                             if self.app.patch.channels[channel][0] != [0, 0]:
                                 self.channels[channel].clicked = True
@@ -472,7 +496,8 @@ class MastersTab(Gtk.Paned):
                     self.flowbox.invalidate_filter()
 
             self.keystring = ''
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
     def keypress_plus(self):
         """ Channel + """
@@ -482,9 +507,11 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if self.app.masters[row].content_type == 0 or self.app.masters[row].content_type == 3:
+            if (self.app.masters[row].content_type == 0
+                    or self.app.masters[row].content_type == 3):
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
                 return False
 
             if self.keystring != '':
@@ -502,7 +529,8 @@ class MastersTab(Gtk.Paned):
                     self.last_chan_selected = self.keystring
 
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
 
     def keypress_minus(self):
         """ Channel - """
@@ -512,9 +540,11 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if self.app.masters[row].content_type == 0 or self.app.masters[row].content_type == 3:
+            if (self.app.masters[row].content_type == 0
+                    or self.app.masters[row].content_type == 3):
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
                 return False
 
             if self.keystring != '':
@@ -532,7 +562,8 @@ class MastersTab(Gtk.Paned):
                     self.last_chan_selected = self.keystring
 
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
 
     def keypress_a(self):
         """ All Channels """
@@ -542,9 +573,11 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if self.app.masters[row].content_type == 0 or self.app.masters[row].content_type == 3:
+            if (self.app.masters[row].content_type == 0
+                    or self.app.masters[row].content_type == 3):
                 self.keystring = ''
-                self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+                self.app.window.statusbar.push(self.app.window.context_id,
+                                               self.keystring)
                 return False
 
             self.flowbox.unselect_all()
@@ -615,7 +648,8 @@ class MastersTab(Gtk.Paned):
                     self.user_channels[channel] = level
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_colon(self):
         """ Level - % """
@@ -704,7 +738,7 @@ class MastersTab(Gtk.Paned):
                     for chan in range(MAX_CHANNELS):
                         channels[chan] = self.channels[chan].level
                     # Update Preset Tab if open
-                    if self.app.memories_tab != None:
+                    if self.app.memories_tab:
                         self.app.memories_tab.flowbox.invalidate_filter()
 
             # Type : Channels
@@ -730,7 +764,6 @@ class MastersTab(Gtk.Paned):
                     self.app.virtual_console.flashes[row].label = self.app.masters[row].text
                     self.app.virtual_console.flashes[row].queue_draw()
 
-
             # Type = Group
             elif self.app.masters[row].content_type == 13:
                 found = False
@@ -743,8 +776,9 @@ class MastersTab(Gtk.Paned):
                     for chan in range(MAX_CHANNELS):
                         channels[chan] = self.channels[chan].level
                     # Update Group Tab if open
-                    if self.app.group_tab != None:
+                    if self.app.group_tab:
                         self.app.group_tab.flowbox1.invalidate_filter()
 
             self.keystring = ''
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
