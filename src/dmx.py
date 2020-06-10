@@ -3,10 +3,11 @@ import array
 from gi.repository import Gio
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
-from olc.widgets_channel import ChannelWidget
+
 
 class Dmx(object):
-    def __init__(self, universes, patch, ola_client, sequence, masters, window):
+    def __init__(self, universes, patch, ola_client,
+                 sequence, masters, window):
         self.universes = universes
         self.patch = patch
         self.ola_client = ola_client
@@ -28,7 +29,8 @@ class Dmx(object):
 
     def send(self):
         # Cette fonction envoi les valeurs DMX à Ola en prenant en compte
-        # les valeurs actuelles, le sequentiel, les masters et les valeurs entrées par l'utilisateur
+        # les valeurs actuelles, le sequentiel, les masters
+        # et les valeurs entrées par l'utilisateur
 
         for universe in range(NB_UNIVERSES):
             # Pour chaque output
@@ -42,10 +44,13 @@ class Dmx(object):
                     self.window.channels[channel-1].color_level_red = 0.9
                     self.window.channels[channel-1].color_level_green = 0.9
                     self.window.channels[channel-1].color_level_blue = 0.9
-                    # Si on est pas sur un Go, on utilise les valeurs de l'utilisateur
-                    if not self.app.sequence.on_go and self.user[channel-1] != -1:
+                    # Si on est pas sur un Go,
+                    # on utilise les valeurs de l'utilisateur
+                    if (not self.app.sequence.on_go
+                            and self.user[channel-1] != -1):
                         level = self.user[channel-1]
-                    # Si c'est le niveau d'un master le plus grand, on l'utilise
+                    # Si c'est le niveau d'un master le plus grand,
+                    # on l'utilise
                     for master in self.masters:
                         if master.dmx[channel-1] > level:
                             level = master.dmx[channel-1]
@@ -54,7 +59,8 @@ class Dmx(object):
                             self.window.channels[channel-1].color_level_blue = 0.4
 
                     # Proportional patch level
-                    level = level * (self.patch.outputs[universe][output][1] / 100)
+                    level = (level *
+                             (self.patch.outputs[universe][output][1] / 100))
                     # Grand Master
                     level = round(level * (self.grand_master / 255))
                     # On met à jour le niveau pour cet output
@@ -62,6 +68,7 @@ class Dmx(object):
 
             # On met à jour les valeurs d'Ola
             self.ola_client.SendDmx(universe, self.frame[universe])
+
 
 class PatchDmx(object):
     """
@@ -89,10 +96,13 @@ class PatchDmx(object):
 
         """
         for channel in range(MAX_CHANNELS):
-            print("Channel", channel, "Output", self.channels[channel][0][0], "Univers", self.channels[channel][0][1])
+            print("Channel", channel, "Output", self.channels[channel][0][0],
+            "Univers", self.channels[channel][0][1])
         for universe in range(NB_UNIVERSES):
             for i in range(512):
-                print("Output", i + 1, "Univers", universe, "Channel", self.outputs[universe][i][0], "Level", self.outputs[universe][i][1])
+                print("Output", i + 1, "Univers", universe, "Channel",
+                self.outputs[universe][i][0], "Level",
+                self.outputs[universe][i][1])
         """
 
     def patch_empty(self):
