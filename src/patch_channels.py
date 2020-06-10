@@ -3,6 +3,7 @@ from gi.repository import Gtk, Gio, Gdk
 from olc.define import MAX_CHANNELS
 from olc.widgets_patch_channels import PatchChannelHeader, PatchChannelWidget
 
+
 class PatchChannelsTab(Gtk.Grid):
     def __init__(self):
 
@@ -32,11 +33,13 @@ class PatchChannelsTab(Gtk.Grid):
         self.flowbox.set_filter_func(self.filter_func, None)
 
         self.scrollable = Gtk.ScrolledWindow()
-        self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrollable.set_policy(Gtk.PolicyType.NEVER,
+                                   Gtk.PolicyType.AUTOMATIC)
         self.scrollable.add(self.flowbox)
 
         self.attach(self.header, 0, 0, 1, 1)
-        self.attach_next_to(self.scrollable, self.header, Gtk.PositionType.BOTTOM, 1, 10)
+        self.attach_next_to(self.scrollable, self.header,
+                            Gtk.PositionType.BOTTOM, 1, 10)
 
     def filter_func(self, child, user_data):
         return True
@@ -51,7 +54,7 @@ class PatchChannelsTab(Gtk.Grid):
 
         # TODO: Hack to know if user is editing something
         widget = self.app.window.get_focus()
-        #print(widget.get_path().is_type(Gtk.Entry))
+        # print(widget.get_path().is_type(Gtk.Entry))
         if not widget:
             return
         if widget.get_path().is_type(Gtk.Entry):
@@ -59,17 +62,26 @@ class PatchChannelsTab(Gtk.Grid):
 
         keyname = Gdk.keyval_name(event.keyval)
 
-        if keyname == '1' or keyname == '2' or keyname == '3' or keyname == '4' or keyname == '5' or keyname == '6' or keyname == '7' or keyname == '8' or keyname == '9' or keyname == '0':
+        if (keyname == '1' or keyname == '2' or keyname == '3'
+                or keyname == '4' or keyname == '5' or keyname == '6'
+                or keyname == '7' or keyname == '8' or keyname == '9'
+                or keyname == '0'):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
-        if keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3' or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6' or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9' or keyname == 'KP_0':
+        if (keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3'
+                or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6'
+                or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9'
+                or keyname == 'KP_0'):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         if keyname == 'period':
             self.keystring += '.'
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.keystring)
 
         func = getattr(self, 'keypress_' + keyname, None)
         if func:
@@ -83,7 +95,8 @@ class PatchChannelsTab(Gtk.Grid):
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_Down(self):
         """ Select Next Channel """
@@ -101,7 +114,8 @@ class PatchChannelsTab(Gtk.Grid):
             self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_Up(self):
         """ Select Previous Channel """
@@ -118,7 +132,8 @@ class PatchChannelsTab(Gtk.Grid):
             self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_c(self):
         """ Select Channel """
@@ -133,7 +148,8 @@ class PatchChannelsTab(Gtk.Grid):
                 self.last_chan_selected = str(channel)
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_m(self):
         """ Modify Output """
@@ -209,7 +225,8 @@ class PatchChannelsTab(Gtk.Grid):
                 self.last_chan_selected = str(channel+1)
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_i(self):
         """ Insert Output """
@@ -257,7 +274,8 @@ class PatchChannelsTab(Gtk.Grid):
                         self.app.window.flowbox.invalidate_filter()
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_r(self):
         """ Remove Output """
@@ -268,7 +286,7 @@ class PatchChannelsTab(Gtk.Grid):
 
             for patchchannelwidget in children:
                 channel = patchchannelwidget.channel - 1
-                #univ = self.app.patch.channels[channel][1]
+                # univ = self.app.patch.channels[channel][1]
 
                 if self.keystring != '' or self.keystring != '0':
                     if '.' in self.keystring:
@@ -299,4 +317,5 @@ class PatchChannelsTab(Gtk.Grid):
                 self.app.window.flowbox.invalidate_filter()
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
