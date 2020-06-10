@@ -193,7 +193,8 @@ class Application(Gtk.Application):
         """ Setup application menu, return Gio.Menu """
         builder = Gtk.Builder()
 
-        builder.add_from_resource('/org/gnome/OpenLightingConsole/gtk/menus.ui')
+        builder.add_from_resource(
+                '/org/gnome/OpenLightingConsole/gtk/menus.ui')
 
         menu = builder.get_object('app-menu')
 
@@ -267,7 +268,8 @@ class Application(Gtk.Application):
             channel = self.patch.outputs[0][output][0]
             self.dmx.frame[0][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
+            if (self.sequence.last > 1
+                    and self.sequence.position < self.sequence.last - 1):
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -283,7 +285,8 @@ class Application(Gtk.Application):
             channel = self.patch.outputs[1][output][0]
             self.dmx.frame[1][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
+            if (self.sequence.last > 1
+                    and self.sequence.position < self.sequence.last - 1):
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -299,7 +302,8 @@ class Application(Gtk.Application):
             channel = self.patch.outputs[2][output][0]
             self.dmx.frame[2][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
+            if (self.sequence.last > 1
+                    and self.sequence.position < self.sequence.last - 1):
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -315,7 +319,8 @@ class Application(Gtk.Application):
             channel = self.patch.outputs[3][output][0]
             self.dmx.frame[3][output] = level
             self.window.channels[channel-1].level = level
-            if self.sequence.last > 1 and self.sequence.position < self.sequence.last - 1:
+            if (self.sequence.last > 1
+                    and self.sequence.position < self.sequence.last - 1):
                 next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
             elif self.sequence.last:
                 next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -333,7 +338,8 @@ class Application(Gtk.Application):
                 if channel:
                     self.dmx.frame[univ][output] = level
                     self.window.channels[channel-1].level = level
-                    if self.sequence.last > 1 and self.sequence.position < self.sequence.last:
+                    if (self.sequence.last > 1
+                            and self.sequence.position < self.sequence.last):
                         next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
                     elif self.sequence.last:
                         next_level = self.sequence.steps[0].cue.channels[channel-1]
@@ -354,7 +360,8 @@ class Application(Gtk.Application):
         self.window.sequential.time_in = self.sequence.steps[1].time_in
         self.window.sequential.time_out = self.sequence.steps[1].time_out
         self.window.sequential.wait = self.sequence.steps[1].wait
-        self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str,
+                                                   str, str)
         for i in range(self.sequence.last):
             if self.sequence.steps[i].wait.is_integer():
                 wait = str(int(self.sequence.steps[i].wait))
@@ -370,9 +377,10 @@ class Application(Gtk.Application):
                 t_in = int(self.sequence.steps[i].time_in)
             else:
                 t_in = self.sequence.steps[i].time_in
-            self.window.cues_liststore.append([str(i), str(self.sequence.steps[i].cue.memory),
-                str(self.sequence.steps[i].text), wait,
-                str(t_out), str(t_in), ""])
+            self.window.cues_liststore.append([str(i),
+                                               str(self.sequence.steps[i].cue.memory),
+                                               str(self.sequence.steps[i].text),
+                                               wait, str(t_out), str(t_in), ""])
         self.window.step_filter = self.window.cues_liststore.filter_new()
         self.window.step_filter.set_visible_func(self.window.step_filter_func)
         self.window.treeview.set_model(self.window.cues_liststore)
@@ -381,7 +389,7 @@ class Application(Gtk.Application):
         self.window.seq_grid.queue_draw()
         # Redraw Patch Window
         self.patch.patch_1on1()
-        if self.patch_outputs_tab != None:
+        if self.patch_outputs_tab:
             self.patch_outputs_tab.flowbox.queue_draw()
         # Redraw Masters Window
         try:
@@ -408,9 +416,11 @@ class Application(Gtk.Application):
         # the arguments are: title of the window, parent_window, action,
         # (buttons, response)
         open_dialog = Gtk.FileChooserDialog("Open ASCII File", self.window,
-                Gtk.FileChooserAction.OPEN,
-                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                    Gtk.STOCK_OPEN, Gtk.ResponseType.ACCEPT))
+                                            Gtk.FileChooserAction.OPEN,
+                                            (Gtk.STOCK_CANCEL,
+                                             Gtk.ResponseType.CANCEL,
+                                             Gtk.STOCK_OPEN,
+                                             Gtk.ResponseType.ACCEPT))
 
         filter_text = Gtk.FileFilter()
         filter_text.set_name("Text Files")
@@ -463,13 +473,14 @@ class Application(Gtk.Application):
 
     def _patch_outputs(self, action, parameter):
         # Create Patch Outputs Tab
-        if self.patch_outputs_tab == None:
+        if self.patch_outputs_tab is None:
             self.patch_outputs_tab = PatchOutputsTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.patch_outputs_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Patch Outputs'), False, False, 0)
@@ -485,13 +496,14 @@ class Application(Gtk.Application):
 
     def _patch_channels(self, action, parameter):
         # Create Patch Channels Tab
-        if self.patch_channels_tab == None:
+        if self.patch_channels_tab is None:
             self.patch_channels_tab = PatchChannelsTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.patch_channels_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Patch Channels'), False, False, 0)
@@ -507,13 +519,14 @@ class Application(Gtk.Application):
 
     def _track_channels(self, action, parameter):
         # Create Track Channels Tab
-        if self.track_channels_tab == None:
+        if self.track_channels_tab is None:
             self.track_channels_tab = TrackChannelsTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.track_channels_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Track Channels'), False, False, 0)
@@ -529,13 +542,14 @@ class Application(Gtk.Application):
 
     def _memories(self, action, parameter):
         # Create Memories Tab
-        if self.memories_tab == None:
+        if self.memories_tab is None:
             self.memories_tab = CuesEditionTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.memories_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Memories'), False, False, 0)
@@ -551,13 +565,14 @@ class Application(Gtk.Application):
 
     def _groups(self, action, parameter):
         # Create Groups Tab
-        if self.group_tab == None:
+        if self.group_tab is None:
             self.group_tab = GroupTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.group_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Groups'), False, False, 0)
@@ -573,12 +588,13 @@ class Application(Gtk.Application):
 
     def _sequences(self, action, parameter):
         # Create Sequences Tab
-        if self.sequences_tab == None:
+        if self.sequences_tab is None:
             self.sequences_tab = SequenceTab()
 
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.sequences_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Sequences'), False, False, 0)
@@ -595,12 +611,13 @@ class Application(Gtk.Application):
 
     def _channeltime(self, sequence, step):
         # Create Channel Time Tab
-        if self.channeltime_tab == None:
+        if self.channeltime_tab is None:
             self.channeltime_tab = ChanneltimeTab(sequence, step)
 
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.channeltime_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Channel Time'), False, False, 0)
@@ -616,13 +633,14 @@ class Application(Gtk.Application):
 
     def _masters(self, action, parameter):
         # Create Masters Tab
-        if self.masters_tab == None:
+        if self.masters_tab is None:
             self.masters_tab = MastersTab()
 
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
+                                                Gtk.IconSize.MENU))
             button.connect('clicked', self.masters_tab.on_close_icon)
             label = Gtk.Box()
             label.pack_start(Gtk.Label('Master List'), False, False, 0)
@@ -653,7 +671,8 @@ class Application(Gtk.Application):
         """
         # TODO: Don't open multiple Shortcuts Windows
         builder = Gtk.Builder()
-        builder.add_from_resource('/org/gnome/OpenLightingConsole/gtk/help-overlay.ui')
+        builder.add_from_resource(
+                '/org/gnome/OpenLightingConsole/gtk/help-overlay.ui')
         self.shortcuts = builder.get_object('help_overlay')
         self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
@@ -664,9 +683,10 @@ class Application(Gtk.Application):
             @param action as Gio.SimpleAction
             @param param as GLib.Variant
         """
-        if self.about_window == None:
+        if not self.about_window:
             builder = Gtk.Builder()
-            builder.add_from_resource('/org/gnome/OpenLightingConsole/AboutDialog.ui')
+            builder.add_from_resource(
+                    '/org/gnome/OpenLightingConsole/AboutDialog.ui')
             self.about_window = builder.get_object('about_dialog')
             self.about_window.set_transient_for(self.window)
             self.about_window.connect("response", self._about_response)
@@ -691,6 +711,7 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         self.quit()
+
 
 if __name__ == "__main__":
     app = Application()
