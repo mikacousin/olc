@@ -1,18 +1,13 @@
-import time
-import threading
 import array
-import mido
 from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
-from ola import OlaClient
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES
 from olc.cue import Cue
 from olc.step import Step
-from olc.group import Group
 from olc.widgets_sequential import SequentialWidget
-from olc.widgets_group import GroupWidget
 from olc.widgets_channel import ChannelWidget
 from olc.widgets_GM import GMWidget
+
 
 class Window(Gtk.ApplicationWindow):
 
@@ -36,7 +31,7 @@ class Window(Gtk.ApplicationWindow):
         self.header.props.show_close_button = True
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        #Gtk.StyleContext.add_class(box.get_style_context(), "linked")
+        # Gtk.StyleContext.add_class(box.get_style_context(), "linked")
         self.gm = GMWidget()
         box.add(self.gm)
         button = Gtk.Button()
@@ -58,7 +53,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.paned.set_position(950)
-        #self.paned.set_wide_handle(True)
+        # self.paned.set_wide_handle(True)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -66,9 +61,9 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        #self.flowbox.set_homogeneous(True)
+        # self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-        self.flowbox.set_filter_func(self.filter_func, None) # Fonction de filtrage
+        self.flowbox.set_filter_func(self.filter_func, None)
 
         self.keystring = ""
         self.last_chan_selected = ""
@@ -89,7 +84,8 @@ class Window(Gtk.ApplicationWindow):
         self.grid = Gtk.Grid()
         label = Gtk.Label("Saisie clavier : ")
         self.grid.add(label)
-        self.grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
+        self.grid.attach_next_to(self.statusbar, label,
+                                 Gtk.PositionType.RIGHT, 1, 1)
         self.paned.add2(self.grid)
 
         self.paned2 = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -98,12 +94,14 @@ class Window(Gtk.ApplicationWindow):
 
         self.app = Gio.Application.get_default()
         self.seq = self.app.sequence
-        
+
         # Sequential part of the window
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str, str, str, int, int)
-        self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str,
+                                             str, str, str, int, int)
+        self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str,
+                                             str, str)
 
         if self.seq.last > 1:
             position = self.seq.position
@@ -125,10 +123,13 @@ class Window(Gtk.ApplicationWindow):
             channel_time = {}
 
         # Crossfade widget
-        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait, channel_time)
+        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out,
+                                           t_wait, channel_time)
 
-        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
-        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
+                                     '#232729', 0, 0])
+        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
+                                     '#232729', 0, 1])
 
         for i in range(self.app.sequence.last):
             if self.seq.steps[i].wait.is_integer():
@@ -157,17 +158,26 @@ class Window(Gtk.ApplicationWindow):
             if channel_time == "0":
                 channel_time = ""
             bg = "#232729"
-            #if i == 0:
             if i == 0 or i == self.app.sequence.last - 1:
-                self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '', bg, Pango.Weight.NORMAL, 42])
+                self.cues_liststore1.append([str(i), '', '', '', '', '', '',
+                                             '', '', bg, Pango.Weight.NORMAL,
+                                             42])
             else:
-                self.cues_liststore1.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
-                    wait, d_out, t_out, d_in, t_in, channel_time, bg, Pango.Weight.NORMAL, 42])
-            self.cues_liststore2.append([str(i), str(self.seq.steps[i].cue.memory), self.seq.steps[i].text,
-                wait, d_out, t_out, d_in, t_in, channel_time])
+                self.cues_liststore1.append([str(i),
+                                             str(self.seq.steps[i].cue.memory),
+                                             self.seq.steps[i].text,
+                                             wait, d_out, t_out, d_in, t_in,
+                                             channel_time, bg,
+                                             Pango.Weight.NORMAL, 42])
+            self.cues_liststore2.append([str(i),
+                                         str(self.seq.steps[i].cue.memory),
+                                         self.seq.steps[i].text,
+                                         wait, d_out, t_out, d_in, t_in,
+                                         channel_time])
 
         if self.app.sequence.last == 1:
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
+                                         '#232729', 0, 1])
 
         # Filter for the first part of the cue list
         self.step_filter1 = self.cues_liststore1.filter_new()
@@ -177,12 +187,15 @@ class Window(Gtk.ApplicationWindow):
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Delay Out", "Out", "Delay In", "In", "Channel Time"]):
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait",
+                                          "Delay Out", "Out", "Delay In", "In",
+                                          "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i, background=9, weight=10)
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i,
+                                        background=9, weight=10)
             if i == 2:
                 column.set_min_width(600)
                 column.set_resizable(True)
@@ -196,7 +209,9 @@ class Window(Gtk.ApplicationWindow):
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait", "Delay Out", "Out", "Delay In", "In", "Channel Time"]):
+        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait",
+                                          "Delay Out", "Out", "Delay In", "In",
+                                          "Channel Time"]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
@@ -210,14 +225,17 @@ class Window(Gtk.ApplicationWindow):
         self.scrollable2 = Gtk.ScrolledWindow()
         self.scrollable2.set_vexpand(True)
         self.scrollable2.set_hexpand(True)
-        self.scrollable2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
+        self.scrollable2.set_policy(Gtk.PolicyType.NEVER,
+                                    Gtk.PolicyType.EXTERNAL)
         self.scrollable2.add(self.treeview2)
         # Put Cues lists and sequential in a grid
         self.seq_grid = Gtk.Grid()
         self.seq_grid.set_row_homogeneous(False)
         self.seq_grid.attach(self.treeview1, 0, 0, 1, 1)
-        self.seq_grid.attach_next_to(self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
-        self.seq_grid.attach_next_to(self.scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.attach_next_to(self.sequential, self.treeview1,
+                                     Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.attach_next_to(self.scrollable2, self.sequential,
+                                     Gtk.PositionType.BOTTOM, 1, 1)
 
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
@@ -239,9 +257,11 @@ class Window(Gtk.ApplicationWindow):
         self.timeout_id = GObject.timeout_add(100, self.on_timeout, None)
 
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
-        GLib.unix_fd_add_full(0, self.app.sock.fileno(), GLib.IOCondition(27), self.app.on_fd_read, None)
+        GLib.unix_fd_add_full(0, self.app.sock.fileno(), GLib.IOCondition(27),
+                              self.app.on_fd_read, None)
 
-        # TODO: Add Enttec wing playback support with Gio.SocketService (et Gio.SocketListener.add_address)
+        # TODO: Add Enttec wing playback support with Gio.SocketService
+        # (and Gio.SocketListener.add_address)
         """
         service = Gio.SocketService()
         service.connect('incoming', self.incoming_connection_cb)
@@ -269,9 +289,10 @@ class Window(Gtk.ApplicationWindow):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(address)
         self.fd = self.sock.fileno()
-        #ch = GLib.IOChannel.unix_new(fd)
-        #GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
-        GLib.unix_fd_add_full(0, self.fd, GLib.IOCondition.IN, self.incoming_connection_cb, None)
+        # ch = GLib.IOChannel.unix_new(fd)
+        # GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
+        GLib.unix_fd_add_full(0, self.fd, GLib.IOCondition.IN,
+                              self.incoming_connection_cb, None)
 
         self.connect('key_press_event', self.on_key_press_event)
         self.connect('scroll-event', self.on_scroll)
@@ -279,7 +300,7 @@ class Window(Gtk.ApplicationWindow):
         self.set_icon_name('olc')
 
     def incoming_connection_cb(self, fd, condition, data):
-        #print(fd, condition, data)
+        # print(fd, condition, data)
         message = self.sock.recv(1024)
         if message[0:4] == b'WODD':
             print("Wing output data", message[0:4])
@@ -379,7 +400,9 @@ class Window(Gtk.ApplicationWindow):
                 return True
             if int(model[iter][11]) == 0:
                 return False
-            if int(model[iter][0]) == 0 or int(model[iter][0]) == 1 or int(model[iter][0]) == 2:
+            if (int(model[iter][0]) == 0
+                    or int(model[iter][0]) == 1
+                    or int(model[iter][0]) == 2):
                 return True
             else:
                 return False
@@ -389,7 +412,10 @@ class Window(Gtk.ApplicationWindow):
         if int(model[iter][11]) == 0:
             return False
 
-        if int(model[iter][0]) == self.app.sequence.position or int(model[iter][0]) == self.app.sequence.position+1 or int(model[iter][0]) == self.app.sequence.position-1 or int(model[iter][0]) == self.app.sequence.position-2:
+        if (int(model[iter][0]) == self.app.sequence.position
+                or int(model[iter][0]) == self.app.sequence.position+1
+                or int(model[iter][0]) == self.app.sequence.position-1
+                or int(model[iter][0]) == self.app.sequence.position-2):
             return True
         else:
             return False
@@ -407,7 +433,7 @@ class Window(Gtk.ApplicationWindow):
             i = child.get_index()
             for channel in self.app.patch.channels[i][0]:
                 if channel != 0:
-                    #print("Chanel:", i+1, "Output:", self.app.patch.channels[i][j])
+                    # print("Chanel:", i+1, "Output:", self.app.patch.channels[i][j])
                     return child
                 else:
                     return False
@@ -422,7 +448,7 @@ class Window(Gtk.ApplicationWindow):
 
     def on_timeout(self, user_data):
 
-        #self.percent_view = self.app.settings.get_boolean('percent')
+        # self.percent_view = self.app.settings.get_boolean('percent')
 
         # Send DMX
         self.app.dmx.send()
@@ -452,7 +478,8 @@ class Window(Gtk.ApplicationWindow):
 
         # Zoom In/Out Channels in Live View
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK:
+        if (event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK
+                | Gdk.ModifierType.SHIFT_MASK):
             (scroll, direction) = event.get_scroll_direction()
             if scroll and direction == Gdk.ScrollDirection.UP:
                 for i in range(MAX_CHANNELS):
@@ -487,16 +514,22 @@ class Window(Gtk.ApplicationWindow):
             return self.app.masters_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
-        #print (keyname)
-        if keyname == "1" or keyname == "2" or keyname == "3" or keyname == "4" or keyname == "5" or keyname =="6" or keyname == "7" or keyname =="8" or keyname == "9" or keyname =="0":
+        # print (keyname)
+        if (keyname == "1" or keyname == "2" or keyname == "3"
+                or keyname == "4" or keyname == "5" or keyname == "6"
+                or keyname == "7" or keyname == "8" or keyname == "9"
+                or keyname == "0"):
             self.keystring += keyname
             self.statusbar.push(self.context_id, self.keystring)
 
-        if keyname == "KP_1" or keyname == "KP_2" or keyname == "KP_3" or keyname == "KP_4" or keyname == "KP_5" or keyname == "KP_6" or keyname == "KP_7" or keyname == "KP_8" or keyname == "KP_9" or keyname == "KP_0":
+        if (keyname == "KP_1" or keyname == "KP_2" or keyname == "KP_3"
+                or keyname == "KP_4" or keyname == "KP_5" or keyname == "KP_6"
+                or keyname == "KP_7" or keyname == "KP_8" or keyname == "KP_9"
+                or keyname == "KP_0"):
             self.keystring += keyname[3:]
             self.statusbar.push(self.context_id, self.keystring)
 
-        if keyname == "period" :
+        if keyname == "period":
             self.keystring += "."
             self.statusbar.push(self.context_id, self.keystring)
 
@@ -571,7 +604,8 @@ class Window(Gtk.ApplicationWindow):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y + allocation.height)
+            child = (self.flowbox.get_child_at_pos(allocation.x, allocation.y
+                                                   + allocation.height))
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -594,7 +628,8 @@ class Window(Gtk.ApplicationWindow):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(allocation.x, allocation.y - allocation.height/2)
+            child = (self.flowbox.get_child_at_pos(allocation.x, allocation.y
+                                                   - allocation.height/2))
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -760,7 +795,6 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         self.app.dmx.user[channel] = level - lvl
 
-
     def keypress_KP_Enter(self):
         self.keypress_equal()
 
@@ -822,23 +856,23 @@ class Window(Gtk.ApplicationWindow):
             """ Use next free number """
 
             # Find next free number
-            position =self.app.sequence.position
+            position = self.app.sequence.position
             memory = self.app.sequence.steps[position].cue.memory
-            #print('En scène, step:', position, 'mémoire:', memory)
+            # print('En scène, step:', position, 'mémoire:', memory)
 
             if position < self.app.sequence.last - 1:
                 next_memory = self.app.sequence.steps[position + 1].cue.memory
                 if next_memory == 0.0:
-                    #print('Dernière mémoire')
+                    # print('Dernière mémoire')
                     mem = memory + 1
                 else:
-                    #print('Mémoire suivante:', next_memory)
+                    # print('Mémoire suivante:', next_memory)
                     if (next_memory - memory) <= 1:
                         mem = ((next_memory - memory) / 2) + memory
                     else:
                         mem = memory + 1
             else:
-                #print('Dernière mémoire')
+                # print('Dernière mémoire')
                 mem = memory + 1
 
         else:
@@ -876,12 +910,13 @@ class Window(Gtk.ApplicationWindow):
             self.app.memories.insert(i, cue)
 
             # Update Presets Tab if exist
-            if self.app.memories_tab != None:
+            if self.app.memories_tab:
                 nb_chan = 0
                 for chan in range(MAX_CHANNELS):
                     if channels[chan]:
                         nb_chan += 1
-                self.app.memories_tab.liststore.insert(i, [str(mem), '', nb_chan])
+                self.app.memories_tab.liststore.insert(i, [str(mem), '',
+                                                       nb_chan])
 
             # Find Step's position
             for i in range(self.app.sequence.last):
@@ -896,8 +931,10 @@ class Window(Gtk.ApplicationWindow):
             # Update Main Playback
             self.cues_liststore1.clear()
             self.cues_liststore2.clear()
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 0])
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '', '#232729', 0, 1])
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
+                                         '#232729', 0, 0])
+            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
+                                         '#232729', 0, 1])
             for i in range(self.app.sequence.last):
                 if self.app.sequence.steps[i].wait.is_integer():
                     wait = str(int(self.app.sequence.steps[i].wait))
@@ -940,9 +977,11 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     weight = Pango.Weight.NORMAL
                 if i == 0 or i == self.app.sequence.last - 1:
-                    self.cues_liststore1.append([str(i), '', '', '', '', '', '', '', '',
-                        bg, Pango.Weight.NORMAL, 99])
-                    self.cues_liststore2.append([str(i), '', '', '', '', '', '', '', ''])
+                    self.cues_liststore1.append([str(i), '', '', '', '', '',
+                                                 '', '', '', bg,
+                                                 Pango.Weight.NORMAL, 99])
+                    self.cues_liststore2.append([str(i), '', '', '', '', '',
+                                                 '', '', ''])
                 else:
                     self.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
                         str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in),
@@ -989,7 +1028,7 @@ class Window(Gtk.ApplicationWindow):
                     self.app.memories[i].channels[channel - 1] = level
 
             # Update Presets Tab if exist
-            if self.app.memories_tab != None:
+            if self.app.memories_tab:
                 nb_chan = 0
                 for chan in range(MAX_CHANNELS):
                     if self.app.memories[i].channels[chan]:
@@ -999,10 +1038,10 @@ class Window(Gtk.ApplicationWindow):
                 self.app.memories_tab.flowbox.invalidate_filter()
 
         # Update Sequential edition Tabs
-        if self.app.sequences_tab != None:
+        if self.app.sequences_tab:
             # Main Playback selected ?
             path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
-            if path != None:
+            if path:
                 selected = path.get_indices()[0]
                 sequence = self.app.sequences_tab.liststore1[selected][0]
                 if sequence == self.app.sequence.index:
@@ -1015,7 +1054,8 @@ class Window(Gtk.ApplicationWindow):
         self.app.window.header.set_title(self.app.ascii.basename + "*")
 
         self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id,
+                                       self.keystring)
 
     def keypress_U(self):
         """ Update Cue """
@@ -1044,14 +1084,15 @@ class Window(Gtk.ApplicationWindow):
 
         dialog.destroy()
 
+
 class Dialog(Gtk.Dialog):
 
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(self, "", parent, 0,
-                (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                 Gtk.STOCK_OK, Gtk.ResponseType.OK))
+                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                             Gtk.STOCK_OK, Gtk.ResponseType.OK))
 
-        self.set_default_size(150,100)
+        self.set_default_size(150, 100)
 
         label = Gtk.Label("Update memory " + str(memory) + " ?")
 
