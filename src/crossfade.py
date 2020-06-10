@@ -3,6 +3,7 @@ from gi.repository import Gtk, Gio, Pango
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
+
 class Scale(object):
     def __init__(self):
         self.value = 0
@@ -13,6 +14,7 @@ class Scale(object):
 
     def get_value(self):
         return self.value
+
 
 class CrossFade(object):
     """ For Manual Crossfade """
@@ -54,7 +56,8 @@ class CrossFade(object):
             pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = app.window.sequential.get_allocation()
-            app.window.sequential.pos_xA = ((allocation.width - 32) / total_time) * pos
+            app.window.sequential.pos_xA = (((allocation.width - 32)
+                                             / total_time) * pos)
             app.window.sequential.queue_draw()
             # Update levels
             if pos >= wait:
@@ -84,8 +87,10 @@ class CrossFade(object):
                                     if pos < ct_delay + wait:
                                         lvl = old_level
 
-                                    elif pos >= ct_delay + wait and pos < ct_delay + ct_time + wait:
-                                        lvl = old_level - abs(int(round(((next_level - old_level) / ct_time)
+                                    elif (pos >= ct_delay + wait
+                                          and pos < ct_delay + ct_time + wait):
+                                        lvl = old_level - abs(int(round((
+                                            (next_level - old_level) / ct_time)
                                             * (pos - ct_delay - wait))))
 
                                     elif pos >= ct_delay + ct_time + wait:
@@ -94,30 +99,34 @@ class CrossFade(object):
                             elif app.dmx.user[channel - 1] != -1:
                                 # User changed channel's value
                                 user_level = app.dmx.user[channel - 1]
-                                if next_level < user_level and pos <= wait + delay_out:
+                                if (next_level < user_level
+                                        and pos <= wait + delay_out):
                                     lvl = old_level
 
-                                elif (next_level < user_level and pos < time_out + wait + delay_out and
-                                        pos > wait_delay_out):
+                                elif (next_level < user_level
+                                        and pos < time_out + wait + delay_out
+                                        and pos > wait + delay_out):
 
-                                    lvl = user_level - abs(int(round(((next_level - user_level) / time_out)
-                                        * (pos - wait - delay_out))))
+                                    lvl = (user_level - abs(int(round(((next_level - user_level) / time_out)) * (pos - wait - delay_out))))
 
-                                elif next_level < user_level and pos >= time_out + wait + delay_out:
+                                elif (next_level < user_level
+                                        and pos >= time_out+wait+delay_out):
                                     lvl = next_level
 
                             else:
                                 # Normal sequential
-                                if next_level < old_level and pos <= wait + delay_out:
+                                if (next_level < old_level
+                                        and pos <= wait + delay_out):
                                     lvl = old_level
 
-                                elif (next_level < old_level and pos < time_out + wait + delay_out and
-                                        pos > wait + delay_out):
+                                elif (next_level < old_level
+                                      and pos < time_out + wait + delay_out
+                                      and pos > wait + delay_out):
 
-                                    lvl = old_level - abs(int(round(((next_level - old_level) / time_out)
-                                        * (pos - wait - delay_out))))
+                                    lvl = old_level - abs(int(round(((next_level - old_level) / time_out) * (pos - wait - delay_out))))
 
-                                elif next_level < old_level and pos >= time_out + wait + delay_out:
+                                elif (next_level < old_level
+                                      and pos >= time_out + wait + delay_out):
                                     lvl = next_level
 
                             if lvl != -1:
@@ -167,9 +176,9 @@ class CrossFade(object):
                                     if pos < ct_delay + wait:
                                         lvl = old_level
 
-                                    elif pos >= ct_delay + wait and pos < ct_delay + ct_time + wait:
-                                        lvl = int(round(((next_level - old_level) / ct_time)
-                                            * (pos - ct_delay - wait)) + old_level)
+                                    elif (pos >= ct_delay + wait
+                                            and pos < ct_delay+ct_time+wait):
+                                        lvl = int(round(((next_level - old_level) / ct_time) * (pos - ct_delay - wait)) + old_level)
 
                                     elif pos >= ct_delay + ct_time + wait:
                                         lvl = next_level
@@ -177,30 +186,34 @@ class CrossFade(object):
                             elif app.dmx.user[channel - 1] != -1:
                                 # User change channel's value
                                 user_level = app.dmx.user[channel - 1]
-                                if next_level > user_level and pos <= wait + delay_in:
+                                if (next_level > user_level
+                                        and pos <= wait + delay_in):
                                     lvl = old_level
 
-                                elif (next_level > user_level and pos < time_in + wait + delay_in and
-                                        pos > wait + delay_in):
+                                elif (next_level > user_level
+                                      and pos < time_in + wait + delay_in
+                                      and pos > wait + delay_in):
 
-                                    lvl = int(round(((next_level - user_level) / time_in)
-                                        * (pos - wait - delay_in)) + user_level)
+                                    lvl = int(round(((next_level - user_level) / time_in) * (pos - wait - delay_in)) + user_level)
 
-                                elif next_level > user_level and pos >= time_in + wait + delay_in:
+                                elif (next_level > user_level
+                                      and pos >= time_in + wait + delay_in):
                                     lvl = next_level
 
                             else:
                                 # Normal channel
-                                if next_level > old_level and pos <= wait + delay_in:
+                                if (next_level > old_level
+                                        and pos <= wait + delay_in):
                                     lvl = old_level
 
-                                elif (next_level > old_level and pos < time_in + wait + delay_in and
-                                        pos > wait + delay_in):
+                                elif (next_level > old_level
+                                      and pos < time_in + wait + delay_in
+                                      and pos > wait + delay_in):
 
-                                    lvl = int(round(((next_level - old_level) / time_in)
-                                        * (pos - wait - delay_in)) + old_level)
+                                    lvl = int(round(((next_level - old_level) / time_in) * (pos - wait - delay_in)) + old_level)
 
-                                elif next_level > old_level and pos >= time_in + wait + delay_in:
+                                elif (next_level > old_level
+                                      and pos >= time_in + wait + delay_in):
                                     lvl = next_level
 
                             if lvl != -1:
@@ -209,7 +222,7 @@ class CrossFade(object):
         if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
             # In and Out Crossfades at Full
 
-            if app.sequence.on_go == True:
+            if app.sequence.on_go:
                 self.manual = False
                 app.sequence.on_go = False
                 # Empty array of levels enter by user
@@ -236,10 +249,14 @@ class CrossFade(object):
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
 
-                    subtitle = ("Mem. :" + str(app.sequence.steps[position].cue.memory) + " "
-                            + app.sequence.steps[position].text + " - Next Mem. : "
-                            + str(app.sequence.steps[position + 1].cue.memory) + " "
-                            + app.sequence.steps[position + 1].text)
+                    subtitle = ("Mem. :"
+                                + str(app.sequence.steps[position].cue.memory)
+                                + " "
+                                + app.sequence.steps[position].text
+                                + " - Next Mem. : "
+                                + str(app.sequence.steps[position + 1].cue.memory)
+                                + " "
+                                + app.sequence.steps[position + 1].text)
                     app.window.header.set_subtitle(subtitle)
 
                     if position == 0:
@@ -304,10 +321,14 @@ class CrossFade(object):
                     app.window.sequential.pos_xA = 0
                     app.window.sequential.pos_xB = 0
 
-                    subtitle = ("Mem. :" + str(app.sequence.steps[position].cue.memory) + " "
-                            + app.sequence.steps[position].text+" - Next Mem. : "
-                            + str(app.sequence.steps[position + 1].cue.memory) + " "
-                            + app.sequence.steps[position + 1].text)
+                    subtitle = ("Mem. :"
+                                + str(app.sequence.steps[position].cue.memory)
+                                + " "
+                                + app.sequence.steps[position].text
+                                + " - Next Mem. : "
+                                + str(app.sequence.steps[position + 1].cue.memory)
+                                + " "
+                                + app.sequence.steps[position + 1].text)
                     app.window.header.set_subtitle(subtitle)
 
                     if position == 0:
