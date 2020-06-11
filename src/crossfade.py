@@ -38,8 +38,8 @@ class CrossFade:
                     if app.sequence.thread.is_alive():
                         app.sequence.thread.stop()
                         app.sequence.thread.join()
-                except:
-                    pass
+                except Exception as e:
+                    print("Error :", e.message)
 
         if scale == self.scaleA:
             # Scale for Out

@@ -68,8 +68,8 @@ class Application(Gtk.Application):
             for i, univ in enumerate(self.universes):
                 func = getattr(self, "on_dmx_" + str(i), None)
                 self.ola_client.RegisterUniverse(univ, self.ola_client.REGISTER, func)
-        except:
-            print("Can't connect to Ola !")
+        except Exception as e:
+            print("Can't connect to Ola !", e)
             sys.exit()
 
         # Create Main Playback
@@ -434,8 +434,8 @@ class Application(Gtk.Application):
             del self.win_masters.scale[:]
             del self.win_masters.ad[:]
             del self.win_masters.flash[:]
-        except:
-            pass
+        except Exception as e:
+            print("Error :", e.message)
         del self.masters[:]
         # Redraw Groups Window
         for grp in self.win_groups.grps:

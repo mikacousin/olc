@@ -64,8 +64,8 @@ class Sequence:
                 # Stop at the end
                 if self.position > self.last - 3:
                     self.position = self.last - 3
-            except:
-                pass
+            except Exception as e:
+                print("Error :", e.message)
 
         position = self.position
         position += 1
@@ -136,8 +136,8 @@ class Sequence:
                 # Stop at the begining
                 if self.app.sequence.position < 1:
                     self.app.sequence.position = 1
-            except:
-                pass
+            except Exception as e:
+                print("Error :", e.message)
 
         position = self.position
         position -= 1
@@ -260,8 +260,8 @@ class Sequence:
             try:
                 self.app.sequence.thread.stop()
                 self.app.sequence.thread.join()
-            except:
-                pass
+            except Exception as e:
+                print("Error :", e.message)
             self.app.sequence.on_go = False
             # Launch another Go
             position = self.app.sequence.position
@@ -379,8 +379,8 @@ class Sequence:
             try:
                 self.app.sequence.thread.stop()
                 self.app.sequence.thread.join()
-            except:
-                pass
+            except Exception as e:
+                print("Error :", e.message)
             self.app.sequence.on_go = False
 
         go_back_time = self.app.settings.get_double("go-back-time")
