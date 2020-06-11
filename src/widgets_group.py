@@ -2,6 +2,7 @@ import cairo
 import math
 from gi.repository import Gtk, Gdk, Gio
 
+
 class GroupWidget(Gtk.Widget):
     __gtype_name__ = 'GroupWidget'
 
@@ -32,7 +33,8 @@ class GroupWidget(Gtk.Widget):
         allocation = self.get_allocation()
 
         # paint background
-        bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
+        bg_color = self.get_style_context().get_background_color(
+            Gtk.StateFlags.NORMAL)
         cr.set_source_rgba(*list(bg_color))
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
@@ -48,9 +50,9 @@ class GroupWidget(Gtk.Widget):
         # draw group number
         cr.set_source_rgb(0.5, 0.5, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
-        cr.move_to(50,15)
+        cr.move_to(50, 15)
         if self.number.is_integer():
             txt = str(int(self.number))
         else:
@@ -59,7 +61,7 @@ class GroupWidget(Gtk.Widget):
         # draw group name
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-            cairo.FONT_WEIGHT_NORMAL)
+                            cairo.FONT_WEIGHT_NORMAL)
         cr.move_to(8, 32)
         if len(self.name) > 10:
             cr.show_text(self.name[:10])
@@ -69,7 +71,7 @@ class GroupWidget(Gtk.Widget):
             cr.show_text(self.name)
 
     def draw_rounded_rectangle(self, cr, area, radius):
-        a,b,c,d = area
+        a, b, c, d = area
         cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
         cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
         cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
@@ -86,11 +88,14 @@ class GroupWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.TOUCH_MASK
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)
 
