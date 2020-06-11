@@ -6,11 +6,9 @@ from gi.repository import Gtk, Gdk, Gio, GObject
 class FlashWidget(Gtk.Widget):
     __gtype_name__ = "FlashWidget"
 
-    __gsignals__ = {
-            "clicked": (GObject.SIGNAL_ACTION, None, ())
-            }
+    __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, label='', text='None'):
+    def __init__(self, label="", text="None"):
         Gtk.Widget.__init__(self)
 
         self.app = Gio.Application.get_default()
@@ -28,8 +26,8 @@ class FlashWidget(Gtk.Widget):
 
         self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
 
-        self.connect('button-press-event', self.on_press)
-        self.connect('button-release-event', self.on_release)
+        self.connect("button-press-event", self.on_press)
+        self.connect("button-release-event", self.on_release)
 
     def on_press(self, tgt, ev):
         self.pressed = True
@@ -38,11 +36,11 @@ class FlashWidget(Gtk.Widget):
     def on_release(self, tgt, ev):
         self.pressed = False
         self.queue_draw()
-        self.emit('clicked')
+        self.emit("clicked")
 
     def do_draw(self, cr):
         # Draw rounded box
-        if self.text == 'None':
+        if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         else:
             if self.pressed:
@@ -55,17 +53,16 @@ class FlashWidget(Gtk.Widget):
                     cr.set_source_rgb(0.3, 0.2, 0.2)
                 else:
                     cr.set_source_rgb(0.2, 0.2, 0.2)
-        area = (1, self.width-2, 1, self.height-2)
+        area = (1, self.width - 2, 1, self.height - 2)
         self.rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         self.rounded_rectangle(cr, area, self.radius)
         # Draw Text on 2 lines
-        if self.text == 'None':
+        if self.text == "None":
             cr.set_source_rgb(0.5, 0.5, 0.5)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face('Monaco', cairo.FONT_SLANT_NORMAL,
-                            cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(self.font_size)
         # First line
         (x, y, w, h, dx, dy) = cr.text_extents(self.label[:6])
@@ -78,19 +75,19 @@ class FlashWidget(Gtk.Widget):
 
     def rounded_rectangle_fill(self, cr, area, radius):
         a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
-        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
-        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
-        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
+        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
+        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
+        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
         cr.close_path()
         cr.fill()
 
     def rounded_rectangle(self, cr, area, radius):
         a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
-        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
-        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
-        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
+        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
+        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
+        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
         cr.close_path()
         cr.stroke()
 
@@ -103,10 +100,12 @@ class FlashWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 

@@ -7,9 +7,19 @@ from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
 
 class Master(object):
-    def __init__(self, page, number, content_type, content_value, groups,
-                 chasers, channels=array.array('B', [0] * MAX_CHANNELS),
-                 exclude_record=True, text="", value=0.0):
+    def __init__(
+        self,
+        page,
+        number,
+        content_type,
+        content_value,
+        groups,
+        chasers,
+        channels=array.array("B", [0] * MAX_CHANNELS),
+        exclude_record=True,
+        text="",
+        value=0.0,
+    ):
         self.page = page
         self.number = number
         self.content_type = int(content_type)
@@ -20,7 +30,7 @@ class Master(object):
         self.chasers = chasers
         self.channels = channels
         # To store DMX values of the master
-        self.dmx = array.array('B', [0] * MAX_CHANNELS)
+        self.dmx = array.array("B", [0] * MAX_CHANNELS)
         self.value = value
         self.old_value = 0
 
@@ -36,10 +46,10 @@ class Master(object):
                     self.text = mem.text
         # Type 2 : Channels
         elif self.content_type == 2:
-            self.text += 'Ch'
+            self.text += "Ch"
             for channel, level in enumerate(self.channels):
                 if level:
-                    self.text += ' ' + str(channel + 1)
+                    self.text += " " + str(channel + 1)
         # Type 3 : Chaser
         elif self.content_type == 3:
             for chaser in self.chasers:
@@ -55,7 +65,7 @@ class Master(object):
 
     def level_changed(self):
 
-        self.percent_view = self.app.settings.get_boolean('percent')
+        self.percent_view = self.app.settings.get_boolean("percent")
 
         # Type : None
         if self.content_type == 0:
@@ -83,8 +93,7 @@ class Master(object):
                                 if self.value == 0:
                                     level = 0
                                 else:
-                                    level = int(round(level /
-                                                      (255 / self.value)))
+                                    level = int(round(level / (255 / self.value)))
                                 self.dmx[channel - 1] = level
 
         # Master type is Channels
@@ -108,17 +117,18 @@ class Master(object):
                             # If Output patched
                             channel = self.app.patch.outputs[univ][output][0]
                             if channel:
-                                if group.channels[channel-1] != 0:
+                                if group.channels[channel - 1] != 0:
                                     # Get level saved in group
-                                    level_group = group.channels[channel-1]
+                                    level_group = group.channels[channel - 1]
                                     # Level calculation
                                     if self.value == 0:
                                         level = 0
                                     else:
-                                        level = int(round(level_group /
-                                                          (255 / self.value)))
+                                        level = int(
+                                            round(level_group / (255 / self.value))
+                                        )
                                     # Update level in master array
-                                    self.dmx[channel-1] = level
+                                    self.dmx[channel - 1] = level
 
         # Master type is Chaser
         elif self.content_type == 3:
@@ -134,16 +144,14 @@ class Master(object):
                             if self.value and chaser.run is False:
                                 # Start Chaser
                                 self.app.chasers[k].run = True
-                                self.app.chasers[k].thread = (
-                                    ThreadChaser(self.app, self, k,
-                                                 self.value,
-                                                 self.percent_view))
+                                self.app.chasers[k].thread = ThreadChaser(
+                                    self.app, self, k, self.value, self.percent_view
+                                )
                                 self.app.chasers[k].thread.start()
                             # Si il tournait déjà et master > 0
                             elif self.value and chaser.run is True:
                                 # Update Max Level
-                                self.app.chasers[k].thread.level_scale = (
-                                    self.value)
+                                self.app.chasers[k].thread.level_scale = self.value
                             # Si il tournait et que le master passe à 0
                             elif self.value == 0 and chaser.run is True:
                                 # Stop Chaser
@@ -154,8 +162,7 @@ class Master(object):
 
 
 class ThreadChaser(threading.Thread):
-    def __init__(self, app, master, chaser, level_scale,
-                 percent_view, name=''):
+    def __init__(self, app, master, chaser, level_scale, percent_view, name=""):
         threading.Thread.__init__(self)
         self.app = app
         self.master = master
@@ -170,10 +177,9 @@ class ThreadChaser(threading.Thread):
 
         while self.app.chasers[self.chaser].run:
             # On récupère les temps du pas suivant
-            if position != self.app.chasers[self.chaser].last-1:
-                t_in = self.app.chasers[self.chaser].steps[position+1].time_in
-                t_out = (
-                    self.app.chasers[self.chaser].steps[position+1].time_out)
+            if position != self.app.chasers[self.chaser].last - 1:
+                t_in = self.app.chasers[self.chaser].steps[position + 1].time_in
+                t_out = self.app.chasers[self.chaser].steps[position + 1].time_out
             else:
                 t_in = self.app.chasers[self.chaser].steps[1].time_in
                 t_out = self.app.chasers[self.chaser].steps[1].time_out
@@ -208,7 +214,7 @@ class ThreadChaser(threading.Thread):
 
     def update_levels(self, delay, delay_in, delay_out, i, position):
 
-        self.percent_view = self.app.settings.get_boolean('percent')
+        self.percent_view = self.app.settings.get_boolean("percent")
 
         for universe in range(NB_UNIVERSES):
             for output in range(512):
@@ -216,35 +222,51 @@ class ThreadChaser(threading.Thread):
                 channel = self.app.patch.outputs[universe][output][0]
 
                 # On ne modifie que les channels présents dans le chaser
-                if self.app.chasers[self.chaser].channels[channel-1] != 0:
+                if self.app.chasers[self.chaser].channels[channel - 1] != 0:
                     # Niveau duquel on part
-                    old_level = self.app.chasers[self.chaser].steps[position].cue.channels[channel-1]
+                    old_level = (
+                        self.app.chasers[self.chaser]
+                        .steps[position]
+                        .cue.channels[channel - 1]
+                    )
                     # Niveau dans le sequentiel
-                    seq_level = self.app.sequence.steps[self.app.sequence.position].cue.channels[channel-1]
+                    seq_level = self.app.sequence.steps[
+                        self.app.sequence.position
+                    ].cue.channels[channel - 1]
 
                     if old_level < seq_level:
                         old_level = seq_level
 
                     # On boucle sur les mémoires et on revient au premier pas
-                    if position < self.app.chasers[self.chaser].last-1:
-                        next_level = self.app.chasers[self.chaser].steps[position+1].cue.channels[channel-1]
+                    if position < self.app.chasers[self.chaser].last - 1:
+                        next_level = (
+                            self.app.chasers[self.chaser]
+                            .steps[position + 1]
+                            .cue.channels[channel - 1]
+                        )
                         if next_level < seq_level:
                             next_level = seq_level
                     else:
-                        next_level = self.app.chasers[self.chaser].steps[1].cue.channels[channel-1]
+                        next_level = (
+                            self.app.chasers[self.chaser]
+                            .steps[1]
+                            .cue.channels[channel - 1]
+                        )
                         if next_level < seq_level:
                             next_level = seq_level
                         self.app.chasers[self.chaser].position = 1
 
                     # Si le level augmente, on prend le temps de montée
                     if next_level > old_level and i < delay_in:
-                        level = int(((next_level - old_level+1) /
-                                     delay_in) * i) + old_level
+                        level = (
+                            int(((next_level - old_level + 1) / delay_in) * i)
+                            + old_level
+                        )
                     # si le level descend, on prend le temps de descente
                     elif next_level < old_level and i < delay_out:
-                        level = old_level - abs(int(((next_level -
-                                                      old_level-1) /
-                                                     delay_out) * i))
+                        level = old_level - abs(
+                            int(((next_level - old_level - 1) / delay_out) * i)
+                        )
                     # sinon, la valeur est déjà bonne
                     else:
                         level = next_level
@@ -256,4 +278,4 @@ class ThreadChaser(threading.Thread):
 
                     # Mise à jour de la valeur des masters
                     # self.app.dmx.masters[channel-1] = level
-                    self.master.dmx[channel-1] = level
+                    self.master.dmx[channel - 1] = level

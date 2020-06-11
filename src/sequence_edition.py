@@ -16,7 +16,7 @@ class SequenceTab(Gtk.Grid):
         self.last_chan_selected = ""
 
         # To stock user modification on channels
-        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
+        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
@@ -25,18 +25,21 @@ class SequenceTab(Gtk.Grid):
         # List of Sequences
         self.liststore1 = Gtk.ListStore(int, str, str)
 
-        self.liststore1.append([self.app.sequence.index,
-                               self.app.sequence.type_seq,
-                               self.app.sequence.text])
+        self.liststore1.append(
+            [
+                self.app.sequence.index,
+                self.app.sequence.type_seq,
+                self.app.sequence.text,
+            ]
+        )
 
         for chaser in self.app.chasers:
-            self.liststore1.append([chaser.index, chaser.type_seq,
-                                   chaser.text])
+            self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
         selection = self.treeview1.get_selection()
-        selection.connect('changed', self.on_sequence_changed)
+        selection.connect("changed", self.on_sequence_changed)
 
         for i, column_title in enumerate(["Seq", "Type", "Name"]):
             renderer = Gtk.CellRendererText()
@@ -50,8 +53,7 @@ class SequenceTab(Gtk.Grid):
         self.paned.set_position(300)
 
         self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER,
-                                 Gtk.PolicyType.AUTOMATIC)
+        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         # Channels in the selected cue
         self.flowbox = Gtk.FlowBox()
@@ -62,14 +64,13 @@ class SequenceTab(Gtk.Grid):
 
         self.channels = []
         for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i+1, 0, 0))
+            self.channels.append(ChannelWidget(i + 1, 0, 0))
             self.flowbox.add(self.channels[i])
 
         self.scrolled.add(self.flowbox)
         self.paned.add1(self.scrolled)
 
-        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str,
-                                        str, str)
+        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
         # Selected Sequence
         path, focus_column = self.treeview1.get_cursor()
@@ -118,11 +119,19 @@ class SequenceTab(Gtk.Grid):
                 channel_time = str(len(self.seq.steps[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
-                self.liststore2.append([str(i),
-                                        str(self.seq.steps[i].cue.memory),
-                                        self.seq.steps[i].text,
-                                        wait, d_out, t_out, d_in, t_in,
-                                        channel_time])
+                self.liststore2.append(
+                    [
+                        str(i),
+                        str(self.seq.steps[i].cue.memory),
+                        self.seq.steps[i].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                    ]
+                )
 
         self.filter2 = self.liststore2.filter_new()
         self.filter2.set_visible_func(self.filter_cue_func)
@@ -130,35 +139,45 @@ class SequenceTab(Gtk.Grid):
         self.treeview2 = Gtk.TreeView(model=self.filter2)
         self.treeview2.set_enable_search(False)
         # self.treeview2.set_activate_on_single_click(True)
-        self.treeview2.connect('cursor-changed', self.on_memory_changed)
-        self.treeview2.connect('row-activated', self.on_row_activated)
+        self.treeview2.connect("cursor-changed", self.on_memory_changed)
+        self.treeview2.connect("row-activated", self.on_row_activated)
 
         # Display selected sequence
-        for i, column_title in enumerate(["Step", "Memory", "Text", "Wait",
-                                          "Delay Out", "Out", "Delay In",
-                                          "In", "Channel Time"]):
+        for i, column_title in enumerate(
+            [
+                "Step",
+                "Memory",
+                "Text",
+                "Wait",
+                "Delay Out",
+                "Out",
+                "Delay In",
+                "In",
+                "Channel Time",
+            ]
+        ):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
             if i == 3:
-                renderer.set_property('editable', True)
-                renderer.connect('edited', self.wait_edited)
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.wait_edited)
             if i == 4:
-                renderer.set_property('editable', True)
-                renderer.connect('edited', self.delay_out_edited)
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.delay_out_edited)
             if i == 5:
-                renderer.set_property('editable', True)
-                renderer.connect('edited', self.out_edited)
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.out_edited)
             if i == 6:
-                renderer.set_property('editable', True)
-                renderer.connect('edited', self.delay_in_edited)
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.delay_in_edited)
             if i == 7:
-                renderer.set_property('editable', True)
-                renderer.connect('edited', self.in_edited)
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.in_edited)
             if i == 2:
-                renderer.set_property('editable', True)
-                renderer.connect('edited', self.text_edited)
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.text_edited)
 
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
 
@@ -176,8 +195,7 @@ class SequenceTab(Gtk.Grid):
 
         self.paned.add2(self.scrollable2)
 
-        self.attach_next_to(self.paned, self.treeview1,
-                            Gtk.PositionType.BOTTOM, 1, 1)
+        self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
         self.flowbox.set_filter_func(self.filter_func, None)
 
@@ -212,13 +230,13 @@ class SequenceTab(Gtk.Grid):
 
     def wait_edited(self, widget, path, text):
 
-        if text == '':
-            text = '0'
+        if text == "":
+            text = "0"
 
-        if text.replace('.', '', 1).isdigit():
+        if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = '0' + text
+                text = "0" + text
 
             if text == "0":
                 self.liststore2[path][3] = ""
@@ -241,27 +259,32 @@ class SequenceTab(Gtk.Grid):
             # Update Wait value
             self.seq.steps[step].wait = float(text)
             # Update Total Time
-            if ((self.seq.steps[step].time_in
-                 + self.seq.steps[step].delay_in)
-                    > (self.seq.steps[step].time_out
-                       + self.seq.steps[step].delay_out)):
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_in
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_in)
+            if (self.seq.steps[step].time_in + self.seq.steps[step].delay_in) > (
+                self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            ):
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_in
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_in
+                )
             else:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_out
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_out)
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_out
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_out
+                )
             for channel in self.seq.steps[step].channel_time.keys():
-                t = (self.seq.steps[step].channel_time[channel].delay
-                     + self.seq.steps[step].channel_time[channel].time
-                     + self.seq.steps[step].wait)
+                t = (
+                    self.seq.steps[step].channel_time[channel].delay
+                    + self.seq.steps[step].channel_time[channel].time
+                    + self.seq.steps[step].wait
+                )
                 if t > self.seq.steps[step].total_time:
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + '*')
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Sequential Tab
             if self.seq == self.app.sequence:
@@ -272,17 +295,19 @@ class SequenceTab(Gtk.Grid):
                 else:
                     self.app.window.cues_liststore1[path][3] = text
                     self.app.window.cues_liststore2[path][3] = text
-                if self.app.sequence.position+1 == step:
+                if self.app.sequence.position + 1 == step:
                     self.app.window.sequential.wait = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
                     self.app.window.sequential.queue_draw()
 
     def out_edited(self, widget, path, text):
 
-        if text.replace('.', '', 1).isdigit():
+        if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = '0' + text
+                text = "0" + text
 
             self.liststore2[path][5] = text
 
@@ -302,43 +327,52 @@ class SequenceTab(Gtk.Grid):
             # Update Time Out value
             self.seq.steps[step].time_out = float(text)
             # Update Total Time
-            if (self.seq.steps[step].time_in + self.seq.steps[step].delay_in >
-                    self.seq.steps[step].time_out
-                    + self.seq.steps[step].delay_out):
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_in
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_in)
+            if (
+                self.seq.steps[step].time_in + self.seq.steps[step].delay_in
+                > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            ):
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_in
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_in
+                )
             else:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_out
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_out)
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_out
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_out
+                )
             for channel in self.seq.steps[step].channel_time.keys():
-                t = (self.seq.steps[step].channel_time[channel].delay
-                     + self.seq.steps[step].channel_time[channel].time
-                     + self.seq.steps[step].wait)
+                t = (
+                    self.seq.steps[step].channel_time[channel].delay
+                    + self.seq.steps[step].channel_time[channel].time
+                    + self.seq.steps[step].wait
+                )
                 if t > self.seq.steps[step].total_time:
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + '*')
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
                 self.app.window.cues_liststore1[path][5] = text
                 self.app.window.cues_liststore2[path][5] = text
-                if self.app.sequence.position+1 == step:
+                if self.app.sequence.position + 1 == step:
                     self.app.window.sequential.time_out = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
                     self.app.window.sequential.queue_draw()
 
     def in_edited(self, widget, path, text):
 
-        if text.replace('.', '', 1).isdigit():
+        if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = '0' + text
+                text = "0" + text
 
             self.liststore2[path][7] = text
 
@@ -358,44 +392,55 @@ class SequenceTab(Gtk.Grid):
             # Update Time In value
             self.seq.steps[step].time_in = float(text)
             # Update Total Time
-            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_in
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_in)
+            if (
+                self.seq.steps[step].time_in + self.seq.steps[step].delay_in
+                > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            ):
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_in
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_in
+                )
             else:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_out
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_out)
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_out
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_out
+                )
             for channel in self.seq.steps[step].channel_time.keys():
-                t = (self.seq.steps[step].channel_time[channel].delay
-                     + self.seq.steps[step].channel_time[channel].time
-                     + self.seq.steps[step].wait)
+                t = (
+                    self.seq.steps[step].channel_time[channel].delay
+                    + self.seq.steps[step].channel_time[channel].time
+                    + self.seq.steps[step].wait
+                )
                 if t > self.seq.steps[step].total_time:
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + '*')
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Sequential Tab
             if self.seq == self.app.sequence:
                 path = str(int(path) + 1)
                 self.app.window.cues_liststore1[path][7] = text
                 self.app.window.cues_liststore2[path][7] = text
-                if self.app.sequence.position+1 == step:
+                if self.app.sequence.position + 1 == step:
                     self.app.window.sequential.time_in = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
                     self.app.window.sequential.queue_draw()
 
     def delay_out_edited(self, widget, path, text):
 
-        if text == '':
-            text = '0'
+        if text == "":
+            text = "0"
 
-        if text.replace('.', '', 1).isdigit():
+        if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = '0' + text
+                text = "0" + text
 
             if text == "0":
                 self.liststore2[path][4] = ""
@@ -418,24 +463,33 @@ class SequenceTab(Gtk.Grid):
             # Update Delay Out value
             self.seq.steps[step].delay_out = float(text)
             # Update Total Time
-            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_in
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_in)
+            if (
+                self.seq.steps[step].time_in + self.seq.steps[step].delay_in
+                > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            ):
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_in
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_in
+                )
             else:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_out
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_out)
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_out
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_out
+                )
             for channel in self.seq.steps[step].channel_time.keys():
-                t = (self.seq.steps[step].channel_time[channel].delay
-                     + self.seq.steps[step].channel_time[channel].time
-                     + self.seq.steps[step].wait)
+                t = (
+                    self.seq.steps[step].channel_time[channel].delay
+                    + self.seq.steps[step].channel_time[channel].time
+                    + self.seq.steps[step].wait
+                )
                 if t > self.seq.steps[step].total_time:
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + '*')
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Sequential Tab
             if self.seq == self.app.sequence:
@@ -446,20 +500,22 @@ class SequenceTab(Gtk.Grid):
                 else:
                     self.app.window.cues_liststore1[path][4] = text
                     self.app.window.cues_liststore2[path][4] = text
-                if self.app.sequence.position+1 == step:
+                if self.app.sequence.position + 1 == step:
                     self.app.window.sequential.delay_out = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
                     self.app.window.sequential.queue_draw()
 
     def delay_in_edited(self, widget, path, text):
 
-        if text == '':
-            text = '0'
+        if text == "":
+            text = "0"
 
-        if text.replace('.', '', 1).isdigit():
+        if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = '0' + text
+                text = "0" + text
 
             if text == "0":
                 self.liststore2[path][6] = ""
@@ -482,24 +538,33 @@ class SequenceTab(Gtk.Grid):
             # Update Delay Out value
             self.seq.steps[step].delay_in = float(text)
             # Update Total Time
-            if self.seq.steps[step].time_in + self.seq.steps[step].delay_in > self.seq.steps[step].time_out + self.seq.steps[step].delay_out:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_in
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_in)
+            if (
+                self.seq.steps[step].time_in + self.seq.steps[step].delay_in
+                > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            ):
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_in
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_in
+                )
             else:
-                self.seq.steps[step].total_time = (self.seq.steps[step].time_out
-                                                   + self.seq.steps[step].wait
-                                                   + self.seq.steps[step].delay_out)
+                self.seq.steps[step].total_time = (
+                    self.seq.steps[step].time_out
+                    + self.seq.steps[step].wait
+                    + self.seq.steps[step].delay_out
+                )
             for channel in self.seq.steps[step].channel_time.keys():
-                t = (self.seq.steps[step].channel_time[channel].delay
-                     + self.seq.steps[step].channel_time[channel].time
-                     + self.seq.steps[step].wait)
+                t = (
+                    self.seq.steps[step].channel_time[channel].delay
+                    + self.seq.steps[step].channel_time[channel].time
+                    + self.seq.steps[step].wait
+                )
                 if t > self.seq.steps[step].total_time:
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
             self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + '*')
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Sequential Tab
             if self.seq == self.app.sequence:
@@ -510,9 +575,11 @@ class SequenceTab(Gtk.Grid):
                 else:
                     self.app.window.cues_liststore1[path][6] = text
                     self.app.window.cues_liststore2[path][6] = text
-                if self.app.sequence.position+1 == step:
+                if self.app.sequence.position + 1 == step:
                     self.app.window.sequential.delay_in = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[step].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
                     self.app.window.sequential.queue_draw()
 
     def text_edited(self, widget, path, text):
@@ -537,7 +604,7 @@ class SequenceTab(Gtk.Grid):
 
         # Tag filename as modified
         self.app.ascii.modified = True
-        self.app.window.header.set_title(self.app.ascii.basename + '*')
+        self.app.window.header.set_title(self.app.ascii.basename + "*")
 
         # Update Main Playback
         if self.seq == self.app.sequence:
@@ -547,20 +614,29 @@ class SequenceTab(Gtk.Grid):
 
             # Update window's subtitle if needed
             if self.app.sequence.position == step:
-                subtitle = ('Mem. : ' + str(self.seq.steps[step].cue.memory)
-                            + ' '
-                            + self.seq.steps[step].text + ' - Next Mem. : '
-                            + str(self.seq.steps[step + 1].cue.memory) + ' '
-                            + self.seq.steps[step + 1].text)
+                subtitle = (
+                    "Mem. : "
+                    + str(self.seq.steps[step].cue.memory)
+                    + " "
+                    + self.seq.steps[step].text
+                    + " - Next Mem. : "
+                    + str(self.seq.steps[step + 1].cue.memory)
+                    + " "
+                    + self.seq.steps[step + 1].text
+                )
                 self.app.window.header.set_subtitle(subtitle)
 
             if self.app.sequence.position + 1 == step:
-                subtitle = ('Mem. : '
-                            + str(self.seq.steps[step - 1].cue.memory)
-                            + ' ' + self.seq.steps[step - 1].text
-                            + ' - Next Mem. : '
-                            + str(self.seq.steps[step].cue.memory)
-                            + ' ' + self.seq.steps[step].text)
+                subtitle = (
+                    "Mem. : "
+                    + str(self.seq.steps[step - 1].cue.memory)
+                    + " "
+                    + self.seq.steps[step - 1].text
+                    + " - Next Mem. : "
+                    + str(self.seq.steps[step].cue.memory)
+                    + " "
+                    + self.seq.steps[step].text
+                )
                 self.app.window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, treeview):
@@ -629,8 +705,7 @@ class SequenceTab(Gtk.Grid):
 
         # TODO: voir pourquoi clear declanche un scan de toute la liststore
         # self.liststore2.clear()
-        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str,
-                                        str, str)
+        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
         model, treeiter = selection.get_selected()
 
@@ -677,11 +752,19 @@ class SequenceTab(Gtk.Grid):
                     channel_time = str(len(self.seq.steps[i].channel_time))
                     if channel_time == "0":
                         channel_time = ""
-                    self.liststore2.append([str(i),
-                                            str(self.seq.steps[i].cue.memory),
-                                            self.seq.steps[i].text,
-                                            wait, d_out, t_out, d_in, t_in,
-                                            channel_time])
+                    self.liststore2.append(
+                        [
+                            str(i),
+                            str(self.seq.steps[i].cue.memory),
+                            self.seq.steps[i].text,
+                            wait,
+                            d_out,
+                            t_out,
+                            d_in,
+                            t_in,
+                            channel_time,
+                        ]
+                    )
             else:
                 for i in range(self.seq.last)[1:]:
                     if self.seq.steps[i].wait.is_integer():
@@ -713,11 +796,19 @@ class SequenceTab(Gtk.Grid):
                     channel_time = str(len(self.seq.steps[i].channel_time))
                     if channel_time == "0":
                         channel_time = ""
-                    self.liststore2.append([str(i),
-                                            str(self.seq.steps[i].cue.memory),
-                                            self.seq.steps[i].text,
-                                            wait, d_out, t_out, d_in, t_in,
-                                            channel_time])
+                    self.liststore2.append(
+                        [
+                            str(i),
+                            str(self.seq.steps[i].cue.memory),
+                            self.seq.steps[i].text,
+                            wait,
+                            d_out,
+                            t_out,
+                            d_in,
+                            t_in,
+                            channel_time,
+                        ]
+                    )
 
             self.treeview2.set_model(self.liststore2)
             path = Gtk.TreePath.new_first()
@@ -743,28 +834,41 @@ class SequenceTab(Gtk.Grid):
 
         keyname = Gdk.keyval_name(event.keyval)
 
-        if (keyname == '1' or keyname == '2' or keyname == '3'
-                or keyname == '4' or keyname == '5' or keyname == '6'
-                or keyname == '7' or keyname == '8' or keyname == '9'
-                or keyname == '0'):
+        if (
+            keyname == "1"
+            or keyname == "2"
+            or keyname == "3"
+            or keyname == "4"
+            or keyname == "5"
+            or keyname == "6"
+            or keyname == "7"
+            or keyname == "8"
+            or keyname == "9"
+            or keyname == "0"
+        ):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id,
-                                           self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-        if (keyname == 'KP_1' or keyname == 'KP_2' or keyname == 'KP_3'
-                or keyname == 'KP_4' or keyname == 'KP_5' or keyname == 'KP_6'
-                or keyname == 'KP_7' or keyname == 'KP_8' or keyname == 'KP_9'
-                or keyname == 'KP_0'):
+        if (
+            keyname == "KP_1"
+            or keyname == "KP_2"
+            or keyname == "KP_3"
+            or keyname == "KP_4"
+            or keyname == "KP_5"
+            or keyname == "KP_6"
+            or keyname == "KP_7"
+            or keyname == "KP_8"
+            or keyname == "KP_9"
+            or keyname == "KP_0"
+        ):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id,
-                                           self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-        if keyname == 'period':
-            self.keystring += '.'
-            self.app.window.statusbar.push(self.app.window.context_id,
-                                           self.keystring)
+        if keyname == "period":
+            self.keystring += "."
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-        func = getattr(self, 'keypress_' + keyname, None)
+        func = getattr(self, "keypress_" + keyname, None)
         if func:
             return func()
 
@@ -776,8 +880,7 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_Q(self):
         """ Cycle Sequences """
@@ -792,13 +895,13 @@ class SequenceTab(Gtk.Grid):
         path = Gtk.TreePath.new_first()
         self.treeview2.set_cursor(path)
         # Reset user modifications
-        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
+        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
     def keypress_q(self):
         """ Prev Memory """
 
         # Reset user modifications
-        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
+        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         path, focus_column = self.treeview2.get_cursor()
         if path:
@@ -812,7 +915,7 @@ class SequenceTab(Gtk.Grid):
         """ Next Memory """
 
         # Reset user modifications
-        self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
+        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         path, focus_column = self.treeview2.get_cursor()
         if path:
@@ -879,8 +982,7 @@ class SequenceTab(Gtk.Grid):
             self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -897,8 +999,7 @@ class SequenceTab(Gtk.Grid):
         if self.last_chan_selected:
             to_chan = int(self.keystring)
             if to_chan > int(self.last_chan_selected):
-                for channel in range(int(self.last_chan_selected) - 1,
-                                     to_chan):
+                for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     # Only patched channels
                     if self.app.patch.channels[channel][0] != [0, 0]:
                         self.channels[channel].clicked = True
@@ -907,8 +1008,7 @@ class SequenceTab(Gtk.Grid):
                         self.flowbox.select_child(child)
                 self.flowbox.invalidate_filter()
             else:
-                for channel in range(to_chan - 1,
-                                     int(self.last_chan_selected)):
+                for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     # Only patched channels
                     if self.app.patch.channels[channel][0] != [0, 0]:
                         self.channels[channel].clicked = True
@@ -918,8 +1018,7 @@ class SequenceTab(Gtk.Grid):
                 self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_plus(self):
         """ Channel + """
@@ -928,8 +1027,11 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if (channel >= 0 and channel < MAX_CHANNELS
-                and self.app.patch.channels[channel][0] != [0, 0]):
+        if (
+            channel >= 0
+            and channel < MAX_CHANNELS
+            and self.app.patch.channels[channel][0] != [0, 0]
+        ):
             self.channels[channel].clicked = True
             self.flowbox.invalidate_filter()
 
@@ -939,8 +1041,7 @@ class SequenceTab(Gtk.Grid):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_minus(self):
         """ Channel - """
@@ -949,8 +1050,11 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if (channel >= 0 and channel < MAX_CHANNELS
-                and self.app.patch.channels[channel][0] != [0, 0]):
+        if (
+            channel >= 0
+            and channel < MAX_CHANNELS
+            and self.app.patch.channels[channel][0] != [0, 0]
+        ):
             self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 
@@ -960,13 +1064,12 @@ class SequenceTab(Gtk.Grid):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_equal(self):
         """ @ Level """
         level = int(self.keystring)
-        if Gio.Application.get_default().settings.get_boolean('percent'):
+        if Gio.Application.get_default().settings.get_boolean("percent"):
             if level >= 0 and level <= 100:
                 level = int(round((level / 100) * 255))
             else:
@@ -987,13 +1090,12 @@ class SequenceTab(Gtk.Grid):
                         self.user_channels[channel] = level
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_colon(self):
         """ Level - % """
 
-        lvl = Gio.Application.get_default().settings.get_int('percent-level')
+        lvl = Gio.Application.get_default().settings.get_int("percent-level")
 
         sel = self.flowbox.get_selected_children()
 
@@ -1018,7 +1120,7 @@ class SequenceTab(Gtk.Grid):
     def keypress_exclam(self):
         """ Level + % """
 
-        lvl = Gio.Application.get_default().settings.get_int('percent-level')
+        lvl = Gio.Application.get_default().settings.get_int("percent-level")
 
         sel = self.flowbox.get_selected_children()
 
@@ -1076,14 +1178,17 @@ class SequenceTab(Gtk.Grid):
 
                     # Tag filename as modified
                     self.app.ascii.modified = True
-                    self.app.window.header.set_title(self.app.ascii.basename
-                                                     + "*")
+                    self.app.window.header.set_title(self.app.ascii.basename + "*")
 
                     # Update Main playback display
                     if self.seq == self.app.sequence:
                         if step == self.app.sequence.position + 1:
                             for channel in range(MAX_CHANNELS):
-                                self.app.window.channels[channel].next_level = self.seq.steps[step].cue.channels[channel]
+                                self.app.window.channels[
+                                    channel
+                                ].next_level = self.seq.steps[step].cue.channels[
+                                    channel
+                                ]
                                 self.app.window.channels[channel].queue_draw()
 
                 elif response == Gtk.ResponseType.CANCEL:
@@ -1092,7 +1197,7 @@ class SequenceTab(Gtk.Grid):
                 dialog.destroy()
 
                 # Reset user modifications
-                self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
+                self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
     def keypress_N(self):
         """ New Chaser """
@@ -1105,18 +1210,20 @@ class SequenceTab(Gtk.Grid):
             index_seq = 2
 
         # Create Chaser
-        self.app.chasers.append(Sequence(index_seq,
-                                         self.app.patch,
-                                         type_seq="Chaser"))
+        self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq="Chaser"))
 
         # Update List of sequences
-        self.liststore1.append([self.app.chasers[-1].index,
-                                self.app.chasers[-1].type_seq,
-                                self.app.chasers[-1].text])
+        self.liststore1.append(
+            [
+                self.app.chasers[-1].index,
+                self.app.chasers[-1].type_seq,
+                self.app.chasers[-1].text,
+            ]
+        )
 
         # Tag filename as modified
         self.app.ascii.modified = True
-        self.app.window.header.set_title(self.app.ascii.basename + '*')
+        self.app.window.header.set_title(self.app.ascii.basename + "*")
 
     def keypress_R(self):
         """ New Cue """
@@ -1147,8 +1254,7 @@ class SequenceTab(Gtk.Grid):
 
                         # Tag filename as modified
                         self.app.ascii.modified = True
-                        self.app.window.header.set_title(self.app.ascii.basename
-                                                         + '*')
+                        self.app.window.header.set_title(self.app.ascii.basename + "*")
 
                         # Select memory modified
                         path = Gtk.TreePath.new_from_indices([i - 1])
@@ -1158,7 +1264,9 @@ class SequenceTab(Gtk.Grid):
                         if self.seq == self.app.sequence:
                             if i == self.app.sequence.position + 1:
                                 for channel in range(MAX_CHANNELS):
-                                    self.app.window.channels[channel].next_level = step.cue.channels[channel]
+                                    self.app.window.channels[
+                                        channel
+                                    ].next_level = step.cue.channels[channel]
                                     self.app.window.channels[channel].queue_draw()
 
                     elif response == Gtk.ResponseType.CANCEL:
@@ -1168,18 +1276,17 @@ class SequenceTab(Gtk.Grid):
 
                     # Tag filename as modified
                     self.app.ascii.modified = True
-                    self.app.window.header.set_title(self.app.ascii.basename
-                                                     + '*')
+                    self.app.window.header.set_title(self.app.ascii.basename + "*")
 
                     self.keystring = ""
-                    self.app.window.statusbar.push(self.app.window.context_id,
-                                                   self.keystring)
+                    self.app.window.statusbar.push(
+                        self.app.window.context_id, self.keystring
+                    )
 
                     return
 
             self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id,
-                                           self.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
         # Find the selected sequence
         path, focus_column = self.treeview1.get_cursor()
@@ -1220,7 +1327,7 @@ class SequenceTab(Gtk.Grid):
                     index = self.seq.steps[-1].index + 1
                     memory = float(self.seq.steps[-1].cue.memory) + 1
 
-            channels = array.array('B', [0] * MAX_CHANNELS)
+            channels = array.array("B", [0] * MAX_CHANNELS)
             for channel in range(MAX_CHANNELS):
                 channels[channel] = self.channels[channel].level
 
@@ -1234,7 +1341,7 @@ class SequenceTab(Gtk.Grid):
 
             # Tag filename as modified
             self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + '*')
+            self.app.window.header.set_title(self.app.ascii.basename + "*")
 
             # Update Main Playback
             if self.seq.index == 1:
@@ -1251,8 +1358,8 @@ class SequenceTab(Gtk.Grid):
                     t_out = str(self.seq.steps[index].time_out)
                 if self.seq.steps[index].delay_out.is_integer():
                     d_out = str(int(self.seq.steps[index].delay_out))
-                    if d_out == '0':
-                        d_out = ''
+                    if d_out == "0":
+                        d_out = ""
                 else:
                     d_out = str(self.seq.steps[index].delay_out)
                 if self.seq.steps[index].time_in.is_integer():
@@ -1261,20 +1368,28 @@ class SequenceTab(Gtk.Grid):
                     t_in = str(self.seq.steps[index].time_in)
                 if self.seq.steps[index].delay_in.is_integer():
                     d_in = str(int(self.seq.steps[index].delay_in))
-                    if d_in == '0':
-                        d_in = ''
+                    if d_in == "0":
+                        d_in = ""
                 else:
                     d_in = str(self.seq.steps[index].delay_in)
                 channel_time = str(len(self.seq.steps[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
-                self.liststore2.insert(index - 1,
-                                       [str(index),
-                                        str(self.seq.steps[index].cue.memory),
-                                        self.seq.steps[index].text, wait,
-                                        d_out, t_out, d_in, t_in,
-                                        channel_time])
+                self.liststore2.insert(
+                    index - 1,
+                    [
+                        str(index),
+                        str(self.seq.steps[index].cue.memory),
+                        self.seq.steps[index].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                    ],
+                )
 
                 # Update indexes of cues in listsore
                 for i in range(index, self.seq.last - 2):
@@ -1300,8 +1415,8 @@ class SequenceTab(Gtk.Grid):
                     t_out = str(self.seq.steps[index].time_out)
                 if self.seq.steps[index].delay_out.is_integer():
                     d_out = str(int(self.seq.steps[index].delay_out))
-                    if d_out == '0':
-                        d_out = ''
+                    if d_out == "0":
+                        d_out = ""
                 else:
                     d_out = str(self.seq.steps[index].delay_out)
                 if self.seq.steps[index].time_in.is_integer():
@@ -1310,42 +1425,63 @@ class SequenceTab(Gtk.Grid):
                     t_in = str(self.seq.steps[index].time_in)
                 if self.seq.steps[index].delay_in.is_integer():
                     d_in = str(int(self.seq.steps[index].delay_in))
-                    if d_in == '0':
-                        d_in = ''
+                    if d_in == "0":
+                        d_in = ""
                 else:
                     d_in = str(self.seq.steps[index].delay_in)
                 channel_time = str(len(self.seq.steps[index].channel_time))
                 if channel_time == "0":
                     channel_time = ""
 
-                self.app.window.cues_liststore1.insert(index,
-                                                       [str(index),
-                                                        str(self.seq.steps[index].cue.memory),
-                                                        self.seq.steps[index].text,
-                                                        wait, d_out, t_out,
-                                                        d_in, t_in,
-                                                        channel_time, bg,
-                                                        Pango.Weight.NORMAL,
-                                                        42])
-                self.app.window.cues_liststore2.insert(index,
-                                                       [str(index),
-                                                        str(self.seq.steps[index].cue.memory),
-                                                        self.seq.steps[index].text,
-                                                        wait, d_out, t_out,
-                                                        d_in, t_in,
-                                                        channel_time])
+                self.app.window.cues_liststore1.insert(
+                    index,
+                    [
+                        str(index),
+                        str(self.seq.steps[index].cue.memory),
+                        self.seq.steps[index].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                        bg,
+                        Pango.Weight.NORMAL,
+                        42,
+                    ],
+                )
+                self.app.window.cues_liststore2.insert(
+                    index,
+                    [
+                        str(index),
+                        str(self.seq.steps[index].cue.memory),
+                        self.seq.steps[index].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                    ],
+                )
 
                 # Update indexes of cues in listsore
                 for i in range(index + 1, self.seq.last):
-                    self.app.window.cues_liststore1[i][0] = str(int(self.app.window.cues_liststore1[i][0]) + 1)
-                    self.app.window.cues_liststore2[i][0] = str(int(self.app.window.cues_liststore2[i][0]) + 1)
+                    self.app.window.cues_liststore1[i][0] = str(
+                        int(self.app.window.cues_liststore1[i][0]) + 1
+                    )
+                    self.app.window.cues_liststore2[i][0] = str(
+                        int(self.app.window.cues_liststore2[i][0]) + 1
+                    )
 
                 # Update Crossfade
                 if self.app.sequence.position + 1 == index:
                     self.app.window.sequential.time_in = self.seq.steps[index].time_in
                     self.app.window.sequential.time_out = self.seq.steps[index].time_out
                     self.app.window.sequential.wait = self.seq.steps[index].wait
-                    self.app.window.sequential.total_time = self.seq.steps[index].total_time
+                    self.app.window.sequential.total_time = self.seq.steps[
+                        index
+                    ].total_time
                     self.app.window.sequential.queue_draw()
 
             else:
@@ -1369,11 +1505,18 @@ class SequenceTab(Gtk.Grid):
                 if channel_time == "0":
                     channel_time = ""
 
-                self.liststore2.insert(index - 1,
-                                       [str(index),
-                                        str(self.seq.steps[index].cue.memory),
-                                        self.seq.steps[index].text, wait,
-                                        t_out, t_in, channel_time])
+                self.liststore2.insert(
+                    index - 1,
+                    [
+                        str(index),
+                        str(self.seq.steps[index].cue.memory),
+                        self.seq.steps[index].text,
+                        wait,
+                        t_out,
+                        t_in,
+                        channel_time,
+                    ],
+                )
 
                 # Update indexes of cues in listsore
                 for i in range(index, self.seq.last - 1):
@@ -1384,15 +1527,23 @@ class SequenceTab(Gtk.Grid):
                 self.treeview2.set_cursor(path, None, False)
 
             # Reset user modifications
-            self.user_channels = array.array('h', [-1] * MAX_CHANNELS)
+            self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
 
 class Dialog(Gtk.Dialog):
-
     def __init__(self, parent, memory):
-        Gtk.Dialog.__init__(self, "Confirmation", parent, 0,
-                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                             Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        Gtk.Dialog.__init__(
+            self,
+            "Confirmation",
+            parent,
+            0,
+            (
+                Gtk.STOCK_CANCEL,
+                Gtk.ResponseType.CANCEL,
+                Gtk.STOCK_OK,
+                Gtk.ResponseType.OK,
+            ),
+        )
 
         self.set_default_size(150, 100)
 

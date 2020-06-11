@@ -10,7 +10,6 @@ from olc.widgets_GM import GMWidget
 
 
 class Window(Gtk.ApplicationWindow):
-
     def __init__(self, app, patch):
 
         self.app = app
@@ -20,11 +19,13 @@ class Window(Gtk.ApplicationWindow):
         # 1 : all channels
         self.view_type = 0
 
-        self.percent_level = Gio.Application.get_default().settings.get_boolean('percent')
+        self.percent_level = Gio.Application.get_default().settings.get_boolean(
+            "percent"
+        )
 
         Gtk.Window.__init__(self, title="Open Lighting Console", application=app)
         self.set_default_size(1400, 1200)
-        self.set_name('olc')
+        self.set_name("olc")
 
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
         self.header.set_subtitle("Fonctionne avec ola")
@@ -71,7 +72,7 @@ class Window(Gtk.ApplicationWindow):
         self.channels = []
 
         for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i+1, 0, 0))
+            self.channels.append(ChannelWidget(i + 1, 0, 0))
             self.flowbox.add(self.channels[i])
 
         self.scrolled.add(self.flowbox)
@@ -84,8 +85,7 @@ class Window(Gtk.ApplicationWindow):
         self.grid = Gtk.Grid()
         label = Gtk.Label("Saisie clavier : ")
         self.grid.add(label)
-        self.grid.attach_next_to(self.statusbar, label,
-                                 Gtk.PositionType.RIGHT, 1, 1)
+        self.grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
         self.paned.add2(self.grid)
 
         self.paned2 = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -98,10 +98,12 @@ class Window(Gtk.ApplicationWindow):
         # Sequential part of the window
 
         # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str,
-                                             str, str, str, int, int)
-        self.cues_liststore2 = Gtk.ListStore(str, str, str, str, str, str, str,
-                                             str, str)
+        self.cues_liststore1 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str, str, int, int
+        )
+        self.cues_liststore2 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str
+        )
 
         if self.seq.last > 1:
             position = self.seq.position
@@ -123,13 +125,16 @@ class Window(Gtk.ApplicationWindow):
             channel_time = {}
 
         # Crossfade widget
-        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out,
-                                           t_wait, channel_time)
+        self.sequential = SequentialWidget(
+            t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
+        )
 
-        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
-                                     '#232729', 0, 0])
-        self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
-                                     '#232729', 0, 1])
+        self.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+        )
+        self.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+        )
 
         for i in range(self.app.sequence.last):
             if self.seq.steps[i].wait.is_integer():
@@ -159,25 +164,57 @@ class Window(Gtk.ApplicationWindow):
                 channel_time = ""
             bg = "#232729"
             if i == 0 or i == self.app.sequence.last - 1:
-                self.cues_liststore1.append([str(i), '', '', '', '', '', '',
-                                             '', '', bg, Pango.Weight.NORMAL,
-                                             42])
+                self.cues_liststore1.append(
+                    [
+                        str(i),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        bg,
+                        Pango.Weight.NORMAL,
+                        42,
+                    ]
+                )
             else:
-                self.cues_liststore1.append([str(i),
-                                             str(self.seq.steps[i].cue.memory),
-                                             self.seq.steps[i].text,
-                                             wait, d_out, t_out, d_in, t_in,
-                                             channel_time, bg,
-                                             Pango.Weight.NORMAL, 42])
-            self.cues_liststore2.append([str(i),
-                                         str(self.seq.steps[i].cue.memory),
-                                         self.seq.steps[i].text,
-                                         wait, d_out, t_out, d_in, t_in,
-                                         channel_time])
+                self.cues_liststore1.append(
+                    [
+                        str(i),
+                        str(self.seq.steps[i].cue.memory),
+                        self.seq.steps[i].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                        bg,
+                        Pango.Weight.NORMAL,
+                        42,
+                    ]
+                )
+            self.cues_liststore2.append(
+                [
+                    str(i),
+                    str(self.seq.steps[i].cue.memory),
+                    self.seq.steps[i].text,
+                    wait,
+                    d_out,
+                    t_out,
+                    d_in,
+                    t_in,
+                    channel_time,
+                ]
+            )
 
         if self.app.sequence.last == 1:
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
-                                         '#232729', 0, 1])
+            self.cues_liststore1.append(
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+            )
 
         # Filter for the first part of the cue list
         self.step_filter1 = self.cues_liststore1.filter_new()
@@ -187,15 +224,26 @@ class Window(Gtk.ApplicationWindow):
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait",
-                                          "Delay Out", "Out", "Delay In", "In",
-                                          "Channel Time"]):
+        for i, column_title in enumerate(
+            [
+                "Pas",
+                "Mémoire",
+                "Texte",
+                "Wait",
+                "Delay Out",
+                "Out",
+                "Delay In",
+                "In",
+                "Channel Time",
+            ]
+        ):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i,
-                                        background=9, weight=10)
+            column = Gtk.TreeViewColumn(
+                column_title, renderer, text=i, background=9, weight=10
+            )
             if i == 2:
                 column.set_min_width(600)
                 column.set_resizable(True)
@@ -209,9 +257,19 @@ class Window(Gtk.ApplicationWindow):
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(["Pas", "Mémoire", "Texte", "Wait",
-                                          "Delay Out", "Out", "Delay In", "In",
-                                          "Channel Time"]):
+        for i, column_title in enumerate(
+            [
+                "Pas",
+                "Mémoire",
+                "Texte",
+                "Wait",
+                "Delay Out",
+                "Out",
+                "Delay In",
+                "In",
+                "Channel Time",
+            ]
+        ):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
@@ -225,22 +283,23 @@ class Window(Gtk.ApplicationWindow):
         self.scrollable2 = Gtk.ScrolledWindow()
         self.scrollable2.set_vexpand(True)
         self.scrollable2.set_hexpand(True)
-        self.scrollable2.set_policy(Gtk.PolicyType.NEVER,
-                                    Gtk.PolicyType.EXTERNAL)
+        self.scrollable2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
         self.scrollable2.add(self.treeview2)
         # Put Cues lists and sequential in a grid
         self.seq_grid = Gtk.Grid()
         self.seq_grid.set_row_homogeneous(False)
         self.seq_grid.attach(self.treeview1, 0, 0, 1, 1)
-        self.seq_grid.attach_next_to(self.sequential, self.treeview1,
-                                     Gtk.PositionType.BOTTOM, 1, 1)
-        self.seq_grid.attach_next_to(self.scrollable2, self.sequential,
-                                     Gtk.PositionType.BOTTOM, 1, 1)
+        self.seq_grid.attach_next_to(
+            self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1
+        )
+        self.seq_grid.attach_next_to(
+            self.scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
+        )
 
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
 
-        self.notebook.append_page(self.seq_grid, Gtk.Label('Main Playback'))
+        self.notebook.append_page(self.seq_grid, Gtk.Label("Main Playback"))
 
         self.paned2.add2(self.notebook)
 
@@ -257,8 +316,9 @@ class Window(Gtk.ApplicationWindow):
         self.timeout_id = GObject.timeout_add(100, self.on_timeout, None)
 
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
-        GLib.unix_fd_add_full(0, self.app.sock.fileno(), GLib.IOCondition(27),
-                              self.app.on_fd_read, None)
+        GLib.unix_fd_add_full(
+            0, self.app.sock.fileno(), GLib.IOCondition(27), self.app.on_fd_read, None
+        )
 
         # TODO: Add Enttec wing playback support with Gio.SocketService
         # (and Gio.SocketListener.add_address)
@@ -285,102 +345,104 @@ class Window(Gtk.ApplicationWindow):
         GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
         """
         import socket
-        address = ('', 3330)
+
+        address = ("", 3330)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(address)
         self.fd = self.sock.fileno()
         # ch = GLib.IOChannel.unix_new(fd)
         # GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
-        GLib.unix_fd_add_full(0, self.fd, GLib.IOCondition.IN,
-                              self.incoming_connection_cb, None)
+        GLib.unix_fd_add_full(
+            0, self.fd, GLib.IOCondition.IN, self.incoming_connection_cb, None
+        )
 
-        self.connect('key_press_event', self.on_key_press_event)
-        self.connect('scroll-event', self.on_scroll)
+        self.connect("key_press_event", self.on_key_press_event)
+        self.connect("scroll-event", self.on_scroll)
 
-        self.set_icon_name('olc')
+        self.set_icon_name("olc")
 
     def incoming_connection_cb(self, fd, condition, data):
         # print(fd, condition, data)
         message = self.sock.recv(1024)
-        if message[0:4] == b'WODD':
+        if message[0:4] == b"WODD":
             print("Wing output data", message[0:4])
             print("Wing firmware :", message[4])
             print("Wing flags :", message[5])
 
             if message[6] & 16:
-                print('Go released')
+                print("Go released")
             else:
-                print('Go pressed')
+                print("Go pressed")
                 self.keypress_space()
             if message[6] & 32:
-                print('Back released')
+                print("Back released")
             else:
-                print('Back pressed')
+                print("Back pressed")
             if message[6] & 64:
-                print('PageDown released')
+                print("PageDown released")
             else:
-                print('PageDown pressed')
+                print("PageDown pressed")
             if message[6] & 128:
-                print('PageUp released')
+                print("PageUp released")
             else:
-                print('PageUp pressed')
+                print("PageUp pressed")
 
             if message[7] & 1:
-                print('Flash 10 (Key 39) released')
+                print("Flash 10 (Key 39) released")
             else:
-                print('Flash 10 (Key 39) pressed')
+                print("Flash 10 (Key 39) pressed")
             if message[7] & 2:
-                print('Flash 9 (Key 38) released')
+                print("Flash 9 (Key 38) released")
             else:
-                print('Flash 9 (Key 38) pressed')
+                print("Flash 9 (Key 38) pressed")
             if message[7] & 4:
-                print('Flash 8 (Key 37) released')
+                print("Flash 8 (Key 37) released")
             else:
-                print('Flash 8 (Key 37) pressed')
+                print("Flash 8 (Key 37) pressed")
             if message[7] & 8:
-                print('Flash 7 (Key 36) released')
+                print("Flash 7 (Key 36) released")
             else:
-                print('Flash 7 (Key 36) pressed')
+                print("Flash 7 (Key 36) pressed")
             if message[7] & 16:
-                print('Flash 6 (Key 35) released')
+                print("Flash 6 (Key 35) released")
             else:
-                print('Flash 6 (Key 35) pressed')
+                print("Flash 6 (Key 35) pressed")
             if message[7] & 32:
-                print('Flash 5 (Key 34) released')
+                print("Flash 5 (Key 34) released")
             else:
-                print('Flash 5 (Key 34) pressed')
+                print("Flash 5 (Key 34) pressed")
             if message[7] & 64:
-                print('Flash 4 (Key 33) released')
+                print("Flash 4 (Key 33) released")
             else:
-                print('Flash 4 (Key 33) pressed')
+                print("Flash 4 (Key 33) pressed")
             if message[7] & 128:
-                print('Flash 3 (Key 32) released')
+                print("Flash 3 (Key 32) released")
             else:
-                print('Flash 3 (Key 32) pressed')
+                print("Flash 3 (Key 32) pressed")
 
             if message[8] & 1:
-                print('Flash 2 (Key 31) released')
+                print("Flash 2 (Key 31) released")
             else:
-                print('Flash 2 (Key 31) pressed')
+                print("Flash 2 (Key 31) pressed")
             if message[8] & 2:
-                print('Flash 1 (Key 30) released')
+                print("Flash 1 (Key 30) released")
             else:
-                print('Flash 1 (Key 30) pressed')
+                print("Flash 1 (Key 30) pressed")
 
-            print('Fader 1', int(message[15]))
+            print("Fader 1", int(message[15]))
             self.app.masters[10].value = int(message[15])
             self.app.masters[10].level_changed()
-            print('Fader 2', message[16])
+            print("Fader 2", message[16])
             self.app.masters[0].value = int(message[16])
             self.app.masters[0].level_changed()
-            print('Fader 3', message[17])
-            print('Fader 4', message[18])
-            print('Fader 5', message[19])
-            print('Fader 6', message[20])
-            print('Fader 7', message[21])
-            print('Fader 8', message[22])
-            print('Fader 9', message[23])
-            print('Fader 10', message[24])
+            print("Fader 3", message[17])
+            print("Fader 4", message[18])
+            print("Fader 5", message[19])
+            print("Fader 6", message[20])
+            print("Fader 7", message[21])
+            print("Fader 8", message[22])
+            print("Fader 9", message[23])
+            print("Fader 10", message[24])
 
         return True
 
@@ -400,9 +462,11 @@ class Window(Gtk.ApplicationWindow):
                 return True
             if int(model[iter][11]) == 0:
                 return False
-            if (int(model[iter][0]) == 0
-                    or int(model[iter][0]) == 1
-                    or int(model[iter][0]) == 2):
+            if (
+                int(model[iter][0]) == 0
+                or int(model[iter][0]) == 1
+                or int(model[iter][0]) == 2
+            ):
                 return True
             else:
                 return False
@@ -412,17 +476,19 @@ class Window(Gtk.ApplicationWindow):
         if int(model[iter][11]) == 0:
             return False
 
-        if (int(model[iter][0]) == self.app.sequence.position
-                or int(model[iter][0]) == self.app.sequence.position+1
-                or int(model[iter][0]) == self.app.sequence.position-1
-                or int(model[iter][0]) == self.app.sequence.position-2):
+        if (
+            int(model[iter][0]) == self.app.sequence.position
+            or int(model[iter][0]) == self.app.sequence.position + 1
+            or int(model[iter][0]) == self.app.sequence.position - 1
+            or int(model[iter][0]) == self.app.sequence.position - 2
+        ):
             return True
         else:
             return False
 
     def step_filter_func2(self, model, iter, data):
         """ Filter for the second part of the cues list """
-        if int(model[iter][0]) <= self.app.sequence.position+1:
+        if int(model[iter][0]) <= self.app.sequence.position + 1:
             return False
         else:
             return True
@@ -478,8 +544,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Zoom In/Out Channels in Live View
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if (event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK
-                | Gdk.ModifierType.SHIFT_MASK):
+        if (
+            event.state & accel_mask
+            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        ):
             (scroll, direction) = event.get_scroll_direction()
             if scroll and direction == Gdk.ScrollDirection.UP:
                 for i in range(MAX_CHANNELS):
@@ -515,17 +583,33 @@ class Window(Gtk.ApplicationWindow):
 
         keyname = Gdk.keyval_name(event.keyval)
         # print (keyname)
-        if (keyname == "1" or keyname == "2" or keyname == "3"
-                or keyname == "4" or keyname == "5" or keyname == "6"
-                or keyname == "7" or keyname == "8" or keyname == "9"
-                or keyname == "0"):
+        if (
+            keyname == "1"
+            or keyname == "2"
+            or keyname == "3"
+            or keyname == "4"
+            or keyname == "5"
+            or keyname == "6"
+            or keyname == "7"
+            or keyname == "8"
+            or keyname == "9"
+            or keyname == "0"
+        ):
             self.keystring += keyname
             self.statusbar.push(self.context_id, self.keystring)
 
-        if (keyname == "KP_1" or keyname == "KP_2" or keyname == "KP_3"
-                or keyname == "KP_4" or keyname == "KP_5" or keyname == "KP_6"
-                or keyname == "KP_7" or keyname == "KP_8" or keyname == "KP_9"
-                or keyname == "KP_0"):
+        if (
+            keyname == "KP_1"
+            or keyname == "KP_2"
+            or keyname == "KP_3"
+            or keyname == "KP_4"
+            or keyname == "KP_5"
+            or keyname == "KP_6"
+            or keyname == "KP_7"
+            or keyname == "KP_8"
+            or keyname == "KP_9"
+            or keyname == "KP_0"
+        ):
             self.keystring += keyname[3:]
             self.statusbar.push(self.context_id, self.keystring)
 
@@ -533,7 +617,7 @@ class Window(Gtk.ApplicationWindow):
             self.keystring += "."
             self.statusbar.push(self.context_id, self.keystring)
 
-        func = getattr(self, 'keypress_' + keyname, None)
+        func = getattr(self, "keypress_" + keyname, None)
 
         if func:
             return func()
@@ -541,7 +625,7 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Right(self):
         """ Next Channel """
 
-        if self.last_chan_selected == '':
+        if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
@@ -553,7 +637,7 @@ class Window(Gtk.ApplicationWindow):
         elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
             # Find next patched channel
             next_chan = 0
-            for i in range(int(self.last_chan_selected)+1, MAX_CHANNELS):
+            for i in range(int(self.last_chan_selected) + 1, MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
                     next_chan = i
                     break
@@ -567,7 +651,7 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Left(self):
         """ Previous Channel """
 
-        if self.last_chan_selected == '':
+        if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
@@ -580,7 +664,7 @@ class Window(Gtk.ApplicationWindow):
             # Find previous patched channel
             chan = int(self.last_chan_selected)
             for i in range(int(self.last_chan_selected), 0, -1):
-                if self.app.patch.channels[i-1][0] != [0, 0]:
+                if self.app.patch.channels[i - 1][0] != [0, 0]:
                     chan = i - 1
                     break
             self.flowbox.unselect_all()
@@ -592,7 +676,7 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Down(self):
         """ Next Line """
 
-        if self.last_chan_selected == '':
+        if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
@@ -604,8 +688,9 @@ class Window(Gtk.ApplicationWindow):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected))
             allocation = child.get_allocation()
-            child = (self.flowbox.get_child_at_pos(allocation.x, allocation.y
-                                                   + allocation.height))
+            child = self.flowbox.get_child_at_pos(
+                allocation.x, allocation.y + allocation.height
+            )
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -616,7 +701,7 @@ class Window(Gtk.ApplicationWindow):
     def keypress_Up(self):
         """ Previous Line """
 
-        if self.last_chan_selected == '':
+        if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
                 if self.app.patch.channels[i][0] != [0, 0]:
@@ -628,8 +713,9 @@ class Window(Gtk.ApplicationWindow):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected))
             allocation = child.get_allocation()
-            child = (self.flowbox.get_child_at_pos(allocation.x, allocation.y
-                                                   - allocation.height/2))
+            child = self.flowbox.get_child_at_pos(
+                allocation.x, allocation.y - allocation.height / 2
+            )
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
@@ -716,9 +802,12 @@ class Window(Gtk.ApplicationWindow):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring)-1
-        if (channel >= 0 and channel < MAX_CHANNELS
-                and self.app.patch.channels[channel][0] != [0, 0]):
+        channel = int(self.keystring) - 1
+        if (
+            channel >= 0
+            and channel < MAX_CHANNELS
+            and self.app.patch.channels[channel][0] != [0, 0]
+        ):
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.select_child(child)
@@ -736,9 +825,12 @@ class Window(Gtk.ApplicationWindow):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring)-1
-        if (channel >= 0 and channel < MAX_CHANNELS
-                and self.app.patch.channels[channel][0] != [0, 0]):
+        channel = int(self.keystring) - 1
+        if (
+            channel >= 0
+            and channel < MAX_CHANNELS
+            and self.app.patch.channels[channel][0] != [0, 0]
+        ):
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.unselect_child(child)
@@ -750,10 +842,10 @@ class Window(Gtk.ApplicationWindow):
     def keypress_exclam(self):
         """ Level + (% level) of selected channels """
 
-        lvl = Gio.Application.get_default().settings.get_int('percent-level')
-        percent = Gio.Application.get_default().settings.get_boolean('percent')
+        lvl = Gio.Application.get_default().settings.get_int("percent-level")
+        percent = Gio.Application.get_default().settings.get_boolean("percent")
         if percent:
-            lvl = round((lvl/100)*255)
+            lvl = round((lvl / 100) * 255)
 
         sel = self.flowbox.get_selected_children()
 
@@ -774,10 +866,10 @@ class Window(Gtk.ApplicationWindow):
     def keypress_colon(self):
         """ Level - (% level) of selected channels """
 
-        lvl = Gio.Application.get_default().settings.get_int('percent-level')
-        percent = Gio.Application.get_default().settings.get_boolean('percent')
+        lvl = Gio.Application.get_default().settings.get_int("percent-level")
+        percent = Gio.Application.get_default().settings.get_boolean("percent")
         if percent:
-            lvl = round((lvl/100)*255)
+            lvl = round((lvl / 100) * 255)
 
         sel = self.flowbox.get_selected_children()
 
@@ -801,7 +893,7 @@ class Window(Gtk.ApplicationWindow):
     def keypress_equal(self):
         """ @ Level """
 
-        if self.keystring == '':
+        if self.keystring == "":
             return
 
         level = int(self.keystring)
@@ -814,9 +906,9 @@ class Window(Gtk.ApplicationWindow):
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
 
-                if self.app.settings.get_boolean('percent'):
+                if self.app.settings.get_boolean("percent"):
                     if level >= 0 and level <= 100:
-                        self.app.dmx.user[channel] = int(round((level/100)*255))
+                        self.app.dmx.user[channel] = int(round((level / 100) * 255))
                 else:
                     if level >= 0 and level <= 255:
                         self.app.dmx.user[channel] = level
@@ -830,7 +922,7 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Escape(self):
         self.flowbox.unselect_all()
-        self.last_chan_selected = ''
+        self.last_chan_selected = ""
 
     def keypress_q(self):
         # TODO: Update Shortcuts window
@@ -852,7 +944,7 @@ class Window(Gtk.ApplicationWindow):
 
         found = False
 
-        if self.keystring == '':
+        if self.keystring == "":
             """ Use next free number """
 
             # Find next free number
@@ -900,12 +992,12 @@ class Window(Gtk.ApplicationWindow):
                 i += 1
 
             # Create Preset
-            channels = array.array('B', [0] * MAX_CHANNELS)
+            channels = array.array("B", [0] * MAX_CHANNELS)
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
                     channel = self.app.patch.outputs[univ][output][0]
                     level = self.app.dmx.frame[univ][output]
-                    channels[channel-1] = level
+                    channels[channel - 1] = level
             cue = Cue(1, mem, channels)
             self.app.memories.insert(i, cue)
 
@@ -915,8 +1007,7 @@ class Window(Gtk.ApplicationWindow):
                 for chan in range(MAX_CHANNELS):
                     if channels[chan]:
                         nb_chan += 1
-                self.app.memories_tab.liststore.insert(i, [str(mem), '',
-                                                       nb_chan])
+                self.app.memories_tab.liststore.insert(i, [str(mem), "", nb_chan])
 
             # Find Step's position
             for i in range(self.app.sequence.last):
@@ -931,10 +1022,12 @@ class Window(Gtk.ApplicationWindow):
             # Update Main Playback
             self.cues_liststore1.clear()
             self.cues_liststore2.clear()
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
-                                         '#232729', 0, 0])
-            self.cues_liststore1.append(['', '', '', '', '', '', '', '', '',
-                                         '#232729', 0, 1])
+            self.cues_liststore1.append(
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+            )
+            self.cues_liststore1.append(
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+            )
             for i in range(self.app.sequence.last):
                 if self.app.sequence.steps[i].wait.is_integer():
                     wait = str(int(self.app.sequence.steps[i].wait))
@@ -977,27 +1070,70 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     weight = Pango.Weight.NORMAL
                 if i == 0 or i == self.app.sequence.last - 1:
-                    self.cues_liststore1.append([str(i), '', '', '', '', '',
-                                                 '', '', '', bg,
-                                                 Pango.Weight.NORMAL, 99])
-                    self.cues_liststore2.append([str(i), '', '', '', '', '',
-                                                 '', '', ''])
+                    self.cues_liststore1.append(
+                        [
+                            str(i),
+                            "",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "",
+                            bg,
+                            Pango.Weight.NORMAL,
+                            99,
+                        ]
+                    )
+                    self.cues_liststore2.append(
+                        [str(i), "", "", "", "", "", "", "", ""]
+                    )
                 else:
-                    self.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
-                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in),
-                        channel_time, bg, weight, 99])
-                    self.cues_liststore2.append([str(i), str(self.app.sequence.steps[i].cue.memory),
-                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in),
-                        channel_time])
+                    self.cues_liststore1.append(
+                        [
+                            str(i),
+                            str(self.app.sequence.steps[i].cue.memory),
+                            str(self.app.sequence.steps[i].text),
+                            wait,
+                            d_out,
+                            str(t_out),
+                            d_in,
+                            str(t_in),
+                            channel_time,
+                            bg,
+                            weight,
+                            99,
+                        ]
+                    )
+                    self.cues_liststore2.append(
+                        [
+                            str(i),
+                            str(self.app.sequence.steps[i].cue.memory),
+                            str(self.app.sequence.steps[i].text),
+                            wait,
+                            d_out,
+                            str(t_out),
+                            d_in,
+                            str(t_in),
+                            channel_time,
+                        ]
+                    )
 
-            self.cues_liststore1[self.app.sequence.position][9] = '#232729'
-            self.cues_liststore1[self.app.sequence.position + 1][9] = '#232729'
-            self.cues_liststore1[self.app.sequence.position + 2][9] = '#997004'
-            self.cues_liststore1[self.app.sequence.position + 3][9] = '#555555'
+            self.cues_liststore1[self.app.sequence.position][9] = "#232729"
+            self.cues_liststore1[self.app.sequence.position + 1][9] = "#232729"
+            self.cues_liststore1[self.app.sequence.position + 2][9] = "#997004"
+            self.cues_liststore1[self.app.sequence.position + 3][9] = "#555555"
             self.cues_liststore1[self.app.sequence.position][10] = Pango.Weight.NORMAL
-            self.cues_liststore1[self.app.sequence.position + 1][10] = Pango.Weight.NORMAL
-            self.cues_liststore1[self.app.sequence.position + 2][10] = Pango.Weight.HEAVY
-            self.cues_liststore1[self.app.sequence.position + 3][10] = Pango.Weight.HEAVY
+            self.cues_liststore1[self.app.sequence.position + 1][
+                10
+            ] = Pango.Weight.NORMAL
+            self.cues_liststore1[self.app.sequence.position + 2][
+                10
+            ] = Pango.Weight.HEAVY
+            self.cues_liststore1[self.app.sequence.position + 3][
+                10
+            ] = Pango.Weight.HEAVY
 
             self.step_filter1.refilter()
             self.step_filter2.refilter()
@@ -1053,9 +1189,8 @@ class Window(Gtk.ApplicationWindow):
         self.app.ascii.modified = True
         self.app.window.header.set_title(self.app.ascii.basename + "*")
 
-        self.keystring = ''
-        self.app.window.statusbar.push(self.app.window.context_id,
-                                       self.keystring)
+        self.keystring = ""
+        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
     def keypress_U(self):
         """ Update Cue """
@@ -1073,7 +1208,7 @@ class Window(Gtk.ApplicationWindow):
                     channel = self.app.patch.outputs[univ][output][0]
                     level = self.app.dmx.frame[univ][output]
 
-                    self.app.sequence.steps[position].cue.channels[channel-1] = level
+                    self.app.sequence.steps[position].cue.channels[channel - 1] = level
 
             # Tag filename as modified
             self.app.ascii.modified = True
@@ -1086,11 +1221,19 @@ class Window(Gtk.ApplicationWindow):
 
 
 class Dialog(Gtk.Dialog):
-
     def __init__(self, parent, memory):
-        Gtk.Dialog.__init__(self, "", parent, 0,
-                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-                             Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        Gtk.Dialog.__init__(
+            self,
+            "",
+            parent,
+            0,
+            (
+                Gtk.STOCK_CANCEL,
+                Gtk.ResponseType.CANCEL,
+                Gtk.STOCK_OK,
+                Gtk.ResponseType.OK,
+            ),
+        )
 
         self.set_default_size(150, 100)
 

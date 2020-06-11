@@ -19,8 +19,8 @@ class PatchWidget(Gtk.Widget):
         self.scale = 1.0
         self.width = 60 * self.scale
         self.set_size_request(self.width, self.width)
-        self.connect('button-press-event', self.on_click)
-        self.connect('touch-event', self.on_click)
+        self.connect("button-press-event", self.on_click)
+        self.connect("touch-event", self.on_click)
 
     def on_click(self, tgt, ev):
         # Deselect selected widgets
@@ -28,7 +28,8 @@ class PatchWidget(Gtk.Widget):
         self.app.patch_outputs_tab.flowbox.unselect_all()
         # Select clicked widget
         child = self.app.patch_outputs_tab.flowbox.get_child_at_index(
-            self.output - 1 + (512 * self.universe))
+            self.output - 1 + (512 * self.universe)
+        )
         self.app.window.set_focus(child)
         self.app.patch_outputs_tab.flowbox.select_child(child)
         self.app.patch_outputs_tab.last_out_selected = str(self.output)
@@ -40,8 +41,10 @@ class PatchWidget(Gtk.Widget):
         # paint background
         area = (0, allocation.width, 0, allocation.height)
 
-        if (self.patch.outputs[self.universe][self.output-1][1] == 0
-                and self.patch.outputs[self.universe][self.output-1][0] != 0):
+        if (
+            self.patch.outputs[self.universe][self.output - 1][1] == 0
+            and self.patch.outputs[self.universe][self.output - 1][0] != 0
+        ):
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.8, 0.1, 0.1)
             else:
@@ -62,57 +65,68 @@ class PatchWidget(Gtk.Widget):
 
         # draw output number
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                            cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12 * self.scale)
-        text = str(self.output) + '.' + str(self.universe)
+        text = str(self.output) + "." + str(self.universe)
         (x, y, width, height, dx, dy) = cr.text_extents(text)
-        cr.move_to(allocation.width / 2 - width / 2,
-                   allocation.height / 4 - (height - 20) / 4)
+        cr.move_to(
+            allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4
+        )
         cr.show_text(text)
 
         if self.patch.outputs[self.universe][self.output - 1][0] != 0:
             # draw channel number
             cr.set_source_rgb(0.9, 0.6, 0.2)
-            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                                cairo.FONT_WEIGHT_BOLD)
+            cr.select_font_face(
+                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+            )
             cr.set_font_size(12 * self.scale)
             text = str(self.patch.outputs[self.universe][self.output - 1][0])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
-            cr.move_to(allocation.width / 2 - width / 2,
-                       3 * (allocation.height / 4 - (height - 20) / 4))
+            cr.move_to(
+                allocation.width / 2 - width / 2,
+                3 * (allocation.height / 4 - (height - 20) / 4),
+            )
             cr.show_text(text)
 
         # Draw Output level
         if self.app.dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                                cairo.FONT_WEIGHT_BOLD)
+            cr.select_font_face(
+                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+            )
             cr.set_font_size(12 * self.scale)
             text = str(self.app.dmx.frame[self.universe][self.output - 1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
-            cr.move_to(allocation.width / 2 - width / 2,
-                       allocation.height / 2 - (height - 20) / 2)
+            cr.move_to(
+                allocation.width / 2 - width / 2,
+                allocation.height / 2 - (height - 20) / 2,
+            )
             cr.show_text(text)
 
         # Draw Proportional Level
-        if (self.patch.outputs[self.universe][self.output-1][1] != 100
-                and self.patch.outputs[self.universe][self.output-1][0] != 0):
-            cr.rectangle(allocation.width - 9, allocation.height - 2,
-                         6 * self.scale,
-                         -((50 / 100) * self.scale)
-                         * self.patch.outputs[self.universe][self.output-1][1])
+        if (
+            self.patch.outputs[self.universe][self.output - 1][1] != 100
+            and self.patch.outputs[self.universe][self.output - 1][0] != 0
+        ):
+            cr.rectangle(
+                allocation.width - 9,
+                allocation.height - 2,
+                6 * self.scale,
+                -((50 / 100) * self.scale)
+                * self.patch.outputs[self.universe][self.output - 1][1],
+            )
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.8, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.1, 0.1)
             cr.fill()
-            cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                                cairo.FONT_WEIGHT_BOLD)
+            cr.select_font_face(
+                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+            )
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.set_font_size(8 * self.scale)
-            text = (str(self.patch.outputs[self.universe][self.output - 1][1])
-                    + '%')
+            text = str(self.patch.outputs[self.universe][self.output - 1][1]) + "%"
             cr.move_to(allocation.width - 20, allocation.height - 2)
             cr.show_text(text)
 
@@ -125,10 +139,12 @@ class PatchWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
@@ -141,9 +157,9 @@ class PatchWidget(Gtk.Widget):
 
     def draw_rounded_rectangle(self, cr, area, radius):
         a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
-        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
-        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
-        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
+        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
+        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
+        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
         cr.close_path()
         cr.fill()

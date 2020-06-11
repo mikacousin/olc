@@ -30,8 +30,7 @@ from olc.virtual_console import VirtualConsoleWindow
 class Application(Gtk.Application):
     def __init__(self):
         Gtk.Application.__init__(
-            self, application_id="org.gnome.olc",
-            flags=Gio.ApplicationFlags.FLAGS_NONE
+            self, application_id="org.gnome.olc", flags=Gio.ApplicationFlags.FLAGS_NONE
         )
         GLib.set_application_name("OpenLightingConsole")
         GLib.set_prgname("olc")
@@ -68,9 +67,7 @@ class Application(Gtk.Application):
             self.sock = self.ola_client.GetSocket()
             for i, univ in enumerate(self.universes):
                 func = getattr(self, "on_dmx_" + str(i), None)
-                self.ola_client.RegisterUniverse(univ,
-                                                 self.ola_client.REGISTER,
-                                                 func)
+                self.ola_client.RegisterUniverse(univ, self.ola_client.REGISTER, func)
         except:
             print("Can't connect to Ola !")
             sys.exit()

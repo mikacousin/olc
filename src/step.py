@@ -1,7 +1,16 @@
 class Step(object):
-    def __init__(self, sequence=0, cue=None,
-                 time_in=5.0, time_out=5.0, delay_in=0.0, delay_out=0.0,
-                 wait=0.0, channel_time={}, text=''):
+    def __init__(
+        self,
+        sequence=0,
+        cue=None,
+        time_in=5.0,
+        time_out=5.0,
+        delay_in=0.0,
+        delay_out=0.0,
+        wait=0.0,
+        channel_time={},
+        text="",
+    ):
 
         self.sequence = sequence
         self.cue = cue
@@ -20,9 +29,14 @@ class Step(object):
             self.total_time = self.time_out + self.delay_out + self.wait
 
         for channel in self.channel_time.keys():
-            if (self.channel_time[channel].delay
+            if (
+                self.channel_time[channel].delay
+                + self.channel_time[channel].time
+                + self.wait
+                > self.total_time
+            ):
+                self.total_time = (
+                    self.channel_time[channel].delay
                     + self.channel_time[channel].time
-                    + self.wait > self.total_time):
-                self.total_time = (self.channel_time[channel].delay
-                                   + self.channel_time[channel].time
-                                   + self.wait)
+                    + self.wait
+                )

@@ -6,8 +6,7 @@ from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
 
 class Dmx(object):
-    def __init__(self, universes, patch, ola_client,
-                 sequence, masters, window):
+    def __init__(self, universes, patch, ola_client, sequence, masters, window):
         self.universes = universes
         self.patch = patch
         self.ola_client = ola_client
@@ -21,11 +20,11 @@ class Dmx(object):
         # les valeurs DMX echangées avec Ola
         self.frame = []
         for universe in range(NB_UNIVERSES):
-            self.frame.append(array.array('B', [0] * 512))
+            self.frame.append(array.array("B", [0] * 512))
         # les valeurs du séquentiel
-        self.sequence = array.array('B', [0] * MAX_CHANNELS)
+        self.sequence = array.array("B", [0] * MAX_CHANNELS)
         # les valeurs modifiées par l'utilisateur
-        self.user = array.array('h', [-1] * MAX_CHANNELS)
+        self.user = array.array("h", [-1] * MAX_CHANNELS)
 
     def send(self):
         # Cette fonction envoi les valeurs DMX à Ola en prenant en compte
@@ -40,27 +39,25 @@ class Dmx(object):
                 # Si il est patché
                 if channel:
                     # On part du niveau du séquentiel
-                    level = self.sequence[channel-1]
-                    self.window.channels[channel-1].color_level_red = 0.9
-                    self.window.channels[channel-1].color_level_green = 0.9
-                    self.window.channels[channel-1].color_level_blue = 0.9
+                    level = self.sequence[channel - 1]
+                    self.window.channels[channel - 1].color_level_red = 0.9
+                    self.window.channels[channel - 1].color_level_green = 0.9
+                    self.window.channels[channel - 1].color_level_blue = 0.9
                     # Si on est pas sur un Go,
                     # on utilise les valeurs de l'utilisateur
-                    if (not self.app.sequence.on_go
-                            and self.user[channel-1] != -1):
-                        level = self.user[channel-1]
+                    if not self.app.sequence.on_go and self.user[channel - 1] != -1:
+                        level = self.user[channel - 1]
                     # Si c'est le niveau d'un master le plus grand,
                     # on l'utilise
                     for master in self.masters:
-                        if master.dmx[channel-1] > level:
-                            level = master.dmx[channel-1]
-                            self.window.channels[channel-1].color_level_red = 0.4
-                            self.window.channels[channel-1].color_level_green = 0.7
-                            self.window.channels[channel-1].color_level_blue = 0.4
+                        if master.dmx[channel - 1] > level:
+                            level = master.dmx[channel - 1]
+                            self.window.channels[channel - 1].color_level_red = 0.4
+                            self.window.channels[channel - 1].color_level_green = 0.7
+                            self.window.channels[channel - 1].color_level_blue = 0.4
 
                     # Proportional patch level
-                    level = (level *
-                             (self.patch.outputs[universe][output][1] / 100))
+                    level = level * (self.patch.outputs[universe][output][1] / 100)
                     # Grand Master
                     level = round(level * (self.grand_master / 255))
                     # On met à jour le niveau pour cet output
@@ -74,13 +71,14 @@ class PatchDmx(object):
     """
     To store and manipulate DMX patch
     """
+
     def __init__(self):
         # 2 lists to store patch (default 1:1)
         #
         # List of channels
         self.channels = []
         for channel in range(MAX_CHANNELS):
-            univ = int(channel/512)
+            univ = int(channel / 512)
             chan = channel - (512 * univ)
             self.channels.append([[chan + 1, univ]])
 
@@ -125,14 +123,14 @@ class PatchDmx(object):
 
     def add_output(self, channel, output, univ, level=100):
         """ Add an output to a channel """
-        if self.channels[channel-1] == [[0, 0]]:
-            self.channels[channel-1] = [[output, univ]]
+        if self.channels[channel - 1] == [[0, 0]]:
+            self.channels[channel - 1] = [[output, univ]]
         else:
-            self.channels[channel-1].append([output, univ])
+            self.channels[channel - 1].append([output, univ])
             # Sort outputs
-            self.channels[channel-1] = sorted(self.channels[channel-1])
-        self.outputs[univ][output-1][0] = channel
-        self.outputs[univ][output-1][1] = level
+            self.channels[channel - 1] = sorted(self.channels[channel - 1])
+        self.outputs[univ][output - 1][0] = channel
+        self.outputs[univ][output - 1][1] = level
 
     """
     def is_channel_patched(self, channel):
