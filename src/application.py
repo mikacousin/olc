@@ -1,7 +1,8 @@
 import sys
 import select
 import gi
-gi.require_version('Gtk', '3.0')
+
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib, Gdk
 from ola import OlaClient
 
@@ -27,26 +28,28 @@ from olc.virtual_console import VirtualConsoleWindow
 
 
 class Application(Gtk.Application):
-
     def __init__(self):
-        Gtk.Application.__init__(self,
-                                 application_id='org.gnome.olc',
-                                 flags=Gio.ApplicationFlags.FLAGS_NONE)
-        GLib.set_application_name('OpenLightingConsole')
-        GLib.set_prgname('olc')
+        Gtk.Application.__init__(
+            self, application_id="org.gnome.olc",
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+        GLib.set_application_name("OpenLightingConsole")
+        GLib.set_prgname("olc")
 
         cssProviderFile = Gio.File.new_for_uri(
-            'resource://org/gnome/OpenLightingConsole/application.css')
+            "resource://org/gnome/OpenLightingConsole/application.css"
+        )
         cssProvider = Gtk.CssProvider()
         cssProvider.load_from_file(cssProviderFile)
         screen = Gdk.Screen.get_default()
         styleContext = Gtk.StyleContext()
-        styleContext.add_provider_for_screen(screen, cssProvider,
-                                             Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        styleContext.add_provider_for_screen(
+            screen, cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER
+        )
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()
-        settings.set_property('gtk-application-prefer-dark-theme', True)
+        settings.set_property("gtk-application-prefer-dark-theme", True)
 
         # To store settings
         self.settings = Settings.new()
@@ -64,7 +67,7 @@ class Application(Gtk.Application):
             self.ola_client = OlaClient.OlaClient()
             self.sock = self.ola_client.GetSocket()
             for i, univ in enumerate(self.universes):
-                func = getattr(self, 'on_dmx_' + str(i), None)
+                func = getattr(self, "on_dmx_" + str(i), None)
                 self.ola_client.RegisterUniverse(univ,
                                                  self.ola_client.REGISTER,
                                                  func)
@@ -88,8 +91,9 @@ class Application(Gtk.Application):
         self.masters = []
         for page in range(2):
             for i in range(20):
-                self.masters.append(Master(page + 1, i + 1, 0, 0,
-                                           self.groups, self.chasers))
+                self.masters.append(
+                    Master(page + 1, i + 1, 0, 0, self.groups, self.chasers)
+                )
 
         # For Windows
         self.about_window = None
@@ -136,24 +140,30 @@ class Application(Gtk.Application):
 
         # Add global shortcuts
         # Go
-        action = Gio.SimpleAction.new('go', None)
-        action.connect('activate', self.sequence.sequence_go)
+        action = Gio.SimpleAction.new("go", None)
+        action.connect("activate", self.sequence.sequence_go)
         self.add_action(action)
         self.set_accels_for_action("app.go", ["<Control>g"])
         # Track Channels
-        action = Gio.SimpleAction.new('track_channels', None)
-        action.connect('activate', self._track_channels)
+        action = Gio.SimpleAction.new("track_channels", None)
+        action.connect("activate", self._track_channels)
         self.add_action(action)
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         # Go Back
-        action = Gio.SimpleAction.new('go_back', None)
-        action.connect('activate', self.sequence.go_back)
+        action = Gio.SimpleAction.new("go_back", None)
+        action.connect("activate", self.sequence.go_back)
         self.add_action(action)
         self.set_accels_for_action("app.go_back", ["<Control>b"])
 
         # Create several DMX arrays
-        self.dmx = Dmx(self.universes, self.patch, self.ola_client,
-                       self.sequence, self.masters, self.window)
+        self.dmx = Dmx(
+            self.universes,
+            self.patch,
+            self.ola_client,
+            self.sequence,
+            self.masters,
+            self.window,
+        )
 
         # Fetch dmx values on startup
         for univ in self.universes:
@@ -164,7 +174,7 @@ class Application(Gtk.Application):
 
         # Open MIDI Input
         self.midi = Midi()
-        port = self.settings.get_string('midi-in')
+        port = self.settings.get_string("midi-in")
         self.midi.open_input(port)
 
         # Create and launch OSC server
@@ -176,7 +186,8 @@ class Application(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
-        # TODO: Revoir pour le menu et la gestion auto de la fenetre des shortcuts
+        # TODO: Revoir pour le menu
+        # et la gestion auto de la fenetre des shortcuts
         menu = self.setup_app_menu()
 
         # General shortcuts
@@ -193,65 +204,64 @@ class Application(Gtk.Application):
         """ Setup application menu, return Gio.Menu """
         builder = Gtk.Builder()
 
-        builder.add_from_resource(
-                '/org/gnome/OpenLightingConsole/gtk/menus.ui')
+        builder.add_from_resource("/org/gnome/OpenLightingConsole/gtk/menus.ui")
 
-        menu = builder.get_object('app-menu')
+        menu = builder.get_object("app-menu")
 
-        newAction = Gio.SimpleAction.new('new', None)
-        newAction.connect('activate', self._new)
+        newAction = Gio.SimpleAction.new("new", None)
+        newAction.connect("activate", self._new)
         self.add_action(newAction)
 
-        openAction = Gio.SimpleAction.new('open', None)
-        openAction.connect('activate', self._open)
+        openAction = Gio.SimpleAction.new("open", None)
+        openAction.connect("activate", self._open)
         self.add_action(openAction)
 
-        saveAction = Gio.SimpleAction.new('save', None)
-        saveAction.connect('activate', self._save)
+        saveAction = Gio.SimpleAction.new("save", None)
+        saveAction.connect("activate", self._save)
         self.add_action(saveAction)
 
-        patch_outputsAction = Gio.SimpleAction.new('patch_outputs', None)
-        patch_outputsAction.connect('activate', self._patch_outputs)
+        patch_outputsAction = Gio.SimpleAction.new("patch_outputs", None)
+        patch_outputsAction.connect("activate", self._patch_outputs)
         self.add_action(patch_outputsAction)
 
-        patch_channelsAction = Gio.SimpleAction.new('patch_channels', None)
-        patch_channelsAction.connect('activate', self._patch_channels)
+        patch_channelsAction = Gio.SimpleAction.new("patch_channels", None)
+        patch_channelsAction.connect("activate", self._patch_channels)
         self.add_action(patch_channelsAction)
 
-        memoriesAction = Gio.SimpleAction.new('memories', None)
-        memoriesAction.connect('activate', self._memories)
+        memoriesAction = Gio.SimpleAction.new("memories", None)
+        memoriesAction.connect("activate", self._memories)
         self.add_action(memoriesAction)
 
-        groupsAction = Gio.SimpleAction.new('groups', None)
-        groupsAction.connect('activate', self._groups)
+        groupsAction = Gio.SimpleAction.new("groups", None)
+        groupsAction.connect("activate", self._groups)
         self.add_action(groupsAction)
 
-        sequencesAction = Gio.SimpleAction.new('sequences', None)
-        sequencesAction.connect('activate', self._sequences)
+        sequencesAction = Gio.SimpleAction.new("sequences", None)
+        sequencesAction.connect("activate", self._sequences)
         self.add_action(sequencesAction)
 
-        mastersAction = Gio.SimpleAction.new('masters', None)
-        mastersAction.connect('activate', self._masters)
+        mastersAction = Gio.SimpleAction.new("masters", None)
+        mastersAction.connect("activate", self._masters)
         self.add_action(mastersAction)
 
-        virtual_consoleAction = Gio.SimpleAction.new('virtual_console', None)
-        virtual_consoleAction.connect('activate', self._virtual_console)
+        virtual_consoleAction = Gio.SimpleAction.new("virtual_console", None)
+        virtual_consoleAction.connect("activate", self._virtual_console)
         self.add_action(virtual_consoleAction)
 
-        settingsAction = Gio.SimpleAction.new('settings', None)
-        settingsAction.connect('activate', self._settings)
+        settingsAction = Gio.SimpleAction.new("settings", None)
+        settingsAction.connect("activate", self._settings)
         self.add_action(settingsAction)
 
-        shortcutsAction = Gio.SimpleAction.new('show-help-overlay', None)
-        shortcutsAction.connect('activate', self._shortcuts)
+        shortcutsAction = Gio.SimpleAction.new("show-help-overlay", None)
+        shortcutsAction.connect("activate", self._shortcuts)
         self.add_action(shortcutsAction)
 
-        aboutAction = Gio.SimpleAction.new('about', None)
-        aboutAction.connect('activate', self._about)
+        aboutAction = Gio.SimpleAction.new("about", None)
+        aboutAction.connect("activate", self._about)
         self.add_action(aboutAction)
 
-        quitAction = Gio.SimpleAction.new('quit', None)
-        quitAction.connect('activate', self._exit)
+        quitAction = Gio.SimpleAction.new("quit", None)
+        quitAction.connect("activate", self._exit)
         self.add_action(quitAction)
 
         return menu
@@ -267,16 +277,20 @@ class Application(Gtk.Application):
         for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[0][output][0]
             self.dmx.frame[0][output] = level
-            self.window.channels[channel-1].level = level
-            if (self.sequence.last > 1
-                    and self.sequence.position < self.sequence.last - 1):
-                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            self.window.channels[channel - 1].level = level
+            if (
+                self.sequence.last > 1
+                and self.sequence.position < self.sequence.last - 1
+            ):
+                next_level = self.sequence.steps[
+                    self.sequence.position + 1
+                ].cue.channels[channel - 1]
             elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel-1]
+                next_level = self.sequence.steps[0].cue.channels[channel - 1]
             else:
                 next_level = level
-            self.window.channels[channel-1].next_level = next_level
-            self.window.channels[channel-1].queue_draw()
+            self.window.channels[channel - 1].next_level = next_level
+            self.window.channels[channel - 1].queue_draw()
             if self.patch_outputs_tab:
                 self.patch_outputs_tab.outputs[output].queue_draw()
 
@@ -284,52 +298,64 @@ class Application(Gtk.Application):
         for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[1][output][0]
             self.dmx.frame[1][output] = level
-            self.window.channels[channel-1].level = level
-            if (self.sequence.last > 1
-                    and self.sequence.position < self.sequence.last - 1):
-                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            self.window.channels[channel - 1].level = level
+            if (
+                self.sequence.last > 1
+                and self.sequence.position < self.sequence.last - 1
+            ):
+                next_level = self.sequence.steps[
+                    self.sequence.position + 1
+                ].cue.channels[channel - 1]
             elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel-1]
+                next_level = self.sequence.steps[0].cue.channels[channel - 1]
             else:
                 next_level = level
-            self.window.channels[channel-1].next_level = next_level
-            self.window.channels[channel-1].queue_draw()
+            self.window.channels[channel - 1].next_level = next_level
+            self.window.channels[channel - 1].queue_draw()
             if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output+512].queue_draw()
+                self.patch_outputs_tab.outputs[output + 512].queue_draw()
 
     def on_dmx_2(self, dmxframe):
         for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[2][output][0]
             self.dmx.frame[2][output] = level
-            self.window.channels[channel-1].level = level
-            if (self.sequence.last > 1
-                    and self.sequence.position < self.sequence.last - 1):
-                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            self.window.channels[channel - 1].level = level
+            if (
+                self.sequence.last > 1
+                and self.sequence.position < self.sequence.last - 1
+            ):
+                next_level = self.sequence.steps[
+                    self.sequence.position + 1
+                ].cue.channels[channel - 1]
             elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel-1]
+                next_level = self.sequence.steps[0].cue.channels[channel - 1]
             else:
                 next_level = level
-            self.window.channels[channel-1].next_level = next_level
-            self.window.channels[channel-1].queue_draw()
+            self.window.channels[channel - 1].next_level = next_level
+            self.window.channels[channel - 1].queue_draw()
             if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output+1024].queue_draw()
+                self.patch_outputs_tab.outputs[output + 1024].queue_draw()
 
     def on_dmx_3(self, dmxframe):
         for output, level in enumerate(dmxframe):
             channel = self.patch.outputs[3][output][0]
             self.dmx.frame[3][output] = level
-            self.window.channels[channel-1].level = level
-            if (self.sequence.last > 1
-                    and self.sequence.position < self.sequence.last - 1):
-                next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+            self.window.channels[channel - 1].level = level
+            if (
+                self.sequence.last > 1
+                and self.sequence.position < self.sequence.last - 1
+            ):
+                next_level = self.sequence.steps[
+                    self.sequence.position + 1
+                ].cue.channels[channel - 1]
             elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel-1]
+                next_level = self.sequence.steps[0].cue.channels[channel - 1]
             else:
                 next_level = level
-            self.window.channels[channel-1].next_level = next_level
-            self.window.channels[channel-1].queue_draw()
+            self.window.channels[channel - 1].next_level = next_level
+            self.window.channels[channel - 1].queue_draw()
             if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output+1536].queue_draw()
+                self.patch_outputs_tab.outputs[output + 1536].queue_draw()
 
     def fetch_dmx(self, request, univ, dmxframe):
         if dmxframe:
@@ -337,22 +363,28 @@ class Application(Gtk.Application):
                 channel = self.patch.outputs[univ][output][0]
                 if channel:
                     self.dmx.frame[univ][output] = level
-                    self.window.channels[channel-1].level = level
-                    if (self.sequence.last > 1
-                            and self.sequence.position < self.sequence.last):
-                        next_level = self.sequence.steps[self.sequence.position+1].cue.channels[channel-1]
+                    self.window.channels[channel - 1].level = level
+                    if (
+                        self.sequence.last > 1
+                        and self.sequence.position < self.sequence.last
+                    ):
+                        next_level = self.sequence.steps[
+                            self.sequence.position + 1
+                        ].cue.channels[channel - 1]
                     elif self.sequence.last:
-                        next_level = self.sequence.steps[0].cue.channels[channel-1]
+                        next_level = self.sequence.steps[0].cue.channels[channel - 1]
                     else:
                         next_level = level
-                    self.window.channels[channel-1].next_level = next_level
-                    self.window.channels[channel-1].queue_draw()
+                    self.window.channels[channel - 1].next_level = next_level
+                    self.window.channels[channel - 1].queue_draw()
                     if self.patch_outputs_tab:
-                        self.patch_outputs_tab.outputs[output+(512*univ)].queue_draw()
+                        self.patch_outputs_tab.outputs[
+                            output + (512 * univ)
+                        ].queue_draw()
 
     def _new(self, action, parameter):
         # TODO: Verify this entire fonction
-        del(self.chasers[:])
+        del self.chasers[:]
         # Redraw Sequential Window
         self.sequence = Sequence(1, self.patch)
         self.sequence.window = self.window
@@ -360,8 +392,7 @@ class Application(Gtk.Application):
         self.window.sequential.time_in = self.sequence.steps[1].time_in
         self.window.sequential.time_out = self.sequence.steps[1].time_out
         self.window.sequential.wait = self.sequence.steps[1].wait
-        self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str,
-                                                   str, str)
+        self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
         for i in range(self.sequence.last):
             if self.sequence.steps[i].wait.is_integer():
                 wait = str(int(self.sequence.steps[i].wait))
@@ -377,10 +408,17 @@ class Application(Gtk.Application):
                 t_in = int(self.sequence.steps[i].time_in)
             else:
                 t_in = self.sequence.steps[i].time_in
-            self.window.cues_liststore.append([str(i),
-                                               str(self.sequence.steps[i].cue.memory),
-                                               str(self.sequence.steps[i].text),
-                                               wait, str(t_out), str(t_in), ""])
+            self.window.cues_liststore.append(
+                [
+                    str(i),
+                    str(self.sequence.steps[i].cue.memory),
+                    str(self.sequence.steps[i].text),
+                    wait,
+                    str(t_out),
+                    str(t_in),
+                    "",
+                ]
+            )
         self.window.step_filter = self.window.cues_liststore.filter_new()
         self.window.step_filter.set_visible_func(self.window.step_filter_func)
         self.window.treeview.set_model(self.window.cues_liststore)
@@ -396,17 +434,17 @@ class Application(Gtk.Application):
             for i, _ in enumerate(self.masters):
                 self.win_masters.scale[i].destroy()
                 self.win_masters.flash[i].destroy()
-            del(self.win_masters.scale[:])
-            del(self.win_masters.ad[:])
-            del(self.win_masters.flash[:])
+            del self.win_masters.scale[:]
+            del self.win_masters.ad[:]
+            del self.win_masters.flash[:]
         except:
             pass
-        del(self.masters[:])
+        del self.masters[:]
         # Redraw Groups Window
         for grp in self.win_groups.grps:
             grp.destroy()
-        del(self.groups[:])
-        del(self.win_groups.grps[:])
+        del self.groups[:]
+        del self.win_groups.grps[:]
         self.win_groups.flowbox1.invalidate_filter()
         # Redraw Main Window
         self.window.flowbox.invalidate_filter()
@@ -415,12 +453,17 @@ class Application(Gtk.Application):
         # create a filechooserdialog to open:
         # the arguments are: title of the window, parent_window, action,
         # (buttons, response)
-        open_dialog = Gtk.FileChooserDialog("Open ASCII File", self.window,
-                                            Gtk.FileChooserAction.OPEN,
-                                            (Gtk.STOCK_CANCEL,
-                                             Gtk.ResponseType.CANCEL,
-                                             Gtk.STOCK_OPEN,
-                                             Gtk.ResponseType.ACCEPT))
+        open_dialog = Gtk.FileChooserDialog(
+            "Open ASCII File",
+            self.window,
+            Gtk.FileChooserAction.OPEN,
+            (
+                Gtk.STOCK_CANCEL,
+                Gtk.ResponseType.CANCEL,
+                Gtk.STOCK_OPEN,
+                Gtk.ResponseType.ACCEPT,
+            ),
+        )
 
         filter_text = Gtk.FileFilter()
         filter_text.set_name("Text Files")
@@ -479,11 +522,10 @@ class Application(Gtk.Application):
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.patch_outputs_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.patch_outputs_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Patch Outputs'), False, False, 0)
+            label.pack_start(Gtk.Label("Patch Outputs"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -502,11 +544,10 @@ class Application(Gtk.Application):
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.patch_channels_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.patch_channels_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Patch Channels'), False, False, 0)
+            label.pack_start(Gtk.Label("Patch Channels"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -525,11 +566,10 @@ class Application(Gtk.Application):
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.track_channels_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.track_channels_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Track Channels'), False, False, 0)
+            label.pack_start(Gtk.Label("Track Channels"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -548,11 +588,10 @@ class Application(Gtk.Application):
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.memories_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.memories_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Memories'), False, False, 0)
+            label.pack_start(Gtk.Label("Memories"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -571,11 +610,10 @@ class Application(Gtk.Application):
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.group_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.group_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Groups'), False, False, 0)
+            label.pack_start(Gtk.Label("Groups"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -593,11 +631,10 @@ class Application(Gtk.Application):
 
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.sequences_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.sequences_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Sequences'), False, False, 0)
+            label.pack_start(Gtk.Label("Sequences"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -616,11 +653,10 @@ class Application(Gtk.Application):
 
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.channeltime_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.channeltime_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Channel Time'), False, False, 0)
+            label.pack_start(Gtk.Label("Channel Time"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -639,11 +675,10 @@ class Application(Gtk.Application):
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE,
-                                                Gtk.IconSize.MENU))
-            button.connect('clicked', self.masters_tab.on_close_icon)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.masters_tab.on_close_icon)
             label = Gtk.Box()
-            label.pack_start(Gtk.Label('Master List'), False, False, 0)
+            label.pack_start(Gtk.Label("Master List"), False, False, 0)
             label.pack_start(button, False, False, 0)
             label.show_all()
 
@@ -671,9 +706,8 @@ class Application(Gtk.Application):
         """
         # TODO: Don't open multiple Shortcuts Windows
         builder = Gtk.Builder()
-        builder.add_from_resource(
-                '/org/gnome/OpenLightingConsole/gtk/help-overlay.ui')
-        self.shortcuts = builder.get_object('help_overlay')
+        builder.add_from_resource("/org/gnome/OpenLightingConsole/gtk/help-overlay.ui")
+        self.shortcuts = builder.get_object("help_overlay")
         self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
 
@@ -685,9 +719,8 @@ class Application(Gtk.Application):
         """
         if not self.about_window:
             builder = Gtk.Builder()
-            builder.add_from_resource(
-                    '/org/gnome/OpenLightingConsole/AboutDialog.ui')
-            self.about_window = builder.get_object('about_dialog')
+            builder.add_from_resource("/org/gnome/OpenLightingConsole/AboutDialog.ui")
+            self.about_window = builder.get_object("about_dialog")
             self.about_window.set_transient_for(self.window)
             self.about_window.connect("response", self._about_response)
             self.about_window.show()
