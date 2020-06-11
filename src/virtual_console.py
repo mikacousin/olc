@@ -1,12 +1,10 @@
-import mido
-from gi.repository import Gtk, Gio, Gdk, GLib
-import cairo
-import math
+from gi.repository import Gtk, Gio, Gdk
 
 from olc.widgets_button import ButtonWidget
 from olc.widgets_go import GoWidget
 from olc.widgets_fader import FaderWidget
 from olc.widgets_flash import FlashWidget
+
 
 class VirtualConsoleWindow(Gtk.Window):
     def __init__(self):
@@ -30,8 +28,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Numeric Pad
         self.num_pad = Gtk.Grid()
-        #self.num_pad.set_column_homogeneous(True)
-        #self.num_pad.set_row_homogeneous(True)
+        # self.num_pad.set_column_homogeneous(True)
+        # self.num_pad.set_row_homogeneous(True)
         self.zero = ButtonWidget('0', 'Zero')
         self.zero.connect('clicked', self.on_zero)
         self.one = ButtonWidget('1', '1')
@@ -71,13 +69,13 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Time keys
         self.time_pad = Gtk.Grid()
-        #self.time_pad.set_column_homogeneous(True)
-        #self.time_pad.set_row_homogeneous(True)
+        # self.time_pad.set_column_homogeneous(True)
+        # self.time_pad.set_row_homogeneous(True)
         self.time = ButtonWidget('Time')
         self.delay = ButtonWidget('Delay')
         self.button_in = ButtonWidget('In')
         self.button_out = ButtonWidget('Out')
-        #self.labelGM = Gtk.Label('Grand Master')
+        # self.labelGM = Gtk.Label('Grand Master')
         self.label = Gtk.Label('')
         self.time_pad.attach(self.label, 0, 0, 1, 1)
         self.label = Gtk.Label('')
@@ -89,8 +87,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Seq, Preset, Group ...
         self.seq_pad = Gtk.Grid()
-        #self.seq_pad.set_column_homogeneous(True)
-        #self.seq_pad.set_row_homogeneous(True)
+        # self.seq_pad.set_column_homogeneous(True)
+        # self.seq_pad.set_row_homogeneous(True)
         self.seq = ButtonWidget('Seq', 'Seq')
         self.seq.connect('clicked', self.on_seq)
         self.empty1 = ButtonWidget(' ')
@@ -113,12 +111,14 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Grand Master and Output grid
         self.output_pad = Gtk.Grid()
-        #self.output_pad.set_column_homogeneous(True)
-        #self.output_pad.set_row_homogeneous(True)
+        # self.output_pad.set_column_homogeneous(True)
+        # self.output_pad.set_row_homogeneous(True)
         ad = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
-        self.scaleGM = FaderWidget(text='GM', orientation=Gtk.Orientation.VERTICAL, adjustment=ad)
+        self.scaleGM = FaderWidget(text='GM',
+                                   orientation=Gtk.Orientation.VERTICAL,
+                                   adjustment=ad)
         self.scaleGM.value = 255
-        #self.scaleGM.height = 160
+        # self.scaleGM.height = 160
         self.scaleGM.connect('clicked', self.scale_clicked)
         self.scaleGM.connect('value-changed', self.GM_moved)
         self.scaleGM.set_draw_value(False)
@@ -139,8 +139,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Update, Record, Track
         self.rec_pad = Gtk.Grid()
-        #self.rec_pad.set_column_homogeneous(True)
-        #self.rec_pad.set_row_homogeneous(True)
+        # self.rec_pad.set_column_homogeneous(True)
+        # self.rec_pad.set_row_homogeneous(True)
         self.update = ButtonWidget('Update', 'Update')
         self.update.connect('clicked', self.on_update)
         self.record = ButtonWidget('Record', 'Record')
@@ -159,8 +159,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Thru, Channel, +, -, All, @, +%, -%
         self.thru_pad = Gtk.Grid()
-        #self.thru_pad.set_column_homogeneous(True)
-        #self.thru_pad.set_row_homogeneous(True)
+        # self.thru_pad.set_column_homogeneous(True)
+        # self.thru_pad.set_row_homogeneous(True)
         self.thru = ButtonWidget('Thru', 'Thru')
         self.thru.connect('clicked', self.on_thru)
         self.channel = ButtonWidget('Ch', 'Ch')
@@ -194,8 +194,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Insert, Delete, Esc, Modify, Up, Down, Left, Right
         self.modify_pad = Gtk.Grid()
-        #self.modify_pad.set_column_homogeneous(True)
-        #self.modify_pad.set_row_homogeneous(True)
+        # self.modify_pad.set_column_homogeneous(True)
+        # self.modify_pad.set_row_homogeneous(True)
         self.insert = ButtonWidget('Insert')
         self.delete = ButtonWidget('Delete')
         self.esc = ButtonWidget('Esc')
@@ -221,8 +221,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Crossfade and more
         self.crossfade_pad = Gtk.Grid()
-        #self.crossfade_pad.set_column_homogeneous(True)
-        #self.crossfade_pad.set_row_homogeneous(True)
+        # self.crossfade_pad.set_column_homogeneous(True)
+        # self.crossfade_pad.set_row_homogeneous(True)
         self.live = ButtonWidget('Live')
         self.format = ButtonWidget('Format')
         self.blind = ButtonWidget('Blind')
@@ -232,8 +232,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.b = ButtonWidget('B')
 
         self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleA = FaderWidget('Crossfade_out', red=0.3, green=0.3, blue=0.7,
-                orientation=Gtk.Orientation.VERTICAL, adjustment=self.adA)
+        self.scaleA = FaderWidget('Crossfade_out',
+                                  red=0.3, green=0.3, blue=0.7,
+                                  orientation=Gtk.Orientation.VERTICAL,
+                                  adjustment=self.adA)
         self.scaleA.connect('clicked', self.scale_clicked)
         self.scaleA.set_draw_value(False)
         self.scaleA.set_vexpand(True)
@@ -241,8 +243,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scaleA.connect('value-changed', self.scale_moved)
 
         self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleB = FaderWidget(text='Crossfade_in', red=0.6, green=0.2, blue=0.2,
-                orientation=Gtk.Orientation.VERTICAL, adjustment=self.adB)
+        self.scaleB = FaderWidget(text='Crossfade_in',
+                                  red=0.6, green=0.2, blue=0.2,
+                                  orientation=Gtk.Orientation.VERTICAL,
+                                  adjustment=self.adB)
         self.scaleB.connect('clicked', self.scale_clicked)
         self.scaleB.set_draw_value(False)
         self.scaleB.set_vexpand(True)
@@ -262,8 +266,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
-        #self.go_pad.set_column_homogeneous(True)
-        #self.go_pad.set_row_homogeneous(True)
+        # self.go_pad.set_column_homogeneous(True)
+        # self.go_pad.set_row_homogeneous(True)
         self.go = GoWidget()
         self.go.connect('clicked', self.on_go)
         self.seq_plus = ButtonWidget('Seq+', 'Seq_plus')
@@ -288,29 +292,38 @@ class VirtualConsoleWindow(Gtk.Window):
         for page in range(2):
             for i in range(20):
                 ad = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-                self.masters.append(FaderWidget(text='Master ' + str(i + (page * 20) + 1),
-                    orientation=Gtk.Orientation.VERTICAL, adjustment=ad))
+                self.masters.append(
+                    FaderWidget(text='Master ' + str(i + (page * 20) + 1),
+                                     orientation=Gtk.Orientation.VERTICAL,
+                                     adjustment=ad))
                 self.masters[i + (page * 20)].set_vexpand(True)
                 self.masters[i + (page * 20)].set_draw_value(False)
                 self.masters[i + (page * 20)].set_inverted(True)
-                self.masters[i + (page * 20)].connect('value-changed', self.master_moved)
-                self.masters[i + (page * 20)].connect('clicked', self.master_clicked)
+                self.masters[i + (page * 20)].connect(
+                    'value-changed', self.master_moved)
+                self.masters[i + (page * 20)].connect(
+                    'clicked', self.master_clicked)
                 self.flashes.append(FlashWidget(''))
-                self.flashes[i + (page * 20)].connect('button-press-event', self.flash_on)
-                self.flashes[i + (page * 20)].connect('button-release-event', self.flash_off)
+                self.flashes[i + (page * 20)].connect(
+                    'button-press-event', self.flash_on)
+                self.flashes[i + (page * 20)].connect(
+                    'button-release-event', self.flash_off)
                 self.flashes[i + (page * 20)].connect('clicked', self.on_flash)
-                self.masters_pad.attach(self.masters[i + (page * 20)], i, 0 + (page * 2), 1, 1)
-                self.masters_pad.attach(self.flashes[i + (page * 20)], i, 1 + (page * 2), 1, 1)
+                self.masters_pad.attach(
+                    self.masters[i + (page * 20)], i, 0 + (page * 2), 1, 1)
+                self.masters_pad.attach(
+                    self.flashes[i + (page * 20)], i, 1 + (page * 2), 1, 1)
                 text = 'Flash ' + str(i + (page * 20) + 1)
                 self.flashes[i + (page * 20)].text = text
             for master in self.app.masters:
                 if master.page == page + 1:
-                    self.flashes[master.number - 1 + (page * 20)].label = master.text
+                    self.flashes[
+                        master.number - 1 + (page * 20)].label = master.text
 
         # General Grid
         self.grid = Gtk.Grid()
-        #self.grid.set_column_homogeneous(True)
-        #self.grid.set_row_homogeneous(True)
+        # self.grid.set_column_homogeneous(True)
+        # self.grid.set_row_homogeneous(True)
         self.grid.set_row_spacing(10)
         self.grid.set_column_spacing(10)
         self.grid.attach(self.output_pad, 0, 0, 1, 1)
@@ -548,7 +561,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '0'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_1(self, widget):
         if self.midi_learn:
@@ -556,7 +570,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '1'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_2(self, widget):
         if self.midi_learn:
@@ -564,7 +579,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '2'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_3(self, widget):
         if self.midi_learn:
@@ -572,7 +588,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '3'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_4(self, widget):
         if self.midi_learn:
@@ -580,7 +597,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '4'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_5(self, widget):
         if self.midi_learn:
@@ -588,7 +606,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '5'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_6(self, widget):
         if self.midi_learn:
@@ -596,7 +615,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '6'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_7(self, widget):
         if self.midi_learn:
@@ -604,7 +624,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '7'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_8(self, widget):
         if self.midi_learn:
@@ -612,7 +633,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '8'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_9(self, widget):
         if self.midi_learn:
@@ -620,7 +642,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '9'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def on_dot(self, widget):
         if self.midi_learn:
@@ -628,7 +651,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             self.app.window.keystring += '.'
-            self.app.window.statusbar.push(self.app.window.context_id, self.app.window.keystring)
+            self.app.window.statusbar.push(self.app.window.context_id,
+                                           self.app.window.keystring)
 
     def flash_on(self, widget, event):
         if not self.midi_learn:
@@ -663,7 +687,6 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.midi_learn = text
             self.queue_draw()
         else:
-            found = False
             value = master.get_value()
             index = self.masters.index(master)
             self.app.masters[index].value = value
