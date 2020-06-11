@@ -2,6 +2,7 @@ import cairo
 import math
 from gi.repository import Gtk, Gdk, Gio
 
+
 class PatchChannelHeader(Gtk.Widget):
     __gtype_name__ = "PatchChannelHeader"
 
@@ -26,7 +27,7 @@ class PatchChannelHeader(Gtk.Widget):
         # Draw Channel text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(self.channel)
         cr.move_to(60/2-w/2, 60/2-(h-20)/2)
@@ -41,7 +42,7 @@ class PatchChannelHeader(Gtk.Widget):
         # Draw Outputs text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(self.outputs)
         cr.move_to(((65+600)/2)-w/2, 60/2-(h-20)/2)
@@ -56,14 +57,14 @@ class PatchChannelHeader(Gtk.Widget):
         # Draw text text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents('Text')
         cr.move_to(605+(200/2)-w/2, 60/2-(h-20)/2)
         cr.show_text('Text')
 
     def draw_rounded_rectangle(self, cr, area, radius):
-        a,b,c,d = area
+        a, b, c, d = area
         cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
         cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
         cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
@@ -80,17 +81,20 @@ class PatchChannelHeader(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK
-                | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)
 
         self.set_realized(True)
         window.set_background_pattern(None)
+
 
 class PatchChannelWidget(Gtk.Widget):
     __gtype_name__ = "PatchChannelWidget"
@@ -112,13 +116,14 @@ class PatchChannelWidget(Gtk.Widget):
 
     def on_click(self, tgt, ev):
         self.app.patch_channels_tab.flowbox.unselect_all()
-        child = self.app.patch_channels_tab.flowbox.get_child_at_index(self.channel-1)
+        child = self.app.patch_channels_tab.flowbox.get_child_at_index(
+            self.channel-1)
         self.app.window.set_focus(child)
         self.app.patch_channels_tab.flowbox.select_child(child)
-        #self.app.patch_channels_tab.last_out_selected = str(self.channels)
+        # self.app.patch_channels_tab.last_out_selected = str(self.channels)
 
     def do_draw(self, cr):
-        #self.set_size_request(self.width, self.height)
+        # self.set_size_request(self.width, self.height)
 
         # Draw Grey background if selected
         if self.get_parent().is_selected():
@@ -137,7 +142,7 @@ class PatchChannelWidget(Gtk.Widget):
         # Draw Channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str(self.channel))
         cr.move_to(60/2-w/2, 60/2-(h-20)/2)
@@ -146,11 +151,15 @@ class PatchChannelWidget(Gtk.Widget):
         cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.move_to(65, 30)
         area = (65, 600, 0, 60)
-        a,b,c,d = area
-        cr.arc(a + self.radius, c + self.radius, self.radius, 2*(math.pi/2), 3*(math.pi/2))
-        cr.arc(b - self.radius, c + self.radius, self.radius, 3*(math.pi/2), 4*(math.pi/2))
-        cr.arc(b - self.radius, d - self.radius, self.radius, 0*(math.pi/2), 1*(math.pi/2))
-        cr.arc(a + self.radius, d - self.radius, self.radius, 1*(math.pi/2), 2*(math.pi/2))
+        a, b, c, d = area
+        cr.arc(a + self.radius, c + self.radius,
+               self.radius, 2*(math.pi/2), 3*(math.pi/2))
+        cr.arc(b - self.radius, c + self.radius,
+               self.radius, 3*(math.pi/2), 4*(math.pi/2))
+        cr.arc(b - self.radius, d - self.radius,
+               self.radius, 0*(math.pi/2), 1*(math.pi/2))
+        cr.arc(a + self.radius, d - self.radius,
+               self.radius, 1*(math.pi/2), 2*(math.pi/2))
         cr.close_path()
         cr.stroke()
 
@@ -173,9 +182,10 @@ class PatchChannelWidget(Gtk.Widget):
                     # Draw Output number
                     cr.set_source_rgb(0.9, 0.9, 0.9)
                     cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                            cairo.FONT_WEIGHT_BOLD)
+                                        cairo.FONT_WEIGHT_BOLD)
                     cr.set_font_size(12)
-                    (x, y, w, h, dx, dy) = cr.text_extents(str(output)+'.'+str(univ))
+                    (x, y, w, h, dx, dy) = cr.text_extents(
+                        str(output) + '.' + str(univ))
                     cr.move_to(65+(i*65)+(60/2)-w/2, 60/2-(h-20)/2)
                     cr.show_text(str(output)+'.'+str(univ))
         else:
@@ -200,9 +210,10 @@ class PatchChannelWidget(Gtk.Widget):
                         # Draw Output number
                         cr.set_source_rgb(0.9, 0.9, 0.9)
                         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                                cairo.FONT_WEIGHT_BOLD)
+                                            cairo.FONT_WEIGHT_BOLD)
                         cr.set_font_size(10)
-                        (x, y, w, h, dx, dy) = cr.text_extents(str(output)+'.'+str(univ))
+                        (x, y, w, h, dx, dy) = cr.text_extents(
+                            str(output) + '.' + str(univ))
                         cr.move_to(65+(i*35)+(30/2)-w/2, 30/2-(h-20)/2)
                         cr.show_text(str(output)+'.'+str(univ))
                     else:
@@ -219,21 +230,24 @@ class PatchChannelWidget(Gtk.Widget):
                         # Draw Output number
                         cr.set_source_rgb(0.9, 0.9, 0.9)
                         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                                cairo.FONT_WEIGHT_BOLD)
+                                            cairo.FONT_WEIGHT_BOLD)
                         cr.set_font_size(10)
                         if i == 29:
                             # Draw '...' in the last box
                             (x, y, w, h, dx, dy) = cr.text_extents('...')
-                            cr.move_to(65+(j*35)+(30/2)-w/2, (30/2-(h-20)/2)+30)
+                            cr.move_to(65 + (j * 35) + (30 / 2) - w / 2,
+                                       (30 / 2 - (h - 20) / 2) + 30)
                             cr.show_text('...')
                             break
                         else:
-                            (x, y, w, h, dx, dy) = cr.text_extents(str(output)+'.'+str(univ))
-                            cr.move_to(65+(j*35)+(30/2)-w/2, (30/2-(h-20)/2)+30)
+                            (x, y, w, h, dx, dy) = cr.text_extents(
+                                str(output) + '.' + str(univ))
+                            cr.move_to(65 + (j * 35) + (30 / 2) - w / 2,
+                                       (30 / 2 - (h - 20) / 2) + 30)
                             cr.show_text(str(output)+'.'+str(univ))
 
     def draw_rounded_rectangle(self, cr, area, radius):
-        a,b,c,d = area
+        a, b, c, d = area
         cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
         cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
         cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
@@ -250,12 +264,14 @@ class PatchChannelWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK
-                | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)
 
