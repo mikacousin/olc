@@ -1,4 +1,4 @@
-class Step(object):
+class Step:
     def __init__(
         self,
         sequence=0,

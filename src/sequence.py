@@ -8,7 +8,7 @@ from olc.cue import Cue
 from olc.step import Step
 
 
-class Sequence(object):
+class Sequence:
     def __init__(self, index, patch, type_seq="Normal", text=""):
         self.index = index
         self.type_seq = type_seq

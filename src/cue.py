@@ -3,7 +3,7 @@ import array
 from olc.define import MAX_CHANNELS
 
 
-class Cue(object):
+class Cue:
     def __init__(
         self, sequence, memory, channels=array.array("B", [0] * MAX_CHANNELS), text=""
     ):

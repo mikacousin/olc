@@ -4,7 +4,7 @@ from olc.define import MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
 
 
-class ChannelTime(object):
+class ChannelTime:
     def __init__(self, delay=0.0, time=0.0):
         self.delay = delay
         self.time = time

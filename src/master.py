@@ -6,7 +6,7 @@ from gi.repository import Gio
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
 
-class Master(object):
+class Master:
     def __init__(
         self,
         page,

@@ -3,7 +3,7 @@ import liblo
 from gi.repository import Gio
 
 
-class OscClient(object):
+class OscClient:
     def __init__(self):
         # Port to send data to the client
         self.port = Gio.Application.get_default().settings.get_int("osc-client-port")

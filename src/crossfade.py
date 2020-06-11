@@ -4,7 +4,7 @@ from gi.repository import Gtk, Gio, Pango
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
 
-class Scale(object):
+class Scale:
     def __init__(self):
         self.value = 0
 
@@ -16,7 +16,7 @@ class Scale(object):
         return self.value
 
 
-class CrossFade(object):
+class CrossFade:
     """ For Manual Crossfade """
 
     def __init__(self):

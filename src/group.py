@@ -6,7 +6,7 @@ from olc.widgets_channel import ChannelWidget
 from olc.widgets_group import GroupWidget
 
 
-class Group(object):
+class Group:
     def __init__(self, index, channels=array.array("B", [0] * MAX_CHANNELS), text=""):
         self.index = index
         self.channels = channels

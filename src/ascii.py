@@ -12,7 +12,7 @@ from olc.master import Master
 from olc.widgets_group import GroupWidget
 
 
-class Ascii(object):
+class Ascii:
     def __init__(self, filename):
         self.file = filename
         if filename:

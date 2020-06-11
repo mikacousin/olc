@@ -2,7 +2,7 @@ import mido
 from gi.repository import Gio, Gdk
 
 
-class MidiFader(object):
+class MidiFader:
     def __init__(self):
         self.value = 0
         self.inverted = True
@@ -22,7 +22,7 @@ class MidiFader(object):
             self.value = value
 
 
-class Midi(object):
+class Midi:
     def __init__(self):
         self.inport = None
 

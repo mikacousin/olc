@@ -5,7 +5,7 @@ from gi.repository import Gio
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
 
 
-class Dmx(object):
+class Dmx:
     def __init__(self, universes, patch, ola_client, sequence, masters, window):
         self.universes = universes
         self.patch = patch
@@ -67,7 +67,7 @@ class Dmx(object):
             self.ola_client.SendDmx(universe, self.frame[universe])
 
 
-class PatchDmx(object):
+class PatchDmx:
     """
     To store and manipulate DMX patch
     """
