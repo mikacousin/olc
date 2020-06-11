@@ -21,13 +21,15 @@ class Ascii(object):
             self.basename = ""
         self.modified = False
 
-        self.default_time = Gio.Application.get_default().settings.get_double('default-time')
+        self.default_time = Gio.Application.get_default().settings.get_double(
+            'default-time')
 
         self.app = Gio.Application.get_default()
 
     def load(self):
         self.basename = self.file.get_basename()
-        self.default_time = Gio.Application.get_default().settings.get_double('default-time')
+        self.default_time = Gio.Application.get_default().settings.get_double(
+            'default-time')
         try:
             status, contents, etag_out = self.file.load_contents(None)
 
@@ -241,7 +243,8 @@ class Ascii(object):
                             # We could have several channels
                             for chan in p:
                                 if chan.isdigit():
-                                    channel_time[int(chan)] = ChannelTime(delay, time)
+                                    channel_time[int(chan)] =\
+                                        ChannelTime(delay, time)
                         if line[:4].upper() == 'CHAN':
                             p = line[5:].split(" ")
                             for q in p:
@@ -537,7 +540,8 @@ class Ascii(object):
                     d_in = str(self.app.sequence.steps[i].delay_in)
                 if d_in == "0":
                     d_in = ""
-                channel_time = str(len(self.app.sequence.steps[i].channel_time))
+                channel_time = str(len(
+                    self.app.sequence.steps[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
@@ -560,16 +564,25 @@ class Ascii(object):
                     self.app.window.cues_liststore2.append([str(i), '', '', '',
                                                            '', '', '', '', ''])
                 else:
-                    self.app.window.cues_liststore1.append([str(i), str(self.app.sequence.steps[i].cue.memory),
-                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time, bg, weight, 99])
-                    self.app.window.cues_liststore2.append([str(i), str(self.app.sequence.steps[i].cue.memory),
-                        str(self.app.sequence.steps[i].text), wait, d_out, str(t_out), d_in, str(t_in), channel_time])
+                    self.app.window.cues_liststore1.append(
+                        [str(i), str(self.app.sequence.steps[i].cue.memory),
+                         str(self.app.sequence.steps[i].text), wait, d_out,
+                         str(t_out), d_in, str(t_in), channel_time, bg, weight,
+                         99])
+                    self.app.window.cues_liststore2.append(
+                        [str(i), str(self.app.sequence.steps[i].cue.memory),
+                         str(self.app.sequence.steps[i].text), wait, d_out,
+                         str(t_out), d_in, str(t_in), channel_time])
 
-            self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
-            self.app.window.step_filter1.set_visible_func(self.app.window.step_filter_func1)
+            self.app.window.step_filter1 = \
+                self.app.window.cues_liststore1.filter_new()
+            self.app.window.step_filter1.set_visible_func(
+                self.app.window.step_filter_func1)
 
-            self.app.window.step_filter2 = self.app.window.cues_liststore2.filter_new()
-            self.app.window.step_filter2.set_visible_func(self.app.window.step_filter_func2)
+            self.app.window.step_filter2 = \
+                self.app.window.cues_liststore2.filter_new()
+            self.app.window.step_filter2.set_visible_func(
+                self.app.window.step_filter_func2)
 
             self.app.window.treeview1.set_model(self.app.window.step_filter1)
             self.app.window.treeview2.set_model(self.app.window.step_filter2)
@@ -587,7 +600,8 @@ class Ascii(object):
             if self.app.group_tab:
                 # Remove Old Groups
                 del(self.app.group_tab.grps[:])
-                self.app.group_tab.scrolled2.remove(self.app.group_tab.flowbox2)
+                self.app.group_tab.scrolled2.remove(
+                    self.app.group_tab.flowbox2)
                 self.app.group_tab.flowbox2.destroy()
                 # New FlowBox
                 self.app.group_tab.flowbox2 = Gtk.FlowBox()
@@ -595,13 +609,17 @@ class Ascii(object):
                 self.app.group_tab.flowbox2.set_max_children_per_line(20)
                 self.app.group_tab.flowbox2.set_homogeneous(True)
                 self.app.group_tab.flowbox2.set_activate_on_single_click(True)
-                self.app.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-                self.app.group_tab.flowbox2.set_filter_func(self.app.group_tab.filter_groups, None)
+                self.app.group_tab.flowbox2.set_selection_mode(
+                    Gtk.SelectionMode.SINGLE)
+                self.app.group_tab.flowbox2.set_filter_func(
+                    self.app.group_tab.filter_groups, None)
                 self.app.group_tab.scrolled2.add(self.app.group_tab.flowbox2)
                 # Add Groups to FlowBox
                 for i, _ in enumerate(self.app.groups):
-                    self.app.group_tab.grps.append(GroupWidget(i, self.app.groups[i].index,
-                        self.app.groups[i].text, self.app.group_tab.grps))
+                    self.app.group_tab.grps.append(
+                        GroupWidget(i, self.app.groups[i].index,
+                                    self.app.groups[i].text,
+                                    self.app.group_tab.grps))
                     self.app.group_tab.flowbox2.add(self.app.group_tab.grps[i])
                 self.app.group_tab.flowbox1.invalidate_filter()
                 self.app.group_tab.flowbox2.invalidate_filter()
@@ -611,14 +629,17 @@ class Ascii(object):
             if self.app.sequences_tab:
                 self.app.sequences_tab.liststore1.clear()
 
-                self.app.sequences_tab.liststore1.append([self.app.sequence.index, self.app.sequence.type_seq,
-                    self.app.sequence.text])
+                self.app.sequences_tab.liststore1.append(
+                    [self.app.sequence.index, self.app.sequence.type_seq,
+                     self.app.sequence.text])
 
                 for chaser in self.app.chasers:
-                    self.app.sequences_tab.liststore1.append([chaser.index,
-                        chaser.type_seq, chaser.text])
+                    self.app.sequences_tab.liststore1.append(
+                        [chaser.index,
+                         chaser.type_seq, chaser.text])
 
-                self.app.sequences_tab.treeview1.set_model(self.app.sequences_tab.liststore1)
+                self.app.sequences_tab.treeview1.set_model(
+                    self.app.sequences_tab.liststore1)
                 path = Gtk.TreePath.new_first()
                 self.app.sequences_tab.treeview1.set_cursor(path, None, False)
                 # TODO: List of steps of selected sequence
@@ -652,8 +673,8 @@ class Ascii(object):
                     for page in range(2):
                         for master in self.app.masters:
                             if master.page == page + 1:
-                                self.app.virtual_console.flashes[master.number - 1 + (page *20)].label = master.text
-                                self.app.virtual_console.flashes[master.number - 1 + (page *20)].queue_draw()
+                                self.app.virtual_console.flashes[master.number - 1 + (page * 20)].label = master.text
+                                self.app.virtual_console.flashes[master.number - 1 + (page * 20)].queue_draw()
 
             # Redraw Edit Masters Tab if exist
             if self.app.masters_tab:
@@ -664,12 +685,15 @@ class Ascii(object):
 
                         # Type : None
                         if self.app.masters[index].content_type == 0:
-                            self.app.masters_tab.liststore.append([index + 1, '', '', ''])
+                            self.app.masters_tab.liststore.append([index + 1,
+                                                                  '', '', ''])
 
                         # Type : Preset
                         elif self.app.masters[index].content_type == 1:
-                            content_value = str(self.app.masters[index].content_value)
-                            self.app.masters_tab.liststore.append([index + 1, 'Preset', content_value, ''])
+                            content_value = str(
+                                self.app.masters[index].content_value)
+                            self.app.masters_tab.liststore.append(
+                                [index + 1, 'Preset', content_value, ''])
 
                         # Type : Channels
                         elif self.app.masters[index].content_type == 2:
@@ -677,7 +701,8 @@ class Ascii(object):
                             for chan in range(MAX_CHANNELS):
                                 if self.app.masters[index].channels[chan]:
                                     nb_chan += 1
-                            self.app.masters_tab.liststore.append([index + 1, 'Channels', str(nb_chan), ''])
+                            self.app.masters_tab.liststore.append(
+                                [index + 1, 'Channels', str(nb_chan), ''])
 
                         # Type : Sequence
                         elif self.app.masters[index].content_type == 3:
