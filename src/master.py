@@ -134,13 +134,16 @@ class Master(object):
                             if self.value and chaser.run is False:
                                 # Start Chaser
                                 self.app.chasers[k].run = True
-                                self.app.chasers[k].thread = ThreadChaser(self.app,
-                                        self, k, self.value, self.percent_view)
+                                self.app.chasers[k].thread = (
+                                    ThreadChaser(self.app, self, k,
+                                                 self.value,
+                                                 self.percent_view))
                                 self.app.chasers[k].thread.start()
                             # Si il tournait déjà et master > 0
                             elif self.value and chaser.run is True:
                                 # Update Max Level
-                                self.app.chasers[k].thread.level_scale = self.value
+                                self.app.chasers[k].thread.level_scale = (
+                                    self.value)
                             # Si il tournait et que le master passe à 0
                             elif self.value == 0 and chaser.run is True:
                                 # Stop Chaser
@@ -169,7 +172,8 @@ class ThreadChaser(threading.Thread):
             # On récupère les temps du pas suivant
             if position != self.app.chasers[self.chaser].last-1:
                 t_in = self.app.chasers[self.chaser].steps[position+1].time_in
-                t_out = self.app.chasers[self.chaser].steps[position+1].time_out
+                t_out = (
+                    self.app.chasers[self.chaser].steps[position+1].time_out)
             else:
                 t_in = self.app.chasers[self.chaser].steps[1].time_in
                 t_out = self.app.chasers[self.chaser].steps[1].time_out
@@ -177,10 +181,10 @@ class ThreadChaser(threading.Thread):
             # Quel est le temps le plus long
             if t_in > t_out:
                 t_max = t_in
-                t_min = t_out
+                # t_min = t_out
             else:
                 t_max = t_out
-                t_min = t_in
+                # t_min = t_in
 
             start_time = time.time() * 1000  # actual time in ms
             delay = t_max * 1000
