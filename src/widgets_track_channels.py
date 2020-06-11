@@ -2,6 +2,7 @@ import cairo
 import math
 from gi.repository import Gtk, Gdk, Gio
 
+
 class TrackChannelsHeader(Gtk.Widget):
     __gtype_name__ = 'TrackChannelsHeader'
 
@@ -27,10 +28,10 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Step text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str('Step'))
-        cr.move_to(60/2-w/2, 60/2-(h-20)/2)
+        cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(str('Step'))
 
         # Draw Memory box
@@ -42,10 +43,10 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Memory text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str('Memory'))
-        cr.move_to(65+(60/2-w/2), 60/2-(h-20)/2)
+        cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
         cr.show_text(str('Memory'))
 
         # Draw Text box
@@ -57,7 +58,7 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str('Text'))
         cr.move_to(135, 60/2-(h-20)/2)
@@ -73,18 +74,22 @@ class TrackChannelsHeader(Gtk.Widget):
             # Draw Channel number
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                    cairo.FONT_WEIGHT_BOLD)
+                                cairo.FONT_WEIGHT_BOLD)
             cr.set_font_size(12)
             (x, y, w, h, dx, dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535+(i*65)+(60/2-w/2), 60/2-(h-20)/2)
             cr.show_text(str(channel + 1))
 
     def draw_rounded_rectangle(self, cr, area, radius):
-        a,b,c,d = area
-        cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
-        cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
-        cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
-        cr.arc(a + radius, d - radius, radius, 1*(math.pi/2), 2*(math.pi/2))
+        a, b, c, d = area
+        cr.arc(a + radius, c + radius, radius,
+               2 * (math.pi / 2), 3 * (math.pi / 2))
+        cr.arc(b - radius, c + radius, radius,
+               3 * (math.pi / 2), 4 * (math.pi / 2))
+        cr.arc(b - radius, d - radius, radius,
+               0 * (math.pi / 2), 1 * (math.pi / 2))
+        cr.arc(a + radius, d - radius, radius,
+               1 * (math.pi / 2), 2 * (math.pi / 2))
         cr.close_path()
         cr.fill()
 
@@ -97,17 +102,20 @@ class TrackChannelsHeader(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK
-                | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)
 
         self.set_realized(True)
         window.set_background_pattern(None)
+
 
 class TrackChannelsWidget(Gtk.Widget):
     __gtype_name__ = 'TrackChannelsWidget'
@@ -133,7 +141,8 @@ class TrackChannelsWidget(Gtk.Widget):
 
     def on_click(self, tgt, ev):
         self.app.track_channels_tab.flowbox.unselect_all()
-        child = self.app.track_channels_tab.flowbox.get_child_at_index(self.step)
+        child = (
+            self.app.track_channels_tab.flowbox.get_child_at_index(self.step))
         self.app.window.set_focus(child)
         self.app.track_channels_tab.flowbox.select_child(child)
         self.app.track_channels_tab.last_step_selected = str(self.step)
@@ -164,7 +173,7 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Step number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str(self.step))
         cr.move_to(60/2-w/2, 60/2-(h-20)/2)
@@ -182,7 +191,7 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Memory number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str(self.memory))
         cr.move_to(65+(60/2-w/2), 60/2-(h-20)/2)
@@ -200,7 +209,7 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(self.text)
         cr.move_to(135, 60/2-(h-20)/2)
@@ -210,7 +219,8 @@ class TrackChannelsWidget(Gtk.Widget):
             # Draw Level boxes
             cr.move_to(535+(i*65), 0)
             area = (535+(i*65), 595+(i*65), 0, 60)
-            if self.get_parent().is_selected() and i == self.app.track_channels_tab.channel_selected:
+            if (self.get_parent().is_selected()
+                    and i == self.app.track_channels_tab.channel_selected):
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -224,14 +234,15 @@ class TrackChannelsWidget(Gtk.Widget):
                     level = str(lvl)
                 cr.set_source_rgb(0.9, 0.9, 0.9)
                 cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL,
-                        cairo.FONT_WEIGHT_BOLD)
+                                    cairo.FONT_WEIGHT_BOLD)
                 cr.set_font_size(12)
                 (x, y, w, h, dx, dy) = cr.text_extents(level)
-                cr.move_to(535+(i*65)+(60/2-w/2), 60/2-(h-20)/2)
+                cr.move_to(535 + (i * 65) + (60 / 2 - w / 2),
+                           60 / 2 - (h - 20) / 2)
                 cr.show_text(level)
 
     def draw_rounded_rectangle(self, cr, area, radius):
-        a,b,c,d = area
+        a, b, c, d = area
         cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
         cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
         cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
@@ -248,12 +259,14 @@ class TrackChannelsWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK
-                | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)
 
