@@ -2,11 +2,12 @@ import cairo
 import math
 from gi.repository import Gtk, Gio, Gdk, GObject
 
+
 class GoWidget(Gtk.Widget):
     __gtype_name__ = "GoWidget"
 
     __gsignals__ = {
-            "clicked" : (GObject.SIGNAL_RUN_FIRST, None, ())
+            "clicked": (GObject.SIGNAL_RUN_FIRST, None, ())
             }
 
     def __init__(self, *args, **kwds):
@@ -55,14 +56,14 @@ class GoWidget(Gtk.Widget):
         # Draw Go
         cr.set_source_rgb(0.8, 0.8, 0.8)
         cr.select_font_face('Monaco', cairo.FONT_SLANT_NORMAL,
-                cairo.FONT_WEIGHT_BOLD)
+                            cairo.FONT_WEIGHT_BOLD)
         cr.set_font_size(10)
         (x, y, w, h, dx, dy) = cr.text_extents('Go')
         cr.move_to(self.width/2-w/2, self.height/2-(h-(self.radius*2))/2)
         cr.show_text('Go')
 
     def rounded_rectangle_fill(self, cr, area, radius):
-        a,b,c,d = area
+        a, b, c, d = area
         cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
         cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
         cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
@@ -71,7 +72,7 @@ class GoWidget(Gtk.Widget):
         cr.fill()
 
     def rounded_rectangle(self, cr, area, radius):
-        a,b,c,d = area
+        a, b, c, d = area
         cr.arc(a + radius, c + radius, radius, 2*(math.pi/2), 3*(math.pi/2))
         cr.arc(b - radius, c + radius, radius, 3*(math.pi/2), 4*(math.pi/2))
         cr.arc(b - radius, d - radius, radius, 0*(math.pi/2), 1*(math.pi/2))
@@ -88,12 +89,14 @@ class GoWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events() | Gdk.EventMask.EXPOSURE_MASK | Gdk.EventMask.BUTTON_PRESS_MASK
-                | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         WAT = Gdk.WindowAttributesType
         mask = WAT.X | WAT.Y | WAT.VISUAL
 
-        window = Gdk.Window(self.get_parent_window(), attr, mask);
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)
 
