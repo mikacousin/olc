@@ -353,7 +353,7 @@ class Ascii:
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     preset_nb = float(line[6:])
                 if line[:7].upper() == "$PRESET" and (
-                    console == "DLIGHT" or console == "VLC"
+                    console in ("DLIGHT", "VLC")
                 ):
                     # On DLight, Preset not in sequence
                     flag_seq = False
@@ -580,11 +580,11 @@ class Ascii:
                 else:
                     bg = "#232729"
                 # Actual and Next Cue in Bold
-                if i == 0 or i == 1:
+                if i in (0, 1):
                     weight = Pango.Weight.HEAVY
                 else:
                     weight = Pango.Weight.NORMAL
-                if i == 0 or i == self.app.sequence.last - 1:
+                if i in (0, self.app.sequence.last - 1):
                     self.app.window.cues_liststore1.append(
                         [
                             str(i),

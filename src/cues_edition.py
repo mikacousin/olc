@@ -154,32 +154,21 @@ class CuesEditionTab(Gtk.Paned):
 
         keyname = Gdk.keyval_name(event.keyval)
 
-        if (
-            keyname == "1"
-            or keyname == "2"
-            or keyname == "3"
-            or keyname == "4"
-            or keyname == "5"
-            or keyname == "6"
-            or keyname == "7"
-            or keyname == "8"
-            or keyname == "9"
-            or keyname == "0"
-        ):
+        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
 
-        if (
-            keyname == "KP_1"
-            or keyname == "KP_2"
-            or keyname == "KP_3"
-            or keyname == "KP_4"
-            or keyname == "KP_5"
-            or keyname == "KP_6"
-            or keyname == "KP_7"
-            or keyname == "KP_8"
-            or keyname == "KP_9"
-            or keyname == "KP_0"
+        if keyname in (
+            "KP_1",
+            "KP_2",
+            "KP_3",
+            "KP_4",
+            "KP_5",
+            "KP_6",
+            "KP_7",
+            "KP_8",
+            "KP_9",
+            "KP_0"
         ):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -536,7 +525,7 @@ class CuesEditionTab(Gtk.Paned):
                 else:
                     bg = "#232729"
                 # Actual and Next Cue in Bold
-                if i == 0 or i == 1:
+                if i in (0, 1):
                     weight = Pango.Weight.HEAVY
                 else:
                     weight = Pango.Weight.NORMAL

@@ -30,7 +30,7 @@ class CrossFade:
         level = scale.get_value()
         position = app.sequence.position
 
-        if level != 255 and level != 0:
+        if level not in (255, 0):
             app.sequence.on_go = True
             # If Go is sent, stop it
             if app.crossfade.manual:
