@@ -65,7 +65,7 @@ class Sequence:
                 if self.position > self.last - 3:
                     self.position = self.last - 3
             except Exception as e:
-                print("Error :", e.message)
+                print("Error :", str(e))
 
         position = self.position
         position += 1
@@ -137,7 +137,7 @@ class Sequence:
                 if self.app.sequence.position < 1:
                     self.app.sequence.position = 1
             except Exception as e:
-                print("Error :", e.message)
+                print("Error :", str(e))
 
         position = self.position
         position -= 1
@@ -261,7 +261,7 @@ class Sequence:
                 self.app.sequence.thread.stop()
                 self.app.sequence.thread.join()
             except Exception as e:
-                print("Error :", e.message)
+                print("Error :", str(e))
             self.app.sequence.on_go = False
             # Launch another Go
             position = self.app.sequence.position
@@ -380,7 +380,7 @@ class Sequence:
                 self.app.sequence.thread.stop()
                 self.app.sequence.thread.join()
             except Exception as e:
-                print("Error :", e.message)
+                print("Error :", str(e))
             self.app.sequence.on_go = False
 
         # Time for Go Back in Settings
@@ -436,7 +436,7 @@ class ThreadGo(threading.Thread):
         self._stopevent = threading.Event()
         # To save dmx levels when user send Go
         self.dmxlevels = []
-        for univ in range(NB_UNIVERSES):
+        for _univ in range(NB_UNIVERSES):
             self.dmxlevels.append(array.array("B", [0] * 512))
 
     def run(self):
@@ -822,7 +822,7 @@ class ThreadGoBack(threading.Thread):
         self.app = Gio.Application.get_default()
 
         self.dmxlevels = []
-        for univ in range(NB_UNIVERSES):
+        for _univ in range(NB_UNIVERSES):
             self.dmxlevels.append(array.array("B", [0] * 512))
 
     def run(self):

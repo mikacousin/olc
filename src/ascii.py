@@ -816,7 +816,7 @@ class Ascii:
             # TODO: Redraw Track Channels Tab if exist
 
         except GObject.GError as e:
-            print("Error: " + e.message)
+            print("Error: " + str(e))
 
         self.modified = False
 

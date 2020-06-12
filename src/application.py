@@ -436,7 +436,7 @@ class Application(Gtk.Application):
             del self.win_masters.ad[:]
             del self.win_masters.flash[:]
         except Exception as e:
-            print("Error :", e.message)
+            print("Error :", str(e))
         del self.masters[:]
         # Redraw Groups Window
         for grp in self.win_groups.grps:
