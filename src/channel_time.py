@@ -292,23 +292,20 @@ class ChanneltimeTab(Gtk.Paned):
                 self.channels[i].level = channels[i]
                 self.channels[i].next_level = channels[i]
                 return child
-            else:
-                self.channels[i].level = 0
-                self.channels[i].next_level = 0
-                return False
+            self.channels[i].level = 0
+            self.channels[i].next_level = 0
+            return False
         # If no selected Channel Time, display selected channels
-        else:
-            i = child.get_index()
-            channels = self.step.cue.channels
+        i = child.get_index()
+        channels = self.step.cue.channels
 
-            if self.channels[i].clicked:
-                self.channels[i].level = channels[i]
-                self.channels[i].next_level = channels[i]
-                return child
-            else:
-                self.channels[i].level = 0
-                self.channels[i].next_level = 0
-                return False
+        if self.channels[i].clicked:
+            self.channels[i].level = channels[i]
+            self.channels[i].next_level = channels[i]
+            return child
+        self.channels[i].level = 0
+        self.channels[i].next_level = 0
+        return False
 
     def on_channeltime_changed(self, treeview):
         """ Select a Channel Time """

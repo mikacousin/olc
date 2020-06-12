@@ -679,15 +679,13 @@ class SequenceTab(Gtk.Grid):
                     self.channels[i].level = self.user_channels[i]
                     self.channels[i].next_level = self.user_channels[i]
                 return child
-            else:
-                if self.user_channels[i] == -1:
-                    self.channels[i].level = 0
-                    self.channels[i].next_level = 0
-                    return False
-                else:
-                    self.channels[i].level = self.user_channels[i]
-                    self.channels[i].next_level = self.user_channels[i]
-                    return child
+            if self.user_channels[i] == -1:
+                self.channels[i].level = 0
+                self.channels[i].next_level = 0
+                return False
+            self.channels[i].level = self.user_channels[i]
+            self.channels[i].next_level = self.user_channels[i]
+            return child
 
         if self.user_channels[i] != -1 or self.channels[i].clicked:
             if self.user_channels[i] == -1:

@@ -97,17 +97,14 @@ class CuesEditionTab(Gtk.Paned):
                     self.channels[i].level = self.user_channels[i]
                     self.channels[i].next_level = self.user_channels[i]
                 return child
-            else:
-                if self.user_channels[i] == -1:
-                    self.channels[i].level = 0
-                    self.channels[i].next_level = 0
-                    return False
-                else:
-                    self.channels[i].level = self.user_channels[i]
-                    self.channels[i].next_level = self.user_channels[i]
-                    return child
-        else:
-            return False
+            if self.user_channels[i] == -1:
+                self.channels[i].level = 0
+                self.channels[i].next_level = 0
+                return False
+            self.channels[i].level = self.user_channels[i]
+            self.channels[i].next_level = self.user_channels[i]
+            return child
+        return False
 
     def filter_cue_func(self, model, i, data):
         return True

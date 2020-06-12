@@ -83,8 +83,7 @@ class GroupTab(Gtk.Paned):
                     self.channels[i].level = self.app.groups[j].channels[i]
                     self.channels[i].next_level = self.app.groups[j].channels[i]
                     return child
-                else:
-                    return False
+                return False
 
     def filter_groups(self, child, user_data):
         return child

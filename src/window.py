@@ -454,8 +454,7 @@ class Window(Gtk.ApplicationWindow):
                 return True
             if int(model[iter][0]) == 0 or int(model[iter][0]) == 1:
                 return True
-            else:
-                return False
+            return False
 
         if self.app.sequence.position == 1:
             if int(model[iter][11]) == 1:
@@ -468,8 +467,7 @@ class Window(Gtk.ApplicationWindow):
                 or int(model[iter][0]) == 2
             ):
                 return True
-            else:
-                return False
+            return False
 
         if int(model[iter][11]) == 1:
             return False
@@ -483,15 +481,13 @@ class Window(Gtk.ApplicationWindow):
             or int(model[iter][0]) == self.app.sequence.position - 2
         ):
             return True
-        else:
-            return False
+        return False
 
     def step_filter_func2(self, model, iter, data):
         """ Filter for the second part of the cues list """
         if int(model[iter][0]) <= self.app.sequence.position + 1:
             return False
-        else:
-            return True
+        return True
 
     def filter_func(self, child, user_data):
         """ Filter for channels window """
@@ -501,8 +497,7 @@ class Window(Gtk.ApplicationWindow):
                 if channel != 0:
                     # print("Chanel:", i+1, "Output:", self.app.patch.channels[i][j])
                     return child
-                else:
-                    return False
+                return False
         else:
             return True
 

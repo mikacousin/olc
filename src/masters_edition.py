@@ -162,7 +162,7 @@ class MastersTab(Gtk.Paned):
                 return False
 
             # Type : Preset
-            elif self.app.masters[row].content_type == 1:
+            if self.app.masters[row].content_type == 1:
                 found = False
                 preset = self.app.masters[row].content_value
                 for mem in self.app.memories:
@@ -179,18 +179,15 @@ class MastersTab(Gtk.Paned):
                             self.channels[index].level = self.user_channels[index]
                             self.channels[index].next_level = self.user_channels[index]
                         return child
-                    else:
-                        if self.user_channels[index] == -1:
-                            return False
-                        else:
-                            self.channels[index].level = self.user_channels[index]
-                            self.channels[index].next_level = self.user_channels[index]
-                            return child
-                else:
-                    return False
+                    if self.user_channels[index] == -1:
+                        return False
+                    self.channels[index].level = self.user_channels[index]
+                    self.channels[index].next_level = self.user_channels[index]
+                    return child
+                return False
 
             # Type : Channels
-            elif self.app.masters[row].content_type == 2:
+            if self.app.masters[row].content_type == 2:
                 channels = self.app.masters[row].channels
 
                 if channels[index] or self.channels[index].clicked:
@@ -201,20 +198,18 @@ class MastersTab(Gtk.Paned):
                         self.channels[index].level = self.user_channels[index]
                         self.channels[index].next_level = self.user_channels[index]
                     return child
-                else:
-                    if self.user_channels[index] == -1:
-                        return False
-                    else:
-                        self.channels[index].level = self.user_channels[index]
-                        self.channels[index].next_level = self.user_channels[index]
-                        return child
+                if self.user_channels[index] == -1:
+                    return False
+                self.channels[index].level = self.user_channels[index]
+                self.channels[index].next_level = self.user_channels[index]
+                return child
 
             # Type : Sequence
-            elif self.app.masters[row].content_type == 3:
+            if self.app.masters[row].content_type == 3:
                 return False
 
             # Type : Group
-            elif self.app.masters[row].content_type == 13:
+            if self.app.masters[row].content_type == 13:
                 found = False
                 group = self.app.masters[row].content_value
                 for grp in self.app.groups:
@@ -231,15 +226,12 @@ class MastersTab(Gtk.Paned):
                             self.channels[index].level = self.user_channels[index]
                             self.channels[index].next_level = self.user_channels[index]
                         return child
-                    else:
-                        if self.user_channels[index] == -1:
-                            return False
-                        else:
-                            self.channels[index].level = self.user_channels[index]
-                            self.channels[index].next_level = self.user_channels[index]
-                            return child
-                else:
-                    return False
+                    if self.user_channels[index] == -1:
+                        return False
+                    self.channels[index].level = self.user_channels[index]
+                    self.channels[index].next_level = self.user_channels[index]
+                    return child
+                return False
 
         else:
             return False

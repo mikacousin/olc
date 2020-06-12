@@ -60,8 +60,7 @@ class PatchOutputsTab(Gtk.Grid):
     def filter_func(self, child, user_data):
         if child.get_children()[0].type == "Output":
             return child
-        else:
-            return False
+        return False
 
     def on_scroll(self, widget, event):
         accel_mask = Gtk.accelerator_get_default_mod_mask()

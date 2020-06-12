@@ -63,8 +63,7 @@ class TrackChannelsTab(Gtk.Grid):
     def filter_func(self, child, user_data):
         if child == self.steps[self.app.sequence.last - 1].get_parent():
             return False
-        else:
-            return child
+        return child
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
