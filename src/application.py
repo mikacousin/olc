@@ -35,15 +35,15 @@ class Application(Gtk.Application):
         GLib.set_application_name("OpenLightingConsole")
         GLib.set_prgname("olc")
 
-        cssProviderFile = Gio.File.new_for_uri(
+        css_provider_file = Gio.File.new_for_uri(
             "resource://org/gnome/OpenLightingConsole/application.css"
         )
-        cssProvider = Gtk.CssProvider()
-        cssProvider.load_from_file(cssProviderFile)
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_file(css_provider_file)
         screen = Gdk.Screen.get_default()
-        styleContext = Gtk.StyleContext()
-        styleContext.add_provider_for_screen(
-            screen, cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_USER
+        style_context = Gtk.StyleContext()
+        style_context.add_provider_for_screen(
+            screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
         )
 
         # Change to dark theme
@@ -205,61 +205,61 @@ class Application(Gtk.Application):
 
         menu = builder.get_object("app-menu")
 
-        newAction = Gio.SimpleAction.new("new", None)
-        newAction.connect("activate", self._new)
-        self.add_action(newAction)
+        new_action = Gio.SimpleAction.new("new", None)
+        new_action.connect("activate", self._new)
+        self.add_action(new_action)
 
-        openAction = Gio.SimpleAction.new("open", None)
-        openAction.connect("activate", self._open)
-        self.add_action(openAction)
+        open_action = Gio.SimpleAction.new("open", None)
+        open_action.connect("activate", self._open)
+        self.add_action(open_action)
 
-        saveAction = Gio.SimpleAction.new("save", None)
-        saveAction.connect("activate", self._save)
-        self.add_action(saveAction)
+        save_action = Gio.SimpleAction.new("save", None)
+        save_action.connect("activate", self._save)
+        self.add_action(save_action)
 
-        patch_outputsAction = Gio.SimpleAction.new("patch_outputs", None)
-        patch_outputsAction.connect("activate", self._patch_outputs)
-        self.add_action(patch_outputsAction)
+        patch_outputs_action = Gio.SimpleAction.new("patch_outputs", None)
+        patch_outputs_action.connect("activate", self._patch_outputs)
+        self.add_action(patch_outputs_action)
 
-        patch_channelsAction = Gio.SimpleAction.new("patch_channels", None)
-        patch_channelsAction.connect("activate", self._patch_channels)
-        self.add_action(patch_channelsAction)
+        patch_channels_action = Gio.SimpleAction.new("patch_channels", None)
+        patch_channels_action.connect("activate", self._patch_channels)
+        self.add_action(patch_channels_action)
 
-        memoriesAction = Gio.SimpleAction.new("memories", None)
-        memoriesAction.connect("activate", self._memories)
-        self.add_action(memoriesAction)
+        memories_action = Gio.SimpleAction.new("memories", None)
+        memories_action.connect("activate", self._memories)
+        self.add_action(memories_action)
 
-        groupsAction = Gio.SimpleAction.new("groups", None)
-        groupsAction.connect("activate", self._groups)
-        self.add_action(groupsAction)
+        groups_action = Gio.SimpleAction.new("groups", None)
+        groups_action.connect("activate", self._groups)
+        self.add_action(groups_action)
 
-        sequencesAction = Gio.SimpleAction.new("sequences", None)
-        sequencesAction.connect("activate", self._sequences)
-        self.add_action(sequencesAction)
+        sequences_action = Gio.SimpleAction.new("sequences", None)
+        sequences_action.connect("activate", self._sequences)
+        self.add_action(sequences_action)
 
-        mastersAction = Gio.SimpleAction.new("masters", None)
-        mastersAction.connect("activate", self._masters)
-        self.add_action(mastersAction)
+        masters_action = Gio.SimpleAction.new("masters", None)
+        masters_action.connect("activate", self._masters)
+        self.add_action(masters_action)
 
-        virtual_consoleAction = Gio.SimpleAction.new("virtual_console", None)
-        virtual_consoleAction.connect("activate", self._virtual_console)
-        self.add_action(virtual_consoleAction)
+        virtual_console_action = Gio.SimpleAction.new("virtual_console", None)
+        virtual_console_action.connect("activate", self._virtual_console)
+        self.add_action(virtual_console_action)
 
-        settingsAction = Gio.SimpleAction.new("settings", None)
-        settingsAction.connect("activate", self._settings)
-        self.add_action(settingsAction)
+        settings_action = Gio.SimpleAction.new("settings", None)
+        settings_action.connect("activate", self._settings)
+        self.add_action(settings_action)
 
-        shortcutsAction = Gio.SimpleAction.new("show-help-overlay", None)
-        shortcutsAction.connect("activate", self._shortcuts)
-        self.add_action(shortcutsAction)
+        shortcuts_action = Gio.SimpleAction.new("show-help-overlay", None)
+        shortcuts_action.connect("activate", self._shortcuts)
+        self.add_action(shortcuts_action)
 
-        aboutAction = Gio.SimpleAction.new("about", None)
-        aboutAction.connect("activate", self._about)
-        self.add_action(aboutAction)
+        about_action = Gio.SimpleAction.new("about", None)
+        about_action.connect("activate", self._about)
+        self.add_action(about_action)
 
-        quitAction = Gio.SimpleAction.new("quit", None)
-        quitAction.connect("activate", self._exit)
-        self.add_action(quitAction)
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", self._exit)
+        self.add_action(quit_action)
 
         return menu
 
