@@ -205,7 +205,7 @@ class SequenceTab(Gtk.Grid):
 
     def on_row_activated(self, treeview, path, column):
         # Find the double clicked cell
-        itr = self.liststore2.get_iter(path)
+        # itr = self.liststore2.get_iter(path)
         columns = self.treeview2.get_columns()
         for col_nb, col in enumerate(columns):
             if col == column:

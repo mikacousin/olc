@@ -506,11 +506,14 @@ class Window(Gtk.ApplicationWindow):
         else:
             return True
 
+    """
+    # Unused function
     def on_button_toggled(self, button, name):
         if button.get_active():
             state = "on"
         else:
             state = "off"
+    """
 
     def on_timeout(self, user_data):
 

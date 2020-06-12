@@ -1,7 +1,6 @@
 import sys
 import select
 import gi
-
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib, Gdk
 from ola import OlaClient
@@ -185,7 +184,8 @@ class Application(Gtk.Application):
 
         # TODO: Revoir pour le menu
         # et la gestion auto de la fenetre des shortcuts
-        menu = self.setup_app_menu()
+        self.setup_app_menu()
+        # menu = self.setup_app_menu()
 
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])

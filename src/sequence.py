@@ -383,7 +383,8 @@ class Sequence:
                 print("Error :", e.message)
             self.app.sequence.on_go = False
 
-        go_back_time = self.app.settings.get_double("go-back-time")
+        # Time for Go Back in Settings
+        # go_back_time = self.app.settings.get_double("go-back-time")
 
         self.app.window.sequential.total_time = self.app.sequence.steps[
             position - 1
