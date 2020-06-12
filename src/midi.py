@@ -419,7 +419,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.group.emit("button-press-event", event)
                 else:
-                    self.app.groups(None, None)
+                    self.app.groups_cb(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -455,7 +455,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.preset.emit("button-press-event", event)
                 else:
-                    self.app.groups(None, None)
+                    self.app.groups_cb(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"

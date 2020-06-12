@@ -409,14 +409,14 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.midi_learn = "Preset"
             self.queue_draw()
         else:
-            self.app.memories(None, None)
+            self.app.memories_cb(None, None)
 
     def on_group(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = "Group"
             self.queue_draw()
         else:
-            self.app.groups(None, None)
+            self.app.groups_cb(None, None)
 
     def on_track(self, widget):
         if self.midi_learn:

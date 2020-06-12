@@ -227,11 +227,11 @@ class Application(Gtk.Application):
         self.add_action(patch_channels_action)
 
         memories_action = Gio.SimpleAction.new("memories", None)
-        memories_action.connect("activate", self.memories)
+        memories_action.connect("activate", self.memories_cb)
         self.add_action(memories_action)
 
         groups_action = Gio.SimpleAction.new("groups", None)
-        groups_action.connect("activate", self.groups)
+        groups_action.connect("activate", self.groups_cb)
         self.add_action(groups_action)
 
         sequences_action = Gio.SimpleAction.new("sequences", None)
@@ -578,7 +578,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.track_channels_tab)
             self.window.notebook.set_current_page(page)
 
-    def memories(self, action, parameter):
+    def memories_cb(self, action, parameter):
         # Create Memories Tab
         if self.memories_tab is None:
             self.memories_tab = CuesEditionTab()
@@ -600,7 +600,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.memories_tab)
             self.window.notebook.set_current_page(page)
 
-    def groups(self, action, parameter):
+    def groups_cb(self, action, parameter):
         # Create Groups Tab
         if self.group_tab is None:
             self.group_tab = GroupTab()
