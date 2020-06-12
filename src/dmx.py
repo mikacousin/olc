@@ -19,7 +19,7 @@ class Dmx:
 
         # les valeurs DMX echangées avec Ola
         self.frame = []
-        for universe in range(NB_UNIVERSES):
+        for _ in range(NB_UNIVERSES):
             self.frame.append(array.array("B", [0] * 512))
         # les valeurs du séquentiel
         self.sequence = array.array("B", [0] * MAX_CHANNELS)
@@ -131,11 +131,3 @@ class PatchDmx:
             self.channels[channel - 1] = sorted(self.channels[channel - 1])
         self.outputs[univ][output - 1][0] = channel
         self.outputs[univ][output - 1][1] = level
-
-    """
-    def is_channel_patched(self, channel):
-        for out in range(512):
-            if self.outputs[out] == channel:
-                return out
-        return -1
-    """
