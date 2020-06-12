@@ -200,7 +200,7 @@ class PatchChannelsTab(Gtk.Grid):
                             self.app.patch.channels[old_channel - 1].remove(
                                 [output + 1, universe]
                             )
-                            if not len(self.app.patch.channels[old_channel - 1]):
+                            if len(self.app.patch.channels[old_channel - 1]) == 0:
                                 self.app.patch.channels[old_channel - 1] = [[0, 0]]
                         # Patch
                         self.app.patch.channels[channel] = [[output + 1, universe]]
@@ -262,7 +262,7 @@ class PatchChannelsTab(Gtk.Grid):
                             self.app.patch.channels[old_channel - 1].remove(
                                 [output + 1, universe]
                             )
-                            if not len(self.app.patch.channels[old_channel - 1]):
+                            if len(self.app.patch.channels[old_channel - 1]) == 0:
                                 self.app.patch.channels[old_channel - 1] = [[0, 0]]
                         # Patch
                         self.app.patch.add_output(channel + 1, output + 1, universe)
@@ -307,7 +307,7 @@ class PatchChannelsTab(Gtk.Grid):
                             self.app.patch.channels[channel].remove(
                                 [output + 1, universe]
                             )
-                            if not len(self.app.patch.channels[channel]):
+                            if len(self.app.patch.channels[channel]) == 0:
                                 self.app.patch.channels[channel] = [[0, 0]]
                             self.app.patch.outputs[universe][output][0] = 0
                             self.app.dmx.frame[universe][output] = 0

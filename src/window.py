@@ -759,7 +759,7 @@ class Window(Gtk.ApplicationWindow):
 
         if not self.last_chan_selected:
             sel = self.flowbox.get_selected_children()
-            if len(sel):
+            if len(sel) > 0:
                 for flowboxchild in sel:
                     children = flowboxchild.get_children()
 

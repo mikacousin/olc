@@ -528,7 +528,7 @@ class GroupTab(Gtk.Paned):
         channels = array.array("B", [0] * MAX_CHANNELS)
         txt = str(float(group_nb))
         self.app.groups.append(Group(float(group_nb), channels, txt))
-        if len(self.grps):
+        if len(self.grps) > 0:
             i = self.grps[-1].index + 1
         else:
             i = 0

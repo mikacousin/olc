@@ -319,7 +319,7 @@ class PatchOutputsTab(Gtk.Grid):
                             self.app.patch.channels[old_channel - 1].remove(
                                 [output + 1, univ]
                             )
-                            if not len(self.app.patch.channels[old_channel - 1]):
+                            if len(self.app.patch.channels[old_channel - 1]) == 0:
                                 self.app.patch.channels[old_channel - 1] = [[0, 0]]
 
                         # Patch Channel : same channel for every outputs

@@ -257,7 +257,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         if not self.app.window.last_chan_selected:
             sel = self.app.window.flowbox.get_selected_children()
-            if len(sel):
+            if len(sel) > 0:
                 for flowboxchild in sel:
                     children = flowboxchild.get_children()
                     for channelwidget in children:
