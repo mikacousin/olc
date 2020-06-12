@@ -18,7 +18,7 @@ class MidiFader:
         return self.value
 
     def set_value(self, value):
-        if value >= 0 and value < 128:
+        if 0 <= value < 128:
             self.value = value
 
 

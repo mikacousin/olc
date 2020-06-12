@@ -597,7 +597,7 @@ class Window(Gtk.ApplicationWindow):
             "KP_7",
             "KP_8",
             "KP_9",
-            "KP_0"
+            "KP_0",
         ):
             self.keystring += keyname[3:]
             self.statusbar.push(self.context_id, self.keystring)
@@ -733,7 +733,7 @@ class Window(Gtk.ApplicationWindow):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
                 self.set_focus(child)
                 self.flowbox.select_child(child)
@@ -792,11 +792,10 @@ class Window(Gtk.ApplicationWindow):
             return
 
         channel = int(self.keystring) - 1
-        if (
-            channel >= 0
-            and channel < MAX_CHANNELS
-            and self.app.patch.channels[channel][0] != [0, 0]
-        ):
+        if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+            0,
+            0,
+        ]:
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.select_child(child)
@@ -815,11 +814,10 @@ class Window(Gtk.ApplicationWindow):
             return
 
         channel = int(self.keystring) - 1
-        if (
-            channel >= 0
-            and channel < MAX_CHANNELS
-            and self.app.patch.channels[channel][0] != [0, 0]
-        ):
+        if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+            0,
+            0,
+        ]:
             child = self.flowbox.get_child_at_index(channel)
             self.set_focus(child)
             self.flowbox.unselect_child(child)
@@ -896,10 +894,10 @@ class Window(Gtk.ApplicationWindow):
                 channel = int(channelwidget.channel) - 1
 
                 if self.app.settings.get_boolean("percent"):
-                    if level >= 0 and level <= 100:
+                    if 0 <= level <= 100:
                         self.app.dmx.user[channel] = int(round((level / 100) * 255))
                 else:
-                    if level >= 0 and level <= 255:
+                    if 0 <= level <= 255:
                         self.app.dmx.user[channel] = level
 
         self.keystring = ""

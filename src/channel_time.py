@@ -348,7 +348,7 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_7",
             "KP_8",
             "KP_9",
-            "KP_0"
+            "KP_0",
         ):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -390,7 +390,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS:
                 self.channels[channel].clicked = True
                 # self.flowbox.invalidate_filter()
 

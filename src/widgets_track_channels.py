@@ -142,7 +142,7 @@ class TrackChannelsWidget(Gtk.Widget):
         self.app.track_channels_tab.flowbox.select_child(child)
         self.app.track_channels_tab.last_step_selected = str(self.step)
         chan = int((ev.x - 535) / 65)
-        if chan >= 0 and chan < len(self.levels):
+        if 0 <= chan < len(self.levels):
             self.app.track_channels_tab.channel_selected = chan
 
     def do_draw(self, cr):

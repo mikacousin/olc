@@ -113,7 +113,7 @@ class GroupTab(Gtk.Paned):
             "KP_7",
             "KP_8",
             "KP_9",
-            "KP_0"
+            "KP_0",
         ):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -304,7 +304,7 @@ class GroupTab(Gtk.Paned):
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS:
 
                 # Only patched channel
                 if self.app.patch.channels[channel][0] != [0, 0]:
@@ -374,11 +374,10 @@ class GroupTab(Gtk.Paned):
             return
 
         channel = int(self.keystring) - 1
-        if (
-            channel >= 0
-            and channel < MAX_CHANNELS
-            and self.app.patch.channels[channel][0] != [0, 0]
-        ):
+        if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+            0,
+            0,
+        ]:
             self.channels[channel].clicked = True
             self.flowbox1.invalidate_filter()
 
@@ -397,11 +396,10 @@ class GroupTab(Gtk.Paned):
             return
 
         channel = int(self.keystring) - 1
-        if (
-            channel >= 0
-            and channel < MAX_CHANNELS
-            and self.app.patch.channels[channel][0] != [0, 0]
-        ):
+        if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+            0,
+            0,
+        ]:
             self.channels[channel].clicked = False
             self.flowbox1.invalidate_filter()
 
@@ -422,7 +420,7 @@ class GroupTab(Gtk.Paned):
 
         level = int(self.keystring)
         if Gio.Application.get_default().settings.get_boolean("percent"):
-            if level >= 0 and level <= 100:
+            if 0 <= level <= 100:
                 level = int(round((level / 100) * 255))
             else:
                 level = -1

@@ -18,11 +18,9 @@ class Cue:
     def set_level(self, channel, level):
         if (
             isinstance(level, int)
-            and level >= 0
-            and level < 256
+            and 0 <= level < 256
             and isinstance(channel, int)
-            and channel >= 0
-            and channel < MAX_CHANNELS
+            and 0 <= channel < MAX_CHANNELS
         ):
             self.channels[channel] = level
 

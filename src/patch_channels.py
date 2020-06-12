@@ -76,7 +76,7 @@ class PatchChannelsTab(Gtk.Grid):
             "KP_7",
             "KP_8",
             "KP_9",
-            "KP_0"
+            "KP_0",
         ):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -140,7 +140,7 @@ class PatchChannelsTab(Gtk.Grid):
 
         if self.keystring != "":
             channel = int(self.keystring) - 1
-            if channel >= 0 and channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
                 self.app.window.set_focus(child)
                 self.flowbox.select_child(child)
@@ -187,7 +187,7 @@ class PatchChannelsTab(Gtk.Grid):
                         output = int(self.keystring) - 1
                         universe = 0
 
-                    if output >= 0 and output < 512:
+                    if 0 <= output < 512:
                         # Unpatch old values
                         # outputs = self.app.patch.channels[channel]
                         for item in self.app.patch.channels[channel]:
@@ -254,7 +254,7 @@ class PatchChannelsTab(Gtk.Grid):
                         output = int(self.keystring) - 1
                         universe = 0
 
-                    if output >= 0 and output < 512:
+                    if 0 <= output < 512:
                         # Unpatch old value
                         old_channel = self.app.patch.outputs[universe][output][0]
                         if old_channel:
@@ -300,7 +300,7 @@ class PatchChannelsTab(Gtk.Grid):
                         output = int(self.keystring) - 1
                         universe = 0
 
-                    if output >= 0 and output < 512:
+                    if 0 <= output < 512:
                         # Verify Output is patched to the Channel
                         if [output + 1, universe] in self.app.patch.channels[channel]:
                             # Remove Output

@@ -129,7 +129,7 @@ class PatchOutputsTab(Gtk.Grid):
             "KP_7",
             "KP_8",
             "KP_9",
-            "KP_0"
+            "KP_0",
         ):
             self.keystring += keyname[3:]
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
@@ -239,7 +239,7 @@ class PatchOutputsTab(Gtk.Grid):
                 output = int(self.keystring) - 1
                 univ = 0
 
-            if output >= 0 and output < 512 and univ >= 0 and univ < NB_UNIVERSES:
+            if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
                 index = output + (univ * 512)
                 child = self.flowbox.get_child_at_index(index)
                 self.app.window.set_focus(child)
@@ -312,7 +312,7 @@ class PatchOutputsTab(Gtk.Grid):
                 else:
                     channel = int(self.keystring) - 1
 
-                    if channel >= 0 and channel < MAX_CHANNELS:
+                    if 0 <= channel < MAX_CHANNELS:
                         # Unpatch old value if exist
                         old_channel = self.app.patch.outputs[univ][output][0]
                         if old_channel != 0:
@@ -328,7 +328,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
                 # Update list of channels
-                if channel >= 0 and channel < MAX_CHANNELS:
+                if 0 <= channel < MAX_CHANNELS:
                     level = self.app.dmx.frame[univ][output]
                     self.app.window.channels[channel].level = level
                     self.app.window.channels[channel].queue_draw()

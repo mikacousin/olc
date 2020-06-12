@@ -9,7 +9,7 @@ class Scale:
         self.value = 0
 
     def set_value(self, value):
-        if value >= 0 and value < 256:
+        if 0 <= value < 256:
             self.value = value
 
     def get_value(self):
@@ -93,8 +93,9 @@ class CrossFade:
                                         lvl = old_level
 
                                     elif (
-                                        pos >= ct_delay + wait
-                                        and pos < ct_delay + ct_time + wait
+                                        ct_delay + wait
+                                        <= pos
+                                        < ct_delay + ct_time + wait
                                     ):
                                         lvl = old_level - abs(
                                             int(
@@ -116,8 +117,9 @@ class CrossFade:
 
                                 elif (
                                     next_level < user_level
-                                    and pos < time_out + wait + delay_out
-                                    and pos > wait + delay_out
+                                    and wait + delay_out
+                                    < pos
+                                    < time_out + wait + delay_out
                                 ):
 
                                     lvl = user_level - abs(
@@ -142,8 +144,9 @@ class CrossFade:
 
                                 elif (
                                     next_level < old_level
-                                    and pos < time_out + wait + delay_out
-                                    and pos > wait + delay_out
+                                    and wait + delay_out
+                                    < pos
+                                    < time_out + wait + delay_out
                                 ):
 
                                     lvl = old_level - abs(
@@ -215,8 +218,9 @@ class CrossFade:
                                         lvl = old_level
 
                                     elif (
-                                        pos >= ct_delay + wait
-                                        and pos < ct_delay + ct_time + wait
+                                        ct_delay + wait
+                                        <= pos
+                                        < ct_delay + ct_time + wait
                                     ):
                                         lvl = int(
                                             round(
@@ -237,8 +241,9 @@ class CrossFade:
 
                                 elif (
                                     next_level > user_level
-                                    and pos < time_in + wait + delay_in
-                                    and pos > wait + delay_in
+                                    and wait + delay_in
+                                    < pos
+                                    < time_in + wait + delay_in
                                 ):
 
                                     lvl = int(
@@ -262,8 +267,9 @@ class CrossFade:
 
                                 elif (
                                     next_level > old_level
-                                    and pos < time_in + wait + delay_in
-                                    and pos > wait + delay_in
+                                    and wait + delay_in
+                                    < pos
+                                    < time_in + wait + delay_in
                                 ):
 
                                     lvl = int(

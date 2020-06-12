@@ -670,8 +670,9 @@ class ThreadGo(threading.Thread):
                                     level = old_level
 
                                 elif (
-                                    i >= ct_delay + delay_wait
-                                    and i < ct_delay + ct_time + delay_wait
+                                    ct_delay + delay_wait
+                                    <= i
+                                    < ct_delay + ct_time + delay_wait
                                 ):
                                     level = (
                                         int(
@@ -689,8 +690,9 @@ class ThreadGo(threading.Thread):
                                     level = old_level
 
                                 elif (
-                                    i >= ct_delay + delay_wait
-                                    and i < ct_delay + ct_time + delay_wait
+                                    ct_delay + delay_wait
+                                    <= i
+                                    < ct_delay + ct_time + delay_wait
                                 ):
                                     level = old_level - abs(
                                         int(
@@ -721,8 +723,9 @@ class ThreadGo(threading.Thread):
                             # on prends le temps de montée
                             if (
                                 next_level > old_level
-                                and i < delay_in + delay_wait + delay_d_in
-                                and i > delay_wait + delay_d_in
+                                and delay_wait + delay_d_in
+                                < i
+                                < delay_in + delay_wait + delay_d_in
                             ):
                                 level = (
                                     int(
@@ -742,8 +745,9 @@ class ThreadGo(threading.Thread):
                             # on prend le temps de descente
                             elif (
                                 next_level < old_level
-                                and i < delay_out + delay_wait + delay_d_out
-                                and i > delay_wait + delay_d_out
+                                and delay_wait + delay_d_out
+                                < i
+                                < delay_out + delay_wait + delay_d_out
                             ):
                                 level = old_level - abs(
                                     int(

@@ -352,9 +352,7 @@ class Ascii:
                     flag_preset = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     preset_nb = float(line[6:])
-                if line[:7].upper() == "$PRESET" and (
-                    console in ("DLIGHT", "VLC")
-                ):
+                if line[:7].upper() == "$PRESET" and (console in ("DLIGHT", "VLC")):
                     # On DLight, Preset not in sequence
                     flag_seq = False
                     flag_patch = False
