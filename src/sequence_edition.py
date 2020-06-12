@@ -226,7 +226,7 @@ class SequenceTab(Gtk.Grid):
 
             # Edit Channel Time
             step = self.liststore2[path][0]
-            self.app._channeltime(seq, step)
+            self.app.channeltime(seq, step)
 
     def wait_edited(self, widget, path, text):
 

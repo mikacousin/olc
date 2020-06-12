@@ -1,6 +1,7 @@
 import sys
 import select
 import gi
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib, Gdk
 from ola import OlaClient
@@ -142,7 +143,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.go", ["<Control>g"])
         # Track Channels
         action = Gio.SimpleAction.new("track_channels", None)
-        action.connect("activate", self._track_channels)
+        action.connect("activate", self.track_channels)
         self.add_action(action)
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         # Go Back
@@ -218,7 +219,7 @@ class Application(Gtk.Application):
         self.add_action(save_action)
 
         patch_outputs_action = Gio.SimpleAction.new("patch_outputs", None)
-        patch_outputs_action.connect("activate", self._patch_outputs)
+        patch_outputs_action.connect("activate", self.patch_outputs)
         self.add_action(patch_outputs_action)
 
         patch_channels_action = Gio.SimpleAction.new("patch_channels", None)
@@ -226,15 +227,15 @@ class Application(Gtk.Application):
         self.add_action(patch_channels_action)
 
         memories_action = Gio.SimpleAction.new("memories", None)
-        memories_action.connect("activate", self._memories)
+        memories_action.connect("activate", self.memories)
         self.add_action(memories_action)
 
         groups_action = Gio.SimpleAction.new("groups", None)
-        groups_action.connect("activate", self._groups)
+        groups_action.connect("activate", self.groups)
         self.add_action(groups_action)
 
         sequences_action = Gio.SimpleAction.new("sequences", None)
-        sequences_action.connect("activate", self._sequences)
+        sequences_action.connect("activate", self.sequences)
         self.add_action(sequences_action)
 
         masters_action = Gio.SimpleAction.new("masters", None)
@@ -511,7 +512,7 @@ class Application(Gtk.Application):
     def _saveas(self, action, parameter):
         print("Save As")
 
-    def _patch_outputs(self, action, parameter):
+    def patch_outputs(self, action, parameter):
         # Create Patch Outputs Tab
         if self.patch_outputs_tab is None:
             self.patch_outputs_tab = PatchOutputsTab()
@@ -555,7 +556,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.patch_channels_tab)
             self.window.notebook.set_current_page(page)
 
-    def _track_channels(self, action, parameter):
+    def track_channels(self, action, parameter):
         # Create Track Channels Tab
         if self.track_channels_tab is None:
             self.track_channels_tab = TrackChannelsTab()
@@ -577,7 +578,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.track_channels_tab)
             self.window.notebook.set_current_page(page)
 
-    def _memories(self, action, parameter):
+    def memories(self, action, parameter):
         # Create Memories Tab
         if self.memories_tab is None:
             self.memories_tab = CuesEditionTab()
@@ -599,7 +600,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.memories_tab)
             self.window.notebook.set_current_page(page)
 
-    def _groups(self, action, parameter):
+    def groups(self, action, parameter):
         # Create Groups Tab
         if self.group_tab is None:
             self.group_tab = GroupTab()
@@ -621,7 +622,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.group_tab)
             self.window.notebook.set_current_page(page)
 
-    def _sequences(self, action, parameter):
+    def sequences(self, action, parameter):
         # Create Sequences Tab
         if self.sequences_tab is None:
             self.sequences_tab = SequenceTab()
@@ -643,7 +644,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.sequences_tab)
             self.window.notebook.set_current_page(page)
 
-    def _channeltime(self, sequence, step):
+    def channeltime(self, sequence, step):
         # Create Channel Time Tab
         if self.channeltime_tab is None:
             self.channeltime_tab = ChanneltimeTab(sequence, step)

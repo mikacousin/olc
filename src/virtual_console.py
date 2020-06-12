@@ -395,35 +395,35 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.midi_learn = "Output"
             self.queue_draw()
         else:
-            self.app._patch_outputs(None, None)
+            self.app.patch_outputs(None, None)
 
     def on_seq(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = "Seq"
             self.queue_draw()
         else:
-            self.app._sequences(None, None)
+            self.app.sequences(None, None)
 
     def on_preset(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = "Preset"
             self.queue_draw()
         else:
-            self.app._memories(None, None)
+            self.app.memories(None, None)
 
     def on_group(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = "Group"
             self.queue_draw()
         else:
-            self.app._groups(None, None)
+            self.app.groups(None, None)
 
     def on_track(self, widget):
         if self.midi_learn:
             self.app.midi.midi_learn = "Track"
             self.queue_draw()
         else:
-            self.app._track_channels(None, None)
+            self.app.track_channels(None, None)
 
     def on_goto(self, widget):
         if self.midi_learn:

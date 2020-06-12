@@ -347,7 +347,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.output.emit("button-press-event", event)
                 else:
-                    self.app._patch_outputs(None, None)
+                    self.app.patch_outputs(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -383,7 +383,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.seq.emit("button-press-event", event)
                 else:
-                    self.app._sequences(None, None)
+                    self.app.sequences(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -419,7 +419,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.group.emit("button-press-event", event)
                 else:
-                    self.app._groups(None, None)
+                    self.app.groups(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -455,7 +455,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.preset.emit("button-press-event", event)
                 else:
-                    self.app._groups(None, None)
+                    self.app.groups(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -491,7 +491,7 @@ class Midi:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                     self.app.virtual_console.track.emit("button-press-event", event)
                 else:
-                    self.app._track_channels(None, None)
+                    self.app.track_channels(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
