@@ -152,6 +152,7 @@ class Midi:
         ]
 
         self.app = Gio.Application.get_default()
+        self.percent_view = self.app.settings.get_boolean("percent")
 
         # Create xfade Faders
         self.xfade_out = MidiFader()
@@ -174,6 +175,10 @@ class Midi:
 
         for msg in self.inport.iter_pending():
             # print(msg)
+
+            index = None
+            item = None
+            master = None
 
             # Go
             for index, item in enumerate(self.midi_table):
