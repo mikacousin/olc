@@ -1,5 +1,5 @@
-import cairo
 import math
+import cairo
 from gi.repository import Gtk, Gdk, Gio
 
 

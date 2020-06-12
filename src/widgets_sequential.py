@@ -1,6 +1,6 @@
+import math
 from gi.repository import Gtk, Gdk, Gio
 import cairo
-import math
 
 # from olc.settings import Settings
 
