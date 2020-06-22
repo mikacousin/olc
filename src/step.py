@@ -8,7 +8,7 @@ class Step:
         delay_in=0.0,
         delay_out=0.0,
         wait=0.0,
-        channel_time={},
+        channel_time=None,
         text="",
     ):
 
@@ -19,6 +19,8 @@ class Step:
         self.delay_in = delay_in
         self.delay_out = delay_out
         self.wait = wait
+        if channel_time is None:
+            channel_time = {}
         self.channel_time = channel_time
         self.text = text
 
