@@ -37,7 +37,7 @@ class Ascii:
 
             if not status:
                 print("Error")
-                return False
+                return
 
             contents = contents.decode("iso-8859-1")
 

@@ -84,6 +84,7 @@ class GroupTab(Gtk.Paned):
                     self.channels[i].next_level = self.app.groups[j].channels[i]
                     return child
                 return False
+        return False
 
     def filter_groups(self, child, user_data):
         return child
@@ -124,6 +125,7 @@ class GroupTab(Gtk.Paned):
         func = getattr(self, "keypress_" + keyname, None)
         if func:
             return func()
+        return False
 
     def keypress_BackSpace(self):
         self.keystring = ""

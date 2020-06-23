@@ -56,9 +56,9 @@ class PatchChannelsTab(Gtk.Grid):
         widget = self.app.window.get_focus()
         # print(widget.get_path().is_type(Gtk.Entry))
         if not widget:
-            return
+            return False
         if widget.get_path().is_type(Gtk.Entry):
-            return
+            return False
 
         keyname = Gdk.keyval_name(event.keyval)
 
@@ -88,6 +88,7 @@ class PatchChannelsTab(Gtk.Grid):
         func = getattr(self, "keypress_" + keyname, None)
         if func:
             return func()
+        return False
 
     def keypress_Escape(self):
         """ Close Tab """

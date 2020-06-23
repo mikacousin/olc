@@ -177,6 +177,7 @@ class CuesEditionTab(Gtk.Paned):
         func = getattr(self, "keypress_" + keyname, None)
         if func:
             return func()
+        return False
 
     def keypress_Escape(self):
         """ Close Tab """
@@ -646,7 +647,7 @@ class CuesEditionTab(Gtk.Paned):
                     self.app.window.context_id, self.keystring
                 )
 
-                return
+                return True
 
         # Find selected memory
         path, focus_column = self.treeview.get_cursor()
@@ -678,6 +679,8 @@ class CuesEditionTab(Gtk.Paned):
 
         self.keystring = ""
         self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+        return True
 
     def keypress_Insert(self):
         """ Insert a new Memory """
@@ -730,6 +733,8 @@ class CuesEditionTab(Gtk.Paned):
             self.app.ascii.modified = True
             self.app.window.header.set_title(self.app.ascii.basename + "*")
 
+            return True
+
         else:
             """ Insert memory with the given number """
 
@@ -781,3 +786,5 @@ class CuesEditionTab(Gtk.Paned):
 
             self.keystring = ""
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+
+            return True

@@ -555,6 +555,7 @@ class Window(Gtk.ApplicationWindow):
                 for i in range(MAX_CHANNELS):
                     if self.channels[i].scale >= 1.1:
                         self.channels[i].scale -= 0.1
+        return True
 
     def on_key_press_event(self, widget, event):
 
@@ -608,6 +609,7 @@ class Window(Gtk.ApplicationWindow):
 
         if func:
             return func()
+        return False
 
     def keypress_Right(self):
         """ Next Channel """

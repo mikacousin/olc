@@ -425,6 +425,7 @@ class Sequence:
         self.app.sequence.on_go = True
         self.app.sequence.thread = ThreadGoBack()
         self.app.sequence.thread.start()
+        return True
 
 
 # Objet Thread pour gérer les Go

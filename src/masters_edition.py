@@ -233,8 +233,7 @@ class MastersTab(Gtk.Paned):
                     return child
                 return False
 
-        else:
-            return False
+        return False
 
     def on_master_changed(self, treeview):
         """ New master is selected """
@@ -356,9 +355,9 @@ class MastersTab(Gtk.Paned):
         # TODO: Bug with CellRendererCombo (entry blocked)
         widget = self.app.window.get_focus()
         if not widget:
-            return
+            return False
         if widget.get_path().is_type(Gtk.Entry):
-            return
+            return False
 
         keyname = Gdk.keyval_name(event.keyval)
 
@@ -388,6 +387,7 @@ class MastersTab(Gtk.Paned):
         func = getattr(self, "keypress_" + keyname, None)
         if func:
             return func()
+        return False
 
     def keypress_Escape(self):
         """ Close Tab """
@@ -439,6 +439,8 @@ class MastersTab(Gtk.Paned):
 
             self.keystring = ""
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            return True
+        return False
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -490,6 +492,8 @@ class MastersTab(Gtk.Paned):
 
             self.keystring = ""
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            return True
+        return False
 
     def keypress_plus(self):
         """ Channel + """
@@ -528,6 +532,9 @@ class MastersTab(Gtk.Paned):
                 self.app.window.statusbar.push(
                     self.app.window.context_id, self.keystring
                 )
+                return True
+            return False
+        return False
 
     def keypress_minus(self):
         """ Channel - """
@@ -566,6 +573,9 @@ class MastersTab(Gtk.Paned):
                 self.app.window.statusbar.push(
                     self.app.window.context_id, self.keystring
                 )
+                return True
+            return False
+        return False
 
     def keypress_a(self):
         """ All Channels """
@@ -626,6 +636,8 @@ class MastersTab(Gtk.Paned):
                 else:
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
+            return True
+        return False
 
     def keypress_equal(self):
         """ @ level """
@@ -788,3 +800,6 @@ class MastersTab(Gtk.Paned):
 
             self.keystring = ""
             self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            return True
+
+        return False

@@ -98,6 +98,7 @@ class TrackChannelsTab(Gtk.Grid):
         func = getattr(self, "keypress_" + keyname, None)
         if func:
             return func()
+        return False
 
     def keypress_Escape(self):
         """ Close Tab """
