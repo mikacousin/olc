@@ -115,6 +115,9 @@ class Application(Gtk.Application):
         # No selected channel on startup
         self.window.flowbox.unselect_all()
 
+        # Maximize window on startup
+        self.window.maximize()
+
         """
         # TODO: Test this code without window manager
         nb_monitors = Gdk.Display.get_default().get_n_monitors()
