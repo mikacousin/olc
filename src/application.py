@@ -93,8 +93,11 @@ class Application(Gtk.Application):
                 )
 
         # For Windows
+        self.window = None
         self.about_window = None
         self.virtual_console = None
+        self.win_settings = None
+        self.shortcuts = None
 
         # For Tabs
         self.patch_outputs_tab = None
@@ -105,6 +108,13 @@ class Application(Gtk.Application):
         self.sequences_tab = None
         self.channeltime_tab = None
         self.track_channels_tab = None
+
+        self.dmx = None
+        self.crossfade = None
+        self.midi = None
+        self.osc_server = None
+        self.ascii = None
+        self.file = None
 
     def do_activate(self):
 
