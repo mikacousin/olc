@@ -325,7 +325,8 @@ class Window(Gtk.ApplicationWindow):
         """
         service = Gio.SocketService()
         service.connect('incoming', self.incoming_connection_cb)
-        #service.add_address(Gio.InetSocketAddress(Gio.SocketFamily(2), 3330), Gio.SocketType(2), Gio.SocketProtocal(17), None)
+        #service.add_address(Gio.InetSocketAddress(Gio.SocketFamily(2), 3330),
+        #                    Gio.SocketType(2), Gio.SocketProtocal(17), None)
         address = Gio.InetAddress.new_any(2)
         #address = Gio.InetAddress.new_from_string('127.0.0.1')
         #inetsock = Gio.InetSocketAddress.new(address, 3330)
@@ -333,7 +334,8 @@ class Window(Gtk.ApplicationWindow):
         service.add_address(inetsock, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP)
         """
         """
-        socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP)
+        socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM,
+                                Gio.SocketProtocol.UDP)
         address = Gio.InetAddress.new_any(Gio.SocketFamily.IPV4)
         inetsock = Gio.InetSocketAddress.new(address, 3330)
         ret = socket.connect(inetsock)

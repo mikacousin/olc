@@ -841,7 +841,7 @@ class Ascii:
         # Main Sequence
         stream.write(
             bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
                 "utf8",
             )
         )
@@ -978,7 +978,7 @@ class Ascii:
         # Groups
         stream.write(
             bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
                 "utf8",
             )
         )
@@ -1019,7 +1019,7 @@ class Ascii:
         # Congo Groups
         stream.write(
             bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
                 "utf8",
             )
         )
@@ -1061,7 +1061,7 @@ class Ascii:
         # Masters
         stream.write(
             bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
                 "utf8",
             )
         )
@@ -1090,7 +1090,8 @@ class Ascii:
             if self.app.masters[master].page != page:
                 page = self.app.masters[master].page
                 stream.write(bytes("\n$MASTPAGE " + str(page) + " 0 0 0\n", "utf8"))
-            # MASTPAGEITEM : page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
+            # MASTPAGEITEM :
+            # page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
             stream.write(
                 bytes(
                     "$MASTPAGEITEM "
@@ -1126,7 +1127,7 @@ class Ascii:
         # Patch
         stream.write(
             bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
                 "utf8",
             )
         )
