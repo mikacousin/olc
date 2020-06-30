@@ -29,7 +29,7 @@ class GMWidget(Gtk.Widget):
             )
             cr.set_source_rgb(0.8, 0.3, 0.3)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(11)
             (x, y, w, h, dx, dy) = cr.text_extents(self.label)

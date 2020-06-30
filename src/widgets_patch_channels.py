@@ -26,7 +26,7 @@ class PatchChannelHeader(Gtk.Widget):
 
         # Draw Channel text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(self.channel)
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
@@ -40,7 +40,7 @@ class PatchChannelHeader(Gtk.Widget):
 
         # Draw Outputs text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(self.outputs)
         cr.move_to(((65 + 600) / 2) - w / 2, 60 / 2 - (h - 20) / 2)
@@ -54,7 +54,7 @@ class PatchChannelHeader(Gtk.Widget):
 
         # Draw text text
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents("Text")
         cr.move_to(605 + (200 / 2) - w / 2, 60 / 2 - (h - 20) / 2)
@@ -139,7 +139,7 @@ class PatchChannelWidget(Gtk.Widget):
 
         # Draw Channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
         (x, y, w, h, dx, dy) = cr.text_extents(str(self.channel))
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
@@ -199,7 +199,7 @@ class PatchChannelWidget(Gtk.Widget):
                     # Draw Output number
                     cr.set_source_rgb(0.9, 0.9, 0.9)
                     cr.select_font_face(
-                        "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                        "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                     )
                     cr.set_font_size(12)
                     (x, y, w, h, dx, dy) = cr.text_extents(
@@ -229,7 +229,7 @@ class PatchChannelWidget(Gtk.Widget):
                         # Draw Output number
                         cr.set_source_rgb(0.9, 0.9, 0.9)
                         cr.select_font_face(
-                            "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                            "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                         )
                         cr.set_font_size(10)
                         (x, y, w, h, dx, dy) = cr.text_extents(
@@ -253,7 +253,7 @@ class PatchChannelWidget(Gtk.Widget):
                         # Draw Output number
                         cr.set_source_rgb(0.9, 0.9, 0.9)
                         cr.select_font_face(
-                            "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                            "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                         )
                         cr.set_font_size(10)
                         if i == 29:

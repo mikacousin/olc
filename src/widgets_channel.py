@@ -82,7 +82,7 @@ class ChannelWidget(Gtk.Widget):
             cr.fill()
         # draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
         cr.move_to(50 * self.scale, 15 * self.scale)
         cr.show_text(self.channel)
@@ -90,7 +90,7 @@ class ChannelWidget(Gtk.Widget):
         cr.set_source_rgb(
             self.color_level_red, self.color_level_green, self.color_level_blue
         )
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(13 * self.scale)
         cr.move_to(6 * self.scale, 48 * self.scale)
         if self.level != 0 or self.next_level != 0:  # Don't show 0 level
@@ -131,7 +131,7 @@ class ChannelWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.5, 0.9)
             cr.fill()
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
             )
             cr.set_font_size(10 * self.scale)
             cr.move_to(
@@ -158,7 +158,7 @@ class ChannelWidget(Gtk.Widget):
             cr.fill()
             # cr.set_source_rgb(0.5, 0.5, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
             )
             cr.set_font_size(10 * self.scale)
             cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))

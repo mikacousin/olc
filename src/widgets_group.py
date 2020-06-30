@@ -48,7 +48,7 @@ class GroupWidget(Gtk.Widget):
 
         # draw group number
         cr.set_source_rgb(0.5, 0.5, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
         cr.move_to(50, 15)
         if self.number.is_integer():
@@ -58,7 +58,7 @@ class GroupWidget(Gtk.Widget):
         cr.show_text(txt)
         # draw group name
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL)
         cr.move_to(8, 32)
         if len(self.name) > 10:
             cr.show_text(self.name[:10])

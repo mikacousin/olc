@@ -103,7 +103,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(12 + (inter * self.wait), 16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(12)
             # If time is integer don't show the ".0"
@@ -125,7 +125,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(12 + wait_x + (inter * self.delay_out), 16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(12)
             # If time is integer don't show the ".0"
@@ -150,7 +150,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(12 + wait_x + (inter * self.delay_in), 16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(12)
             # If time is integer don't show the ".0"
@@ -175,7 +175,7 @@ class SequentialWidget(Gtk.Widget):
             # cr.move_to((inter*delay)+wait_x,allocation.height-28-(self.ct_nb*12))
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(10)
             cr.show_text(str(channel))
@@ -331,7 +331,7 @@ class SequentialWidget(Gtk.Widget):
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 2)
@@ -347,7 +347,7 @@ class SequentialWidget(Gtk.Widget):
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 2)
@@ -402,7 +402,7 @@ class SequentialWidget(Gtk.Widget):
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 3)
@@ -418,7 +418,7 @@ class SequentialWidget(Gtk.Widget):
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face(
-                "Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
             )
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 2)
@@ -426,7 +426,7 @@ class SequentialWidget(Gtk.Widget):
 
         # draw times number
         cr.set_source_rgb(0.9, 0.9, 0.9)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
         cr.move_to(12, 16)
         cr.show_text("0")

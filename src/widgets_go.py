@@ -53,7 +53,7 @@ class GoWidget(Gtk.Widget):
         self.rounded_rectangle(cr, area, self.radius)
         # Draw Go
         cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
         (x, y, w, h, dx, dy) = cr.text_extents("Go")
         cr.move_to(

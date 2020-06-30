@@ -62,7 +62,7 @@ class FlashWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
-        cr.select_font_face("Monaco", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(self.font_size)
         # First line
         (x, y, w, h, dx, dy) = cr.text_extents(self.label[:6])
