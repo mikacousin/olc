@@ -1,9 +1,6 @@
 import sys
 import select
-import gi
 
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, GLib, Gdk
 from ola import OlaClient
 
 from olc.define import NB_UNIVERSES
@@ -25,6 +22,10 @@ from olc.midi import Midi
 from olc.track_channels import TrackChannelsTab
 from olc.crossfade import CrossFade
 from olc.virtual_console import VirtualConsoleWindow
+
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk, Gio, GLib, Gdk  # noqa: E402
 
 
 class Application(Gtk.Application):
