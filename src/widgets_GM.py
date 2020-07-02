@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
+
+from olc.define import App
 
 
 class GMWidget(Gtk.Widget):
@@ -9,8 +11,6 @@ class GMWidget(Gtk.Widget):
     def __init__(self):
         Gtk.Widget.__init__(self)
 
-        self.app = Gio.Application.get_default()
-
         self.width = 60
         self.height = 30
         self.radius = 10
@@ -18,15 +18,13 @@ class GMWidget(Gtk.Widget):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
-        if self.app.dmx.grand_master != 255:
+        if App().dmx.grand_master != 255:
             # Draw rounded box
             cr.set_source_rgb(0.7, 0.7, 0.7)
             area = (1, self.width - 2, 1, self.height - 2)
             self.rounded_rectangle(cr, area, self.radius)
             # Draw Text
-            self.label = (
-                "GM " + str(round((self.app.dmx.grand_master / 255) * 100)) + "%"
-            )
+            self.label = "GM " + str(round((App().dmx.grand_master / 255) * 100)) + "%"
             cr.set_source_rgb(0.8, 0.3, 0.3)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(11)

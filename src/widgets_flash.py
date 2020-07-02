@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gdk, Gio, GObject
+from gi.repository import Gtk, Gdk, GObject
+
+from olc.define import App
 
 
 class FlashWidget(Gtk.Widget):
@@ -10,8 +12,6 @@ class FlashWidget(Gtk.Widget):
 
     def __init__(self, label="", text="None"):
         Gtk.Widget.__init__(self)
-
-        self.app = Gio.Application.get_default()
 
         self.width = 40
         self.height = 40
@@ -44,12 +44,12 @@ class FlashWidget(Gtk.Widget):
             cr.set_source_rgb(0.4, 0.4, 0.4)
         else:
             if self.pressed:
-                if self.app.midi.midi_learn == self.text:
+                if App().midi.midi_learn == self.text:
                     cr.set_source_rgb(0.2, 0.1, 0.1)
                 else:
                     cr.set_source_rgb(0.1, 0.1, 0.1)
             else:
-                if self.app.midi.midi_learn == self.text:
+                if App().midi.midi_learn == self.text:
                     cr.set_source_rgb(0.3, 0.2, 0.2)
                 else:
                     cr.set_source_rgb(0.2, 0.2, 0.2)

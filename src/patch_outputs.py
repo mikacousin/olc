@@ -1,13 +1,11 @@
-from gi.repository import Gio, Gtk, Gdk
+from gi.repository import Gtk, Gdk
 
-from olc.define import NB_UNIVERSES, MAX_CHANNELS
+from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
 from olc.widgets_patch_outputs import PatchWidget
 
 
 class PatchOutputsTab(Gtk.Grid):
     def __init__(self):
-
-        self.app = Gio.Application.get_default()
 
         self.keystring = ""
         self.last_out_selected = ""
@@ -46,7 +44,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         for universe in range(NB_UNIVERSES):
             for i in range(512):
-                self.outputs.append(PatchWidget(universe, i + 1, self.app.patch))
+                self.outputs.append(PatchWidget(universe, i + 1, App().patch))
         for output in self.outputs:
             self.flowbox.add(output)
 
@@ -85,30 +83,30 @@ class PatchOutputsTab(Gtk.Grid):
         button_label = widget.get_label()
 
         if button_label == "Patch Vide":
-            self.app.patch.patch_empty()
+            App().patch.patch_empty()
             self.flowbox.queue_draw()
-            self.app.window.flowbox.invalidate_filter()
+            App().window.flowbox.invalidate_filter()
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    self.app.dmx.frame[univ][output] = 0
+                    App().dmx.frame[univ][output] = 0
 
         elif button_label == "Patch 1:1":
-            self.app.patch.patch_1on1()
+            App().patch.patch_1on1()
             self.flowbox.queue_draw()
 
             for univ in range(NB_UNIVERSES):
                 for channel in range(512):
-                    level = self.app.dmx.frame[univ][channel]
-                    self.app.window.channels[channel].level = level
-                    self.app.window.channels[channel].queue_draw()
-            self.app.window.flowbox.invalidate_filter()
+                    level = App().dmx.frame[univ][channel]
+                    App().window.channels[channel].level = level
+                    App().window.channels[channel].queue_draw()
+            App().window.flowbox.invalidate_filter()
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
-        page = self.app.window.notebook.page_num(self.app.patch_outputs_tab)
-        self.app.window.notebook.remove_page(page)
-        self.app.patch_outputs_tab = None
+        page = App().window.notebook.page_num(App().patch_outputs_tab)
+        App().window.notebook.remove_page(page)
+        App().patch_outputs_tab = None
 
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
@@ -116,7 +114,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -131,11 +129,11 @@ class PatchOutputsTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "keypress_" + keyname, None)
         if func:
@@ -144,26 +142,26 @@ class PatchOutputsTab(Gtk.Grid):
 
     def keypress_Escape(self):
         """ Close Tab """
-        page = self.app.window.notebook.get_current_page()
-        self.app.window.notebook.remove_page(page)
-        self.app.patch_outputs_tab = None
+        page = App().window.notebook.get_current_page()
+        App().window.notebook.remove_page(page)
+        App().patch_outputs_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_Right(self):
         """ Next Output """
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         elif int(self.last_out_selected) < 511:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) + 1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) + 1)
 
@@ -172,13 +170,13 @@ class PatchOutputsTab(Gtk.Grid):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         elif int(self.last_out_selected) > 0:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) - 1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) - 1)
 
@@ -187,7 +185,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         else:
@@ -199,7 +197,7 @@ class PatchOutputsTab(Gtk.Grid):
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
@@ -208,7 +206,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         else:
@@ -220,7 +218,7 @@ class PatchOutputsTab(Gtk.Grid):
             if child:
                 self.flowbox.unselect_all()
                 index = child.get_index()
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
@@ -242,17 +240,17 @@ class PatchOutputsTab(Gtk.Grid):
             if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
                 index = output + (univ * 512)
                 child = self.flowbox.get_child_at_index(index)
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output)
         else:
             # Verify focus is on Output Widget
-            widget = self.app.window.get_focus()
+            widget = App().window.get_focus()
             if widget.get_path().is_type(Gtk.FlowBoxChild):
                 self.flowbox.select_child(widget)
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -275,18 +273,18 @@ class PatchOutputsTab(Gtk.Grid):
         if to_out > int(self.last_out_selected):
             for out in range(int(self.last_out_selected), to_out):
                 child = self.flowbox.get_child_at_index(out)
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
         else:
             for out in range(to_out - 1, int(self.last_out_selected)):
                 child = self.flowbox.get_child_at_index(out)
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = self.keystring
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_c(self):
         """ Attribute Channel """
@@ -303,46 +301,46 @@ class PatchOutputsTab(Gtk.Grid):
 
                 # Unpatch if no entry
                 if self.keystring == "" or self.keystring == "0":
-                    channel = self.app.patch.outputs[univ][output][0]
+                    channel = App().patch.outputs[univ][output][0]
                     if channel != 0:
                         channel -= 1
-                        self.app.patch.outputs[univ][output][0] = 0
-                        self.app.patch.channels[channel].remove([output + 1, univ])
-                        self.app.dmx.frame[univ][output] = 0
+                        App().patch.outputs[univ][output][0] = 0
+                        App().patch.channels[channel].remove([output + 1, univ])
+                        App().dmx.frame[univ][output] = 0
                 else:
                     channel = int(self.keystring) - 1
 
                     if 0 <= channel < MAX_CHANNELS:
                         # Unpatch old value if exist
-                        old_channel = self.app.patch.outputs[univ][output][0]
+                        old_channel = App().patch.outputs[univ][output][0]
                         if old_channel != 0:
-                            self.app.patch.channels[old_channel - 1].remove(
+                            App().patch.channels[old_channel - 1].remove(
                                 [output + 1, univ]
                             )
-                            if len(self.app.patch.channels[old_channel - 1]) == 0:
-                                self.app.patch.channels[old_channel - 1] = [[0, 0]]
+                            if len(App().patch.channels[old_channel - 1]) == 0:
+                                App().patch.channels[old_channel - 1] = [[0, 0]]
 
                         # Patch Channel : same channel for every outputs
-                        self.app.patch.add_output(channel + 1, output + 1, univ)
+                        App().patch.add_output(channel + 1, output + 1, univ)
                 # Update ui
                 self.outputs[output + (512 * univ)].queue_draw()
 
                 # Update list of channels
                 if 0 <= channel < MAX_CHANNELS:
-                    level = self.app.dmx.frame[univ][output]
-                    self.app.window.channels[channel].level = level
-                    self.app.window.channels[channel].queue_draw()
-                    self.app.window.flowbox.invalidate_filter()
+                    level = App().dmx.frame[univ][output]
+                    App().window.channels[channel].level = level
+                    App().window.channels[channel].queue_draw()
+                    App().window.flowbox.invalidate_filter()
             # Select next output
             if output < 511:
                 self.flowbox.unselect_all()
                 child = self.flowbox.get_child_at_index(output + 1 + (512 * univ))
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output + 1 + (512 * univ))
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_exclam(self):
         """ Proportional level + """
@@ -356,15 +354,15 @@ class PatchOutputsTab(Gtk.Grid):
                 output = patchwidget.output - 1
                 univ = patchwidget.universe
 
-                self.app.patch.outputs[univ][output][1] += 1
+                App().patch.outputs[univ][output][1] += 1
 
-                if self.app.patch.outputs[univ][output][1] > 100:
-                    self.app.patch.outputs[univ][output][1] = 100
+                if App().patch.outputs[univ][output][1] > 100:
+                    App().patch.outputs[univ][output][1] = 100
 
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_colon(self):
         """ Proportional level - """
@@ -378,12 +376,12 @@ class PatchOutputsTab(Gtk.Grid):
                 output = patchwidget.output - 1
                 univ = patchwidget.universe
 
-                self.app.patch.outputs[univ][output][1] -= 1
+                App().patch.outputs[univ][output][1] -= 1
 
-                if self.app.patch.outputs[univ][output][1] < 0:
-                    self.app.patch.outputs[univ][output][1] = 0
+                if App().patch.outputs[univ][output][1] < 0:
+                    App().patch.outputs[univ][output][1] = 0
 
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)

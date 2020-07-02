@@ -1,5 +1,7 @@
 import cairo
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
+
+from olc.define import App
 
 
 class ChannelWidget(Gtk.Widget):
@@ -18,9 +20,7 @@ class ChannelWidget(Gtk.Widget):
         self.scale = 1.0
         self.width = 80 * self.scale
 
-        self.app = Gio.Application.get_default()
-
-        self.percent_level = self.app.settings.get_boolean("percent")
+        self.percent_level = App().settings.get_boolean("percent")
 
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
@@ -31,20 +31,18 @@ class ChannelWidget(Gtk.Widget):
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
 
-        self.app.window.set_focus(flowboxchild)
+        App().window.set_focus(flowboxchild)
         if flowboxchild.is_selected():
             flowbox.unselect_child(flowboxchild)
         else:
             flowbox.select_child(flowboxchild)
-            self.app.window.last_chan_selected = str(int(self.channel) - 1)
+            App().window.last_chan_selected = str(int(self.channel) - 1)
 
     def do_draw(self, cr):
         self.width = 80 * self.scale
         self.set_size_request(self.width, self.width)
 
-        self.percent_level = Gio.Application.get_default().settings.get_boolean(
-            "percent"
-        )
+        self.percent_level = App().settings.get_boolean("percent")
 
         allocation = self.get_allocation()
 

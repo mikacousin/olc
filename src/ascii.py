@@ -2,7 +2,7 @@ import array
 from io import StringIO
 from gi.repository import Gio, Gtk, GObject, Pango
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.cue import Cue
 from olc.step import Step
 from olc.channel_time import ChannelTime
@@ -21,17 +21,11 @@ class Ascii:
             self.basename = ""
         self.modified = False
 
-        self.default_time = Gio.Application.get_default().settings.get_double(
-            "default-time"
-        )
-
-        self.app = Gio.Application.get_default()
+        self.default_time = App().settings.get_double("default-time")
 
     def load(self):
         self.basename = self.file.get_basename()
-        self.default_time = Gio.Application.get_default().settings.get_double(
-            "default-time"
-        )
+        self.default_time = App().settings.get_double("default-time")
         try:
             status, contents, etag_out = self.file.load_contents(None)
 
@@ -81,28 +75,21 @@ class Ascii:
 
                 if line[:9].upper() == "CLEAR ALL":
                     # Clear All
-                    del self.app.memories[:]
-                    del self.app.chasers[:]
-                    del self.app.groups[:]
-                    del self.app.masters[:]
+                    del App().memories[:]
+                    del App().chasers[:]
+                    del App().groups[:]
+                    del App().masters[:]
                     for page in range(2):
                         for i in range(20):
-                            self.app.masters.append(
+                            App().masters.append(
                                 Master(
-                                    page + 1,
-                                    i + 1,
-                                    0,
-                                    0,
-                                    self.app.groups,
-                                    self.app.chasers,
+                                    page + 1, i + 1, 0, 0, App().groups, App().chasers,
                                 )
                             )
-                    self.app.patch.patch_empty()
-                    self.app.sequence = Sequence(
-                        1, self.app.patch, text="Main Playback"
-                    )
-                    del self.app.sequence.steps[1:]
-                    self.app.sequence.window = self.app.window
+                    App().patch.patch_empty()
+                    App().sequence = Sequence(1, App().patch, text="Main Playback")
+                    del App().sequence.steps[1:]
+                    App().sequence.window = App().window
 
                 if line[:9].upper() == "$SEQUENCE":
                     p = line[10:].split(" ")
@@ -112,10 +99,10 @@ class Ascii:
                     else:
                         type_seq = "Chaser"
                         index_seq = int(p[0])
-                        self.app.chasers.append(
-                            Sequence(index_seq, self.app.patch, type_seq=type_seq)
+                        App().chasers.append(
+                            Sequence(index_seq, App().patch, type_seq=type_seq)
                         )
-                        del self.app.chasers[-1].steps[1:]
+                        del App().chasers[-1].steps[1:]
                     flag_seq = True
                     flag_patch = False
                     flag_master = False
@@ -124,7 +111,7 @@ class Ascii:
 
                 if flag_seq and type_seq == "Chaser":
                     if line[:4].upper() == "TEXT":
-                        self.app.chasers[-1].text = line[5:]
+                        App().chasers[-1].text = line[5:]
 
                     if line[:4].upper() == "$CUE":
                         in_cue = True
@@ -187,7 +174,7 @@ class Ascii:
                                 text=txt,
                             )
 
-                            self.app.chasers[-1].add_step(step)
+                            App().chasers[-1].add_step(step)
 
                             in_cue = False
                             t_out = False
@@ -287,7 +274,7 @@ class Ascii:
                             # Create Cue
                             cue = Cue(0, mem, channels, text=txt)
                             # Add cue to the list
-                            self.app.memories.append(cue)
+                            App().memories.append(cue)
                             # Create Step
                             step = Step(
                                 1,
@@ -302,7 +289,7 @@ class Ascii:
                             )
 
                             # Add Step to the Sequence
-                            self.app.sequence.add_step(step)
+                            App().sequence.add_step(step)
                             in_cue = False
                             txt = False
                             t_out = False
@@ -318,8 +305,8 @@ class Ascii:
                     flag_master = False
                     flag_group = False
                     flag_preset = False
-                    self.app.patch.patch_empty()  # Empty patch
-                    self.app.window.flowbox.invalidate_filter()
+                    App().patch.patch_empty()  # Empty patch
+                    App().window.flowbox.invalidate_filter()
                 if flag_patch:
                     if line[:0] == "!":
                         flag_patch = False
@@ -336,8 +323,8 @@ class Ascii:
                             # print(channel, univ, out, level)
                             if univ < NB_UNIVERSES:
                                 if channel < MAX_CHANNELS:
-                                    self.app.patch.add_output(channel, out, univ, level)
-                                    self.app.window.flowbox.invalidate_filter()
+                                    App().patch.add_output(channel, out, univ, level)
+                                    App().window.flowbox.invalidate_filter()
                                 else:
                                     print("Plus de", MAX_CHANNELS, "Circuits")
                             else:
@@ -381,8 +368,8 @@ class Ascii:
                         # Find Preset's position
                         found = False
                         i = 0
-                        for i, _ in enumerate(self.app.memories):
-                            if self.app.memories[i].memory > preset_nb:
+                        for i, _ in enumerate(App().memories):
+                            if App().memories[i].memory > preset_nb:
                                 found = True
                                 break
                         if not found:
@@ -395,7 +382,7 @@ class Ascii:
                         # Create Preset
                         cue = Cue(0, preset_nb, channels, text=txt)
                         # Add preset to the list
-                        self.app.memories.insert(i, cue)
+                        App().memories.insert(i, cue)
                         flag_preset = False
                         txt = ""
 
@@ -438,11 +425,11 @@ class Ascii:
 
                         # We don't create a group who already exist
                         group_exist = False
-                        for grp in self.app.groups:
+                        for grp in App().groups:
                             if group_nb == grp.index:
                                 group_exist = True
                         if not group_exist:
-                            self.app.groups.append(Group(group_nb, channels, txt))
+                            App().groups.append(Group(group_nb, channels, txt))
                         flag_group = False
                         txt = ""
 
@@ -462,13 +449,13 @@ class Ascii:
                         item[1]
                     ) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
-                        self.app.masters[index] = Master(
+                        App().masters[index] = Master(
                             int(item[0]),
                             int(item[1]),
                             item[2],
                             item[3],
-                            self.app.groups,
-                            self.app.chasers,
+                            App().groups,
+                            App().chasers,
                             channels=channels,
                         )
                         flag_master = False
@@ -488,87 +475,87 @@ class Ascii:
                     # Only 20 Masters per pages
                     elif int(item[1]) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
-                        self.app.masters[index] = Master(
+                        App().masters[index] = Master(
                             int(item[0]),
                             int(item[1]),
                             item[2],
                             item[3],
-                            self.app.groups,
-                            self.app.chasers,
+                            App().groups,
+                            App().chasers,
                         )
 
             # Add Empty Step at the end
             cue = Cue(0, 0.0)
             step = Step(1, cue=cue)
-            self.app.sequence.add_step(step)
+            App().sequence.add_step(step)
 
             # Set main window's title with the file name
-            self.app.window.header.set_title(self.basename)
+            App().window.header.set_title(self.basename)
             # Set main window's subtitle
             subtitle = (
                 "Mem. : 0 - Next Mem. : "
-                + str(self.app.sequence.steps[0].cue.memory)
+                + str(App().sequence.steps[0].cue.memory)
                 + " "
-                + self.app.sequence.steps[0].cue.text
+                + App().sequence.steps[0].cue.text
             )
-            self.app.window.header.set_subtitle(subtitle)
+            App().window.header.set_subtitle(subtitle)
 
             # Redraw crossfade :
             # On se place au début de la séquence
-            self.app.sequence.position = 0
+            App().sequence.position = 0
             # On récupère les temps de la mémoire suivante
-            t_in = self.app.sequence.steps[1].time_in
-            t_out = self.app.sequence.steps[1].time_out
-            d_in = self.app.sequence.steps[1].delay_in
-            d_out = self.app.sequence.steps[1].delay_out
-            t_wait = self.app.sequence.steps[1].wait
-            t_total = self.app.sequence.steps[1].total_time
-            self.app.window.sequential.time_in = t_in
-            self.app.window.sequential.time_out = t_out
-            self.app.window.sequential.wait = t_wait
-            self.app.window.sequential.delay_in = d_in
-            self.app.window.sequential.delay_out = d_out
-            self.app.window.sequential.total_time = t_total
+            t_in = App().sequence.steps[1].time_in
+            t_out = App().sequence.steps[1].time_out
+            d_in = App().sequence.steps[1].delay_in
+            d_out = App().sequence.steps[1].delay_out
+            t_wait = App().sequence.steps[1].wait
+            t_total = App().sequence.steps[1].total_time
+            App().window.sequential.time_in = t_in
+            App().window.sequential.time_out = t_out
+            App().window.sequential.wait = t_wait
+            App().window.sequential.delay_in = d_in
+            App().window.sequential.delay_out = d_out
+            App().window.sequential.total_time = t_total
 
             # On met à jour la liste des mémoires
-            self.app.window.cues_liststore1.clear()
-            self.app.window.cues_liststore2.clear()
+            App().window.cues_liststore1.clear()
+            App().window.cues_liststore2.clear()
             # 2 lignes vides au début
-            self.app.window.cues_liststore1.append(
+            App().window.cues_liststore1.append(
                 ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
             )
-            self.app.window.cues_liststore1.append(
+            App().window.cues_liststore1.append(
                 ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
             )
-            for i in range(self.app.sequence.last):
+            for i in range(App().sequence.last):
                 # Si on a des entiers, on les affiche comme tels
-                if self.app.sequence.steps[i].wait.is_integer():
-                    wait = str(int(self.app.sequence.steps[i].wait))
+                if App().sequence.steps[i].wait.is_integer():
+                    wait = str(int(App().sequence.steps[i].wait))
                     if wait == "0":
                         wait = ""
                 else:
-                    wait = str(self.app.sequence.steps[i].wait)
-                if self.app.sequence.steps[i].time_out.is_integer():
-                    t_out = int(self.app.sequence.steps[i].time_out)
+                    wait = str(App().sequence.steps[i].wait)
+                if App().sequence.steps[i].time_out.is_integer():
+                    t_out = int(App().sequence.steps[i].time_out)
                 else:
-                    t_out = self.app.sequence.steps[i].time_out
-                if self.app.sequence.steps[i].delay_out.is_integer():
-                    d_out = str(int(self.app.sequence.steps[i].delay_out))
+                    t_out = App().sequence.steps[i].time_out
+                if App().sequence.steps[i].delay_out.is_integer():
+                    d_out = str(int(App().sequence.steps[i].delay_out))
                 else:
-                    d_out = str(self.app.sequence.steps[i].delay_out)
+                    d_out = str(App().sequence.steps[i].delay_out)
                 if d_out == "0":
                     d_out = ""
-                if self.app.sequence.steps[i].time_in.is_integer():
-                    t_in = int(self.app.sequence.steps[i].time_in)
+                if App().sequence.steps[i].time_in.is_integer():
+                    t_in = int(App().sequence.steps[i].time_in)
                 else:
-                    t_in = self.app.sequence.steps[i].time_in
-                if self.app.sequence.steps[i].delay_in.is_integer():
-                    d_in = str(int(self.app.sequence.steps[i].delay_in))
+                    t_in = App().sequence.steps[i].time_in
+                if App().sequence.steps[i].delay_in.is_integer():
+                    d_in = str(int(App().sequence.steps[i].delay_in))
                 else:
-                    d_in = str(self.app.sequence.steps[i].delay_in)
+                    d_in = str(App().sequence.steps[i].delay_in)
                 if d_in == "0":
                     d_in = ""
-                channel_time = str(len(self.app.sequence.steps[i].channel_time))
+                channel_time = str(len(App().sequence.steps[i].channel_time))
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
@@ -582,8 +569,8 @@ class Ascii:
                     weight = Pango.Weight.HEAVY
                 else:
                     weight = Pango.Weight.NORMAL
-                if i in (0, self.app.sequence.last - 1):
-                    self.app.window.cues_liststore1.append(
+                if i in (0, App().sequence.last - 1):
+                    App().window.cues_liststore1.append(
                         [
                             str(i),
                             "",
@@ -599,15 +586,15 @@ class Ascii:
                             99,
                         ]
                     )
-                    self.app.window.cues_liststore2.append(
+                    App().window.cues_liststore2.append(
                         [str(i), "", "", "", "", "", "", "", ""]
                     )
                 else:
-                    self.app.window.cues_liststore1.append(
+                    App().window.cues_liststore1.append(
                         [
                             str(i),
-                            str(self.app.sequence.steps[i].cue.memory),
-                            str(self.app.sequence.steps[i].text),
+                            str(App().sequence.steps[i].cue.memory),
+                            str(App().sequence.steps[i].text),
                             wait,
                             d_out,
                             str(t_out),
@@ -619,11 +606,11 @@ class Ascii:
                             99,
                         ]
                     )
-                    self.app.window.cues_liststore2.append(
+                    App().window.cues_liststore2.append(
                         [
                             str(i),
-                            str(self.app.sequence.steps[i].cue.memory),
-                            str(self.app.sequence.steps[i].text),
+                            str(App().sequence.steps[i].cue.memory),
+                            str(App().sequence.steps[i].text),
                             wait,
                             d_out,
                             str(t_out),
@@ -633,185 +620,173 @@ class Ascii:
                         ]
                     )
 
-            self.app.window.step_filter1 = self.app.window.cues_liststore1.filter_new()
-            self.app.window.step_filter1.set_visible_func(
-                self.app.window.step_filter_func1
-            )
+            App().window.step_filter1 = App().window.cues_liststore1.filter_new()
+            App().window.step_filter1.set_visible_func(App().window.step_filter_func1)
 
-            self.app.window.step_filter2 = self.app.window.cues_liststore2.filter_new()
-            self.app.window.step_filter2.set_visible_func(
-                self.app.window.step_filter_func2
-            )
+            App().window.step_filter2 = App().window.cues_liststore2.filter_new()
+            App().window.step_filter2.set_visible_func(App().window.step_filter_func2)
 
-            self.app.window.treeview1.set_model(self.app.window.step_filter1)
-            self.app.window.treeview2.set_model(self.app.window.step_filter2)
+            App().window.treeview1.set_model(App().window.step_filter1)
+            App().window.treeview2.set_model(App().window.step_filter2)
 
-            self.app.window.step_filter1.refilter()
-            self.app.window.step_filter2.refilter()
+            App().window.step_filter1.refilter()
+            App().window.step_filter2.refilter()
 
             path = Gtk.TreePath.new_from_indices([0])
-            self.app.window.treeview1.set_cursor(path, None, False)
-            self.app.window.treeview2.set_cursor(path, None, False)
+            App().window.treeview1.set_cursor(path, None, False)
+            App().window.treeview2.set_cursor(path, None, False)
 
-            self.app.window.seq_grid.queue_draw()
+            App().window.seq_grid.queue_draw()
 
             # Redraw Group Tab if exist
-            if self.app.group_tab:
+            if App().group_tab:
                 # Remove Old Groups
-                del self.app.group_tab.grps[:]
-                self.app.group_tab.scrolled2.remove(self.app.group_tab.flowbox2)
-                self.app.group_tab.flowbox2.destroy()
+                del App().group_tab.grps[:]
+                App().group_tab.scrolled2.remove(App().group_tab.flowbox2)
+                App().group_tab.flowbox2.destroy()
                 # New FlowBox
-                self.app.group_tab.flowbox2 = Gtk.FlowBox()
-                self.app.group_tab.flowbox2.set_valign(Gtk.Align.START)
-                self.app.group_tab.flowbox2.set_max_children_per_line(20)
-                self.app.group_tab.flowbox2.set_homogeneous(True)
-                self.app.group_tab.flowbox2.set_activate_on_single_click(True)
-                self.app.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-                self.app.group_tab.flowbox2.set_filter_func(
-                    self.app.group_tab.filter_groups, None
+                App().group_tab.flowbox2 = Gtk.FlowBox()
+                App().group_tab.flowbox2.set_valign(Gtk.Align.START)
+                App().group_tab.flowbox2.set_max_children_per_line(20)
+                App().group_tab.flowbox2.set_homogeneous(True)
+                App().group_tab.flowbox2.set_activate_on_single_click(True)
+                App().group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
+                App().group_tab.flowbox2.set_filter_func(
+                    App().group_tab.filter_groups, None
                 )
-                self.app.group_tab.scrolled2.add(self.app.group_tab.flowbox2)
+                App().group_tab.scrolled2.add(App().group_tab.flowbox2)
                 # Add Groups to FlowBox
-                for i, _ in enumerate(self.app.groups):
-                    self.app.group_tab.grps.append(
+                for i, _ in enumerate(App().groups):
+                    App().group_tab.grps.append(
                         GroupWidget(
                             i,
-                            self.app.groups[i].index,
-                            self.app.groups[i].text,
-                            self.app.group_tab.grps,
+                            App().groups[i].index,
+                            App().groups[i].text,
+                            App().group_tab.grps,
                         )
                     )
-                    self.app.group_tab.flowbox2.add(self.app.group_tab.grps[i])
-                self.app.group_tab.flowbox1.invalidate_filter()
-                self.app.group_tab.flowbox2.invalidate_filter()
-                self.app.window.show_all()
+                    App().group_tab.flowbox2.add(App().group_tab.grps[i])
+                App().group_tab.flowbox1.invalidate_filter()
+                App().group_tab.flowbox2.invalidate_filter()
+                App().window.show_all()
 
             # Redraw Sequences Tab if exist
-            if self.app.sequences_tab:
-                self.app.sequences_tab.liststore1.clear()
+            if App().sequences_tab:
+                App().sequences_tab.liststore1.clear()
 
-                self.app.sequences_tab.liststore1.append(
+                App().sequences_tab.liststore1.append(
                     [
-                        self.app.sequence.index,
-                        self.app.sequence.type_seq,
-                        self.app.sequence.text,
+                        App().sequence.index,
+                        App().sequence.type_seq,
+                        App().sequence.text,
                     ]
                 )
 
-                for chaser in self.app.chasers:
-                    self.app.sequences_tab.liststore1.append(
+                for chaser in App().chasers:
+                    App().sequences_tab.liststore1.append(
                         [chaser.index, chaser.type_seq, chaser.text]
                     )
 
-                self.app.sequences_tab.treeview1.set_model(
-                    self.app.sequences_tab.liststore1
-                )
+                App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
                 path = Gtk.TreePath.new_first()
-                self.app.sequences_tab.treeview1.set_cursor(path, None, False)
+                App().sequences_tab.treeview1.set_cursor(path, None, False)
                 # TODO: List of steps of selected sequence
-                selection = self.app.sequences_tab.treeview1.get_selection()
-                self.app.sequences_tab.on_sequence_changed(selection)
+                selection = App().sequences_tab.treeview1.get_selection()
+                App().sequences_tab.on_sequence_changed(selection)
 
             # Redraw Patch Outputs Tab if exist
-            if self.app.patch_outputs_tab:
-                self.app.patch_outputs_tab.flowbox.queue_draw()
+            if App().patch_outputs_tab:
+                App().patch_outputs_tab.flowbox.queue_draw()
 
             # Redraw Patch Channels Tab if exist
-            if self.app.patch_channels_tab:
-                self.app.patch_channels_tab.flowbox.queue_draw()
+            if App().patch_channels_tab:
+                App().patch_channels_tab.flowbox.queue_draw()
 
             # Redraw List of Memories Tab if exist
-            if self.app.memories_tab:
-                self.app.memories_tab.liststore.clear()
-                for mem in self.app.memories:
+            if App().memories_tab:
+                App().memories_tab.liststore.clear()
+                for mem in App().memories:
                     channels = 0
                     for chan in range(MAX_CHANNELS):
                         if mem.channels[chan]:
                             channels += 1
-                    self.app.memories_tab.liststore.append(
+                    App().memories_tab.liststore.append(
                         [str(mem.memory), mem.text, channels]
                     )
-                self.app.memories_tab.flowbox.invalidate_filter()
+                App().memories_tab.flowbox.invalidate_filter()
 
             # Redraw Masters if Virtual Console is open
-            if self.app.virtual_console:
-                if self.app.virtual_console.props.visible:
+            if App().virtual_console:
+                if App().virtual_console.props.visible:
                     for page in range(2):
-                        for master in self.app.masters:
+                        for master in App().masters:
                             if master.page == page + 1:
-                                self.app.virtual_console.flashes[
+                                App().virtual_console.flashes[
                                     master.number - 1 + (page * 20)
                                 ].label = master.text
-                                self.app.virtual_console.flashes[
+                                App().virtual_console.flashes[
                                     master.number - 1 + (page * 20)
                                 ].queue_draw()
 
             # Redraw Edit Masters Tab if exist
-            if self.app.masters_tab:
-                self.app.masters_tab.liststore.clear()
+            if App().masters_tab:
+                App().masters_tab.liststore.clear()
                 for page in range(2):
                     for i in range(20):
                         index = i + (page * 20)
 
                         # Type : None
-                        if self.app.masters[index].content_type == 0:
-                            self.app.masters_tab.liststore.append(
-                                [index + 1, "", "", ""]
-                            )
+                        if App().masters[index].content_type == 0:
+                            App().masters_tab.liststore.append([index + 1, "", "", ""])
 
                         # Type : Preset
-                        elif self.app.masters[index].content_type == 1:
-                            content_value = str(self.app.masters[index].content_value)
-                            self.app.masters_tab.liststore.append(
+                        elif App().masters[index].content_type == 1:
+                            content_value = str(App().masters[index].content_value)
+                            App().masters_tab.liststore.append(
                                 [index + 1, "Preset", content_value, ""]
                             )
 
                         # Type : Channels
-                        elif self.app.masters[index].content_type == 2:
+                        elif App().masters[index].content_type == 2:
                             nb_chan = 0
                             for chan in range(MAX_CHANNELS):
-                                if self.app.masters[index].channels[chan]:
+                                if App().masters[index].channels[chan]:
                                     nb_chan += 1
-                            self.app.masters_tab.liststore.append(
+                            App().masters_tab.liststore.append(
                                 [index + 1, "Channels", str(nb_chan), ""]
                             )
 
                         # Type : Sequence
-                        elif self.app.masters[index].content_type == 3:
-                            if self.app.masters[index].content_value.is_integer():
+                        elif App().masters[index].content_type == 3:
+                            if App().masters[index].content_value.is_integer():
                                 content_value = str(
-                                    int(self.app.masters[index].content_value)
+                                    int(App().masters[index].content_value)
                                 )
                             else:
-                                content_value = str(
-                                    self.app.masters[index].content_value
-                                )
-                            self.app.masters_tab.liststore.append(
+                                content_value = str(App().masters[index].content_value)
+                            App().masters_tab.liststore.append(
                                 [index + 1, "Sequence", content_value, ""]
                             )
 
                         # Type : Group
-                        elif self.app.masters[index].content_type == 13:
-                            if self.app.masters[index].content_value.is_integer():
+                        elif App().masters[index].content_type == 13:
+                            if App().masters[index].content_value.is_integer():
                                 content_value = str(
-                                    int(self.app.masters[index].content_value)
+                                    int(App().masters[index].content_value)
                                 )
                             else:
-                                content_value = str(
-                                    self.app.masters[index].content_value
-                                )
-                            self.app.masters_tab.liststore.append(
+                                content_value = str(App().masters[index].content_value)
+                            App().masters_tab.liststore.append(
                                 [index + 1, "Group", content_value, "Exclusif"]
                             )
 
                         # Type : Unknown
                         else:
-                            self.app.masters_tab.liststore.append(
+                            App().masters_tab.liststore.append(
                                 [index + 1, "Unknown", "", ""]
                             )
 
-                self.app.masters_tab.flowbox.invalidate_filter()
+                App().masters_tab.flowbox.invalidate_filter()
 
             # TODO: Redraw Track Channels Tab if exist
 
@@ -847,38 +822,33 @@ class Ascii:
         )
         stream.write(bytes("! Main sequence\n\n", "utf8"))
         stream.write(bytes("$SEQUENCE 1 0\n\n", "utf8"))
-        for cue, _ in enumerate(self.app.sequence.steps):
-            if self.app.sequence.steps[cue].cue.memory != "0":
+        for cue, _ in enumerate(App().sequence.steps):
+            if App().sequence.steps[cue].cue.memory != "0":
                 stream.write(
-                    bytes(
-                        "CUE " + self.app.sequence.steps[cue].cue.memory + "\n", "utf8"
-                    )
+                    bytes("CUE " + App().sequence.steps[cue].cue.memory + "\n", "utf8")
                 )
                 stream.write(
                     bytes(
-                        "DOWN " + str(self.app.sequence.steps[cue].time_out) + "\n",
+                        "DOWN " + str(App().sequence.steps[cue].time_out) + "\n",
                         "utf8",
                     )
                 )
                 stream.write(
-                    bytes(
-                        "UP " + str(self.app.sequence.steps[cue].time_in) + "\n", "utf8"
-                    )
+                    bytes("UP " + str(App().sequence.steps[cue].time_in) + "\n", "utf8")
                 )
                 stream.write(
                     bytes(
-                        "$$WAIT " + str(self.app.sequence.steps[cue].wait) + "\n",
-                        "utf8",
+                        "$$WAIT " + str(App().sequence.steps[cue].wait) + "\n", "utf8",
                     )
                 )
                 #  Chanel Time if any
-                for chan in self.app.sequence.steps[cue].channel_time.keys():
+                for chan in App().sequence.steps[cue].channel_time.keys():
                     stream.write(
                         bytes(
                             "$$PARTTIME "
-                            + str(self.app.sequence.steps[cue].channel_time[chan].delay)
+                            + str(App().sequence.steps[cue].channel_time[chan].delay)
                             + " "
-                            + str(self.app.sequence.steps[cue].channel_time[chan].time)
+                            + str(App().sequence.steps[cue].channel_time[chan].time)
                             + "\n",
                             "utf8",
                         )
@@ -886,19 +856,19 @@ class Ascii:
                     stream.write(bytes("$$PARTTIMECHAN " + str(chan) + "\n", "utf8"))
                 stream.write(
                     bytes(
-                        "TEXT " + ascii(self.app.sequence.steps[cue].text)[1:-1] + "\n",
+                        "TEXT " + ascii(App().sequence.steps[cue].text)[1:-1] + "\n",
                         "utf8",
                     )
                     .decode("utf8")
                     .encode("ascii")
                 )
                 stream.write(
-                    bytes("$$TEXT " + self.app.sequence.steps[cue].text + "\n", "utf8")
+                    bytes("$$TEXT " + App().sequence.steps[cue].text + "\n", "utf8")
                 )
                 channels = ""
                 i = 1
-                for chan, _ in enumerate(self.app.sequence.steps[cue].cue.channels):
-                    level = self.app.sequence.steps[cue].cue.channels[chan]
+                for chan, _ in enumerate(App().sequence.steps[cue].cue.channels):
+                    level = App().sequence.steps[cue].cue.channels[chan]
                     if level != 0:
                         level = "H" + format(level, "02X")
                         channels += " " + str(chan + 1) + "/" + level
@@ -914,21 +884,19 @@ class Ascii:
         # Chasers
         stream.write(bytes("! Additional Sequences\n\n", "utf8"))
 
-        for chaser, _ in enumerate(self.app.chasers):
+        for chaser, _ in enumerate(App().chasers):
             stream.write(
-                bytes("$SEQUENCE " + str(self.app.chasers[chaser].index) + "\n", "utf8")
+                bytes("$SEQUENCE " + str(App().chasers[chaser].index) + "\n", "utf8")
             )
-            stream.write(
-                bytes("TEXT " + self.app.chasers[chaser].text + "\n\n", "utf8")
-            )
-            for cue, _ in enumerate(self.app.chasers[chaser].steps):
-                if self.app.chasers[chaser].steps[cue].cue.memory != "0":
+            stream.write(bytes("TEXT " + App().chasers[chaser].text + "\n\n", "utf8"))
+            for cue, _ in enumerate(App().chasers[chaser].steps):
+                if App().chasers[chaser].steps[cue].cue.memory != "0":
                     stream.write(
                         bytes(
                             "$CUE "
-                            + str(self.app.chasers[chaser].index)
+                            + str(App().chasers[chaser].index)
                             + " "
-                            + self.app.chasers[chaser].steps[cue].cue.memory
+                            + App().chasers[chaser].steps[cue].cue.memory
                             + "\n",
                             "utf8",
                         )
@@ -936,7 +904,7 @@ class Ascii:
                     stream.write(
                         bytes(
                             "DOWN "
-                            + str(self.app.chasers[chaser].steps[cue].time_out)
+                            + str(App().chasers[chaser].steps[cue].time_out)
                             + "\n",
                             "utf8",
                         )
@@ -944,7 +912,7 @@ class Ascii:
                     stream.write(
                         bytes(
                             "UP "
-                            + str(self.app.chasers[chaser].steps[cue].time_in)
+                            + str(App().chasers[chaser].steps[cue].time_in)
                             + "\n",
                             "utf8",
                         )
@@ -952,17 +920,15 @@ class Ascii:
                     stream.write(
                         bytes(
                             "$$WAIT "
-                            + str(self.app.chasers[chaser].steps[cue].wait)
+                            + str(App().chasers[chaser].steps[cue].wait)
                             + "\n",
                             "utf8",
                         )
                     )
                     channels = ""
                     i = 1
-                    for chan, _ in enumerate(
-                        self.app.chasers[chaser].steps[cue].channels
-                    ):
-                        level = self.app.chasers[chaser].steps[cue].cue.channels[chan]
+                    for chan, _ in enumerate(App().chasers[chaser].steps[cue].channels):
+                        level = App().chasers[chaser].steps[cue].cue.channels[chan]
                         if level != 0:
                             level = "H" + format(level, "02X")
                             channels += " " + str(chan + 1) + "/" + level
@@ -990,20 +956,20 @@ class Ascii:
             bytes("! $$TEXT  Unicode encoded version of the same text\n", "utf8")
         )
 
-        for group, _ in enumerate(self.app.groups):
+        for group, _ in enumerate(App().groups):
             stream.write(
-                bytes("GROUP " + str(self.app.groups[group].index) + "\n", "utf8")
+                bytes("GROUP " + str(App().groups[group].index) + "\n", "utf8")
             )
             stream.write(
-                bytes("TEXT " + ascii(self.app.groups[group].text)[1:-1] + "\n", "utf8")
+                bytes("TEXT " + ascii(App().groups[group].text)[1:-1] + "\n", "utf8")
                 .decode("utf8")
                 .encode("ascii")
             )
-            stream.write(bytes("$$TEXT " + self.app.groups[group].text + "\n", "utf8"))
+            stream.write(bytes("$$TEXT " + App().groups[group].text + "\n", "utf8"))
             channels = ""
             i = 1
-            for chan, _ in enumerate(self.app.groups[group].channels):
-                level = self.app.groups[group].channels[chan]
+            for chan, _ in enumerate(App().groups[group].channels):
+                level = App().groups[group].channels[chan]
                 if level != 0:
                     level = "H" + format(level, "02X")
                     channels += " " + str(chan + 1) + "/" + level
@@ -1032,20 +998,20 @@ class Ascii:
         )
         stream.write(bytes("CLEAR $GROUP\n\n", "utf8"))
 
-        for group, _ in enumerate(self.app.groups):
+        for group, _ in enumerate(App().groups):
             stream.write(
-                bytes("$GROUP " + str(self.app.groups[group].index) + "\n", "utf8")
+                bytes("$GROUP " + str(App().groups[group].index) + "\n", "utf8")
             )
             stream.write(
-                bytes("TEXT " + ascii(self.app.groups[group].text)[1:-1] + "\n", "utf8")
+                bytes("TEXT " + ascii(App().groups[group].text)[1:-1] + "\n", "utf8")
                 .decode("utf8")
                 .encode("ascii")
             )
-            stream.write(bytes("$$TEXT " + self.app.groups[group].text + "\n", "utf8"))
+            stream.write(bytes("$$TEXT " + App().groups[group].text + "\n", "utf8"))
             channels = ""
             i = 1
-            for chan, _ in enumerate(self.app.groups[group].channels):
-                level = self.app.groups[group].channels[chan]
+            for chan, _ in enumerate(App().groups[group].channels):
+                level = App().groups[group].channels[chan]
                 if level != 0:
                     level = "H" + format(level, "02X")
                     channels += " " + str(chan + 1) + "/" + level
@@ -1086,32 +1052,32 @@ class Ascii:
         stream.write(bytes("CLEAR $MASTPAGE\n\n", "utf8"))
         stream.write(bytes("$MASTPAGE 1 0 0 0\n", "utf8"))
         page = 1
-        for master, _ in enumerate(self.app.masters):
-            if self.app.masters[master].page != page:
-                page = self.app.masters[master].page
+        for master, _ in enumerate(App().masters):
+            if App().masters[master].page != page:
+                page = App().masters[master].page
                 stream.write(bytes("\n$MASTPAGE " + str(page) + " 0 0 0\n", "utf8"))
             # MASTPAGEITEM :
             # page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
             stream.write(
                 bytes(
                     "$MASTPAGEITEM "
-                    + self.app.masters[master].page
+                    + App().masters[master].page
                     + " "
-                    + self.app.masters[master].number
+                    + App().masters[master].number
                     + " "
-                    + str(self.app.masters[master].content_type)
+                    + str(App().masters[master].content_type)
                     + " "
-                    + str(self.app.masters[master].content_value)
+                    + str(App().masters[master].content_value)
                     + " 5 0 5 255\n",
                     "utf8",
                 )
             )
             # Master of Channels, save them
-            if self.app.masters[master].content_type == 2:
+            if App().masters[master].content_type == 2:
                 channels = ""
                 i = 1
-                for chan, _ in enumerate(self.app.masters[master].channels):
-                    level = self.app.masters[master].channels[chan]
+                for chan, _ in enumerate(App().masters[master].channels):
+                    level = App().masters[master].channels[chan]
                     if level != 0:
                         level = "H" + format(level, "02X")
                         channels += " " + str(chan + 1) + "/" + level
@@ -1137,11 +1103,11 @@ class Ascii:
         # TODO: Prise en charge du niveau de l'output
         patch = ""
         i = 1
-        for output, _ in enumerate(self.app.patch.outputs):
-            if self.app.patch.outputs[output] != 0:
+        for output, _ in enumerate(App().patch.outputs):
+            if App().patch.outputs[output] != 0:
                 patch += (
                     " "
-                    + str(self.app.patch.outputs[output])
+                    + str(App().patch.outputs[output])
                     + "<"
                     + str(output + 1)
                     + "@100"
@@ -1158,7 +1124,7 @@ class Ascii:
         stream.close()
 
         self.modified = False
-        self.app.window.header.set_title(self.basename)
+        App().window.header.set_title(self.basename)
 
     def get_time(self, string):
         """ String format : [[hours:]minutes:]seconds[.tenths]

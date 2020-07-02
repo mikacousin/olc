@@ -1,6 +1,6 @@
-from gi.repository import Gio, Gtk, Gdk
+from gi.repository import Gtk, Gdk
 
-from olc.define import MAX_CHANNELS
+from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 
 
@@ -27,7 +27,6 @@ class ChannelTime:
 class ChanneltimeTab(Gtk.Paned):
     def __init__(self, sequence, position):
 
-        self.app = Gio.Application.get_default()
         self.sequence = sequence
         self.position = position
 
@@ -108,7 +107,7 @@ class ChanneltimeTab(Gtk.Paned):
         # Select first Channel Time
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path)
-        self.app.window.set_focus(self.treeview)
+        App().window.set_focus(self.treeview)
 
     def delay_edited(self, widget, path, text):
         if text == "":
@@ -148,19 +147,19 @@ class ChanneltimeTab(Gtk.Paned):
                 # Update Delay value
                 self.step.channel_time[channel].delay = float(text)
             # Update Sequence Tab if Open on the good sequence
-            if self.app.sequences_tab:
+            if App().sequences_tab:
                 # Start to find the selected sequence
-                seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
+                seq_path, focus_column = App().sequences_tab.treeview1.get_cursor()
                 selected = seq_path.get_indices()
-                sequence = self.app.sequences_tab.liststore1[selected][0]
+                sequence = App().sequences_tab.liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
                     if ct_nb == 0:
-                        self.app.sequences_tab.liststore2[path][8] = ""
+                        App().sequences_tab.liststore2[path][8] = ""
                     else:
-                        self.app.sequences_tab.liststore2[path][8] = str(ct_nb)
+                        App().sequences_tab.liststore2[path][8] = str(ct_nb)
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
@@ -176,22 +175,22 @@ class ChanneltimeTab(Gtk.Paned):
                     self.step.total_time = t
 
             # Redraw Main Playback
-            if self.sequence == self.app.sequence:
+            if self.sequence == App().sequence:
                 path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
                 path2 = Gtk.TreePath.new_from_indices([int(self.position)])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
-                    self.app.window.cues_liststore1[path1][8] = ""
-                    self.app.window.cues_liststore2[path2][8] = ""
+                    App().window.cues_liststore1[path1][8] = ""
+                    App().window.cues_liststore2[path2][8] = ""
                 else:
-                    self.app.window.cues_liststore1[path1][8] = str(ct_nb)
-                    self.app.window.cues_liststore2[path2][8] = str(ct_nb)
-                if self.app.sequence.position + 1 == int(self.position):
-                    self.app.window.sequential.total_time = self.step.total_time
-                    self.app.window.sequential.queue_draw()
+                    App().window.cues_liststore1[path1][8] = str(ct_nb)
+                    App().window.cues_liststore2[path2][8] = str(ct_nb)
+                if App().sequence.position + 1 == int(self.position):
+                    App().window.sequential.total_time = self.step.total_time
+                    App().window.sequential.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def time_edited(self, widget, path, text):
         if text == "":
@@ -231,19 +230,19 @@ class ChanneltimeTab(Gtk.Paned):
                 # Update Time value
                 self.step.channel_time[channel].time = float(text)
             # Update Sequence Tab if Open on the good sequence
-            if self.app.sequences_tab:
+            if App().sequences_tab:
                 # Start to find the selected sequence
-                seq_path, focus_column = self.app.sequences_tab.treeview1.get_cursor()
+                seq_path, focus_column = App().sequences_tab.treeview1.get_cursor()
                 selected = seq_path.get_indices()
-                sequence = self.app.sequences_tab.liststore1[selected][0]
+                sequence = App().sequences_tab.liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
                     if ct_nb == 0:
-                        self.app.sequences_tab.liststore2[path][8] = ""
+                        App().sequences_tab.liststore2[path][8] = ""
                     else:
-                        self.app.sequences_tab.liststore2[path][8] = str(ct_nb)
+                        App().sequences_tab.liststore2[path][8] = str(ct_nb)
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
@@ -259,22 +258,22 @@ class ChanneltimeTab(Gtk.Paned):
                     self.step.total_time = t
 
             # Redraw Main Playback
-            if self.sequence == self.app.sequence:
+            if self.sequence == App().sequence:
                 path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
                 path2 = Gtk.TreePath.new_from_indices([int(self.position)])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
-                    self.app.window.cues_liststore1[path1][8] = ""
-                    self.app.window.cues_liststore2[path2][8] = ""
+                    App().window.cues_liststore1[path1][8] = ""
+                    App().window.cues_liststore2[path2][8] = ""
                 else:
-                    self.app.window.cues_liststore1[path1][8] = str(ct_nb)
-                    self.app.window.cues_liststore2[path2][8] = str(ct_nb)
-                if self.app.sequence.position + 1 == int(self.position):
-                    self.app.window.sequential.total_time = self.step.total_time
-                    self.app.window.sequential.queue_draw()
+                    App().window.cues_liststore1[path1][8] = str(ct_nb)
+                    App().window.cues_liststore2[path2][8] = str(ct_nb)
+                if App().sequence.position + 1 == int(self.position):
+                    App().window.sequential.total_time = self.step.total_time
+                    App().window.sequential.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def filter_channels(self, child, user_data):
         """ Filter Channels """
@@ -324,16 +323,16 @@ class ChanneltimeTab(Gtk.Paned):
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
 
-        page = self.app.window.notebook.page_num(self.app.channeltime_tab)
-        self.app.window.notebook.remove_page(page)
-        self.app.channeltime_tab = None
+        page = App().window.notebook.page_num(App().channeltime_tab)
+        App().window.notebook.remove_page(page)
+        App().channeltime_tab = None
 
     def on_key_press_event(self, widget, event):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -348,11 +347,11 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "keypress_" + keyname, None)
         if func:
@@ -369,13 +368,13 @@ class ChanneltimeTab(Gtk.Paned):
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
 
-        page = self.app.window.notebook.get_current_page()
-        self.app.window.notebook.remove_page(page)
-        self.app.channeltime_tab = None
+        page = App().window.notebook.get_current_page()
+        App().window.notebook.remove_page(page)
+        App().channeltime_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_c(self):
         """ Channel """
@@ -393,14 +392,14 @@ class ChanneltimeTab(Gtk.Paned):
                 # self.flowbox.invalidate_filter()
 
                 child = self.flowbox.get_child_at_index(channel)
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
 
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_q(self):
         """ Prev Channel Time """
@@ -411,11 +410,11 @@ class ChanneltimeTab(Gtk.Paned):
         if path:
             if path.prev():
                 self.treeview.set_cursor(path)
-                self.app.window.set_focus(self.treeview)
+                App().window.set_focus(self.treeview)
         else:
             path = Gtk.TreePath.new_first()
             self.treeview.set_cursor(path)
-            self.app.window.set_focus(self.treeview)
+            App().window.set_focus(self.treeview)
 
     def keypress_w(self):
         """ Next Channel Time """
@@ -426,11 +425,11 @@ class ChanneltimeTab(Gtk.Paned):
         if path:
             path.next()
             self.treeview.set_cursor(path)
-            self.app.window.set_focus(self.treeview)
+            App().window.set_focus(self.treeview)
         else:
             path = Gtk.TreePath.new_first()
             self.treeview.set_cursor(path)
-            self.app.window.set_focus(self.treeview)
+            App().window.set_focus(self.treeview)
 
     def keypress_Insert(self):
         """ Add Channel Time """
@@ -455,4 +454,4 @@ class ChanneltimeTab(Gtk.Paned):
                     self.liststore.append([channel, "", ""])
                     path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
                     self.treeview.set_cursor(path)
-                    self.app.window.set_focus(self.treeview)
+                    App().window.set_focus(self.treeview)

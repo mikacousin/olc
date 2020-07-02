@@ -1,5 +1,7 @@
 import mido
-from gi.repository import Gio, Gdk
+from gi.repository import Gdk
+
+from olc.define import App
 
 
 class MidiFader:
@@ -151,8 +153,7 @@ class Midi:
             ["Crossfade_in", 0, 9],
         ]
 
-        self.app = Gio.Application.get_default()
-        self.percent_view = self.app.settings.get_boolean("percent")
+        self.percent_view = App().settings.get_boolean("percent")
 
         # Create xfade Faders
         self.xfade_out = MidiFader()
@@ -171,7 +172,7 @@ class Midi:
 
     def scan(self):
 
-        self.percent_view = self.app.settings.get_boolean("percent")
+        self.percent_view = App().settings.get_boolean("percent")
 
         for msg in self.inport.iter_pending():
             # print(msg)
@@ -200,11 +201,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.go.emit("button-press-event", event)
+                    App().virtual_console.go.emit("button-press-event", event)
                 else:
-                    self.app.sequence.sequence_go(self.app, None)
+                    App().sequence.sequence_go(App(), None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -212,9 +213,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.go.emit("button-release-event", event)
+                    App().virtual_console.go.emit("button-release-event", event)
 
             # Go Back
             for index, item in enumerate(self.midi_table):
@@ -236,11 +237,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.goback.emit("button-press-event", event)
+                    App().virtual_console.goback.emit("button-press-event", event)
                 else:
-                    self.app.sequence.go_back(self.app, None)
+                    App().sequence.go_back(App(), None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -248,9 +249,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.goback.emit("button-release-event", event)
+                    App().virtual_console.goback.emit("button-release-event", event)
 
             # Seq -
             for index, item in enumerate(self.midi_table):
@@ -272,11 +273,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.seq_minus.emit("button-press-event", event)
+                    App().virtual_console.seq_minus.emit("button-press-event", event)
                 else:
-                    self.app.window.keypress_q()
+                    App().window.keypress_q()
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -284,11 +285,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.seq_minus.emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.seq_minus.emit("button-release-event", event)
 
             # Seq +
             for index, item in enumerate(self.midi_table):
@@ -310,11 +309,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.seq_plus.emit("button-press-event", event)
+                    App().virtual_console.seq_plus.emit("button-press-event", event)
                 else:
-                    self.app.window.keypress_w()
+                    App().window.keypress_w()
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -322,11 +321,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.seq_plus.emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.seq_plus.emit("button-release-event", event)
 
             # Output
             for index, item in enumerate(self.midi_table):
@@ -348,11 +345,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.output.emit("button-press-event", event)
+                    App().virtual_console.output.emit("button-press-event", event)
                 else:
-                    self.app.patch_outputs(None, None)
+                    App().patch_outputs(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -360,9 +357,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.output.emit("button-release-event", event)
+                    App().virtual_console.output.emit("button-release-event", event)
 
             # Sequences
             for index, item in enumerate(self.midi_table):
@@ -384,11 +381,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.seq.emit("button-press-event", event)
+                    App().virtual_console.seq.emit("button-press-event", event)
                 else:
-                    self.app.sequences(None, None)
+                    App().sequences(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -396,9 +393,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.seq.emit("button-release-event", event)
+                    App().virtual_console.seq.emit("button-release-event", event)
 
             # Group
             for index, item in enumerate(self.midi_table):
@@ -420,11 +417,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.group.emit("button-press-event", event)
+                    App().virtual_console.group.emit("button-press-event", event)
                 else:
-                    self.app.groups_cb(None, None)
+                    App().groups_cb(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -432,9 +429,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.group.emit("button-release-event", event)
+                    App().virtual_console.group.emit("button-release-event", event)
 
             # Preset
             for index, item in enumerate(self.midi_table):
@@ -456,11 +453,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.preset.emit("button-press-event", event)
+                    App().virtual_console.preset.emit("button-press-event", event)
                 else:
-                    self.app.groups_cb(None, None)
+                    App().groups_cb(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -468,9 +465,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.preset.emit("button-release-event", event)
+                    App().virtual_console.preset.emit("button-release-event", event)
 
             # Track
             for index, item in enumerate(self.midi_table):
@@ -492,11 +489,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.track.emit("button-press-event", event)
+                    App().virtual_console.track.emit("button-press-event", event)
                 else:
-                    self.app.track_channels(None, None)
+                    App().track_channels(None, None)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -504,9 +501,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.track.emit("button-release-event", event)
+                    App().virtual_console.track.emit("button-release-event", event)
 
             # Goto
             for index, item in enumerate(self.midi_table):
@@ -528,13 +525,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.goto.emit("button-press-event", event)
+                    App().virtual_console.goto.emit("button-press-event", event)
                 else:
-                    self.app.sequence.sequence_goto(self.app.window.keystring)
-                    self.app.window.keystring = ""
-                    self.app.window.statusbar.push(self.app.window.context_id, "")
+                    App().sequence.sequence_goto(App().window.keystring)
+                    App().window.keystring = ""
+                    App().window.statusbar.push(App().window.context_id, "")
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -542,9 +539,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.goto.emit("button-release-event", event)
+                    App().virtual_console.goto.emit("button-release-event", event)
 
             # Channel
             for index, item in enumerate(self.midi_table):
@@ -566,13 +563,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.channel.emit("button-press-event", event)
+                    App().virtual_console.channel.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_c
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -580,9 +577,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.channel.emit("button-release-event", event)
+                    App().virtual_console.channel.emit("button-release-event", event)
 
             # Thru
             for index, item in enumerate(self.midi_table):
@@ -604,13 +601,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.thru.emit("button-press-event", event)
+                    App().virtual_console.thru.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_greater
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -618,9 +615,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.thru.emit("button-release-event", event)
+                    App().virtual_console.thru.emit("button-release-event", event)
 
             # Channel +
             for index, item in enumerate(self.midi_table):
@@ -642,13 +639,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.plus.emit("button-press-event", event)
+                    App().virtual_console.plus.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_plus
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -656,9 +653,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.plus.emit("button-release-event", event)
+                    App().virtual_console.plus.emit("button-release-event", event)
 
             # Channel -
             for index, item in enumerate(self.midi_table):
@@ -680,13 +677,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.minus.emit("button-press-event", event)
+                    App().virtual_console.minus.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_minus
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -694,9 +691,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.minus.emit("button-release-event", event)
+                    App().virtual_console.minus.emit("button-release-event", event)
 
             # All
             for index, item in enumerate(self.midi_table):
@@ -718,13 +715,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.all.emit("button-press-event", event)
+                    App().virtual_console.all.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_a
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -732,9 +729,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.all.emit("button-release-event", event)
+                    App().virtual_console.all.emit("button-release-event", event)
 
             # Right
             for index, item in enumerate(self.midi_table):
@@ -756,13 +753,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.right.emit("button-press-event", event)
+                    App().virtual_console.right.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_Right
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -770,9 +767,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.right.emit("button-release-event", event)
+                    App().virtual_console.right.emit("button-release-event", event)
 
             # Left
             for index, item in enumerate(self.midi_table):
@@ -794,13 +791,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.left.emit("button-press-event", event)
+                    App().virtual_console.left.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_Left
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -808,9 +805,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.left.emit("button-release-event", event)
+                    App().virtual_console.left.emit("button-release-event", event)
 
             # Up
             for index, item in enumerate(self.midi_table):
@@ -832,13 +829,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.up.emit("button-press-event", event)
+                    App().virtual_console.up.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_Up
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -846,9 +843,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.up.emit("button-release-event", event)
+                    App().virtual_console.up.emit("button-release-event", event)
 
             # Down
             for index, item in enumerate(self.midi_table):
@@ -870,13 +867,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.down.emit("button-press-event", event)
+                    App().virtual_console.down.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_Down
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -884,9 +881,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.down.emit("button-release-event", event)
+                    App().virtual_console.down.emit("button-release-event", event)
 
             # Clear
             for index, item in enumerate(self.midi_table):
@@ -908,13 +905,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.clear.emit("button-press-event", event)
+                    App().virtual_console.clear.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_BackSpace
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -922,9 +919,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.clear.emit("button-release-event", event)
+                    App().virtual_console.clear.emit("button-release-event", event)
 
             # At level
             for index, item in enumerate(self.midi_table):
@@ -946,13 +943,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.at.emit("button-press-event", event)
+                    App().virtual_console.at.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_equal
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -960,9 +957,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.at.emit("button-release-event", event)
+                    App().virtual_console.at.emit("button-release-event", event)
 
             # Percent Plus
             for index, item in enumerate(self.midi_table):
@@ -984,15 +981,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.percent_plus.emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.percent_plus.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_exclam
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -1000,9 +995,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.percent_plus.emit(
+                    App().virtual_console.percent_plus.emit(
                         "button-release-event", event
                     )
 
@@ -1026,15 +1021,15 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.percent_minus.emit(
+                    App().virtual_console.percent_minus.emit(
                         "button-press-event", event
                     )
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_colon
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -1042,9 +1037,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.percent_minus.emit(
+                    App().virtual_console.percent_minus.emit(
                         "button-release-event", event
                     )
 
@@ -1068,13 +1063,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.update.emit("button-press-event", event)
+                    App().virtual_console.update.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_U
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -1082,9 +1077,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.update.emit("button-release-event", event)
+                    App().virtual_console.update.emit("button-release-event", event)
 
             # Record
             for index, item in enumerate(self.midi_table):
@@ -1106,13 +1101,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.record.emit("button-press-event", event)
+                    App().virtual_console.record.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_R
-                    self.app.window.on_key_press_event(None, event)
+                    App().window.on_key_press_event(None, event)
             elif (
                 not self.midi_learn
                 and msg.type == "note_on"
@@ -1120,9 +1115,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.record.emit("button-release-event", event)
+                    App().virtual_console.record.emit("button-release-event", event)
 
             # 0
             for index, item in enumerate(self.midi_table):
@@ -1144,13 +1139,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.zero.emit("button-press-event", event)
+                    App().virtual_console.zero.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "0"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "0"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1159,9 +1154,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.zero.emit("button-release-event", event)
+                    App().virtual_console.zero.emit("button-release-event", event)
 
             # 1
             for index, item in enumerate(self.midi_table):
@@ -1183,13 +1178,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.one.emit("button-press-event", event)
+                    App().virtual_console.one.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "1"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "1"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1198,9 +1193,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.one.emit("button-release-event", event)
+                    App().virtual_console.one.emit("button-release-event", event)
 
             # 2
             for index, item in enumerate(self.midi_table):
@@ -1222,13 +1217,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.two.emit("button-press-event", event)
+                    App().virtual_console.two.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "2"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "2"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1237,9 +1232,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.two.emit("button-release-event", event)
+                    App().virtual_console.two.emit("button-release-event", event)
 
             # 3
             for index, item in enumerate(self.midi_table):
@@ -1261,13 +1256,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.three.emit("button-press-event", event)
+                    App().virtual_console.three.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "3"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "3"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1276,9 +1271,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.three.emit("button-release-event", event)
+                    App().virtual_console.three.emit("button-release-event", event)
 
             # 4
             for index, item in enumerate(self.midi_table):
@@ -1300,13 +1295,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.four.emit("button-press-event", event)
+                    App().virtual_console.four.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "4"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "4"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1315,9 +1310,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.four.emit("button-release-event", event)
+                    App().virtual_console.four.emit("button-release-event", event)
 
             # 5
             for index, item in enumerate(self.midi_table):
@@ -1339,13 +1334,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.five.emit("button-press-event", event)
+                    App().virtual_console.five.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "5"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "5"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1354,9 +1349,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.five.emit("button-release-event", event)
+                    App().virtual_console.five.emit("button-release-event", event)
 
             # 6
             for index, item in enumerate(self.midi_table):
@@ -1378,13 +1373,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.six.emit("button-press-event", event)
+                    App().virtual_console.six.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "6"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "6"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1393,9 +1388,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.six.emit("button-release-event", event)
+                    App().virtual_console.six.emit("button-release-event", event)
 
             # 7
             for index, item in enumerate(self.midi_table):
@@ -1417,13 +1412,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.seven.emit("button-press-event", event)
+                    App().virtual_console.seven.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "7"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "7"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1432,9 +1427,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.seven.emit("button-release-event", event)
+                    App().virtual_console.seven.emit("button-release-event", event)
 
             # 8
             for index, item in enumerate(self.midi_table):
@@ -1456,13 +1451,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.eight.emit("button-press-event", event)
+                    App().virtual_console.eight.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "8"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "8"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1471,9 +1466,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.eight.emit("button-release-event", event)
+                    App().virtual_console.eight.emit("button-release-event", event)
 
             # 9
             for index, item in enumerate(self.midi_table):
@@ -1495,13 +1490,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.nine.emit("button-press-event", event)
+                    App().virtual_console.nine.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "9"
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "9"
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1510,9 +1505,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.nine.emit("button-release-event", event)
+                    App().virtual_console.nine.emit("button-release-event", event)
 
             # .
             for index, item in enumerate(self.midi_table):
@@ -1534,13 +1529,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.dot.emit("button-press-event", event)
+                    App().virtual_console.dot.emit("button-press-event", event)
                 else:
-                    self.app.window.keystring += "."
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.app.window.keystring
+                    App().window.keystring += "."
+                    App().window.statusbar.push(
+                        App().window.context_id, App().window.keystring
                     )
             elif (
                 not self.midi_learn
@@ -1549,9 +1544,9 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.dot.emit("button-release-event", event)
+                    App().virtual_console.dot.emit("button-release-event", event)
 
             # Flash 1
             for index, item in enumerate(self.midi_table):
@@ -1573,13 +1568,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[0].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[0].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 1:
                             break
                     master.old_value = master.value
@@ -1592,13 +1585,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[0].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[0].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 1:
                             break
                     master.value = master.old_value
@@ -1624,13 +1615,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[1].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[1].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 2:
                             break
                     master.old_value = master.value
@@ -1643,13 +1632,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[1].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[1].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 2:
                             break
                     master.value = master.old_value
@@ -1675,13 +1662,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[2].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[2].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 3:
                             break
                     master.old_value = master.value
@@ -1694,13 +1679,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[2].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[2].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 3:
                             break
                     master.value = master.old_value
@@ -1726,13 +1709,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[3].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[3].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 4:
                             break
                     master.old_value = master.value
@@ -1745,13 +1726,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[3].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[3].emit("button-release-event", event)
                 else:
-                    for master in enumerate(self.app.masters):
+                    for master in enumerate(App().masters):
                         if master.page == 1 and master.number == 4:
                             break
                     master.value = master.old_value
@@ -1777,13 +1756,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[4].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[4].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 5:
                             break
                     master.old_value = master.value
@@ -1796,13 +1773,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[4].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[4].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 5:
                             break
                     master.value = master.old_value
@@ -1828,13 +1803,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[5].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[5].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 6:
                             break
                     master.old_value = master.value
@@ -1847,13 +1820,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[5].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[5].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 6:
                             break
                     master.value = master.old_value
@@ -1879,13 +1850,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[6].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[6].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 7:
                             break
                     master.old_value = master.value
@@ -1898,13 +1867,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[6].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[6].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 7:
                             break
                     master.value = master.old_value
@@ -1930,13 +1897,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[7].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[7].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 8:
                             break
                     master.old_value = master.value
@@ -1949,13 +1914,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[7].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[7].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 8:
                             break
                     master.value = master.old_value
@@ -1981,13 +1944,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[8].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[8].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 9:
                             break
                     master.old_value = master.value
@@ -2000,13 +1961,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[8].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[8].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 9:
                             break
                     master.value = master.old_value
@@ -2032,17 +1991,12 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[9].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[9].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
-                        if (
-                            self.app.masters[i].page == 1
-                            and self.app.masters[i].number == 10
-                        ):
+                    for master in App().masters:
+                        if App().masters[i].page == 1 and App().masters[i].number == 10:
                             break
                     master.old_value = master.value
                     master.value = 255
@@ -2054,13 +2008,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[9].emit(
-                        "button-release-event", event
-                    )
+                    App().virtual_console.flashes[9].emit("button-release-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 10:
                             break
                     master.value = master.old_value
@@ -2086,13 +2038,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[10].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[10].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 11:
                             break
                     master.old_value = master.value
@@ -2105,13 +2055,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[10].emit(
+                    App().virtual_console.flashes[10].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 11:
                             break
                     master.value = master.old_value
@@ -2137,13 +2087,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[11].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[11].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 12:
                             break
                     master.old_value = master.value
@@ -2156,13 +2104,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[11].emit(
+                    App().virtual_console.flashes[11].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 12:
                             break
                     master.value = master.old_value
@@ -2188,13 +2136,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[12].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[12].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 13:
                             break
                     master.old_value = master.value
@@ -2207,13 +2153,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[12].emit(
+                    App().virtual_console.flashes[12].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 13:
                             break
                     master.value = master.old_value
@@ -2239,13 +2185,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[13].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[13].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 14:
                             break
                     master.old_value = master.value
@@ -2258,13 +2202,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[13].emit(
+                    App().virtual_console.flashes[13].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 14:
                             break
                     master.value = master.old_value
@@ -2290,13 +2234,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[14].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[14].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 15:
                             break
                     master.old_value = master.value
@@ -2309,13 +2251,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[14].emit(
+                    App().virtual_console.flashes[14].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 15:
                             break
                     master.value = master.old_value
@@ -2341,13 +2283,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[15].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[15].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 16:
                             break
                     master.old_value = master.value
@@ -2360,13 +2300,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[15].emit(
+                    App().virtual_console.flashes[15].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 16:
                             break
                     master.value = master.old_value
@@ -2392,13 +2332,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[16].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[16].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 17:
                             break
                     master.old_value = master.value
@@ -2411,13 +2349,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[16].emit(
+                    App().virtual_console.flashes[16].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 17:
                             break
                     master.value = master.old_value
@@ -2443,13 +2381,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[17].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[17].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 18:
                             break
                     master.old_value = master.value
@@ -2462,13 +2398,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[17].emit(
+                    App().virtual_console.flashes[17].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 18:
                             break
                     master.value = master.old_value
@@ -2494,13 +2430,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[18].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[18].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 19:
                             break
                     master.old_value = master.value
@@ -2513,13 +2447,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[18].emit(
+                    App().virtual_console.flashes[18].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 19:
                             break
                     master.value = master.old_value
@@ -2545,13 +2479,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[19].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[19].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 20:
                             break
                     master.old_value = master.value
@@ -2564,13 +2496,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[19].emit(
+                    App().virtual_console.flashes[19].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 20:
                             break
                     master.value = master.old_value
@@ -2596,13 +2528,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[20].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[20].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 1:
                             break
                     master.old_value = master.value
@@ -2615,13 +2545,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[20].emit(
+                    App().virtual_console.flashes[20].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 1:
                             break
                     master.value = master.old_value
@@ -2647,13 +2577,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[21].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[21].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 2:
                             break
                     master.old_value = master.value
@@ -2666,13 +2594,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[21].emit(
+                    App().virtual_console.flashes[21].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 2:
                             break
                     master.value = master.old_value
@@ -2698,13 +2626,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[22].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[22].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 3:
                             break
                     master.old_value = master.value
@@ -2717,13 +2643,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[22].emit(
+                    App().virtual_console.flashes[22].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 3:
                             break
                     master.value = master.old_value
@@ -2749,13 +2675,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[23].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[23].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 4:
                             break
                     master.old_value = master.value
@@ -2768,13 +2692,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[23].emit(
+                    App().virtual_console.flashes[23].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 4:
                             break
                     master.value = master.old_value
@@ -2800,13 +2724,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[24].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[24].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 5:
                             break
                     master.old_value = master.value
@@ -2819,13 +2741,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[24].emit(
+                    App().virtual_console.flashes[24].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 5:
                             break
                     master.value = master.old_value
@@ -2851,13 +2773,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[25].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[25].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 6:
                             break
                     master.old_value = master.value
@@ -2870,13 +2790,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[25].emit(
+                    App().virtual_console.flashes[25].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 6:
                             break
                     master.value = master.old_value
@@ -2902,13 +2822,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[26].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[26].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 7:
                             break
                     master.old_value = master.value
@@ -2921,13 +2839,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[26].emit(
+                    App().virtual_console.flashes[26].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 7:
                             break
                     master.value = master.old_value
@@ -2953,13 +2871,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[27].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[27].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 8:
                             break
                     master.old_value = master.value
@@ -2972,13 +2888,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[27].emit(
+                    App().virtual_console.flashes[27].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 8:
                             break
                     master.value = master.old_value
@@ -3004,13 +2920,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[28].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[28].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 9:
                             break
                     master.old_value = master.value
@@ -3023,13 +2937,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[28].emit(
+                    App().virtual_console.flashes[28].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 9:
                             break
                     master.value = master.old_value
@@ -3055,13 +2969,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[29].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[29].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 10:
                             break
                     master.old_value = master.value
@@ -3074,13 +2986,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[29].emit(
+                    App().virtual_console.flashes[29].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 10:
                             break
                     master.value = master.old_value
@@ -3106,13 +3018,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[30].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[30].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 11:
                             break
                     master.old_value = master.value
@@ -3125,13 +3035,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[30].emit(
+                    App().virtual_console.flashes[30].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 11:
                             break
                     master.value = master.old_value
@@ -3157,13 +3067,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[31].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[31].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 12:
                             break
                     master.old_value = master.value
@@ -3176,13 +3084,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[31].emit(
+                    App().virtual_console.flashes[31].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 12:
                             break
                     master.value = master.old_value
@@ -3208,13 +3116,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[32].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[32].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 13:
                             break
                     master.old_value = master.value
@@ -3227,13 +3133,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[32].emit(
+                    App().virtual_console.flashes[32].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 13:
                             break
                     master.value = master.old_value
@@ -3259,13 +3165,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[33].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[33].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 14:
                             break
                     master.old_value = master.value
@@ -3278,13 +3182,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[33].emit(
+                    App().virtual_console.flashes[33].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 14:
                             break
                     master.value = master.old_value
@@ -3310,13 +3214,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[34].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[34].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 15:
                             break
                     master.old_value = master.value
@@ -3329,13 +3231,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[34].emit(
+                    App().virtual_console.flashes[34].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 15:
                             break
                     master.value = master.old_value
@@ -3361,13 +3263,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[35].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[35].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 16:
                             break
                     master.old_value = master.value
@@ -3380,13 +3280,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[35].emit(
+                    App().virtual_console.flashes[35].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 16:
                             break
                     master.value = master.old_value
@@ -3412,13 +3312,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[36].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[36].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 17:
                             break
                     master.old_value = master.value
@@ -3431,13 +3329,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[36].emit(
+                    App().virtual_console.flashes[36].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 17:
                             break
                     master.value = master.old_value
@@ -3463,13 +3361,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[37].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[37].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 18:
                             break
                     master.old_value = master.value
@@ -3482,13 +3378,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[37].emit(
+                    App().virtual_console.flashes[37].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 18:
                             break
                     master.value = master.old_value
@@ -3514,13 +3410,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[38].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[38].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 19:
                             break
                     master.old_value = master.value
@@ -3533,13 +3427,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[38].emit(
+                    App().virtual_console.flashes[38].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 19:
                             break
                     master.value = master.old_value
@@ -3565,13 +3459,11 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 127
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    self.app.virtual_console.flashes[39].emit(
-                        "button-press-event", event
-                    )
+                    App().virtual_console.flashes[39].emit("button-press-event", event)
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 20:
                             break
                     master.old_value = master.value
@@ -3584,13 +3476,13 @@ class Midi:
                 and msg.note == item[2]
                 and msg.velocity == 0
             ):
-                if self.app.virtual_console:
+                if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    self.app.virtual_console.flashes[39].emit(
+                    App().virtual_console.flashes[39].emit(
                         "button-release-event", event
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 20:
                             break
                     master.value = master.old_value
@@ -3616,13 +3508,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[0].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[0]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[0].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[0])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 1:
                             break
                     master.value = val
@@ -3648,13 +3538,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[1].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[1]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[1].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[1])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 2:
                             break
                     master.value = val
@@ -3680,13 +3568,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[2].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[2]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[2].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[2])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 3:
                             break
                     master.value = val
@@ -3712,13 +3598,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[3].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[3]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[3].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[3])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 4:
                             break
                     master.value = val
@@ -3744,13 +3628,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[4].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[4]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[4].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[4])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 5:
                             break
                     master.value = val
@@ -3776,13 +3658,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[5].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[5]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[5].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[5])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 6:
                             break
                     master.value = val
@@ -3808,13 +3688,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[6].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[6]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[6].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[6])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 7:
                             break
                     master.value = val
@@ -3840,13 +3718,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[7].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[7]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[7].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[7])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 8:
                             break
                     master.value = val
@@ -3872,13 +3748,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[8].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[8]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[8].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[8])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 9:
                             break
                     master.value = val
@@ -3904,13 +3778,11 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[9].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[9]
-                    )
+                if App().virtual_console:
+                    App().virtual_console.masters[9].set_value(val)
+                    App().virtual_console.master_moved(App().virtual_console.masters[9])
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 10:
                             break
                     master.value = val
@@ -3936,13 +3808,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[10].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[10]
+                if App().virtual_console:
+                    App().virtual_console.masters[10].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[10]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 11:
                             break
                     master.value = val
@@ -3968,13 +3840,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[11].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[11]
+                if App().virtual_console:
+                    App().virtual_console.masters[11].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[11]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 12:
                             break
                     master.value = val
@@ -4000,13 +3872,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[12].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[12]
+                if App().virtual_console:
+                    App().virtual_console.masters[12].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[12]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 13:
                             break
                     master.value = val
@@ -4032,13 +3904,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[13].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[13]
+                if App().virtual_console:
+                    App().virtual_console.masters[13].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[13]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 14:
                             break
                     master.value = val
@@ -4064,13 +3936,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[14].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[14]
+                if App().virtual_console:
+                    App().virtual_console.masters[14].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[14]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 15:
                             break
                     master.value = val
@@ -4096,13 +3968,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[15].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[15]
+                if App().virtual_console:
+                    App().virtual_console.masters[15].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[15]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 16:
                             break
                     master.value = val
@@ -4128,13 +4000,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[16].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[16]
+                if App().virtual_console:
+                    App().virtual_console.masters[16].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[16]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 17:
                             break
                     master.value = val
@@ -4160,13 +4032,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[17].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[17]
+                if App().virtual_console:
+                    App().virtual_console.masters[17].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[17]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 18:
                             break
                     master.value = val
@@ -4192,13 +4064,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[18].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[18]
+                if App().virtual_console:
+                    App().virtual_console.masters[18].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[18]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 19:
                             break
                     master.value = val
@@ -4224,13 +4096,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[19].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[19]
+                if App().virtual_console:
+                    App().virtual_console.masters[19].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[19]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 1 and master.number == 20:
                             break
                     master.value = val
@@ -4256,13 +4128,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[20].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[20]
+                if App().virtual_console:
+                    App().virtual_console.masters[20].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[20]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 1:
                             break
                     master.value = val
@@ -4288,13 +4160,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[21].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[21]
+                if App().virtual_console:
+                    App().virtual_console.masters[21].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[21]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 2:
                             break
                     master.value = val
@@ -4320,13 +4192,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[22].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[22]
+                if App().virtual_console:
+                    App().virtual_console.masters[22].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[22]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 3:
                             break
                     master.value = val
@@ -4352,13 +4224,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[23].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[23]
+                if App().virtual_console:
+                    App().virtual_console.masters[23].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[23]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 4:
                             break
                     master.value = val
@@ -4384,13 +4256,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[24].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[24]
+                if App().virtual_console:
+                    App().virtual_console.masters[24].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[24]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 5:
                             break
                     master.value = val
@@ -4416,13 +4288,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[25].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[25]
+                if App().virtual_console:
+                    App().virtual_console.masters[25].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[25]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 6:
                             break
                     master.value = val
@@ -4448,13 +4320,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[26].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[26]
+                if App().virtual_console:
+                    App().virtual_console.masters[26].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[26]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 7:
                             break
                     master.value = val
@@ -4480,13 +4352,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[27].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[27]
+                if App().virtual_console:
+                    App().virtual_console.masters[27].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[27]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 8:
                             break
                     master.value = val
@@ -4512,13 +4384,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[28].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[28]
+                if App().virtual_console:
+                    App().virtual_console.masters[28].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[28]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 9:
                             break
                     master.value = val
@@ -4544,13 +4416,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[29].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[29]
+                if App().virtual_console:
+                    App().virtual_console.masters[29].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[29]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 10:
                             break
                     master.value = val
@@ -4576,13 +4448,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[30].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[30]
+                if App().virtual_console:
+                    App().virtual_console.masters[30].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[30]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 11:
                             break
                     master.value = val
@@ -4608,13 +4480,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[31].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[31]
+                if App().virtual_console:
+                    App().virtual_console.masters[31].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[31]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 12:
                             break
                     master.value = val
@@ -4640,13 +4512,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[32].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[32]
+                if App().virtual_console:
+                    App().virtual_console.masters[32].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[32]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 13:
                             break
                     master.value = val
@@ -4672,13 +4544,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[33].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[33]
+                if App().virtual_console:
+                    App().virtual_console.masters[33].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[33]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 14:
                             break
                     master.value = val
@@ -4704,13 +4576,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[34].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[34]
+                if App().virtual_console:
+                    App().virtual_console.masters[34].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[34]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 15:
                             break
                     master.value = val
@@ -4736,13 +4608,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[35].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[35]
+                if App().virtual_console:
+                    App().virtual_console.masters[35].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[35]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 16:
                             break
                     master.value = val
@@ -4768,13 +4640,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[36].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[36]
+                if App().virtual_console:
+                    App().virtual_console.masters[36].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[36]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 17:
                             break
                     master.value = val
@@ -4800,13 +4672,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[37].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[37]
+                if App().virtual_console:
+                    App().virtual_console.masters[37].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[37]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 18:
                             break
                     master.value = val
@@ -4832,13 +4704,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[38].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[38]
+                if App().virtual_console:
+                    App().virtual_console.masters[38].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[38]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 19:
                             break
                     master.value = val
@@ -4864,13 +4736,13 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.masters[39].set_value(val)
-                    self.app.virtual_console.master_moved(
-                        self.app.virtual_console.masters[39]
+                if App().virtual_console:
+                    App().virtual_console.masters[39].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[39]
                     )
                 else:
-                    for master in self.app.masters:
+                    for master in App().masters:
                         if master.page == 2 and master.number == 20:
                             break
                     master.value = val
@@ -4896,12 +4768,12 @@ class Midi:
                 and msg.control == item[2]
             ):
                 val = (msg.value / 127) * 255
-                if self.app.virtual_console:
-                    self.app.virtual_console.scaleGM.set_value(val)
-                    self.app.virtual_console.GM_moved(self.app.virtual_console.scaleGM)
+                if App().virtual_console:
+                    App().virtual_console.scaleGM.set_value(val)
+                    App().virtual_console.GM_moved(App().virtual_console.scaleGM)
                 else:
-                    self.app.dmx.grand_master = val
-                    self.app.window.gm.queue_draw()
+                    App().dmx.grand_master = val
+                    App().window.gm.queue_draw()
 
             # Manual Crossfade Out
             for index, item in enumerate(self.midi_table):
@@ -4947,7 +4819,7 @@ class Midi:
 
     def xfade(self, fader, value):
 
-        self.app.crossfade.manual = True
+        App().crossfade.manual = True
 
         if fader.get_inverted():
             val = (value / 127) * 255
@@ -4956,20 +4828,20 @@ class Midi:
             val = abs(((value - 127) / 127) * 255)
             fader.set_value(abs(value - 127))
 
-        if self.app.virtual_console:
+        if App().virtual_console:
             if fader == self.xfade_out:
-                self.app.virtual_console.scaleA.set_value(val)
-                self.app.virtual_console.scale_moved(self.app.virtual_console.scaleA)
+                App().virtual_console.scaleA.set_value(val)
+                App().virtual_console.scale_moved(App().virtual_console.scaleA)
             elif fader == self.xfade_in:
-                self.app.virtual_console.scaleB.set_value(val)
-                self.app.virtual_console.scale_moved(self.app.virtual_console.scaleB)
+                App().virtual_console.scaleB.set_value(val)
+                App().virtual_console.scale_moved(App().virtual_console.scaleB)
         else:
             if fader == self.xfade_out:
-                self.app.crossfade.scaleA.set_value(val)
-                self.app.crossfade.scale_moved(self.app.crossfade.scaleA)
+                App().crossfade.scaleA.set_value(val)
+                App().crossfade.scale_moved(App().crossfade.scaleA)
             elif fader == self.xfade_in:
-                self.app.crossfade.scaleB.set_value(val)
-                self.app.crossfade.scale_moved(self.app.crossfade.scaleB)
+                App().crossfade.scaleB.set_value(val)
+                App().crossfade.scale_moved(App().crossfade.scaleB)
 
         if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
             if self.xfade_out.get_inverted():

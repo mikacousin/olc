@@ -123,7 +123,7 @@ class Application(Gtk.Application):
     def do_activate(self):
 
         # Create Main Window
-        self.window = Window(self, self.patch)
+        self.window = Window(self.patch)
         self.sequence.window = self.window
         self.window.show_all()
         # No selected channel on startup

@@ -1,7 +1,7 @@
 import array
-from gi.repository import Gtk, Gio, Gdk, Pango
+from gi.repository import Gtk, Gdk, Pango
 
-from olc.define import MAX_CHANNELS
+from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 from olc.sequence import Sequence
 from olc.cue import Cue
@@ -9,8 +9,6 @@ from olc.cue import Cue
 
 class SequenceTab(Gtk.Grid):
     def __init__(self):
-
-        self.app = Gio.Application.get_default()
 
         self.keystring = ""
         self.last_chan_selected = ""
@@ -26,14 +24,10 @@ class SequenceTab(Gtk.Grid):
         self.liststore1 = Gtk.ListStore(int, str, str)
 
         self.liststore1.append(
-            [
-                self.app.sequence.index,
-                self.app.sequence.type_seq,
-                self.app.sequence.text,
-            ]
+            [App().sequence.index, App().sequence.type_seq, App().sequence.text]
         )
 
-        for chaser in self.app.chasers:
+        for chaser in App().chasers:
             self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
@@ -82,10 +76,10 @@ class SequenceTab(Gtk.Grid):
                 # print(i, path.get_indices()[0])
                 if i == selected:
                     # print("Index :", self.liststore1[i][0])
-                    if item[0] == self.app.sequence.index:
-                        self.seq = self.app.sequence
+                    if item[0] == App().sequence.index:
+                        self.seq = App().sequence
                     else:
-                        for chaser in self.app.chasers:
+                        for chaser in App().chasers:
                             if item[0] == chaser.index:
                                 self.seq = chaser
             # Liststore with infos from the sequence
@@ -217,16 +211,16 @@ class SequenceTab(Gtk.Grid):
             seq_path, focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                seq = self.app.sequence
+            if sequence == App().sequence.index:
+                seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         seq = chaser
 
             # Edit Channel Time
             step = self.liststore2[path][0]
-            self.app.channeltime(seq, step)
+            App().channeltime(seq, step)
 
     def wait_edited(self, widget, path, text):
 
@@ -247,10 +241,10 @@ class SequenceTab(Gtk.Grid):
             seq_path, focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Cue
@@ -283,24 +277,22 @@ class SequenceTab(Gtk.Grid):
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == self.app.sequence:
+            if self.seq == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
-                    self.app.window.cues_liststore1[path][3] = ""
-                    self.app.window.cues_liststore2[path][3] = ""
+                    App().window.cues_liststore1[path][3] = ""
+                    App().window.cues_liststore2[path][3] = ""
                 else:
-                    self.app.window.cues_liststore1[path][3] = text
-                    self.app.window.cues_liststore2[path][3] = text
-                if self.app.sequence.position + 1 == step:
-                    self.app.window.sequential.wait = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[
-                        step
-                    ].total_time
-                    self.app.window.sequential.queue_draw()
+                    App().window.cues_liststore1[path][3] = text
+                    App().window.cues_liststore2[path][3] = text
+                if App().sequence.position + 1 == step:
+                    App().window.sequential.wait = float(text)
+                    App().window.sequential.total_time = self.seq.steps[step].total_time
+                    App().window.sequential.queue_draw()
 
     def out_edited(self, widget, path, text):
 
@@ -315,10 +307,10 @@ class SequenceTab(Gtk.Grid):
             seq_path, focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Cue
@@ -352,20 +344,18 @@ class SequenceTab(Gtk.Grid):
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == self.app.sequence:
+            if self.seq == App().sequence:
                 path = str(int(path) + 1)
-                self.app.window.cues_liststore1[path][5] = text
-                self.app.window.cues_liststore2[path][5] = text
-                if self.app.sequence.position + 1 == step:
-                    self.app.window.sequential.time_out = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[
-                        step
-                    ].total_time
-                    self.app.window.sequential.queue_draw()
+                App().window.cues_liststore1[path][5] = text
+                App().window.cues_liststore2[path][5] = text
+                if App().sequence.position + 1 == step:
+                    App().window.sequential.time_out = float(text)
+                    App().window.sequential.total_time = self.seq.steps[step].total_time
+                    App().window.sequential.queue_draw()
 
     def in_edited(self, widget, path, text):
 
@@ -380,10 +370,10 @@ class SequenceTab(Gtk.Grid):
             seq_path, focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Cue
@@ -417,20 +407,18 @@ class SequenceTab(Gtk.Grid):
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == self.app.sequence:
+            if self.seq == App().sequence:
                 path = str(int(path) + 1)
-                self.app.window.cues_liststore1[path][7] = text
-                self.app.window.cues_liststore2[path][7] = text
-                if self.app.sequence.position + 1 == step:
-                    self.app.window.sequential.time_in = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[
-                        step
-                    ].total_time
-                    self.app.window.sequential.queue_draw()
+                App().window.cues_liststore1[path][7] = text
+                App().window.cues_liststore2[path][7] = text
+                if App().sequence.position + 1 == step:
+                    App().window.sequential.time_in = float(text)
+                    App().window.sequential.total_time = self.seq.steps[step].total_time
+                    App().window.sequential.queue_draw()
 
     def delay_out_edited(self, widget, path, text):
 
@@ -451,10 +439,10 @@ class SequenceTab(Gtk.Grid):
             seq_path, focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Cue
@@ -488,24 +476,22 @@ class SequenceTab(Gtk.Grid):
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == self.app.sequence:
+            if self.seq == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
-                    self.app.window.cues_liststore1[path][4] = ""
-                    self.app.window.cues_liststore2[path][4] = ""
+                    App().window.cues_liststore1[path][4] = ""
+                    App().window.cues_liststore2[path][4] = ""
                 else:
-                    self.app.window.cues_liststore1[path][4] = text
-                    self.app.window.cues_liststore2[path][4] = text
-                if self.app.sequence.position + 1 == step:
-                    self.app.window.sequential.delay_out = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[
-                        step
-                    ].total_time
-                    self.app.window.sequential.queue_draw()
+                    App().window.cues_liststore1[path][4] = text
+                    App().window.cues_liststore2[path][4] = text
+                if App().sequence.position + 1 == step:
+                    App().window.sequential.delay_out = float(text)
+                    App().window.sequential.total_time = self.seq.steps[step].total_time
+                    App().window.sequential.queue_draw()
 
     def delay_in_edited(self, widget, path, text):
 
@@ -526,10 +512,10 @@ class SequenceTab(Gtk.Grid):
             seq_path, focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Cue
@@ -563,24 +549,22 @@ class SequenceTab(Gtk.Grid):
                     self.seq.steps[step].total_time = t
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == self.app.sequence:
+            if self.seq == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
-                    self.app.window.cues_liststore1[path][6] = ""
-                    self.app.window.cues_liststore2[path][6] = ""
+                    App().window.cues_liststore1[path][6] = ""
+                    App().window.cues_liststore2[path][6] = ""
                 else:
-                    self.app.window.cues_liststore1[path][6] = text
-                    self.app.window.cues_liststore2[path][6] = text
-                if self.app.sequence.position + 1 == step:
-                    self.app.window.sequential.delay_in = float(text)
-                    self.app.window.sequential.total_time = self.seq.steps[
-                        step
-                    ].total_time
-                    self.app.window.sequential.queue_draw()
+                    App().window.cues_liststore1[path][6] = text
+                    App().window.cues_liststore2[path][6] = text
+                if App().sequence.position + 1 == step:
+                    App().window.sequential.delay_in = float(text)
+                    App().window.sequential.total_time = self.seq.steps[step].total_time
+                    App().window.sequential.queue_draw()
 
     def text_edited(self, widget, path, text):
 
@@ -590,10 +574,10 @@ class SequenceTab(Gtk.Grid):
         seq_path, focus_column = self.treeview1.get_cursor()
         selected = seq_path.get_indices()[0]
         sequence = self.liststore1[selected][0]
-        if sequence == self.app.sequence.index:
-            self.seq = self.app.sequence
+        if sequence == App().sequence.index:
+            self.seq = App().sequence
         else:
-            for chaser in self.app.chasers:
+            for chaser in App().chasers:
                 if sequence == chaser.index:
                     self.seq = chaser
         # Find Cue
@@ -603,17 +587,17 @@ class SequenceTab(Gtk.Grid):
         self.seq.steps[step].text = text
 
         # Tag filename as modified
-        self.app.ascii.modified = True
-        self.app.window.header.set_title(self.app.ascii.basename + "*")
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
 
         # Update Main Playback
-        if self.seq == self.app.sequence:
+        if self.seq == App().sequence:
             path = str(int(path) + 1)
-            self.app.window.cues_liststore1[path][2] = text
-            self.app.window.cues_liststore2[path][2] = text
+            App().window.cues_liststore1[path][2] = text
+            App().window.cues_liststore2[path][2] = text
 
             # Update window's subtitle if needed
-            if self.app.sequence.position == step:
+            if App().sequence.position == step:
                 subtitle = (
                     "Mem. : "
                     + str(self.seq.steps[step].cue.memory)
@@ -624,9 +608,9 @@ class SequenceTab(Gtk.Grid):
                     + " "
                     + self.seq.steps[step + 1].text
                 )
-                self.app.window.header.set_subtitle(subtitle)
+                App().window.header.set_subtitle(subtitle)
 
-            if self.app.sequence.position + 1 == step:
+            if App().sequence.position + 1 == step:
                 subtitle = (
                     "Mem. : "
                     + str(self.seq.steps[step - 1].cue.memory)
@@ -637,7 +621,7 @@ class SequenceTab(Gtk.Grid):
                     + " "
                     + self.seq.steps[step].text
                 )
-                self.app.window.header.set_subtitle(subtitle)
+                App().window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, treeview):
         """ Select memory """
@@ -656,10 +640,10 @@ class SequenceTab(Gtk.Grid):
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
         # Find Step
@@ -712,14 +696,14 @@ class SequenceTab(Gtk.Grid):
             # Find it
             for i, item in enumerate(self.liststore1):
                 if i + 1 == selected:
-                    if item[0] == self.app.sequence.index:
-                        self.seq = self.app.sequence
+                    if item[0] == App().sequence.index:
+                        self.seq = App().sequence
                     else:
-                        for chaser in self.app.chasers:
+                        for chaser in App().chasers:
                             if item[0] == chaser.index:
                                 self.seq = chaser
             # Liststore with infos from the sequence
-            if self.seq == self.app.sequence:
+            if self.seq == App().sequence:
                 for i in range(self.seq.last)[1:-1]:
                     if self.seq.steps[i].wait.is_integer():
                         wait = str(int(self.seq.steps[i].wait))
@@ -812,18 +796,18 @@ class SequenceTab(Gtk.Grid):
             path = Gtk.TreePath.new_first()
             self.treeview2.set_cursor(path)
 
-            self.app.window.show_all()
+            App().window.show_all()
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
-        page = self.app.window.notebook.page_num(self.app.sequences_tab)
-        self.app.window.notebook.remove_page(page)
-        self.app.sequences_tab = None
+        page = App().window.notebook.page_num(App().sequences_tab)
+        App().window.notebook.remove_page(page)
+        App().sequences_tab = None
 
     def on_key_press_event(self, widget, event):
 
         # TODO: Hack to know if user is editing something
-        widget = self.app.window.get_focus()
+        widget = App().window.get_focus()
         # print(widget.get_path().is_type(Gtk.Entry))
         if not widget:
             return False
@@ -834,7 +818,7 @@ class SequenceTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -849,11 +833,11 @@ class SequenceTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "keypress_" + keyname, None)
         if func:
@@ -862,13 +846,13 @@ class SequenceTab(Gtk.Grid):
 
     def keypress_Escape(self):
         """ Close Tab """
-        page = self.app.window.notebook.get_current_page()
-        self.app.window.notebook.remove_page(page)
-        self.app.sequences_tab = None
+        page = App().window.notebook.get_current_page()
+        App().window.notebook.remove_page(page)
+        App().sequences_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_Q(self):
         """ Cycle Sequences """
@@ -923,10 +907,10 @@ class SequenceTab(Gtk.Grid):
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Step
@@ -940,7 +924,7 @@ class SequenceTab(Gtk.Grid):
                     if channels[channel] != 0:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
-                        self.app.window.set_focus(child)
+                        App().window.set_focus(child)
                         self.flowbox.select_child(child)
                     else:
                         self.channels[channel].clicked = False
@@ -956,12 +940,12 @@ class SequenceTab(Gtk.Grid):
             if 0 <= channel < MAX_CHANNELS:
 
                 # Only patched channel
-                if self.app.patch.channels[channel][0] != [0, 0]:
+                if App().patch.channels[channel][0] != [0, 0]:
                     self.channels[channel].clicked = True
                     self.flowbox.invalidate_filter()
 
                     child = self.flowbox.get_child_at_index(channel)
-                    self.app.window.set_focus(child)
+                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
         else:
@@ -970,7 +954,7 @@ class SequenceTab(Gtk.Grid):
             self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -989,24 +973,24 @@ class SequenceTab(Gtk.Grid):
             if to_chan > int(self.last_chan_selected):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     # Only patched channels
-                    if self.app.patch.channels[channel][0] != [0, 0]:
+                    if App().patch.channels[channel][0] != [0, 0]:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
-                        self.app.window.set_focus(child)
+                        App().window.set_focus(child)
                         self.flowbox.select_child(child)
                 self.flowbox.invalidate_filter()
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     # Only patched channels
-                    if self.app.patch.channels[channel][0] != [0, 0]:
+                    if App().patch.channels[channel][0] != [0, 0]:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
-                        self.app.window.set_focus(child)
+                        App().window.set_focus(child)
                         self.flowbox.select_child(child)
                 self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_plus(self):
         """ Channel + """
@@ -1015,7 +999,7 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
             0,
             0,
         ]:
@@ -1023,12 +1007,12 @@ class SequenceTab(Gtk.Grid):
             self.flowbox.invalidate_filter()
 
             child = self.flowbox.get_child_at_index(channel)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_minus(self):
         """ Channel - """
@@ -1037,7 +1021,7 @@ class SequenceTab(Gtk.Grid):
             return
 
         channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
             0,
             0,
         ]:
@@ -1045,17 +1029,17 @@ class SequenceTab(Gtk.Grid):
             self.flowbox.invalidate_filter()
 
             child = self.flowbox.get_child_at_index(channel)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_equal(self):
         """ @ Level """
         level = int(self.keystring)
-        if Gio.Application.get_default().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             if 0 <= level <= 100:
                 level = int(round((level / 100) * 255))
             else:
@@ -1076,12 +1060,12 @@ class SequenceTab(Gtk.Grid):
                         self.user_channels[channel] = level
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_colon(self):
         """ Level - % """
 
-        lvl = Gio.Application.get_default().settings.get_int("percent-level")
+        lvl = App().settings.get_int("percent-level")
 
         sel = self.flowbox.get_selected_children()
 
@@ -1106,7 +1090,7 @@ class SequenceTab(Gtk.Grid):
     def keypress_exclam(self):
         """ Level + % """
 
-        lvl = Gio.Application.get_default().settings.get_int("percent-level")
+        lvl = App().settings.get_int("percent-level")
 
         sel = self.flowbox.get_selected_children()
 
@@ -1136,10 +1120,10 @@ class SequenceTab(Gtk.Grid):
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Step
@@ -1152,7 +1136,7 @@ class SequenceTab(Gtk.Grid):
                 memory = self.seq.steps[step].cue.memory
 
                 # Dialog to confirm Update
-                dialog = Dialog(self.app.window, memory)
+                dialog = Dialog(App().window, memory)
                 response = dialog.run()
 
                 if response == Gtk.ResponseType.OK:
@@ -1163,19 +1147,19 @@ class SequenceTab(Gtk.Grid):
                             self.seq.channels[channel] = 1
 
                     # Tag filename as modified
-                    self.app.ascii.modified = True
-                    self.app.window.header.set_title(self.app.ascii.basename + "*")
+                    App().ascii.modified = True
+                    App().window.header.set_title(App().ascii.basename + "*")
 
                     # Update Main playback display
-                    if self.seq == self.app.sequence:
-                        if step == self.app.sequence.position + 1:
+                    if self.seq == App().sequence:
+                        if step == App().sequence.position + 1:
                             for channel in range(MAX_CHANNELS):
-                                self.app.window.channels[
+                                App().window.channels[
                                     channel
                                 ].next_level = self.seq.steps[step].cue.channels[
                                     channel
                                 ]
-                                self.app.window.channels[channel].queue_draw()
+                                App().window.channels[channel].queue_draw()
 
                 elif response == Gtk.ResponseType.CANCEL:
                     pass
@@ -1189,27 +1173,27 @@ class SequenceTab(Gtk.Grid):
         """ New Chaser """
 
         # Use the next free index
-        if len(self.app.chasers) > 0:
-            index_seq = self.app.chasers[-1].index + 1
+        if len(App().chasers) > 0:
+            index_seq = App().chasers[-1].index + 1
         else:
             # Or 2 (1 is for Main Playback)
             index_seq = 2
 
         # Create Chaser
-        self.app.chasers.append(Sequence(index_seq, self.app.patch, type_seq="Chaser"))
+        App().chasers.append(Sequence(index_seq, App().patch, type_seq="Chaser"))
 
         # Update List of sequences
         self.liststore1.append(
             [
-                self.app.chasers[-1].index,
-                self.app.chasers[-1].type_seq,
-                self.app.chasers[-1].text,
+                App().chasers[-1].index,
+                App().chasers[-1].type_seq,
+                App().chasers[-1].text,
             ]
         )
 
         # Tag filename as modified
-        self.app.ascii.modified = True
-        self.app.window.header.set_title(self.app.ascii.basename + "*")
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
 
     def keypress_R(self):
         """ New Cue """
@@ -1228,7 +1212,7 @@ class SequenceTab(Gtk.Grid):
                     # Update memory
 
                     # Dialog to confirm Update
-                    dialog = Dialog(self.app.window, str(mem))
+                    dialog = Dialog(App().window, str(mem))
                     response = dialog.run()
 
                     if response == Gtk.ResponseType.OK:
@@ -1239,21 +1223,21 @@ class SequenceTab(Gtk.Grid):
                                 self.seq.channels[channel] = 1
 
                         # Tag filename as modified
-                        self.app.ascii.modified = True
-                        self.app.window.header.set_title(self.app.ascii.basename + "*")
+                        App().ascii.modified = True
+                        App().window.header.set_title(App().ascii.basename + "*")
 
                         # Select memory modified
                         path = Gtk.TreePath.new_from_indices([i - 1])
                         self.treeview2.set_cursor(path, None, False)
 
                         # Update Main playback
-                        if self.seq == self.app.sequence:
-                            if i == self.app.sequence.position + 1:
+                        if self.seq == App().sequence:
+                            if i == App().sequence.position + 1:
                                 for channel in range(MAX_CHANNELS):
-                                    self.app.window.channels[
+                                    App().window.channels[
                                         channel
                                     ].next_level = step.cue.channels[channel]
-                                    self.app.window.channels[channel].queue_draw()
+                                    App().window.channels[channel].queue_draw()
 
                     elif response == Gtk.ResponseType.CANCEL:
                         pass
@@ -1261,28 +1245,26 @@ class SequenceTab(Gtk.Grid):
                     dialog.destroy()
 
                     # Tag filename as modified
-                    self.app.ascii.modified = True
-                    self.app.window.header.set_title(self.app.ascii.basename + "*")
+                    App().ascii.modified = True
+                    App().window.header.set_title(App().ascii.basename + "*")
 
                     self.keystring = ""
-                    self.app.window.statusbar.push(
-                        self.app.window.context_id, self.keystring
-                    )
+                    App().window.statusbar.push(App().window.context_id, self.keystring)
 
                     return
 
             self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         # Find the selected sequence
         path, focus_column = self.treeview1.get_cursor()
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
-            if sequence == self.app.sequence.index:
-                self.seq = self.app.sequence
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
             else:
-                for chaser in self.app.chasers:
+                for chaser in App().chasers:
                     if sequence == chaser.index:
                         self.seq = chaser
 
@@ -1307,8 +1289,8 @@ class SequenceTab(Gtk.Grid):
             else:
                 # Find the next free index and memory
                 if self.seq.index == 1:
-                    index = self.app.sequence.steps[-2].index + 1
-                    memory = float(self.app.sequence.steps[-2].cue.memory) + 1
+                    index = App().sequence.steps[-2].index + 1
+                    memory = float(App().sequence.steps[-2].cue.memory) + 1
                 else:
                     index = self.seq.steps[-1].index + 1
                     memory = float(self.seq.steps[-1].cue.memory) + 1
@@ -1326,8 +1308,8 @@ class SequenceTab(Gtk.Grid):
             # Update Display :
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Main Playback
             if self.seq.index == 1:
@@ -1419,7 +1401,7 @@ class SequenceTab(Gtk.Grid):
                 if channel_time == "0":
                     channel_time = ""
 
-                self.app.window.cues_liststore1.insert(
+                App().window.cues_liststore1.insert(
                     index,
                     [
                         str(index),
@@ -1436,7 +1418,7 @@ class SequenceTab(Gtk.Grid):
                         42,
                     ],
                 )
-                self.app.window.cues_liststore2.insert(
+                App().window.cues_liststore2.insert(
                     index,
                     [
                         str(index),
@@ -1453,22 +1435,22 @@ class SequenceTab(Gtk.Grid):
 
                 # Update indexes of cues in listsore
                 for i in range(index + 1, self.seq.last):
-                    self.app.window.cues_liststore1[i][0] = str(
-                        int(self.app.window.cues_liststore1[i][0]) + 1
+                    App().window.cues_liststore1[i][0] = str(
+                        int(App().window.cues_liststore1[i][0]) + 1
                     )
-                    self.app.window.cues_liststore2[i][0] = str(
-                        int(self.app.window.cues_liststore2[i][0]) + 1
+                    App().window.cues_liststore2[i][0] = str(
+                        int(App().window.cues_liststore2[i][0]) + 1
                     )
 
                 # Update Crossfade
-                if self.app.sequence.position + 1 == index:
-                    self.app.window.sequential.time_in = self.seq.steps[index].time_in
-                    self.app.window.sequential.time_out = self.seq.steps[index].time_out
-                    self.app.window.sequential.wait = self.seq.steps[index].wait
-                    self.app.window.sequential.total_time = self.seq.steps[
+                if App().sequence.position + 1 == index:
+                    App().window.sequential.time_in = self.seq.steps[index].time_in
+                    App().window.sequential.time_out = self.seq.steps[index].time_out
+                    App().window.sequential.wait = self.seq.steps[index].wait
+                    App().window.sequential.total_time = self.seq.steps[
                         index
                     ].total_time
-                    self.app.window.sequential.queue_draw()
+                    App().window.sequential.queue_draw()
 
             else:
                 # Update Chasers

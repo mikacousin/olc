@@ -1,5 +1,7 @@
 import math
-from gi.repository import Gtk, Gdk, Gio, GObject
+from gi.repository import Gtk, Gdk, GObject
+
+from olc.define import App
 
 
 class FaderWidget(Gtk.Scale):
@@ -9,8 +11,6 @@ class FaderWidget(Gtk.Scale):
 
     def __init__(self, text="None", red=0.2, green=0.2, blue=0.2, *args, **kwds):
         super().__init__(*args, **kwds)
-
-        self.app = Gio.Application.get_default()
 
         self.red = red
         self.green = green
@@ -28,8 +28,8 @@ class FaderWidget(Gtk.Scale):
         self.pressed = True
         self.queue_draw()
 
-        if self in (self.app.virtual_console.scaleA, self.app.virtual_console.scaleB):
-            self.app.crossfade.manual = True
+        if self in (App().virtual_console.scaleA, App().virtual_console.scaleB):
+            App().crossfade.manual = True
 
     def on_release(self, tgt, ev):
         self.pressed = False
@@ -72,7 +72,7 @@ class FaderWidget(Gtk.Scale):
 
         area = ((width / 2) - 19, (width / 2) + 19, h - 20, h)
 
-        if self.app.midi.midi_learn == self.text:
+        if App().midi.midi_learn == self.text:
             if self.pressed:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:

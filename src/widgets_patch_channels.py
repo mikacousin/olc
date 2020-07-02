@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
+
+from olc.define import App
 
 
 class PatchChannelHeader(Gtk.Widget):
@@ -107,18 +109,16 @@ class PatchChannelWidget(Gtk.Widget):
         self.height = 60
         self.radius = 10
 
-        self.app = Gio.Application.get_default()
-
         self.set_size_request(self.width, self.height)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
     def on_click(self, tgt, ev):
-        self.app.patch_channels_tab.flowbox.unselect_all()
-        child = self.app.patch_channels_tab.flowbox.get_child_at_index(self.channel - 1)
-        self.app.window.set_focus(child)
-        self.app.patch_channels_tab.flowbox.select_child(child)
-        # self.app.patch_channels_tab.last_out_selected = str(self.channels)
+        App().patch_channels_tab.flowbox.unselect_all()
+        child = App().patch_channels_tab.flowbox.get_child_at_index(self.channel - 1)
+        App().window.set_focus(child)
+        App().patch_channels_tab.flowbox.select_child(child)
+        # App().patch_channels_tab.last_out_selected = str(self.channels)
 
     def do_draw(self, cr):
         # self.set_size_request(self.width, self.height)

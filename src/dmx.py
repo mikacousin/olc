@@ -1,8 +1,6 @@
 import array
 
-from gi.repository import Gio
-
-from olc.define import NB_UNIVERSES, MAX_CHANNELS
+from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
 
 
 class Dmx:
@@ -14,8 +12,6 @@ class Dmx:
         self.masters = masters
         self.window = window
         self.grand_master = 255
-
-        self.app = Gio.Application.get_default()
 
         # les valeurs DMX echangées avec Ola
         self.frame = []
@@ -45,7 +41,7 @@ class Dmx:
                     self.window.channels[channel - 1].color_level_blue = 0.9
                     # Si on est pas sur un Go,
                     # on utilise les valeurs de l'utilisateur
-                    if not self.app.sequence.on_go and self.user[channel - 1] != -1:
+                    if not App().sequence.on_go and self.user[channel - 1] != -1:
                         level = self.user[channel - 1]
                     # Si c'est le niveau d'un master le plus grand,
                     # on l'utilise

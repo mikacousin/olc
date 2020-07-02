@@ -1,15 +1,13 @@
 import array
-from gi.repository import Gtk, Gio, Gdk, Pango
+from gi.repository import Gtk, Gdk, Pango
 
-from olc.define import MAX_CHANNELS
+from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 from olc.cue import Cue
 
 
 class CuesEditionTab(Gtk.Paned):
     def __init__(self):
-
-        self.app = Gio.Application.get_default()
 
         self.keystring = ""
         self.last_chan_selected = ""
@@ -43,7 +41,7 @@ class CuesEditionTab(Gtk.Paned):
         # List of Cues
         self.liststore = Gtk.ListStore(str, str, int)
 
-        for mem in self.app.memories:
+        for mem in App().memories:
             channels = 0
             for chan in range(MAX_CHANNELS):
                 if mem.channels[chan]:
@@ -80,7 +78,7 @@ class CuesEditionTab(Gtk.Paned):
     def filter_channel_func(self, child, user_data):
         """ Filter channels """
         # If no Presets, just return
-        if not self.app.memories:
+        if not App().memories:
             return False
         # Find selected row
         path, focus_column = self.treeview.get_cursor()
@@ -90,7 +88,7 @@ class CuesEditionTab(Gtk.Paned):
             i = child.get_index()
 
             # Cue's channels
-            channels = self.app.memories[row].channels
+            channels = App().memories[row].channels
 
             if channels[i] or self.channels[i].clicked:
                 if self.user_channels[i] == -1:
@@ -123,9 +121,9 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
-        page = self.app.window.notebook.page_num(self.app.memories_tab)
-        self.app.window.notebook.remove_page(page)
-        self.app.memories_tab = None
+        page = App().window.notebook.page_num(App().memories_tab)
+        App().window.notebook.remove_page(page)
+        App().memories_tab = None
 
     def on_scroll(self, widget, event):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
@@ -156,7 +154,7 @@ class CuesEditionTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -171,11 +169,11 @@ class CuesEditionTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "keypress_" + keyname, None)
         if func:
@@ -184,13 +182,13 @@ class CuesEditionTab(Gtk.Paned):
 
     def keypress_Escape(self):
         """ Close Tab """
-        page = self.app.window.notebook.get_current_page()
-        self.app.window.notebook.remove_page(page)
-        self.app.memories_tab = None
+        page = App().window.notebook.get_current_page()
+        App().window.notebook.remove_page(page)
+        App().memories_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_c(self):
         """ Channel """
@@ -202,12 +200,12 @@ class CuesEditionTab(Gtk.Paned):
             if 0 <= channel < MAX_CHANNELS:
 
                 # Only patched channel
-                if self.app.patch.channels[channel][0] != [0, 0]:
+                if App().patch.channels[channel][0] != [0, 0]:
                     self.channels[channel].clicked = True
                     self.flowbox.invalidate_filter()
 
                     child = self.flowbox.get_child_at_index(channel)
-                    self.app.window.set_focus(child)
+                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
         else:
@@ -216,7 +214,7 @@ class CuesEditionTab(Gtk.Paned):
             self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -236,23 +234,23 @@ class CuesEditionTab(Gtk.Paned):
                 if to_chan > int(self.last_chan_selected):
                     for channel in range(int(self.last_chan_selected) - 1, to_chan):
                         # Only patched channels
-                        if self.app.patch.channels[channel][0] != [0, 0]:
+                        if App().patch.channels[channel][0] != [0, 0]:
                             self.channels[channel].clicked = True
                             child = self.flowbox.get_child_at_index(channel)
-                            self.app.window.set_focus(child)
+                            App().window.set_focus(child)
                             self.flowbox.select_child(child)
                 else:
                     for channel in range(to_chan - 1, int(self.last_chan_selected)):
                         # Only patched channels
-                        if self.app.patch.channels[channel][0] != [0, 0]:
+                        if App().patch.channels[channel][0] != [0, 0]:
                             self.channels[channel].clicked = True
                             child = self.flowbox.get_child_at_index(channel)
-                            self.app.window.set_focus(child)
+                            App().window.set_focus(child)
                             self.flowbox.select_child(child)
                 self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_plus(self):
         """ Channel + """
@@ -261,7 +259,7 @@ class CuesEditionTab(Gtk.Paned):
 
             channel = int(self.keystring) - 1
 
-            if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
                 0,
                 0,
             ]:
@@ -269,12 +267,12 @@ class CuesEditionTab(Gtk.Paned):
                 self.flowbox.invalidate_filter()
 
                 child = self.flowbox.get_child_at_index(channel)
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
 
             self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_minus(self):
         """ Channel - """
@@ -283,7 +281,7 @@ class CuesEditionTab(Gtk.Paned):
 
             channel = int(self.keystring) - 1
 
-            if 0 <= channel < MAX_CHANNELS and self.app.patch.channels[channel][0] != [
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
                 0,
                 0,
             ]:
@@ -291,12 +289,12 @@ class CuesEditionTab(Gtk.Paned):
                 self.flowbox.invalidate_filter()
 
                 child = self.flowbox.get_child_at_index(channel)
-                self.app.window.set_focus(child)
+                App().window.set_focus(child)
                 self.flowbox.unselect_child(child)
                 self.last_chan_selected = self.keystring
 
             self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_a(self):
         """ All Channels """
@@ -309,7 +307,7 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
 
             # Memory's channels
-            channels = self.app.memories[row].channels
+            channels = App().memories[row].channels
 
             # Select channels with a level
             for chan in range(MAX_CHANNELS):
@@ -318,7 +316,7 @@ class CuesEditionTab(Gtk.Paned):
                 ) or self.user_channels[chan] > 0:
                     self.channels[chan].clicked = True
                     child = self.flowbox.get_child_at_index(chan)
-                    self.app.window.set_focus(child)
+                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                 else:
                     self.channels[chan].clicked = False
@@ -329,7 +327,7 @@ class CuesEditionTab(Gtk.Paned):
 
         level = int(self.keystring)
 
-        if self.app.settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             if 0 <= level <= 100:
                 level = int(round((level / 100) * 255))
             else:
@@ -351,13 +349,13 @@ class CuesEditionTab(Gtk.Paned):
                     self.user_channels[channel] = level
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_colon(self):
         """ Level - % """
 
-        lvl = self.app.settings.get_int("percent-level")
-        percent = self.app.settings.get_boolean("percent")
+        lvl = App().settings.get_int("percent-level")
+        percent = App().settings.get_boolean("percent")
 
         if percent:
             lvl = round((lvl / 100) * 255)
@@ -385,8 +383,8 @@ class CuesEditionTab(Gtk.Paned):
     def keypress_exclam(self):
         """ Level + % """
 
-        lvl = self.app.settings.get_int("percent-level")
-        percent = self.app.settings.get_boolean("percent")
+        lvl = App().settings.get_int("percent-level")
+        percent = App().settings.get_boolean("percent")
 
         if percent:
             lvl = round((lvl / 100) * 255)
@@ -422,14 +420,14 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
 
             # Memory's channels
-            channels = self.app.memories[row].channels
+            channels = App().memories[row].channels
 
             # Update levels and count channels
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
                 channels[chan] = self.channels[chan].level
                 if channels[chan] != 0:
-                    self.app.sequence.channels[chan] = 1
+                    App().sequence.channels[chan] = 1
                     nb_chan += 1
 
             # Update Display
@@ -437,8 +435,8 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.set_value(treeiter, 2, nb_chan)
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
     def keypress_Delete(self):
         """ Deletes selected Memory """
@@ -454,39 +452,36 @@ class CuesEditionTab(Gtk.Paned):
 
             # Find Steps using selected memory
             steps = []
-            for i, _ in enumerate(self.app.sequence.steps):
-                if (
-                    self.app.sequence.steps[i].cue.memory
-                    == self.app.memories[row].memory
-                ):
+            for i, _ in enumerate(App().sequence.steps):
+                if App().sequence.steps[i].cue.memory == App().memories[row].memory:
                     steps.append(i)
 
             # Delete Steps
             for step in steps:
-                self.app.sequence.steps.pop(step)
-                self.app.sequence.last -= 1
+                App().sequence.steps.pop(step)
+                App().sequence.last -= 1
 
             # Delete memory from the Memories List
-            self.app.memories.pop(row)
+            App().memories.pop(row)
 
             # Remove it from the ListStore
             treeiter = self.liststore.get_iter(path)
             self.liststore.remove(treeiter)
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Main Playback
-            self.app.window.cues_liststore1.clear()
-            self.app.window.cues_liststore2.clear()
-            self.app.window.cues_liststore1.append(
+            App().window.cues_liststore1.clear()
+            App().window.cues_liststore2.clear()
+            App().window.cues_liststore1.append(
                 ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
             )
-            self.app.window.cues_liststore1.append(
+            App().window.cues_liststore1.append(
                 ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
             )
-            for i, step in enumerate(self.app.sequence.steps):
+            for i, step in enumerate(App().sequence.steps):
                 # Display int as int
                 if step.wait.is_integer():
                     wait = str(int(step.wait))
@@ -529,7 +524,7 @@ class CuesEditionTab(Gtk.Paned):
                 else:
                     weight = Pango.Weight.NORMAL
                 if i == 0:
-                    self.app.window.cues_liststore1.append(
+                    App().window.cues_liststore1.append(
                         [
                             str(i),
                             "",
@@ -545,11 +540,11 @@ class CuesEditionTab(Gtk.Paned):
                             99,
                         ]
                     )
-                    self.app.window.cues_liststore2.append(
+                    App().window.cues_liststore2.append(
                         [str(i), "", "", "", "", "", "", "", ""]
                     )
                 else:
-                    self.app.window.cues_liststore1.append(
+                    App().window.cues_liststore1.append(
                         [
                             str(i),
                             str(step.cue.memory),
@@ -565,7 +560,7 @@ class CuesEditionTab(Gtk.Paned):
                             99,
                         ]
                     )
-                    self.app.window.cues_liststore2.append(
+                    App().window.cues_liststore2.append(
                         [
                             str(i),
                             str(step.cue.memory),
@@ -579,41 +574,39 @@ class CuesEditionTab(Gtk.Paned):
                         ]
                     )
 
-            position = self.app.sequence.position
-            self.app.window.cues_liststore1[position][9] = "#232729"
-            self.app.window.cues_liststore1[position + 1][9] = "#232729"
-            self.app.window.cues_liststore1[position + 2][9] = "#997004"
-            self.app.window.cues_liststore1[position + 3][9] = "#555555"
-            self.app.window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            self.app.window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            self.app.window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
+            position = App().sequence.position
+            App().window.cues_liststore1[position][9] = "#232729"
+            App().window.cues_liststore1[position + 1][9] = "#232729"
+            App().window.cues_liststore1[position + 2][9] = "#997004"
+            App().window.cues_liststore1[position + 3][9] = "#555555"
+            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
+            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
+            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
 
-            self.app.window.step_filter1.refilter()
-            self.app.window.step_filter2.refilter()
+            App().window.step_filter1.refilter()
+            App().window.step_filter2.refilter()
 
             # Update Sequence Edition Tab if exist
-            if self.app.sequences_tab:
-                self.app.sequences_tab.liststore1.clear()
+            if App().sequences_tab:
+                App().sequences_tab.liststore1.clear()
 
-                self.app.sequences_tab.liststore1.append(
+                App().sequences_tab.liststore1.append(
                     [
-                        self.app.sequence.index,
-                        self.app.sequence.type_seq,
-                        self.app.sequence.text,
+                        App().sequence.index,
+                        App().sequence.type_seq,
+                        App().sequence.text,
                     ]
                 )
 
-                for chaser in self.app.chasers:
-                    self.app.sequences_tab.liststore1.append(
+                for chaser in App().chasers:
+                    App().sequences_tab.liststore1.append(
                         [chaser.index, chaser.type_seq, chaser.text]
                     )
 
-                self.app.sequences_tab.treeview1.set_model(
-                    self.app.sequences_tab.liststore1
-                )
+                App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
                 pth = Gtk.TreePath.new()
-                self.app.window.treeview1.set_cursor(pth, None, False)
+                App().window.treeview1.set_cursor(pth, None, False)
 
     def keypress_R(self):
         """ Records a copy of the current Memory with a new number """
@@ -624,31 +617,29 @@ class CuesEditionTab(Gtk.Paned):
             return False
 
         # Memory already exist ?
-        for i, _ in enumerate(self.app.memories):
-            if self.app.memories[i].memory == mem:
+        for i, _ in enumerate(App().memories):
+            if App().memories[i].memory == mem:
                 # Find selected memory
                 path, focus_column = self.treeview.get_cursor()
                 if path:
                     row = path.get_indices()[0]
                     # Copy channels
-                    self.app.memories[i].channels = self.app.memories[row].channels
+                    App().memories[i].channels = App().memories[row].channels
                     # Count channels
                     nb_chan = 0
                     for chan in range(MAX_CHANNELS):
-                        if self.app.memories[i].channels[chan]:
+                        if App().memories[i].channels[chan]:
                             nb_chan += 1
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
 
                     # Tag filename as modified
-                    self.app.ascii.modified = True
-                    self.app.window.header.set_title(self.app.ascii.basename + "*")
+                    App().ascii.modified = True
+                    App().window.header.set_title(App().ascii.basename + "*")
 
                 self.keystring = ""
-                self.app.window.statusbar.push(
-                    self.app.window.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
 
                 return True
 
@@ -657,19 +648,19 @@ class CuesEditionTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            sequence = self.app.memories[row].sequence
-            # memory = self.app.memories[row].memory
-            channels = self.app.memories[row].channels
-            # text = self.app.memories[row].text
+            sequence = App().memories[row].sequence
+            # memory = App().memories[row].memory
+            channels = App().memories[row].channels
+            # text = App().memories[row].text
 
             cue = Cue(sequence, mem, channels)
 
             # Insert Memory
-            for i, _ in enumerate(self.app.memories):
-                if self.app.memories[i].memory > mem:
+            for i, _ in enumerate(App().memories):
+                if App().memories[i].memory > mem:
                     break
             if i:
-                self.app.memories.insert(i, cue)
+                App().memories.insert(i, cue)
                 nb_chan = 0
                 for chan in range(MAX_CHANNELS):
                     if channels[chan]:
@@ -677,11 +668,11 @@ class CuesEditionTab(Gtk.Paned):
                 self.liststore.insert(i, [str(mem), "", nb_chan])
 
                 # Tag filename as modified
-                self.app.ascii.modified = True
-                self.app.window.header.set_title(self.app.ascii.basename + "*")
+                App().ascii.modified = True
+                App().window.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
         return True
 
@@ -692,18 +683,18 @@ class CuesEditionTab(Gtk.Paned):
             """ Insert memory with the next free number """
             mem = False
             # Find Next free number
-            if len(self.app.memories) > 1:
-                for i, _ in enumerate(self.app.memories[:-1]):
+            if len(App().memories) > 1:
+                for i, _ in enumerate(App().memories[:-1]):
                     if (
-                        int(self.app.memories[i + 1].memory)
-                        - int(self.app.memories[i].memory)
+                        int(App().memories[i + 1].memory)
+                        - int(App().memories[i].memory)
                         > 1
                     ):
-                        mem = self.app.memories[i].memory + 1
+                        mem = App().memories[i].memory + 1
                         break
-            elif len(self.app.memories) == 1:
+            elif len(App().memories) == 1:
                 # Just one memory
-                mem = self.app.memories[0].memory + 1
+                mem = App().memories[0].memory + 1
                 i = 1
             else:
                 # The list is empty
@@ -712,20 +703,20 @@ class CuesEditionTab(Gtk.Paned):
 
             # Free number is at the end
             if not mem:
-                mem = self.app.memories[-1].memory + 1
+                mem = App().memories[-1].memory + 1
                 i += 1
 
             # Find selected memory for channels levels
             path, focus_column = self.treeview.get_cursor()
             if path:
                 row = path.get_indices()[0]
-                channels = self.app.memories[row].channels
+                channels = App().memories[row].channels
             else:
                 channels = array.array("B", [0] * MAX_CHANNELS)
 
             # Create new memory
             cue = Cue(0, mem, channels)
-            self.app.memories.insert(i + 1, cue)
+            App().memories.insert(i + 1, cue)
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
                 if channels[chan]:
@@ -733,8 +724,8 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.insert(i + 1, [str(mem), "", nb_chan])
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             return True
 
@@ -744,7 +735,7 @@ class CuesEditionTab(Gtk.Paned):
             mem = float(self.keystring)
 
             # Memory already exist ?
-            for item in self.app.memories:
+            for item in App().memories:
                 if item.memory == mem:
                     return False
 
@@ -753,10 +744,10 @@ class CuesEditionTab(Gtk.Paned):
             if path:
                 row = path.get_indices()[0]
 
-                sequence = self.app.memories[row].sequence
-                # memory = self.app.memories[row].memory
-                channels = self.app.memories[row].channels
-                # text = self.app.memories[row].text
+                sequence = App().memories[row].sequence
+                # memory = App().memories[row].memory
+                channels = App().memories[row].channels
+                # text = App().memories[row].text
             else:
                 sequence = 0
                 channels = array.array("B", [0] * MAX_CHANNELS)
@@ -764,8 +755,8 @@ class CuesEditionTab(Gtk.Paned):
             # Find Memory's position
             found = False
             i = 0
-            for i, _ in enumerate(self.app.memories):
-                if self.app.memories[i].memory > mem:
+            for i, _ in enumerate(App().memories):
+                if App().memories[i].memory > mem:
                     found = True
                     break
             if not found:
@@ -774,7 +765,7 @@ class CuesEditionTab(Gtk.Paned):
 
             # Create Memory
             cue = Cue(sequence, mem, channels)
-            self.app.memories.insert(i, cue)
+            App().memories.insert(i, cue)
 
             # Update display
             nb_chan = 0
@@ -784,10 +775,10 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.insert(i, [str(mem), "", nb_chan])
 
             # Tag filename as modified
-            self.app.ascii.modified = True
-            self.app.window.header.set_title(self.app.ascii.basename + "*")
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
             self.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
             return True

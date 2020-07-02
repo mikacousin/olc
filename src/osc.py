@@ -1,14 +1,15 @@
 import sys
 import liblo
-from gi.repository import Gio
+
+from olc.define import App
 
 
 class OscClient:
     def __init__(self):
         # Port to send data to the client
-        self.port = Gio.Application.get_default().settings.get_int("osc-client-port")
+        self.port = App().settings.get_int("osc-client-port")
         # client's IP address
-        self.host = Gio.Application.get_default().settings.get_string("osc-host")
+        self.host = App().settings.get_string("osc-host")
 
         try:
             self.target = liblo.Address(self.host, self.port)
@@ -23,17 +24,12 @@ class OscClient:
 class OscServer(liblo.ServerThread):
     def __init__(self, window):
 
-        self.app = Gio.Application.get_default()
-        self.percent_view = Gio.Application.get_default().settings.get_boolean(
-            "percent"
-        )
+        self.percent_view = App().settings.get_boolean("percent")
 
         # Main Window
         self.window = window
         # Port to listen data from the client
-        self.serv_port = Gio.Application.get_default().settings.get_int(
-            "osc-server-port"
-        )
+        self.serv_port = App().settings.get_int("osc-server-port")
 
         # Create Thread server
         liblo.ServerThread.__init__(self, self.serv_port)
@@ -307,7 +303,7 @@ class OscServer(liblo.ServerThread):
         """ Launch Sub page """
         for i in range(10):
             self.client.send(
-                "/subStick/text", ("i", i + 1), ("s", self.app.masters[i].text)
+                "/subStick/text", ("i", i + 1), ("s", App().masters[i].text)
             )
 
     def _sub_flash_cb(self, path, args, types):
@@ -315,7 +311,7 @@ class OscServer(liblo.ServerThread):
         flash, level = args
         if self.percent_view:
             lvl = int(round((level / 255) * 100))
-        self.app.win_masters.scale[flash - 1].set_value(lvl)
+        App().win_masters.scale[flash - 1].set_value(lvl)
         self.client.send("/subStick/level", ("i", flash), ("i", level))
 
     def _sub_level_cb(self, path, args, types):
@@ -323,53 +319,53 @@ class OscServer(liblo.ServerThread):
         flash, level = args
         if self.percent_view:
             lvl = int(round((level / 255) * 100))
-        self.app.win_masters.scale[flash - 1].set_value(lvl)
+        App().win_masters.scale[flash - 1].set_value(lvl)
         self.client.send("/subStick/level", ("i", flash), ("i", level))
 
     def _sub1_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[0].set_value(int(level[0]))
+        App().win_masters.scale[0].set_value(int(level[0]))
 
     def _sub2_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[1].set_value(int(level[0]))
+        App().win_masters.scale[1].set_value(int(level[0]))
 
     def _sub3_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[2].set_value(int(level[0]))
+        App().win_masters.scale[2].set_value(int(level[0]))
 
     def _sub4_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[3].set_value(int(level[0]))
+        App().win_masters.scale[3].set_value(int(level[0]))
 
     def _sub5_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[4].set_value(int(level[0]))
+        App().win_masters.scale[4].set_value(int(level[0]))
 
     def _sub6_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[5].set_value(int(level[0]))
+        App().win_masters.scale[5].set_value(int(level[0]))
 
     def _sub7_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[6].set_value(int(level[0]))
+        App().win_masters.scale[6].set_value(int(level[0]))
 
     def _sub8_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[7].set_value(int(level[0]))
+        App().win_masters.scale[7].set_value(int(level[0]))
 
     def _sub9_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[8].set_value(int(level[0]))
+        App().win_masters.scale[8].set_value(int(level[0]))
 
     def _sub10_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[9].set_value(int(level[0]))
+        App().win_masters.scale[9].set_value(int(level[0]))
 
     def _sub11_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[10].set_value(int(level[0]))
+        App().win_masters.scale[10].set_value(int(level[0]))
 
     def _sub12_level_cb(self, path, args, types):
         level = args
-        self.app.win_masters.scale[11].set_value(int(level[0]))
+        App().win_masters.scale[11].set_value(int(level[0]))

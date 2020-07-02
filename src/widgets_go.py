@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gio, Gdk, GObject
+from gi.repository import Gtk, Gdk, GObject
+
+from olc.define import App
 
 
 class GoWidget(Gtk.Widget):
@@ -10,8 +12,6 @@ class GoWidget(Gtk.Widget):
 
     def __init__(self, *args, **kwds):
         super().__init__(*args, **kwds)
-
-        self.app = Gio.Application.get_default()
 
         self.width = 100
         self.height = 50
@@ -38,12 +38,12 @@ class GoWidget(Gtk.Widget):
     def do_draw(self, cr):
         # Draw rounded box
         if self.pressed:
-            if self.app.midi.midi_learn == "Go":
+            if App().midi.midi_learn == "Go":
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.1, 0.1, 0.1)
         else:
-            if self.app.midi.midi_learn == "Go":
+            if App().midi.midi_learn == "Go":
                 cr.set_source_rgb(0.3, 0.2, 0.2)
             else:
                 cr.set_source_rgb(0.2, 0.2, 0.2)

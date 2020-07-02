@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
+
+from olc.define import App
 
 
 class GroupWidget(Gtk.Widget):
@@ -13,20 +15,18 @@ class GroupWidget(Gtk.Widget):
         self.name = name
         self.grps = grps
 
-        self.app = Gio.Application.get_default()
-
         Gtk.Widget.__init__(self)
         self.set_size_request(80, 80)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
     def on_click(self, tgt, ev):
-        self.app.group_tab.flowbox2.unselect_all()
-        child = self.app.group_tab.flowbox2.get_child_at_index(self.index)
-        self.app.window.set_focus(child)
-        self.app.group_tab.flowbox2.select_child(child)
-        self.app.group_tab.last_group_selected = str(self.index)
-        self.app.group_tab.flowbox1.invalidate_filter()
+        App().group_tab.flowbox2.unselect_all()
+        child = App().group_tab.flowbox2.get_child_at_index(self.index)
+        App().window.set_focus(child)
+        App().group_tab.flowbox2.select_child(child)
+        App().group_tab.last_group_selected = str(self.index)
+        App().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
 

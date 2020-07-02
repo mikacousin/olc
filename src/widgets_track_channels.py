@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
+
+from olc.define import App
 
 
 class TrackChannelsHeader(Gtk.Widget):
@@ -13,8 +15,6 @@ class TrackChannelsHeader(Gtk.Widget):
         self.width = 535 + (len(channels) * 65)
         self.height = 60
         self.radius = 10
-
-        self.app = Gio.Application.get_default()
 
         self.set_size_request(self.width, self.height)
 
@@ -125,23 +125,21 @@ class TrackChannelsWidget(Gtk.Widget):
         self.height = 60
         self.radius = 10
 
-        self.app = Gio.Application.get_default()
-
-        self.percent_level = self.app.settings.get_boolean("percent")
+        self.percent_level = App().settings.get_boolean("percent")
 
         self.set_size_request(self.width, self.height)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
     def on_click(self, tgt, ev):
-        self.app.track_channels_tab.flowbox.unselect_all()
-        child = self.app.track_channels_tab.flowbox.get_child_at_index(self.step)
-        self.app.window.set_focus(child)
-        self.app.track_channels_tab.flowbox.select_child(child)
-        self.app.track_channels_tab.last_step_selected = str(self.step)
+        App().track_channels_tab.flowbox.unselect_all()
+        child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
+        App().window.set_focus(child)
+        App().track_channels_tab.flowbox.select_child(child)
+        App().track_channels_tab.last_step_selected = str(self.step)
         chan = int((ev.x - 535) / 65)
         if 0 <= chan < len(self.levels):
-            self.app.track_channels_tab.channel_selected = chan
+            App().track_channels_tab.channel_selected = chan
 
     def do_draw(self, cr):
 
@@ -211,7 +209,7 @@ class TrackChannelsWidget(Gtk.Widget):
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
             if (
                 self.get_parent().is_selected()
-                and i == self.app.track_channels_tab.channel_selected
+                and i == App().track_channels_tab.channel_selected
             ):
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:

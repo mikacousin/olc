@@ -1,5 +1,6 @@
-from gi.repository import Gtk, Gio, Gdk
+from gi.repository import Gtk, Gdk
 
+from olc.define import App
 from olc.widgets_button import ButtonWidget
 from olc.widgets_go import GoWidget
 from olc.widgets_fader import FaderWidget
@@ -10,8 +11,6 @@ class VirtualConsoleWindow(Gtk.Window):
     def __init__(self):
 
         self.midi_learn = False
-
-        self.app = Gio.Application.get_default()
 
         Gtk.Window.__init__(self, title="Virtual Console")
         self.set_default_size(400, 300)
@@ -330,7 +329,7 @@ class VirtualConsoleWindow(Gtk.Window):
                 )
                 text = "Flash " + str(i + (page * 20) + 1)
                 self.flashes[i + (page * 20)].text = text
-            for master in self.app.masters:
+            for master in App().masters:
                 if master.page == page + 1:
                     self.flashes[master.number - 1 + (page * 20)].label = master.text
 
@@ -356,397 +355,375 @@ class VirtualConsoleWindow(Gtk.Window):
     def on_button_toggled(self, button, name):
         if button.get_active() and name == "MIDI":
             self.midi_learn = True
-            self.app.midi.midi_learn = " "
+            App().midi.midi_learn = " "
         elif name == "MIDI":
             self.midi_learn = False
-            self.app.midi.midi_learn = ""
-            self.app.virtual_console.queue_draw()
+            App().midi.midi_learn = ""
+            App().virtual_console.queue_draw()
 
     def on_go(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Go"
+            App().midi.midi_learn = "Go"
             self.queue_draw()
         else:
-            self.app.sequence.sequence_go(None, None)
+            App().sequence.sequence_go(None, None)
 
     def on_go_back(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Go_Back"
+            App().midi.midi_learn = "Go_Back"
             self.queue_draw()
         else:
-            self.app.sequence.go_back(None, None)
+            App().sequence.go_back(None, None)
 
     def on_seq_plus(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Seq_plus"
+            App().midi.midi_learn = "Seq_plus"
             self.queue_draw()
         else:
-            self.app.sequence.sequence_plus()
+            App().sequence.sequence_plus()
 
     def on_seq_minus(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Seq_minus"
+            App().midi.midi_learn = "Seq_minus"
             self.queue_draw()
         else:
-            self.app.sequence.sequence_minus()
+            App().sequence.sequence_minus()
 
     def on_output(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Output"
+            App().midi.midi_learn = "Output"
             self.queue_draw()
         else:
-            self.app.patch_outputs(None, None)
+            App().patch_outputs(None, None)
 
     def on_seq(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Seq"
+            App().midi.midi_learn = "Seq"
             self.queue_draw()
         else:
-            self.app.sequences(None, None)
+            App().sequences(None, None)
 
     def on_preset(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Preset"
+            App().midi.midi_learn = "Preset"
             self.queue_draw()
         else:
-            self.app.memories_cb(None, None)
+            App().memories_cb(None, None)
 
     def on_group(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Group"
+            App().midi.midi_learn = "Group"
             self.queue_draw()
         else:
-            self.app.groups_cb(None, None)
+            App().groups_cb(None, None)
 
     def on_track(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Track"
+            App().midi.midi_learn = "Track"
             self.queue_draw()
         else:
-            self.app.track_channels(None, None)
+            App().track_channels(None, None)
 
     def on_goto(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Goto"
+            App().midi.midi_learn = "Goto"
             self.queue_draw()
         else:
-            self.app.sequence.sequence_goto(self.app.window.keystring)
-            self.app.window.keystring = ""
-            self.app.window.statusbar.push(self.app.window.context_id, "")
+            App().sequence.sequence_goto(App().window.keystring)
+            App().window.keystring = ""
+            App().window.statusbar.push(App().window.context_id, "")
 
     def on_channel(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Ch"
+            App().midi.midi_learn = "Ch"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_c
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_thru(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Thru"
+            App().midi.midi_learn = "Thru"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_greater
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_plus(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Plus"
+            App().midi.midi_learn = "Plus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_plus
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_minus(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Minus"
+            App().midi.midi_learn = "Minus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_minus
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_all(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "All"
+            App().midi.midi_learn = "All"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_a
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_at(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "At"
+            App().midi.midi_learn = "At"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_equal
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_percent_plus(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "PercentPlus"
+            App().midi.midi_learn = "PercentPlus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_exclam
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_percent_minus(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "PercentMinus"
+            App().midi.midi_learn = "PercentMinus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_colon
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_update(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Update"
+            App().midi.midi_learn = "Update"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_U
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_record(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Record"
+            App().midi.midi_learn = "Record"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_R
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_right(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Right"
+            App().midi.midi_learn = "Right"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Right
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_left(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Left"
+            App().midi.midi_learn = "Left"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Left
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_up(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Up"
+            App().midi.midi_learn = "Up"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Up
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_down(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Down"
+            App().midi.midi_learn = "Down"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Down
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_clear(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Clear"
+            App().midi.midi_learn = "Clear"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_BackSpace
-            self.app.window.on_key_press_event(None, event)
+            App().window.on_key_press_event(None, event)
 
     def on_zero(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Zero"
+            App().midi.midi_learn = "Zero"
             self.queue_draw()
         else:
-            self.app.window.keystring += "0"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "0"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_1(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "1"
+            App().midi.midi_learn = "1"
             self.queue_draw()
         else:
-            self.app.window.keystring += "1"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "1"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_2(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "2"
+            App().midi.midi_learn = "2"
             self.queue_draw()
         else:
-            self.app.window.keystring += "2"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "2"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_3(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "3"
+            App().midi.midi_learn = "3"
             self.queue_draw()
         else:
-            self.app.window.keystring += "3"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "3"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_4(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "4"
+            App().midi.midi_learn = "4"
             self.queue_draw()
         else:
-            self.app.window.keystring += "4"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "4"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_5(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "5"
+            App().midi.midi_learn = "5"
             self.queue_draw()
         else:
-            self.app.window.keystring += "5"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "5"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_6(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "6"
+            App().midi.midi_learn = "6"
             self.queue_draw()
         else:
-            self.app.window.keystring += "6"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "6"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_7(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "7"
+            App().midi.midi_learn = "7"
             self.queue_draw()
         else:
-            self.app.window.keystring += "7"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "7"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_8(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "8"
+            App().midi.midi_learn = "8"
             self.queue_draw()
         else:
-            self.app.window.keystring += "8"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "8"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_9(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "9"
+            App().midi.midi_learn = "9"
             self.queue_draw()
         else:
-            self.app.window.keystring += "9"
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "9"
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def on_dot(self, widget):
         if self.midi_learn:
-            self.app.midi.midi_learn = "Dot"
+            App().midi.midi_learn = "Dot"
             self.queue_draw()
         else:
-            self.app.window.keystring += "."
-            self.app.window.statusbar.push(
-                self.app.window.context_id, self.app.window.keystring
-            )
+            App().window.keystring += "."
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def flash_on(self, widget, event):
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
                     # Save Master's value
-                    self.app.masters[i].old_value = self.app.masters[i].value
+                    App().masters[i].old_value = App().masters[i].value
                     self.masters[i].set_value(255)
-                    self.app.masters[i].value = 255
-                    self.app.masters[i].level_changed()
+                    App().masters[i].value = 255
+                    App().masters[i].level_changed()
 
     def flash_off(self, widget, event):
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
                     # Restore Master's value
-                    self.masters[i].set_value(self.app.masters[i].old_value)
-                    self.app.masters[i].value = self.app.masters[i].old_value
-                    self.app.masters[i].level_changed()
+                    self.masters[i].set_value(App().masters[i].old_value)
+                    App().masters[i].value = App().masters[i].old_value
+                    App().masters[i].level_changed()
 
     def on_flash(self, widget):
         if self.midi_learn:
             index = self.flashes.index(widget) + 1
             text = "Flash " + str(index)
-            self.app.midi.midi_learn = text
+            App().midi.midi_learn = text
             self.queue_draw()
 
     def master_moved(self, master):
         if self.midi_learn:
             index = self.masters.index(master) + 1
             text = "Master " + str(index)
-            self.app.midi.midi_learn = text
+            App().midi.midi_learn = text
             self.queue_draw()
         else:
             value = master.get_value()
             index = self.masters.index(master)
-            self.app.masters[index].value = value
-            self.app.masters[index].level_changed()
+            App().masters[index].value = value
+            App().masters[index].level_changed()
 
     def master_clicked(self, master):
         if self.midi_learn:
             index = self.masters.index(master) + 1
             text = "Master " + str(index)
-            self.app.midi.midi_learn = text
+            App().midi.midi_learn = text
             self.queue_draw()
 
     def scale_moved(self, scale):
         if self.midi_learn:
             if scale == self.scaleA:
-                self.app.midi.midi_learn = "Crossfade_out"
+                App().midi.midi_learn = "Crossfade_out"
             elif scale == self.scaleB:
-                self.app.midi.midi_learn = "Crossfade_in"
+                App().midi.midi_learn = "Crossfade_in"
             self.queue_draw()
         else:
             value = scale.get_value()
 
             if scale == self.scaleA:
-                self.app.crossfade.scaleA.set_value(value)
-                if self.app.crossfade.manual:
-                    self.app.crossfade.scale_moved(self.app.crossfade.scaleA)
+                App().crossfade.scaleA.set_value(value)
+                if App().crossfade.manual:
+                    App().crossfade.scale_moved(App().crossfade.scaleA)
             elif scale == self.scaleB:
-                self.app.crossfade.scaleB.set_value(value)
-                if self.app.crossfade.manual:
-                    self.app.crossfade.scale_moved(self.app.crossfade.scaleB)
+                App().crossfade.scaleB.set_value(value)
+                if App().crossfade.manual:
+                    App().crossfade.scale_moved(App().crossfade.scaleB)
 
             if (
                 self.scaleA.get_value() == 255
                 and self.scaleB.get_value() == 255
-                and self.app.crossfade.manual
+                and App().crossfade.manual
             ):
                 if self.scaleA.get_inverted():
                     self.scaleA.set_inverted(False)
@@ -763,19 +740,19 @@ class VirtualConsoleWindow(Gtk.Window):
     def scale_clicked(self, scale):
         if self.midi_learn:
             if scale == self.scaleA:
-                self.app.midi.midi_learn = "Crossfade_out"
+                App().midi.midi_learn = "Crossfade_out"
             elif scale == self.scaleB:
-                self.app.midi.midi_learn = "Crossfade_in"
+                App().midi.midi_learn = "Crossfade_in"
             elif scale == self.scaleGM:
-                self.app.midi.midi_learn = "GM"
+                App().midi.midi_learn = "GM"
             self.queue_draw()
 
     def GM_moved(self, scale):
         if self.midi_learn:
-            self.app.midi.midi_learn = "GM"
+            App().midi.midi_learn = "GM"
             self.queue_draw()
         else:
             value = scale.get_value()
 
-            self.app.dmx.grand_master = value
-            self.app.window.gm.queue_draw()
+            App().dmx.grand_master = value
+            App().window.gm.queue_draw()

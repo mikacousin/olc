@@ -1,15 +1,13 @@
-from gi.repository import Gtk, Gio, Gdk
+from gi.repository import Gtk, Gdk
 
-from olc.define import MAX_CHANNELS
+from olc.define import MAX_CHANNELS, App
 from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 
 class TrackChannelsTab(Gtk.Grid):
     def __init__(self):
 
-        self.app = Gio.Application.get_default()
-
-        self.percent_level = self.app.settings.get_boolean("percent")
+        self.percent_level = App().settings.get_boolean("percent")
 
         self.keystring = ""
         self.last_step_selected = ""
@@ -28,12 +26,12 @@ class TrackChannelsTab(Gtk.Grid):
 
         # Find selected channels
         self.channels = []
-        sel = self.app.window.flowbox.get_selected_children()
+        sel = App().window.flowbox.get_selected_children()
         for flowboxchild in sel:
             children = flowboxchild.get_children()
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
-                if self.app.patch.channels[channel][0] != [0, 0]:
+                if App().patch.channels[channel][0] != [0, 0]:
                     self.channels.append(channel)
 
         # Levels in each steps
@@ -42,12 +40,12 @@ class TrackChannelsTab(Gtk.Grid):
         self.steps.append(TrackChannelsHeader(self.channels))
         levels.append([])
         self.flowbox.add(self.steps[0])
-        for step in range(1, self.app.sequence.last):
-            memory = self.app.sequence.steps[step].cue.memory
-            text = self.app.sequence.steps[step].text
+        for step in range(1, App().sequence.last):
+            memory = App().sequence.steps[step].cue.memory
+            text = App().sequence.steps[step].text
             levels.append([])
             for channel in self.channels:
-                level = self.app.sequence.steps[step].cue.channels[channel]
+                level = App().sequence.steps[step].cue.channels[channel]
                 levels[step].append(level)
             self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
             self.flowbox.add(self.steps[step])
@@ -63,17 +61,17 @@ class TrackChannelsTab(Gtk.Grid):
     def filter_func(self, child, user_data):
         if child == self.steps[0].get_parent():
             return child
-        if len(self.steps) <= self.app.sequence.last - 1:
+        if len(self.steps) <= App().sequence.last - 1:
             return False
-        if child == self.steps[self.app.sequence.last - 1].get_parent():
+        if child == self.steps[App().sequence.last - 1].get_parent():
             return False
         return child
 
     def on_close_icon(self, widget):
         """ Close Tab on close clicked """
-        page = self.app.window.notebook.page_num(self.app.track_channels_tab)
-        self.app.window.notebook.remove_page(page)
-        self.app.track_channels_tab = None
+        page = App().window.notebook.page_num(App().track_channels_tab)
+        App().window.notebook.remove_page(page)
+        App().track_channels_tab = None
 
     def on_key_press_event(self, widget, event):
 
@@ -82,7 +80,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -97,7 +95,7 @@ class TrackChannelsTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "keypress_" + keyname, None)
         if func:
@@ -106,20 +104,20 @@ class TrackChannelsTab(Gtk.Grid):
 
     def keypress_Escape(self):
         """ Close Tab """
-        page = self.app.window.notebook.get_current_page()
-        self.app.window.notebook.remove_page(page)
-        self.app.track_channels_tab = None
+        page = App().window.notebook.get_current_page()
+        App().window.notebook.remove_page(page)
+        App().track_channels_tab = None
 
     def keypress_BackSpace(self):
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_Right(self):
         """ Next Channel """
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         else:
@@ -136,7 +134,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         else:
@@ -153,13 +151,13 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
-        elif int(self.last_step_selected) < self.app.sequence.last - 2:
+        elif int(self.last_step_selected) < App().sequence.last - 2:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) + 1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             index = child.get_index()
             self.last_step_selected = str(index)
@@ -169,13 +167,13 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         elif int(self.last_step_selected) > 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) - 1)
-            self.app.window.set_focus(child)
+            App().window.set_focus(child)
             self.flowbox.select_child(child)
             index = child.get_index()
             self.last_step_selected = str(index)
@@ -192,41 +190,41 @@ class TrackChannelsTab(Gtk.Grid):
                 channel = self.channels[self.channel_selected]
                 level = int(self.keystring)
 
-                if self.app.settings.get_boolean("percent"):
+                if App().settings.get_boolean("percent"):
                     if 0 <= level <= 100:
                         level = int(round((level / 100) * 255))
                     else:
                         level = -1
 
                 if 0 <= level <= 255:
-                    self.app.sequence.steps[step].cue.channels[channel] = level
+                    App().sequence.steps[step].cue.channels[channel] = level
                     widget.levels[self.channel_selected] = level
                     widget.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_c(self):
         """ Select Channel """
 
-        self.app.window.flowbox.unselect_all()
+        App().window.flowbox.unselect_all()
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
-                child = self.app.window.flowbox.get_child_at_index(channel)
-                self.app.window.set_focus(child)
-                self.app.window.flowbox.select_child(child)
-                self.app.window.last_chan_selected = str(channel)
+                child = App().window.flowbox.get_child_at_index(channel)
+                App().window.set_focus(child)
+                App().window.flowbox.select_child(child)
+                App().window.last_chan_selected = str(channel)
 
         # Find selected channels
         self.channels = []
-        sel = self.app.window.flowbox.get_selected_children()
+        sel = App().window.flowbox.get_selected_children()
         for flowboxchild in sel:
             children = flowboxchild.get_children()
             for channelwidget in children:
                 channel = int(channelwidget.channel) - 1
-                if self.app.patch.channels[channel][0] != [0, 0]:
+                if App().patch.channels[channel][0] != [0, 0]:
                     self.channels.append(channel)
 
         self.channel_selected = 0
@@ -235,16 +233,16 @@ class TrackChannelsTab(Gtk.Grid):
         self.steps[0].channels = self.channels
 
         levels = []
-        for step in range(self.app.sequence.last):
+        for step in range(App().sequence.last):
             levels.append([])
             for channel in self.channels:
-                level = self.app.sequence.steps[step].cue.channels[channel]
+                level = App().sequence.steps[step].cue.channels[channel]
                 levels[step].append(level)
             self.steps[step].levels = levels[step]
         self.flowbox.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
         self.keypress_greater()
@@ -252,49 +250,45 @@ class TrackChannelsTab(Gtk.Grid):
     def keypress_greater(self):
         """ Channel Thru """
 
-        sel = self.app.window.flowbox.get_selected_children()
+        sel = App().window.flowbox.get_selected_children()
 
         if len(sel) == 1:
             flowboxchild = sel[0]
             channelwidget = flowboxchild.get_children()[0]
-            self.app.window.last_chan_selected = channelwidget.channel
+            App().window.last_chan_selected = channelwidget.channel
 
-        if not self.app.window.last_chan_selected:
-            sel = self.app.window.flowbox.get_selected_children()
+        if not App().window.last_chan_selected:
+            sel = App().window.flowbox.get_selected_children()
             if len(sel) > 0:
                 for flowboxchild in sel:
                     children = flowboxchild.get_children()
                     for channelwidget in children:
                         channel = int(channelwidget.channel)
-                self.app.window.last_chan_selected = str(channel)
+                App().window.last_chan_selected = str(channel)
 
-        if self.app.window.last_chan_selected:
+        if App().window.last_chan_selected:
             to_chan = int(self.keystring)
-            if to_chan > int(self.app.window.last_chan_selected):
-                for channel in range(
-                    int(self.app.window.last_chan_selected) - 1, to_chan
-                ):
-                    child = self.app.window.flowbox.get_child_at_index(channel)
-                    self.app.window.set_focus(child)
-                    self.app.window.flowbox.select_child(child)
+            if to_chan > int(App().window.last_chan_selected):
+                for channel in range(int(App().window.last_chan_selected) - 1, to_chan):
+                    child = App().window.flowbox.get_child_at_index(channel)
+                    App().window.set_focus(child)
+                    App().window.flowbox.select_child(child)
             else:
-                for channel in range(
-                    to_chan - 1, int(self.app.window.last_chan_selected)
-                ):
-                    child = self.app.window.flowbox.get_child_at_index(channel)
-                    self.app.window.set_focus(child)
-                    self.app.window.flowbox.select_child(child)
+                for channel in range(to_chan - 1, int(App().window.last_chan_selected)):
+                    child = App().window.flowbox.get_child_at_index(channel)
+                    App().window.set_focus(child)
+                    App().window.flowbox.select_child(child)
 
-            self.app.window.last_chan_selected = self.keystring
+            App().window.last_chan_selected = self.keystring
 
             # Find selected channels
             self.channels = []
-            sel = self.app.window.flowbox.get_selected_children()
+            sel = App().window.flowbox.get_selected_children()
             for flowboxchild in sel:
                 children = flowboxchild.get_children()
                 for channelwidget in children:
                     channel = int(channelwidget.channel) - 1
-                    if self.app.patch.channels[channel][0] != [0, 0]:
+                    if App().patch.channels[channel][0] != [0, 0]:
                         self.channels.append(channel)
 
             if self.channel_selected > len(self.channels) - 1:
@@ -304,16 +298,16 @@ class TrackChannelsTab(Gtk.Grid):
             self.steps[0].channels = self.channels
 
             levels = []
-            for step in range(self.app.sequence.last):
+            for step in range(App().sequence.last):
                 levels.append([])
                 for channel in self.channels:
-                    level = self.app.sequence.steps[step].cue.channels[channel]
+                    level = App().sequence.steps[step].cue.channels[channel]
                     levels[step].append(level)
                 self.steps[step].levels = levels[step]
             self.flowbox.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_KP_Add(self):
         self.keypress_plus()
@@ -326,19 +320,19 @@ class TrackChannelsTab(Gtk.Grid):
 
         channel = int(self.keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
-            child = self.app.window.flowbox.get_child_at_index(channel)
-            self.app.window.set_focus(child)
-            self.app.window.flowbox.select_child(child)
-            self.app.window.last_chan_selected = self.keystring
+            child = App().window.flowbox.get_child_at_index(channel)
+            App().window.set_focus(child)
+            App().window.flowbox.select_child(child)
+            App().window.last_chan_selected = self.keystring
 
             # Find selected channels
             self.channels = []
-            sel = self.app.window.flowbox.get_selected_children()
+            sel = App().window.flowbox.get_selected_children()
             for flowboxchild in sel:
                 children = flowboxchild.get_children()
                 for channelwidget in children:
                     channel = int(channelwidget.channel) - 1
-                    if self.app.patch.channels[channel][0] != [0, 0]:
+                    if App().patch.channels[channel][0] != [0, 0]:
                         self.channels.append(channel)
 
             if self.channel_selected > len(self.channels) - 1:
@@ -348,16 +342,16 @@ class TrackChannelsTab(Gtk.Grid):
             self.steps[0].channels = self.channels
 
             levels = []
-            for step in range(self.app.sequence.last):
+            for step in range(App().sequence.last):
                 levels.append([])
                 for channel in self.channels:
-                    level = self.app.sequence.steps[step].cue.channels[channel]
+                    level = App().sequence.steps[step].cue.channels[channel]
                     levels[step].append(level)
                 self.steps[step].levels = levels[step]
             self.flowbox.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def keypress_KP_Subtract(self):
         self.keypress_minus()
@@ -370,19 +364,19 @@ class TrackChannelsTab(Gtk.Grid):
 
         channel = int(self.keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
-            child = self.app.window.flowbox.get_child_at_index(channel)
-            self.app.window.set_focus(child)
-            self.app.window.flowbox.unselect_child(child)
-            self.app.window.last_chan_selected = self.keystring
+            child = App().window.flowbox.get_child_at_index(channel)
+            App().window.set_focus(child)
+            App().window.flowbox.unselect_child(child)
+            App().window.last_chan_selected = self.keystring
 
             # Find selected channels
             self.channels = []
-            sel = self.app.window.flowbox.get_selected_children()
+            sel = App().window.flowbox.get_selected_children()
             for flowboxchild in sel:
                 children = flowboxchild.get_children()
                 for channelwidget in children:
                     channel = int(channelwidget.channel) - 1
-                    if self.app.patch.channels[channel][0] != [0, 0]:
+                    if App().patch.channels[channel][0] != [0, 0]:
                         self.channels.append(channel)
 
             if self.channel_selected > len(self.channels) - 1:
@@ -392,13 +386,13 @@ class TrackChannelsTab(Gtk.Grid):
             self.steps[0].channels = self.channels
 
             levels = []
-            for step in range(self.app.sequence.last):
+            for step in range(App().sequence.last):
                 levels.append([])
                 for channel in self.channels:
-                    level = self.app.sequence.steps[step].cue.channels[channel]
+                    level = App().sequence.steps[step].cue.channels[channel]
                     levels[step].append(level)
                 self.steps[step].levels = levels[step]
             self.flowbox.queue_draw()
 
         self.keystring = ""
-        self.app.window.statusbar.push(self.app.window.context_id, self.keystring)
+        App().window.statusbar.push(App().window.context_id, self.keystring)

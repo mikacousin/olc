@@ -1,6 +1,8 @@
 import math
 import cairo
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
+
+from olc.define import App
 
 
 class PatchWidget(Gtk.Widget):
@@ -13,8 +15,6 @@ class PatchWidget(Gtk.Widget):
         self.output = output
         self.patch = patch
 
-        self.app = Gio.Application.get_default()
-
         Gtk.Widget.__init__(self)
         self.scale = 1.0
         self.width = 60 * self.scale
@@ -24,15 +24,15 @@ class PatchWidget(Gtk.Widget):
 
     def on_click(self, tgt, ev):
         # Deselect selected widgets
-        self.app.window.flowbox.unselect_all()
-        self.app.patch_outputs_tab.flowbox.unselect_all()
+        App().window.flowbox.unselect_all()
+        App().patch_outputs_tab.flowbox.unselect_all()
         # Select clicked widget
-        child = self.app.patch_outputs_tab.flowbox.get_child_at_index(
+        child = App().patch_outputs_tab.flowbox.get_child_at_index(
             self.output - 1 + (512 * self.universe)
         )
-        self.app.window.set_focus(child)
-        self.app.patch_outputs_tab.flowbox.select_child(child)
-        self.app.patch_outputs_tab.last_out_selected = str(self.output)
+        App().window.set_focus(child)
+        App().patch_outputs_tab.flowbox.select_child(child)
+        App().patch_outputs_tab.last_out_selected = str(self.output)
 
     def do_draw(self, cr):
         self.width = 60 * self.scale
@@ -88,11 +88,11 @@ class PatchWidget(Gtk.Widget):
             cr.show_text(text)
 
         # Draw Output level
-        if self.app.dmx.frame[self.universe][self.output - 1]:
+        if App().dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12 * self.scale)
-            text = str(self.app.dmx.frame[self.universe][self.output - 1])
+            text = str(App().dmx.frame[self.universe][self.output - 1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
             cr.move_to(
                 allocation.width / 2 - width / 2,
