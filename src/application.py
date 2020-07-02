@@ -3,7 +3,7 @@ import select
 
 from ola import OlaClient
 
-from olc.define import NB_UNIVERSES
+from olc.define import NB_UNIVERSES, MAX_CHANNELS
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
 from olc.patch_outputs import PatchOutputsTab
@@ -22,10 +22,12 @@ from olc.midi import Midi
 from olc.track_channels import TrackChannelsTab
 from olc.crossfade import CrossFade
 from olc.virtual_console import VirtualConsoleWindow
+from olc.widgets_group import GroupWidget
+from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 import gi
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, GLib, Gdk  # noqa: E402
+from gi.repository import Gtk, Gio, GLib, Gdk, Pango  # noqa: E402
 
 
 class Application(Gtk.Application):
@@ -395,16 +397,50 @@ class Application(Gtk.Application):
                         ].queue_draw()
 
     def _new(self, action, parameter):
-        # TODO: Verify this entire fonction
-        del self.chasers[:]
-        # Redraw Sequential Window
+        # All channels at 0
+        for channel in range(MAX_CHANNELS):
+            self.dmx.user[channel] = 0
+        self.window.flowbox.unselect_all()
+        # Reset Patch
+        self.patch.patch_1on1()
+        # Reset Main Playback
         self.sequence = Sequence(1, self.patch)
-        self.sequence.window = self.window
         self.sequence.position = 0
+        self.sequence.window = self.window
+        # Delete memories, groups, chasers, masters
+        del self.memories[:]
+        del self.groups[:]
+        del self.chasers[:]
+        del self.masters[:]
+        for page in range(2):
+            for i in range(20):
+                self.masters.append(
+                    Master(page + 1, i + 1, 0, 0, self.groups, self.chasers)
+                )
+        # Redraw Channels
+        self.window.flowbox.invalidate_filter()
+        # Redraw Sequential Window
         self.window.sequential.time_in = self.sequence.steps[1].time_in
         self.window.sequential.time_out = self.sequence.steps[1].time_out
         self.window.sequential.wait = self.sequence.steps[1].wait
-        self.window.cues_liststore = Gtk.ListStore(str, str, str, str, str, str, str)
+        self.window.sequential.delay_in = self.sequence.steps[1].delay_in
+        self.window.sequential.delay_out = self.sequence.steps[1].delay_out
+        self.window.sequential.total_time = self.sequence.steps[1].total_time
+
+        self.window.cues_liststore1 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str, str, int, int
+        )
+        self.window.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+        )
+        self.window.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+        )
+
+        self.window.cues_liststore2 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str
+        )
+
         for i in range(self.sequence.last):
             if self.sequence.steps[i].wait.is_integer():
                 wait = str(int(self.sequence.steps[i].wait))
@@ -420,46 +456,277 @@ class Application(Gtk.Application):
                 t_in = int(self.sequence.steps[i].time_in)
             else:
                 t_in = self.sequence.steps[i].time_in
-            self.window.cues_liststore.append(
+            if self.sequence.steps[i].delay_out.is_integer():
+                d_out = int(self.sequence.steps[i].delay_out)
+            else:
+                d_out = self.sequence.steps[i].delay_out
+            if self.sequence.steps[i].delay_in.is_integer():
+                d_in = int(self.sequence.steps[i].delay_in)
+            else:
+                d_in = self.sequence.steps[i].delay_in
+            channel_time = str(len(self.sequence.steps[i].channel_time))
+            if channel_time == "0":
+                channel_time = ""
+            if i in (0, self.sequence.last - 1):
+                self.window.cues_liststore1.append(
+                    [
+                        str(i),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "#232729",
+                        Pango.Weight.NORMAL,
+                        42,
+                    ]
+                )
+            else:
+                self.window.cues_liststore1.append(
+                    [
+                        str(i),
+                        str(self.sequence.steps[i].cue.memory),
+                        str(self.sequence.steps[i].text),
+                        wait,
+                        str(d_out),
+                        str(t_out),
+                        str(d_in),
+                        str(t_in),
+                        channel_time,
+                        "#232729",
+                        Pango.Weight.NORMAL,
+                        42,
+                    ]
+                )
+            self.window.cues_liststore2.append(
                 [
                     str(i),
                     str(self.sequence.steps[i].cue.memory),
                     str(self.sequence.steps[i].text),
                     wait,
+                    str(d_out),
                     str(t_out),
+                    str(d_in),
                     str(t_in),
-                    "",
+                    channel_time,
                 ]
             )
-        self.window.step_filter = self.window.cues_liststore.filter_new()
-        self.window.step_filter.set_visible_func(self.window.step_filter_func)
-        self.window.treeview.set_model(self.window.cues_liststore)
+        if self.sequence.last == 1:
+            self.cues_liststore1.append(
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+            )
+
+        # Select first cue
+        self.window.cues_liststore1[2][9] = "#997004"
+        self.window.cues_liststore1[2][10] = Pango.Weight.HEAVY
+        # Bold next cue
+        self.window.cues_liststore1[3][9] = "#555555"
+        self.window.cues_liststore1[3][10] = Pango.Weight.HEAVY
+
+        self.window.step_filter1 = self.window.cues_liststore1.filter_new()
+        self.window.step_filter1.set_visible_func(self.window.step_filter_func1)
+        self.window.treeview1.set_model(self.window.step_filter1)
         path = Gtk.TreePath.new_from_indices([0])
-        self.window.treeview.set_cursor(path, None, False)
+        self.window.treeview1.set_cursor(path, None, False)
+
+        self.window.step_filter2 = self.window.cues_liststore2.filter_new()
+        self.window.step_filter2.set_visible_func(self.window.step_filter_func2)
+        self.window.treeview2.set_model(self.window.step_filter2)
+        path = Gtk.TreePath.new_from_indices([0])
+        self.window.treeview2.set_cursor(path, None, False)
+
         self.window.seq_grid.queue_draw()
-        # Redraw Patch Window
-        self.patch.patch_1on1()
+
+        # Redraw Patch Tabs
         if self.patch_outputs_tab:
             self.patch_outputs_tab.flowbox.queue_draw()
-        # Redraw Masters Window
-        try:
-            for i, _ in enumerate(self.masters):
-                self.win_masters.scale[i].destroy()
-                self.win_masters.flash[i].destroy()
-            del self.win_masters.scale[:]
-            del self.win_masters.ad[:]
-            del self.win_masters.flash[:]
-        except Exception as e:
-            print("Error :", str(e))
-        del self.masters[:]
-        # Redraw Groups Window
-        for grp in self.win_groups.grps:
-            grp.destroy()
-        del self.groups[:]
-        del self.win_groups.grps[:]
-        self.win_groups.flowbox1.invalidate_filter()
-        # Redraw Main Window
-        self.window.flowbox.invalidate_filter()
+        if self.patch_channels_tab:
+            self.patch_channels_tab.flowbox.queue_draw()
+
+        # Redraw Group Tab
+        if self.group_tab:
+            # Remove old groups
+            del self.group_tab.grps[:]
+            self.group_tab.scrolled2.remove(self.group_tab.flowbox2)
+            self.group_tab.flowbox2.destroy()
+            # New flowbox
+            self.group_tab.flowbox2 = Gtk.FlowBox()
+            self.group_tab.flowbox2.set_valign(Gtk.Align.START)
+            self.group_tab.flowbox2.set_max_children_per_line(20)
+            self.group_tab.flowbox2.set_homogeneous(True)
+            self.group_tab.flowbox2.set_activate_on_single_click(True)
+            self.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
+            self.group_tab.flowbox2.set_filter_func(
+                self.group_tab.filter_groups, None
+            )
+            self.group_tab.scrolled2.add(self.group_tab.flowbox2)
+            # Add Groups to FlowBox
+            for i, _ in enumerate(self.groups):
+                self.group_tab.grps.append(
+                    GroupWidget(
+                        i,
+                        self.groups[i].index,
+                        self.groups[i].text,
+                        self.group_tab.grps,
+                    )
+                )
+                self.group_tab.flowbox2.add(self.group_tab.grps[i])
+            self.group_tab.flowbox1.invalidate_filter()
+            self.group_tab.flowbox2.invalidate_filter()
+            self.window.show_all()
+
+        # Redraw Memories Tab
+        if self.memories_tab:
+            self.memories_tab.liststore.clear()
+            # Select first Memory
+            path = Gtk.TreePath.new_first()
+            self.memories_tab.treeview.set_cursor(path, None, False)
+            for mem in self.memories:
+                channels = 0
+                for chan in range(MAX_CHANNELS):
+                    if mem.channels[chan]:
+                        channels += 1
+                self.memories_tab.liststore.append(
+                    [str(mem.memory), mem.text, channels]
+                )
+            self.memories_tab.flowbox.invalidate_filter()
+
+        # Redraw Masters in Virtual Console
+        if self.virtual_console:
+            if self.virtual_console.props.visible:
+                for page in range(2):
+                    for master in self.masters:
+                        if master.page == page + 1:
+                            self.virtual_console.flashes[
+                                master.number - 1 + (page * 20)
+                            ].label = master.text
+                            self.virtual_console.flashes[
+                                master.number - 1 + (page * 20)
+                            ].queue_draw()
+
+        # Redraw Sequences Tab
+        if self.sequences_tab:
+            self.sequences_tab.liststore1.clear()
+
+            self.sequences_tab.liststore1.append(
+                [
+                    self.sequence.index,
+                    self.sequence.type_seq,
+                    self.sequence.text,
+                ]
+            )
+
+            for chaser in self.chasers:
+                self.sequences_tab.liststore1.append(
+                    [chaser.index, chaser.type_seq, chaser.text]
+                )
+
+            self.sequences_tab.treeview1.set_model(
+                self.sequences_tab.liststore1
+            )
+            path = Gtk.TreePath.new_first()
+            self.sequences_tab.treeview1.set_cursor(path, None, False)
+            selection = self.sequences_tab.treeview1.get_selection()
+            self.sequences_tab.on_sequence_changed(selection)
+
+        # Redraw Masters Tab
+        if self.masters_tab:
+            self.masters_tab.liststore.clear()
+            for page in range(2):
+                for i in range(20):
+                    index = i + (page * 20)
+
+                    # Type : None
+                    if self.masters[index].content_type == 0:
+                        self.masters_tab.liststore.append(
+                            [index + 1, "", "", ""]
+                        )
+
+                    # Type : Preset
+                    elif self.masters[index].content_type == 1:
+                        content_value = str(self.masters[index].content_value)
+                        self.masters_tab.liststore.append(
+                            [index + 1, "Preset", content_value, ""]
+                        )
+
+                    # Type : Channels
+                    elif self.masters[index].content_type == 2:
+                        nb_chan = 0
+                        for chan in range(MAX_CHANNELS):
+                            if self.masters[index].channels[chan]:
+                                nb_chan += 1
+                        self.masters_tab.liststore.append(
+                            [index + 1, "Channels", str(nb_chan), ""]
+                        )
+
+                    # Type : Sequence
+                    elif self.masters[index].content_type == 3:
+                        if self.masters[index].content_value.is_integer():
+                            content_value = str(
+                                int(self.masters[index].content_value)
+                            )
+                        else:
+                            content_value = str(
+                                self.masters[index].content_value
+                            )
+                        self.masters_tab.liststore.append(
+                            [index + 1, "Sequence", content_value, ""]
+                        )
+
+                    # Type : Group
+                    elif self.masters[index].content_type == 13:
+                        if self.masters[index].content_value.is_integer():
+                            content_value = str(
+                                int(self.masters[index].content_value)
+                            )
+                        else:
+                            content_value = str(
+                                self.masters[index].content_value
+                            )
+                        self.masters_tab.liststore.append(
+                            [index + 1, "Group", content_value, "Exclusif"]
+                        )
+
+                    # Type : Unknown
+                    else:
+                        self.masters_tab.liststore.append(
+                            [index + 1, "Unknown", "", ""]
+                        )
+
+            self.masters_tab.flowbox.invalidate_filter()
+
+        # Redraw Channel Time Tab
+        if self.channeltime_tab:
+            self.channeltime_tab.liststore.clear()
+            self.channeltime_tab.flowbox.invalidate_filter()
+
+        # Redraw Track Channels
+        if self.track_channels_tab:
+            for widget in self.track_channels_tab.flowbox:
+                widget.destroy()
+            self.track_channels_tab.channels = []
+            levels = []
+            self.track_channels_tab.steps = []
+            self.track_channels_tab.steps.append(
+                TrackChannelsHeader(self.track_channels_tab.channels)
+            )
+            levels.append([])
+            self.track_channels_tab.flowbox.add(self.track_channels_tab.steps[0])
+            for step in range(1, self.sequence.last):
+                memory = self.sequence.steps[step].cue.memory
+                text = self.sequence.steps[step].text
+                levels.append([])
+                for channel in self.track_channels_tab.channels:
+                    level = self.sequence.steps[step].cue.channels[channel]
+                    levels[step].append(level)
+                self.track_channels_tab.steps.append(
+                    TrackChannelsWidget(step, memory, text, levels[step])
+                )
+                self.track_channels_tab.flowbox.add(self.track_channels_tab.steps[step])
+            self.track_channels_tab.flowbox.invalidate_filter()
 
     def _open(self, action, parameter):
         # create a filechooserdialog to open:

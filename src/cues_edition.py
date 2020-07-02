@@ -79,6 +79,9 @@ class CuesEditionTab(Gtk.Paned):
 
     def filter_channel_func(self, child, user_data):
         """ Filter channels """
+        # If no Presets, just return
+        if not self.app.memories:
+            return False
         # Find selected row
         path, focus_column = self.treeview.get_cursor()
         if path:

@@ -61,6 +61,10 @@ class TrackChannelsTab(Gtk.Grid):
         self.attach(self.scrollable, 0, 0, 1, 1)
 
     def filter_func(self, child, user_data):
+        if child == self.steps[0].get_parent():
+            return child
+        if len(self.steps) <= self.app.sequence.last - 1:
+            return False
         if child == self.steps[self.app.sequence.last - 1].get_parent():
             return False
         return child
