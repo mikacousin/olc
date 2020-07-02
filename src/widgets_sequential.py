@@ -102,9 +102,7 @@ class SequentialWidget(Gtk.Widget):
             # Draw Wait time on the time line
             cr.move_to(12 + (inter * self.wait), 16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
             # If time is integer don't show the ".0"
             if self.wait.is_integer():
@@ -124,9 +122,7 @@ class SequentialWidget(Gtk.Widget):
             # Draw Delay Out on the time line
             cr.move_to(12 + wait_x + (inter * self.delay_out), 16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
             # If time is integer don't show the ".0"
             if self.delay_out.is_integer():
@@ -149,9 +145,7 @@ class SequentialWidget(Gtk.Widget):
             # Draw Delay In on the time line
             cr.move_to(12 + wait_x + (inter * self.delay_in), 16)
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
             # If time is integer don't show the ".0"
             if self.delay_in.is_integer():
@@ -174,9 +168,7 @@ class SequentialWidget(Gtk.Widget):
             )
             # cr.move_to((inter*delay)+wait_x,allocation.height-28-(self.ct_nb*12))
             cr.set_source_rgb(0.9, 0.6, 0.2)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
             cr.show_text(str(channel))
             # draw Channel Time line
@@ -330,9 +322,7 @@ class SequentialWidget(Gtk.Widget):
             cr.arc(x1, y1, 8, 0, 2 * math.pi)
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("A")
@@ -346,9 +336,7 @@ class SequentialWidget(Gtk.Widget):
             cr.arc(x1, y1, 8, 0, 2 * math.pi)
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("A")
@@ -401,9 +389,7 @@ class SequentialWidget(Gtk.Widget):
             cr.arc(x1, y1, 8, 0, 2 * math.pi)
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 3)
             cr.show_text("B")
@@ -417,9 +403,7 @@ class SequentialWidget(Gtk.Widget):
             cr.arc(x1, y1, 8, 0, 2 * math.pi)
             cr.fill()
             cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("B")

@@ -1,6 +1,7 @@
 import mido
 
 import gi
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, Gtk, GLib  # noqa: E402
 

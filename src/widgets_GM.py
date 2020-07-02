@@ -28,9 +28,7 @@ class GMWidget(Gtk.Widget):
                 "GM " + str(round((self.app.dmx.grand_master / 255) * 100)) + "%"
             )
             cr.set_source_rgb(0.8, 0.3, 0.3)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(11)
             (x, y, w, h, dx, dy) = cr.text_extents(self.label)
             cr.move_to(

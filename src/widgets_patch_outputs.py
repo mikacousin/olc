@@ -77,9 +77,7 @@ class PatchWidget(Gtk.Widget):
         if self.patch.outputs[self.universe][self.output - 1][0] != 0:
             # draw channel number
             cr.set_source_rgb(0.9, 0.6, 0.2)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12 * self.scale)
             text = str(self.patch.outputs[self.universe][self.output - 1][0])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
@@ -92,9 +90,7 @@ class PatchWidget(Gtk.Widget):
         # Draw Output level
         if self.app.dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12 * self.scale)
             text = str(self.app.dmx.frame[self.universe][self.output - 1])
             (x, y, width, height, dx, dy) = cr.text_extents(text)
@@ -121,9 +117,7 @@ class PatchWidget(Gtk.Widget):
             else:
                 cr.set_source_rgb(0.5, 0.1, 0.1)
             cr.fill()
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-            )
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.set_font_size(8 * self.scale)
             text = str(self.patch.outputs[self.universe][self.output - 1][1]) + "%"

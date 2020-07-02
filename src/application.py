@@ -26,6 +26,7 @@ from olc.widgets_group import GroupWidget
 from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 import gi
+
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, Gio, GLib, Gdk, Pango  # noqa: E402
 
@@ -559,9 +560,7 @@ class Application(Gtk.Application):
             self.group_tab.flowbox2.set_homogeneous(True)
             self.group_tab.flowbox2.set_activate_on_single_click(True)
             self.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-            self.group_tab.flowbox2.set_filter_func(
-                self.group_tab.filter_groups, None
-            )
+            self.group_tab.flowbox2.set_filter_func(self.group_tab.filter_groups, None)
             self.group_tab.scrolled2.add(self.group_tab.flowbox2)
             # Add Groups to FlowBox
             for i, _ in enumerate(self.groups):
@@ -612,11 +611,7 @@ class Application(Gtk.Application):
             self.sequences_tab.liststore1.clear()
 
             self.sequences_tab.liststore1.append(
-                [
-                    self.sequence.index,
-                    self.sequence.type_seq,
-                    self.sequence.text,
-                ]
+                [self.sequence.index, self.sequence.type_seq, self.sequence.text]
             )
 
             for chaser in self.chasers:
@@ -624,9 +619,7 @@ class Application(Gtk.Application):
                     [chaser.index, chaser.type_seq, chaser.text]
                 )
 
-            self.sequences_tab.treeview1.set_model(
-                self.sequences_tab.liststore1
-            )
+            self.sequences_tab.treeview1.set_model(self.sequences_tab.liststore1)
             path = Gtk.TreePath.new_first()
             self.sequences_tab.treeview1.set_cursor(path, None, False)
             selection = self.sequences_tab.treeview1.get_selection()
@@ -641,9 +634,7 @@ class Application(Gtk.Application):
 
                     # Type : None
                     if self.masters[index].content_type == 0:
-                        self.masters_tab.liststore.append(
-                            [index + 1, "", "", ""]
-                        )
+                        self.masters_tab.liststore.append([index + 1, "", "", ""])
 
                     # Type : Preset
                     elif self.masters[index].content_type == 1:
@@ -665,13 +656,9 @@ class Application(Gtk.Application):
                     # Type : Sequence
                     elif self.masters[index].content_type == 3:
                         if self.masters[index].content_value.is_integer():
-                            content_value = str(
-                                int(self.masters[index].content_value)
-                            )
+                            content_value = str(int(self.masters[index].content_value))
                         else:
-                            content_value = str(
-                                self.masters[index].content_value
-                            )
+                            content_value = str(self.masters[index].content_value)
                         self.masters_tab.liststore.append(
                             [index + 1, "Sequence", content_value, ""]
                         )
@@ -679,13 +666,9 @@ class Application(Gtk.Application):
                     # Type : Group
                     elif self.masters[index].content_type == 13:
                         if self.masters[index].content_value.is_integer():
-                            content_value = str(
-                                int(self.masters[index].content_value)
-                            )
+                            content_value = str(int(self.masters[index].content_value))
                         else:
-                            content_value = str(
-                                self.masters[index].content_value
-                            )
+                            content_value = str(self.masters[index].content_value)
                         self.masters_tab.liststore.append(
                             [index + 1, "Group", content_value, "Exclusif"]
                         )
