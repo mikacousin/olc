@@ -57,7 +57,7 @@ class Application(Gtk.Application):
         # To store settings
         self.settings = Settings.new()
 
-        # TODO: Choisir son univers
+        # Universes
         self.universes = []
         for i in range(NB_UNIVERSES):
             self.universes.append(i)
@@ -200,10 +200,7 @@ class Application(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
-        # TODO: Revoir pour le menu
-        # et la gestion auto de la fenetre des shortcuts
         self.setup_app_menu()
-        # menu = self.setup_app_menu()
 
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])
@@ -958,7 +955,6 @@ class Application(Gtk.Application):
         self.add_window(self.virtual_console)
 
     def _settings(self, action, parameter):
-        # TODO: Don't open multiple Settings Windows
         self.win_settings = SettingsDialog()
         self.win_settings.settings_dialog.show_all()
 
@@ -966,7 +962,6 @@ class Application(Gtk.Application):
         """
             Create Shortcuts Window
         """
-        # TODO: Don't open multiple Shortcuts Windows
         builder = Gtk.Builder()
         builder.add_from_resource("/org/gnome/OpenLightingConsole/gtk/help-overlay.ui")
         self.shortcuts = builder.get_object("help_overlay")
