@@ -8,6 +8,47 @@ from olc.cue import Cue
 from olc.step import Step
 
 
+def update_ui(position, subtitle):
+    # Update Sequential Tab
+    if position == 0:
+        App().window.cues_liststore1[position][9] = "#232729"
+        App().window.cues_liststore1[position + 1][9] = "#232729"
+        App().window.cues_liststore1[position + 2][9] = "#997004"
+        App().window.cues_liststore1[position + 3][9] = "#555555"
+        App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+        App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
+        App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
+        App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
+    else:
+        App().window.cues_liststore1[position][9] = "#232729"
+        App().window.cues_liststore1[position + 1][9] = "#232729"
+        App().window.cues_liststore1[position + 2][9] = "#997004"
+        App().window.cues_liststore1[position + 3][9] = "#555555"
+        App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+        App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
+        App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
+        App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
+    App().window.step_filter1.refilter()
+    App().window.step_filter2.refilter()
+    path = Gtk.TreePath.new_from_indices([0])
+    App().window.treeview1.set_cursor(path, None, False)
+    App().window.treeview2.set_cursor(path, None, False)
+    App().window.seq_grid.queue_draw()
+    # Update Main Window's Subtitle
+    App().window.header.set_subtitle(subtitle)
+    # Virtual Console's Xfade
+    if App().virtual_console:
+        if App().virtual_console.props.visible:
+            if App().virtual_console.scaleA.get_inverted():
+                App().virtual_console.scaleA.set_inverted(False)
+                App().virtual_console.scaleB.set_inverted(False)
+            else:
+                App().virtual_console.scaleA.set_inverted(True)
+                App().virtual_console.scaleB.set_inverted(True)
+            App().virtual_console.scaleA.set_value(0)
+            App().virtual_console.scaleB.set_value(0)
+
+
 class Sequence:
     def __init__(self, index, patch, type_seq="Normal", text=""):
         self.index = index
@@ -548,7 +589,7 @@ class ThreadGo(threading.Thread):
             )
 
             # Update Gtk in the main thread
-            GLib.idle_add(self.update_ui, position, subtitle)
+            GLib.idle_add(update_ui, position, subtitle)
 
             # Si la mémoire a un Wait
             if App().sequence.steps[position + 1].wait:
@@ -590,7 +631,7 @@ class ThreadGo(threading.Thread):
             )
 
             # Update Gtk in the main thread
-            GLib.idle_add(self.update_ui, position, subtitle)
+            GLib.idle_add(update_ui, position, subtitle)
 
     def stop(self):
         self._stopevent.set()
@@ -764,46 +805,6 @@ class ThreadGo(threading.Thread):
             if App().patch_outputs_tab:
                 GLib.idle_add(App().patch_outputs_tab.flowbox.queue_draw)
 
-    def update_ui(self, position, subtitle):
-        # Update Sequential Tab
-        if position == 0:
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-        else:
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-        App().window.step_filter1.refilter()
-        App().window.step_filter2.refilter()
-        path = Gtk.TreePath.new_from_indices([0])
-        App().window.treeview1.set_cursor(path, None, False)
-        App().window.treeview2.set_cursor(path, None, False)
-        App().window.seq_grid.queue_draw()
-        # Update Main Window's Subtitle
-        App().window.header.set_subtitle(subtitle)
-        # Virtual Console's Xfade
-        if App().virtual_console:
-            if App().virtual_console.props.visible:
-                if App().virtual_console.scaleA.get_inverted():
-                    App().virtual_console.scaleA.set_inverted(False)
-                    App().virtual_console.scaleB.set_inverted(False)
-                else:
-                    App().virtual_console.scaleA.set_inverted(True)
-                    App().virtual_console.scaleB.set_inverted(True)
-                App().virtual_console.scaleA.set_value(0)
-                App().virtual_console.scaleB.set_value(0)
-
 
 # Thread Object for Go Back
 class ThreadGoBack(threading.Thread):
@@ -885,7 +886,7 @@ class ThreadGoBack(threading.Thread):
         )
 
         # Update Gtk in the main thread
-        GLib.idle_add(self.update_ui, position, subtitle)
+        GLib.idle_add(update_ui, position, subtitle)
 
         if App().sequence.steps[position + 1].wait:
             App().sequence.sequence_go(None, None)
@@ -939,43 +940,3 @@ class ThreadGoBack(threading.Thread):
 
         # if App().patch_outputs_tab != None:
         #     GLib.idle_add(App().patch_outputs_tab.flowbox.queue_draw)
-
-    def update_ui(self, position, subtitle):
-        # Update Sequential Tab
-        if position == 0:
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-        else:
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-        App().window.step_filter1.refilter()
-        App().window.step_filter2.refilter()
-        path = Gtk.TreePath.new_from_indices([0])
-        App().window.treeview1.set_cursor(path, None, False)
-        App().window.treeview2.set_cursor(path, None, False)
-        App().window.seq_grid.queue_draw()
-        # Update Main Window's Subtitle
-        App().window.header.set_subtitle(subtitle)
-        # Virtual Console's Xfade
-        if App().virtual_console:
-            if App().virtual_console.props.visible:
-                if App().virtual_console.scaleA.get_inverted():
-                    App().virtual_console.scaleA.set_inverted(False)
-                    App().virtual_console.scaleB.set_inverted(False)
-                else:
-                    App().virtual_console.scaleA.set_inverted(True)
-                    App().virtual_console.scaleB.set_inverted(True)
-                App().virtual_console.scaleA.set_value(0)
-                App().virtual_console.scaleB.set_value(0)
