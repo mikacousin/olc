@@ -122,7 +122,7 @@ class TrackChannelsWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, tgt, ev):
+    def on_click(self, _tgt, ev):
         App().track_channels_tab.flowbox.unselect_all()
         child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
         App().window.set_focus(child)

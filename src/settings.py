@@ -75,19 +75,19 @@ class SettingsDialog:
 
         builder.connect_signals(self)
 
-    def _on_change_percent(self, widget):
+    def _on_change_percent(self, _widget):
         lvl = self.spin_percent_level.get_value_as_int()
         App().settings.set_value("percent-level", GLib.Variant("i", lvl))
 
-    def _on_change_default_time(self, widget):
+    def _on_change_default_time(self, _widget):
         time = self.spin_default_time.get_value()
         App().settings.set_value("default-time", GLib.Variant("d", time))
 
-    def _on_change_go_back_time(self, widget):
+    def _on_change_go_back_time(self, _widget):
         time = self.spin_go_back_time.get_value()
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
-    def _update_ui_percent(self, widget, state):
+    def _update_ui_percent(self, _widget, state):
         """ Change levels view (0-100) or (0-255) """
         App().settings.set_value("percent", GLib.Variant("b", state))
 
@@ -106,7 +106,7 @@ class SettingsDialog:
         if App().memories_tab:
             App().memories_tab.flowbox.invalidate_filter()
 
-    def _on_btn_clicked(self, button):
+    def _on_btn_clicked(self, _button):
         address_ip = self.entry_client_ip.get_text()
         client_port = self.spin_client_port.get_value_as_int()
         server_port = self.spin_server_port.get_value_as_int()

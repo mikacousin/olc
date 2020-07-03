@@ -444,7 +444,7 @@ class Window(Gtk.ApplicationWindow):
 
         return True
 
-    def step_filter_func1(self, model, treeiter, data):
+    def step_filter_func1(self, model, treeiter, _data):
         """ Filter for the first part of the cues list """
 
         if App().sequence.position <= 0:
@@ -481,13 +481,13 @@ class Window(Gtk.ApplicationWindow):
             return True
         return False
 
-    def step_filter_func2(self, model, treeiter, data):
+    def step_filter_func2(self, model, treeiter, _data):
         """ Filter for the second part of the cues list """
         if int(model[treeiter][0]) <= App().sequence.position + 1:
             return False
         return True
 
-    def filter_func(self, child, user_data):
+    def filter_func(self, child, _user_data):
         """ Filter for channels window """
         if self.view_type == 0:
             i = child.get_index()
@@ -499,7 +499,7 @@ class Window(Gtk.ApplicationWindow):
         else:
             return True
 
-    def on_timeout(self, user_data):
+    def on_timeout(self, _user_data):
 
         # self.percent_view = App().settings.get_boolean('percent')
 

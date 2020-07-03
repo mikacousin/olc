@@ -105,7 +105,7 @@ class PatchChannelWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, tgt, ev):
+    def on_click(self, _tgt, _ev):
         App().patch_channels_tab.flowbox.unselect_all()
         child = App().patch_channels_tab.flowbox.get_child_at_index(self.channel - 1)
         App().window.set_focus(child)

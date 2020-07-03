@@ -143,10 +143,10 @@ class MastersTab(Gtk.Paned):
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
 
-    def filter_master(self, model, i, data):
+    def filter_master(self, _model, _i, _data):
         return True
 
-    def filter_channel_func(self, child, user_data):
+    def filter_channel_func(self, child, _user_data):
         """ Filter channels """
         # Find selected row
         path, _focus_column = self.treeview.get_cursor()
@@ -233,7 +233,7 @@ class MastersTab(Gtk.Paned):
 
         return False
 
-    def on_master_changed(self, treeview):
+    def on_master_changed(self, _treeview):
         """ New master is selected """
         self.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -242,7 +242,7 @@ class MastersTab(Gtk.Paned):
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
-    def on_content_type_changed(self, widget, path, text):
+    def on_content_type_changed(self, _widget, path, text):
         # Update display
         self.liststore[path][1] = text
 
@@ -283,10 +283,10 @@ class MastersTab(Gtk.Paned):
                     App().virtual_console.flashes[index].label = ""
                     App().virtual_console.flashes[index].queue_draw()
 
-    def on_mode_changed(self, widget, path, text):
+    def on_mode_changed(self, _widget, path, text):
         self.liststore[path][3] = text
 
-    def on_content_value_edited(self, widget, path, text):
+    def on_content_value_edited(self, _widget, path, text):
         if text == "":
             text = "0"
 
@@ -339,7 +339,7 @@ class MastersTab(Gtk.Paned):
                 App().virtual_console.flashes[index].label = App().masters[index].text
                 App().virtual_console.flashes[index].queue_draw()
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
         page = App().window.notebook.page_num(App().masters_tab)
         App().window.notebook.remove_page(page)

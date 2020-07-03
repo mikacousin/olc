@@ -67,7 +67,7 @@ class GroupTab(Gtk.Paned):
 
         self.flowbox1.set_filter_func(self.filter_channels, None)
 
-    def filter_channels(self, child, user_data):
+    def filter_channels(self, child, _user_data):
         """ Pour n'afficher que les channels du groupe """
         i = child.get_index()  # Numéro du widget qu'on filtre (channel - 1)
         # On cherche le groupe actuellement séléctionné
@@ -82,16 +82,16 @@ class GroupTab(Gtk.Paned):
                 return False
         return False
 
-    def filter_groups(self, child, user_data):
+    def filter_groups(self, child, _user_data):
         return child
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab with the icon clicked """
         page = App().window.notebook.page_num(App().group_tab)
         App().window.notebook.remove_page(page)
         App().group_tab = None
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, _widget, event):
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 

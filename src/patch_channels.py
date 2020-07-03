@@ -39,10 +39,10 @@ class PatchChannelsTab(Gtk.Grid):
             self.scrollable, self.header, Gtk.PositionType.BOTTOM, 1, 10
         )
 
-    def filter_func(self, child, user_data):
+    def filter_func(self, _child, _user_data):
         return True
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
         page = App().window.notebook.page_num(App().patch_channels_tab)
         App().window.notebook.remove_page(page)

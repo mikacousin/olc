@@ -197,7 +197,7 @@ class SequenceTab(Gtk.Grid):
         path = Gtk.TreePath.new_first()
         self.treeview1.set_cursor(path, None, False)
 
-    def on_row_activated(self, treeview, path, column):
+    def on_row_activated(self, _treeview, path, column):
         # Find the double clicked cell
         # itr = self.liststore2.get_iter(path)
         columns = self.treeview2.get_columns()
@@ -222,7 +222,7 @@ class SequenceTab(Gtk.Grid):
             step = self.liststore2[path][0]
             App().channeltime(seq, step)
 
-    def wait_edited(self, widget, path, text):
+    def wait_edited(self, _widget, path, text):
 
         if text == "":
             text = "0"
@@ -294,7 +294,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.total_time = self.seq.steps[step].total_time
                     App().window.sequential.queue_draw()
 
-    def out_edited(self, widget, path, text):
+    def out_edited(self, _widget, path, text):
 
         if text.replace(".", "", 1).isdigit():
 
@@ -357,7 +357,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.total_time = self.seq.steps[step].total_time
                     App().window.sequential.queue_draw()
 
-    def in_edited(self, widget, path, text):
+    def in_edited(self, _widget, path, text):
 
         if text.replace(".", "", 1).isdigit():
 
@@ -420,7 +420,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.total_time = self.seq.steps[step].total_time
                     App().window.sequential.queue_draw()
 
-    def delay_out_edited(self, widget, path, text):
+    def delay_out_edited(self, _widget, path, text):
 
         if text == "":
             text = "0"
@@ -493,7 +493,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.total_time = self.seq.steps[step].total_time
                     App().window.sequential.queue_draw()
 
-    def delay_in_edited(self, widget, path, text):
+    def delay_in_edited(self, _widget, path, text):
 
         if text == "":
             text = "0"
@@ -566,7 +566,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.total_time = self.seq.steps[step].total_time
                     App().window.sequential.queue_draw()
 
-    def text_edited(self, widget, path, text):
+    def text_edited(self, _widget, path, text):
 
         self.liststore2[path][2] = text
 
@@ -623,17 +623,17 @@ class SequenceTab(Gtk.Grid):
                 )
                 App().window.header.set_subtitle(subtitle)
 
-    def on_memory_changed(self, treeview):
+    def on_memory_changed(self, _treeview):
         """ Select memory """
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
-    def filter_cue_func(self, model, treeiter, data):
+    def filter_cue_func(self, _model, _treeiter, _data):
         return True
 
-    def filter_func(self, child, user_data):
+    def filter_func(self, child, _user_data):
         """ Filter channels """
         # Find selected sequence
         path, _focus_column = self.treeview1.get_cursor()
@@ -798,7 +798,7 @@ class SequenceTab(Gtk.Grid):
 
             App().window.show_all()
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
         page = App().window.notebook.page_num(App().sequences_tab)
         App().window.notebook.remove_page(page)

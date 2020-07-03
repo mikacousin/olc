@@ -20,7 +20,7 @@ class GroupWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, tgt, ev):
+    def on_click(self, _tgt, _ev):
         App().group_tab.flowbox2.unselect_all()
         child = App().group_tab.flowbox2.get_child_at_index(self.index)
         App().window.set_focus(child)

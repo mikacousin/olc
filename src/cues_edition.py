@@ -75,7 +75,7 @@ class CuesEditionTab(Gtk.Paned):
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
 
-    def filter_channel_func(self, child, user_data):
+    def filter_channel_func(self, child, _user_data):
         """ Filter channels """
         # If no Presets, just return
         if not App().memories:
@@ -107,10 +107,10 @@ class CuesEditionTab(Gtk.Paned):
             return child
         return False
 
-    def filter_cue_func(self, model, i, data):
+    def filter_cue_func(self, _model, _i, _data):
         return True
 
-    def on_cue_changed(self, treeview):
+    def on_cue_changed(self, _treeview):
         """ Selected Cue """
         self.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -119,13 +119,13 @@ class CuesEditionTab(Gtk.Paned):
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
         page = App().window.notebook.page_num(App().memories_tab)
         App().window.notebook.remove_page(page)
         App().memories_tab = None
 
-    def on_scroll(self, widget, event):
+    def on_scroll(self, _widget, event):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if (
             event.state & accel_mask
@@ -148,7 +148,7 @@ class CuesEditionTab(Gtk.Paned):
             else:
                 self.flowbox.set_homogeneous(True)
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, _widget, event):
 
         keyname = Gdk.keyval_name(event.keyval)
 

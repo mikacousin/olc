@@ -22,7 +22,7 @@ class PatchWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, tgt, ev):
+    def on_click(self, _tgt, _ev):
         # Deselect selected widgets
         App().window.flowbox.unselect_all()
         App().patch_outputs_tab.flowbox.unselect_all()

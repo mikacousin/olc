@@ -58,7 +58,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.attach(self.scrollable, 0, 0, 1, 1)
 
-    def filter_func(self, child, user_data):
+    def filter_func(self, child, _user_data):
         if child == self.steps[0].get_parent():
             return child
         if len(self.steps) <= App().sequence.last - 1:
@@ -67,13 +67,13 @@ class TrackChannelsTab(Gtk.Grid):
             return False
         return child
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
         page = App().window.notebook.page_num(App().track_channels_tab)
         App().window.notebook.remove_page(page)
         App().track_channels_tab = None
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, _widget, event):
 
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)

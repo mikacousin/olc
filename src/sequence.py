@@ -292,7 +292,7 @@ class Sequence:
                 self.sequence_go(None, None)
                 break
 
-    def sequence_go(self, action, param):
+    def sequence_go(self, _action, _param):
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if App().sequence.on_go:
             # Stop actual Thread
@@ -407,7 +407,7 @@ class Sequence:
             App().sequence.thread = ThreadGo()
             App().sequence.thread.start()
 
-    def go_back(self, action, param):
+    def go_back(self, _action, _param):
 
         # Just return if we are at the beginning
         position = App().sequence.position

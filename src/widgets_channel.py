@@ -26,7 +26,7 @@ class ChannelWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
-    def on_click(self, tgt, ev):
+    def on_click(self, tgt, _ev):
         # Select clicked widget
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()

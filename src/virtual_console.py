@@ -361,70 +361,70 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = ""
             App().virtual_console.queue_draw()
 
-    def on_go(self, widget):
+    def on_go(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Go"
             self.queue_draw()
         else:
             App().sequence.sequence_go(None, None)
 
-    def on_go_back(self, widget):
+    def on_go_back(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Go_Back"
             self.queue_draw()
         else:
             App().sequence.go_back(None, None)
 
-    def on_seq_plus(self, widget):
+    def on_seq_plus(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Seq_plus"
             self.queue_draw()
         else:
             App().sequence.sequence_plus()
 
-    def on_seq_minus(self, widget):
+    def on_seq_minus(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Seq_minus"
             self.queue_draw()
         else:
             App().sequence.sequence_minus()
 
-    def on_output(self, widget):
+    def on_output(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Output"
             self.queue_draw()
         else:
             App().patch_outputs(None, None)
 
-    def on_seq(self, widget):
+    def on_seq(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Seq"
             self.queue_draw()
         else:
             App().sequences(None, None)
 
-    def on_preset(self, widget):
+    def on_preset(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Preset"
             self.queue_draw()
         else:
             App().memories_cb(None, None)
 
-    def on_group(self, widget):
+    def on_group(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Group"
             self.queue_draw()
         else:
             App().groups_cb(None, None)
 
-    def on_track(self, widget):
+    def on_track(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Track"
             self.queue_draw()
         else:
             App().track_channels(None, None)
 
-    def on_goto(self, widget):
+    def on_goto(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Goto"
             self.queue_draw()
@@ -433,7 +433,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring = ""
             App().window.statusbar.push(App().window.context_id, "")
 
-    def on_channel(self, widget):
+    def on_channel(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Ch"
             self.queue_draw()
@@ -442,7 +442,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_c
             App().window.on_key_press_event(None, event)
 
-    def on_thru(self, widget):
+    def on_thru(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Thru"
             self.queue_draw()
@@ -451,7 +451,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_greater
             App().window.on_key_press_event(None, event)
 
-    def on_plus(self, widget):
+    def on_plus(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Plus"
             self.queue_draw()
@@ -460,7 +460,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_plus
             App().window.on_key_press_event(None, event)
 
-    def on_minus(self, widget):
+    def on_minus(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Minus"
             self.queue_draw()
@@ -469,7 +469,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_minus
             App().window.on_key_press_event(None, event)
 
-    def on_all(self, widget):
+    def on_all(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "All"
             self.queue_draw()
@@ -478,7 +478,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_a
             App().window.on_key_press_event(None, event)
 
-    def on_at(self, widget):
+    def on_at(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "At"
             self.queue_draw()
@@ -487,7 +487,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_equal
             App().window.on_key_press_event(None, event)
 
-    def on_percent_plus(self, widget):
+    def on_percent_plus(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "PercentPlus"
             self.queue_draw()
@@ -496,7 +496,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_exclam
             App().window.on_key_press_event(None, event)
 
-    def on_percent_minus(self, widget):
+    def on_percent_minus(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "PercentMinus"
             self.queue_draw()
@@ -505,7 +505,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_colon
             App().window.on_key_press_event(None, event)
 
-    def on_update(self, widget):
+    def on_update(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Update"
             self.queue_draw()
@@ -514,7 +514,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_U
             App().window.on_key_press_event(None, event)
 
-    def on_record(self, widget):
+    def on_record(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Record"
             self.queue_draw()
@@ -523,7 +523,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_R
             App().window.on_key_press_event(None, event)
 
-    def on_right(self, widget):
+    def on_right(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Right"
             self.queue_draw()
@@ -532,7 +532,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_Right
             App().window.on_key_press_event(None, event)
 
-    def on_left(self, widget):
+    def on_left(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Left"
             self.queue_draw()
@@ -541,7 +541,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_Left
             App().window.on_key_press_event(None, event)
 
-    def on_up(self, widget):
+    def on_up(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Up"
             self.queue_draw()
@@ -550,7 +550,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_Up
             App().window.on_key_press_event(None, event)
 
-    def on_down(self, widget):
+    def on_down(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Down"
             self.queue_draw()
@@ -559,7 +559,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_Down
             App().window.on_key_press_event(None, event)
 
-    def on_clear(self, widget):
+    def on_clear(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Clear"
             self.queue_draw()
@@ -568,7 +568,7 @@ class VirtualConsoleWindow(Gtk.Window):
             event.keyval = Gdk.KEY_BackSpace
             App().window.on_key_press_event(None, event)
 
-    def on_zero(self, widget):
+    def on_zero(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Zero"
             self.queue_draw()
@@ -576,7 +576,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "0"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_1(self, widget):
+    def on_1(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "1"
             self.queue_draw()
@@ -584,7 +584,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "1"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_2(self, widget):
+    def on_2(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "2"
             self.queue_draw()
@@ -592,7 +592,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "2"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_3(self, widget):
+    def on_3(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "3"
             self.queue_draw()
@@ -600,7 +600,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "3"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_4(self, widget):
+    def on_4(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "4"
             self.queue_draw()
@@ -608,7 +608,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "4"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_5(self, widget):
+    def on_5(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "5"
             self.queue_draw()
@@ -616,7 +616,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "5"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_6(self, widget):
+    def on_6(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "6"
             self.queue_draw()
@@ -624,7 +624,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "6"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_7(self, widget):
+    def on_7(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "7"
             self.queue_draw()
@@ -632,7 +632,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "7"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_8(self, widget):
+    def on_8(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "8"
             self.queue_draw()
@@ -640,7 +640,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "8"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_9(self, widget):
+    def on_9(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "9"
             self.queue_draw()
@@ -648,7 +648,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "9"
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def on_dot(self, widget):
+    def on_dot(self, _widget):
         if self.midi_learn:
             App().midi.midi_learn = "Dot"
             self.queue_draw()
@@ -656,7 +656,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.keystring += "."
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
-    def flash_on(self, widget, event):
+    def flash_on(self, widget, _event):
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
@@ -666,7 +666,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     App().masters[i].value = 255
                     App().masters[i].level_changed()
 
-    def flash_off(self, widget, event):
+    def flash_off(self, widget, _event):
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:

@@ -55,12 +55,12 @@ class PatchOutputsTab(Gtk.Grid):
         self.attach(self.header, 0, 0, 1, 1)
         self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
-    def filter_func(self, child, user_data):
+    def filter_func(self, child, _user_data):
         if child.get_children()[0].type == "Output":
             return child
         return False
 
-    def on_scroll(self, widget, event):
+    def on_scroll(self, _widget, event):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if (
             event.state & accel_mask
@@ -102,13 +102,13 @@ class PatchOutputsTab(Gtk.Grid):
                     App().window.channels[channel].queue_draw()
             App().window.flowbox.invalidate_filter()
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
         page = App().window.notebook.page_num(App().patch_outputs_tab)
         App().window.notebook.remove_page(page)
         App().patch_outputs_tab = None
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, _widget, event):
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 

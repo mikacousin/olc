@@ -29,11 +29,11 @@ class ButtonWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
 
-    def on_press(self, tgt, ev):
+    def on_press(self, _tgt, _ev):
         self.pressed = True
         self.queue_draw()
 
-    def on_release(self, tgt, ev):
+    def on_release(self, _tgt, _ev):
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")

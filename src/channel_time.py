@@ -109,7 +109,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.treeview.set_cursor(path)
         App().window.set_focus(self.treeview)
 
-    def delay_edited(self, widget, path, text):
+    def delay_edited(self, _widget, path, text):
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
@@ -192,7 +192,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def time_edited(self, widget, path, text):
+    def time_edited(self, _widget, path, text):
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
@@ -275,7 +275,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def filter_channels(self, child, user_data):
+    def filter_channels(self, child, _user_data):
         """ Filter Channels """
 
         # Find selected Channel Time
@@ -306,14 +306,14 @@ class ChanneltimeTab(Gtk.Paned):
         self.channels[i].next_level = 0
         return False
 
-    def on_channeltime_changed(self, treeview):
+    def on_channeltime_changed(self, _treeview):
         """ Select a Channel Time """
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             # self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
-    def on_close_icon(self, widget):
+    def on_close_icon(self, _widget):
         """ Close Tab with the icon clicked """
         # If channel times has no delay and no time, delete it
         keys = list(self.step.channel_time.keys())
@@ -327,7 +327,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.notebook.remove_page(page)
         App().channeltime_tab = None
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, _widget, event):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):

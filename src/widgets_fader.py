@@ -24,14 +24,14 @@ class FaderWidget(Gtk.Scale):
         self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.connect("button-release-event", self.on_release)
 
-    def on_press(self, tgt, ev):
+    def on_press(self, _tgt, _ev):
         self.pressed = True
         self.queue_draw()
 
         if self in (App().virtual_console.scale_a, App().virtual_console.scale_b):
             App().crossfade.manual = True
 
-    def on_release(self, tgt, ev):
+    def on_release(self, _tgt, _ev):
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
