@@ -1,8 +1,8 @@
-import math
 import cairo
 from gi.repository import Gtk, Gdk
 
 from olc.define import App
+from olc.widgets import rounded_rectangle_fill
 
 
 class GroupWidget(Gtk.Widget):
@@ -44,7 +44,7 @@ class GroupWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         area = (0, allocation.width, 0, allocation.height)
-        self.draw_rounded_rectangle(cr, area, 10)
+        rounded_rectangle_fill(cr, area, 10)
 
         # draw group number
         cr.set_source_rgb(0.5, 0.5, 0.9)
@@ -66,15 +66,6 @@ class GroupWidget(Gtk.Widget):
             cr.show_text(self.name[10:])
         else:
             cr.show_text(self.name)
-
-    def draw_rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()

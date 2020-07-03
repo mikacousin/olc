@@ -1,3 +1,5 @@
+"""Some defines for olc project."""
+
 from gi.repository import Gio
 
 NB_UNIVERSES = 4

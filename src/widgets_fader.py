@@ -1,7 +1,7 @@
-import math
 from gi.repository import Gtk, Gdk, GObject
 
 from olc.define import App
+from olc.widgets import rounded_rectangle_fill, rounded_rectangle
 
 
 class FaderWidget(Gtk.Scale):
@@ -53,9 +53,9 @@ class FaderWidget(Gtk.Scale):
         # Draw vertical box
         cr.set_source_rgb(self.red, self.green, self.blue)
         area = ((width / 2) - 3, (width / 2) + 3, layout_h + 10, height - 10)
-        self.rounded_rectangle_fill(cr, area, radius / 2)
+        rounded_rectangle_fill(cr, area, radius / 2)
         cr.set_source_rgb(0.1, 0.1, 0.1)
-        self.rounded_rectangle(cr, area, radius / 2)
+        rounded_rectangle(cr, area, radius / 2)
 
         value = self.get_value()
 
@@ -82,24 +82,6 @@ class FaderWidget(Gtk.Scale):
                 cr.set_source_rgb(0.1, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.2, 0.2, 0.2)
-        self.rounded_rectangle_fill(cr, area, radius)
+        rounded_rectangle_fill(cr, area, radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
-        self.rounded_rectangle(cr, area, radius)
-
-    def rounded_rectangle_fill(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()
-
-    def rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.stroke()
+        rounded_rectangle(cr, area, radius)

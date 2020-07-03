@@ -1,8 +1,8 @@
-import math
 import cairo
 from gi.repository import Gtk, Gdk
 
 from olc.define import App
+from olc.widgets import rounded_rectangle_fill
 
 
 class PatchWidget(Gtk.Widget):
@@ -49,19 +49,19 @@ class PatchWidget(Gtk.Widget):
                 cr.set_source_rgb(0.8, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.1, 0.1)
-            self.draw_rounded_rectangle(cr, area, 10)
+            rounded_rectangle_fill(cr, area, 10)
 
         elif self.patch.outputs[self.universe][self.output - 1][0] != 0:
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
-            self.draw_rounded_rectangle(cr, area, 10)
+            rounded_rectangle_fill(cr, area, 10)
 
         else:
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
-                self.draw_rounded_rectangle(cr, area, 10)
+                rounded_rectangle_fill(cr, area, 10)
 
         # draw output number
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -148,12 +148,3 @@ class PatchWidget(Gtk.Widget):
 
         self.set_realized(True)
         window.set_background_pattern(None)
-
-    def draw_rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()

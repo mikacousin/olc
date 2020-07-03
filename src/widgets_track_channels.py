@@ -1,8 +1,8 @@
-import math
 import cairo
 from gi.repository import Gtk, Gdk
 
 from olc.define import App
+from olc.widgets import rounded_rectangle_fill
 
 
 class TrackChannelsHeader(Gtk.Widget):
@@ -23,7 +23,7 @@ class TrackChannelsHeader(Gtk.Widget):
         # Draw Step box
         area = (0, 60, 0, 60)
         cr.set_source_rgb(0.2, 0.3, 0.2)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Step text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -37,7 +37,7 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
         cr.set_source_rgb(0.2, 0.3, 0.2)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Memory text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -51,7 +51,7 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.move_to(130, 0)
         area = (130, 530, 0, 60)
         cr.set_source_rgb(0.2, 0.3, 0.2)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -66,7 +66,7 @@ class TrackChannelsHeader(Gtk.Widget):
             cr.move_to(535 + (i * 65), 0)
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
             cr.set_source_rgb(0.2, 0.3, 0.2)
-            self.draw_rounded_rectangle(cr, area, self.radius)
+            rounded_rectangle_fill(cr, area, self.radius)
 
             # Draw Channel number
             cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -75,15 +75,6 @@ class TrackChannelsHeader(Gtk.Widget):
             (x, y, w, h, dx, dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
             cr.show_text(str(channel + 1))
-
-    def draw_rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()
@@ -150,7 +141,7 @@ class TrackChannelsWidget(Gtk.Widget):
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.2, 0.2, 0.2)
             area = (0, 800, 0, 60)
-            self.draw_rounded_rectangle(cr, area, self.radius)
+            rounded_rectangle_fill(cr, area, self.radius)
         """
 
         # Draw Step box
@@ -159,7 +150,7 @@ class TrackChannelsWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Step number
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -176,7 +167,7 @@ class TrackChannelsWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Memory number
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -193,7 +184,7 @@ class TrackChannelsWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -214,7 +205,7 @@ class TrackChannelsWidget(Gtk.Widget):
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
-            self.draw_rounded_rectangle(cr, area, self.radius)
+            rounded_rectangle_fill(cr, area, self.radius)
 
             # Draw Level number
             if lvl:
@@ -230,15 +221,6 @@ class TrackChannelsWidget(Gtk.Widget):
                 (x, y, w, h, dx, dy) = cr.text_extents(level)
                 cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
                 cr.show_text(level)
-
-    def draw_rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()

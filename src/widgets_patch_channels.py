@@ -3,6 +3,7 @@ import cairo
 from gi.repository import Gtk, Gdk
 
 from olc.define import App
+from olc.widgets import rounded_rectangle_fill
 
 
 class PatchChannelHeader(Gtk.Widget):
@@ -24,7 +25,7 @@ class PatchChannelHeader(Gtk.Widget):
         # Draw channel box
         area = (0, 60, 0, 60)
         cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Channel text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -38,7 +39,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.move_to(65, 0)
         area = (65, 600, 0, 60)
         cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Outputs text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -52,7 +53,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.move_to(605, 0)
         area = (605, 800, 0, 60)
         cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw text text
         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -61,15 +62,6 @@ class PatchChannelHeader(Gtk.Widget):
         (x, y, w, h, dx, dy) = cr.text_extents("Text")
         cr.move_to(605 + (200 / 2) - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text("Text")
-
-    def draw_rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()
@@ -127,7 +119,7 @@ class PatchChannelWidget(Gtk.Widget):
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.2, 0.2, 0.2)
             area = (0, 800, 0, 60)
-            self.draw_rounded_rectangle(cr, area, self.radius)
+            rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw channel box
         area = (0, 60, 0, 60)
@@ -135,7 +127,7 @@ class PatchChannelWidget(Gtk.Widget):
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
-        self.draw_rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -194,7 +186,7 @@ class PatchChannelWidget(Gtk.Widget):
                     else:
                         cr.set_source_rgb(0.3, 0.4, 0.3)
                     cr.move_to(65 + (i * 65), 0)
-                    self.draw_rounded_rectangle(cr, area, self.radius)
+                    rounded_rectangle_fill(cr, area, self.radius)
 
                     # Draw Output number
                     cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -224,7 +216,7 @@ class PatchChannelWidget(Gtk.Widget):
                         else:
                             cr.set_source_rgb(0.3, 0.4, 0.3)
                         cr.move_to(65 + (i * 35), 0)
-                        self.draw_rounded_rectangle(cr, area, self.radius / 2)
+                        rounded_rectangle_fill(cr, area, self.radius / 2)
 
                         # Draw Output number
                         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -248,7 +240,7 @@ class PatchChannelWidget(Gtk.Widget):
                         else:
                             cr.set_source_rgb(0.3, 0.4, 0.3)
                         cr.move_to(65 + (j * 35), 30)
-                        self.draw_rounded_rectangle(cr, area, self.radius / 2)
+                        rounded_rectangle_fill(cr, area, self.radius / 2)
 
                         # Draw Output number
                         cr.set_source_rgb(0.9, 0.9, 0.9)
@@ -274,15 +266,6 @@ class PatchChannelWidget(Gtk.Widget):
                                 (30 / 2 - (h - 20) / 2) + 30,
                             )
                             cr.show_text(str(output) + "." + str(univ))
-
-    def draw_rounded_rectangle(self, cr, area, radius):
-        a, b, c, d = area
-        cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
-        cr.arc(b - radius, c + radius, radius, 3 * (math.pi / 2), 4 * (math.pi / 2))
-        cr.arc(b - radius, d - radius, radius, 0 * (math.pi / 2), 1 * (math.pi / 2))
-        cr.arc(a + radius, d - radius, radius, 1 * (math.pi / 2), 2 * (math.pi / 2))
-        cr.close_path()
-        cr.fill()
 
     def do_realize(self):
         allocation = self.get_allocation()

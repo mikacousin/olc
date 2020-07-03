@@ -22,6 +22,7 @@ app_PYTHON = \
 	step.py \
 	track_channels.py \
 	virtual_console.py \
+	widgets.py \
 	widgets_button.py \
 	widgets_channel.py \
 	widgets_fader.py \
