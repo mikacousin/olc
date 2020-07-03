@@ -1,8 +1,8 @@
 import math
-from gi.repository import Gtk, Gdk, Gio
+from gi.repository import Gtk, Gdk
 import cairo
 
-# from olc.settings import Settings
+from olc.define import App
 
 
 class SequentialWidget(Gtk.Widget):
@@ -192,10 +192,9 @@ class SequentialWidget(Gtk.Widget):
             cr.stroke()
             cr.set_dash([])
             # draw Time Cursor
-            app = Gio.Application.get_default()
-            position = app.sequence.position
-            old_level = app.sequence.steps[position].cue.channels[channel - 1]
-            next_level = app.sequence.steps[position + 1].cue.channels[channel - 1]
+            position = App().sequence.position
+            old_level = App().sequence.steps[position].cue.channels[channel - 1]
+            next_level = App().sequence.steps[position + 1].cue.channels[channel - 1]
             # Time Cursor follow In or Out Crossfade
             if next_level < old_level:
                 # Out Crossfade

@@ -827,8 +827,8 @@ class Window(Gtk.ApplicationWindow):
     def keypress_exclam(self):
         """ Level + (% level) of selected channels """
 
-        lvl = Gio.Application.get_default().settings.get_int("percent-level")
-        percent = Gio.Application.get_default().settings.get_boolean("percent")
+        lvl = App().settings.get_int("percent-level")
+        percent = App().settings.get_boolean("percent")
         if percent:
             lvl = round((lvl / 100) * 255)
 
@@ -851,8 +851,8 @@ class Window(Gtk.ApplicationWindow):
     def keypress_colon(self):
         """ Level - (% level) of selected channels """
 
-        lvl = Gio.Application.get_default().settings.get_int("percent-level")
-        percent = Gio.Application.get_default().settings.get_boolean("percent")
+        lvl = App().settings.get_int("percent-level")
+        percent = App().settings.get_boolean("percent")
         if percent:
             lvl = round((lvl / 100) * 255)
 
