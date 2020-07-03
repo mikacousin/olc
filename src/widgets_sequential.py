@@ -28,15 +28,15 @@ class SequentialWidget(Gtk.Widget):
 
     def do_draw(self, cr):
         if self.time_in + self.delay_in > self.time_out + self.delay_out:
-            self.time_max = self.time_in + self.delay_in
-            self.time_min = self.time_out + self.delay_out
+            time_max = self.time_in + self.delay_in
+            time_min = self.time_out + self.delay_out
         else:
-            self.time_max = self.time_out + self.delay_out
-            self.time_min = self.time_in + self.delay_in
+            time_max = self.time_out + self.delay_out
+            time_min = self.time_in + self.delay_in
 
         # Add Wait Time
-        self.time_max = self.time_max + self.wait
-        self.time_min = self.time_min + self.wait
+        time_max = time_max + self.wait
+        time_min = time_min + self.wait
 
         # paint background
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
@@ -63,7 +63,7 @@ class SequentialWidget(Gtk.Widget):
         cr.line_to(allocation.width - 16, 18)
         cr.move_to(16, 24)
         cr.line_to(16, 18)
-        # inter = (allocation.width-32)/self.time_max
+        # inter = (allocation.width-32)/time_max
         inter = (allocation.width - 32) / self.total_time
         for i in range(int(self.total_time - 1)):
             cr.move_to(16 + (inter * (i + 1)), 24)
@@ -154,7 +154,7 @@ class SequentialWidget(Gtk.Widget):
                 cr.show_text(str(self.delay_in + self.wait))
 
         # Draw Channel Time if any
-        self.ct_nb = 0
+        ct_nb = 0
 
         # Change height to draw channel time
         self.set_size_request(800, 300 + (len(self.channel_time) * 8))
@@ -163,10 +163,8 @@ class SequentialWidget(Gtk.Widget):
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
             # draw Channel number
-            cr.move_to(
-                (inter * delay) + wait_x, allocation.height - 4 - (self.ct_nb * 12)
-            )
-            # cr.move_to((inter*delay)+wait_x,allocation.height-28-(self.ct_nb*12))
+            cr.move_to((inter * delay) + wait_x, allocation.height - 4 - (ct_nb * 12))
+            # cr.move_to((inter*delay)+wait_x,allocation.height-28-(ct_nb*12))
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
@@ -175,11 +173,11 @@ class SequentialWidget(Gtk.Widget):
             cr.set_source_rgb(0.5, 0.5, 0.5)
             cr.set_line_width(1)
             cr.move_to(
-                16 + (inter * delay) + wait_x, allocation.height - 8 - (self.ct_nb * 12)
+                16 + (inter * delay) + wait_x, allocation.height - 8 - (ct_nb * 12)
             )
             cr.line_to(
                 16 + (inter * delay) + (inter * time) + wait_x,
-                allocation.height - 8 - (self.ct_nb * 12),
+                allocation.height - 8 - (ct_nb * 12),
             )
             cr.stroke()
             cr.set_dash([8.0, 6.0])
@@ -200,60 +198,54 @@ class SequentialWidget(Gtk.Widget):
                 # Out Crossfade
                 if self.position_a > inter * delay + wait_x:
                     if self.position_a > (inter * delay) + (inter * time) + wait_x:
-                        self.position_channeltime = (
-                            (inter * delay) + (inter * time) + wait_x
-                        )
+                        position_channeltime = (inter * delay) + (inter * time) + wait_x
                     else:
-                        self.position_channeltime = self.position_a
+                        position_channeltime = self.position_a
                     cr.set_source_rgb(0.9, 0.6, 0.2)
                     cr.move_to(
-                        16 + self.position_channeltime,
-                        allocation.height - 12 - (self.ct_nb * 12),
+                        16 + position_channeltime,
+                        allocation.height - 12 - (ct_nb * 12),
                     )
                     cr.line_to(
-                        16 + self.position_channeltime,
-                        allocation.height - 4 - (self.ct_nb * 12),
+                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12),
                     )
                     cr.stroke()
                 else:
                     cr.set_source_rgb(0.9, 0.6, 0.2)
                     cr.move_to(
                         16 + (inter * delay) + wait_x,
-                        allocation.height - 12 - (self.ct_nb * 12),
+                        allocation.height - 12 - (ct_nb * 12),
                     )
                     cr.line_to(
                         16 + (inter * delay) + wait_x,
-                        allocation.height - 4 - (self.ct_nb * 12),
+                        allocation.height - 4 - (ct_nb * 12),
                     )
                     cr.stroke()
             else:
                 # In Crossfade
                 if self.position_b > inter * delay + wait_x:
                     if self.position_b > (inter * delay) + (inter * time) + wait_x:
-                        self.position_channeltime = (
-                            (inter * delay) + (inter * time) + wait_x
-                        )
+                        position_channeltime = (inter * delay) + (inter * time) + wait_x
                     else:
-                        self.position_channeltime = self.position_b
+                        position_channeltime = self.position_b
                     cr.set_source_rgb(0.9, 0.6, 0.2)
                     cr.move_to(
-                        16 + self.position_channeltime,
-                        allocation.height - 12 - (self.ct_nb * 12),
+                        16 + position_channeltime,
+                        allocation.height - 12 - (ct_nb * 12),
                     )
                     cr.line_to(
-                        16 + self.position_channeltime,
-                        allocation.height - 4 - (self.ct_nb * 12),
+                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12),
                     )
                     cr.stroke()
                 else:
                     cr.set_source_rgb(0.9, 0.6, 0.2)
                     cr.move_to(
                         16 + (inter * delay) + wait_x,
-                        allocation.height - 12 - (self.ct_nb * 12),
+                        allocation.height - 12 - (ct_nb * 12),
                     )
                     cr.line_to(
                         16 + (inter * delay) + wait_x,
-                        allocation.height - 4 - (self.ct_nb * 12),
+                        allocation.height - 4 - (ct_nb * 12),
                     )
                     cr.stroke()
             # draw time number
@@ -276,7 +268,7 @@ class SequentialWidget(Gtk.Widget):
                     cr.show_text(str(int(t)))
                 else:
                     cr.show_text(str(t))
-            self.ct_nb += 1
+            ct_nb += 1
 
         # draw Out line
         cr.set_source_rgb(0.5, 0.5, 0.9)
@@ -424,22 +416,22 @@ class SequentialWidget(Gtk.Widget):
         cr.move_to(allocation.width - 24, 16)
         # Draw Total Time at the end :
         # If time is integer don't show the ".0"
-        if self.time_max.is_integer():
+        if time_max.is_integer():
             cr.show_text(str(int(self.total_time)))
         else:
             cr.show_text(str(self.total_time))
-        if self.time_max != self.total_time:
-            cr.move_to(12 + (inter * self.time_max), 16)
-            if self.time_max.is_integer():
-                cr.show_text(str(int(self.time_max)))
+        if time_max != self.total_time:
+            cr.move_to(12 + (inter * time_max), 16)
+            if time_max.is_integer():
+                cr.show_text(str(int(time_max)))
             else:
-                cr.show_text(str(self.time_max))
-        if self.time_min != self.time_max:
-            cr.move_to(12 + (inter * self.time_min), 16)
-            if self.time_min.is_integer():
-                cr.show_text(str(int(self.time_min)))
+                cr.show_text(str(time_max))
+        if time_min != time_max:
+            cr.move_to(12 + (inter * time_min), 16)
+            if time_min.is_integer():
+                cr.show_text(str(int(time_min)))
             else:
-                cr.show_text(str(self.time_min))
+                cr.show_text(str(time_min))
 
     def do_realize(self):
         allocation = self.get_allocation()
