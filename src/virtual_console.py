@@ -112,9 +112,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.output_pad = Gtk.Grid()
         # self.output_pad.set_column_homogeneous(True)
         # self.output_pad.set_row_homogeneous(True)
-        ad = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
         self.scaleGM = FaderWidget(
-            text="GM", orientation=Gtk.Orientation.VERTICAL, adjustment=ad
+            text="GM", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
         )
         self.scaleGM.value = 255
         # self.scaleGM.height = 160
@@ -298,12 +298,12 @@ class VirtualConsoleWindow(Gtk.Window):
         self.flashes = []
         for page in range(2):
             for i in range(20):
-                ad = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+                adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
                 self.masters.append(
                     FaderWidget(
                         text="Master " + str(i + (page * 20) + 1),
                         orientation=Gtk.Orientation.VERTICAL,
-                        adjustment=ad,
+                        adjustment=adjustment,
                     )
                 )
                 self.masters[i + (page * 20)].set_vexpand(True)

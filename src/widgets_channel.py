@@ -61,10 +61,10 @@ class ChannelWidget(Gtk.Widget):
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
         # draw background
-        bg = Gdk.RGBA()
+        background = Gdk.RGBA()
         # TODO: Get background color
-        bg.parse("#33393B")
-        cr.set_source_rgba(*list(bg))
+        background.parse("#33393B")
+        cr.set_source_rgba(*list(background))
         # cr.rectangle(4, 4, allocation.width-8, 72)
         cr.rectangle(4, 4, allocation.width - 8, allocation.height - 8)
         cr.fill()
