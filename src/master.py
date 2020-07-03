@@ -129,13 +129,13 @@ class Master:
 
         # Master type is Chaser
         elif self.content_type == 3:
-            nb = self.content_value
+            number = self.content_value
             for chsr in self.chasers:
-                if chsr.index == nb:
+                if chsr.index == number:
 
                     # On cherche le chaser
                     for k, chaser in enumerate(App().chasers):
-                        if chaser.index == nb:
+                        if chaser.index == number:
 
                             # Si il ne tournait pas et master > 0
                             if self.value and chaser.run is False:

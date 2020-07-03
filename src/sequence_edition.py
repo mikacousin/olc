@@ -1369,7 +1369,7 @@ class SequenceTab(Gtk.Grid):
 
                 # Update Main Playback
 
-                bg = "#232729"
+                background = "#232729"
 
                 if self.seq.steps[index].wait.is_integer():
                     wait = str(int(self.seq.steps[index].wait))
@@ -1413,7 +1413,7 @@ class SequenceTab(Gtk.Grid):
                         d_in,
                         t_in,
                         channel_time,
-                        bg,
+                        background,
                         Pango.Weight.NORMAL,
                         42,
                     ],

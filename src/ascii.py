@@ -65,7 +65,7 @@ class Ascii:
             flag_preset = False
 
             type_seq = "Normal"
-            Playback = False
+            playback = False
             txt = False
             t_in = False
             t_out = False
@@ -111,8 +111,8 @@ class Ascii:
 
                 if line[:9].upper() == "$SEQUENCE":
                     p = line[10:].split(" ")
-                    if int(p[0]) < 2 and not Playback:
-                        Playback = True
+                    if int(p[0]) < 2 and not playback:
+                        playback = True
                         type_seq = "Normal"
                     else:
                         type_seq = "Chaser"
@@ -577,11 +577,11 @@ class Ascii:
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
-                    bg = "#997004"
+                    background = "#997004"
                 elif i == 1:
-                    bg = "#555555"
+                    background = "#555555"
                 else:
-                    bg = "#232729"
+                    background = "#232729"
                 # Actual and Next Cue in Bold
                 if i in (0, 1):
                     weight = Pango.Weight.HEAVY
@@ -599,7 +599,7 @@ class Ascii:
                             "",
                             "",
                             "",
-                            bg,
+                            background,
                             Pango.Weight.NORMAL,
                             99,
                         ]
@@ -619,7 +619,7 @@ class Ascii:
                             d_in,
                             str(t_in),
                             channel_time,
-                            bg,
+                            background,
                             weight,
                             99,
                         ]

@@ -513,11 +513,11 @@ class CuesEditionTab(Gtk.Paned):
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
-                    bg = "#997004"
+                    background = "#997004"
                 elif i == 1:
-                    bg = "#555555"
+                    background = "#555555"
                 else:
-                    bg = "#232729"
+                    background = "#232729"
                 # Actual and Next Cue in Bold
                 if i in (0, 1):
                     weight = Pango.Weight.HEAVY
@@ -535,7 +535,7 @@ class CuesEditionTab(Gtk.Paned):
                             "",
                             "",
                             "",
-                            bg,
+                            background,
                             Pango.Weight.NORMAL,
                             99,
                         ]
@@ -555,7 +555,7 @@ class CuesEditionTab(Gtk.Paned):
                             d_in,
                             str(t_in),
                             channel_time,
-                            bg,
+                            background,
                             weight,
                             99,
                         ]

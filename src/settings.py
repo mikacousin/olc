@@ -107,15 +107,15 @@ class SettingsDialog:
             App().memories_tab.flowbox.invalidate_filter()
 
     def _on_btn_clicked(self, button):
-        ip = self.entry_client_ip.get_text()
+        address_ip = self.entry_client_ip.get_text()
         client_port = self.spin_client_port.get_value_as_int()
         server_port = self.spin_server_port.get_value_as_int()
 
         print("Relancer OSC :")
-        print("Client IP :", ip, "Port :", client_port)
+        print("Client IP :", address_ip, "Port :", client_port)
         print("Server Port :", server_port)
 
-        App().settings.set_value("osc-host", GLib.Variant("s", ip))
+        App().settings.set_value("osc-host", GLib.Variant("s", address_ip))
         App().settings.set_value("osc-client-port", GLib.Variant("i", client_port))
         App().settings.set_value("osc-server-port", GLib.Variant("i", server_port))
 
