@@ -65,11 +65,11 @@ class FlashWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(self.font_size)
         # First line
-        (x, y, w, h, dx, dy) = cr.text_extents(self.label[:6])
+        (_x, _y, w, _h, _dx, _dy) = cr.text_extents(self.label[:6])
         cr.move_to(self.width / 2 - w / 2, self.height / 3)
         cr.show_text(self.label[:6])
         # Second line
-        (x, y, w, h, dx, dy) = cr.text_extents(self.label[6:12])
+        (_x, _y, w, _h, _dx, _dy) = cr.text_extents(self.label[6:12])
         cr.move_to(self.width / 2 - w / 2, (self.height / 3) * 2)
         cr.show_text(self.label[6:12])
 

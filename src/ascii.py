@@ -45,7 +45,7 @@ class Ascii:
         self.basename = self.file.get_basename()
         self.default_time = App().settings.get_double("default-time")
         try:
-            status, contents, etag_out = self.file.load_contents(None)
+            status, contents, _etag_out = self.file.load_contents(None)
 
             if not status:
                 print("Error")

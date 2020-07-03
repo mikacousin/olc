@@ -119,7 +119,7 @@ class ChanneltimeTab(Gtk.Paned):
                 self.liststore[path][1] = text
 
         # Find selected Channel Time
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             selected = path.get_indices()[0]
             channel = self.liststore[selected][0]
@@ -149,7 +149,7 @@ class ChanneltimeTab(Gtk.Paned):
             # Update Sequence Tab if Open on the good sequence
             if App().sequences_tab:
                 # Start to find the selected sequence
-                seq_path, focus_column = App().sequences_tab.treeview1.get_cursor()
+                seq_path, _focus_column = App().sequences_tab.treeview1.get_cursor()
                 selected = seq_path.get_indices()
                 sequence = App().sequences_tab.liststore1[selected][0]
                 # If the same sequence is selected
@@ -202,7 +202,7 @@ class ChanneltimeTab(Gtk.Paned):
                 self.liststore[path][2] = text
 
         # Find selected Channel Time
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             selected = path.get_indices()[0]
             channel = self.liststore[selected][0]
@@ -232,7 +232,7 @@ class ChanneltimeTab(Gtk.Paned):
             # Update Sequence Tab if Open on the good sequence
             if App().sequences_tab:
                 # Start to find the selected sequence
-                seq_path, focus_column = App().sequences_tab.treeview1.get_cursor()
+                seq_path, _focus_column = App().sequences_tab.treeview1.get_cursor()
                 selected = seq_path.get_indices()
                 sequence = App().sequences_tab.liststore1[selected][0]
                 # If the same sequence is selected
@@ -279,7 +279,7 @@ class ChanneltimeTab(Gtk.Paned):
         """ Filter Channels """
 
         # Find selected Channel Time
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             selected = path.get_indices()[0]
             channel = self.liststore[selected][0]
@@ -406,7 +406,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.flowbox.unselect_all()
 
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             if path.prev():
                 self.treeview.set_cursor(path)
@@ -421,7 +421,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.flowbox.unselect_all()
 
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             path.next()
             self.treeview.set_cursor(path)

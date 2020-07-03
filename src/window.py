@@ -1155,7 +1155,7 @@ class Window(Gtk.ApplicationWindow):
         # Update Sequential edition Tabs
         if App().sequences_tab:
             # Main Playback selected ?
-            path, focus_column = App().sequences_tab.treeview1.get_cursor()
+            path, _focus_column = App().sequences_tab.treeview1.get_cursor()
             if path:
                 selected = path.get_indices()[0]
                 sequence = App().sequences_tab.liststore1[selected][0]

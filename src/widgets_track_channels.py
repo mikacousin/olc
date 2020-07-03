@@ -29,7 +29,7 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str("Step"))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str("Step"))
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(str("Step"))
 
@@ -43,7 +43,7 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str("Memory"))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str("Memory"))
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
         cr.show_text(str("Memory"))
 
@@ -57,7 +57,7 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str("Text"))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str("Text"))
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
         cr.show_text(str("Text"))
 
@@ -72,7 +72,7 @@ class TrackChannelsHeader(Gtk.Widget):
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
-            (x, y, w, h, dx, dy) = cr.text_extents(str(channel + 1))
+            (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
             cr.show_text(str(channel + 1))
 
@@ -156,7 +156,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str(self.step))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.step))
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.step))
 
@@ -173,7 +173,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str(self.memory))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.memory))
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.memory))
 
@@ -190,7 +190,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(self.text)
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.text)
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
         cr.show_text(self.text)
 
@@ -218,7 +218,7 @@ class TrackChannelsWidget(Gtk.Widget):
                     "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                 )
                 cr.set_font_size(12)
-                (x, y, w, h, dx, dy) = cr.text_extents(level)
+                (_x, _y, w, h, _dx, _dy) = cr.text_extents(level)
                 cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
                 cr.show_text(level)
 

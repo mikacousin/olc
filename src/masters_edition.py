@@ -149,7 +149,7 @@ class MastersTab(Gtk.Paned):
     def filter_channel_func(self, child, user_data):
         """ Filter channels """
         # Find selected row
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             # Index of Channel
@@ -399,7 +399,7 @@ class MastersTab(Gtk.Paned):
         """ Channel """
 
         # Find Selected Master
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -443,7 +443,7 @@ class MastersTab(Gtk.Paned):
         """ Channel Thru """
 
         # Find Selected Master
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -491,7 +491,7 @@ class MastersTab(Gtk.Paned):
         """ Channel + """
 
         # Find Selected Master
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -529,7 +529,7 @@ class MastersTab(Gtk.Paned):
         """ Channel - """
 
         # Find Selected Master
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -567,7 +567,7 @@ class MastersTab(Gtk.Paned):
         """ All Channels """
 
         # Find Selected Master
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -719,7 +719,7 @@ class MastersTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         # Find selected Master
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 

@@ -81,7 +81,7 @@ class CuesEditionTab(Gtk.Paned):
         if not App().memories:
             return False
         # Find selected row
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             # Index of Channel
@@ -302,7 +302,7 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         # Find selected memory
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -415,7 +415,7 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         # Find selected memory
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -446,7 +446,7 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         # Find selected memory
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -620,7 +620,7 @@ class CuesEditionTab(Gtk.Paned):
         for i, _ in enumerate(App().memories):
             if App().memories[i].memory == mem:
                 # Find selected memory
-                path, focus_column = self.treeview.get_cursor()
+                path, _focus_column = self.treeview.get_cursor()
                 if path:
                     row = path.get_indices()[0]
                     # Copy channels
@@ -644,7 +644,7 @@ class CuesEditionTab(Gtk.Paned):
                 return True
 
         # Find selected memory
-        path, focus_column = self.treeview.get_cursor()
+        path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -707,7 +707,7 @@ class CuesEditionTab(Gtk.Paned):
                 i += 1
 
             # Find selected memory for channels levels
-            path, focus_column = self.treeview.get_cursor()
+            path, _focus_column = self.treeview.get_cursor()
             if path:
                 row = path.get_indices()[0]
                 channels = App().memories[row].channels
@@ -740,7 +740,7 @@ class CuesEditionTab(Gtk.Paned):
                     return False
 
             # Find selected memory
-            path, focus_column = self.treeview.get_cursor()
+            path, _focus_column = self.treeview.get_cursor()
             if path:
                 row = path.get_indices()[0]
 

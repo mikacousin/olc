@@ -55,7 +55,7 @@ class GoWidget(Gtk.Widget):
         cr.set_source_rgb(0.8, 0.8, 0.8)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
-        (x, y, w, h, dx, dy) = cr.text_extents("Go")
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Go")
         cr.move_to(
             self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
         )

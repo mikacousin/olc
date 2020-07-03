@@ -31,7 +31,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(self.channel)
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.channel)
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(self.channel)
 
@@ -45,7 +45,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(self.outputs)
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.outputs)
         cr.move_to(((65 + 600) / 2) - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(self.outputs)
 
@@ -59,7 +59,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents("Text")
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Text")
         cr.move_to(605 + (200 / 2) - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text("Text")
 
@@ -133,7 +133,7 @@ class PatchChannelWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (x, y, w, h, dx, dy) = cr.text_extents(str(self.channel))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.channel))
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.channel))
 
@@ -194,7 +194,7 @@ class PatchChannelWidget(Gtk.Widget):
                         "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                     )
                     cr.set_font_size(12)
-                    (x, y, w, h, dx, dy) = cr.text_extents(
+                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(
                         str(output) + "." + str(univ)
                     )
                     cr.move_to(65 + (i * 65) + (60 / 2) - w / 2, 60 / 2 - (h - 20) / 2)
@@ -224,7 +224,7 @@ class PatchChannelWidget(Gtk.Widget):
                             "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                         )
                         cr.set_font_size(10)
-                        (x, y, w, h, dx, dy) = cr.text_extents(
+                        (_x, _y, w, h, _dx, _dy) = cr.text_extents(
                             str(output) + "." + str(univ)
                         )
                         cr.move_to(
@@ -250,7 +250,7 @@ class PatchChannelWidget(Gtk.Widget):
                         cr.set_font_size(10)
                         if i == 29:
                             # Draw '...' in the last box
-                            (x, y, w, h, dx, dy) = cr.text_extents("...")
+                            (_x, _y, w, h, _dx, _dy) = cr.text_extents("...")
                             cr.move_to(
                                 65 + (j * 35) + (30 / 2) - w / 2,
                                 (30 / 2 - (h - 20) / 2) + 30,
@@ -258,7 +258,7 @@ class PatchChannelWidget(Gtk.Widget):
                             cr.show_text("...")
                             break
                         else:
-                            (x, y, w, h, dx, dy) = cr.text_extents(
+                            (_x, _y, w, h, _dx, _dy) = cr.text_extents(
                                 str(output) + "." + str(univ)
                             )
                             cr.move_to(

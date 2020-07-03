@@ -67,7 +67,7 @@ class SequenceTab(Gtk.Grid):
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
         # Selected Sequence
-        path, focus_column = self.treeview1.get_cursor()
+        path, _focus_column = self.treeview1.get_cursor()
         if path:
             selected = path.get_indices()[0]
 
@@ -208,7 +208,7 @@ class SequenceTab(Gtk.Grid):
         if col_nb == 8:
 
             # Find selected sequence
-            seq_path, focus_column = self.treeview1.get_cursor()
+            seq_path, _focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
             if sequence == App().sequence.index:
@@ -238,7 +238,7 @@ class SequenceTab(Gtk.Grid):
                 self.liststore2[path][3] = text
 
             # Find selected sequence
-            seq_path, focus_column = self.treeview1.get_cursor()
+            seq_path, _focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
             if sequence == App().sequence.index:
@@ -304,7 +304,7 @@ class SequenceTab(Gtk.Grid):
             self.liststore2[path][5] = text
 
             # Find selected sequence
-            seq_path, focus_column = self.treeview1.get_cursor()
+            seq_path, _focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
             if sequence == App().sequence.index:
@@ -367,7 +367,7 @@ class SequenceTab(Gtk.Grid):
             self.liststore2[path][7] = text
 
             # Find selected sequence
-            seq_path, focus_column = self.treeview1.get_cursor()
+            seq_path, _focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
             if sequence == App().sequence.index:
@@ -436,7 +436,7 @@ class SequenceTab(Gtk.Grid):
                 self.liststore2[path][4] = text
 
             # Find selected sequence
-            seq_path, focus_column = self.treeview1.get_cursor()
+            seq_path, _focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
             if sequence == App().sequence.index:
@@ -509,7 +509,7 @@ class SequenceTab(Gtk.Grid):
                 self.liststore2[path][6] = text
 
             # Find selected sequence
-            seq_path, focus_column = self.treeview1.get_cursor()
+            seq_path, _focus_column = self.treeview1.get_cursor()
             selected = seq_path.get_indices()[0]
             sequence = self.liststore1[selected][0]
             if sequence == App().sequence.index:
@@ -571,7 +571,7 @@ class SequenceTab(Gtk.Grid):
         self.liststore2[path][2] = text
 
         # Find selected sequence
-        seq_path, focus_column = self.treeview1.get_cursor()
+        seq_path, _focus_column = self.treeview1.get_cursor()
         selected = seq_path.get_indices()[0]
         sequence = self.liststore1[selected][0]
         if sequence == App().sequence.index:
@@ -636,7 +636,7 @@ class SequenceTab(Gtk.Grid):
     def filter_func(self, child, user_data):
         """ Filter channels """
         # Find selected sequence
-        path, focus_column = self.treeview1.get_cursor()
+        path, _focus_column = self.treeview1.get_cursor()
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
@@ -857,7 +857,7 @@ class SequenceTab(Gtk.Grid):
     def keypress_Q(self):
         """ Cycle Sequences """
         # TODO: Update Shortcuts window
-        path, focus_column = self.treeview1.get_cursor()
+        path, _focus_column = self.treeview1.get_cursor()
         if path:
             path.next()
             self.treeview1.set_cursor(path)
@@ -875,7 +875,7 @@ class SequenceTab(Gtk.Grid):
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
-        path, focus_column = self.treeview2.get_cursor()
+        path, _focus_column = self.treeview2.get_cursor()
         if path:
             if path.prev():
                 self.treeview2.set_cursor(path)
@@ -889,7 +889,7 @@ class SequenceTab(Gtk.Grid):
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
-        path, focus_column = self.treeview2.get_cursor()
+        path, _focus_column = self.treeview2.get_cursor()
         if path:
             path.next()
             self.treeview2.set_cursor(path)
@@ -903,7 +903,7 @@ class SequenceTab(Gtk.Grid):
         self.flowbox.unselect_all()
 
         # Find selected sequence
-        path, focus_column = self.treeview1.get_cursor()
+        path, _focus_column = self.treeview1.get_cursor()
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
@@ -914,7 +914,7 @@ class SequenceTab(Gtk.Grid):
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Step
-            path, focus_column = self.treeview2.get_cursor()
+            path, _focus_column = self.treeview2.get_cursor()
             if path:
                 selected = path.get_indices()[0]
                 step = int(self.liststore2[selected][0])
@@ -1116,7 +1116,7 @@ class SequenceTab(Gtk.Grid):
         """ Update Cue """
 
         # Find selected sequence
-        path, focus_column = self.treeview1.get_cursor()
+        path, _focus_column = self.treeview1.get_cursor()
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
@@ -1127,7 +1127,7 @@ class SequenceTab(Gtk.Grid):
                     if sequence == chaser.index:
                         self.seq = chaser
             # Find Step
-            path, focus_column = self.treeview2.get_cursor()
+            path, _focus_column = self.treeview2.get_cursor()
             if path:
                 selected = path.get_indices()[0]
                 step = int(self.liststore2[selected][0])
@@ -1257,7 +1257,7 @@ class SequenceTab(Gtk.Grid):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
         # Find the selected sequence
-        path, focus_column = self.treeview1.get_cursor()
+        path, _focus_column = self.treeview1.get_cursor()
         if path:
             selected = path.get_indices()[0]
             sequence = self.liststore1[selected][0]
