@@ -444,46 +444,46 @@ class Window(Gtk.ApplicationWindow):
 
         return True
 
-    def step_filter_func1(self, model, iter, data):
+    def step_filter_func1(self, model, treeiter, data):
         """ Filter for the first part of the cues list """
 
         if App().sequence.position <= 0:
-            if int(model[iter][11]) == 0 or int(model[iter][11]) == 1:
+            if int(model[treeiter][11]) == 0 or int(model[treeiter][11]) == 1:
                 return True
-            if int(model[iter][0]) == 0 or int(model[iter][0]) == 1:
+            if int(model[treeiter][0]) == 0 or int(model[treeiter][0]) == 1:
                 return True
             return False
 
         if App().sequence.position == 1:
-            if int(model[iter][11]) == 1:
+            if int(model[treeiter][11]) == 1:
                 return True
-            if int(model[iter][11]) == 0:
+            if int(model[treeiter][11]) == 0:
                 return False
             if (
-                int(model[iter][0]) == 0
-                or int(model[iter][0]) == 1
-                or int(model[iter][0]) == 2
+                int(model[treeiter][0]) == 0
+                or int(model[treeiter][0]) == 1
+                or int(model[treeiter][0]) == 2
             ):
                 return True
             return False
 
-        if int(model[iter][11]) == 1:
+        if int(model[treeiter][11]) == 1:
             return False
-        if int(model[iter][11]) == 0:
+        if int(model[treeiter][11]) == 0:
             return False
 
         if (
-            int(model[iter][0]) == App().sequence.position
-            or int(model[iter][0]) == App().sequence.position + 1
-            or int(model[iter][0]) == App().sequence.position - 1
-            or int(model[iter][0]) == App().sequence.position - 2
+            int(model[treeiter][0]) == App().sequence.position
+            or int(model[treeiter][0]) == App().sequence.position + 1
+            or int(model[treeiter][0]) == App().sequence.position - 1
+            or int(model[treeiter][0]) == App().sequence.position - 2
         ):
             return True
         return False
 
-    def step_filter_func2(self, model, iter, data):
+    def step_filter_func2(self, model, treeiter, data):
         """ Filter for the second part of the cues list """
-        if int(model[iter][0]) <= App().sequence.position + 1:
+        if int(model[treeiter][0]) <= App().sequence.position + 1:
             return False
         return True
 
@@ -498,15 +498,6 @@ class Window(Gtk.ApplicationWindow):
                 return False
         else:
             return True
-
-    """
-    # Unused function
-    def on_button_toggled(self, button, name):
-        if button.get_active():
-            state = "on"
-        else:
-            state = "off"
-    """
 
     def on_timeout(self, user_data):
 

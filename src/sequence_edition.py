@@ -630,7 +630,7 @@ class SequenceTab(Gtk.Grid):
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
-    def filter_cue_func(self, model, iter, data):
+    def filter_cue_func(self, model, treeiter, data):
         return True
 
     def filter_func(self, child, user_data):
