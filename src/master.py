@@ -197,7 +197,7 @@ class ThreadChaser(threading.Thread):
             # Boucle sur le temps de monté ou de descente (le plus grand)
             while i < delay and App().chasers[self.chaser].run:
                 # Mise à jour des niveaux
-                self.update_levels(delay, delay_in, delay_out, i, position)
+                self.update_levels(delay_in, delay_out, i, position)
                 time.sleep(0.05)
                 i = (time.time() * 1000) - start_time
 
@@ -208,7 +208,7 @@ class ThreadChaser(threading.Thread):
     def stop(self):
         self._stopevent.set()
 
-    def update_levels(self, delay, delay_in, delay_out, i, position):
+    def update_levels(self, delay_in, delay_out, i, position):
 
         self.percent_view = App().settings.get_boolean("percent")
 
