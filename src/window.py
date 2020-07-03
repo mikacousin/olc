@@ -158,7 +158,7 @@ class Window(Gtk.ApplicationWindow):
             channel_time = str(len(self.seq.steps[i].channel_time))
             if channel_time == "0":
                 channel_time = ""
-            bg = "#232729"
+            background = "#232729"
             if i in (0, App().sequence.last - 1):
                 self.cues_liststore1.append(
                     [
@@ -171,7 +171,7 @@ class Window(Gtk.ApplicationWindow):
                         "",
                         "",
                         "",
-                        bg,
+                        background,
                         Pango.Weight.NORMAL,
                         42,
                     ]
@@ -188,7 +188,7 @@ class Window(Gtk.ApplicationWindow):
                         d_in,
                         t_in,
                         channel_time,
-                        bg,
+                        background,
                         Pango.Weight.NORMAL,
                         42,
                     ]
@@ -1035,11 +1035,11 @@ class Window(Gtk.ApplicationWindow):
                 if channel_time == "0":
                     channel_time = ""
                 if i == 0:
-                    bg = "#997004"
+                    background = "#997004"
                 elif i == 1:
-                    bg = "#555555"
+                    background = "#555555"
                 else:
-                    bg = "#232729"
+                    background = "#232729"
                 # Actual and Next Cue in Bold
                 if i in (0, 1):
                     weight = Pango.Weight.HEAVY
@@ -1057,7 +1057,7 @@ class Window(Gtk.ApplicationWindow):
                             "",
                             "",
                             "",
-                            bg,
+                            background,
                             Pango.Weight.NORMAL,
                             99,
                         ]
@@ -1077,7 +1077,7 @@ class Window(Gtk.ApplicationWindow):
                             d_in,
                             str(t_in),
                             channel_time,
-                            bg,
+                            background,
                             weight,
                             99,
                         ]
@@ -1113,16 +1113,6 @@ class Window(Gtk.ApplicationWindow):
             self.treeview1.set_cursor(path1, None, False)
             self.treeview2.set_cursor(path2, None, False)
             self.seq_grid.queue_draw()
-
-            """
-            # Test
-            print('Position', App().sequence.position)
-            print('Last', App().sequence.last)
-            for i, item in enumerate(App().memories):
-                print('Preset', i, item.memory)
-            for i in range(App().sequence.last):
-                print('Step', i, App().sequence.steps[i].cue.memory)
-            """
 
         else:
             # Update Preset
