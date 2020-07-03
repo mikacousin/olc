@@ -122,8 +122,8 @@ class Sequence:
             self.window.sequential.delay_out = d_out
             self.window.sequential.wait = t_wait
             self.window.sequential.channel_time = self.steps[position + 1].channel_time
-            App().window.sequential.pos_xA = 0
-            App().window.sequential.pos_xB = 0
+            App().window.sequential.position_a = 0
+            App().window.sequential.position_b = 0
 
             # Update ui
             App().window.cues_liststore1[position][9] = "#232729"
@@ -195,8 +195,8 @@ class Sequence:
             self.window.sequential.delay_out = d_out
             self.window.sequential.wait = t_wait
             self.window.sequential.channel_time = self.steps[position + 1].channel_time
-            App().window.sequential.pos_xA = 0
-            App().window.sequential.pos_xB = 0
+            App().window.sequential.position_a = 0
+            App().window.sequential.position_b = 0
 
             # Set main window's subtitle
             subtitle = (
@@ -267,8 +267,8 @@ class Sequence:
                 self.window.sequential.channel_time = self.steps[
                     position + 1
                 ].channel_time
-                App().window.sequential.pos_xA = 0
-                App().window.sequential.pos_xB = 0
+                App().window.sequential.position_a = 0
+                App().window.sequential.position_b = 0
 
                 # Update ui
                 App().window.cues_liststore1[old_pos][9] = "#232729"
@@ -323,8 +323,8 @@ class Sequence:
                 App().window.sequential.channel_time = (
                     App().sequence.steps[position + 1].channel_time
                 )
-                App().window.sequential.pos_xA = 0
-                App().window.sequential.pos_xB = 0
+                App().window.sequential.position_a = 0
+                App().window.sequential.position_b = 0
 
                 # Set main window's subtitle
                 subtitle = (
@@ -356,8 +356,8 @@ class Sequence:
                 App().window.sequential.channel_time = (
                     App().sequence.steps[position + 1].channel_time
                 )
-                App().window.sequential.pos_xA = 0
-                App().window.sequential.pos_xB = 0
+                App().window.sequential.position_a = 0
+                App().window.sequential.position_b = 0
 
                 # Set main window's subtitle
                 subtitle = (
@@ -436,8 +436,8 @@ class Sequence:
         App().window.sequential.channel_time = (
             App().sequence.steps[position - 1].channel_time
         )
-        App().window.sequential.pos_xA = 0
-        App().window.sequential.pos_xB = 0
+        App().window.sequential.position_a = 0
+        App().window.sequential.position_b = 0
 
         App().window.seq_grid.queue_draw()
 
@@ -573,8 +573,8 @@ class ThreadGo(threading.Thread):
             App().window.sequential.channel_time = (
                 App().sequence.steps[position + 1].channel_time
             )
-            App().window.sequential.pos_xA = 0
-            App().window.sequential.pos_xB = 0
+            App().window.sequential.position_a = 0
+            App().window.sequential.position_b = 0
 
             # Set main window's subtitle
             subtitle = (
@@ -615,8 +615,8 @@ class ThreadGo(threading.Thread):
             App().window.sequential.channel_time = (
                 App().sequence.steps[position + 1].channel_time
             )
-            App().window.sequential.pos_xA = 0
-            App().window.sequential.pos_xB = 0
+            App().window.sequential.position_a = 0
+            App().window.sequential.position_b = 0
 
             # Set main window's subtitle
             subtitle = (
@@ -650,8 +650,8 @@ class ThreadGo(threading.Thread):
         # Update sliders position
         # Get width of the sequential widget to place cursors correctly
         allocation = App().window.sequential.get_allocation()
-        App().window.sequential.pos_xA = ((allocation.width - 32) / delay) * i
-        App().window.sequential.pos_xB = ((allocation.width - 32) / delay) * i
+        App().window.sequential.position_a = ((allocation.width - 32) / delay) * i
+        App().window.sequential.position_b = ((allocation.width - 32) / delay) * i
         GLib.idle_add(App().window.sequential.queue_draw)
 
         # Move Virtual Console's XFade
@@ -870,8 +870,8 @@ class ThreadGoBack(threading.Thread):
         App().window.sequential.channel_time = (
             App().sequence.steps[position + 1].channel_time
         )
-        App().window.sequential.pos_xA = 0
-        App().window.sequential.pos_xB = 0
+        App().window.sequential.position_a = 0
+        App().window.sequential.position_b = 0
 
         # Set main window's subtitle
         subtitle = (
@@ -897,8 +897,12 @@ class ThreadGoBack(threading.Thread):
     def update_levels(self, go_back_time, i, position):
         # Update sliders position
         allocation = App().window.sequential.get_allocation()
-        App().window.sequential.pos_xA = ((allocation.width - 32) / go_back_time) * i
-        App().window.sequential.pos_xB = ((allocation.width - 32) / go_back_time) * i
+        App().window.sequential.position_a = (
+            (allocation.width - 32) / go_back_time
+        ) * i
+        App().window.sequential.position_b = (
+            (allocation.width - 32) / go_back_time
+        ) * i
         GLib.idle_add(App().window.sequential.queue_draw)
 
         # Move Virtual Console's XFade

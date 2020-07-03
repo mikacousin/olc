@@ -55,7 +55,7 @@ class CrossFade:
             pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = App().window.sequential.get_allocation()
-            App().window.sequential.pos_xA = (
+            App().window.sequential.position_a = (
                 (allocation.width - 32) / total_time
             ) * pos
             App().window.sequential.queue_draw()
@@ -187,7 +187,7 @@ class CrossFade:
             pos = (level / 255) * total_time
             # Get SequentialWindow's width to place cursor
             allocation = App().window.sequential.get_allocation()
-            App().window.sequential.pos_xB = (
+            App().window.sequential.position_b = (
                 (allocation.width - 32) / total_time
             ) * pos
             App().window.sequential.queue_draw()
@@ -331,8 +331,8 @@ class CrossFade:
                     App().window.sequential.channel_time = (
                         App().sequence.steps[position + 1].channel_time
                     )
-                    App().window.sequential.pos_xA = 0
-                    App().window.sequential.pos_xB = 0
+                    App().window.sequential.position_a = 0
+                    App().window.sequential.position_b = 0
 
                     subtitle = (
                         "Mem. :"
@@ -421,8 +421,8 @@ class CrossFade:
                     App().window.sequential.channel_time = (
                         App().sequence.steps[position + 1].channel_time
                     )
-                    App().window.sequential.pos_xA = 0
-                    App().window.sequential.pos_xB = 0
+                    App().window.sequential.position_a = 0
+                    App().window.sequential.position_b = 0
 
                     subtitle = (
                         "Mem. :"

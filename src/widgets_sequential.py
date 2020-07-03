@@ -20,8 +20,8 @@ class SequentialWidget(Gtk.Widget):
         self.wait = wait
         self.channel_time = channel_time
 
-        self.pos_xA = 0
-        self.pos_xB = 0
+        self.position_a = 0
+        self.position_b = 0
 
         Gtk.Widget.__init__(self)
         self.set_size_request(800, 300)
@@ -46,7 +46,7 @@ class SequentialWidget(Gtk.Widget):
         allocation = self.get_allocation()
 
         # dessine un cadre
-        if self.pos_xA or self.pos_xB:  # Red filter in fades
+        if self.position_a or self.position_b:  # Red filter in fades
             cr.set_source_rgba(1, 0, 0, 0.1)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
@@ -74,7 +74,7 @@ class SequentialWidget(Gtk.Widget):
         if self.wait > 0:
             # Draw a grey box
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            if self.pos_xA or self.pos_xB:  # Red filter in fades
+            if self.position_a or self.position_b:  # Red filter in fades
                 cr.set_source_rgba(1, 0, 0, 0.1)
             cr.set_line_width(1)
             cr.rectangle(
@@ -198,17 +198,21 @@ class SequentialWidget(Gtk.Widget):
             # Time Cursor follow In or Out Crossfade
             if next_level < old_level:
                 # Out Crossfade
-                if self.pos_xA > inter * delay + wait_x:
-                    if self.pos_xA > (inter * delay) + (inter * time) + wait_x:
-                        self.pos_xCT = (inter * delay) + (inter * time) + wait_x
+                if self.position_a > inter * delay + wait_x:
+                    if self.position_a > (inter * delay) + (inter * time) + wait_x:
+                        self.position_channeltime = (
+                            (inter * delay) + (inter * time) + wait_x
+                        )
                     else:
-                        self.pos_xCT = self.pos_xA
+                        self.position_channeltime = self.position_a
                     cr.set_source_rgb(0.9, 0.6, 0.2)
                     cr.move_to(
-                        16 + self.pos_xCT, allocation.height - 12 - (self.ct_nb * 12)
+                        16 + self.position_channeltime,
+                        allocation.height - 12 - (self.ct_nb * 12),
                     )
                     cr.line_to(
-                        16 + self.pos_xCT, allocation.height - 4 - (self.ct_nb * 12)
+                        16 + self.position_channeltime,
+                        allocation.height - 4 - (self.ct_nb * 12),
                     )
                     cr.stroke()
                 else:
@@ -224,17 +228,21 @@ class SequentialWidget(Gtk.Widget):
                     cr.stroke()
             else:
                 # In Crossfade
-                if self.pos_xB > inter * delay + wait_x:
-                    if self.pos_xB > (inter * delay) + (inter * time) + wait_x:
-                        self.pos_xCT = (inter * delay) + (inter * time) + wait_x
+                if self.position_b > inter * delay + wait_x:
+                    if self.position_b > (inter * delay) + (inter * time) + wait_x:
+                        self.position_channeltime = (
+                            (inter * delay) + (inter * time) + wait_x
+                        )
                     else:
-                        self.pos_xCT = self.pos_xB
+                        self.position_channeltime = self.position_b
                     cr.set_source_rgb(0.9, 0.6, 0.2)
                     cr.move_to(
-                        16 + self.pos_xCT, allocation.height - 12 - (self.ct_nb * 12)
+                        16 + self.position_channeltime,
+                        allocation.height - 12 - (self.ct_nb * 12),
                     )
                     cr.line_to(
-                        16 + self.pos_xCT, allocation.height - 4 - (self.ct_nb * 12)
+                        16 + self.position_channeltime,
+                        allocation.height - 4 - (self.ct_nb * 12),
                     )
                     cr.stroke()
                 else:
@@ -307,12 +315,12 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X1 cursor
-        if (not wait_x or self.pos_xA > wait_x) and (
-            not self.delay_out or self.pos_xA > (inter * self.delay_out) + wait_x
+        if (not wait_x or self.position_a > wait_x) and (
+            not self.delay_out or self.position_a > (inter * self.delay_out) + wait_x
         ):
-            x1 = start_x + self.pos_xA - wait_x - (inter * self.delay_out)
+            x1 = start_x + self.position_a - wait_x - (inter * self.delay_out)
             y1 = start_y + (
-                (self.pos_xA - wait_x - (inter * self.delay_out)) * math.tan(angle)
+                (self.position_a - wait_x - (inter * self.delay_out)) * math.tan(angle)
             )
             if x1 > end_x:
                 x1 = end_x
@@ -326,7 +334,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(x1 - 5, y1 + 2)
             cr.show_text("A")
         else:
-            x1 = start_x + self.pos_xA - wait_x - (inter * self.delay_out)
+            x1 = start_x + self.position_a - wait_x - (inter * self.delay_out)
             y1 = start_y
             if x1 > end_x:
                 x1 = end_x
@@ -374,12 +382,12 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X2 cursor
-        if (not wait_x or self.pos_xB > wait_x) and (
-            not self.delay_in or self.pos_xB > ((inter * self.delay_in) + wait_x)
+        if (not wait_x or self.position_b > wait_x) and (
+            not self.delay_in or self.position_b > ((inter * self.delay_in) + wait_x)
         ):
-            x1 = start_x + self.pos_xB - wait_x - (inter * self.delay_in)
+            x1 = start_x + self.position_b - wait_x - (inter * self.delay_in)
             y1 = start_y + (
-                (self.pos_xB - wait_x - (inter * self.delay_in)) * math.tan(angle)
+                (self.position_b - wait_x - (inter * self.delay_in)) * math.tan(angle)
             )
             if x1 > end_x:
                 x1 = end_x
@@ -393,7 +401,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(x1 - 5, y1 + 3)
             cr.show_text("B")
         else:  # Wait and Delay In
-            x1 = start_x + self.pos_xB - wait_x - (inter * self.delay_in)
+            x1 = start_x + self.position_b - wait_x - (inter * self.delay_in)
             y1 = start_y
             if x1 > end_x:
                 x1 = end_x
