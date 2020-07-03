@@ -203,7 +203,7 @@ class Midi:
             ):
                 if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    App().virtual_console.go.emit("button-press-event", event)
+                    App().virtual_console.go_button.emit("button-press-event", event)
                 else:
                     App().sequence.sequence_go(App(), None)
             elif (
@@ -215,7 +215,7 @@ class Midi:
             ):
                 if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    App().virtual_console.go.emit("button-release-event", event)
+                    App().virtual_console.go_button.emit("button-release-event", event)
 
             # Go Back
             for index, item in enumerate(self.midi_table):
@@ -945,7 +945,7 @@ class Midi:
             ):
                 if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                    App().virtual_console.at.emit("button-press-event", event)
+                    App().virtual_console.at_level.emit("button-press-event", event)
                 else:
                     event = Gdk.EventKey()
                     event.keyval = Gdk.KEY_equal
@@ -959,7 +959,7 @@ class Midi:
             ):
                 if App().virtual_console:
                     event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                    App().virtual_console.at.emit("button-release-event", event)
+                    App().virtual_console.at_level.emit("button-release-event", event)
 
             # Percent Plus
             for index, item in enumerate(self.midi_table):
@@ -4769,8 +4769,10 @@ class Midi:
             ):
                 val = (msg.value / 127) * 255
                 if App().virtual_console:
-                    App().virtual_console.scaleGM.set_value(val)
-                    App().virtual_console.GM_moved(App().virtual_console.scaleGM)
+                    App().virtual_console.scale_grand_master.set_value(val)
+                    App().virtual_console.grand_master_moved(
+                        App().virtual_console.scale_grand_master
+                    )
                 else:
                     App().dmx.grand_master = val
                     App().window.gm.queue_draw()

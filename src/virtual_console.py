@@ -113,19 +113,19 @@ class VirtualConsoleWindow(Gtk.Window):
         # self.output_pad.set_column_homogeneous(True)
         # self.output_pad.set_row_homogeneous(True)
         adjustment = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
-        self.scaleGM = FaderWidget(
+        self.scale_grand_master = FaderWidget(
             text="GM", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
         )
-        self.scaleGM.value = 255
-        # self.scaleGM.height = 160
-        self.scaleGM.connect("clicked", self.scale_clicked)
-        self.scaleGM.connect("value-changed", self.GM_moved)
-        self.scaleGM.set_draw_value(False)
-        self.scaleGM.set_vexpand(True)
-        self.scaleGM.set_inverted(True)
+        self.scale_grand_master.value = 255
+        # self.scale_grand_master.height = 160
+        self.scale_grand_master.connect("clicked", self.scale_clicked)
+        self.scale_grand_master.connect("value-changed", self.grand_master_moved)
+        self.scale_grand_master.set_draw_value(False)
+        self.scale_grand_master.set_vexpand(True)
+        self.scale_grand_master.set_inverted(True)
         self.output = ButtonWidget("Output", "Output")
         self.output.connect("clicked", self.on_output)
-        self.output_pad.attach(self.scaleGM, 0, 0, 1, 4)
+        self.output_pad.attach(self.scale_grand_master, 0, 0, 1, 4)
         self.label = Gtk.Label("")
         self.output_pad.attach(self.label, 1, 0, 1, 1)
         self.output_pad.attach(self.output, 2, 0, 1, 1)
@@ -170,8 +170,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.minus.connect("clicked", self.on_minus)
         self.all = ButtonWidget("All", "All")
         self.all.connect("clicked", self.on_all)
-        self.at = ButtonWidget("@", "At")
-        self.at.connect("clicked", self.on_at)
+        self.at_level = ButtonWidget("@", "At")
+        self.at_level.connect("clicked", self.on_at)
         self.percent_plus = ButtonWidget("+%", "PercentPlus")
         self.percent_plus.connect("clicked", self.on_percent_plus)
         self.percent_minus = ButtonWidget("-%", "PercentMinus")
@@ -181,7 +181,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.thru_pad.attach(self.plus, 0, 2, 1, 1)
         self.thru_pad.attach(self.minus, 0, 3, 1, 1)
         self.thru_pad.attach(self.all, 0, 4, 1, 1)
-        self.thru_pad.attach(self.at, 2, 0, 1, 1)
+        self.thru_pad.attach(self.at_level, 2, 0, 1, 1)
         self.thru_pad.attach(self.percent_plus, 2, 1, 1, 1)
         self.thru_pad.attach(self.percent_minus, 2, 2, 1, 1)
         self.label = Gtk.Label("")
@@ -230,14 +230,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.a = ButtonWidget("A")
         self.b = ButtonWidget("B")
 
-        self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
         self.scale_a = FaderWidget(
             "Crossfade_out",
             red=0.3,
             green=0.3,
             blue=0.7,
             orientation=Gtk.Orientation.VERTICAL,
-            adjustment=self.adA,
+            adjustment=adjustment,
         )
         self.scale_a.connect("clicked", self.scale_clicked)
         self.scale_a.set_draw_value(False)
@@ -245,14 +245,14 @@ class VirtualConsoleWindow(Gtk.Window):
         self.scale_a.set_inverted(True)
         self.scale_a.connect("value-changed", self.scale_moved)
 
-        self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
         self.scale_b = FaderWidget(
             text="Crossfade_in",
             red=0.6,
             green=0.2,
             blue=0.2,
             orientation=Gtk.Orientation.VERTICAL,
-            adjustment=self.adB,
+            adjustment=adjustment,
         )
         self.scale_b.connect("clicked", self.scale_clicked)
         self.scale_b.set_draw_value(False)
@@ -275,8 +275,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_pad = Gtk.Grid()
         # self.go_pad.set_column_homogeneous(True)
         # self.go_pad.set_row_homogeneous(True)
-        self.go = GoWidget()
-        self.go.connect("clicked", self.on_go)
+        self.go_button = GoWidget()
+        self.go_button.connect("clicked", self.on_go)
         self.seq_plus = ButtonWidget("Seq+", "Seq_plus")
         self.seq_plus.connect("clicked", self.on_seq_plus)
         self.seq_minus = ButtonWidget("Seq-", "Seq_minus")
@@ -288,7 +288,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_pad.attach(self.seq_plus, 1, 0, 1, 1)
         self.go_pad.attach(self.pause, 0, 1, 1, 1)
         self.go_pad.attach(self.goback, 1, 1, 1, 1)
-        self.go_pad.attach(self.go, 0, 2, 2, 1)
+        self.go_pad.attach(self.go_button, 0, 2, 2, 1)
         self.label = Gtk.Label("")
         self.go_pad.attach(self.label, 2, 3, 1, 1)
 
@@ -743,11 +743,11 @@ class VirtualConsoleWindow(Gtk.Window):
                 App().midi.midi_learn = "Crossfade_out"
             elif scale == self.scale_b:
                 App().midi.midi_learn = "Crossfade_in"
-            elif scale == self.scaleGM:
+            elif scale == self.scale_grand_master:
                 App().midi.midi_learn = "GM"
             self.queue_draw()
 
-    def GM_moved(self, scale):
+    def grand_master_moved(self, scale):
         if self.midi_learn:
             App().midi.midi_learn = "GM"
             self.queue_draw()
