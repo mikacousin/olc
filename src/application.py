@@ -278,9 +278,9 @@ class Application(Gtk.Application):
 
         return menu
 
-    def on_fd_read(self, fd, condition, data):
-        # Ola messages
-        readable, writable, exceptional = select.select([self.sock], [], [], 0)
+    def on_fd_read(self, _fd, _condition, _data):
+        """Ola messages"""
+        readable, _writable, _exceptional = select.select([self.sock], [], [], 0)
         if readable:
             self.ola_client.SocketReady()
         return True
@@ -369,7 +369,7 @@ class Application(Gtk.Application):
             if self.patch_outputs_tab:
                 self.patch_outputs_tab.outputs[output + 1536].queue_draw()
 
-    def fetch_dmx(self, request, univ, dmxframe):
+    def fetch_dmx(self, _request, univ, dmxframe):
         if dmxframe:
             for output, level in enumerate(dmxframe):
                 channel = self.patch.outputs[univ][output][0]
@@ -394,7 +394,7 @@ class Application(Gtk.Application):
                             output + (512 * univ)
                         ].queue_draw()
 
-    def _new(self, action, parameter):
+    def _new(self, _action, _parameter):
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
@@ -513,7 +513,7 @@ class Application(Gtk.Application):
                 ]
             )
         if self.sequence.last == 1:
-            self.cues_liststore1.append(
+            self.window.cues_liststore1.append(
                 ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
             )
 
@@ -708,7 +708,7 @@ class Application(Gtk.Application):
                 self.track_channels_tab.flowbox.add(self.track_channels_tab.steps[step])
             self.track_channels_tab.flowbox.invalidate_filter()
 
-    def _open(self, action, parameter):
+    def _open(self, _action, _parameter):
         # create a filechooserdialog to open:
         # the arguments are: title of the window, parent_window, action,
         # (buttons, response)
@@ -760,7 +760,7 @@ class Application(Gtk.Application):
         # destroy the FileChooserDialog
         dialog.destroy()
 
-    def _save(self, action, parameter):
+    def _save(self, _action, _parameter):
         # TODO: remettre le try:
         self.ascii.save()
         """
@@ -770,10 +770,10 @@ class Application(Gtk.Application):
             self._saveas(None, None)
         """
 
-    def _saveas(self, action, parameter):
+    def _saveas(self, _action, _parameter):
         print("Save As")
 
-    def patch_outputs(self, action, parameter):
+    def patch_outputs(self, _action, _parameter):
         # Create Patch Outputs Tab
         if self.patch_outputs_tab is None:
             self.patch_outputs_tab = PatchOutputsTab()
@@ -795,7 +795,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.patch_outputs_tab)
             self.window.notebook.set_current_page(page)
 
-    def _patch_channels(self, action, parameter):
+    def _patch_channels(self, _action, _parameter):
         # Create Patch Channels Tab
         if self.patch_channels_tab is None:
             self.patch_channels_tab = PatchChannelsTab()
@@ -817,7 +817,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.patch_channels_tab)
             self.window.notebook.set_current_page(page)
 
-    def track_channels(self, action, parameter):
+    def track_channels(self, _action, _parameter):
         # Create Track Channels Tab
         if self.track_channels_tab is None:
             self.track_channels_tab = TrackChannelsTab()
@@ -883,7 +883,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.group_tab)
             self.window.notebook.set_current_page(page)
 
-    def sequences(self, action, parameter):
+    def sequences(self, _action, _parameter):
         # Create Sequences Tab
         if self.sequences_tab is None:
             self.sequences_tab = SequenceTab()
@@ -926,7 +926,7 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.channeltime_tab)
             self.window.notebook.set_current_page(page)
 
-    def _masters(self, action, parameter):
+    def _masters(self, _action, _parameter):
         # Create Masters Tab
         if self.masters_tab is None:
             self.masters_tab = MastersTab()
@@ -948,17 +948,17 @@ class Application(Gtk.Application):
             page = self.window.notebook.page_num(self.masters_tab)
             self.window.notebook.set_current_page(page)
 
-    def _virtual_console(self, action, parameter):
+    def _virtual_console(self, _action, _parameter):
         # Virtual Console Window
         self.virtual_console = VirtualConsoleWindow()
         self.virtual_console.show_all()
         self.add_window(self.virtual_console)
 
-    def _settings(self, action, parameter):
+    def _settings(self, _action, _parameter):
         self.win_settings = SettingsDialog()
         self.win_settings.settings_dialog.show_all()
 
-    def _shortcuts(self, action, parameter):
+    def _shortcuts(self, _action, _parameter):
         """
             Create Shortcuts Window
         """
@@ -968,7 +968,7 @@ class Application(Gtk.Application):
         self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
 
-    def _about(self, action, parameter):
+    def _about(self, _action, _parameter):
         """
             Setup about dialog
             @param action as Gio.SimpleAction
@@ -984,7 +984,7 @@ class Application(Gtk.Application):
         else:
             self.about_window.present()
 
-    def _about_response(self, dialog, response):
+    def _about_response(self, dialog, _response):
         """
             Destroy about dialog when closed
             @param dialog as Gtk.Dialog
@@ -993,7 +993,7 @@ class Application(Gtk.Application):
         dialog.destroy()
         self.about_window = None
 
-    def _exit(self, action, parameter):
+    def _exit(self, _action, _parameter):
         # Stop Chasers Threads
         for chaser in self.chasers:
             if chaser.run:
@@ -1001,9 +1001,3 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         self.quit()
-
-
-if __name__ == "__main__":
-    app = Application()
-    exit_status = app.run(sys.argv)
-    sys.exit(exit_status)
