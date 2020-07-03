@@ -20,8 +20,8 @@ class CrossFade:
     """ For Manual Crossfade """
 
     def __init__(self):
-        self.scaleA = Scale()
-        self.scaleB = Scale()
+        self.scale_a = Scale()
+        self.scale_b = Scale()
 
         self.manual = False
 
@@ -41,7 +41,7 @@ class CrossFade:
                 except Exception as e:
                     print("Error :", str(e))
 
-        if scale == self.scaleA:
+        if scale == self.scale_a:
             # Scale for Out
 
             # If sequential is empty, don't do anything
@@ -167,7 +167,7 @@ class CrossFade:
                             if lvl != -1:
                                 app.dmx.sequence[channel - 1] = lvl
 
-        elif scale == self.scaleB:
+        elif scale == self.scale_b:
             # Scale for In
 
             # If sequential is empty, don't do anything
@@ -289,7 +289,7 @@ class CrossFade:
                             if lvl != -1:
                                 app.dmx.sequence[channel - 1] = lvl
 
-        if self.scaleA.get_value() == 255 and self.scaleB.get_value() == 255:
+        if self.scale_a.get_value() == 255 and self.scale_b.get_value() == 255:
             # In and Out Crossfades at Full
 
             if app.sequence.on_go:
@@ -372,18 +372,18 @@ class CrossFade:
                     app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
 
-                    self.scaleA.set_value(0)
-                    self.scaleB.set_value(0)
+                    self.scale_a.set_value(0)
+                    self.scale_b.set_value(0)
 
                     if app.virtual_console:
-                        if app.virtual_console.scaleA.get_inverted():
-                            app.virtual_console.scaleA.set_inverted(False)
-                            app.virtual_console.scaleB.set_inverted(False)
+                        if app.virtual_console.scale_a.get_inverted():
+                            app.virtual_console.scale_a.set_inverted(False)
+                            app.virtual_console.scale_b.set_inverted(False)
                         else:
-                            app.virtual_console.scaleA.set_inverted(True)
-                            app.virtual_console.scaleB.set_inverted(True)
-                        app.virtual_console.scaleA.set_value(0)
-                        app.virtual_console.scaleB.set_value(0)
+                            app.virtual_console.scale_a.set_inverted(True)
+                            app.virtual_console.scale_b.set_inverted(True)
+                        app.virtual_console.scale_a.set_value(0)
+                        app.virtual_console.scale_b.set_value(0)
 
                     # If Wait
                     if app.sequence.steps[position + 1].wait:
@@ -462,18 +462,18 @@ class CrossFade:
                     app.window.treeview2.set_cursor(path, None, False)
                     app.window.seq_grid.queue_draw()
 
-                    self.scaleA.set_value(0)
-                    self.scaleB.set_value(0)
+                    self.scale_a.set_value(0)
+                    self.scale_b.set_value(0)
 
                     if app.virtual_console:
-                        if app.virtual_console.scaleA.get_inverted():
-                            app.virtual_console.scaleA.set_inverted(False)
-                            app.virtual_console.scaleB.set_inverted(False)
+                        if app.virtual_console.scale_a.get_inverted():
+                            app.virtual_console.scale_a.set_inverted(False)
+                            app.virtual_console.scale_b.set_inverted(False)
                         else:
-                            app.virtual_console.scaleA.set_inverted(True)
-                            app.virtual_console.scaleB.set_inverted(True)
-                        app.virtual_console.scaleA.set_value(0)
-                        app.virtual_console.scaleB.set_value(0)
+                            app.virtual_console.scale_a.set_inverted(True)
+                            app.virtual_console.scale_b.set_inverted(True)
+                        app.virtual_console.scale_a.set_value(0)
+                        app.virtual_console.scale_b.set_value(0)
 
                     # If Wait
                     if app.sequence.steps[position + 1].wait:

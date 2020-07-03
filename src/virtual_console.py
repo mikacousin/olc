@@ -231,7 +231,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.b = ButtonWidget("B")
 
         self.adA = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleA = FaderWidget(
+        self.scale_a = FaderWidget(
             "Crossfade_out",
             red=0.3,
             green=0.3,
@@ -239,14 +239,14 @@ class VirtualConsoleWindow(Gtk.Window):
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=self.adA,
         )
-        self.scaleA.connect("clicked", self.scale_clicked)
-        self.scaleA.set_draw_value(False)
-        self.scaleA.set_vexpand(True)
-        self.scaleA.set_inverted(True)
-        self.scaleA.connect("value-changed", self.scale_moved)
+        self.scale_a.connect("clicked", self.scale_clicked)
+        self.scale_a.set_draw_value(False)
+        self.scale_a.set_vexpand(True)
+        self.scale_a.set_inverted(True)
+        self.scale_a.connect("value-changed", self.scale_moved)
 
         self.adB = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-        self.scaleB = FaderWidget(
+        self.scale_b = FaderWidget(
             text="Crossfade_in",
             red=0.6,
             green=0.2,
@@ -254,11 +254,11 @@ class VirtualConsoleWindow(Gtk.Window):
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=self.adB,
         )
-        self.scaleB.connect("clicked", self.scale_clicked)
-        self.scaleB.set_draw_value(False)
-        self.scaleB.set_vexpand(True)
-        self.scaleB.set_inverted(True)
-        self.scaleB.connect("value-changed", self.scale_moved)
+        self.scale_b.connect("clicked", self.scale_clicked)
+        self.scale_b.set_draw_value(False)
+        self.scale_b.set_vexpand(True)
+        self.scale_b.set_inverted(True)
+        self.scale_b.connect("value-changed", self.scale_moved)
 
         self.crossfade_pad.attach(self.live, 0, 4, 1, 1)
         self.crossfade_pad.attach(self.format, 0, 5, 1, 1)
@@ -266,8 +266,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.crossfade_pad.attach(self.goto, 1, 0, 1, 1)
         self.crossfade_pad.attach(self.a, 1, 1, 1, 1)
         self.crossfade_pad.attach(self.b, 2, 1, 1, 1)
-        self.crossfade_pad.attach(self.scaleA, 1, 2, 1, 6)
-        self.crossfade_pad.attach(self.scaleB, 2, 2, 1, 6)
+        self.crossfade_pad.attach(self.scale_a, 1, 2, 1, 6)
+        self.crossfade_pad.attach(self.scale_b, 2, 2, 1, 6)
         self.label = Gtk.Label("")
         self.crossfade_pad.attach(self.label, 0, 7, 1, 1)
 
@@ -703,45 +703,45 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def scale_moved(self, scale):
         if self.midi_learn:
-            if scale == self.scaleA:
+            if scale == self.scale_a:
                 App().midi.midi_learn = "Crossfade_out"
-            elif scale == self.scaleB:
+            elif scale == self.scale_b:
                 App().midi.midi_learn = "Crossfade_in"
             self.queue_draw()
         else:
             value = scale.get_value()
 
-            if scale == self.scaleA:
-                App().crossfade.scaleA.set_value(value)
+            if scale == self.scale_a:
+                App().crossfade.scale_a.set_value(value)
                 if App().crossfade.manual:
-                    App().crossfade.scale_moved(App().crossfade.scaleA)
-            elif scale == self.scaleB:
-                App().crossfade.scaleB.set_value(value)
+                    App().crossfade.scale_moved(App().crossfade.scale_a)
+            elif scale == self.scale_b:
+                App().crossfade.scale_b.set_value(value)
                 if App().crossfade.manual:
-                    App().crossfade.scale_moved(App().crossfade.scaleB)
+                    App().crossfade.scale_moved(App().crossfade.scale_b)
 
             if (
-                self.scaleA.get_value() == 255
-                and self.scaleB.get_value() == 255
+                self.scale_a.get_value() == 255
+                and self.scale_b.get_value() == 255
                 and App().crossfade.manual
             ):
-                if self.scaleA.get_inverted():
-                    self.scaleA.set_inverted(False)
-                    self.scaleB.set_inverted(False)
+                if self.scale_a.get_inverted():
+                    self.scale_a.set_inverted(False)
+                    self.scale_b.set_inverted(False)
                 else:
-                    self.scaleA.set_inverted(True)
-                    self.scaleB.set_inverted(True)
-                self.scaleA.set_value(0)
-                self.scaleB.set_value(0)
+                    self.scale_a.set_inverted(True)
+                    self.scale_b.set_inverted(True)
+                self.scale_a.set_value(0)
+                self.scale_b.set_value(0)
                 event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.scaleA.emit("button-release-event", event)
-                self.scaleB.emit("button-release-event", event)
+                self.scale_a.emit("button-release-event", event)
+                self.scale_b.emit("button-release-event", event)
 
     def scale_clicked(self, scale):
         if self.midi_learn:
-            if scale == self.scaleA:
+            if scale == self.scale_a:
                 App().midi.midi_learn = "Crossfade_out"
-            elif scale == self.scaleB:
+            elif scale == self.scale_b:
                 App().midi.midi_learn = "Crossfade_in"
             elif scale == self.scaleGM:
                 App().midi.midi_learn = "GM"

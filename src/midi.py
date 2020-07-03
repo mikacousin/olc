@@ -4830,18 +4830,18 @@ class Midi:
 
         if App().virtual_console:
             if fader == self.xfade_out:
-                App().virtual_console.scaleA.set_value(val)
-                App().virtual_console.scale_moved(App().virtual_console.scaleA)
+                App().virtual_console.scale_a.set_value(val)
+                App().virtual_console.scale_moved(App().virtual_console.scale_a)
             elif fader == self.xfade_in:
-                App().virtual_console.scaleB.set_value(val)
-                App().virtual_console.scale_moved(App().virtual_console.scaleB)
+                App().virtual_console.scale_b.set_value(val)
+                App().virtual_console.scale_moved(App().virtual_console.scale_b)
         else:
             if fader == self.xfade_out:
-                App().crossfade.scaleA.set_value(val)
-                App().crossfade.scale_moved(App().crossfade.scaleA)
+                App().crossfade.scale_a.set_value(val)
+                App().crossfade.scale_moved(App().crossfade.scale_a)
             elif fader == self.xfade_in:
-                App().crossfade.scaleB.set_value(val)
-                App().crossfade.scale_moved(App().crossfade.scaleB)
+                App().crossfade.scale_b.set_value(val)
+                App().crossfade.scale_moved(App().crossfade.scale_b)
 
         if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
             if self.xfade_out.get_inverted():

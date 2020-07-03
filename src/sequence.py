@@ -39,14 +39,14 @@ def update_ui(position, subtitle):
     # Virtual Console's Xfade
     if App().virtual_console:
         if App().virtual_console.props.visible:
-            if App().virtual_console.scaleA.get_inverted():
-                App().virtual_console.scaleA.set_inverted(False)
-                App().virtual_console.scaleB.set_inverted(False)
+            if App().virtual_console.scale_a.get_inverted():
+                App().virtual_console.scale_a.set_inverted(False)
+                App().virtual_console.scale_b.set_inverted(False)
             else:
-                App().virtual_console.scaleA.set_inverted(True)
-                App().virtual_console.scaleB.set_inverted(True)
-            App().virtual_console.scaleA.set_value(0)
-            App().virtual_console.scaleB.set_value(0)
+                App().virtual_console.scale_a.set_inverted(True)
+                App().virtual_console.scale_b.set_inverted(True)
+            App().virtual_console.scale_a.set_value(0)
+            App().virtual_console.scale_b.set_value(0)
 
 
 class Sequence:
@@ -658,8 +658,8 @@ class ThreadGo(threading.Thread):
         if App().virtual_console:
             if App().virtual_console.props.visible:
                 val = round((255 / delay) * i)
-                GLib.idle_add(App().virtual_console.scaleA.set_value, val)
-                GLib.idle_add(App().virtual_console.scaleB.set_value, val)
+                GLib.idle_add(App().virtual_console.scale_a.set_value, val)
+                GLib.idle_add(App().virtual_console.scale_b.set_value, val)
 
         # On attend que le temps d'un éventuel wait soit passé pour changer
         # les levels
@@ -905,8 +905,8 @@ class ThreadGoBack(threading.Thread):
         if App().virtual_console:
             if App().virtual_console.props.visible:
                 val = round((255 / go_back_time) * i)
-                GLib.idle_add(App().virtual_console.scaleA.set_value, val)
-                GLib.idle_add(App().virtual_console.scaleB.set_value, val)
+                GLib.idle_add(App().virtual_console.scale_a.set_value, val)
+                GLib.idle_add(App().virtual_console.scale_b.set_value, val)
 
         for univ in range(NB_UNIVERSES):
 

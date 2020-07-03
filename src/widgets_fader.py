@@ -28,7 +28,7 @@ class FaderWidget(Gtk.Scale):
         self.pressed = True
         self.queue_draw()
 
-        if self in (App().virtual_console.scaleA, App().virtual_console.scaleB):
+        if self in (App().virtual_console.scale_a, App().virtual_console.scale_b):
             App().crossfade.manual = True
 
     def on_release(self, tgt, ev):
