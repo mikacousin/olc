@@ -12,6 +12,24 @@ from olc.master import Master
 from olc.widgets_group import GroupWidget
 
 
+def get_time(string):
+    """ String format : [[hours:]minutes:]seconds[.tenths]
+        Return time in seconds """
+    if ":" in string:
+        tsplit = string.split(":")
+        if len(tsplit) == 2:
+            time = int(tsplit[0]) * 60 + float(tsplit[1])
+        elif len(tsplit) == 3:
+            time = int(tsplit[0]) * 3600 + int(tsplit[1]) * 60 + float(tsplit[2])
+        else:
+            print("Time format Error")
+            time = 0
+    else:
+        time = float(string)
+
+    return time
+
+
 class Ascii:
     def __init__(self, filename):
         self.file = filename
@@ -126,22 +144,22 @@ class Ascii:
                             time = p.split(" ")[0]
                             delay = p.split(" ")[1]
 
-                            t_out = self.get_time(time)
+                            t_out = get_time(time)
                             if t_out == 0:
                                 t_out = self.default_time
 
-                            d_out = self.get_time(delay)
+                            d_out = get_time(delay)
 
                         if line[:2].upper() == "UP":
                             p = line[3:]
                             time = p.split(" ")[0]
                             delay = p.split(" ")[1]
 
-                            t_in = self.get_time(time)
+                            t_in = get_time(time)
                             if t_in == 0:
                                 t_in = self.default_time
 
-                            d_in = self.get_time(delay)
+                            d_in = get_time(delay)
 
                         if line[:4].upper() == "CHAN":
                             p = line[5:].split(" ")
@@ -209,11 +227,11 @@ class Ascii:
                             else:
                                 delay = "0"
 
-                            t_out = self.get_time(time)
+                            t_out = get_time(time)
                             if t_out == 0:
                                 t_out = self.default_time
 
-                            d_out = self.get_time(delay)
+                            d_out = get_time(delay)
 
                         if line[:2].upper() == "UP":
                             p = line[3:]
@@ -223,15 +241,15 @@ class Ascii:
                             else:
                                 delay = "0"
 
-                            t_in = self.get_time(time)
+                            t_in = get_time(time)
                             if t_in == 0:
                                 t_in = self.default_time
 
-                            d_in = self.get_time(delay)
+                            d_in = get_time(delay)
 
                         if line[:6].upper() == "$$WAIT":
                             time = line[7:].split(" ")[0]
-                            wait = self.get_time(time)
+                            wait = get_time(time)
 
                         if line[:11].upper() == "$$PARTTIME ":
                             p = line[11:]
@@ -240,7 +258,7 @@ class Ascii:
                                 d = 0
                             delay = float(d)
                             time_str = p.split(" ")[1]
-                            time = self.get_time(time_str)
+                            time = get_time(time_str)
 
                         if line[:14].upper() == "$$PARTTIMECHAN":
                             p = line[15:].split(" ")
@@ -1125,20 +1143,3 @@ class Ascii:
 
         self.modified = False
         App().window.header.set_title(self.basename)
-
-    def get_time(self, string):
-        """ String format : [[hours:]minutes:]seconds[.tenths]
-            Return time in seconds """
-        if ":" in string:
-            tsplit = string.split(":")
-            if len(tsplit) == 2:
-                time = int(tsplit[0]) * 60 + float(tsplit[1])
-            elif len(tsplit) == 3:
-                time = int(tsplit[0]) * 3600 + int(tsplit[1]) * 60 + float(tsplit[2])
-            else:
-                print("Time format Error")
-                time = 0
-        else:
-            time = float(string)
-
-        return time
