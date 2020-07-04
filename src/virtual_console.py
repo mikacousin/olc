@@ -232,7 +232,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
         adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
         self.scale_a = FaderWidget(
-            "Crossfade_out",
+            text="Crossfade_out",
             red=0.3,
             green=0.3,
             blue=0.7,

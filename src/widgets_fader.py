@@ -9,7 +9,7 @@ class FaderWidget(Gtk.Scale):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, text="None", red=0.2, green=0.2, blue=0.2, *args, **kwds):
+    def __init__(self, *args, text="None", red=0.2, green=0.2, blue=0.2, **kwds):
         super().__init__(*args, **kwds)
 
         self.red = red
