@@ -373,7 +373,7 @@ class Window(Gtk.ApplicationWindow):
                 print("Go released")
             else:
                 print("Go pressed")
-                self.keypress_space()
+                App().sequence.sequence_go()
             if message[6] & 32:
                 print("Back released")
             else:
