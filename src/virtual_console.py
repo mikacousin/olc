@@ -755,4 +755,4 @@ class VirtualConsoleWindow(Gtk.Window):
             value = scale.get_value()
 
             App().dmx.grand_master = value
-            App().window.gm.queue_draw()
+            App().window.grand_master.queue_draw()

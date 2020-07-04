@@ -31,6 +31,7 @@ class Midi:
         self.midi_learn = ""
 
         # Default MIDI values : Channel, Note / Channel, CC
+        # TODO: Use a Dictionnarie not a List ?
         self.midi_table = [
             ["Go", 0, 11],
             ["Go_Back", 0, -1],
@@ -4775,7 +4776,7 @@ class Midi:
                     )
                 else:
                     App().dmx.grand_master = val
-                    App().window.gm.queue_draw()
+                    App().window.grand_master.queue_draw()
 
             # Manual Crossfade Out
             for index, item in enumerate(self.midi_table):
