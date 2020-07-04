@@ -1,4 +1,5 @@
 import array
+import socket
 from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
@@ -344,7 +345,6 @@ class Window(Gtk.ApplicationWindow):
         print(ch)
         GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
         """
-        import socket
 
         address = ("", 3330)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
