@@ -20,7 +20,9 @@ class Window(Gtk.ApplicationWindow):
 
         self.percent_level = App().settings.get_boolean("percent")
 
-        Gtk.Window.__init__(self, title="Open Lighting Console", application=App())
+        Gtk.ApplicationWindow.__init__(
+            self, title="Open Lighting Console", application=App()
+        )
         self.set_default_size(1400, 1200)
         self.set_name("olc")
 
