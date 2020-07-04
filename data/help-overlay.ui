@@ -168,6 +168,13 @@
                 <property name="title" translatable="yes" context="shortcut window">Update cue</property>
               </object>
             </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="record">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;Shift&gt;R</property>
+                <property name="title" translatable="yes" context="shortcut window">Record cue</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>

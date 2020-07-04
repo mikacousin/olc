@@ -1,3 +1,5 @@
+"""Open Lighting Console's Main window"""
+
 import array
 import socket
 from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
@@ -11,6 +13,7 @@ from olc.widgets_GM import GMWidget
 
 
 class Window(Gtk.ApplicationWindow):
+    """Main Window"""
     def __init__(self, patch):
 
         self.patch = patch
@@ -321,30 +324,26 @@ class Window(Gtk.ApplicationWindow):
 
         # TODO: Add Enttec wing playback support with Gio.SocketService
         # (and Gio.SocketListener.add_address)
-        """
-        service = Gio.SocketService()
-        service.connect('incoming', self.incoming_connection_cb)
-        #service.add_address(Gio.InetSocketAddress(Gio.SocketFamily(2), 3330),
-        #                    Gio.SocketType(2), Gio.SocketProtocal(17), None)
-        address = Gio.InetAddress.new_any(2)
-        #address = Gio.InetAddress.new_from_string('127.0.0.1')
-        #inetsock = Gio.InetSocketAddress.new(address, 3330)
-        inetsock = Gio.InetSocketAddress.new_from_string('127.0.0.1', 3330)
-        service.add_address(inetsock, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP)
-        """
-        """
-        socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM,
-                                Gio.SocketProtocol.UDP)
-        address = Gio.InetAddress.new_any(Gio.SocketFamily.IPV4)
-        inetsock = Gio.InetSocketAddress.new(address, 3330)
-        ret = socket.connect(inetsock)
-        print(ret)
-        fd = socket.get_fd()
-        print(fd)
-        ch = GLib.IOChannel.unix_new(fd)
-        print(ch)
-        GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
-        """
+        # service = Gio.SocketService()
+        # service.connect('incoming', self.incoming_connection_cb)
+        # #service.add_address(Gio.InetSocketAddress(Gio.SocketFamily(2), 3330),
+        # #                    Gio.SocketType(2), Gio.SocketProtocal(17), None)
+        # address = Gio.InetAddress.new_any(2)
+        # #address = Gio.InetAddress.new_from_string('127.0.0.1')
+        # #inetsock = Gio.InetSocketAddress.new(address, 3330)
+        # inetsock = Gio.InetSocketAddress.new_from_string('127.0.0.1', 3330)
+        # service.add_address(inetsock, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP)
+        # socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM,
+        #                         Gio.SocketProtocol.UDP)
+        # address = Gio.InetAddress.new_any(Gio.SocketFamily.IPV4)
+        # inetsock = Gio.InetSocketAddress.new(address, 3330)
+        # ret = socket.connect(inetsock)
+        # print(ret)
+        # fd = socket.get_fd()
+        # print(fd)
+        # ch = GLib.IOChannel.unix_new(fd)
+        # print(ch)
+        # GLib.io_add_watch(ch, 0, GLib.IOCondition.IN, self.incoming_connection_cb)
 
         address = ("", 3330)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -362,6 +361,7 @@ class Window(Gtk.ApplicationWindow):
         self.set_icon_name("olc")
 
     def incoming_connection_cb(self, fd, condition, data):
+        """Listen for Enttec Wing Playback"""
         # print(fd, condition, data)
         message = self.sock.recv(1024)
         if message[0:4] == b"WODD":
@@ -447,7 +447,7 @@ class Window(Gtk.ApplicationWindow):
         return True
 
     def step_filter_func1(self, model, treeiter, _data):
-        """ Filter for the first part of the cues list """
+        """Filter for the first part of the cues list"""
 
         if App().sequence.position <= 0:
             if int(model[treeiter][11]) == 0 or int(model[treeiter][11]) == 1:
@@ -484,13 +484,13 @@ class Window(Gtk.ApplicationWindow):
         return False
 
     def step_filter_func2(self, model, treeiter, _data):
-        """ Filter for the second part of the cues list """
+        """Filter for the second part of the cues list"""
         if int(model[treeiter][0]) <= App().sequence.position + 1:
             return False
         return True
 
     def filter_func(self, child, _user_data):
-        """ Filter for channels window """
+        """Filter for channels window"""
         if self.view_type == 0:
             i = child.get_index()
             for channel in App().patch.channels[i][0]:
@@ -502,19 +502,15 @@ class Window(Gtk.ApplicationWindow):
             return True
 
     def on_timeout(self, _user_data):
-
-        # self.percent_view = App().settings.get_boolean('percent')
-
+        """Executed every timeout"""
         # Send DMX
         App().dmx.send()
-
         # Scan MIDI messages
         App().midi.scan()
-
         return True
 
     def button_clicked_cb(self, button):
-        """ Toggle type of view : patched channels or all channels """
+        """Toggle type of view : patched channels or all channels"""
         if self.view_type == 0:
             self.view_type = 1
         else:
@@ -522,6 +518,7 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox.invalidate_filter()
 
     def on_scroll(self, widget, event):
+        """Executed on scroll wheel mouse event"""
         # Send Events to notebook's pages
         page = self.notebook.get_current_page()
         child = self.notebook.get_nth_page(page)
@@ -549,7 +546,7 @@ class Window(Gtk.ApplicationWindow):
         return True
 
     def on_key_press_event(self, widget, event):
-
+        """Executed on key press event"""
         # Cherche la page ouverte dans le notebook
         # Pour rediriger les saisies clavier
         page = self.notebook.get_current_page()
@@ -603,7 +600,7 @@ class Window(Gtk.ApplicationWindow):
         return False
 
     def keypress_Right(self):
-        """ Next Channel """
+        """Next Channel"""
 
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -629,7 +626,7 @@ class Window(Gtk.ApplicationWindow):
                 self.last_chan_selected = str(next_chan)
 
     def keypress_Left(self):
-        """ Previous Channel """
+        """Previous Channel"""
 
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -654,7 +651,7 @@ class Window(Gtk.ApplicationWindow):
             self.last_chan_selected = str(chan)
 
     def keypress_Down(self):
-        """ Next Line """
+        """Next Line"""
 
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -679,7 +676,7 @@ class Window(Gtk.ApplicationWindow):
                 self.last_chan_selected = str(index)
 
     def keypress_Up(self):
-        """ Previous Line """
+        """Previous Line"""
 
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -704,7 +701,7 @@ class Window(Gtk.ApplicationWindow):
                 self.last_chan_selected = str(index)
 
     def keypress_a(self):
-        """ All Channels """
+        """All Channels"""
 
         self.flowbox.unselect_all()
 
@@ -718,7 +715,7 @@ class Window(Gtk.ApplicationWindow):
                     self.flowbox.select_child(child)
 
     def keypress_c(self):
-        """ Channel """
+        """Channel"""
 
         self.flowbox.unselect_all()
 
@@ -734,10 +731,11 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Divide(self):
+        """Thru"""
         self.keypress_greater()
 
     def keypress_greater(self):
-        """ Thru """
+        """Thru"""
 
         sel = self.flowbox.get_selected_children()
         if len(sel) == 1:
@@ -774,6 +772,7 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Add(self):
+        """ + """
         self.keypress_plus()
 
     def keypress_plus(self):
@@ -796,6 +795,7 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_KP_Subtract(self):
+        """ - """
         self.keypress_minus()
 
     def keypress_minus(self):
@@ -866,6 +866,7 @@ class Window(Gtk.ApplicationWindow):
                         App().dmx.user[channel] = level - lvl
 
     def keypress_KP_Enter(self):
+        """ @ Level """
         self.keypress_equal()
 
     def keypress_equal(self):
@@ -895,21 +896,26 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_BackSpace(self):
+        """ Empty keys buffer """
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_Escape(self):
+        """ Unselect all channels """
         self.flowbox.unselect_all()
         self.last_chan_selected = ""
 
     def keypress_q(self):
-        # TODO: Update Shortcuts window
         """ Seq - """
         App().sequence.sequence_minus()
+        self.keystring = ""
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_w(self):
         """ Seq + """
         App().sequence.sequence_plus()
+        self.keystring = ""
+        self.statusbar.push(self.context_id, self.keystring)
 
     def keypress_G(self):
         """ Goto """
@@ -923,7 +929,7 @@ class Window(Gtk.ApplicationWindow):
         found = False
 
         if self.keystring == "":
-            """ Use next free number """
+            # Use next free number
 
             # Find next free number
             position = App().sequence.position
@@ -946,7 +952,7 @@ class Window(Gtk.ApplicationWindow):
                 mem = memory + 1
 
         else:
-            """ Use given number """
+            # Use given number
 
             mem = float(self.keystring)
 
@@ -1183,6 +1189,7 @@ class Window(Gtk.ApplicationWindow):
 
 
 class Dialog(Gtk.Dialog):
+    """ Confirmation dialog when update Cue """
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(
             self,
