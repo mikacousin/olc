@@ -122,13 +122,13 @@ class TrackChannelsWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, _tgt, ev):
+    def on_click(self, _tgt, event):
         App().track_channels_tab.flowbox.unselect_all()
         child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
         App().window.set_focus(child)
         App().track_channels_tab.flowbox.select_child(child)
         App().track_channels_tab.last_step_selected = str(self.step)
-        chan = int((ev.x - 535) / 65)
+        chan = int((event.x - 535) / 65)
         if 0 <= chan < len(self.levels):
             App().track_channels_tab.channel_selected = chan
 
