@@ -162,6 +162,7 @@ class MastersTab(Gtk.Paned):
             # Type : Preset
             if App().masters[row].content_type == 1:
                 found = False
+                mem = None
                 preset = App().masters[row].content_value
                 for mem in App().memories:
                     if mem.memory == preset:
@@ -209,6 +210,7 @@ class MastersTab(Gtk.Paned):
             # Type : Group
             if App().masters[row].content_type == 13:
                 found = False
+                grp = None
                 group = App().masters[row].content_value
                 for grp in App().groups:
                     if grp.index == group:
@@ -585,6 +587,7 @@ class MastersTab(Gtk.Paned):
             if App().masters[row].content_type == 1:
                 preset = App().masters[row].content_value
                 found = False
+                mem = None
                 for mem in App().memories:
                     if mem.memory == preset:
                         found = True
@@ -599,6 +602,7 @@ class MastersTab(Gtk.Paned):
             elif App().masters[row].content_type == 13:
                 group = App().masters[row].content_value
                 found = False
+                grp = None
                 for grp in App().groups:
                     if grp.index == group:
                         found = True
@@ -730,6 +734,7 @@ class MastersTab(Gtk.Paned):
             # Type : Preset
             if App().masters[row].content_type == 1:
                 found = False
+                mem = None
                 for mem in App().memories:
                     if mem.memory == App().masters[row].content_value:
                         found = True
@@ -768,6 +773,7 @@ class MastersTab(Gtk.Paned):
             # Type = Group
             elif App().masters[row].content_type == 13:
                 found = False
+                grp = None
                 for grp in App().groups:
                     if grp.index == App().masters[row].content_value:
                         found = True

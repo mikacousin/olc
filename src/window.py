@@ -14,6 +14,7 @@ from olc.widgets_GM import GMWidget
 
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
+
     def __init__(self, patch):
 
         self.patch = patch
@@ -1190,6 +1191,7 @@ class Window(Gtk.ApplicationWindow):
 
 class Dialog(Gtk.Dialog):
     """ Confirmation dialog when update Cue """
+
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(
             self,

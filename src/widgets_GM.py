@@ -14,6 +14,7 @@ class GMWidget(Gtk.Widget):
         self.width = 60
         self.height = 30
         self.radius = 10
+        self.label = ""
 
         self.set_size_request(self.width, self.height)
 

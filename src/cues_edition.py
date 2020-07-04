@@ -680,7 +680,7 @@ class CuesEditionTab(Gtk.Paned):
         """ Insert a new Memory """
 
         if self.keystring == "":
-            """ Insert memory with the next free number """
+            # Insert memory with the next free number
             mem = False
             # Find Next free number
             if len(App().memories) > 1:
@@ -729,56 +729,54 @@ class CuesEditionTab(Gtk.Paned):
 
             return True
 
+        # Insert memory with the given number
+        mem = float(self.keystring)
+
+        # Memory already exist ?
+        for item in App().memories:
+            if item.memory == mem:
+                return False
+
+        # Find selected memory
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+
+            sequence = App().memories[row].sequence
+            # memory = App().memories[row].memory
+            channels = App().memories[row].channels
+            # text = App().memories[row].text
         else:
-            """ Insert memory with the given number """
+            sequence = 0
+            channels = array.array("B", [0] * MAX_CHANNELS)
 
-            mem = float(self.keystring)
+        # Find Memory's position
+        found = False
+        i = 0
+        for i, _ in enumerate(App().memories):
+            if App().memories[i].memory > mem:
+                found = True
+                break
+        if not found:
+            # Memory is at the end
+            i += 1
 
-            # Memory already exist ?
-            for item in App().memories:
-                if item.memory == mem:
-                    return False
+        # Create Memory
+        cue = Cue(sequence, mem, channels)
+        App().memories.insert(i, cue)
 
-            # Find selected memory
-            path, _focus_column = self.treeview.get_cursor()
-            if path:
-                row = path.get_indices()[0]
+        # Update display
+        nb_chan = 0
+        for chan in range(MAX_CHANNELS):
+            if channels[chan]:
+                nb_chan += 1
+        self.liststore.insert(i, [str(mem), "", nb_chan])
 
-                sequence = App().memories[row].sequence
-                # memory = App().memories[row].memory
-                channels = App().memories[row].channels
-                # text = App().memories[row].text
-            else:
-                sequence = 0
-                channels = array.array("B", [0] * MAX_CHANNELS)
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
 
-            # Find Memory's position
-            found = False
-            i = 0
-            for i, _ in enumerate(App().memories):
-                if App().memories[i].memory > mem:
-                    found = True
-                    break
-            if not found:
-                # Memory is at the end
-                i += 1
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
-            # Create Memory
-            cue = Cue(sequence, mem, channels)
-            App().memories.insert(i, cue)
-
-            # Update display
-            nb_chan = 0
-            for chan in range(MAX_CHANNELS):
-                if channels[chan]:
-                    nb_chan += 1
-            self.liststore.insert(i, [str(mem), "", nb_chan])
-
-            # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
-
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-
-            return True
+        return True

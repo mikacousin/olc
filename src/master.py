@@ -62,8 +62,6 @@ class Master:
 
     def level_changed(self):
 
-        self.percent_view = App().settings.get_boolean("percent")
-
         # Type : None
         if self.content_type == 0:
             return
@@ -142,7 +140,7 @@ class Master:
                                 # Start Chaser
                                 App().chasers[k].run = True
                                 App().chasers[k].thread = ThreadChaser(
-                                    self, k, self.value, self.percent_view
+                                    self, k, self.value
                                 )
                                 App().chasers[k].thread.start()
                             # Si il tournait déjà et master > 0
@@ -159,12 +157,11 @@ class Master:
 
 
 class ThreadChaser(threading.Thread):
-    def __init__(self, master, chaser, level_scale, percent_view, name=""):
+    def __init__(self, master, chaser, level_scale, name=""):
         threading.Thread.__init__(self)
         self.master = master
         self.chaser = chaser
         self.level_scale = level_scale
-        self.percent_view = percent_view
         self.name = name
         self._stopevent = threading.Event()
 
@@ -209,8 +206,6 @@ class ThreadChaser(threading.Thread):
         self._stopevent.set()
 
     def update_levels(self, delay_in, delay_out, i, position):
-
-        self.percent_view = App().settings.get_boolean("percent")
 
         for universe in range(NB_UNIVERSES):
             for output in range(512):
