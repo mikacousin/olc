@@ -959,9 +959,7 @@ class Application(Gtk.Application):
         self.win_settings.settings_dialog.show_all()
 
     def _shortcuts(self, _action, _parameter):
-        """
-            Create Shortcuts Window
-        """
+        """Create Shortcuts Window"""
         builder = Gtk.Builder()
         builder.add_from_resource("/org/gnome/OpenLightingConsole/gtk/help-overlay.ui")
         self.shortcuts = builder.get_object("help_overlay")
@@ -969,8 +967,7 @@ class Application(Gtk.Application):
         self.shortcuts.show()
 
     def _about(self, _action, _parameter):
-        """
-            Setup about dialog
+        """Setup about dialog
             @param action as Gio.SimpleAction
             @param param as GLib.Variant
         """
@@ -985,8 +982,7 @@ class Application(Gtk.Application):
             self.about_window.present()
 
     def _about_response(self, dialog, _response):
-        """
-            Destroy about dialog when closed
+        """Destroy about dialog when closed
             @param dialog as Gtk.Dialog
             @param response as int
         """

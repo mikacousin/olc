@@ -10,25 +10,7 @@ apps_DATA = olc.desktop
 
 @INTLTOOL_DESKTOP_RULE@
 
-#appdatadir = $(datadir)/appdata
-#appdata_DATA = $(appdata_in_files:.xml.in=.xml)
-#appdata_in_files = olc.appdata.xml.in
-
 @INTLTOOL_XML_RULE@
-
-# controllers bitmap
-controllersdir = $(pkgdatadir)
-controllers_DATA = \
-				controllers/UC33/button.png \
-				controllers/UC33/button_selected.png \
-				controllers/UC33/knob.png \
-				controllers/UC33/knob_selected.png \
-				controllers/UC33/slider.png \
-				controllers/UC33/slider_selected.png \
-				controllers/UC33/slider_track_selected.png \
-				controllers/UC33/slider_track.png \
-				controllers/UC33/uc33.png
-controllers_files = $(controllers_DATA)
 
 # hicolor icons
 hicolor_icon16dir = $(datadir)/icons/hicolor/16x16/apps
@@ -77,7 +59,6 @@ EXTRA_DIST = \
 	olc.desktop.in \
 	olc.gresource.xml \
 	org.gnome.OpenLightingConsole.gschema.xml \
-	$(controllers_files) \
 	$(NULL)
 
 CLEANFILES = \
