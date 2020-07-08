@@ -9,7 +9,7 @@ from olc.cue import Cue
 from olc.step import Step
 from olc.widgets_sequential import SequentialWidget
 from olc.widgets_channel import ChannelWidget
-from olc.widgets_GM import GMWidget
+from olc.widgets_grand_master import GMWidget
 
 
 class Window(Gtk.ApplicationWindow):

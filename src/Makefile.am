@@ -28,7 +28,7 @@ app_PYTHON = \
 	widgets_fader.py \
 	widgets_flash.py \
 	widgets_go.py \
-	widgets_GM.py \
+	widgets_grand_master.py \
 	widgets_group.py \
 	widgets_patch_channels.py \
 	widgets_patch_outputs.py \
