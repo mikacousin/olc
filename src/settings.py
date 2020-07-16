@@ -64,16 +64,31 @@ class SettingsDialog:
         self.spin_univers.set_adjustment(adjustment)
         self.spin_univers.set_value(App().settings.get_int("universe"))
 
-        self.midi_in = builder.get_object("midi_in")
-        self.midi_in.connect("changed", self._on_midi_in_changed)
-        default = App().settings.get_string("midi-in")
-        self.midi_in.append_text(default)
+        # List of MIDI Controllers
+        self.midi_grid = builder.get_object("midi_grid")
+        self.midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
+        default = App().settings.get_strv("midi-in")
         for midi_in in mido.get_input_names():
-            self.midi_in.append_text(midi_in)
-        self.midi_in.set_entry_text_column(0)
-        self.midi_in.set_active(0)
+            check_button = Gtk.CheckButton()
+            check_button.set_label(midi_in)
+            check_button.connect("toggled", self._on_midi_toggle)
+            if midi_in in default:
+                check_button.set_active(True)
+            self.midi_grid.add(check_button)
 
         builder.connect_signals(self)
+
+    def _on_midi_toggle(self, button):
+        """Active / Unactive MIDI controllers"""
+        midi_ports = App().settings.get_strv("midi-in")
+        if button.get_active():
+            midi_ports.append(button.get_label())
+        else:
+            midi_ports.remove(button.get_label())
+        midi_ports = list(set(midi_ports))
+        App().settings.set_strv("midi-in", midi_ports)
+        App().midi.close_input()
+        App().midi.open_input(midi_ports)
 
     def _on_change_percent(self, _widget):
         lvl = self.spin_percent_level.get_value_as_int()
@@ -118,10 +133,3 @@ class SettingsDialog:
         App().settings.set_value("osc-host", GLib.Variant("s", address_ip))
         App().settings.set_value("osc-client-port", GLib.Variant("i", client_port))
         App().settings.set_value("osc-server-port", GLib.Variant("i", server_port))
-
-    def _on_midi_in_changed(self, combo):
-        text = combo.get_active_text()
-        if text is not None:
-            App().settings.set_value("midi-in", GLib.Variant("s", text))
-            App().midi.close_input()
-            App().midi.open_input(text)

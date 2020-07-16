@@ -95,7 +95,7 @@ class Sequence:
 
     def sequence_plus(self):
 
-        if App().sequence.on_go:
+        if App().sequence.on_go and App().sequence.thread:
             try:
                 # Stop actual Thread
                 App().sequence.thread.stop()
@@ -167,7 +167,7 @@ class Sequence:
 
     def sequence_minus(self):
 
-        if self.on_go:
+        if self.on_go and App().sequence.thread:
             try:
                 # Stop actual Thread
                 App().sequence.thread.stop()
@@ -294,7 +294,7 @@ class Sequence:
 
     def sequence_go(self, _action, _param):
         # Si un Go est en cours, on bascule sur la mémoire suivante
-        if App().sequence.on_go:
+        if App().sequence.on_go and App().sequence.thread:
             # Stop actual Thread
             try:
                 App().sequence.thread.stop()
@@ -414,7 +414,7 @@ class Sequence:
         if position == 0:
             return False
 
-        if App().sequence.on_go:
+        if App().sequence.on_go and App().sequence.thread:
             try:
                 App().sequence.thread.stop()
                 App().sequence.thread.join()

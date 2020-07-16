@@ -506,8 +506,6 @@ class Window(Gtk.ApplicationWindow):
         """Executed every timeout"""
         # Send DMX
         App().dmx.send()
-        # Scan MIDI messages
-        App().midi.scan()
         return True
 
     def button_clicked_cb(self, button):

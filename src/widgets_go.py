@@ -38,12 +38,12 @@ class GoWidget(Gtk.Widget):
     def do_draw(self, cr):
         # Draw rounded box
         if self.pressed:
-            if App().midi.midi_learn == "Go":
+            if App().midi.midi_learn == "go":
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.1, 0.1, 0.1)
         else:
-            if App().midi.midi_learn == "Go":
+            if App().midi.midi_learn == "go":
                 cr.set_source_rgb(0.3, 0.2, 0.2)
             else:
                 cr.set_source_rgb(0.2, 0.2, 0.2)

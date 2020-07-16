@@ -186,10 +186,10 @@ class Application(Gtk.Application):
         # For Manual crossfade
         self.crossfade = CrossFade()
 
-        # Open MIDI Input
+        # Open MIDI Inputs
         self.midi = Midi()
-        port = self.settings.get_string("midi-in")
-        self.midi.open_input(port)
+        ports = self.settings.get_strv("midi-in")
+        self.midi.open_input(ports)
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
@@ -992,7 +992,7 @@ class Application(Gtk.Application):
     def _exit(self, _action, _parameter):
         # Stop Chasers Threads
         for chaser in self.chasers:
-            if chaser.run:
+            if chaser.run and chaser.thread:
                 chaser.run = False
                 chaser.thread.stop()
                 chaser.thread.join()

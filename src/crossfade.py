@@ -32,7 +32,7 @@ class CrossFade:
         if level not in (255, 0):
             App().sequence.on_go = True
             # If Go is sent, stop it
-            if App().crossfade.manual:
+            if App().crossfade.manual and App().sequence.thread:
                 try:
                     if App().sequence.thread.is_alive():
                         App().sequence.thread.stop()
