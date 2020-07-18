@@ -31,6 +31,9 @@ Install ola fom git with python3 support
 - python3-liblo
 - python3-mido
 - python3-rtmidi
+- libasound2-dev
+- libjack0
+- libjack-dev
 
 ## Building from git
 ```
