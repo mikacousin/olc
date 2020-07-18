@@ -7,6 +7,8 @@ Alpha version. Don't use it on production !
 
 This project is an exercise to learn python and prepare the real one.
 
+![Screenshot](../assets/olc.png?raw=true)
+
 ## Depends on
 - gtk3 >= 3.20
 - python3
