@@ -7,7 +7,11 @@ Alpha version. Don't use it on production !
 
 This project is an exercise to learn python and prepare the real one.
 
+Main Window :
 ![Screenshot](../assets/olc.png?raw=true)
+
+Virtual console :
+![Virtual console](../assets/virtual console.png?raw=true)
 
 ## Depends on
 - gtk3 >= 3.20
