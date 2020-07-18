@@ -11,7 +11,7 @@ Main Window :
 ![Screenshot](../assets/olc.png?raw=true)
 
 Virtual console :
-![Virtual console](../assets/virtual console.png?raw=true)
+![VirtualConsole](../assets/virtual_console.png?raw=true)
 
 ## Depends on
 - gtk3 >= 3.20
