@@ -18,8 +18,9 @@ This project is an exercise to learn python and prepare the real one.
 - liblo (python-pyliblo on archlinux)
 
 ## Quick test on Raspberry Pi 3B+
-Install ola fom git with python3 support
+Install ola fom git with python3 support.
 
+And with `sudo apt install` :
 - gnome-common
 - python-gobject
 - gobject-introspection
