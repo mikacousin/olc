@@ -17,7 +17,7 @@ This project is an exercise to learn python and prepare the real one.
 - mido (python-mido on archlinux)
 - liblo (python-pyliblo on archlinux)
 
-## Quick test on Raspberry Pi
+## Quick test on Raspberry Pi 3B+
 Install ola fom git with python3 support
 
 - gnome-common
@@ -31,8 +31,6 @@ Install ola fom git with python3 support
 - python3-liblo
 - python3-mido
 - python3-rtmidi
-
-Need some love to be usable
 
 ## Building from git
 ```

@@ -315,7 +315,7 @@ class Window(Gtk.ApplicationWindow):
         self.cues_liststore1[3][10] = Pango.Weight.HEAVY
         self.cues_liststore1[3][9] = "#555555"
 
-        # Every 100ms : Send DMX and Scan MIDI
+        # Every 100ms : Send DMX
         self.timeout_id = GObject.timeout_add(100, self.on_timeout, None)
 
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
