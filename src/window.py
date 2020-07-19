@@ -568,7 +568,7 @@ class Window(Gtk.ApplicationWindow):
             return App().masters_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
-        # print (keyname)
+        # print(keyname)
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
             self.statusbar.push(self.context_id, self.keystring)
@@ -1185,6 +1185,178 @@ class Window(Gtk.ApplicationWindow):
             pass
 
         dialog.destroy()
+
+    def keypress_T(self):
+        """Change Time In and Time Out of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_time(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][5] = str(time)
+        self.cues_liststore1[position+3][7] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.time_in = App().sequence.steps[position+1].time_in
+        self.sequential.time_out = App().sequence.steps[position+1].time_out
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def keypress_I(self):
+        """Change Time In of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_time_in(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][7] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.time_in = App().sequence.steps[position+1].time_in
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def keypress_O(self):
+        """Change Time Out of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_time_out(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][5] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.time_out = App().sequence.steps[position+1].time_out
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def keypress_W(self):
+        """Change Wait Time of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_wait(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][3] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.wait = App().sequence.steps[position+1].wait
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def keypress_D(self):
+        """Change Delay In and Out of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_delay(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][4] = str(time)
+        self.cues_liststore1[position+3][6] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.delay_in = App().sequence.steps[position+1].delay_in
+        self.sequential.delay_out = App().sequence.steps[position+1].delay_out
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def keypress_K(self):
+        """Change Delay In of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_delay_in(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][6] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.delay_in = App().sequence.steps[position+1].delay_in
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def keypress_L(self):
+        """Change Delay Out of next step"""
+        if self.keystring == "":
+            return
+
+        position = App().sequence.position
+
+        time = float(self.keystring)
+        App().sequence.steps[position+1].set_delay_out(time)
+        if time.is_integer():
+            time = int(time)
+        self.cues_liststore1[position+3][4] = str(time)
+        self.step_filter1.refilter()
+        self.sequential.delay_out = App().sequence.steps[position+1].delay_out
+        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.seq_grid.queue_draw()
+
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(App().ascii.basename + "*")
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
 
 class Dialog(Gtk.Dialog):

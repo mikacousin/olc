@@ -47,6 +47,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="track_channels">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;T</property>
+                <property name="title" translatable="yes" context="shortcut window">Track Channels</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="quit">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;Q</property>
@@ -119,6 +126,61 @@
                 <property name="visible">1</property>
                 <property name="accelerator">colon</property>
                 <property name="title" translatable="yes" context="shortcut window">Level - %</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="Time">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Time</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="time">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;t</property>
+                <property name="title" translatable="yes" context="shortcut window">Time</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="time_in">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;i</property>
+                <property name="title" translatable="yes" context="shortcut window">Time In</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="time_out">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;o</property>
+                <property name="title" translatable="yes" context="shortcut window">Time Out</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="delay">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;d</property>
+                <property name="title" translatable="yes" context="shortcut window">Delay</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="delay_in">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;k</property>
+                <property name="title" translatable="yes" context="shortcut window">Delay In</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="delay_out">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;l</property>
+                <property name="title" translatable="yes" context="shortcut window">Delay Out</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="wait">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;w</property>
+                <property name="title" translatable="yes" context="shortcut window">Wait</property>
               </object>
             </child>
           </object>
