@@ -2,7 +2,7 @@
 
 import array
 import socket
-from gi.repository import Gio, Gtk, Gdk, GObject, GLib, Pango
+from gi.repository import Gio, Gtk, Gdk, GLib, Pango
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.cue import Cue
@@ -315,9 +315,6 @@ class Window(Gtk.ApplicationWindow):
         self.cues_liststore1[3][10] = Pango.Weight.HEAVY
         self.cues_liststore1[3][9] = "#555555"
 
-        # Every 100ms : Send DMX
-        self.timeout_id = GObject.timeout_add(100, self.on_timeout, None)
-
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
         GLib.unix_fd_add_full(
             0, App().sock.fileno(), GLib.IOCondition(27), App().on_fd_read, None
@@ -501,12 +498,6 @@ class Window(Gtk.ApplicationWindow):
                 return False
         else:
             return True
-
-    def on_timeout(self, _user_data):
-        """Executed every timeout"""
-        # Send DMX
-        App().dmx.send()
-        return True
 
     def button_clicked_cb(self, button):
         """Toggle type of view : patched channels or all channels"""
@@ -840,6 +831,8 @@ class Window(Gtk.ApplicationWindow):
                     else:
                         App().dmx.user[channel] = level + lvl
 
+        App().dmx.send()
+
     def keypress_colon(self):
         """ Level - (% level) of selected channels """
 
@@ -863,6 +856,8 @@ class Window(Gtk.ApplicationWindow):
                         App().dmx.user[channel] = 0
                     else:
                         App().dmx.user[channel] = level - lvl
+
+        App().dmx.send()
 
     def keypress_KP_Enter(self):
         """ @ Level """
@@ -890,6 +885,8 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     if 0 <= level <= 255:
                         App().dmx.user[channel] = level
+
+        App().dmx.send()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)

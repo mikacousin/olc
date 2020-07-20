@@ -164,6 +164,7 @@ class Sequence:
                     if channel:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
+            App().dmx.send()
 
     def sequence_minus(self):
 
@@ -237,6 +238,7 @@ class Sequence:
                     if channel:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
+            App().dmx.send()
 
     def sequence_goto(self, keystring):
         """ Jump to cue number """
@@ -802,6 +804,8 @@ class ThreadGo(threading.Thread):
 
                             App().dmx.sequence[channel - 1] = level
 
+            App().dmx.send()
+
             if App().patch_outputs_tab:
                 GLib.idle_add(App().patch_outputs_tab.flowbox.queue_draw)
 
@@ -941,6 +945,8 @@ class ThreadGoBack(threading.Thread):
                         level = next_level
 
                     App().dmx.sequence[channel - 1] = level
+
+        App().dmx.send()
 
         # if App().patch_outputs_tab != None:
         #     GLib.idle_add(App().patch_outputs_tab.flowbox.queue_draw)
