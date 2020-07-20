@@ -60,6 +60,54 @@
                 <property name="title" translatable="yes" context="shortcut window">Quit</property>
               </object>
             </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="esc">
+                <property name="visible">1</property>
+                <property name="accelerator">Escape</property>
+                <property name="title" translatable="yes" context="shortcut window">Close Tab</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="backspace">
+                <property name="visible">1</property>
+                <property name="accelerator">BackSpace</property>
+                <property name="title" translatable="yes" context="shortcut window">Clear</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="move">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Move</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="right">
+                <property name="visible">1</property>
+                <property name="accelerator">Right</property>
+                <property name="title" translatable="yes" context="shortcut window">Right</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="left">
+                <property name="visible">1</property>
+                <property name="accelerator">Left</property>
+                <property name="title" translatable="yes" context="shortcut window">Left</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="up">
+                <property name="visible">1</property>
+                <property name="accelerator">Up</property>
+                <property name="title" translatable="yes" context="shortcut window">Up</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="down">
+                <property name="visible">1</property>
+                <property name="accelerator">Down</property>
+                <property name="title" translatable="yes" context="shortcut window">Down</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>
