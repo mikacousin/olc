@@ -548,6 +548,7 @@ class ThreadGo(threading.Thread):
                     App().dmx.sequence[channel - 1] = level
 
         # Le Go est terminé
+        App().dmx.send()
         App().sequence.on_go = False
         # On vide le tableau des valeurs entrées par l'utilisateur
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
@@ -855,6 +856,7 @@ class ThreadGoBack(threading.Thread):
                     level = App().sequence.steps[position - 1].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
 
+        App().dmx.send()
         App().sequence.go = False
 
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
