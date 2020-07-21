@@ -339,6 +339,8 @@ class PatchOutputsTab(Gtk.Grid):
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(output + 1 + (512 * univ))
 
+        App().dmx.send()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -361,6 +363,8 @@ class PatchOutputsTab(Gtk.Grid):
 
                 self.outputs[output + (512 * univ)].queue_draw()
 
+        App().dmx.send()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -382,6 +386,8 @@ class PatchOutputsTab(Gtk.Grid):
                     App().patch.outputs[univ][output][1] = 0
 
                 self.outputs[output + (512 * univ)].queue_draw()
+
+        App().dmx.send()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
