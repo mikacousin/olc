@@ -1191,15 +1191,15 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_time(time)
+        App().sequence.steps[position + 1].set_time(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][5] = str(time)
-        self.cues_liststore1[position+3][7] = str(time)
+        self.cues_liststore1[position + 3][5] = str(time)
+        self.cues_liststore1[position + 3][7] = str(time)
         self.step_filter1.refilter()
-        self.sequential.time_in = App().sequence.steps[position+1].time_in
-        self.sequential.time_out = App().sequence.steps[position+1].time_out
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.time_in = App().sequence.steps[position + 1].time_in
+        self.sequential.time_out = App().sequence.steps[position + 1].time_out
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified
@@ -1217,13 +1217,13 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_time_in(time)
+        App().sequence.steps[position + 1].set_time_in(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][7] = str(time)
+        self.cues_liststore1[position + 3][7] = str(time)
         self.step_filter1.refilter()
-        self.sequential.time_in = App().sequence.steps[position+1].time_in
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.time_in = App().sequence.steps[position + 1].time_in
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified
@@ -1241,13 +1241,13 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_time_out(time)
+        App().sequence.steps[position + 1].set_time_out(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][5] = str(time)
+        self.cues_liststore1[position + 3][5] = str(time)
         self.step_filter1.refilter()
-        self.sequential.time_out = App().sequence.steps[position+1].time_out
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.time_out = App().sequence.steps[position + 1].time_out
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified
@@ -1265,13 +1265,13 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_wait(time)
+        App().sequence.steps[position + 1].set_wait(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][3] = str(time)
+        self.cues_liststore1[position + 3][3] = str(time)
         self.step_filter1.refilter()
-        self.sequential.wait = App().sequence.steps[position+1].wait
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.wait = App().sequence.steps[position + 1].wait
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified
@@ -1289,15 +1289,15 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_delay(time)
+        App().sequence.steps[position + 1].set_delay(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][4] = str(time)
-        self.cues_liststore1[position+3][6] = str(time)
+        self.cues_liststore1[position + 3][4] = str(time)
+        self.cues_liststore1[position + 3][6] = str(time)
         self.step_filter1.refilter()
-        self.sequential.delay_in = App().sequence.steps[position+1].delay_in
-        self.sequential.delay_out = App().sequence.steps[position+1].delay_out
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.delay_in = App().sequence.steps[position + 1].delay_in
+        self.sequential.delay_out = App().sequence.steps[position + 1].delay_out
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified
@@ -1315,13 +1315,13 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_delay_in(time)
+        App().sequence.steps[position + 1].set_delay_in(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][6] = str(time)
+        self.cues_liststore1[position + 3][6] = str(time)
         self.step_filter1.refilter()
-        self.sequential.delay_in = App().sequence.steps[position+1].delay_in
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.delay_in = App().sequence.steps[position + 1].delay_in
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified
@@ -1339,13 +1339,13 @@ class Window(Gtk.ApplicationWindow):
         position = App().sequence.position
 
         time = float(self.keystring)
-        App().sequence.steps[position+1].set_delay_out(time)
+        App().sequence.steps[position + 1].set_delay_out(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position+3][4] = str(time)
+        self.cues_liststore1[position + 3][4] = str(time)
         self.step_filter1.refilter()
-        self.sequential.delay_out = App().sequence.steps[position+1].delay_out
-        self.sequential.total_time = App().sequence.steps[position+1].total_time
+        self.sequential.delay_out = App().sequence.steps[position + 1].delay_out
+        self.sequential.total_time = App().sequence.steps[position + 1].total_time
         self.seq_grid.queue_draw()
 
         # Tag filename as modified

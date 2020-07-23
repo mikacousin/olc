@@ -1,5 +1,6 @@
 class Step:
     """Step"""
+
     def __init__(
         self,
         sequence=0,
