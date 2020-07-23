@@ -213,9 +213,9 @@ class Ascii:
                         mem = float(line[5:])
 
                     if in_cue:
-                        if line[:4].upper() == "TEXT" and not txt:
+                        if line[:4].upper() == "TEXT":
                             txt = line[5:]
-                        if line[:6].upper() == "$$TEXT":
+                        if line[:6].upper() == "$$TEXT" and not txt:
                             txt = line[7:]
                         if line[:12].upper() == "$$PRESETTEXT":
                             txt = line[13:]
@@ -329,13 +329,13 @@ class Ascii:
                     if line[:0] == "!":
                         flag_patch = False
                 if line[:7].upper() == "PATCH 1":
-                    for p in line[8:-1].split(" "):
+                    for p in line[8:].split(" "):
                         q = p.split("<")
                         if q[0]:
                             r = q[1].split("@")
                             channel = int(q[0])
                             output = int(r[0])
-                            univ = int(output / 512)
+                            univ = int((output - 1) / 512)
                             out = output - (512 * univ)
                             level = int(r[1])
                             # print(channel, univ, out, level)
@@ -816,10 +816,6 @@ class Ascii:
     def save(self):
         """ Save ASCII File """
 
-        # TODO: Rewrite all this function
-        print("Don't save for now !!!")
-        return False
-
         stream = self.file.replace("", False, Gio.FileCreateFlags.NONE, None)
 
         # TODO: to import Fx and Masters in dlight :
@@ -840,53 +836,73 @@ class Ascii:
         )
         stream.write(bytes("! Main sequence\n\n", "utf8"))
         stream.write(bytes("$SEQUENCE 1 0\n\n", "utf8"))
-        for cue, _ in enumerate(App().sequence.steps):
-            if App().sequence.steps[cue].cue.memory != "0":
-                stream.write(
-                    bytes("CUE " + App().sequence.steps[cue].cue.memory + "\n", "utf8")
-                )
+        for step, _ in enumerate(App().sequence.steps):
+            if int(App().sequence.steps[step].cue.memory) != 0:
+                # Save integers as integers
+                if App().sequence.steps[step].time_out.is_integer():
+                    time_out = str(int(App().sequence.steps[step].time_out))
+                else:
+                    time_out = str(App().sequence.steps[step].time_out)
+                if App().sequence.steps[step].delay_out.is_integer():
+                    delay_out = str(int(App().sequence.steps[step].delay_out))
+                else:
+                    delay_out = str(App().sequence.steps[step].delay_out)
+                if App().sequence.steps[step].time_in.is_integer():
+                    time_in = str(int(App().sequence.steps[step].time_in))
+                else:
+                    time_in = str(App().sequence.steps[step].time_in)
+                if App().sequence.steps[step].delay_in.is_integer():
+                    delay_in = str(int(App().sequence.steps[step].delay_in))
+                else:
+                    delay_in = str(App().sequence.steps[step].delay_in)
+                if App().sequence.steps[step].wait.is_integer():
+                    wait = str(int(App().sequence.steps[step].wait))
+                else:
+                    wait = str(App().sequence.steps[step].wait)
                 stream.write(
                     bytes(
-                        "DOWN " + str(App().sequence.steps[cue].time_out) + "\n",
+                        "CUE " + str(App().sequence.steps[step].cue.memory) + "\n",
                         "utf8",
                     )
                 )
                 stream.write(
-                    bytes("UP " + str(App().sequence.steps[cue].time_in) + "\n", "utf8")
+                    bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8",)
                 )
-                stream.write(
-                    bytes(
-                        "$$WAIT " + str(App().sequence.steps[cue].wait) + "\n", "utf8",
-                    )
-                )
+                stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8",))
+                stream.write(bytes("$$WAIT " + wait + "\n", "utf8",))
                 #  Chanel Time if any
-                for chan in App().sequence.steps[cue].channel_time.keys():
-                    stream.write(
-                        bytes(
-                            "$$PARTTIME "
-                            + str(App().sequence.steps[cue].channel_time[chan].delay)
-                            + " "
-                            + str(App().sequence.steps[cue].channel_time[chan].time)
-                            + "\n",
-                            "utf8",
+                for chan in App().sequence.steps[step].channel_time.keys():
+                    if App().sequence.steps[step].channel_time[chan].delay.is_integer():
+                        delay = str(
+                            int(App().sequence.steps[step].channel_time[chan].delay)
                         )
+                    else:
+                        delay = str(App().sequence.steps[step].channel_time[chan].delay)
+                    if App().sequence.steps[step].channel_time[chan].time.is_integer():
+                        time = str(
+                            int(App().sequence.steps[step].channel_time[chan].time)
+                        )
+                    else:
+                        time = str(App().sequence.steps[step].channel_time[chan].time)
+                    stream.write(
+                        bytes("$$PARTTIME " + delay + " " + time + "\n", "utf8",)
                     )
                     stream.write(bytes("$$PARTTIMECHAN " + str(chan) + "\n", "utf8"))
                 stream.write(
                     bytes(
-                        "TEXT " + ascii(App().sequence.steps[cue].text)[1:-1] + "\n",
-                        "utf8",
+                        "TEXT " + App().sequence.steps[step].text + "\n", "iso-8859-1"
                     )
-                    .decode("utf8")
-                    .encode("ascii")
                 )
                 stream.write(
-                    bytes("$$TEXT " + App().sequence.steps[cue].text + "\n", "utf8")
+                    bytes(
+                        "$$TEXT " + ascii(App().sequence.steps[step].text)[1:-1] + "\n",
+                        "ascii",
+                    )
                 )
                 channels = ""
                 i = 1
-                for chan, _ in enumerate(App().sequence.steps[cue].cue.channels):
-                    level = App().sequence.steps[cue].cue.channels[chan]
+                for chan, _ in enumerate(App().sequence.steps[step].cue.channels):
+                    level = App().sequence.steps[step].cue.channels[chan]
                     if level != 0:
                         level = "H" + format(level, "02X")
                         channels += " " + str(chan + 1) + "/" + level
@@ -907,46 +923,54 @@ class Ascii:
                 bytes("$SEQUENCE " + str(App().chasers[chaser].index) + "\n", "utf8")
             )
             stream.write(bytes("TEXT " + App().chasers[chaser].text + "\n\n", "utf8"))
-            for cue, _ in enumerate(App().chasers[chaser].steps):
-                if App().chasers[chaser].steps[cue].cue.memory != "0":
+            for step, _ in enumerate(App().chasers[chaser].steps):
+                if int(App().chasers[chaser].steps[step].cue.memory) != 0:
+                    # Save integers as integers
+                    if App().chasers[chaser].steps[step].time_out.is_integer():
+                        time_out = str(int(App().chasers[chaser].steps[step].time_out))
+                    else:
+                        time_out = str(App().chasers[chaser].steps[step].time_out)
+                    if App().chasers[chaser].steps[step].delay_out.is_integer():
+                        delay_out = str(
+                            int(App().chasers[chaser].steps[step].delay_out)
+                        )
+                    else:
+                        delay_out = str(App().chasers[chaser].steps[step].delay_out)
+                    if App().chasers[chaser].steps[step].time_in.is_integer():
+                        time_in = str(int(App().chasers[chaser].steps[step].time_in))
+                    else:
+                        time_in = str(App().chasers[chaser].steps[step].time_in)
+                    if App().chasers[chaser].steps[step].delay_in.is_integer():
+                        delay_in = str(int(App().chasers[chaser].steps[step].delay_in))
+                    else:
+                        delay_in = str(App().chasers[chaser].steps[step].delay_in)
+                    if App().chasers[chaser].steps[step].wait.is_integer():
+                        wait = str(int(App().chasers[chaser].steps[step].wait))
+                    else:
+                        wait = str(App().chasers[chaser].steps[step].wait)
                     stream.write(
                         bytes(
                             "$CUE "
                             + str(App().chasers[chaser].index)
                             + " "
-                            + App().chasers[chaser].steps[cue].cue.memory
+                            + str(App().chasers[chaser].steps[step].cue.memory)
                             + "\n",
                             "utf8",
                         )
                     )
                     stream.write(
-                        bytes(
-                            "DOWN "
-                            + str(App().chasers[chaser].steps[cue].time_out)
-                            + "\n",
-                            "utf8",
-                        )
+                        bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8",)
                     )
                     stream.write(
-                        bytes(
-                            "UP "
-                            + str(App().chasers[chaser].steps[cue].time_in)
-                            + "\n",
-                            "utf8",
-                        )
+                        bytes("UP " + time_in + " " + delay_in + "\n", "utf8",)
                     )
-                    stream.write(
-                        bytes(
-                            "$$WAIT "
-                            + str(App().chasers[chaser].steps[cue].wait)
-                            + "\n",
-                            "utf8",
-                        )
-                    )
+                    stream.write(bytes("$$WAIT " + wait + "\n", "utf8",))
                     channels = ""
                     i = 1
-                    for chan, _ in enumerate(App().chasers[chaser].steps[cue].channels):
-                        level = App().chasers[chaser].steps[cue].cue.channels[chan]
+                    for chan, _ in enumerate(
+                        App().chasers[chaser].steps[step].cue.channels
+                    ):
+                        level = App().chasers[chaser].steps[step].cue.channels[chan]
                         if level != 0:
                             level = "H" + format(level, "02X")
                             channels += " " + str(chan + 1) + "/" + level
@@ -1079,9 +1103,9 @@ class Ascii:
             stream.write(
                 bytes(
                     "$MASTPAGEITEM "
-                    + App().masters[master].page
+                    + str(App().masters[master].page)
                     + " "
-                    + App().masters[master].number
+                    + str(App().masters[master].number)
                     + " "
                     + str(App().masters[master].content_type)
                     + " "
@@ -1117,23 +1141,23 @@ class Ascii:
         )
         stream.write(bytes("! Patch\n", "utf8"))
         stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
-        # TODO: More than 1 Univers
-        # TODO: Prise en charge du niveau de l'output
         patch = ""
         i = 1
-        for output, _ in enumerate(App().patch.outputs):
-            if App().patch.outputs[output] != 0:
-                patch += (
-                    " "
-                    + str(App().patch.outputs[output])
-                    + "<"
-                    + str(output + 1)
-                    + "@100"
-                )
-                if not i % 4 and patch != "":
-                    stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
-                    patch = ""
-                i += 1
+        for universe in range(NB_UNIVERSES):
+            for output in range(512):
+                if App().patch.outputs[universe][output][0]:
+                    patch += (
+                        " "
+                        + str(App().patch.outputs[universe][output][0])
+                        + "<"
+                        + str(output + 1 + (512 * universe))
+                        + "@"
+                        + str(App().patch.outputs[universe][output][1])
+                    )
+                    if not i % 4 and patch != "":
+                        stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
+                        patch = ""
+                    i += 1
         if patch != "":
             stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
 
