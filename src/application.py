@@ -1002,9 +1002,10 @@ class Application(Gtk.Application):
 
     def _virtual_console(self, _action, _parameter):
         """Virtual Console Window"""
-        self.virtual_console = VirtualConsoleWindow()
-        self.virtual_console.show_all()
-        self.add_window(self.virtual_console)
+        if not self.virtual_console:
+            self.virtual_console = VirtualConsoleWindow()
+            self.virtual_console.show_all()
+            self.add_window(self.virtual_console)
 
     def _settings(self, _action, _parameter):
         """Settings"""
