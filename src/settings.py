@@ -73,6 +73,14 @@ class SettingsDialog:
 
         builder.connect_signals(self)
 
+        self.settings_dialog.connect("delete-event", self._close)
+
+    def _close(self, widget, _param):
+        """Mark window as closed"""
+        App().win_settings = None
+        widget.destroy()
+        return True
+
     def _on_midi_toggle(self, button):
         """Active / Unactive MIDI controllers"""
         midi_ports = App().settings.get_strv("midi-in")

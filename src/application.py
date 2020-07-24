@@ -1009,8 +1009,9 @@ class Application(Gtk.Application):
 
     def _settings(self, _action, _parameter):
         """Settings"""
-        self.win_settings = SettingsDialog()
-        self.win_settings.settings_dialog.show_all()
+        if not self.win_settings:
+            self.win_settings = SettingsDialog()
+            self.win_settings.settings_dialog.show_all()
 
     def _shortcuts(self, _action, _parameter):
         """Create Shortcuts Window"""
