@@ -1,11 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.olc" path="/org/gnome/OpenLightingConsole/" gettext-domain="olc">
-    <key name="universe" type="i">
-      <default>0</default>
-      <summary>Universe number</summary>
-      <description></description>
-    </key>
     <key name="percent" type="b">
       <default>true</default>
       <summary>Display in percent</summary>

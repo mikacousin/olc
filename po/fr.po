@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: olc master\n"
-"POT-Creation-Date: 2020-07-24 14:58+0200\n"
+"POT-Creation-Date: 2020-07-24 17:05+0200\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -132,165 +132,170 @@ msgstr "Suivit de circuits"
 
 #: help-overlay.ui:74
 msgctxt "shortcut window"
+msgid "Virtual Console"
+msgstr "Console virtuelle"
+
+#: help-overlay.ui:81
+msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quitter"
 
-#: help-overlay.ui:81
+#: help-overlay.ui:88
 msgctxt "shortcut window"
 msgid "Close Tab"
 msgstr "Fermer onglet"
 
-#: help-overlay.ui:88
+#: help-overlay.ui:95
 msgctxt "shortcut window"
 msgid "Clear"
 msgstr "Effacer saisie"
 
-#: help-overlay.ui:96
+#: help-overlay.ui:103
 msgctxt "shortcut window"
 msgid "Move"
 msgstr "Déplacement"
 
-#: help-overlay.ui:101
+#: help-overlay.ui:108
 msgctxt "shortcut window"
 msgid "Right"
 msgstr "Droite"
 
-#: help-overlay.ui:108
+#: help-overlay.ui:115
 msgctxt "shortcut window"
 msgid "Left"
 msgstr "Gauche"
 
-#: help-overlay.ui:115
+#: help-overlay.ui:122
 msgctxt "shortcut window"
 msgid "Up"
 msgstr "Haut"
 
-#: help-overlay.ui:122
+#: help-overlay.ui:129
 msgctxt "shortcut window"
 msgid "Down"
 msgstr "Bas"
 
-#: help-overlay.ui:130
+#: help-overlay.ui:137
 msgctxt "shortcut window"
 msgid "Select Channels"
 msgstr "Séléction des circuits"
 
-#: help-overlay.ui:135
+#: help-overlay.ui:142
 msgctxt "shortcut window"
 msgid "Select channel number"
 msgstr "Séléction du numéro de circuit"
 
-#: help-overlay.ui:142
+#: help-overlay.ui:149
 msgctxt "shortcut window"
 msgid "Add channel number"
 msgstr "Ajoute le numéro de circuit"
 
-#: help-overlay.ui:149
+#: help-overlay.ui:156
 msgctxt "shortcut window"
 msgid "Remove channel number"
 msgstr "Retire le numéro de circuit"
 
-#: help-overlay.ui:156
+#: help-overlay.ui:163
 msgctxt "shortcut window"
 msgid "Thru channel number"
 msgstr "Thru"
 
-#: help-overlay.ui:163
+#: help-overlay.ui:170
 msgctxt "shortcut window"
 msgid "All channels"
 msgstr "Tous les circuits"
 
-#: help-overlay.ui:171
+#: help-overlay.ui:178
 msgctxt "shortcut window"
 msgid "Levels"
 msgstr "Niveaux"
 
-#: help-overlay.ui:176
+#: help-overlay.ui:183
 msgctxt "shortcut window"
 msgid "@ level"
 msgstr "@ niveau"
 
-#: help-overlay.ui:183
+#: help-overlay.ui:190
 msgctxt "shortcut window"
 msgid "Level + %"
 msgstr "Niveau + %"
 
-#: help-overlay.ui:190
+#: help-overlay.ui:197
 msgctxt "shortcut window"
 msgid "Level - %"
 msgstr "Niveau - %"
 
-#: help-overlay.ui:198 help-overlay.ui:203
+#: help-overlay.ui:205 help-overlay.ui:210
 msgctxt "shortcut window"
 msgid "Time"
 msgstr "Temps"
 
-#: help-overlay.ui:210
+#: help-overlay.ui:217
 msgctxt "shortcut window"
 msgid "Time In"
 msgstr "Temps de monté"
 
-#: help-overlay.ui:217
+#: help-overlay.ui:224
 msgctxt "shortcut window"
 msgid "Time Out"
 msgstr "Temps de descente"
 
-#: help-overlay.ui:224
+#: help-overlay.ui:231
 msgctxt "shortcut window"
 msgid "Delay"
 msgstr "Délai"
 
-#: help-overlay.ui:231
+#: help-overlay.ui:238
 msgctxt "shortcut window"
 msgid "Delay In"
 msgstr "Délai de monté"
 
-#: help-overlay.ui:238
+#: help-overlay.ui:245
 msgctxt "shortcut window"
 msgid "Delay Out"
 msgstr "Délai de descente"
 
-#: help-overlay.ui:245
+#: help-overlay.ui:252
 msgctxt "shortcut window"
 msgid "Wait"
 msgstr "Wait"
 
-#: help-overlay.ui:253
+#: help-overlay.ui:260
 msgctxt "shortcut window"
 msgid "Sequence"
 msgstr "Séquence"
 
-#: help-overlay.ui:258
+#: help-overlay.ui:265
 msgctxt "shortcut window"
 msgid "Go"
 msgstr "Go"
 
-#: help-overlay.ui:265
+#: help-overlay.ui:272
 msgctxt "shortcut window"
 msgid "Sequence +"
 msgstr "Séquence +"
 
-#: help-overlay.ui:272
+#: help-overlay.ui:279
 msgctxt "shortcut window"
 msgid "Sequence -"
 msgstr "Séquence -"
 
-#: help-overlay.ui:279
+#: help-overlay.ui:286
 msgctxt "shortcut window"
 msgid "Goto cue"
 msgstr "Aller à la mémoire"
 
-#: help-overlay.ui:287
+#: help-overlay.ui:294
 msgctxt "shortcut window"
 msgid "Cue"
 msgstr "Mémoire"
 
-#: help-overlay.ui:292
+#: help-overlay.ui:299
 msgctxt "shortcut window"
 msgid "Update cue"
 msgstr "Mettre à jour la mémoire"
 
-#: help-overlay.ui:299
+#: help-overlay.ui:306
 msgctxt "shortcut window"
 msgid "Record cue"
 msgstr "Enregistrer mémoire"

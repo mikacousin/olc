@@ -212,6 +212,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.masters", ["<Control>m"])
+        self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.about", ["F3"])
 
     def setup_app_menu(self):

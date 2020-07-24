@@ -59,11 +59,6 @@ class SettingsDialog:
         self.spin_server_port.set_adjustment(adjustment)
         self.spin_server_port.set_value(App().settings.get_int("osc-server-port"))
 
-        self.spin_univers = builder.get_object("spin_univers")
-        adjustment = Gtk.Adjustment(0, 0, 65535, 1, 10, 0)
-        self.spin_univers.set_adjustment(adjustment)
-        self.spin_univers.set_value(App().settings.get_int("universe"))
-
         # List of MIDI Controllers
         self.midi_grid = builder.get_object("midi_grid")
         self.midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
