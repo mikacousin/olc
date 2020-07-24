@@ -28,7 +28,7 @@ from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, GLib, Gdk, Pango  # noqa: E402
+from gi.repository import Gtk, Gio, GLib, Gdk, Pango, GObject  # noqa: E402
 
 
 class Application(Gtk.Application):
@@ -205,6 +205,8 @@ class Application(Gtk.Application):
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])
         self.set_accels_for_action("app.open", ["<Control>o"])
+        self.set_accels_for_action("app.save", ["<Control>s"])
+        self.set_accels_for_action("app.save_as", ["<Shift><Control>s"])
         self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
         self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
@@ -231,6 +233,10 @@ class Application(Gtk.Application):
         save_action = Gio.SimpleAction.new("save", None)
         save_action.connect("activate", self._save)
         self.add_action(save_action)
+
+        save_as_action = Gio.SimpleAction.new("save_as", None)
+        save_as_action.connect("activate", self._saveas)
+        self.add_action(save_as_action)
 
         patch_outputs_action = Gio.SimpleAction.new("patch_outputs", None)
         patch_outputs_action.connect("activate", self.patch_outputs)
@@ -395,6 +401,7 @@ class Application(Gtk.Application):
                         ].queue_draw()
 
     def _new(self, _action, _parameter):
+        """New show"""
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
@@ -709,9 +716,10 @@ class Application(Gtk.Application):
             self.track_channels_tab.flowbox.invalidate_filter()
 
     def _open(self, _action, _parameter):
-        # create a filechooserdialog to open:
-        # the arguments are: title of the window, parent_window, action,
-        # (buttons, response)
+        """create a filechooserdialog to open:
+        the arguments are: title of the window, parent_window, action,
+        (buttons, response)
+        """
         open_dialog = Gtk.FileChooserDialog(
             "Open ASCII File",
             self.window,
@@ -734,12 +742,12 @@ class Application(Gtk.Application):
         # dialog always on top of the textview window
         open_dialog.set_modal(True)
         # connect the dialog with the callback function open_response_cb()
-        open_dialog.connect("response", self.open_response_cb)
+        open_dialog.connect("response", self._open_response_cb)
         # show the dialog
         open_dialog.show()
 
-    def open_response_cb(self, dialog, response_id):
-        # callback function for the dialog open_dialog
+    def _open_response_cb(self, dialog, response_id):
+        """Callback function for the dialog open_dialog"""
         open_dialog = dialog
 
         # if response is "ACCEPT" (the button "Open" has been clicked)
@@ -760,21 +768,64 @@ class Application(Gtk.Application):
         # destroy the FileChooserDialog
         dialog.destroy()
 
-    def _save(self, _action, _parameter):
-        # TODO: remettre le try:
-        self.ascii.save()
-        """
-        try:
+    def _save(self, action, parameter):
+        """Save"""
+        if self.file is not None:
             self.ascii.save()
-        except:
-            self._saveas(None, None)
-        """
+        else:
+            self._saveas(action, parameter)
 
     def _saveas(self, _action, _parameter):
-        print("Save As")
+        """Save as"""
+        save_dialog = Gtk.FileChooserDialog(
+            "Save ASCII file",
+            self.window,
+            Gtk.FileChooserAction.SAVE,
+            (
+                Gtk.STOCK_CANCEL,
+                Gtk.ResponseType.CANCEL,
+                Gtk.STOCK_SAVE,
+                Gtk.ResponseType.ACCEPT,
+            ),
+        )
+        # the dialog will present a confirmation dialog if the user types a file name
+        # that already exists
+        save_dialog.set_do_overwrite_confirmation(True)
+        # dialog always on top of the main window
+        save_dialog.set_modal(True)
+        # if self.file has already been saved
+        if self.file is not None:
+            try:
+                # set self.file as the current filename for the file chooser
+                save_dialog.set_file(self.file)
+            except GObject.GError as e:
+                print("Error: " + e.message)
+        # connect the dialog to the callback function save_response_cb()
+        save_dialog.connect("response", self._save_response_cb)
+        # show the dialog
+        save_dialog.show()
+
+    def _save_response_cb(self, dialog, response_id):
+        """Callback function for the dialog save_dialog"""
+        save_dialog = dialog
+        # if response is "ACCEPT" (the button "Save" has been clicked)
+        if response_id == Gtk.ResponseType.ACCEPT:
+            # self.file is the currently selected file
+            self.file = save_dialog.get_file()
+            self.ascii.file = self.file
+            # save to file
+            self.ascii.save()
+            # Set Main Window's title with file name
+            basename = self.file.get_basename()
+            self.window.header.set_title(basename)
+        # if response is "CANCEL" (the button "Cancel" has been clicked)
+        elif response_id == Gtk.ResponseType.CANCEL:
+            print("cancelled: FileChooserAction.SAVE")
+        # destroy the FileChooserDialog
+        dialog.destroy()
 
     def patch_outputs(self, _action, _parameter):
-        # Create Patch Outputs Tab
+        """Create Patch Outputs Tab"""
         if self.patch_outputs_tab is None:
             self.patch_outputs_tab = PatchOutputsTab()
 
@@ -796,7 +847,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def _patch_channels(self, _action, _parameter):
-        # Create Patch Channels Tab
+        """Create Patch Channels Tab"""
         if self.patch_channels_tab is None:
             self.patch_channels_tab = PatchChannelsTab()
 
@@ -818,7 +869,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def track_channels(self, _action, _parameter):
-        # Create Track Channels Tab
+        """Create Track Channels Tab"""
         if self.track_channels_tab is None:
             self.track_channels_tab = TrackChannelsTab()
 
@@ -840,7 +891,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def memories_cb(self, action, parameter):
-        # Create Memories Tab
+        """Create Memories Tab"""
         if self.memories_tab is None:
             self.memories_tab = CuesEditionTab()
 
@@ -862,7 +913,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def groups_cb(self, action, parameter):
-        # Create Groups Tab
+        """Create Groups Tab"""
         if self.group_tab is None:
             self.group_tab = GroupTab()
 
@@ -884,7 +935,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def sequences(self, _action, _parameter):
-        # Create Sequences Tab
+        """Create Sequences Tab"""
         if self.sequences_tab is None:
             self.sequences_tab = SequenceTab()
 
@@ -906,7 +957,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def channeltime(self, sequence, step):
-        # Create Channel Time Tab
+        """Create Channel Time Tab"""
         if self.channeltime_tab is None:
             self.channeltime_tab = ChanneltimeTab(sequence, step)
 
@@ -927,7 +978,7 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def _masters(self, _action, _parameter):
-        # Create Masters Tab
+        """Create Masters Tab"""
         if self.masters_tab is None:
             self.masters_tab = MastersTab()
 
@@ -949,12 +1000,13 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(page)
 
     def _virtual_console(self, _action, _parameter):
-        # Virtual Console Window
+        """Virtual Console Window"""
         self.virtual_console = VirtualConsoleWindow()
         self.virtual_console.show_all()
         self.add_window(self.virtual_console)
 
     def _settings(self, _action, _parameter):
+        """Settings"""
         self.win_settings = SettingsDialog()
         self.win_settings.settings_dialog.show_all()
 
@@ -990,6 +1042,7 @@ class Application(Gtk.Application):
         self.about_window = None
 
     def _exit(self, _action, _parameter):
+        """Exit application"""
         # Stop Chasers Threads
         for chaser in self.chasers:
             if chaser.run and chaser.thread:

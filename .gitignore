@@ -24,8 +24,10 @@ ltmain.sh
 m4
 missing
 olc
+po/*.mo
 po/*.gmo
 po/.intltool-merge-cache
+po/.intltool-merge-cache.lock
 po/Makefile
 po/Makefile.in
 po/Makefile.in.in

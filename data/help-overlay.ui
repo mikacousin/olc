@@ -19,6 +19,20 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="save">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;S</property>
+                <property name="title" translatable="yes" context="shortcut window">Save ASCII File</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="save_as">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;S</property>
+                <property name="title" translatable="yes" context="shortcut window">Save with file name</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="patch_outputs">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;P</property>
