@@ -334,7 +334,12 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.flashes[i + (page * 20)].text = text
             for master in App().masters:
                 if master.page == page + 1:
-                    self.flashes[master.number - 1 + (page * 20)].label = master.text
+                    index = master.number - 1 + (page * 20)
+                    # Flash with master's name
+                    self.flashes[index].label = master.text
+                    # Fader at master's value
+                    value = App().masters[index].value
+                    self.masters[index].set_value(value)
 
         # General Grid
         self.grid = Gtk.Grid()
