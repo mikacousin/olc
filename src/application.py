@@ -1,9 +1,8 @@
 import sys
 import select
 
-from ola import OlaClient
-
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
+from olc.ola import OlaThread
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
 from olc.patch_outputs import PatchOutputsTab
@@ -19,6 +18,7 @@ from olc.channel_time import ChanneltimeTab
 from olc.osc import OscServer
 from olc.ascii import Ascii
 from olc.midi import Midi
+from olc.enttec_wing import WingPlayback
 from olc.track_channels import TrackChannelsTab
 from olc.crossfade import CrossFade
 from olc.virtual_console import VirtualConsoleWindow
@@ -67,14 +67,11 @@ class Application(Gtk.Application):
 
         # Create OlaClient
         try:
-            self.ola_client = OlaClient.OlaClient()
-            self.sock = self.ola_client.GetSocket()
-            for i, univ in enumerate(self.universes):
-                func = getattr(self, "on_dmx_" + str(i), None)
-                self.ola_client.RegisterUniverse(univ, self.ola_client.REGISTER, func)
+            self.ola_thread = OlaThread(self.universes)
         except Exception as e:
             print("Can't connect to Ola !", e)
             sys.exit()
+        self.ola_thread.start()
 
         # Create Main Playback
         self.sequence = Sequence(1, self.patch, text="Main Playback")
@@ -173,15 +170,16 @@ class Application(Gtk.Application):
         self.dmx = Dmx(
             self.universes,
             self.patch,
-            self.ola_client,
+            self.ola_thread.ola_client,
             self.sequence,
             self.masters,
             self.window,
         )
+        self.dmx.start()
 
         # Fetch dmx values on startup
         for univ in self.universes:
-            self.ola_client.FetchDmx(univ, self.fetch_dmx)
+            self.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
 
         # For Manual crossfade
         self.crossfade = CrossFade()
@@ -190,6 +188,9 @@ class Application(Gtk.Application):
         self.midi = Midi()
         ports = self.settings.get_strv("midi-in")
         self.midi.open_input(ports)
+
+        # Init Enttec Wing Playback
+        self.wing = WingPlayback()
 
         # Create and launch OSC server
         self.osc_server = OscServer(self.window)
@@ -287,94 +288,12 @@ class Application(Gtk.Application):
 
     def on_fd_read(self, _fd, _condition, _data):
         """Ola messages"""
-        readable, _writable, _exceptional = select.select([self.sock], [], [], 0)
+        readable, _writable, _exceptional = select.select(
+            [self.ola_thread.sock], [], [], 0
+        )
         if readable:
-            self.ola_client.SocketReady()
+            self.ola_thread.ola_client.SocketReady()
         return True
-
-    def on_dmx_0(self, dmxframe):
-        for output, level in enumerate(dmxframe):
-            channel = self.patch.outputs[0][output][0]
-            self.dmx.frame[0][output] = level
-            self.window.channels[channel - 1].level = level
-            if (
-                self.sequence.last > 1
-                and self.sequence.position < self.sequence.last - 1
-            ):
-                next_level = self.sequence.steps[
-                    self.sequence.position + 1
-                ].cue.channels[channel - 1]
-            elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel - 1]
-            else:
-                next_level = level
-            self.window.channels[channel - 1].next_level = next_level
-            self.window.channels[channel - 1].queue_draw()
-            if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output].queue_draw()
-
-    def on_dmx_1(self, dmxframe):
-        for output, level in enumerate(dmxframe):
-            channel = self.patch.outputs[1][output][0]
-            self.dmx.frame[1][output] = level
-            self.window.channels[channel - 1].level = level
-            if (
-                self.sequence.last > 1
-                and self.sequence.position < self.sequence.last - 1
-            ):
-                next_level = self.sequence.steps[
-                    self.sequence.position + 1
-                ].cue.channels[channel - 1]
-            elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel - 1]
-            else:
-                next_level = level
-            self.window.channels[channel - 1].next_level = next_level
-            self.window.channels[channel - 1].queue_draw()
-            if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output + 512].queue_draw()
-
-    def on_dmx_2(self, dmxframe):
-        for output, level in enumerate(dmxframe):
-            channel = self.patch.outputs[2][output][0]
-            self.dmx.frame[2][output] = level
-            self.window.channels[channel - 1].level = level
-            if (
-                self.sequence.last > 1
-                and self.sequence.position < self.sequence.last - 1
-            ):
-                next_level = self.sequence.steps[
-                    self.sequence.position + 1
-                ].cue.channels[channel - 1]
-            elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel - 1]
-            else:
-                next_level = level
-            self.window.channels[channel - 1].next_level = next_level
-            self.window.channels[channel - 1].queue_draw()
-            if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output + 1024].queue_draw()
-
-    def on_dmx_3(self, dmxframe):
-        for output, level in enumerate(dmxframe):
-            channel = self.patch.outputs[3][output][0]
-            self.dmx.frame[3][output] = level
-            self.window.channels[channel - 1].level = level
-            if (
-                self.sequence.last > 1
-                and self.sequence.position < self.sequence.last - 1
-            ):
-                next_level = self.sequence.steps[
-                    self.sequence.position + 1
-                ].cue.channels[channel - 1]
-            elif self.sequence.last:
-                next_level = self.sequence.steps[0].cue.channels[channel - 1]
-            else:
-                next_level = level
-            self.window.channels[channel - 1].next_level = next_level
-            self.window.channels[channel - 1].queue_draw()
-            if self.patch_outputs_tab:
-                self.patch_outputs_tab.outputs[output + 1536].queue_draw()
 
     def fetch_dmx(self, _request, univ, dmxframe):
         if dmxframe:
@@ -400,6 +319,7 @@ class Application(Gtk.Application):
                         self.patch_outputs_tab.outputs[
                             output + (512 * univ)
                         ].queue_draw()
+                self.ola_thread.old_frame[univ] = dmxframe
 
     def _new(self, _action, _parameter):
         """New show"""
@@ -761,7 +681,7 @@ class Application(Gtk.Application):
             self.ascii.load()
 
             for univ in self.universes:
-                self.ola_client.FetchDmx(univ, self.fetch_dmx)
+                self.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
 
         elif response_id == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")

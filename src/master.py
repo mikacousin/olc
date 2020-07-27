@@ -105,28 +105,25 @@ class Master:
 
         # Master Type is Group
         elif self.content_type == 13:
+            # Find group
             grp = self.content_value
+            found = False
             for group in self.groups:
                 if group.index == grp:
-                    # For each output
-                    for univ in range(NB_UNIVERSES):
-                        for output in range(512):
-                            # If Output patched
-                            channel = App().patch.outputs[univ][output][0]
-                            if channel:
-                                if group.channels[channel - 1] != 0:
-                                    # Get level saved in group
-                                    level_group = group.channels[channel - 1]
-                                    # Level calculation
-                                    if self.value == 0:
-                                        level = 0
-                                    else:
-                                        level = int(
-                                            round(level_group / (255 / self.value))
-                                        )
-                                    # Update level in master array
-                                    self.dmx[channel - 1] = level
-                    App().dmx.send()
+                    found = True
+                    break
+            if found:
+                # Get Channels and Levels in group
+                for channel, level_group in enumerate(group.channels):
+                    if level_group:
+                        # Calculate level
+                        if self.value == 0:
+                            level = 0
+                        else:
+                            level = int(round(level_group / (255 / self.value)))
+                        # Update level in master array
+                        self.dmx[channel] = level
+                App().dmx.send()
 
         # Master type is Chaser
         elif self.content_type == 3:

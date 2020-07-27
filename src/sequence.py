@@ -47,6 +47,27 @@ def update_ui(position, subtitle):
                 App().virtual_console.scale_b.set_inverted(True)
             App().virtual_console.scale_a.set_value(0)
             App().virtual_console.scale_b.set_value(0)
+    update_channels(position)
+
+
+def update_channels(position):
+    # Update levels of main window channels
+    for channel in range(MAX_CHANNELS):
+        level = App().sequence.steps[position].cue.channels[channel]
+        if (
+            App().sequence.last > 1
+            and App().sequence.position < App().sequence.last - 1
+        ):
+            next_level = (
+                App().sequence.steps[App().sequence.position + 1].cue.channels[channel]
+            )
+        elif App().sequence.last:
+            next_level = App().sequence.steps[0].cue.channels[channel]
+        else:
+            next_level = level
+        # App().window.channels[channel].level = level
+        App().window.channels[channel].next_level = next_level
+        App().window.channels[channel].queue_draw()
 
 
 class Sequence:
@@ -165,6 +186,7 @@ class Sequence:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
             App().dmx.send()
+            update_channels(position)
 
     def sequence_minus(self):
 
@@ -239,6 +261,7 @@ class Sequence:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
             App().dmx.send()
+            update_channels(position)
 
     def sequence_goto(self, keystring):
         """ Jump to cue number """

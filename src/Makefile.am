@@ -9,10 +9,12 @@ app_PYTHON = \
 	cues_edition.py \
 	define.py \
 	dmx.py \
+	enttec_wing.py \
 	group.py \
 	master.py \
 	masters_edition.py \
 	midi.py \
+	ola.py \
 	osc.py \
 	patch_channels.py \
 	patch_outputs.py \

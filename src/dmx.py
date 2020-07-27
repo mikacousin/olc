@@ -1,10 +1,12 @@
 import array
+import threading
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
 
 
-class Dmx:
+class Dmx(threading.Thread):
     def __init__(self, universes, patch, ola_client, sequence, masters, window):
+        threading.Thread.__init__(self)
         self.universes = universes
         self.patch = patch
         self.ola_client = ola_client
@@ -13,6 +15,7 @@ class Dmx:
         self.window = window
         self.grand_master = 255
 
+    def run(self):
         # les valeurs DMX echangées avec Ola
         self.frame = []
         for _ in range(NB_UNIVERSES):
@@ -22,7 +25,7 @@ class Dmx:
         # les valeurs modifiées par l'utilisateur
         self.user = array.array("h", [-1] * MAX_CHANNELS)
 
-    def send(self):
+    def send_old(self):
         # Cette fonction envoi les valeurs DMX à Ola en prenant en compte
         # les valeurs actuelles, le sequentiel, les masters
         # et les valeurs entrées par l'utilisateur
@@ -60,6 +63,43 @@ class Dmx:
                     self.frame[universe][output] = level
 
             # On met à jour les valeurs d'Ola
+            self.ola_client.SendDmx(universe, self.frame[universe])
+
+    def send(self):
+        """Send DMX values to Ola"""
+        univ = []  # To store universes changed
+        for channel in range(MAX_CHANNELS):
+            for i in self.patch.channels[channel]:
+                output = i[0]
+                if output:
+                    # If channel is patched
+                    output -= 1
+                    universe = i[1]
+                    if universe not in univ:
+                        univ.append(universe)
+                    # Level in Sequence
+                    level = self.sequence[channel]
+                    self.window.channels[channel].color_level_red = 0.9
+                    self.window.channels[channel].color_level_green = 0.9
+                    self.window.channels[channel].color_level_blue = 0.9
+                    if not App().sequence.on_go and self.user[channel] != -1:
+                        # If not on Go, use user level
+                        level = self.user[channel]
+                    for master in self.masters:
+                        # If master level is bigger, use it
+                        if master.dmx[channel] > level:
+                            level = master.dmx[channel]
+                            self.window.channels[channel].color_level_red = 0.4
+                            self.window.channels[channel].color_level_green = 0.7
+                            self.window.channels[channel].color_level_blue = 0.4
+                    # Proportional patch level
+                    level = level * (self.patch.outputs[universe][output][1] / 100)
+                    # Grand Master
+                    level = round(level * (self.grand_master / 255))
+                    # Update output level
+                    self.frame[universe][output] = level
+        # Send DMX frames to Ola
+        for universe in univ:
             self.ola_client.SendDmx(universe, self.frame[universe])
 
 
