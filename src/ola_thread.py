@@ -1,3 +1,5 @@
+"""Thread to communicate with ola"""
+
 import threading
 import array
 
@@ -8,6 +10,11 @@ from olc.define import NB_UNIVERSES, App
 
 
 class OlaThread(threading.Thread):
+    """Create OlaClient and receive universes updates
+
+    Attributes:
+        universes: list of universes
+    """
     def __init__(self, universes):
         threading.Thread.__init__(self)
         self.universes = universes
@@ -24,6 +31,11 @@ class OlaThread(threading.Thread):
             self.ola_client.RegisterUniverse(univ, self.ola_client.REGISTER, func)
 
     def on_dmx_0(self, dmxframe):
+        """Universe 0 updates.
+
+        Args:
+            dmxframe: array of 512 bytes with levels outputs
+        """
         diff = [
             (index, e1)
             for index, (e1, e2) in enumerate(zip(dmxframe, self.old_frame[0]))
@@ -53,6 +65,11 @@ class OlaThread(threading.Thread):
         self.old_frame[0] = dmxframe
 
     def on_dmx_1(self, dmxframe):
+        """Universe 1 updates.
+
+        Args:
+            dmxframe: array of 512 bytes with levels outputs
+        """
         diff = [
             (index, e1)
             for index, (e1, e2) in enumerate(zip(dmxframe, self.old_frame[1]))
@@ -82,6 +99,11 @@ class OlaThread(threading.Thread):
         self.old_frame[1] = dmxframe
 
     def on_dmx_2(self, dmxframe):
+        """Universe 2 updates.
+
+        Args:
+            dmxframe: array of 512 bytes with levels outputs
+        """
         diff = [
             (index, e1)
             for index, (e1, e2) in enumerate(zip(dmxframe, self.old_frame[2]))
@@ -111,6 +133,11 @@ class OlaThread(threading.Thread):
         self.old_frame[2] = dmxframe
 
     def on_dmx_3(self, dmxframe):
+        """Universe 3 updates.
+
+        Args:
+            dmxframe: array of 512 bytes with levels outputs
+        """
         diff = [
             (index, e1)
             for index, (e1, e2) in enumerate(zip(dmxframe, self.old_frame[3]))
