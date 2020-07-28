@@ -15,6 +15,7 @@ class OlaThread(threading.Thread):
     Attributes:
         universes: list of universes
     """
+
     def __init__(self, universes):
         threading.Thread.__init__(self)
         self.universes = universes
@@ -36,15 +37,19 @@ class OlaThread(threading.Thread):
         Args:
             dmxframe: array of 512 bytes with levels outputs
         """
+        # Find diff between old and new DMX frames
         diff = [
             (index, e1)
             for index, (e1, e2) in enumerate(zip(dmxframe, self.old_frame[0]))
             if e1 != e2
         ]
+        # Loop on outputs with different level
         for output, level in diff:
             channel = App().patch.outputs[0][output][0] - 1
             App().dmx.frame[0][output] = level
+            # New level
             App().window.channels[channel].level = level
+            # Find next level
             if (
                 App().sequence.last > 1
                 and App().sequence.position < App().sequence.last - 1
@@ -59,9 +64,11 @@ class OlaThread(threading.Thread):
             else:
                 next_level = level
             App().window.channels[channel].next_level = next_level
+            # Display new levels
             GLib.idle_add(App().window.channels[channel].queue_draw)
             if App().patch_outputs_tab:
                 GLib.idle_add(App().patch_outputs_tab.outputs[output].queue_draw)
+        # Save DMX frame for next call
         self.old_frame[0] = dmxframe
 
     def on_dmx_1(self, dmxframe):
