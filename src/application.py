@@ -167,14 +167,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.go_back", ["<Control>b"])
 
         # Create several DMX arrays
-        self.dmx = Dmx(
-            self.universes,
-            self.patch,
-            self.ola_thread.ola_client,
-            self.sequence,
-            self.masters,
-            self.window,
-        )
+        self.dmx = Dmx()
         self.dmx.start()
 
         # Fetch dmx values on startup
