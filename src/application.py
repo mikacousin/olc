@@ -2,7 +2,7 @@ import sys
 import select
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS
-from olc.ola import OlaThread
+from olc.ola_thread import OlaThread
 from olc.settings import Settings, SettingsDialog
 from olc.window import Window
 from olc.patch_outputs import PatchOutputsTab

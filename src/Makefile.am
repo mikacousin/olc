@@ -14,7 +14,7 @@ app_PYTHON = \
 	master.py \
 	masters_edition.py \
 	midi.py \
-	ola.py \
+	ola_thread.py \
 	osc.py \
 	patch_channels.py \
 	patch_outputs.py \

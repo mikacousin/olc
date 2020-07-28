@@ -15,13 +15,8 @@ class OlaThread(threading.Thread):
         self.sock = self.ola_client.GetSocket()
 
         self.old_frame = []
-        for univ in range(NB_UNIVERSES):
+        for _ in range(NB_UNIVERSES):
             self.old_frame.append(array.array("B", [0] * 512))
-
-        # self.old_frame0 = array.array("B", [0] * 512)
-        # self.old_frame1 = array.array("B", [0] * 512)
-        # self.old_frame2 = array.array("B", [0] * 512)
-        # self.old_frame3 = array.array("B", [0] * 512)
 
     def run(self):
         for i, univ in enumerate(self.universes):
