@@ -1,11 +1,9 @@
 
 # Open Lighting Console
 
-Open Lighting Console (olc) is a software to control lights on shows.
+Open Lighting Console (olc) is a linux software to control lights on shows.
 
 Alpha version. **Don't use originals ascii files, test with copies !**
-
-This project is an exercise to learn python and prepare the real one.
 
 Main Window :
 ![Screenshot](../assets/olc.png?raw=true)
