@@ -847,7 +847,7 @@ class Window(Gtk.ApplicationWindow):
             # Find Preset's position
             found = False
             i = 0
-            for item in App().memories:
+            for i, item in enumerate(App().memories):
                 if item.memory > mem:
                     found = True
                     break
