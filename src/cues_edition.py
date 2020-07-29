@@ -633,6 +633,11 @@ class CuesEditionTab(Gtk.Paned):
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
+                    print(i, App().sequence.position)
+                    if i == App().sequence.position:
+                        for channel in range(MAX_CHANNELS):
+                            App().window.channels[channel].next_level = App().memories[i].channels[channel]
+                            App().window.channels[channel].queue_draw()
 
                     # Tag filename as modified
                     App().ascii.modified = True
