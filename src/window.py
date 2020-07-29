@@ -1002,8 +1002,17 @@ class Window(Gtk.ApplicationWindow):
             self.treeview2.set_cursor(path2, None, False)
             self.seq_grid.queue_draw()
 
-        else:
-            # Update Preset
+        else:  # Update Preset
+
+            # Find Preset's position
+            found = False
+            i = 0
+            for i, item in enumerate(App().memories):
+                if item.memory > mem:
+                    found = True
+                    break
+            i -= 1
+
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
                     channel = App().patch.outputs[univ][output][0]
