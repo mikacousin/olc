@@ -114,6 +114,64 @@ class Sequence:
             if step.cue.channels[channel] != 0:
                 self.channels[channel] = 1
 
+    def get_step(self, cue=None):
+        """Get Cues's Step
+
+        Args:
+            cue (float): Cue number
+
+        Return:
+            found (bool), step (int)
+        """
+        found = False
+        # Cue already exist ?
+        for step, item in enumerate(self.steps):
+            if item.cue.memory == cue:
+                found = True
+                break
+        step -= 1
+        # If new Cue, find step index
+        if not found:
+            exist = False
+            step = 0
+            for step, item in enumerate(self.steps):
+                if item.cue.memory > cue:
+                    exist = True
+                    break
+            if not exist:
+                step += 1
+        elif step:
+            step += 1
+
+        return found, step
+
+    def get_next_cue(self, step=None):
+        """Get next free Cue
+
+        Args:
+            step (int): Actual Cue's Step number
+
+        Return:
+            cue (float)
+        """
+        mem = 1.0  # Default first cue number
+
+        memory = self.steps[step].cue.memory
+        # Find next cue number
+        if step < self.last - 1:
+            next_memory = self.steps[step + 1].cue.memory
+            if next_memory == 0.0:
+                mem = memory + 1
+            else:
+                if (next_memory - memory) <= 1:
+                    mem = ((next_memory - memory) / 2) + memory
+                else:
+                    mem = memory + 1
+        else:
+            mem = memory + 1
+
+        return mem
+
     def sequence_plus(self):
 
         if App().sequence.on_go and App().sequence.thread:
