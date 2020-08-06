@@ -379,7 +379,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "go"
             self.queue_draw()
         else:
-            App().sequence.sequence_go(None, None)
+            App().sequence.go(None, None)
 
     def on_go_back(self, _widget):
         if self.midi_learn:
@@ -442,7 +442,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "goto"
             self.queue_draw()
         else:
-            App().sequence.sequence_goto(App().window.keystring)
+            App().sequence.goto(App().window.keystring)
             App().window.keystring = ""
             App().window.statusbar.push(App().window.context_id, "")
 

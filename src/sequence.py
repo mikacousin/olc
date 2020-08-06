@@ -163,7 +163,7 @@ class Sequence:
         return mem
 
     def sequence_plus(self):
-
+        """Sequence +"""
         if App().sequence.on_go and App().sequence.thread:
             try:
                 # Stop actual Thread
@@ -175,6 +175,7 @@ class Sequence:
             except Exception as e:
                 print("Error :", str(e))
 
+        # Jump to next Step
         position = self.position
         position += 1
         if position < self.last - 1:  # Stop on the last cue
@@ -194,24 +195,7 @@ class Sequence:
             App().window.sequential.position_a = 0
             App().window.sequential.position_b = 0
 
-            # Update ui
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            # Next Cue in Bold
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-            self.window.step_filter1.refilter()
-            self.window.step_filter2.refilter()
-            path = Gtk.TreePath.new_first()
-            App().window.treeview1.set_cursor(path, None, False)
-            App().window.treeview2.set_cursor(path, None, False)
-            self.window.seq_grid.queue_draw()
-
-            # Set main window's subtitle
+            # Window's subtitle
             subtitle = (
                 "Mem. : "
                 + str(self.steps[position].cue.memory)
@@ -222,11 +206,13 @@ class Sequence:
                 + " "
                 + self.steps[position + 1].text
             )
-            App().window.header.set_subtitle(subtitle)
+            # Update display
+            update_ui(position, subtitle)
 
-            # On vide le tableau des valeurs entrées par l'utilisateur
+            # Empty DMX user array
             App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
 
+            # Send DMX values
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
                     channel = self.patch.outputs[univ][output][0]
@@ -237,7 +223,7 @@ class Sequence:
             update_channels(position)
 
     def sequence_minus(self):
-
+        """Sequence -"""
         if self.on_go and App().sequence.thread:
             try:
                 # Stop actual Thread
@@ -249,6 +235,7 @@ class Sequence:
             except Exception as e:
                 print("Error :", str(e))
 
+        # Jump to previous Step
         position = self.position
         position -= 1
         if position >= 0:
@@ -269,7 +256,7 @@ class Sequence:
             App().window.sequential.position_a = 0
             App().window.sequential.position_b = 0
 
-            # Set main window's subtitle
+            # Window's subtitle
             subtitle = (
                 "Mem. : "
                 + str(self.steps[position].cue.memory)
@@ -280,28 +267,13 @@ class Sequence:
                 + " "
                 + self.steps[position + 1].text
             )
-            App().window.header.set_subtitle(subtitle)
+            # Update display
+            update_ui(position, subtitle)
 
-            # Update ui
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            # Next Cue in Bold
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-            self.window.step_filter1.refilter()
-            self.window.step_filter2.refilter()
-            path = Gtk.TreePath.new_first()
-            App().window.treeview1.set_cursor(path, None, False)
-            App().window.treeview2.set_cursor(path, None, False)
-            self.window.seq_grid.queue_draw()
-
-            # On vide le tableau des valeurs entrées par l'utilisateur
+            # Empty DMX user array
             App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
 
+            # Send DMX values
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
                     channel = self.patch.outputs[univ][output][0]
@@ -311,7 +283,7 @@ class Sequence:
             App().dmx.send()
             update_channels(position)
 
-    def sequence_goto(self, keystring):
+    def goto(self, keystring):
         """ Jump to cue number """
         old_pos = App().sequence.position
 
@@ -362,10 +334,10 @@ class Sequence:
                 App().window.seq_grid.queue_draw()
 
                 # Launch Go
-                self.sequence_go(None, None)
+                self.go(None, None)
                 break
 
-    def sequence_go(self, _action, _param):
+    def go(self, _action, _param):
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if App().sequence.on_go and App().sequence.thread:
             # Stop actual Thread
@@ -445,24 +417,14 @@ class Sequence:
                 )
 
             # Update Sequential Tab
-            if position == 0:
-                App().window.cues_liststore1[position][9] = "#232729"
-                App().window.cues_liststore1[position + 1][9] = "#232729"
-                App().window.cues_liststore1[position + 2][9] = "#997004"
-                App().window.cues_liststore1[position + 3][9] = "#555555"
-                App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-                App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-            else:
-                App().window.cues_liststore1[position][9] = "#232729"
-                App().window.cues_liststore1[position + 1][9] = "#232729"
-                App().window.cues_liststore1[position + 2][9] = "#997004"
-                App().window.cues_liststore1[position + 3][9] = "#555555"
-                App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-                App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
+            App().window.cues_liststore1[position][9] = "#232729"
+            App().window.cues_liststore1[position + 1][9] = "#232729"
+            App().window.cues_liststore1[position + 2][9] = "#997004"
+            App().window.cues_liststore1[position + 3][9] = "#555555"
+            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
+            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
+            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
             App().window.step_filter1.refilter()
             App().window.step_filter2.refilter()
             path = Gtk.TreePath.new_from_indices([0])
@@ -472,7 +434,7 @@ class Sequence:
             # Update Main Window's Subtitle
             App().window.header.set_subtitle(subtitle)
 
-            self.sequence_go(None, None)
+            self.go(None, None)
 
         else:
             # On indique qu'un Go est en cours
@@ -532,8 +494,8 @@ class Sequence:
         return True
 
 
-# Objet Thread pour gérer les Go
 class ThreadGo(threading.Thread):
+    """Thread object for Go"""
     def __init__(self, name=""):
         threading.Thread.__init__(self)
         self.name = name
@@ -667,7 +629,7 @@ class ThreadGo(threading.Thread):
 
             # Si la mémoire a un Wait
             if App().sequence.steps[position + 1].wait:
-                App().sequence.sequence_go(None, None)
+                App().sequence.go(None, None)
 
         # Sinon, on revient au début
         else:
@@ -878,12 +840,9 @@ class ThreadGo(threading.Thread):
 
             App().dmx.send()
 
-            if App().patch_outputs_tab:
-                GLib.idle_add(App().patch_outputs_tab.flowbox.queue_draw)
 
-
-# Thread Object for Go Back
 class ThreadGoBack(threading.Thread):
+    """Thread Object for Go Back"""
     def __init__(self):
         threading.Thread.__init__(self)
         self._stopevent = threading.Event()
@@ -966,7 +925,7 @@ class ThreadGoBack(threading.Thread):
         GLib.idle_add(update_ui, position, subtitle)
 
         if App().sequence.steps[position + 1].wait:
-            App().sequence.sequence_go(None, None)
+            App().sequence.go(None, None)
 
     def stop(self):
         self._stopevent.set()
@@ -1020,6 +979,3 @@ class ThreadGoBack(threading.Thread):
                     App().dmx.sequence[channel - 1] = level
 
         App().dmx.send()
-
-        # if App().patch_outputs_tab != None:
-        #     GLib.idle_add(App().patch_outputs_tab.flowbox.queue_draw)

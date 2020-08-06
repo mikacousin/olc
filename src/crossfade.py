@@ -399,7 +399,7 @@ class CrossFade:
                     # If Wait
                     if App().sequence.steps[position + 1].wait:
                         App().sequence.on_go = False
-                        App().sequence.sequence_go(None, None)
+                        App().sequence.go(None, None)
 
                 # Else, we return to first cue
                 else:
@@ -489,4 +489,4 @@ class CrossFade:
                     # If Wait
                     if App().sequence.steps[position + 1].wait:
                         App().sequence.on_go = False
-                        App().sequence.sequence_go(None, None)
+                        App().sequence.go(None, None)

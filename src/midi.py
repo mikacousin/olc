@@ -597,7 +597,7 @@ class Midi:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.go_button.emit("button-press-event", event)
             else:
-                App().sequence.sequence_go(None, None)
+                App().sequence.go(None, None)
         elif msg.velocity == 0:
             # Go released
             if App().virtual_console:
@@ -624,7 +624,7 @@ class Midi:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.goto.emit("button-press-event", event)
             else:
-                App().sequence.sequence_goto(App().window.keystring)
+                App().sequence.goto(App().window.keystring)
                 App().window.keystring = ""
                 App().window.statusbar.push(App().window.context_id, "")
         elif msg.velocity == 0:

@@ -923,7 +923,7 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_G(self):
         """ Goto """
-        App().sequence.sequence_goto(self.keystring)
+        App().sequence.goto(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 

@@ -152,7 +152,7 @@ class Application(Gtk.Application):
         # Add global shortcuts
         # Go
         action = Gio.SimpleAction.new("go", None)
-        action.connect("activate", self.sequence.sequence_go)
+        action.connect("activate", self.sequence.go)
         self.add_action(action)
         self.set_accels_for_action("app.go", ["<Control>g"])
         # Track Channels

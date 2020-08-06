@@ -37,7 +37,7 @@ class WingPlayback:
                 pass
             else:
                 # Go pressed
-                App().sequence.sequence_go(None, None)
+                App().sequence.go(None, None)
             # Back
             if message[6] & 32:
                 # Back released
