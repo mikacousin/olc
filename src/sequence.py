@@ -496,6 +496,7 @@ class Sequence:
 
 class ThreadGo(threading.Thread):
     """Thread object for Go"""
+
     def __init__(self, name=""):
         threading.Thread.__init__(self)
         self.name = name
@@ -843,6 +844,7 @@ class ThreadGo(threading.Thread):
 
 class ThreadGoBack(threading.Thread):
     """Thread Object for Go Back"""
+
     def __init__(self):
         threading.Thread.__init__(self)
         self._stopevent = threading.Event()

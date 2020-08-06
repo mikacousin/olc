@@ -1218,6 +1218,7 @@ class Window(Gtk.ApplicationWindow):
 
 class Dialog(Gtk.Dialog):
     """ Confirmation dialog when update Cue """
+
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(
             self,
