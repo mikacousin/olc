@@ -261,9 +261,9 @@ class Window(Gtk.ApplicationWindow):
         sel.set_mode(Gtk.SelectionMode.NONE)
         for i, column_title in enumerate(
             [
-                "Pas",
-                "Mémoire",
-                "Texte",
+                "Step",
+                "Cue",
+                "Text",
                 "Wait",
                 "Delay Out",
                 "Out",
@@ -330,7 +330,6 @@ class Window(Gtk.ApplicationWindow):
 
     def step_filter_func1(self, model, treeiter, _data):
         """Filter for the first part of the cues list"""
-
         if App().sequence.position <= 0:
             if int(model[treeiter][11]) == 0 or int(model[treeiter][11]) == 1:
                 return True
@@ -487,9 +486,7 @@ class Window(Gtk.ApplicationWindow):
                         99,
                     ]
                 )
-                self.cues_liststore2.append(
-                    [str(i), "", "", "", "", "", "", "", ""]
-                )
+                self.cues_liststore2.append([str(i), "", "", "", "", "", "", "", ""])
             else:
                 self.cues_liststore1.append(
                     [
@@ -561,8 +558,7 @@ class Window(Gtk.ApplicationWindow):
 
     def on_key_press_event(self, widget, event):
         """Executed on key press event"""
-        # Cherche la page ouverte dans le notebook
-        # Pour rediriger les saisies clavier
+        # Find open page in notebook to send keyboard events
         page = self.notebook.get_current_page()
         child = self.notebook.get_nth_page(page)
         if child == App().group_tab:
@@ -615,7 +611,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Right(self):
         """Next Channel"""
-
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
@@ -641,7 +636,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Left(self):
         """Previous Channel"""
-
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
@@ -666,7 +660,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Down(self):
         """Next Line"""
-
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
@@ -691,7 +684,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_Up(self):
         """Previous Line"""
-
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
@@ -716,7 +708,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_a(self):
         """All Channels"""
-
         self.flowbox.unselect_all()
 
         for universe in range(NB_UNIVERSES):
@@ -730,7 +721,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_c(self):
         """Channel"""
-
         self.flowbox.unselect_all()
 
         if self.keystring != "" and self.keystring != "0":
@@ -750,7 +740,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_greater(self):
         """Thru"""
-
         sel = self.flowbox.get_selected_children()
         if len(sel) == 1:
             flowboxchild = sel[0]
@@ -791,7 +780,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_plus(self):
         """ + """
-
         if self.keystring == "":
             return
 
@@ -814,7 +802,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_minus(self):
         """ - """
-
         if self.keystring == "":
             return
 
@@ -833,7 +820,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_exclam(self):
         """ Level + (% level) of selected channels """
-
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
         if percent:
@@ -859,7 +845,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_colon(self):
         """ Level - (% level) of selected channels """
-
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
         if percent:
@@ -889,7 +874,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_equal(self):
         """ @ Level """
-
         if self.keystring == "":
             return
 
@@ -945,7 +929,6 @@ class Window(Gtk.ApplicationWindow):
 
     def keypress_R(self):
         """ Record new Step and new Preset """
-
         found = False
 
         if self.keystring == "":
@@ -987,9 +970,7 @@ class Window(Gtk.ApplicationWindow):
             self.update_sequence_display()
             self.update_xfade_display(step)
             self.update_channels_display(step)
-
         else:  # Update Preset
-
             # Find Preset's position
             found = False
             i = 0
@@ -1237,7 +1218,6 @@ class Window(Gtk.ApplicationWindow):
 
 class Dialog(Gtk.Dialog):
     """ Confirmation dialog when update Cue """
-
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(
             self,
