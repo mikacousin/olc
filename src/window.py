@@ -419,6 +419,146 @@ class Window(Gtk.ApplicationWindow):
                         self.channels[i].scale -= 0.1
         return True
 
+    def update_sequence_display(self):
+        """Update Sequence display"""
+        self.cues_liststore1.clear()
+        self.cues_liststore2.clear()
+        self.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+        )
+        self.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+        )
+        for i in range(App().sequence.last):
+            if App().sequence.steps[i].wait.is_integer():
+                wait = str(int(App().sequence.steps[i].wait))
+                if wait == "0":
+                    wait = ""
+            else:
+                wait = str(App().sequence.steps[i].wait)
+            if App().sequence.steps[i].time_out.is_integer():
+                t_out = int(App().sequence.steps[i].time_out)
+            else:
+                t_out = App().sequence.steps[i].time_out
+            if App().sequence.steps[i].delay_out.is_integer():
+                d_out = str(int(App().sequence.steps[i].delay_out))
+            else:
+                d_out = str(App().sequence.steps[i].delay_out)
+            if d_out == "0":
+                d_out = ""
+            if App().sequence.steps[i].time_in.is_integer():
+                t_in = int(App().sequence.steps[i].time_in)
+            else:
+                t_in = App().sequence.steps[i].time_in
+            if App().sequence.steps[i].delay_in.is_integer():
+                d_in = str(int(App().sequence.steps[i].delay_in))
+            else:
+                d_in = str(App().sequence.steps[i].delay_in)
+            if d_in == "0":
+                d_in = ""
+            channel_time = str(len(App().sequence.steps[i].channel_time))
+            if channel_time == "0":
+                channel_time = ""
+            if i == 0:
+                background = "#997004"
+            elif i == 1:
+                background = "#555555"
+            else:
+                background = "#232729"
+            # Actual and Next Cue in Bold
+            if i in (0, 1):
+                weight = Pango.Weight.HEAVY
+            else:
+                weight = Pango.Weight.NORMAL
+            if i in (0, App().sequence.last - 1):
+                self.cues_liststore1.append(
+                    [
+                        str(i),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        background,
+                        Pango.Weight.NORMAL,
+                        99,
+                    ]
+                )
+                self.cues_liststore2.append(
+                    [str(i), "", "", "", "", "", "", "", ""]
+                )
+            else:
+                self.cues_liststore1.append(
+                    [
+                        str(i),
+                        str(App().sequence.steps[i].cue.memory),
+                        str(App().sequence.steps[i].text),
+                        wait,
+                        d_out,
+                        str(t_out),
+                        d_in,
+                        str(t_in),
+                        channel_time,
+                        background,
+                        weight,
+                        99,
+                    ]
+                )
+                self.cues_liststore2.append(
+                    [
+                        str(i),
+                        str(App().sequence.steps[i].cue.memory),
+                        str(App().sequence.steps[i].text),
+                        wait,
+                        d_out,
+                        str(t_out),
+                        d_in,
+                        str(t_in),
+                        channel_time,
+                    ]
+                )
+
+        self.cues_liststore1[App().sequence.position][9] = "#232729"
+        self.cues_liststore1[App().sequence.position + 1][9] = "#232729"
+        self.cues_liststore1[App().sequence.position + 2][9] = "#997004"
+        self.cues_liststore1[App().sequence.position + 3][9] = "#555555"
+        self.cues_liststore1[App().sequence.position][10] = Pango.Weight.NORMAL
+        self.cues_liststore1[App().sequence.position + 1][10] = Pango.Weight.NORMAL
+        self.cues_liststore1[App().sequence.position + 2][10] = Pango.Weight.HEAVY
+        self.cues_liststore1[App().sequence.position + 3][10] = Pango.Weight.HEAVY
+
+        self.step_filter1.refilter()
+        self.step_filter2.refilter()
+
+        path1 = Gtk.TreePath.new_from_indices([App().sequence.position + 2])
+        path2 = Gtk.TreePath.new_from_indices([App().sequence.position])
+        self.treeview1.set_cursor(path1, None, False)
+        self.treeview2.set_cursor(path2, None, False)
+        self.seq_grid.queue_draw()
+
+    def update_xfade_display(self, step):
+        """Update Crossfade display"""
+        self.sequential.total_time = App().sequence.steps[step + 1].total_time
+        self.sequential.time_in = App().sequence.steps[step + 1].time_in
+        self.sequential.time_out = App().sequence.steps[step + 1].time_out
+        self.sequential.delay_in = App().sequence.steps[step + 1].delay_in
+        self.sequential.delay_out = App().sequence.steps[step + 1].delay_out
+        self.sequential.wait = App().sequence.steps[step + 1].wait
+        self.sequential.channel_time = App().sequence.steps[step + 1].channel_time
+        self.sequential.queue_draw()
+
+    def update_channels_display(self, step):
+        """Update Channels levels display"""
+        for channel in range(MAX_CHANNELS):
+            level = App().sequence.steps[step].cue.channels[channel]
+            next_level = App().sequence.steps[step + 1].cue.channels[channel]
+            self.channels[channel].level = level
+            self.channels[channel].next_level = next_level
+            self.channels[channel].queue_draw()
+
     def on_key_press_event(self, widget, event):
         """Executed on key press event"""
         # Cherche la page ouverte dans le notebook
@@ -809,52 +949,16 @@ class Window(Gtk.ApplicationWindow):
         found = False
 
         if self.keystring == "":
-            # Use next free number
-
-            # Find next free number
+            # Find next free Cue
             position = App().sequence.position
-            memory = App().sequence.steps[position].cue.memory
-            # print('En scène, step:', position, 'mémoire:', memory)
-
-            if position < App().sequence.last - 1:
-                next_memory = App().sequence.steps[position + 1].cue.memory
-                if next_memory == 0.0:
-                    # print('Dernière mémoire')
-                    mem = memory + 1
-                else:
-                    # print('Mémoire suivante:', next_memory)
-                    if (next_memory - memory) <= 1:
-                        mem = ((next_memory - memory) / 2) + memory
-                    else:
-                        mem = memory + 1
-            else:
-                # print('Dernière mémoire')
-                mem = memory + 1
-
+            mem = App().sequence.get_next_cue(step=position)
+            step = position + 1
         else:
             # Use given number
-
             mem = float(self.keystring)
-
-            # Preset already exist ?
-            for item in App().memories:
-                if item.memory == mem:
-                    found = True
-                    break
+            found, step = App().sequence.get_step(cue=mem)
 
         if not found:
-
-            # Find Preset's position
-            found = False
-            i = 0
-            for i, item in enumerate(App().memories):
-                if item.memory > mem:
-                    found = True
-                    break
-            if not found:
-                # Preset is at the end
-                i += 1
-
             # Create Preset
             channels = array.array("B", [0] * MAX_CHANNELS)
             for univ in range(NB_UNIVERSES):
@@ -863,7 +967,7 @@ class Window(Gtk.ApplicationWindow):
                     level = App().dmx.frame[univ][output]
                     channels[channel - 1] = level
             cue = Cue(1, mem, channels)
-            App().memories.insert(i, cue)
+            App().memories.insert(step - 1, cue)
 
             # Update Presets Tab if exist
             if App().memories_tab:
@@ -871,136 +975,18 @@ class Window(Gtk.ApplicationWindow):
                 for chan in range(MAX_CHANNELS):
                     if channels[chan]:
                         nb_chan += 1
-                App().memories_tab.liststore.insert(i, [str(mem), "", nb_chan])
+                App().memories_tab.liststore.insert(step - 1, [str(mem), "", nb_chan])
 
-            # Find Step's position
-            for i in range(App().sequence.last):
-                if App().sequence.steps[i].cue.memory > mem:
-                    break
-            App().sequence.position = i
+            App().sequence.position = step
 
             # Create Step
-            step = Step(1, cue=cue)
-            App().sequence.insert_step(App().sequence.position, step)
+            step_object = Step(1, cue=cue)
+            App().sequence.insert_step(step, step_object)
 
             # Update Main Playback
-            self.cues_liststore1.clear()
-            self.cues_liststore2.clear()
-            self.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-            )
-            self.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
-            for i in range(App().sequence.last):
-                if App().sequence.steps[i].wait.is_integer():
-                    wait = str(int(App().sequence.steps[i].wait))
-                    if wait == "0":
-                        wait = ""
-                else:
-                    wait = str(App().sequence.steps[i].wait)
-                if App().sequence.steps[i].time_out.is_integer():
-                    t_out = int(App().sequence.steps[i].time_out)
-                else:
-                    t_out = App().sequence.steps[i].time_out
-                if App().sequence.steps[i].delay_out.is_integer():
-                    d_out = str(int(App().sequence.steps[i].delay_out))
-                else:
-                    d_out = str(App().sequence.steps[i].delay_out)
-                if d_out == "0":
-                    d_out = ""
-                if App().sequence.steps[i].time_in.is_integer():
-                    t_in = int(App().sequence.steps[i].time_in)
-                else:
-                    t_in = App().sequence.steps[i].time_in
-                if App().sequence.steps[i].delay_in.is_integer():
-                    d_in = str(int(App().sequence.steps[i].delay_in))
-                else:
-                    d_in = str(App().sequence.steps[i].delay_in)
-                if d_in == "0":
-                    d_in = ""
-                channel_time = str(len(App().sequence.steps[i].channel_time))
-                if channel_time == "0":
-                    channel_time = ""
-                if i == 0:
-                    background = "#997004"
-                elif i == 1:
-                    background = "#555555"
-                else:
-                    background = "#232729"
-                # Actual and Next Cue in Bold
-                if i in (0, 1):
-                    weight = Pango.Weight.HEAVY
-                else:
-                    weight = Pango.Weight.NORMAL
-                if i in (0, App().sequence.last - 1):
-                    self.cues_liststore1.append(
-                        [
-                            str(i),
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            background,
-                            Pango.Weight.NORMAL,
-                            99,
-                        ]
-                    )
-                    self.cues_liststore2.append(
-                        [str(i), "", "", "", "", "", "", "", ""]
-                    )
-                else:
-                    self.cues_liststore1.append(
-                        [
-                            str(i),
-                            str(App().sequence.steps[i].cue.memory),
-                            str(App().sequence.steps[i].text),
-                            wait,
-                            d_out,
-                            str(t_out),
-                            d_in,
-                            str(t_in),
-                            channel_time,
-                            background,
-                            weight,
-                            99,
-                        ]
-                    )
-                    self.cues_liststore2.append(
-                        [
-                            str(i),
-                            str(App().sequence.steps[i].cue.memory),
-                            str(App().sequence.steps[i].text),
-                            wait,
-                            d_out,
-                            str(t_out),
-                            d_in,
-                            str(t_in),
-                            channel_time,
-                        ]
-                    )
-
-            self.cues_liststore1[App().sequence.position][9] = "#232729"
-            self.cues_liststore1[App().sequence.position + 1][9] = "#232729"
-            self.cues_liststore1[App().sequence.position + 2][9] = "#997004"
-            self.cues_liststore1[App().sequence.position + 3][9] = "#555555"
-            self.cues_liststore1[App().sequence.position][10] = Pango.Weight.NORMAL
-            self.cues_liststore1[App().sequence.position + 1][10] = Pango.Weight.NORMAL
-            self.cues_liststore1[App().sequence.position + 2][10] = Pango.Weight.HEAVY
-            self.cues_liststore1[App().sequence.position + 3][10] = Pango.Weight.HEAVY
-
-            self.step_filter1.refilter()
-            self.step_filter2.refilter()
-
-            path1 = Gtk.TreePath.new_from_indices([App().sequence.position + 2])
-            path2 = Gtk.TreePath.new_from_indices([App().sequence.position])
-            self.treeview1.set_cursor(path1, None, False)
-            self.treeview2.set_cursor(path2, None, False)
-            self.seq_grid.queue_draw()
+            self.update_sequence_display()
+            self.update_xfade_display(step)
+            self.update_channels_display(step)
 
         else:  # Update Preset
 
