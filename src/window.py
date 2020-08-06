@@ -531,7 +531,7 @@ class Window(Gtk.ApplicationWindow):
         self.step_filter2.refilter()
 
         path1 = Gtk.TreePath.new_from_indices([App().sequence.position + 2])
-        path2 = Gtk.TreePath.new_from_indices([App().sequence.position])
+        path2 = Gtk.TreePath.new_from_indices([0])
         self.treeview1.set_cursor(path1, None, False)
         self.treeview2.set_cursor(path2, None, False)
         self.seq_grid.queue_draw()
