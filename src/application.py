@@ -116,6 +116,7 @@ class Application(Gtk.Application):
         self.osc_server = None
         self.ascii = None
         self.file = None
+        self.wing = None
 
     def do_activate(self):
 
@@ -713,7 +714,7 @@ class Application(Gtk.Application):
                 # set self.file as the current filename for the file chooser
                 save_dialog.set_file(self.file)
             except GObject.GError as e:
-                print("Error: " + e.message)
+                print("Error: " + str(e))
         # connect the dialog to the callback function save_response_cb()
         save_dialog.connect("response", self._save_response_cb)
         # show the dialog
