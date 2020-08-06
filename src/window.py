@@ -228,9 +228,9 @@ class Window(Gtk.ApplicationWindow):
         sel.set_mode(Gtk.SelectionMode.NONE)
         for i, column_title in enumerate(
             [
-                "Pas",
-                "Mémoire",
-                "Texte",
+                "Step",
+                "Cue",
+                "Text",
                 "Wait",
                 "Delay Out",
                 "Out",
