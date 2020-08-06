@@ -10,24 +10,14 @@ from olc.step import Step
 
 def update_ui(position, subtitle):
     # Update Sequential Tab
-    if position == 0:
-        App().window.cues_liststore1[position][9] = "#232729"
-        App().window.cues_liststore1[position + 1][9] = "#232729"
-        App().window.cues_liststore1[position + 2][9] = "#997004"
-        App().window.cues_liststore1[position + 3][9] = "#555555"
-        App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-        App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-        App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-        App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-    else:
-        App().window.cues_liststore1[position][9] = "#232729"
-        App().window.cues_liststore1[position + 1][9] = "#232729"
-        App().window.cues_liststore1[position + 2][9] = "#997004"
-        App().window.cues_liststore1[position + 3][9] = "#555555"
-        App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-        App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-        App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-        App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
+    App().window.cues_liststore1[position][9] = "#232729"
+    App().window.cues_liststore1[position + 1][9] = "#232729"
+    App().window.cues_liststore1[position + 2][9] = "#997004"
+    App().window.cues_liststore1[position + 3][9] = "#555555"
+    App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
+    App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
+    App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
+    App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
     App().window.step_filter1.refilter()
     App().window.step_filter2.refilter()
     path = Gtk.TreePath.new_from_indices([0])
