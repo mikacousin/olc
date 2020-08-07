@@ -604,13 +604,13 @@ class Window(Gtk.ApplicationWindow):
             self.keystring += "."
             self.statusbar.push(self.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
 
         if func:
             return func()
         return False
 
-    def keypress_Right(self):
+    def _keypress_Right(self):
         """Next Channel"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -635,7 +635,7 @@ class Window(Gtk.ApplicationWindow):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(next_chan)
 
-    def keypress_Left(self):
+    def _keypress_Left(self):
         """Previous Channel"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -659,7 +659,7 @@ class Window(Gtk.ApplicationWindow):
             self.flowbox.select_child(child)
             self.last_chan_selected = str(chan)
 
-    def keypress_Down(self):
+    def _keypress_Down(self):
         """Next Line"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -683,7 +683,7 @@ class Window(Gtk.ApplicationWindow):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(index)
 
-    def keypress_Up(self):
+    def _keypress_Up(self):
         """Previous Line"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -707,7 +707,7 @@ class Window(Gtk.ApplicationWindow):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(index)
 
-    def keypress_a(self):
+    def _keypress_a(self):
         """All Channels"""
         self.flowbox.unselect_all()
 
@@ -720,7 +720,7 @@ class Window(Gtk.ApplicationWindow):
                     self.set_focus(child)
                     self.flowbox.select_child(child)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """Channel"""
         self.flowbox.unselect_all()
 
@@ -735,11 +735,11 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):
         """Thru"""
-        self.keypress_greater()
+        self._keypress_greater()
 
-    def keypress_greater(self):
+    def _keypress_greater(self):
         """Thru"""
         sel = self.flowbox.get_selected_children()
         if len(sel) == 1:
@@ -775,11 +775,11 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_KP_Add(self):
+    def _keypress_KP_Add(self):
         """ + """
-        self.keypress_plus()
+        self._keypress_plus()
 
-    def keypress_plus(self):
+    def _keypress_plus(self):
         """ + """
         if self.keystring == "":
             return
@@ -797,11 +797,11 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_KP_Subtract(self):
+    def _keypress_KP_Subtract(self):
         """ - """
-        self.keypress_minus()
+        self._keypress_minus()
 
-    def keypress_minus(self):
+    def _keypress_minus(self):
         """ - """
         if self.keystring == "":
             return
@@ -819,7 +819,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_exclam(self):
+    def _keypress_exclam(self):
         """ Level + (% level) of selected channels """
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
@@ -844,7 +844,7 @@ class Window(Gtk.ApplicationWindow):
 
         App().dmx.send()
 
-    def keypress_colon(self):
+    def _keypress_colon(self):
         """ Level - (% level) of selected channels """
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
@@ -869,11 +869,11 @@ class Window(Gtk.ApplicationWindow):
 
         App().dmx.send()
 
-    def keypress_KP_Enter(self):
+    def _keypress_KP_Enter(self):
         """ @ Level """
-        self.keypress_equal()
+        self._keypress_equal()
 
-    def keypress_equal(self):
+    def _keypress_equal(self):
         """ @ Level """
         if self.keystring == "":
             return
@@ -900,35 +900,35 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         """ Empty keys buffer """
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Unselect all channels """
         self.flowbox.unselect_all()
         self.last_chan_selected = ""
 
-    def keypress_q(self):
+    def _keypress_q(self):
         """ Seq - """
         App().sequence.sequence_minus()
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_w(self):
+    def _keypress_w(self):
         """ Seq + """
         App().sequence.sequence_plus()
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_G(self):
+    def _keypress_G(self):
         """ Goto """
         App().sequence.goto(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def keypress_R(self):
+    def _keypress_R(self):
         """ Record new Step and new Preset """
         found = False
 
@@ -1017,7 +1017,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_U(self):
+    def _keypress_U(self):
         """ Update Cue """
         position = App().sequence.position
         memory = App().sequence.steps[position].cue.memory
@@ -1044,7 +1044,7 @@ class Window(Gtk.ApplicationWindow):
 
         dialog.destroy()
 
-    def keypress_T(self):
+    def _keypress_T(self):
         """Change Time In and Time Out of next step"""
         if self.keystring == "":
             return
@@ -1070,7 +1070,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_I(self):
+    def _keypress_I(self):
         """Change Time In of next step"""
         if self.keystring == "":
             return
@@ -1094,7 +1094,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_O(self):
+    def _keypress_O(self):
         """Change Time Out of next step"""
         if self.keystring == "":
             return
@@ -1118,7 +1118,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_W(self):
+    def _keypress_W(self):
         """Change Wait Time of next step"""
         if self.keystring == "":
             return
@@ -1142,7 +1142,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_D(self):
+    def _keypress_D(self):
         """Change Delay In and Out of next step"""
         if self.keystring == "":
             return
@@ -1168,7 +1168,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_K(self):
+    def _keypress_K(self):
         """Change Delay In of next step"""
         if self.keystring == "":
             return
@@ -1192,7 +1192,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_L(self):
+    def _keypress_L(self):
         """Change Delay Out of next step"""
         if self.keystring == "":
             return

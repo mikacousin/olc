@@ -97,22 +97,22 @@ class TrackChannelsTab(Gtk.Grid):
             self.keystring += keyname[3:]
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
         return False
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Close Tab """
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
         App().track_channels_tab = None
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_Right(self):
+    def _keypress_Right(self):
         """ Next Channel """
 
         if self.last_step_selected == "":
@@ -129,7 +129,7 @@ class TrackChannelsTab(Gtk.Grid):
                         self.channel_selected += 1
                         widget.queue_draw()
 
-    def keypress_Left(self):
+    def _keypress_Left(self):
         """ Previous Channel """
 
         if self.last_step_selected == "":
@@ -146,7 +146,7 @@ class TrackChannelsTab(Gtk.Grid):
                         self.channel_selected -= 1
                         widget.queue_draw()
 
-    def keypress_Down(self):
+    def _keypress_Down(self):
         """ Next Step """
 
         if self.last_step_selected == "":
@@ -162,7 +162,7 @@ class TrackChannelsTab(Gtk.Grid):
             index = child.get_index()
             self.last_step_selected = str(index)
 
-    def keypress_Up(self):
+    def _keypress_Up(self):
         """ Previous Step """
 
         if self.last_step_selected == "":
@@ -178,7 +178,7 @@ class TrackChannelsTab(Gtk.Grid):
             index = child.get_index()
             self.last_step_selected = str(index)
 
-    def keypress_m(self):
+    def _keypress_m(self):
         """ Modify Level """
 
         # Find selected Channel
@@ -204,7 +204,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """ Select Channel """
 
         App().window.flowbox.unselect_all()
@@ -244,10 +244,10 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_KP_Divide(self):
-        self.keypress_greater()
+    def _keypress_KP_Divide(self):
+        self._keypress_greater()
 
-    def keypress_greater(self):
+    def _keypress_greater(self):
         """ Channel Thru """
 
         sel = App().window.flowbox.get_selected_children()
@@ -309,10 +309,10 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_KP_Add(self):
-        self.keypress_plus()
+    def _keypress_KP_Add(self):
+        self._keypress_plus()
 
-    def keypress_plus(self):
+    def _keypress_plus(self):
         """ Channel + """
 
         if self.keystring == "":
@@ -353,10 +353,10 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_KP_Subtract(self):
-        self.keypress_minus()
+    def _keypress_KP_Subtract(self):
+        self._keypress_minus()
 
-    def keypress_minus(self):
+    def _keypress_minus(self):
         """ Channel - """
 
         if self.keystring == "":

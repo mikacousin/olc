@@ -135,22 +135,22 @@ class PatchOutputsTab(Gtk.Grid):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
         return False
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Close Tab """
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
         App().patch_outputs_tab = None
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_Right(self):
+    def _keypress_Right(self):
         """ Next Output """
 
         if self.last_out_selected == "":
@@ -165,7 +165,7 @@ class PatchOutputsTab(Gtk.Grid):
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) + 1)
 
-    def keypress_Left(self):
+    def _keypress_Left(self):
         """ Previous Output """
 
         if self.last_out_selected == "":
@@ -180,7 +180,7 @@ class PatchOutputsTab(Gtk.Grid):
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) - 1)
 
-    def keypress_Down(self):
+    def _keypress_Down(self):
         """ Next Line """
 
         if self.last_out_selected == "":
@@ -201,7 +201,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
-    def keypress_Up(self):
+    def _keypress_Up(self):
         """ Previous Line """
 
         if self.last_out_selected == "":
@@ -222,7 +222,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
-    def keypress_o(self):
+    def _keypress_o(self):
         """ Select Output """
 
         self.flowbox.unselect_all()
@@ -252,10 +252,10 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_KP_Divide(self):
-        self.keypress_greater()
+    def _keypress_KP_Divide(self):
+        self._keypress_greater()
 
-    def keypress_greater(self):
+    def _keypress_greater(self):
         """ Output Thru """
 
         # If just one output is selected, start from it
@@ -286,7 +286,7 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """ Attribute Channel """
 
         # Find Selected Output
@@ -344,7 +344,7 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_exclam(self):
+    def _keypress_exclam(self):
         """ Proportional level + """
 
         sel = self.flowbox.get_selected_children()
@@ -368,7 +368,7 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_colon(self):
+    def _keypress_colon(self):
         """ Proportional level - """
 
         sel = self.flowbox.get_selected_children()

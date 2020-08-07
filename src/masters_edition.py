@@ -382,22 +382,22 @@ class MastersTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
         return False
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Close Tab """
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
         App().masters_tab = None
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """ Channel """
 
         # Find Selected Master
@@ -438,10 +438,10 @@ class MastersTab(Gtk.Paned):
             return True
         return False
 
-    def keypress_KP_Divide(self):
-        self.keypress_greater()
+    def _keypress_KP_Divide(self):
+        self._keypress_greater()
 
-    def keypress_greater(self):
+    def _keypress_greater(self):
         """ Channel Thru """
 
         # Find Selected Master
@@ -489,7 +489,7 @@ class MastersTab(Gtk.Paned):
             return True
         return False
 
-    def keypress_plus(self):
+    def _keypress_plus(self):
         """ Channel + """
 
         # Find Selected Master
@@ -527,7 +527,7 @@ class MastersTab(Gtk.Paned):
             return False
         return False
 
-    def keypress_minus(self):
+    def _keypress_minus(self):
         """ Channel - """
 
         # Find Selected Master
@@ -565,7 +565,7 @@ class MastersTab(Gtk.Paned):
             return False
         return False
 
-    def keypress_a(self):
+    def _keypress_a(self):
         """ All Channels """
 
         # Find Selected Master
@@ -627,7 +627,7 @@ class MastersTab(Gtk.Paned):
             return True
         return False
 
-    def keypress_equal(self):
+    def _keypress_equal(self):
         """ @ level """
 
         level = int(self.keystring)
@@ -656,7 +656,7 @@ class MastersTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_colon(self):
+    def _keypress_colon(self):
         """ Level - % """
 
         lvl = App().settings.get_int("percent-level")
@@ -685,7 +685,7 @@ class MastersTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def keypress_exclam(self):
+    def _keypress_exclam(self):
         """ Level + % """
 
         lvl = App().settings.get_int("percent-level")
@@ -714,10 +714,10 @@ class MastersTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def keypress_U(self):
-        self.keypress_R()
+    def _keypress_U(self):
+        self._keypress_R()
 
-    def keypress_R(self):
+    def _keypress_R(self):
         """ Record Master """
 
         self.flowbox.unselect_all()

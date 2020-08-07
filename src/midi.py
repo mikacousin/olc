@@ -639,7 +639,9 @@ class Midi:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.seq_minus.emit("button-press-event", event)
             else:
-                App().window.keypress_q()
+                App().sequence.sequence_minus()
+                App().window.keystring = ""
+                App().window.statusbar.push(App().window.context_id, "")
         elif msg.velocity == 0:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -652,7 +654,9 @@ class Midi:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.seq_plus.emit("button-press-event", event)
             else:
-                App().window.keypress_w()
+                App().sequence.sequence_plus()
+                App().window.keystring = ""
+                App().window.statusbar.push(App().window.context_id, "")
         elif msg.velocity == 0:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)

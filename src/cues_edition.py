@@ -175,22 +175,22 @@ class CuesEditionTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
         return False
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Close Tab """
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
         App().memories_tab = None
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """ Channel """
 
         self.flowbox.unselect_all()
@@ -216,10 +216,10 @@ class CuesEditionTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_KP_Divide(self):
-        self.keypress_greater()
+    def _keypress_KP_Divide(self):
+        self._keypress_greater()
 
-    def keypress_greater(self):
+    def _keypress_greater(self):
         """ Channel Thru """
 
         selected_children = self.flowbox.get_selected_children()
@@ -252,7 +252,7 @@ class CuesEditionTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_plus(self):
+    def _keypress_plus(self):
         """ Channel + """
 
         if self.keystring != "":
@@ -274,7 +274,7 @@ class CuesEditionTab(Gtk.Paned):
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_minus(self):
+    def _keypress_minus(self):
         """ Channel - """
 
         if self.keystring != "":
@@ -296,7 +296,7 @@ class CuesEditionTab(Gtk.Paned):
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_a(self):
+    def _keypress_a(self):
         """ All Channels """
 
         self.flowbox.unselect_all()
@@ -322,7 +322,7 @@ class CuesEditionTab(Gtk.Paned):
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
 
-    def keypress_equal(self):
+    def _keypress_equal(self):
         """ @ level """
 
         level = int(self.keystring)
@@ -351,7 +351,7 @@ class CuesEditionTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_colon(self):
+    def _keypress_colon(self):
         """ Level - % """
 
         lvl = App().settings.get_int("percent-level")
@@ -380,7 +380,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def keypress_exclam(self):
+    def _keypress_exclam(self):
         """ Level + % """
 
         lvl = App().settings.get_int("percent-level")
@@ -409,7 +409,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def keypress_U(self):
+    def _keypress_U(self):
         """ Update Memory """
 
         self.flowbox.unselect_all()
@@ -438,7 +438,7 @@ class CuesEditionTab(Gtk.Paned):
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
 
-    def keypress_Delete(self):
+    def _keypress_Delete(self):
         """ Deletes selected Memory """
 
         # TODO: Ask confirmation
@@ -496,7 +496,7 @@ class CuesEditionTab(Gtk.Paned):
                 pth = Gtk.TreePath.new()
                 App().window.treeview1.set_cursor(pth, None, False)
 
-    def keypress_R(self):
+    def _keypress_R(self):
         """ Records a copy of the current Memory with a new number """
 
         if self.keystring != "":
@@ -570,7 +570,7 @@ class CuesEditionTab(Gtk.Paned):
 
         return True
 
-    def keypress_Insert(self):
+    def _keypress_Insert(self):
         """ Insert a new Memory """
 
         if self.keystring == "":

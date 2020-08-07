@@ -83,22 +83,22 @@ class PatchChannelsTab(Gtk.Grid):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
         return False
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Close Tab """
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
         App().patch_channels_tab = None
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_Down(self):
+    def _keypress_Down(self):
         """ Select Next Channel """
 
         if self.last_chan_selected == "":
@@ -116,7 +116,7 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_Up(self):
+    def _keypress_Up(self):
         """ Select Previous Channel """
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -133,7 +133,7 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """ Select Channel """
         self.flowbox.unselect_all()
 
@@ -148,7 +148,7 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_m(self):
+    def _keypress_m(self):
         """ Modify Output """
         sel = self.flowbox.get_selected_children()
         children = []
@@ -228,7 +228,7 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_i(self):
+    def _keypress_i(self):
         """ Insert Output """
         sel = self.flowbox.get_selected_children()
         children = []
@@ -280,7 +280,7 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_r(self):
+    def _keypress_r(self):
         """ Remove Output """
         sel = self.flowbox.get_selected_children()
         children = []

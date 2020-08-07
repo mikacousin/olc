@@ -353,12 +353,12 @@ class ChanneltimeTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "keypress_" + keyname, None)
+        func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
         return False
 
-    def keypress_Escape(self):
+    def _keypress_Escape(self):
         """ Close Tab """
         # If channel times has no delay and no time, delete it
         keys = list(self.step.channel_time.keys())
@@ -372,11 +372,11 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.notebook.remove_page(page)
         App().channeltime_tab = None
 
-    def keypress_BackSpace(self):
+    def _keypress_BackSpace(self):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_c(self):
+    def _keypress_c(self):
         """ Channel """
         # TODO: Bug on Empty Channel time
 
@@ -401,7 +401,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def keypress_q(self):
+    def _keypress_q(self):
         """ Prev Channel Time """
 
         self.flowbox.unselect_all()
@@ -416,7 +416,7 @@ class ChanneltimeTab(Gtk.Paned):
             self.treeview.set_cursor(path)
             App().window.set_focus(self.treeview)
 
-    def keypress_w(self):
+    def _keypress_w(self):
         """ Next Channel Time """
 
         self.flowbox.unselect_all()
@@ -431,7 +431,7 @@ class ChanneltimeTab(Gtk.Paned):
             self.treeview.set_cursor(path)
             App().window.set_focus(self.treeview)
 
-    def keypress_Insert(self):
+    def _keypress_Insert(self):
         """ Add Channel Time """
 
         # Find selected channels
