@@ -1,7 +1,7 @@
 import array
 import threading
 import time
-from gi.repository import Gtk, GLib, Pango
+from gi.repository import GLib, Pango
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
 from olc.cue import Cue
@@ -10,19 +10,7 @@ from olc.step import Step
 
 def update_ui(position, subtitle):
     # Update Sequential Tab
-    App().window.cues_liststore1[position][9] = "#232729"
-    App().window.cues_liststore1[position + 1][9] = "#232729"
-    App().window.cues_liststore1[position + 2][9] = "#997004"
-    App().window.cues_liststore1[position + 3][9] = "#555555"
-    App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-    App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-    App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-    App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-    App().window.step_filter1.refilter()
-    App().window.step_filter2.refilter()
-    path = Gtk.TreePath.new_from_indices([0])
-    App().window.treeview1.set_cursor(path, None, False)
-    App().window.treeview2.set_cursor(path, None, False)
+    App().window.update_active_cues_display()
     App().window.seq_grid.queue_draw()
     # Update Main Window's Subtitle
     App().window.header.set_subtitle(subtitle)
@@ -317,20 +305,8 @@ class Sequence:
 
                 # Update ui
                 App().window.cues_liststore1[old_pos][9] = "#232729"
-                App().window.cues_liststore1[position][9] = "#232729"
-                App().window.cues_liststore1[position + 1][9] = "#232729"
-                App().window.cues_liststore1[position + 2][9] = "#997004"
-                App().window.cues_liststore1[position + 3][9] = "#555555"
                 App().window.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-                App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-                App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-                App().window.step_filter1.refilter()
-                App().window.step_filter2.refilter()
-                path = Gtk.TreePath.new_from_indices([0])
-                App().window.treeview1.set_cursor(path, None, False)
-                App().window.treeview2.set_cursor(path, None, False)
+                App().window.update_active_cues_display()
                 App().window.seq_grid.queue_draw()
 
                 # Launch Go
@@ -417,19 +393,7 @@ class Sequence:
                 )
 
             # Update Sequential Tab
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-            App().window.step_filter1.refilter()
-            App().window.step_filter2.refilter()
-            path = Gtk.TreePath.new_from_indices([0])
-            App().window.treeview1.set_cursor(path, None, False)
-            App().window.treeview2.set_cursor(path, None, False)
+            App().window.update_active_cues_display()
             App().window.seq_grid.queue_draw()
             # Update Main Window's Subtitle
             App().window.header.set_subtitle(subtitle)

@@ -1,5 +1,5 @@
 import array
-from gi.repository import Gtk, Gdk, Pango
+from gi.repository import Gtk, Gdk
 
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
@@ -473,119 +473,7 @@ class CuesEditionTab(Gtk.Paned):
             App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Main Playback
-            App().window.cues_liststore1.clear()
-            App().window.cues_liststore2.clear()
-            App().window.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-            )
-            App().window.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
-            for i, step in enumerate(App().sequence.steps):
-                # Display int as int
-                if step.wait.is_integer():
-                    wait = str(int(step.wait))
-                    if wait == "0":
-                        wait = ""
-                else:
-                    wait = str(step.wait)
-                if step.time_out.is_integer():
-                    t_out = int(step.time_out)
-                else:
-                    t_out = step.time_out
-                if step.delay_out.is_integer():
-                    d_out = str(int(step.delay_out))
-                else:
-                    d_out = str(step.delay_out)
-                if d_out == "0":
-                    d_out = ""
-                if step.time_in.is_integer():
-                    t_in = int(step.time_in)
-                else:
-                    t_in = step.time_in
-                if step.delay_in.is_integer():
-                    d_in = str(int(step.delay_in))
-                else:
-                    d_in = str(step.delay_in)
-                if d_in == "0":
-                    d_in = ""
-                channel_time = str(len(step.channel_time))
-                if channel_time == "0":
-                    channel_time = ""
-                if i == 0:
-                    background = "#997004"
-                elif i == 1:
-                    background = "#555555"
-                else:
-                    background = "#232729"
-                # Actual and Next Cue in Bold
-                if i in (0, 1):
-                    weight = Pango.Weight.HEAVY
-                else:
-                    weight = Pango.Weight.NORMAL
-                if i == 0:
-                    App().window.cues_liststore1.append(
-                        [
-                            str(i),
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            background,
-                            Pango.Weight.NORMAL,
-                            99,
-                        ]
-                    )
-                    App().window.cues_liststore2.append(
-                        [str(i), "", "", "", "", "", "", "", ""]
-                    )
-                else:
-                    App().window.cues_liststore1.append(
-                        [
-                            str(i),
-                            str(step.cue.memory),
-                            str(step.text),
-                            wait,
-                            d_out,
-                            str(t_out),
-                            d_in,
-                            str(t_in),
-                            channel_time,
-                            background,
-                            weight,
-                            99,
-                        ]
-                    )
-                    App().window.cues_liststore2.append(
-                        [
-                            str(i),
-                            str(step.cue.memory),
-                            str(step.text),
-                            wait,
-                            d_out,
-                            str(t_out),
-                            d_in,
-                            str(t_in),
-                            channel_time,
-                        ]
-                    )
-
-            position = App().sequence.position
-            App().window.cues_liststore1[position][9] = "#232729"
-            App().window.cues_liststore1[position + 1][9] = "#232729"
-            App().window.cues_liststore1[position + 2][9] = "#997004"
-            App().window.cues_liststore1[position + 3][9] = "#555555"
-            App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-            App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-            App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-
-            App().window.step_filter1.refilter()
-            App().window.step_filter2.refilter()
+            App().window.update_sequence_display()
 
             # Update Sequence Edition Tab if exist
             if App().sequences_tab:

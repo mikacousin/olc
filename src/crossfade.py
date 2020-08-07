@@ -1,5 +1,4 @@
 import array
-from gi.repository import Gtk, Pango
 
 from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
 
@@ -320,6 +319,7 @@ class CrossFade:
                     d_in = App().sequence.steps[position + 1].delay_in
                     d_out = App().sequence.steps[position + 1].delay_out
                     t_wait = App().sequence.steps[position + 1].wait
+                    # Update UI
                     App().window.sequential.total_time = (
                         App().sequence.steps[position + 1].total_time
                     )
@@ -333,7 +333,6 @@ class CrossFade:
                     )
                     App().window.sequential.position_a = 0
                     App().window.sequential.position_b = 0
-
                     subtitle = (
                         "Mem. :"
                         + str(App().sequence.steps[position].cue.memory)
@@ -345,20 +344,7 @@ class CrossFade:
                         + App().sequence.steps[position + 1].text
                     )
                     App().window.header.set_subtitle(subtitle)
-
-                    App().window.cues_liststore1[position][9] = "#232729"
-                    App().window.cues_liststore1[position + 1][9] = "#232729"
-                    App().window.cues_liststore1[position + 2][9] = "#997004"
-                    App().window.cues_liststore1[position + 3][9] = "#555555"
-                    App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-                    App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-                    App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-                    App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-                    App().window.step_filter1.refilter()
-                    App().window.step_filter2.refilter()
-                    path = Gtk.TreePath.new_first()
-                    App().window.treeview1.set_cursor(path, None, False)
-                    App().window.treeview2.set_cursor(path, None, False)
+                    App().window.update_active_cues_display()
                     App().window.seq_grid.queue_draw()
 
                     self.scale_a.set_value(0)
@@ -388,6 +374,7 @@ class CrossFade:
                     d_in = App().sequence.steps[position + 1].delay_in
                     d_out = App().sequence.steps[position + 1].delay_out
                     t_wait = App().sequence.steps[position + 1].wait
+                    # Update UI
                     App().window.sequential.total_time = (
                         App().sequence.steps[position + 1].total_time
                     )
@@ -401,7 +388,6 @@ class CrossFade:
                     )
                     App().window.sequential.position_a = 0
                     App().window.sequential.position_b = 0
-
                     subtitle = (
                         "Mem. :"
                         + str(App().sequence.steps[position].cue.memory)
@@ -413,20 +399,7 @@ class CrossFade:
                         + App().sequence.steps[position + 1].text
                     )
                     App().window.header.set_subtitle(subtitle)
-
-                    App().window.cues_liststore1[position][9] = "#232729"
-                    App().window.cues_liststore1[position + 1][9] = "#232729"
-                    App().window.cues_liststore1[position + 2][9] = "#997004"
-                    App().window.cues_liststore1[position + 3][9] = "#555555"
-                    App().window.cues_liststore1[position][10] = Pango.Weight.NORMAL
-                    App().window.cues_liststore1[position + 1][10] = Pango.Weight.NORMAL
-                    App().window.cues_liststore1[position + 2][10] = Pango.Weight.HEAVY
-                    App().window.cues_liststore1[position + 3][10] = Pango.Weight.HEAVY
-                    App().window.step_filter1.refilter()
-                    App().window.step_filter2.refilter()
-                    path = Gtk.TreePath.new_first()
-                    App().window.treeview1.set_cursor(path, None, False)
-                    App().window.treeview2.set_cursor(path, None, False)
+                    App().window.update_active_cues_display()
                     App().window.seq_grid.queue_draw()
 
                     self.scale_a.set_value(0)
