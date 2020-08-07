@@ -192,6 +192,18 @@ class Application(Gtk.Application):
         # Init of ascii file
         self.ascii = Ascii(None)
 
+        # Send DMX every 50ms
+        GObject.timeout_add(50, self._on_timeout, None)
+
+    def _on_timeout(self, _user_data):
+        """Executed every timeout
+
+        Return: True
+        """
+        # Send DMX
+        self.dmx.send()
+        return True
+
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
