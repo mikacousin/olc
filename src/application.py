@@ -28,7 +28,7 @@ from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, GLib, Gdk, Pango, GObject  # noqa: E402
+from gi.repository import Gtk, Gio, GLib, Gdk, GObject  # noqa: E402
 
 
 class Application(Gtk.Application):
@@ -337,8 +337,6 @@ class Application(Gtk.Application):
                 self.masters.append(
                     Master(page + 1, i + 1, 0, 0, self.groups, self.chasers)
                 )
-        # Redraw Channels
-        self.window.flowbox.invalidate_filter()
         # Redraw Sequential Window
         self.window.sequential.time_in = self.sequence.steps[1].time_in
         self.window.sequential.time_out = self.sequence.steps[1].time_out
@@ -346,119 +344,11 @@ class Application(Gtk.Application):
         self.window.sequential.delay_in = self.sequence.steps[1].delay_in
         self.window.sequential.delay_out = self.sequence.steps[1].delay_out
         self.window.sequential.total_time = self.sequence.steps[1].total_time
-
-        self.window.cues_liststore1 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str, str, int, int
-        )
-        self.window.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-        )
-        self.window.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-        )
-
-        self.window.cues_liststore2 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str
-        )
-
-        for i in range(self.sequence.last):
-            if self.sequence.steps[i].wait.is_integer():
-                wait = str(int(self.sequence.steps[i].wait))
-                if wait == "0":
-                    wait = ""
-            else:
-                wait = str(self.sequence.steps[i].wait)
-            if self.sequence.steps[i].time_out.is_integer():
-                t_out = int(self.sequence.steps[i].time_out)
-            else:
-                t_out = self.sequence.steps[i].time_out
-            if self.sequence.steps[i].time_in.is_integer():
-                t_in = int(self.sequence.steps[i].time_in)
-            else:
-                t_in = self.sequence.steps[i].time_in
-            if self.sequence.steps[i].delay_out.is_integer():
-                d_out = int(self.sequence.steps[i].delay_out)
-            else:
-                d_out = self.sequence.steps[i].delay_out
-            if self.sequence.steps[i].delay_in.is_integer():
-                d_in = int(self.sequence.steps[i].delay_in)
-            else:
-                d_in = self.sequence.steps[i].delay_in
-            channel_time = str(len(self.sequence.steps[i].channel_time))
-            if channel_time == "0":
-                channel_time = ""
-            if i in (0, self.sequence.last - 1):
-                self.window.cues_liststore1.append(
-                    [
-                        str(i),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "#232729",
-                        Pango.Weight.NORMAL,
-                        42,
-                    ]
-                )
-            else:
-                self.window.cues_liststore1.append(
-                    [
-                        str(i),
-                        str(self.sequence.steps[i].cue.memory),
-                        str(self.sequence.steps[i].text),
-                        wait,
-                        str(d_out),
-                        str(t_out),
-                        str(d_in),
-                        str(t_in),
-                        channel_time,
-                        "#232729",
-                        Pango.Weight.NORMAL,
-                        42,
-                    ]
-                )
-            self.window.cues_liststore2.append(
-                [
-                    str(i),
-                    str(self.sequence.steps[i].cue.memory),
-                    str(self.sequence.steps[i].text),
-                    wait,
-                    str(d_out),
-                    str(t_out),
-                    str(d_in),
-                    str(t_in),
-                    channel_time,
-                ]
-            )
-        if self.sequence.last == 1:
-            self.window.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
-
-        # Select first cue
-        self.window.cues_liststore1[2][9] = "#997004"
-        self.window.cues_liststore1[2][10] = Pango.Weight.HEAVY
-        # Bold next cue
-        self.window.cues_liststore1[3][9] = "#555555"
-        self.window.cues_liststore1[3][10] = Pango.Weight.HEAVY
-
-        self.window.step_filter1 = self.window.cues_liststore1.filter_new()
-        self.window.step_filter1.set_visible_func(self.window.step_filter_func1)
-        self.window.treeview1.set_model(self.window.step_filter1)
-        path = Gtk.TreePath.new_from_indices([0])
-        self.window.treeview1.set_cursor(path, None, False)
-
-        self.window.step_filter2 = self.window.cues_liststore2.filter_new()
-        self.window.step_filter2.set_visible_func(self.window.step_filter_func2)
-        self.window.treeview2.set_model(self.window.step_filter2)
-        path = Gtk.TreePath.new_from_indices([0])
-        self.window.treeview2.set_cursor(path, None, False)
-
-        self.window.seq_grid.queue_draw()
+        self.window.update_sequence_display()
+        self.window.update_xfade_display(self.sequence.position)
+        # Turn off all channels
+        self.dmx.send()
+        self.window.update_channels_display(self.sequence.position)
 
         # Redraw Patch Tabs
         if self.patch_outputs_tab:
