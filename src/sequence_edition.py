@@ -1182,6 +1182,8 @@ class SequenceTab(Gtk.Grid):
 
         # Create Chaser
         App().chasers.append(Sequence(index_seq, App().patch, type_seq="Chaser"))
+        del App().chasers[-1].steps[1:]
+        App().chasers[-1].last = len(App().chasers[-1].steps)
 
         # Update List of sequences
         self.liststore1.append(
