@@ -948,8 +948,9 @@ class Window(Gtk.ApplicationWindow):
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
                     channel = App().patch.outputs[univ][output][0]
-                    level = App().dmx.frame[univ][output]
-                    channels[channel - 1] = level
+                    if channel:
+                        level = App().dmx.frame[univ][output]
+                        channels[channel - 1] = level
             cue = Cue(1, mem, channels)
             App().memories.insert(step - 1, cue)
 
