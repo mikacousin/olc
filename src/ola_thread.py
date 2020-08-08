@@ -50,7 +50,6 @@ class OlaThread(threading.Thread):
         # Loop on outputs with different level
         for output, level in diff:
             channel = App().patch.outputs[univ][output][0] - 1
-            App().dmx.frame[univ][output] = level
             # New level
             App().window.channels[channel].level = level
             # Find next level
