@@ -685,13 +685,11 @@ class SequenceTab(Gtk.Grid):
 
     def on_sequence_changed(self, selection):
         """ Select Sequence """
-
-        # TODO: voir pourquoi clear declanche un scan de toute la liststore
-        # self.liststore2.clear()
+        # Empty ListStore
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
+        # Find Sequence selected
         model, treeiter = selection.get_selected()
-
         if treeiter:
             selected = model[treeiter][0]
             # Find it
@@ -703,101 +701,8 @@ class SequenceTab(Gtk.Grid):
                         for chaser in App().chasers:
                             if item[0] == chaser.index:
                                 self.seq = chaser
-            # Liststore with infos from the sequence
-            if self.seq == App().sequence:
-                for i in range(self.seq.last)[1:-1]:
-                    if self.seq.steps[i].wait.is_integer():
-                        wait = str(int(self.seq.steps[i].wait))
-                        if wait == "0":
-                            wait = ""
-                    else:
-                        wait = str(self.seq.steps[i].wait)
-                    if self.seq.steps[i].time_out.is_integer():
-                        t_out = str(int(self.seq.steps[i].time_out))
-                    else:
-                        t_out = str(self.seq.steps[i].time_out)
-                    if self.seq.steps[i].delay_out.is_integer():
-                        d_out = str(int(self.seq.steps[i].delay_out))
-                        if d_out == "0":
-                            d_out = ""
-                    else:
-                        d_out = str(self.seq.steps[i].delay_out)
-                    if self.seq.steps[i].time_in.is_integer():
-                        t_in = str(int(self.seq.steps[i].time_in))
-                    else:
-                        t_in = str(self.seq.steps[i].time_in)
-                    if self.seq.steps[i].delay_in.is_integer():
-                        d_in = str(int(self.seq.steps[i].delay_in))
-                        if d_in == "0":
-                            d_in = ""
-                    else:
-                        d_in = str(self.seq.steps[i].delay_in)
-                    channel_time = str(len(self.seq.steps[i].channel_time))
-                    if channel_time == "0":
-                        channel_time = ""
-                    self.liststore2.append(
-                        [
-                            str(i),
-                            str(self.seq.steps[i].cue.memory),
-                            self.seq.steps[i].text,
-                            wait,
-                            d_out,
-                            t_out,
-                            d_in,
-                            t_in,
-                            channel_time,
-                        ]
-                    )
-            else:
-                for i in range(self.seq.last)[1:]:
-                    if self.seq.steps[i].wait.is_integer():
-                        wait = str(int(self.seq.steps[i].wait))
-                        if wait == "0":
-                            wait = ""
-                    else:
-                        wait = str(self.seq.steps[i].wait)
-                    if self.seq.steps[i].time_out.is_integer():
-                        t_out = str(int(self.seq.steps[i].time_out))
-                    else:
-                        t_out = str(self.seq.steps[i].time_out)
-                    if self.seq.steps[i].delay_out.is_integer():
-                        d_out = str(int(self.seq.steps[i].delay_out))
-                        if d_out == "0":
-                            d_out = ""
-                    else:
-                        d_out = str(self.seq.steps[i].delay_out)
-                    if self.seq.steps[i].time_in.is_integer():
-                        t_in = str(int(self.seq.steps[i].time_in))
-                    else:
-                        t_in = str(self.seq.steps[i].time_in)
-                    if self.seq.steps[i].delay_in.is_integer():
-                        d_in = str(int(self.seq.steps[i].delay_in))
-                        if d_in == "0":
-                            d_in = ""
-                    else:
-                        d_in = str(self.seq.steps[i].delay_in)
-                    channel_time = str(len(self.seq.steps[i].channel_time))
-                    if channel_time == "0":
-                        channel_time = ""
-                    self.liststore2.append(
-                        [
-                            str(i),
-                            str(self.seq.steps[i].cue.memory),
-                            self.seq.steps[i].text,
-                            wait,
-                            d_out,
-                            t_out,
-                            d_in,
-                            t_in,
-                            channel_time,
-                        ]
-                    )
-
-            self.treeview2.set_model(self.liststore2)
-            path = Gtk.TreePath.new_first()
-            self.treeview2.set_cursor(path)
-
-            App().window.show_all()
+            # Display Sequence
+            self.populate_liststore(1)
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
@@ -1170,6 +1075,37 @@ class SequenceTab(Gtk.Grid):
                 # Reset user modifications
                 self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
+    def _keypress_Delete(self):
+        """Delete selected Step"""
+        # Find selected sequence
+        path, _focus_column = self.treeview1.get_cursor()
+        if path:
+            selected = path.get_indices()[0]
+            sequence = self.liststore1[selected][0]
+            if sequence == App().sequence.index:
+                self.seq = App().sequence
+            else:
+                for chaser in App().chasers:
+                    if sequence == chaser.index:
+                        self.seq = chaser
+            # Find Step
+            path, _focus_column = self.treeview2.get_cursor()
+            if path:
+                selected = path.get_indices()[0]
+                step = int(self.liststore2[selected][0])
+                # cue = self.seq.steps[step].cue.memory
+                self.seq.steps.pop(step)
+                self.seq.last -= 1
+                if self.seq is App().sequence:
+                    # Main Playback
+                    self.update_sequence_display(step)
+                else:
+                    # Chaser
+                    self.liststore2 = Gtk.ListStore(
+                        str, str, str, str, str, str, str, str, str
+                    )
+                    self.populate_liststore(step)
+
     def _keypress_N(self):
         """ New Chaser """
 
@@ -1296,6 +1232,103 @@ class SequenceTab(Gtk.Grid):
                 pass
 
             dialog.destroy()
+
+    def populate_liststore(self, step):
+        """Populate liststore with steps"""
+        # Liststore with infos from the sequence
+        if self.seq == App().sequence:
+            for i in range(self.seq.last)[1:-1]:
+                if self.seq.steps[i].wait.is_integer():
+                    wait = str(int(self.seq.steps[i].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.seq.steps[i].wait)
+                if self.seq.steps[i].time_out.is_integer():
+                    t_out = str(int(self.seq.steps[i].time_out))
+                else:
+                    t_out = str(self.seq.steps[i].time_out)
+                if self.seq.steps[i].delay_out.is_integer():
+                    d_out = str(int(self.seq.steps[i].delay_out))
+                    if d_out == "0":
+                        d_out = ""
+                else:
+                    d_out = str(self.seq.steps[i].delay_out)
+                if self.seq.steps[i].time_in.is_integer():
+                    t_in = str(int(self.seq.steps[i].time_in))
+                else:
+                    t_in = str(self.seq.steps[i].time_in)
+                if self.seq.steps[i].delay_in.is_integer():
+                    d_in = str(int(self.seq.steps[i].delay_in))
+                    if d_in == "0":
+                        d_in = ""
+                else:
+                    d_in = str(self.seq.steps[i].delay_in)
+                channel_time = str(len(self.seq.steps[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
+                self.liststore2.append(
+                    [
+                        str(i),
+                        str(self.seq.steps[i].cue.memory),
+                        self.seq.steps[i].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                    ]
+                )
+        else:
+            for i in range(self.seq.last)[1:]:
+                if self.seq.steps[i].wait.is_integer():
+                    wait = str(int(self.seq.steps[i].wait))
+                    if wait == "0":
+                        wait = ""
+                else:
+                    wait = str(self.seq.steps[i].wait)
+                if self.seq.steps[i].time_out.is_integer():
+                    t_out = str(int(self.seq.steps[i].time_out))
+                else:
+                    t_out = str(self.seq.steps[i].time_out)
+                if self.seq.steps[i].delay_out.is_integer():
+                    d_out = str(int(self.seq.steps[i].delay_out))
+                    if d_out == "0":
+                        d_out = ""
+                else:
+                    d_out = str(self.seq.steps[i].delay_out)
+                if self.seq.steps[i].time_in.is_integer():
+                    t_in = str(int(self.seq.steps[i].time_in))
+                else:
+                    t_in = str(self.seq.steps[i].time_in)
+                if self.seq.steps[i].delay_in.is_integer():
+                    d_in = str(int(self.seq.steps[i].delay_in))
+                    if d_in == "0":
+                        d_in = ""
+                else:
+                    d_in = str(self.seq.steps[i].delay_in)
+                channel_time = str(len(self.seq.steps[i].channel_time))
+                if channel_time == "0":
+                    channel_time = ""
+                self.liststore2.append(
+                    [
+                        str(i),
+                        str(self.seq.steps[i].cue.memory),
+                        self.seq.steps[i].text,
+                        wait,
+                        d_out,
+                        t_out,
+                        d_in,
+                        t_in,
+                        channel_time,
+                    ]
+                )
+
+        self.treeview2.set_model(self.liststore2)
+        # Select new step
+        path = Gtk.TreePath.new_from_indices([step - 1])
+        self.treeview2.set_cursor(path, None, False)
 
     def update_sequence_display(self, step):
         """Update Sequence display"""
