@@ -343,7 +343,7 @@ class MastersTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
-        page = App().window.notebook.page_num(App().masters_tab)
+        page = App().window.notebook.page_num(self)
         App().window.notebook.remove_page(page)
         App().masters_tab = None
 

@@ -87,7 +87,7 @@ class GroupTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """ Close Tab with the icon clicked """
-        page = App().window.notebook.page_num(App().group_tab)
+        page = App().window.notebook.page_num(self)
         App().window.notebook.remove_page(page)
         App().group_tab = None
 

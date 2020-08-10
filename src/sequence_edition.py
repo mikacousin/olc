@@ -1,3 +1,5 @@
+"""Sequences edition"""
+
 import array
 from gi.repository import Gtk, Gdk
 
@@ -9,6 +11,7 @@ from olc.step import Step
 
 
 class SequenceTab(Gtk.Grid):
+    """Tab to edit sequences"""
     def __init__(self):
 
         self.keystring = ""
@@ -128,12 +131,8 @@ class SequenceTab(Gtk.Grid):
                     ]
                 )
 
-        self.filter2 = self.liststore2.filter_new()
-        self.filter2.set_visible_func(self.filter_cue_func)
-
-        self.treeview2 = Gtk.TreeView(model=self.filter2)
+        self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
-        # self.treeview2.set_activate_on_single_click(True)
         self.treeview2.connect("cursor-changed", self.on_memory_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
 
@@ -199,9 +198,10 @@ class SequenceTab(Gtk.Grid):
         self.treeview1.set_cursor(path, None, False)
 
     def on_row_activated(self, _treeview, path, column):
-        # Find the double clicked cell
-        # itr = self.liststore2.get_iter(path)
+        """Open Channel Time Edition if double clicked"""
+        # Find double clicked cell
         columns = self.treeview2.get_columns()
+        col_nb = 0
         for col_nb, col in enumerate(columns):
             if col == column:
                 break
@@ -224,7 +224,7 @@ class SequenceTab(Gtk.Grid):
             App().channeltime(seq, step)
 
     def wait_edited(self, _widget, path, text):
-
+        """Edit Wait"""
         if text == "":
             text = "0"
 
@@ -296,7 +296,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.queue_draw()
 
     def out_edited(self, _widget, path, text):
-
+        """Time Out edited"""
         if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
@@ -359,7 +359,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.queue_draw()
 
     def in_edited(self, _widget, path, text):
-
+        """Time in edited"""
         if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
@@ -422,7 +422,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.queue_draw()
 
     def delay_out_edited(self, _widget, path, text):
-
+        """Delay Out edited"""
         if text == "":
             text = "0"
 
@@ -495,7 +495,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.queue_draw()
 
     def delay_in_edited(self, _widget, path, text):
-
+        """Delay In edited"""
         if text == "":
             text = "0"
 
@@ -568,7 +568,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.sequential.queue_draw()
 
     def text_edited(self, _widget, path, text):
-
+        """Step's Text edited"""
         self.liststore2[path][2] = text
 
         # Find selected sequence
@@ -625,17 +625,14 @@ class SequenceTab(Gtk.Grid):
                 App().window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, _treeview):
-        """ Select memory """
+        """Select cue"""
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
-    def filter_cue_func(self, _model, _treeiter, _data):
-        return True
-
     def filter_func(self, child, _user_data):
-        """ Filter channels """
+        """Filter channels"""
         # Find selected sequence
         path, _focus_column = self.treeview1.get_cursor()
         if path:
@@ -684,7 +681,7 @@ class SequenceTab(Gtk.Grid):
         return False
 
     def on_sequence_changed(self, selection):
-        """ Select Sequence """
+        """Select Sequence"""
         # Empty ListStore
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
@@ -705,13 +702,13 @@ class SequenceTab(Gtk.Grid):
             self.populate_liststore(1)
 
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
-        page = App().window.notebook.page_num(App().sequences_tab)
+        """Close Tab on close clicked"""
+        page = App().window.notebook.page_num(self)
         App().window.notebook.remove_page(page)
         App().sequences_tab = None
 
     def on_key_press_event(self, widget, event):
-
+        """Receive keyboard event"""
         # TODO: Hack to know if user is editing something
         widget = App().window.get_focus()
         # print(widget.get_path().is_type(Gtk.Entry))
@@ -751,18 +748,18 @@ class SequenceTab(Gtk.Grid):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
         App().sequences_tab = None
 
     def _keypress_BackSpace(self):
+        """Empty keys buffer"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Q(self):
-        """ Cycle Sequences """
-        # TODO: Update Shortcuts window
+        """Cycle Sequences"""
         path, _focus_column = self.treeview1.get_cursor()
         if path:
             path.next()
@@ -776,8 +773,7 @@ class SequenceTab(Gtk.Grid):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
     def _keypress_q(self):
-        """ Prev Memory """
-
+        """Prev Cue"""
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -790,8 +786,7 @@ class SequenceTab(Gtk.Grid):
             self.treeview2.set_cursor(path)
 
     def _keypress_w(self):
-        """ Next Memory """
-
+        """Next Cue"""
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -804,8 +799,7 @@ class SequenceTab(Gtk.Grid):
             self.treeview2.set_cursor(path)
 
     def _keypress_a(self):
-        """ All Channels """
-
+        """All Channels"""
         self.flowbox.unselect_all()
 
         # Find selected sequence
@@ -837,8 +831,7 @@ class SequenceTab(Gtk.Grid):
                 self.flowbox.invalidate_filter()
 
     def _keypress_c(self):
-        """ Channel """
-
+        """Channel"""
         self.flowbox.unselect_all()
 
         if self.keystring != "" and self.keystring != "0":
@@ -863,11 +856,11 @@ class SequenceTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_KP_Divide(self):
+        """Channel Thru"""
         self._keypress_greater()
 
     def _keypress_greater(self):
-        """ Channel Thru """
-
+        """Channel Thru"""
         sel = self.flowbox.get_selected_children()
         if len(sel) == 1:
             flowboxchild = sel[0]
@@ -899,8 +892,7 @@ class SequenceTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_plus(self):
-        """ Channel + """
-
+        """Channel +"""
         if self.keystring == "":
             return
 
@@ -921,8 +913,7 @@ class SequenceTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
-        """ Channel - """
-
+        """Channel -"""
         if self.keystring == "":
             return
 
@@ -943,7 +934,7 @@ class SequenceTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_equal(self):
-        """ @ Level """
+        """@ Level"""
         level = int(self.keystring)
         if App().settings.get_boolean("percent"):
             if 0 <= level <= 100:
@@ -969,8 +960,7 @@ class SequenceTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
-        """ Level - % """
-
+        """Level - %"""
         lvl = App().settings.get_int("percent-level")
 
         sel = self.flowbox.get_selected_children()
@@ -994,8 +984,7 @@ class SequenceTab(Gtk.Grid):
                 self.user_channels[channel] = level
 
     def _keypress_exclam(self):
-        """ Level + % """
-
+        """Level + %"""
         lvl = App().settings.get_int("percent-level")
 
         sel = self.flowbox.get_selected_children()
@@ -1019,8 +1008,7 @@ class SequenceTab(Gtk.Grid):
                 self.user_channels[channel] = level
 
     def _keypress_U(self):
-        """ Update Cue """
-
+        """Update Cue"""
         # Find selected sequence
         path, _focus_column = self.treeview1.get_cursor()
         if path:
@@ -1107,8 +1095,7 @@ class SequenceTab(Gtk.Grid):
                     self.populate_liststore(step)
 
     def _keypress_N(self):
-        """ New Chaser """
-
+        """New Chaser"""
         # Use the next free index
         if len(App().chasers) > 0:
             index_seq = App().chasers[-1].index + 1
@@ -1454,6 +1441,7 @@ class SequenceTab(Gtk.Grid):
 
 
 class Dialog(Gtk.Dialog):
+    """Confirmation dialog"""
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(
             self,

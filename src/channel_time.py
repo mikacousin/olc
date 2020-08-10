@@ -323,7 +323,7 @@ class ChanneltimeTab(Gtk.Paned):
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
 
-        page = App().window.notebook.page_num(App().channeltime_tab)
+        page = App().window.notebook.page_num(self)
         App().window.notebook.remove_page(page)
         App().channeltime_tab = None
 

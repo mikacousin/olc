@@ -104,7 +104,7 @@ class PatchOutputsTab(Gtk.Grid):
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
-        page = App().window.notebook.page_num(App().patch_outputs_tab)
+        page = App().window.notebook.page_num(self)
         App().window.notebook.remove_page(page)
         App().patch_outputs_tab = None
 
