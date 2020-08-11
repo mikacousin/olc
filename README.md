@@ -22,6 +22,8 @@ Virtual console :
 - liblo (python-pyliblo on archlinux)
 
 ## Quick test on Raspberry Pi 3B+
+Seems to work with **1 universe and 512 channels** (edit src/define.py)
+
 Install ola fom git with python3 support.
 
 And with `sudo apt install` :
