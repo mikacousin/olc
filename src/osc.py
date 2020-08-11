@@ -1,10 +1,15 @@
+"""OSC client / server"""
+
 import sys
 import liblo
+
+from gi.repository import Gdk, GLib
 
 from olc.define import App
 
 
 class OscClient:
+    """OSC client"""
     def __init__(self):
         # Port to send data to the client
         self.port = App().settings.get_int("osc-client-port")
@@ -18,16 +23,13 @@ class OscClient:
             sys.exit()
 
     def send(self, path, *arg):
+        """Send OSC message to the client"""
         liblo.send(self.target, path, *arg)
 
 
 class OscServer(liblo.ServerThread):
-    def __init__(self, window):
-
-        self.percent_view = App().settings.get_boolean("percent")
-
-        # Main Window
-        self.window = window
+    """OSC server"""
+    def __init__(self):
         # Port to listen data from the client
         self.serv_port = App().settings.get_int("osc-server-port")
 
@@ -69,35 +71,9 @@ class OscServer(liblo.ServerThread):
         # Open Masters page
         self.add_method("/sub/launch", None, self._sub_launch_cb)
         # Flash Master (master number, level)
-        self.add_method("/subStick/flash", "ii", self._sub_flash_cb)
+        self.add_method("/subStick/flash", "ii", self._sub_level_cb)
         # Master level (master number, level)
         self.add_method("/subStick/level", "ii", self._sub_level_cb)
-
-        # For TouchOSC :
-        # Master 1 (float entre 0 et 255)
-        self.add_method("/sub/1/level", "f", self._sub1_level_cb)
-        # Master 2 (float entre 0 et 255)
-        self.add_method("/sub/2/level", "f", self._sub2_level_cb)
-        # Master 3 (float entre 0 et 255)
-        self.add_method("/sub/3/level", "f", self._sub3_level_cb)
-        # Master 4 (float entre 0 et 255)
-        self.add_method("/sub/4/level", "f", self._sub4_level_cb)
-        # Master 5 (float entre 0 et 255)
-        self.add_method("/sub/5/level", "f", self._sub5_level_cb)
-        # Master 6 (float entre 0 et 255)
-        self.add_method("/sub/6/level", "f", self._sub6_level_cb)
-        # Master 7 (float entre 0 et 255)
-        self.add_method("/sub/7/level", "f", self._sub7_level_cb)
-        # Master 8 (float entre 0 et 255)
-        self.add_method("/sub/8/level", "f", self._sub8_level_cb)
-        # Master 9 (float entre 0 et 255)
-        self.add_method("/sub/9/level", "f", self._sub9_level_cb)
-        # Master 10 (float entre 0 et 255)
-        self.add_method("/sub/10/level", "f", self._sub10_level_cb)
-        # Master 1A (float entre 0 et 255)
-        self.add_method("/sub/11/level", "f", self._sub11_level_cb)
-        # Master 12 (float entre 0 et 255)
-        self.add_method("/sub/12/level", "f", self._sub12_level_cb)
 
         # TODO :
         self.add_method("/pad/enter", None, self._fallback)  # Enter
@@ -109,6 +85,32 @@ class OscServer(liblo.ServerThread):
         self.add_method("/seq/goback", None, self._fallback)  # Go Back
         self.add_method("/seq/fadeX1", None, self._fallback)  # (float entre 0 et 255)
         self.add_method("/seq/fadeX2", None, self._fallback)  # (float entre 0 et 255)
+
+        # For TouchOSC :
+        # Master 1 (float entre 0 et 255)
+        self.add_method("/sub/1/level", "f", self._fallback)
+        # Master 2 (float entre 0 et 255)
+        self.add_method("/sub/2/level", "f", self._fallback)
+        # Master 3 (float entre 0 et 255)
+        self.add_method("/sub/3/level", "f", self._fallback)
+        # Master 4 (float entre 0 et 255)
+        self.add_method("/sub/4/level", "f", self._fallback)
+        # Master 5 (float entre 0 et 255)
+        self.add_method("/sub/5/level", "f", self._fallback)
+        # Master 6 (float entre 0 et 255)
+        self.add_method("/sub/6/level", "f", self._fallback)
+        # Master 7 (float entre 0 et 255)
+        self.add_method("/sub/7/level", "f", self._fallback)
+        # Master 8 (float entre 0 et 255)
+        self.add_method("/sub/8/level", "f", self._fallback)
+        # Master 9 (float entre 0 et 255)
+        self.add_method("/sub/9/level", "f", self._fallback)
+        # Master 10 (float entre 0 et 255)
+        self.add_method("/sub/10/level", "f", self._fallback)
+        # Master 1A (float entre 0 et 255)
+        self.add_method("/sub/11/level", "f", self._fallback)
+        # Master 12 (float entre 0 et 255)
+        self.add_method("/sub/12/level", "f", self._fallback)
 
         # Register a fallback for unhandled messages
         self.add_method(None, None, self._fallback)
@@ -122,181 +124,226 @@ class OscServer(liblo.ServerThread):
             print("received argument %s of type %s" % (a, t))
 
     def _seqgo_cb(self, path, args, types):
-        """ Go """
+        """Go"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.client.send("/seq/go", self.window.keystring)
-                self.window.keypress_space()
+                self.client.send("/seq/go", App().window.keystring)
+                GLib.idle_add(App().sequence.go, None, None)
 
     def _seqplus_cb(self, path, args, types):
-        """ Seq + """
+        """Seq +"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_Down()
+                GLib.idle_add(App().sequence.sequence_plus)
 
     def _seqless_cb(self, path, args, types):
-        """ Seq - """
+        """Seq -"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_Up()
+                GLib.idle_add(App().sequence.sequence_minus)
 
     def _pad1_cb(self, path, args, types):
-        """ Pad 1 """
+        """Pad 1"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "1"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "1"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad2_cb(self, path, args, types):
-        """ Pad 2 """
+        """Pad 2"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "2"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "2"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad3_cb(self, path, args, types):
-        """ Pad 3 """
+        """Pad 3"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "3"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "3"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad4_cb(self, path, args, types):
-        """ Pad 4 """
+        """Pad 4"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "4"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "4"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad5_cb(self, path, args, types):
-        """ Pad 5 """
+        """Pad 5"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "5"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "5"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad6_cb(self, path, args, types):
-        """ Pad 6 """
+        """Pad 6"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "6"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "6"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad7_cb(self, path, args, types):
-        """ Pad 7 """
+        """Pad 7"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "7"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "7"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad8_cb(self, path, args, types):
-        """ Pad 8 """
+        """Pad 8"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "8"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "8"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad9_cb(self, path, args, types):
-        """ Pad 9 """
+        """Pad 9"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "9"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "9"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad0_cb(self, path, args, types):
-        """ Pad 0 """
+        """Pad 0"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "0"
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "0"
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _paddot_cb(self, path, args, types):
-        """ Pad . """
+        """Pad ."""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "."
-                self.client.send("/pad/saisieText", self.window.keystring)
-                # print("keystring :", self.window.keystring)
+                App().window.keystring += "."
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
+                )
+                self.client.send("/pad/saisieText", App().window.keystring)
 
     def _padchannel_cb(self, path, args, types):
-        """ Pad Channel """
+        """Pad Channel"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_c()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_c
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padall_cb(self, path, args, types):
-        """ Pad All """
+        """Pad All"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_a()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_a
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padlevel_cb(self, path, args, types):
-        """ Pad @ """
+        """Pad @"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_equal()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_equal
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padfull_cb(self, path, args, types):
-        """ Pad Full """
+        """Pad Full"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keystring += "255"
-                self.window.keypress_equal()
+                if App().settings.get_boolean("percent"):
+                    App().window.keystring = "100"
+                else:
+                    App().window.keystring = "255"
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_equal
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padthru_cb(self, path, args, types):
-        """ Pad Thru """
+        """Pad Thru"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_greater()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_greater
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padplus_cb(self, path, args, types):
-        """ Pad + """
+        """Pad +"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_plus()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_plus
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padminus_cb(self, path, args, types):
-        """ Pad - """
+        """Pad -"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_minus()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_minus
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padpluspourcent_cb(self, path, args, types):
-        """ Pad +% """
+        """Pad +%"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_Right()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_exclam
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padminuspourcent_cb(self, path, args, types):
-        """ Pad -% """
+        """Pad -%"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_Left()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_colon
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _padclear_cb(self, path, args, types):
-        """ Pad Clear """
+        """Pad Clear"""
         for a, _t in zip(args, types):
             if a == 1:
-                self.window.keypress_Escape()
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_BackSpace
+                App().window.on_key_press_event(None, event)
                 self.client.send("/pad/saisieText", "")
 
     def _sub_launch_cb(self, path, args, types):
@@ -306,66 +353,27 @@ class OscServer(liblo.ServerThread):
                 "/subStick/text", ("i", i + 1), ("s", App().masters[i].text)
             )
 
-    def _sub_flash_cb(self, path, args, types):
-        """ Flash Master """
-        flash, level = args
-        if self.percent_view:
-            lvl = int(round((level / 255) * 100))
-        App().win_masters.scale[flash - 1].set_value(lvl)
-        self.client.send("/subStick/level", ("i", flash), ("i", level))
-
-    def _sub_level_cb(self, path, args, types):
-        """ Master Level """
-        flash, level = args
-        if self.percent_view:
-            lvl = int(round((level / 255) * 100))
-        App().win_masters.scale[flash - 1].set_value(lvl)
-        self.client.send("/subStick/level", ("i", flash), ("i", level))
-
-    def _sub1_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[0].set_value(int(level[0]))
-
-    def _sub2_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[1].set_value(int(level[0]))
-
-    def _sub3_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[2].set_value(int(level[0]))
-
-    def _sub4_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[3].set_value(int(level[0]))
-
-    def _sub5_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[4].set_value(int(level[0]))
-
-    def _sub6_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[5].set_value(int(level[0]))
-
-    def _sub7_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[6].set_value(int(level[0]))
-
-    def _sub8_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[7].set_value(int(level[0]))
-
-    def _sub9_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[8].set_value(int(level[0]))
-
-    def _sub10_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[9].set_value(int(level[0]))
-
-    def _sub11_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[10].set_value(int(level[0]))
-
-    def _sub12_level_cb(self, path, args, types):
-        level = args
-        App().win_masters.scale[11].set_value(int(level[0]))
+    def _sub_level_cb(self, _path, args, _types):
+        """Master Level"""
+        master_index, level = args
+        if App().virtual_console:
+            GLib.idle_add(
+                App().virtual_console.masters[master_index - 1].set_value, level
+            )
+            GLib.idle_add(
+                App().virtual_console.master_moved,
+                App().virtual_console.masters[master_index - 1],
+            )
+        else:
+            page = int((master_index - 1) / 20) + 1
+            if page == 1:
+                number = master_index
+            else:
+                number = int(master_index / 2)
+            master = None
+            for master in App().masters:
+                if master.page == page and master.number == number:
+                    break
+            master.value = level
+            master.level_changed()
+        self.client.send("/subStick/level", ("i", master_index), ("i", level))

@@ -187,7 +187,7 @@ class Application(Gtk.Application):
         self.wing = WingPlayback()
 
         # Create and launch OSC server
-        self.osc_server = OscServer(self.window)
+        self.osc_server = OscServer()
 
         # Init of ascii file
         self.ascii = Ascii(None)
