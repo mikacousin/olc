@@ -10,6 +10,7 @@ from olc.define import App
 
 class OscClient:
     """OSC client"""
+
     def __init__(self):
         # Port to send data to the client
         self.port = App().settings.get_int("osc-client-port")
@@ -29,6 +30,7 @@ class OscClient:
 
 class OscServer(liblo.ServerThread):
     """OSC server"""
+
     def __init__(self):
         # Port to listen data from the client
         self.serv_port = App().settings.get_int("osc-server-port")

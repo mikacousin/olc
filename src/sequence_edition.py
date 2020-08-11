@@ -12,6 +12,7 @@ from olc.step import Step
 
 class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
+
     def __init__(self):
 
         self.keystring = ""
@@ -1442,6 +1443,7 @@ class SequenceTab(Gtk.Grid):
 
 class Dialog(Gtk.Dialog):
     """Confirmation dialog"""
+
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(
             self,
