@@ -152,7 +152,9 @@ class ChanneltimeTab(Gtk.Paned):
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    App().sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
+                    App().sequences_tab.liststore2[path][8] = (
+                        "" if ct_nb == 0 else str(ct_nb)
+                    )
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
@@ -228,7 +230,9 @@ class ChanneltimeTab(Gtk.Paned):
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    App().sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
+                    App().sequences_tab.liststore2[path][8] = (
+                        "" if ct_nb == 0 else str(ct_nb)
+                    )
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait

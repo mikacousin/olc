@@ -1021,17 +1021,12 @@ class SequenceTab(Gtk.Grid):
                 App().ascii.modified = True
                 App().window.header.set_title(App().ascii.basename + "*")
 
-                    # Update Main playback display
-                if (
-                    self.seq == App().sequence
-                    and step == App().sequence.position + 1
-                ):
+                # Update Main playback display
+                if self.seq == App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
-                        App().window.channels[
-                            channel
-                        ].next_level = self.seq.steps[step].cue.channels[
-                            channel
-                        ]
+                        App().window.channels[channel].next_level = self.seq.steps[
+                            step
+                        ].cue.channels[channel]
                         App().window.channels[channel].queue_draw()
 
             dialog.destroy()

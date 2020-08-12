@@ -324,9 +324,7 @@ class Application(Gtk.Application):
                 self.window.channels[channel - 1].next_level = next_level
                 self.window.channels[channel - 1].queue_draw()
                 if self.patch_outputs_tab:
-                    self.patch_outputs_tab.outputs[
-                        output + (512 * univ)
-                    ].queue_draw()
+                    self.patch_outputs_tab.outputs[output + (512 * univ)].queue_draw()
 
     def _new(self, _action, _parameter):
         """New show"""
