@@ -220,7 +220,12 @@ class Midi:
 
     def _function_at(self, msg):
         """At level"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.at_level.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.at_level.emit("button-press-event", event)
@@ -228,14 +233,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_equal
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.at_level.emit("button-release-event", event)
 
     def _function_percent_plus(self, msg):
         """% +"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.percent_plus.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.percent_plus.emit("button-press-event", event)
@@ -243,14 +249,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_exclam
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.percent_plus.emit("button-release-event", event)
 
     def _function_percent_minus(self, msg):
         """% -"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.percent_minus.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.percent_minus.emit("button-press-event", event)
@@ -258,14 +265,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_colon
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.percent_minus.emit("button-release-event", event)
 
     def _function_ch(self, msg):
         """Channel"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.channel.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.channel.emit("button-press-event", event)
@@ -273,14 +281,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_c
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.channel.emit("button-release-event", event)
 
     def _function_thru(self, msg):
         """Thru"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.thru.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.thru.emit("button-press-event", event)
@@ -288,14 +297,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_greater
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.thru.emit("button-release-event", event)
 
     def _function_plus(self, msg):
         """Channel +"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.plus.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.plus.emit("button-press-event", event)
@@ -303,14 +313,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_plus
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.plus.emit("button-release-event", event)
 
     def _function_minus(self, msg):
         """Channel -"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.minus.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.minus.emit("button-press-event", event)
@@ -318,14 +329,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_minus
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.minus.emit("button-release-event", event)
 
     def _function_all(self, msg):
         """All Channels"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.all.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.all.emit("button-press-event", event)
@@ -333,14 +345,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_a
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.all.emit("button-release-event", event)
 
     def _function_right(self, msg):
         """Right"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.right.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.right.emit("button-press-event", event)
@@ -348,14 +361,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_Right
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.right.emit("button-release-event", event)
 
     def _function_left(self, msg):
         """Left"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.left.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.left.emit("button-press-event", event)
@@ -363,14 +377,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_Left
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.left.emit("button-release-event", event)
 
     def _function_up(self, msg):
         """Up"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.up.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.up.emit("button-press-event", event)
@@ -378,14 +393,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_Up
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.up.emit("button-release-event", event)
 
     def _function_down(self, msg):
         """Down"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.down.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.down.emit("button-press-event", event)
@@ -393,14 +409,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_Down
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.down.emit("button-release-event", event)
 
     def _function_clear(self, msg):
         """Clear keyboard"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.clear.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.clear.emit("button-press-event", event)
@@ -408,14 +425,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_BackSpace
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.clear.emit("button-release-event", event)
 
     def _function_number_0(self, msg):
         """0"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.zero.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.zero.emit("button-press-event", event)
@@ -424,14 +442,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.zero.emit("button-release-event", event)
 
     def _function_number_1(self, msg):
         """1"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.one.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.one.emit("button-press-event", event)
@@ -440,14 +459,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.one.emit("button-release-event", event)
 
     def _function_number_2(self, msg):
         """2"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.two.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.two.emit("button-press-event", event)
@@ -456,14 +476,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.two.emit("button-release-event", event)
 
     def _function_number_3(self, msg):
         """3"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.three.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.three.emit("button-press-event", event)
@@ -472,14 +493,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.three.emit("button-release-event", event)
 
     def _function_number_4(self, msg):
         """4"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.four.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.four.emit("button-press-event", event)
@@ -488,14 +510,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.four.emit("button-release-event", event)
 
     def _function_number_5(self, msg):
         """5"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.five.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.five.emit("button-press-event", event)
@@ -504,14 +527,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.five.emit("button-release-event", event)
 
     def _function_number_6(self, msg):
         """6"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.six.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.six.emit("button-press-event", event)
@@ -520,14 +544,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.six.emit("button-release-event", event)
 
     def _function_number_7(self, msg):
         """7"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.seven.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.seven.emit("button-press-event", event)
@@ -536,14 +561,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.seven.emit("button-release-event", event)
 
     def _function_number_8(self, msg):
         """8"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.eight.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.eight.emit("button-press-event", event)
@@ -552,14 +578,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.eight.emit("button-release-event", event)
 
     def _function_number_9(self, msg):
         """9"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.nine.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.nine.emit("button-press-event", event)
@@ -568,14 +595,15 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.nine.emit("button-release-event", event)
 
     def _function_dot(self, msg):
         """Dot"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.dot.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.dot.emit("button-press-event", event)
@@ -584,42 +612,45 @@ class Midi:
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.dot.emit("button-release-event", event)
 
     def _function_go(self, msg):
         """Go"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            # Go released
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.go_button.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             # Go pressed
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.go_button.emit("button-press-event", event)
             else:
                 App().sequence.go(None, None)
-        elif msg.velocity == 0:
-            # Go released
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.go_button.emit("button-release-event", event)
 
     def _function_go_back(self, msg):
         """Go Back"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.goback.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.goback.emit("button-press-event", event)
             else:
                 App().sequence.go_back(App(), None)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.goback.emit("button-release-event", event)
 
     def _function_goto(self, msg):
         """Goto Cue"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.goto.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.goto.emit("button-press-event", event)
@@ -627,14 +658,15 @@ class Midi:
                 App().sequence.goto(App().window.keystring)
                 App().window.keystring = ""
                 App().window.statusbar.push(App().window.context_id, "")
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.goto.emit("button-release-event", event)
 
     def _function_seq_minus(self, msg):
         """Seq -"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.seq_minus.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.seq_minus.emit("button-press-event", event)
@@ -642,14 +674,15 @@ class Midi:
                 App().sequence.sequence_minus()
                 App().window.keystring = ""
                 App().window.statusbar.push(App().window.context_id, "")
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.seq_minus.emit("button-release-event", event)
 
     def _function_seq_plus(self, msg):
         """Seq +"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.seq_plus.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.seq_plus.emit("button-press-event", event)
@@ -657,79 +690,85 @@ class Midi:
                 App().sequence.sequence_plus()
                 App().window.keystring = ""
                 App().window.statusbar.push(App().window.context_id, "")
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.seq_plus.emit("button-release-event", event)
 
     def _function_output(self, msg):
         """Output"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.output.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.output.emit("button-press-event", event)
             else:
                 App().patch_outputs(None, None)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.output.emit("button-release-event", event)
 
     def _function_seq(self, msg):
         """Sequences"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.seq.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.seq.emit("button-press-event", event)
             else:
                 App().sequences(None, None)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.seq.emit("button-release-event", event)
 
     def _function_group(self, msg):
         """Groups"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.group.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.group.emit("button-press-event", event)
             else:
                 App().groups_cb(None, None)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.group.emit("button-release-event", event)
 
     def _function_preset(self, msg):
         """Presets"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.preset.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.preset.emit("button-press-event", event)
             else:
                 App().memories_cb(None, None)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.preset.emit("button-release-event", event)
 
     def _function_track(self, msg):
         """Track channels"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.track.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.track.emit("button-press-event", event)
             else:
                 App().track_channels(None, None)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.track.emit("button-release-event", event)
 
     def _function_update(self, msg):
         """Update Cue"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.update.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.update.emit("button-press-event", event)
@@ -737,14 +776,15 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_U
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.update.emit("button-release-event", event)
 
     def _function_record(self, msg):
         """Record Cue"""
-        if msg.velocity == 127:
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.record.emit("button-release-event", event)
+
+        elif msg.velocity == 127:
             if App().virtual_console:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.record.emit("button-press-event", event)
@@ -752,10 +792,6 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_R
                 App().window.on_key_press_event(None, event)
-        elif msg.velocity == 0:
-            if App().virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                App().virtual_console.record.emit("button-release-event", event)
 
     def _function_gm(self, msg):
         """Grand Master"""
@@ -787,21 +823,16 @@ class Midi:
             val = abs(((value - 127) / 127) * 255)
             fader.set_value(abs(value - 127))
 
-        if App().virtual_console:
-            if fader == self.xfade_out:
+        if fader == self.xfade_out:
+            if App().virtual_console:
                 App().virtual_console.scale_a.set_value(val)
                 App().virtual_console.scale_moved(App().virtual_console.scale_a)
-            elif fader == self.xfade_in:
-                App().virtual_console.scale_b.set_value(val)
-                App().virtual_console.scale_moved(App().virtual_console.scale_b)
-        else:
-            if fader == self.xfade_out:
+            else:
                 App().crossfade.scale_a.set_value(val)
                 App().crossfade.scale_moved(App().crossfade.scale_a)
-            elif fader == self.xfade_in:
-                App().crossfade.scale_b.set_value(val)
-                App().crossfade.scale_moved(App().crossfade.scale_b)
-
+        elif fader == self.xfade_in:
+            App().virtual_console.scale_b.set_value(val)
+            App().virtual_console.scale_moved(App().virtual_console.scale_b)
         if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
             if self.xfade_out.get_inverted():
                 self.xfade_out.set_inverted(False)
@@ -844,10 +875,7 @@ def _function_master(msg, master_index):
         )
     else:
         page = int((master_index - 1) / 20) + 1
-        if page == 1:
-            number = master_index
-        else:
-            number = int(master_index / 2)
+        number = master_index if page == 1 else int(master_index / 2)
         master = None
         for master in App().masters:
             if master.page == page and master.number == number:
@@ -858,26 +886,7 @@ def _function_master(msg, master_index):
 
 def _function_flash(msg, master_index):
     """Flash Master"""
-    if msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.flashes[master_index - 1].emit(
-                "button-press-event", event
-            )
-        else:
-            page = int((master_index - 1) / 20) + 1
-            if page == 1:
-                number = master_index
-            else:
-                number = int(master_index / 2)
-            master = None
-            for master in App().masters:
-                if master.page == page and master.number == number:
-                    break
-            master.old_value = master.value
-            master.value = 255
-            master.level_changed()
-    elif msg.velocity == 0:
+    if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.flashes[master_index - 1].emit(
@@ -885,13 +894,27 @@ def _function_flash(msg, master_index):
             )
         else:
             page = int((master_index - 1) / 20) + 1
-            if page == 1:
-                number = master_index
-            else:
-                number = int(master_index / 2)
+            number = master_index if page == 1 else int(master_index / 2)
             master = None
             for master in App().masters:
                 if master.page == page and master.number == number:
                     break
             master.value = master.old_value
+            master.level_changed()
+
+    elif msg.velocity == 127:
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            App().virtual_console.flashes[master_index - 1].emit(
+                "button-press-event", event
+            )
+        else:
+            page = int((master_index - 1) / 20) + 1
+            number = master_index if page == 1 else int(master_index / 2)
+            master = None
+            for master in App().masters:
+                if master.page == page and master.number == number:
+                    break
+            master.old_value = master.value
+            master.value = 255
             master.level_changed()

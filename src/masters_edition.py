@@ -253,15 +253,15 @@ class MastersTab(Gtk.Paned):
 
         if text == "":
             content_type = 0
-        elif text == "Preset":
-            content_type = 1
         elif text == "Channels":
             content_type = 2
-        elif text == "Sequence":
-            content_type = 3
         elif text == "Group":
             content_type = 13
 
+        elif text == "Preset":
+            content_type = 1
+        elif text == "Sequence":
+            content_type = 3
         # Update content type
         index = int(path)
 
@@ -280,10 +280,9 @@ class MastersTab(Gtk.Paned):
             self.liststore[path][3] = ""
 
             # Update Virtual Console
-            if App().virtual_console:
-                if App().virtual_console.props.visible:
-                    App().virtual_console.flashes[index].label = ""
-                    App().virtual_console.flashes[index].queue_draw()
+            if App().virtual_console and App().virtual_console.props.visible:
+                App().virtual_console.flashes[index].label = ""
+                App().virtual_console.flashes[index].queue_draw()
 
     def on_mode_changed(self, _widget, path, text):
         self.liststore[path][3] = text
@@ -297,18 +296,14 @@ class MastersTab(Gtk.Paned):
             if text[0] == ".":
                 text = "0" + text
 
-            if text == "0":
-                self.liststore[path][2] = ""
-            else:
-                self.liststore[path][2] = text
-
+            self.liststore[path][2] = "" if text == "0" else text
             # Update content value
             index = int(path)
             content_value = float(text)
 
             App().masters[index].content_value = content_value
 
-            if App().masters[index].content_type == 0:
+            if App().masters[index].content_type in [0, 2]:
                 App().masters[index].text = ""
 
             elif App().masters[index].content_type == 1:
@@ -319,20 +314,17 @@ class MastersTab(Gtk.Paned):
                     if mem.memory == content_value:
                         App().masters[index].text = mem.text
 
-            elif App().masters[index].content_type == 2:
+            elif App().masters[index].content_type == 13:
                 App().masters[index].text = ""
+                for grp in App().groups:
+                    if grp.index == content_value:
+                        App().masters[index].text = grp.text
 
             elif App().masters[index].content_type == 3:
                 App().masters[index].text = ""
                 for chaser in App().chasers:
                     if chaser.index == content_value:
                         App().masters[index].text = chaser.text
-
-            elif App().masters[index].content_type == 13:
-                App().masters[index].text = ""
-                for grp in App().groups:
-                    if grp.index == content_value:
-                        App().masters[index].text = grp.text
 
             self.flowbox.invalidate_filter()
 
@@ -449,10 +441,7 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if (
-                App().masters[row].content_type == 0
-                or App().masters[row].content_type == 3
-            ):
+            if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
@@ -497,10 +486,7 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if (
-                App().masters[row].content_type == 0
-                or App().masters[row].content_type == 3
-            ):
+            if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
@@ -535,10 +521,7 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if (
-                App().masters[row].content_type == 0
-                or App().masters[row].content_type == 3
-            ):
+            if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
@@ -573,10 +556,7 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if (
-                App().masters[row].content_type == 0
-                or App().masters[row].content_type == 3
-            ):
+            if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
@@ -586,31 +566,23 @@ class MastersTab(Gtk.Paned):
             # Master's channels
             if App().masters[row].content_type == 1:
                 preset = App().masters[row].content_value
-                found = False
                 mem = None
-                for mem in App().memories:
-                    if mem.memory == preset:
-                        found = True
-                        break
+                found = any(mem.memory == preset for mem in App().memories)
                 if found:
                     channels = mem.channels
                 else:
                     return False
-            elif App().masters[row].content_type == 2:
-                channels = App().masters[row].channels
-
             elif App().masters[row].content_type == 13:
                 group = App().masters[row].content_value
-                found = False
                 grp = None
-                for grp in App().groups:
-                    if grp.index == group:
-                        found = True
-                        break
+                found = any(grp.index == group for grp in App().groups)
                 if found:
                     channels = grp.channels
                 else:
                     return False
+
+            elif App().masters[row].content_type == 2:
+                channels = App().masters[row].channels
 
             # Select channels with a level
             for chan in range(MAX_CHANNELS):
@@ -633,11 +605,7 @@ class MastersTab(Gtk.Paned):
         level = int(self.keystring)
 
         if App().settings.get_boolean("percent"):
-            if 0 <= level <= 100:
-                level = int(round((level / 100) * 255))
-            else:
-                level = -1
-
+            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
         if 0 <= level < 256:
 
             selected_children = self.flowbox.get_selected_children()
@@ -675,11 +643,7 @@ class MastersTab(Gtk.Paned):
 
                 level = self.channels[channel].level
 
-                if level - lvl < 0:
-                    level = 0
-                else:
-                    level = level - lvl
-
+                level = max(level - lvl, 0)
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
@@ -704,11 +668,7 @@ class MastersTab(Gtk.Paned):
 
                 level = self.channels[channel].level
 
-                if level + lvl > 255:
-                    level = 255
-                else:
-                    level = level + lvl
-
+                level = min(level + lvl, 255)
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()

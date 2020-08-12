@@ -368,10 +368,7 @@ class OscServer(liblo.ServerThread):
             )
         else:
             page = int((master_index - 1) / 20) + 1
-            if page == 1:
-                number = master_index
-            else:
-                number = int(master_index / 2)
+            number = master_index if page == 1 else int(master_index / 2)
             master = None
             for master in App().masters:
                 if master.page == page and master.number == number:

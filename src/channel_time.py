@@ -92,7 +92,7 @@ class ChanneltimeTab(Gtk.Paned):
             if i == 1:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.delay_edited)
-            if i == 2:
+            elif i == 2:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.time_edited)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
@@ -113,11 +113,7 @@ class ChanneltimeTab(Gtk.Paned):
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
-            if text == "0":
-                self.liststore[path][1] = ""
-            else:
-                self.liststore[path][1] = text
-
+            self.liststore[path][1] = "" if text == "0" else text
         # Find selected Channel Time
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -156,10 +152,7 @@ class ChanneltimeTab(Gtk.Paned):
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    if ct_nb == 0:
-                        App().sequences_tab.liststore2[path][8] = ""
-                    else:
-                        App().sequences_tab.liststore2[path][8] = str(ct_nb)
+                    App().sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
@@ -196,11 +189,7 @@ class ChanneltimeTab(Gtk.Paned):
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
-            if text == "0":
-                self.liststore[path][2] = ""
-            else:
-                self.liststore[path][2] = text
-
+            self.liststore[path][2] = "" if text == "0" else text
         # Find selected Channel Time
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -239,10 +228,7 @@ class ChanneltimeTab(Gtk.Paned):
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    if ct_nb == 0:
-                        App().sequences_tab.liststore2[path][8] = ""
-                    else:
-                        App().sequences_tab.liststore2[path][8] = str(ct_nb)
+                    App().sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
@@ -424,12 +410,11 @@ class ChanneltimeTab(Gtk.Paned):
         path, _focus_column = self.treeview.get_cursor()
         if path:
             path.next()
-            self.treeview.set_cursor(path)
-            App().window.set_focus(self.treeview)
         else:
             path = Gtk.TreePath.new_first()
-            self.treeview.set_cursor(path)
-            App().window.set_focus(self.treeview)
+
+        self.treeview.set_cursor(path)
+        App().window.set_focus(self.treeview)
 
     def _keypress_Insert(self):
         """ Add Channel Time """

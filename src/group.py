@@ -345,7 +345,6 @@ class GroupTab(Gtk.Paned):
                         App().window.set_focus(child)
                         self.flowbox1.select_child(child)
 
-                self.flowbox1.invalidate_filter()
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
 
@@ -357,8 +356,7 @@ class GroupTab(Gtk.Paned):
                         App().window.set_focus(child)
                         self.flowbox1.select_child(child)
 
-                self.flowbox1.invalidate_filter()
-
+            self.flowbox1.invalidate_filter()
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
@@ -417,10 +415,7 @@ class GroupTab(Gtk.Paned):
 
         level = int(self.keystring)
         if App().settings.get_boolean("percent"):
-            if 0 <= level <= 100:
-                level = int(round((level / 100) * 255))
-            else:
-                level = -1
+            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
         else:
             if level > 255:
                 level = 255
@@ -471,10 +466,7 @@ class GroupTab(Gtk.Paned):
 
                         level = App().groups[index].channels[channel]
 
-                        if level - lvl < 0:
-                            level = 0
-                        else:
-                            level = level - lvl
+                        level = max(level - lvl, 0)
                         App().groups[index].channels[channel] = level
 
         self.flowbox1.invalidate_filter()
@@ -500,10 +492,7 @@ class GroupTab(Gtk.Paned):
                         channel = int(channelwidget.channel) - 1
 
                         level = App().groups[index].channels[channel]
-                        if level + lvl > 255:
-                            level = 255
-                        else:
-                            level = level + lvl
+                        level = min(level + lvl, 255)
                         App().groups[index].channels[channel] = level
 
         self.flowbox1.invalidate_filter()
@@ -512,10 +501,7 @@ class GroupTab(Gtk.Paned):
         """ New Group """
         # If no group number, use the next one
         if self.keystring == "":
-            if len(App().groups) == 0:
-                group_nb = 1
-            else:
-                group_nb = App().groups[-1].index + 1
+            group_nb = 1 if len(App().groups) == 0 else App().groups[-1].index + 1
         else:
             group_nb = int(self.keystring)
 
@@ -525,10 +511,7 @@ class GroupTab(Gtk.Paned):
         channels = array.array("B", [0] * MAX_CHANNELS)
         txt = str(float(group_nb))
         App().groups.append(Group(float(group_nb), channels, txt))
-        if len(self.grps) > 0:
-            i = self.grps[-1].index + 1
-        else:
-            i = 0
+        i = self.grps[-1].index + 1 if len(self.grps) > 0 else 0
         self.grps.append(
             GroupWidget(i, App().groups[-1].index, App().groups[-1].text, self.grps)
         )

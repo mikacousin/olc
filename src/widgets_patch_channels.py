@@ -208,13 +208,13 @@ class PatchChannelWidget(Gtk.Widget):
                 output = item[0]
                 univ = item[1]
                 if output != 0:
+                    if self.get_parent().is_selected():
+                        cr.set_source_rgb(0.4, 0.5, 0.4)
+                    else:
+                        cr.set_source_rgb(0.3, 0.4, 0.3)
                     if line == 0:
                         # First line
                         area = (65 + (i * 35), 95 + (i * 35), 0, 30)
-                        if self.get_parent().is_selected():
-                            cr.set_source_rgb(0.4, 0.5, 0.4)
-                        else:
-                            cr.set_source_rgb(0.3, 0.4, 0.3)
                         cr.move_to(65 + (i * 35), 0)
                         rounded_rectangle_fill(cr, area, self.radius / 2)
 
@@ -235,10 +235,6 @@ class PatchChannelWidget(Gtk.Widget):
                         # Second line
                         j = i - 15
                         area = (65 + (j * 35), 95 + (j * 35), 30, 60)
-                        if self.get_parent().is_selected():
-                            cr.set_source_rgb(0.4, 0.5, 0.4)
-                        else:
-                            cr.set_source_rgb(0.3, 0.4, 0.3)
                         cr.move_to(65 + (j * 35), 30)
                         rounded_rectangle_fill(cr, area, self.radius / 2)
 
