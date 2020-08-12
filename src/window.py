@@ -99,14 +99,6 @@ class Window(Gtk.ApplicationWindow):
 
         # Sequential part of the window
 
-        # Model : Step, Memory, Text, Wait, Time Out, Time In, Channel Time
-        self.cues_liststore1 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str, str, int, int
-        )
-        self.cues_liststore2 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str
-        )
-
         if self.seq.last > 1:
             position = self.seq.position
             t_total = self.seq.steps[position].total_time
@@ -131,97 +123,19 @@ class Window(Gtk.ApplicationWindow):
             t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
         )
 
-        self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+        # Main Playback
+        self.cues_liststore1 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str, str, int, int
         )
-        self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+        self.cues_liststore2 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str
         )
-
-        for i in range(App().sequence.last):
-            if self.seq.steps[i].wait.is_integer():
-                wait = str(int(self.seq.steps[i].wait))
-                if wait == "0":
-                    wait = ""
-            else:
-                wait = str(self.seq.steps[i].wait)
-            if self.seq.steps[i].time_out.is_integer():
-                t_out = str(int(self.seq.steps[i].time_out))
-            else:
-                t_out = str(self.seq.steps[i].time_out)
-            if self.seq.steps[i].delay_out.is_integer():
-                d_out = str(int(self.seq.steps[i].delay_out))
-            else:
-                d_out = str(self.seq.steps[i].delay_out)
-            if self.seq.steps[i].time_in.is_integer():
-                t_in = str(int(self.seq.steps[i].time_in))
-            else:
-                t_in = str(self.seq.steps[i].time_in)
-            if self.seq.steps[i].delay_in.is_integer():
-                d_in = str(int(self.seq.steps[i].delay_in))
-            else:
-                d_in = str(self.seq.steps[i].delay_in)
-            channel_time = str(len(self.seq.steps[i].channel_time))
-            if channel_time == "0":
-                channel_time = ""
-            background = "#232729"
-            if i in (0, App().sequence.last - 1):
-                self.cues_liststore1.append(
-                    [
-                        str(i),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        background,
-                        Pango.Weight.NORMAL,
-                        42,
-                    ]
-                )
-            else:
-                self.cues_liststore1.append(
-                    [
-                        str(i),
-                        str(self.seq.steps[i].cue.memory),
-                        self.seq.steps[i].text,
-                        wait,
-                        d_out,
-                        t_out,
-                        d_in,
-                        t_in,
-                        channel_time,
-                        background,
-                        Pango.Weight.NORMAL,
-                        42,
-                    ]
-                )
-            self.cues_liststore2.append(
-                [
-                    str(i),
-                    str(self.seq.steps[i].cue.memory),
-                    self.seq.steps[i].text,
-                    wait,
-                    d_out,
-                    t_out,
-                    d_in,
-                    t_in,
-                    channel_time,
-                ]
-            )
-
-        if App().sequence.last == 1:
-            self.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
-
-        # Filter for the first part of the cue list
+        # Filters
         self.step_filter1 = self.cues_liststore1.filter_new()
         self.step_filter1.set_visible_func(self.step_filter_func1)
-        # List
+        self.step_filter2 = self.cues_liststore2.filter_new()
+        self.step_filter2.set_visible_func(self.step_filter_func2)
+        # Lists
         self.treeview1 = Gtk.TreeView(model=self.step_filter1)
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
@@ -250,11 +164,6 @@ class Window(Gtk.ApplicationWindow):
                 column.set_min_width(600)
                 column.set_resizable(True)
             self.treeview1.append_column(column)
-
-        # Filter
-        self.step_filter2 = self.cues_liststore2.filter_new()
-        self.step_filter2.set_visible_func(self.step_filter_func2)
-        # List
         self.treeview2 = Gtk.TreeView(model=self.step_filter2)
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
@@ -298,6 +207,13 @@ class Window(Gtk.ApplicationWindow):
             self.scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
         )
 
+        self.populate_sequence()
+
+        if App().sequence.last == 1:
+            self.cues_liststore1.append(
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+            )
+
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
 
@@ -306,13 +222,6 @@ class Window(Gtk.ApplicationWindow):
         self.paned2.add2(self.notebook)
 
         self.add(self.paned2)
-
-        # Select first Cue
-        self.cues_liststore1[2][9] = "#997004"
-        self.cues_liststore1[2][10] = Pango.Weight.HEAVY
-        # Bold next Cue
-        self.cues_liststore1[3][10] = Pango.Weight.HEAVY
-        self.cues_liststore1[3][9] = "#555555"
 
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
         GLib.unix_fd_add_full(
@@ -405,6 +314,9 @@ class Window(Gtk.ApplicationWindow):
         """Update Sequence display"""
         self.cues_liststore1.clear()
         self.cues_liststore2.clear()
+        self.populate_sequence()
+
+    def populate_sequence(self):
         self.cues_liststore1.append(
             ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
         )
