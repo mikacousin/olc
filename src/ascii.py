@@ -231,11 +231,7 @@ class Ascii:
                         if line[:4].upper() == "DOWN":
                             p = line[5:]
                             time = p.split(" ")[0]
-                            if len(p.split(" ")) == 2:
-                                delay = p.split(" ")[1]
-                            else:
-                                delay = "0"
-
+                            delay = p.split(" ")[1] if len(p.split(" ")) == 2 else "0"
                             t_out = get_time(time)
                             if t_out == 0:
                                 t_out = self.default_time
@@ -245,11 +241,7 @@ class Ascii:
                         if line[:2].upper() == "UP":
                             p = line[3:]
                             time = p.split(" ")[0]
-                            if len(p.split(" ")) == 2:
-                                delay = p.split(" ")[1]
-                            else:
-                                delay = "0"
-
+                            delay = p.split(" ")[1] if len(p.split(" ")) == 2 else "0"
                             t_in = get_time(time)
                             if t_in == 0:
                                 t_in = self.default_time
@@ -334,9 +326,8 @@ class Ascii:
                     flag_preset = False
                     App().patch.patch_empty()  # Empty patch
                     App().window.flowbox.invalidate_filter()
-                if flag_patch:
-                    if line[:0] == "!":
-                        flag_patch = False
+                if flag_patch and line[:0] == "!":
+                    flag_patch = False
                 if line[:7].upper() == "PATCH 1":
                     for p in line[8:].split(" "):
                         q = p.split("<")
@@ -345,11 +336,11 @@ class Ascii:
                             channel = int(q[0])
                             output = int(r[0])
                             univ = int((output - 1) / 512)
-                            out = output - (512 * univ)
                             level = int(r[1])
                             # print(channel, univ, out, level)
                             if univ < NB_UNIVERSES:
                                 if channel < MAX_CHANNELS:
+                                    out = output - (512 * univ)
                                     App().patch.add_output(channel, out, univ, level)
                                     App().window.flowbox.invalidate_filter()
                                 else:
