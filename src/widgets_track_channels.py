@@ -209,10 +209,12 @@ class TrackChannelsWidget(Gtk.Widget):
 
             # Draw Level number
             if lvl:
-                if self.percent_level:
-                    level = str(int(round(((lvl / 255) * 100))))
-                else:
-                    level = str(lvl)
+                level = (
+                    str(int(round(((lvl / 255) * 100))))
+                    if self.percent_level
+                    else str(lvl)
+                )
+
                 cr.set_source_rgb(0.9, 0.9, 0.9)
                 cr.select_font_face(
                     "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD

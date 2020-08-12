@@ -331,44 +331,30 @@ class Window(Gtk.ApplicationWindow):
     def step_filter_func1(self, model, treeiter, _data):
         """Filter for the first part of the cues list"""
         if App().sequence.position <= 0:
-            if int(model[treeiter][11]) == 0 or int(model[treeiter][11]) == 1:
+            if int(model[treeiter][11]) in [0, 1]:
                 return True
-            if int(model[treeiter][0]) == 0 or int(model[treeiter][0]) == 1:
-                return True
-            return False
-
+            return int(model[treeiter][0]) in [0, 1]
         if App().sequence.position == 1:
             if int(model[treeiter][11]) == 1:
                 return True
             if int(model[treeiter][11]) == 0:
                 return False
-            if (
-                int(model[treeiter][0]) == 0
-                or int(model[treeiter][0]) == 1
-                or int(model[treeiter][0]) == 2
-            ):
-                return True
-            return False
-
+            return int(model[treeiter][0]) in [0, 1, 2]
         if int(model[treeiter][11]) == 1:
             return False
         if int(model[treeiter][11]) == 0:
             return False
 
-        if (
-            int(model[treeiter][0]) == App().sequence.position
-            or int(model[treeiter][0]) == App().sequence.position + 1
-            or int(model[treeiter][0]) == App().sequence.position - 1
-            or int(model[treeiter][0]) == App().sequence.position - 2
-        ):
-            return True
-        return False
+        return int(model[treeiter][0]) in [
+            App().sequence.position,
+            App().sequence.position + 1,
+            App().sequence.position - 1,
+            App().sequence.position - 2,
+        ]
 
     def step_filter_func2(self, model, treeiter, _data):
         """Filter for the second part of the cues list"""
-        if int(model[treeiter][0]) <= App().sequence.position + 1:
-            return False
-        return True
+        return int(model[treeiter][0]) > App().sequence.position + 1
 
     def filter_func(self, child, _user_data):
         """Filter for channels window"""
@@ -384,10 +370,7 @@ class Window(Gtk.ApplicationWindow):
 
     def button_clicked_cb(self, button):
         """Toggle type of view : patched channels or all channels"""
-        if self.view_type == 0:
-            self.view_type = 1
-        else:
-            self.view_type = 0
+        self.view_type = 1 if self.view_type == 0 else 0
         self.flowbox.invalidate_filter()
 
     def on_scroll(self, widget, event):
@@ -465,10 +448,7 @@ class Window(Gtk.ApplicationWindow):
             else:
                 background = "#232729"
             # Actual and Next Cue in Bold
-            if i in (0, 1):
-                weight = Pango.Weight.HEAVY
-            else:
-                weight = Pango.Weight.NORMAL
+            weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
             if i in (0, App().sequence.last - 1):
                 self.cues_liststore1.append(
                     [
@@ -837,10 +817,7 @@ class Window(Gtk.ApplicationWindow):
                     out = output[0]
                     univ = output[1]
                     level = App().dmx.frame[univ][out - 1]
-                    if level + lvl > 255:
-                        App().dmx.user[channel] = 255
-                    else:
-                        App().dmx.user[channel] = level + lvl
+                    App().dmx.user[channel] = min(level + lvl, 255)
 
         # App().dmx.send()
 
@@ -862,10 +839,7 @@ class Window(Gtk.ApplicationWindow):
                     out = output[0]
                     univ = output[1]
                     level = App().dmx.frame[univ][out - 1]
-                    if level - lvl < 0:
-                        App().dmx.user[channel] = 0
-                    else:
-                        App().dmx.user[channel] = level - lvl
+                    App().dmx.user[channel] = max(level - lvl, 0)
 
         # App().dmx.send()
 
@@ -1039,9 +1013,6 @@ class Window(Gtk.ApplicationWindow):
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
-
-        elif response == Gtk.ResponseType.CANCEL:
-            pass
 
         dialog.destroy()
 

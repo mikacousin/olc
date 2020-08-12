@@ -302,30 +302,31 @@ class Application(Gtk.Application):
         return True
 
     def fetch_dmx(self, _request, univ, dmxframe):
-        if dmxframe:
-            for output, level in enumerate(dmxframe):
-                channel = self.patch.outputs[univ][output][0]
-                if channel:
-                    self.dmx.frame[univ][output] = level
-                    self.window.channels[channel - 1].level = level
-                    if (
-                        self.sequence.last > 1
-                        and self.sequence.position < self.sequence.last
-                    ):
-                        next_level = self.sequence.steps[
-                            self.sequence.position + 1
-                        ].cue.channels[channel - 1]
-                    elif self.sequence.last:
-                        next_level = self.sequence.steps[0].cue.channels[channel - 1]
-                    else:
-                        next_level = level
-                    self.window.channels[channel - 1].next_level = next_level
-                    self.window.channels[channel - 1].queue_draw()
-                    if self.patch_outputs_tab:
-                        self.patch_outputs_tab.outputs[
-                            output + (512 * univ)
-                        ].queue_draw()
-                self.ola_thread.old_frame[univ] = dmxframe
+        if not dmxframe:
+            return
+        self.ola_thread.old_frame[univ] = dmxframe
+        for output, level in enumerate(dmxframe):
+            channel = self.patch.outputs[univ][output][0]
+            if channel:
+                self.dmx.frame[univ][output] = level
+                self.window.channels[channel - 1].level = level
+                if (
+                    self.sequence.last > 1
+                    and self.sequence.position < self.sequence.last
+                ):
+                    next_level = self.sequence.steps[
+                        self.sequence.position + 1
+                    ].cue.channels[channel - 1]
+                elif self.sequence.last:
+                    next_level = self.sequence.steps[0].cue.channels[channel - 1]
+                else:
+                    next_level = level
+                self.window.channels[channel - 1].next_level = next_level
+                self.window.channels[channel - 1].queue_draw()
+                if self.patch_outputs_tab:
+                    self.patch_outputs_tab.outputs[
+                        output + (512 * univ)
+                    ].queue_draw()
 
     def _new(self, _action, _parameter):
         """New show"""

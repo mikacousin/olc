@@ -33,10 +33,7 @@ def get_time(string):
 class Ascii:
     def __init__(self, filename):
         self.file = filename
-        if filename:
-            self.basename = self.file.get_basename()
-        else:
-            self.basename = ""
+        self.basename = self.file.get_basename() if filename else ""
         self.modified = False
 
         self.default_time = App().settings.get_double("default-time")

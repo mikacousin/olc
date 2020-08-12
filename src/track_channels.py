@@ -191,11 +191,7 @@ class TrackChannelsTab(Gtk.Grid):
                 level = int(self.keystring)
 
                 if App().settings.get_boolean("percent"):
-                    if 0 <= level <= 100:
-                        level = int(round((level / 100) * 255))
-                    else:
-                        level = -1
-
+                    level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
                 if 0 <= level <= 255:
                     App().sequence.steps[step].cue.channels[channel] = level
                     widget.levels[self.channel_selected] = level

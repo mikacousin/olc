@@ -43,11 +43,7 @@ class FaderWidget(Gtk.Scale):
         radius = 10
 
         layout = self.get_layout()
-        if layout:
-            layout_h = layout.get_pixel_size().height
-        else:
-            layout_h = 0
-
+        layout_h = layout.get_pixel_size().height if layout else 0
         inverted = self.get_inverted()
 
         # Draw vertical box

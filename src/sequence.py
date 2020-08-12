@@ -15,16 +15,15 @@ def update_ui(position, subtitle):
     # Update Main Window's Subtitle
     App().window.header.set_subtitle(subtitle)
     # Virtual Console's Xfade
-    if App().virtual_console:
-        if App().virtual_console.props.visible:
-            if App().virtual_console.scale_a.get_inverted():
-                App().virtual_console.scale_a.set_inverted(False)
-                App().virtual_console.scale_b.set_inverted(False)
-            else:
-                App().virtual_console.scale_a.set_inverted(True)
-                App().virtual_console.scale_b.set_inverted(True)
-            App().virtual_console.scale_a.set_value(0)
-            App().virtual_console.scale_b.set_value(0)
+    if App().virtual_console and App().virtual_console.props.visible:
+        if App().virtual_console.scale_a.get_inverted():
+            App().virtual_console.scale_a.set_inverted(False)
+            App().virtual_console.scale_b.set_inverted(False)
+        else:
+            App().virtual_console.scale_a.set_inverted(True)
+            App().virtual_console.scale_b.set_inverted(True)
+        App().virtual_console.scale_a.set_value(0)
+        App().virtual_console.scale_b.set_value(0)
     update_channels(position)
 
 
@@ -138,13 +137,10 @@ class Sequence:
         # Find next cue number
         if step < self.last - 1:
             next_memory = self.steps[step + 1].cue.memory
-            if next_memory == 0.0:
-                mem = memory + 1
+            if next_memory != 0.0 and (next_memory - memory) <= 1:
+                mem = ((next_memory - memory) / 2) + memory
             else:
-                if (next_memory - memory) <= 1:
-                    mem = ((next_memory - memory) / 2) + memory
-                else:
-                    mem = memory + 1
+                mem = memory + 1
         else:
             mem = memory + 1
 
@@ -328,70 +324,39 @@ class Sequence:
             position += 1
             if position < App().sequence.last - 1:
                 App().sequence.position += 1
-                t_in = App().sequence.steps[position + 1].time_in
-                t_out = App().sequence.steps[position + 1].time_out
-                d_in = App().sequence.steps[position + 1].delay_in
-                d_out = App().sequence.steps[position + 1].delay_out
-                t_wait = App().sequence.steps[position + 1].wait
-                App().window.sequential.total_time = (
-                    App().sequence.steps[position + 1].total_time
-                )
-                App().window.sequential.time_in = t_in
-                App().window.sequential.time_out = t_out
-                App().window.sequential.delay_in = d_in
-                App().window.sequential.delay_out = d_out
-                App().window.sequential.wait = t_wait
-                App().window.sequential.channel_time = (
-                    App().sequence.steps[position + 1].channel_time
-                )
-                App().window.sequential.position_a = 0
-                App().window.sequential.position_b = 0
-
-                # Set main window's subtitle
-                subtitle = (
-                    "Mem. : "
-                    + str(App().sequence.steps[position].cue.memory)
-                    + " "
-                    + App().sequence.steps[position].text
-                    + " - Next Mem. : "
-                    + str(App().sequence.steps[position + 1].cue.memory)
-                    + " "
-                    + App().sequence.steps[position + 1].text
-                )
             else:
                 App().sequence.position = 0
                 position = 0
-                t_in = App().sequence.steps[position + 1].time_in
-                t_out = App().sequence.steps[position + 1].time_out
-                d_in = App().sequence.steps[position + 1].delay_in
-                d_out = App().sequence.steps[position + 1].delay_out
-                t_wait = App().sequence.steps[position + 1].wait
-                App().window.sequential.total_time = (
-                    App().sequence.steps[position + 1].total_time
-                )
-                App().window.sequential.time_in = t_in
-                App().window.sequential.time_out = t_out
-                App().window.sequential.delay_in = d_in
-                App().window.sequential.delay_out = d_out
-                App().window.sequential.wait = t_wait
-                App().window.sequential.channel_time = (
-                    App().sequence.steps[position + 1].channel_time
-                )
-                App().window.sequential.position_a = 0
-                App().window.sequential.position_b = 0
+            t_in = App().sequence.steps[position + 1].time_in
+            t_out = App().sequence.steps[position + 1].time_out
+            d_in = App().sequence.steps[position + 1].delay_in
+            d_out = App().sequence.steps[position + 1].delay_out
+            t_wait = App().sequence.steps[position + 1].wait
+            App().window.sequential.total_time = (
+                App().sequence.steps[position + 1].total_time
+            )
+            App().window.sequential.time_in = t_in
+            App().window.sequential.time_out = t_out
+            App().window.sequential.delay_in = d_in
+            App().window.sequential.delay_out = d_out
+            App().window.sequential.wait = t_wait
+            App().window.sequential.channel_time = (
+                App().sequence.steps[position + 1].channel_time
+            )
+            App().window.sequential.position_a = 0
+            App().window.sequential.position_b = 0
 
-                # Set main window's subtitle
-                subtitle = (
-                    "Mem. : "
-                    + str(App().sequence.steps[position].cue.memory)
-                    + " "
-                    + App().sequence.steps[position].text
-                    + " - Next Mem. : "
-                    + str(App().sequence.steps[position + 1].cue.memory)
-                    + " "
-                    + App().sequence.steps[position + 1].text
-                )
-
+            # Set main window's subtitle
+            subtitle = (
+                "Mem. : "
+                + str(App().sequence.steps[position].cue.memory)
+                + " "
+                + App().sequence.steps[position].text
+                + " - Next Mem. : "
+                + str(App().sequence.steps[position + 1].cue.memory)
+                + " "
+                + App().sequence.steps[position + 1].text
+            )
             # Update Sequential Tab
             App().window.update_active_cues_display()
             App().window.seq_grid.queue_draw()
@@ -908,11 +873,10 @@ class ThreadGoBack(threading.Thread):
         GLib.idle_add(App().window.sequential.queue_draw)
 
         # Move Virtual Console's XFade
-        if App().virtual_console:
-            if App().virtual_console.props.visible:
-                val = round((255 / go_back_time) * i)
-                GLib.idle_add(App().virtual_console.scale_a.set_value, val)
-                GLib.idle_add(App().virtual_console.scale_b.set_value, val)
+        if App().virtual_console and App().virtual_console.props.visible:
+            val = round((255 / go_back_time) * i)
+            GLib.idle_add(App().virtual_console.scale_a.set_value, val)
+            GLib.idle_add(App().virtual_console.scale_b.set_value, val)
 
         for univ in range(NB_UNIVERSES):
 

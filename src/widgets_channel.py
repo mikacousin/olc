@@ -72,12 +72,10 @@ class ChannelWidget(Gtk.Widget):
         flowboxchild = self.get_parent()
         if flowboxchild.is_selected():
             cr.set_source_rgb(0.4, 0.4, 0.4)
-            cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
-            cr.fill()
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
-            cr.fill()
+        cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
+        cr.fill()
         # draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)

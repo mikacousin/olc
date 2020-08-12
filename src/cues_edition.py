@@ -42,10 +42,7 @@ class CuesEditionTab(Gtk.Paned):
         self.liststore = Gtk.ListStore(str, str, int)
 
         for mem in App().memories:
-            channels = 0
-            for chan in range(MAX_CHANNELS):
-                if mem.channels[chan]:
-                    channels += 1
+            channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
             self.liststore.append([str(mem.memory), mem.text, channels])
 
         self.filter = self.liststore.filter_new()
@@ -328,11 +325,7 @@ class CuesEditionTab(Gtk.Paned):
         level = int(self.keystring)
 
         if App().settings.get_boolean("percent"):
-            if 0 <= level <= 100:
-                level = int(round((level / 100) * 255))
-            else:
-                level = -1
-
+            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
         if 0 <= level < 256:
 
             selected_children = self.flowbox.get_selected_children()
@@ -370,11 +363,7 @@ class CuesEditionTab(Gtk.Paned):
 
                 level = self.channels[channel].level
 
-                if level - lvl < 0:
-                    level = 0
-                else:
-                    level = level - lvl
-
+                level = max(level - lvl, 0)
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
@@ -399,11 +388,7 @@ class CuesEditionTab(Gtk.Paned):
 
                 level = self.channels[channel].level
 
-                if level + lvl > 255:
-                    level = 255
-                else:
-                    level = level + lvl
-
+                level = min(level + lvl, 255)
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
@@ -451,10 +436,11 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
 
             # Find Steps using selected memory
-            steps = []
-            for i, _ in enumerate(App().sequence.steps):
-                if App().sequence.steps[i].cue.memory == App().memories[row].memory:
-                    steps.append(i)
+            steps = [
+                i
+                for i, _ in enumerate(App().sequence.steps)
+                if App().sequence.steps[i].cue.memory == App().memories[row].memory
+            ]
 
             # Delete Steps
             for step in steps:
