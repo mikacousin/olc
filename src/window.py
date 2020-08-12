@@ -1,7 +1,7 @@
 """Open Lighting Console's Main window"""
 
 import array
-from gi.repository import Gio, Gtk, Gdk, GLib, Pango
+from gi.repository import Gio, Gtk, Gdk, Pango
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.cue import Cue
@@ -222,15 +222,6 @@ class Window(Gtk.ApplicationWindow):
         self.paned2.add2(self.notebook)
 
         self.add(self.paned2)
-
-        # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
-        GLib.unix_fd_add_full(
-            0,
-            App().ola_thread.sock.fileno(),
-            GLib.IOCondition(27),
-            App().on_fd_read,
-            None,
-        )
 
         self.connect("key_press_event", self.on_key_press_event)
         self.connect("scroll-event", self.on_scroll)

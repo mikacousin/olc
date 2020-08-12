@@ -195,6 +195,15 @@ class Application(Gtk.Application):
         # Send DMX every 50ms
         GObject.timeout_add(50, self._on_timeout, None)
 
+        # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
+        GLib.unix_fd_add_full(
+            0,
+            self.ola_thread.sock.fileno(),
+            GLib.IOCondition(27),
+            self.on_fd_read,
+            None,
+        )
+
     def _on_timeout(self, _user_data):
         """Executed every timeout
 
