@@ -126,9 +126,7 @@ class Ascii:
                     else:
                         type_seq = "Chaser"
                         index_seq = int(p[0])
-                        App().chasers.append(
-                            Sequence(index_seq, type_seq=type_seq)
-                        )
+                        App().chasers.append(Sequence(index_seq, type_seq=type_seq))
                         del App().chasers[-1].steps[1:]
                     flag_seq = True
                     flag_patch = False
