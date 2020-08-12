@@ -2,7 +2,7 @@
 
 import array
 from io import StringIO
-from gi.repository import Gio, Gtk, GObject, Pango
+from gi.repository import Gio, Gtk, GObject
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.ascii_save import (
@@ -517,6 +517,9 @@ class Ascii:
             step = Step(1, cue=cue)
             App().sequence.add_step(step)
 
+            # On se place au début de la séquence
+            App().sequence.position = 0
+
             # Update display informations
             self._update_ui()
 
@@ -554,7 +557,7 @@ class Ascii:
         App().window.header.set_title(self.basename)
 
     def _update_ui(self):
-        """Update display afteri file loading"""
+        """Update display after file loading"""
         # Set main window's title with the file name
         App().window.header.set_title(self.basename)
         # Set main window's subtitle
@@ -565,144 +568,10 @@ class Ascii:
             + App().sequence.steps[0].cue.text
         )
         App().window.header.set_subtitle(subtitle)
-
-        # Redraw crossfade :
-        # On se place au début de la séquence
-        App().sequence.position = 0
-        # On récupère les temps de la mémoire suivante
-        t_in = App().sequence.steps[1].time_in
-        t_out = App().sequence.steps[1].time_out
-        d_in = App().sequence.steps[1].delay_in
-        d_out = App().sequence.steps[1].delay_out
-        t_wait = App().sequence.steps[1].wait
-        t_total = App().sequence.steps[1].total_time
-        App().window.sequential.time_in = t_in
-        App().window.sequential.time_out = t_out
-        App().window.sequential.wait = t_wait
-        App().window.sequential.delay_in = d_in
-        App().window.sequential.delay_out = d_out
-        App().window.sequential.total_time = t_total
-
-        # On met à jour la liste des mémoires
-        App().window.cues_liststore1.clear()
-        App().window.cues_liststore2.clear()
-        # 2 lignes vides au début
-        App().window.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-        )
-        App().window.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-        )
-        for i in range(App().sequence.last):
-            # Si on a des entiers, on les affiche comme tels
-            if App().sequence.steps[i].wait.is_integer():
-                wait = str(int(App().sequence.steps[i].wait))
-                if wait == "0":
-                    wait = ""
-            else:
-                wait = str(App().sequence.steps[i].wait)
-            if App().sequence.steps[i].time_out.is_integer():
-                t_out = int(App().sequence.steps[i].time_out)
-            else:
-                t_out = App().sequence.steps[i].time_out
-            if App().sequence.steps[i].delay_out.is_integer():
-                d_out = str(int(App().sequence.steps[i].delay_out))
-            else:
-                d_out = str(App().sequence.steps[i].delay_out)
-            if d_out == "0":
-                d_out = ""
-            if App().sequence.steps[i].time_in.is_integer():
-                t_in = int(App().sequence.steps[i].time_in)
-            else:
-                t_in = App().sequence.steps[i].time_in
-            if App().sequence.steps[i].delay_in.is_integer():
-                d_in = str(int(App().sequence.steps[i].delay_in))
-            else:
-                d_in = str(App().sequence.steps[i].delay_in)
-            if d_in == "0":
-                d_in = ""
-            channel_time = str(len(App().sequence.steps[i].channel_time))
-            if channel_time == "0":
-                channel_time = ""
-            if i == 0:
-                background = "#997004"
-            elif i == 1:
-                background = "#555555"
-            else:
-                background = "#232729"
-            # Actual and Next Cue in Bold
-            if i in (0, 1):
-                weight = Pango.Weight.HEAVY
-            else:
-                weight = Pango.Weight.NORMAL
-            if i in (0, App().sequence.last - 1):
-                App().window.cues_liststore1.append(
-                    [
-                        str(i),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        background,
-                        Pango.Weight.NORMAL,
-                        99,
-                    ]
-                )
-                App().window.cues_liststore2.append(
-                    [str(i), "", "", "", "", "", "", "", ""]
-                )
-            else:
-                App().window.cues_liststore1.append(
-                    [
-                        str(i),
-                        str(App().sequence.steps[i].cue.memory),
-                        str(App().sequence.steps[i].text),
-                        wait,
-                        d_out,
-                        str(t_out),
-                        d_in,
-                        str(t_in),
-                        channel_time,
-                        background,
-                        weight,
-                        99,
-                    ]
-                )
-                App().window.cues_liststore2.append(
-                    [
-                        str(i),
-                        str(App().sequence.steps[i].cue.memory),
-                        str(App().sequence.steps[i].text),
-                        wait,
-                        d_out,
-                        str(t_out),
-                        d_in,
-                        str(t_in),
-                        channel_time,
-                    ]
-                )
-
-        App().window.step_filter1 = App().window.cues_liststore1.filter_new()
-        App().window.step_filter1.set_visible_func(App().window.step_filter_func1)
-
-        App().window.step_filter2 = App().window.cues_liststore2.filter_new()
-        App().window.step_filter2.set_visible_func(App().window.step_filter_func2)
-
-        App().window.treeview1.set_model(App().window.step_filter1)
-        App().window.treeview2.set_model(App().window.step_filter2)
-
-        App().window.step_filter1.refilter()
-        App().window.step_filter2.refilter()
-
-        path = Gtk.TreePath.new_from_indices([0])
-        App().window.treeview1.set_cursor(path, None, False)
-        App().window.treeview2.set_cursor(path, None, False)
-
-        App().window.seq_grid.queue_draw()
+        # Crossfade
+        App().window.update_xfade_display(0)
+        # Main Playback
+        App().window.update_sequence_display()
 
         # Redraw Group Tab if exist
         if App().group_tab:
