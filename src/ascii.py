@@ -1,8 +1,18 @@
+"""ASCII file"""
+
 import array
 from io import StringIO
 from gi.repository import Gio, Gtk, GObject, Pango
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
+from olc.ascii_save import (
+    save_main_playback,
+    save_chasers,
+    save_groups,
+    save_congo_groups,
+    save_masters,
+    save_patch,
+)
 from olc.cue import Cue
 from olc.step import Step
 from olc.channel_time import ChannelTime
@@ -31,6 +41,8 @@ def get_time(string):
 
 
 class Ascii:
+    """ASCII file"""
+
     def __init__(self, filename):
         self.file = filename
         self.basename = self.file.get_basename() if filename else ""
@@ -39,6 +51,7 @@ class Ascii:
         self.default_time = App().settings.get_double("default-time")
 
     def load(self):
+        """Load ASCII file"""
         self.basename = self.file.get_basename()
         self.default_time = App().settings.get_double("default-time")
         try:
@@ -504,306 +517,8 @@ class Ascii:
             step = Step(1, cue=cue)
             App().sequence.add_step(step)
 
-            # Set main window's title with the file name
-            App().window.header.set_title(self.basename)
-            # Set main window's subtitle
-            subtitle = (
-                "Mem. : 0 - Next Mem. : "
-                + str(App().sequence.steps[0].cue.memory)
-                + " "
-                + App().sequence.steps[0].cue.text
-            )
-            App().window.header.set_subtitle(subtitle)
-
-            # Redraw crossfade :
-            # On se place au début de la séquence
-            App().sequence.position = 0
-            # On récupère les temps de la mémoire suivante
-            t_in = App().sequence.steps[1].time_in
-            t_out = App().sequence.steps[1].time_out
-            d_in = App().sequence.steps[1].delay_in
-            d_out = App().sequence.steps[1].delay_out
-            t_wait = App().sequence.steps[1].wait
-            t_total = App().sequence.steps[1].total_time
-            App().window.sequential.time_in = t_in
-            App().window.sequential.time_out = t_out
-            App().window.sequential.wait = t_wait
-            App().window.sequential.delay_in = d_in
-            App().window.sequential.delay_out = d_out
-            App().window.sequential.total_time = t_total
-
-            # On met à jour la liste des mémoires
-            App().window.cues_liststore1.clear()
-            App().window.cues_liststore2.clear()
-            # 2 lignes vides au début
-            App().window.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-            )
-            App().window.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
-            for i in range(App().sequence.last):
-                # Si on a des entiers, on les affiche comme tels
-                if App().sequence.steps[i].wait.is_integer():
-                    wait = str(int(App().sequence.steps[i].wait))
-                    if wait == "0":
-                        wait = ""
-                else:
-                    wait = str(App().sequence.steps[i].wait)
-                if App().sequence.steps[i].time_out.is_integer():
-                    t_out = int(App().sequence.steps[i].time_out)
-                else:
-                    t_out = App().sequence.steps[i].time_out
-                if App().sequence.steps[i].delay_out.is_integer():
-                    d_out = str(int(App().sequence.steps[i].delay_out))
-                else:
-                    d_out = str(App().sequence.steps[i].delay_out)
-                if d_out == "0":
-                    d_out = ""
-                if App().sequence.steps[i].time_in.is_integer():
-                    t_in = int(App().sequence.steps[i].time_in)
-                else:
-                    t_in = App().sequence.steps[i].time_in
-                if App().sequence.steps[i].delay_in.is_integer():
-                    d_in = str(int(App().sequence.steps[i].delay_in))
-                else:
-                    d_in = str(App().sequence.steps[i].delay_in)
-                if d_in == "0":
-                    d_in = ""
-                channel_time = str(len(App().sequence.steps[i].channel_time))
-                if channel_time == "0":
-                    channel_time = ""
-                if i == 0:
-                    background = "#997004"
-                elif i == 1:
-                    background = "#555555"
-                else:
-                    background = "#232729"
-                # Actual and Next Cue in Bold
-                if i in (0, 1):
-                    weight = Pango.Weight.HEAVY
-                else:
-                    weight = Pango.Weight.NORMAL
-                if i in (0, App().sequence.last - 1):
-                    App().window.cues_liststore1.append(
-                        [
-                            str(i),
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            "",
-                            background,
-                            Pango.Weight.NORMAL,
-                            99,
-                        ]
-                    )
-                    App().window.cues_liststore2.append(
-                        [str(i), "", "", "", "", "", "", "", ""]
-                    )
-                else:
-                    App().window.cues_liststore1.append(
-                        [
-                            str(i),
-                            str(App().sequence.steps[i].cue.memory),
-                            str(App().sequence.steps[i].text),
-                            wait,
-                            d_out,
-                            str(t_out),
-                            d_in,
-                            str(t_in),
-                            channel_time,
-                            background,
-                            weight,
-                            99,
-                        ]
-                    )
-                    App().window.cues_liststore2.append(
-                        [
-                            str(i),
-                            str(App().sequence.steps[i].cue.memory),
-                            str(App().sequence.steps[i].text),
-                            wait,
-                            d_out,
-                            str(t_out),
-                            d_in,
-                            str(t_in),
-                            channel_time,
-                        ]
-                    )
-
-            App().window.step_filter1 = App().window.cues_liststore1.filter_new()
-            App().window.step_filter1.set_visible_func(App().window.step_filter_func1)
-
-            App().window.step_filter2 = App().window.cues_liststore2.filter_new()
-            App().window.step_filter2.set_visible_func(App().window.step_filter_func2)
-
-            App().window.treeview1.set_model(App().window.step_filter1)
-            App().window.treeview2.set_model(App().window.step_filter2)
-
-            App().window.step_filter1.refilter()
-            App().window.step_filter2.refilter()
-
-            path = Gtk.TreePath.new_from_indices([0])
-            App().window.treeview1.set_cursor(path, None, False)
-            App().window.treeview2.set_cursor(path, None, False)
-
-            App().window.seq_grid.queue_draw()
-
-            # Redraw Group Tab if exist
-            if App().group_tab:
-                # Remove Old Groups
-                del App().group_tab.grps[:]
-                App().group_tab.scrolled2.remove(App().group_tab.flowbox2)
-                App().group_tab.flowbox2.destroy()
-                # New FlowBox
-                App().group_tab.flowbox2 = Gtk.FlowBox()
-                App().group_tab.flowbox2.set_valign(Gtk.Align.START)
-                App().group_tab.flowbox2.set_max_children_per_line(20)
-                App().group_tab.flowbox2.set_homogeneous(True)
-                App().group_tab.flowbox2.set_activate_on_single_click(True)
-                App().group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-                App().group_tab.flowbox2.set_filter_func(
-                    App().group_tab.filter_groups, None
-                )
-                App().group_tab.scrolled2.add(App().group_tab.flowbox2)
-                # Add Groups to FlowBox
-                for i, _ in enumerate(App().groups):
-                    App().group_tab.grps.append(
-                        GroupWidget(
-                            i,
-                            App().groups[i].index,
-                            App().groups[i].text,
-                            App().group_tab.grps,
-                        )
-                    )
-                    App().group_tab.flowbox2.add(App().group_tab.grps[i])
-                App().group_tab.flowbox1.invalidate_filter()
-                App().group_tab.flowbox2.invalidate_filter()
-                App().window.show_all()
-
-            # Redraw Sequences Tab if exist
-            if App().sequences_tab:
-                App().sequences_tab.liststore1.clear()
-
-                App().sequences_tab.liststore1.append(
-                    [
-                        App().sequence.index,
-                        App().sequence.type_seq,
-                        App().sequence.text,
-                    ]
-                )
-
-                for chaser in App().chasers:
-                    App().sequences_tab.liststore1.append(
-                        [chaser.index, chaser.type_seq, chaser.text]
-                    )
-
-                App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
-                path = Gtk.TreePath.new_first()
-                App().sequences_tab.treeview1.set_cursor(path, None, False)
-                # TODO: List of steps of selected sequence
-                selection = App().sequences_tab.treeview1.get_selection()
-                App().sequences_tab.on_sequence_changed(selection)
-
-            # Redraw Patch Outputs Tab if exist
-            if App().patch_outputs_tab:
-                App().patch_outputs_tab.flowbox.queue_draw()
-
-            # Redraw Patch Channels Tab if exist
-            if App().patch_channels_tab:
-                App().patch_channels_tab.flowbox.queue_draw()
-
-            # Redraw List of Memories Tab if exist
-            if App().memories_tab:
-                App().memories_tab.liststore.clear()
-                for mem in App().memories:
-                    channels = 0
-                    for chan in range(MAX_CHANNELS):
-                        if mem.channels[chan]:
-                            channels += 1
-                    App().memories_tab.liststore.append(
-                        [str(mem.memory), mem.text, channels]
-                    )
-                App().memories_tab.flowbox.invalidate_filter()
-
-            # Redraw Masters if Virtual Console is open
-            if App().virtual_console:
-                if App().virtual_console.props.visible:
-                    for page in range(2):
-                        for master in App().masters:
-                            if master.page == page + 1:
-                                App().virtual_console.flashes[
-                                    master.number - 1 + (page * 20)
-                                ].label = master.text
-                                App().virtual_console.flashes[
-                                    master.number - 1 + (page * 20)
-                                ].queue_draw()
-
-            # Redraw Edit Masters Tab if exist
-            if App().masters_tab:
-                App().masters_tab.liststore.clear()
-                for page in range(2):
-                    for i in range(20):
-                        index = i + (page * 20)
-
-                        # Type : None
-                        if App().masters[index].content_type == 0:
-                            App().masters_tab.liststore.append([index + 1, "", "", ""])
-
-                        # Type : Preset
-                        elif App().masters[index].content_type == 1:
-                            content_value = str(App().masters[index].content_value)
-                            App().masters_tab.liststore.append(
-                                [index + 1, "Preset", content_value, ""]
-                            )
-
-                        # Type : Channels
-                        elif App().masters[index].content_type == 2:
-                            nb_chan = 0
-                            for chan in range(MAX_CHANNELS):
-                                if App().masters[index].channels[chan]:
-                                    nb_chan += 1
-                            App().masters_tab.liststore.append(
-                                [index + 1, "Channels", str(nb_chan), ""]
-                            )
-
-                        # Type : Sequence
-                        elif App().masters[index].content_type == 3:
-                            if App().masters[index].content_value.is_integer():
-                                content_value = str(
-                                    int(App().masters[index].content_value)
-                                )
-                            else:
-                                content_value = str(App().masters[index].content_value)
-                            App().masters_tab.liststore.append(
-                                [index + 1, "Sequence", content_value, ""]
-                            )
-
-                        # Type : Group
-                        elif App().masters[index].content_type == 13:
-                            if App().masters[index].content_value.is_integer():
-                                content_value = str(
-                                    int(App().masters[index].content_value)
-                                )
-                            else:
-                                content_value = str(App().masters[index].content_value)
-                            App().masters_tab.liststore.append(
-                                [index + 1, "Group", content_value, "Exclusif"]
-                            )
-
-                        # Type : Unknown
-                        else:
-                            App().masters_tab.liststore.append(
-                                [index + 1, "Unknown", "", ""]
-                            )
-
-                App().masters_tab.flowbox.invalidate_filter()
-
-            # TODO: Redraw Track Channels Tab if exist
+            # Update display informations
+            self._update_ui()
 
         except GObject.GError as e:
             print("Error: " + str(e))
@@ -811,7 +526,7 @@ class Ascii:
         self.modified = False
 
     def save(self):
-        """ Save ASCII File """
+        """Save ASCII File"""
 
         stream = self.file.replace("", False, Gio.FileCreateFlags.NONE, None)
 
@@ -824,339 +539,12 @@ class Ascii:
         stream.write(bytes("CONSOLE OLC\n\n", "utf8"))
         stream.write(bytes("CLEAR ALL\n\n", "utf8"))
 
-        # Main Sequence
-        stream.write(
-            bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-                "utf8",
-            )
-        )
-        stream.write(bytes("! Main sequence\n\n", "utf8"))
-        stream.write(bytes("$SEQUENCE 1 0\n\n", "utf8"))
-        for step, _ in enumerate(App().sequence.steps):
-            if int(App().sequence.steps[step].cue.memory) != 0:
-                # Save integers as integers
-                if App().sequence.steps[step].time_out.is_integer():
-                    time_out = str(int(App().sequence.steps[step].time_out))
-                else:
-                    time_out = str(App().sequence.steps[step].time_out)
-                if App().sequence.steps[step].delay_out.is_integer():
-                    delay_out = str(int(App().sequence.steps[step].delay_out))
-                else:
-                    delay_out = str(App().sequence.steps[step].delay_out)
-                if App().sequence.steps[step].time_in.is_integer():
-                    time_in = str(int(App().sequence.steps[step].time_in))
-                else:
-                    time_in = str(App().sequence.steps[step].time_in)
-                if App().sequence.steps[step].delay_in.is_integer():
-                    delay_in = str(int(App().sequence.steps[step].delay_in))
-                else:
-                    delay_in = str(App().sequence.steps[step].delay_in)
-                if App().sequence.steps[step].wait.is_integer():
-                    wait = str(int(App().sequence.steps[step].wait))
-                else:
-                    wait = str(App().sequence.steps[step].wait)
-                stream.write(
-                    bytes(
-                        "CUE " + str(App().sequence.steps[step].cue.memory) + "\n",
-                        "utf8",
-                    )
-                )
-                stream.write(
-                    bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8",)
-                )
-                stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8",))
-                stream.write(bytes("$$WAIT " + wait + "\n", "utf8",))
-                #  Chanel Time if any
-                for chan in App().sequence.steps[step].channel_time.keys():
-                    if App().sequence.steps[step].channel_time[chan].delay.is_integer():
-                        delay = str(
-                            int(App().sequence.steps[step].channel_time[chan].delay)
-                        )
-                    else:
-                        delay = str(App().sequence.steps[step].channel_time[chan].delay)
-                    if App().sequence.steps[step].channel_time[chan].time.is_integer():
-                        time = str(
-                            int(App().sequence.steps[step].channel_time[chan].time)
-                        )
-                    else:
-                        time = str(App().sequence.steps[step].channel_time[chan].time)
-                    stream.write(
-                        bytes("$$PARTTIME " + delay + " " + time + "\n", "utf8",)
-                    )
-                    stream.write(bytes("$$PARTTIMECHAN " + str(chan) + "\n", "utf8"))
-                stream.write(
-                    bytes(
-                        "TEXT " + App().sequence.steps[step].text + "\n", "iso-8859-1"
-                    )
-                )
-                stream.write(
-                    bytes(
-                        "$$TEXT " + ascii(App().sequence.steps[step].text)[1:-1] + "\n",
-                        "ascii",
-                    )
-                )
-                channels = ""
-                i = 1
-                for chan, _ in enumerate(App().sequence.steps[step].cue.channels):
-                    level = App().sequence.steps[step].cue.channels[chan]
-                    if level != 0:
-                        level = "H" + format(level, "02X")
-                        channels += " " + str(chan + 1) + "/" + level
-                        # 6 Channels per line
-                        if not i % 6 and channels != "":
-                            stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                            channels = ""
-                        i += 1
-                if channels != "":
-                    stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                stream.write(bytes("\n", "utf8"))
-
-        # Chasers
-        stream.write(bytes("! Additional Sequences\n\n", "utf8"))
-
-        for chaser, _ in enumerate(App().chasers):
-            stream.write(
-                bytes("$SEQUENCE " + str(App().chasers[chaser].index) + "\n", "utf8")
-            )
-            stream.write(bytes("TEXT " + App().chasers[chaser].text + "\n\n", "utf8"))
-            for step, _ in enumerate(App().chasers[chaser].steps):
-                if int(App().chasers[chaser].steps[step].cue.memory) != 0:
-                    # Save integers as integers
-                    if App().chasers[chaser].steps[step].time_out.is_integer():
-                        time_out = str(int(App().chasers[chaser].steps[step].time_out))
-                    else:
-                        time_out = str(App().chasers[chaser].steps[step].time_out)
-                    if App().chasers[chaser].steps[step].delay_out.is_integer():
-                        delay_out = str(
-                            int(App().chasers[chaser].steps[step].delay_out)
-                        )
-                    else:
-                        delay_out = str(App().chasers[chaser].steps[step].delay_out)
-                    if App().chasers[chaser].steps[step].time_in.is_integer():
-                        time_in = str(int(App().chasers[chaser].steps[step].time_in))
-                    else:
-                        time_in = str(App().chasers[chaser].steps[step].time_in)
-                    if App().chasers[chaser].steps[step].delay_in.is_integer():
-                        delay_in = str(int(App().chasers[chaser].steps[step].delay_in))
-                    else:
-                        delay_in = str(App().chasers[chaser].steps[step].delay_in)
-                    if App().chasers[chaser].steps[step].wait.is_integer():
-                        wait = str(int(App().chasers[chaser].steps[step].wait))
-                    else:
-                        wait = str(App().chasers[chaser].steps[step].wait)
-                    stream.write(
-                        bytes(
-                            "$CUE "
-                            + str(App().chasers[chaser].index)
-                            + " "
-                            + str(App().chasers[chaser].steps[step].cue.memory)
-                            + "\n",
-                            "utf8",
-                        )
-                    )
-                    stream.write(
-                        bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8",)
-                    )
-                    stream.write(
-                        bytes("UP " + time_in + " " + delay_in + "\n", "utf8",)
-                    )
-                    stream.write(bytes("$$WAIT " + wait + "\n", "utf8",))
-                    channels = ""
-                    i = 1
-                    for chan, _ in enumerate(
-                        App().chasers[chaser].steps[step].cue.channels
-                    ):
-                        level = App().chasers[chaser].steps[step].cue.channels[chan]
-                        if level != 0:
-                            level = "H" + format(level, "02X")
-                            channels += " " + str(chan + 1) + "/" + level
-                            # 6 channels per line
-                            if not i % 6 and channels != "":
-                                stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                                channels = ""
-                            i += 1
-                    if channels != "":
-                        stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                    stream.write(bytes("\n", "utf8"))
-
-        # Groups
-        stream.write(
-            bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-                "utf8",
-            )
-        )
-        stream.write(bytes("! Groups (presets not in sequence)\n", "utf8"))
-        stream.write(bytes("! GROUP  Standard ASCII Light Cues\n", "utf8"))
-        stream.write(bytes("! CHAN   Standard ASCII Light Cues\n", "utf8"))
-        stream.write(bytes("! TEXT   Standard ASCII Light Cues\n", "utf8"))
-        stream.write(
-            bytes("! $$TEXT  Unicode encoded version of the same text\n", "utf8")
-        )
-
-        for group, _ in enumerate(App().groups):
-            stream.write(
-                bytes("GROUP " + str(App().groups[group].index) + "\n", "utf8")
-            )
-            stream.write(
-                bytes("TEXT " + ascii(App().groups[group].text)[1:-1] + "\n", "utf8")
-                .decode("utf8")
-                .encode("ascii")
-            )
-            stream.write(bytes("$$TEXT " + App().groups[group].text + "\n", "utf8"))
-            channels = ""
-            i = 1
-            for chan, _ in enumerate(App().groups[group].channels):
-                level = App().groups[group].channels[chan]
-                if level != 0:
-                    level = "H" + format(level, "02X")
-                    channels += " " + str(chan + 1) + "/" + level
-                    # 6 channels per line
-                    if not i % 6 and channels != "":
-                        stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                        channels = ""
-                    i += 1
-            if channels != "":
-                stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-            stream.write(bytes("\n", "utf8"))
-
-        # Congo Groups
-        stream.write(
-            bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-                "utf8",
-            )
-        )
-        stream.write(bytes("! Congo Groups\n", "utf8"))
-        stream.write(bytes("! $GROUP  Group number\n", "utf8"))
-        stream.write(bytes("! CHAN    Standard ASCII Light Cues\n", "utf8"))
-        stream.write(bytes("! TEXT    Standard ASCII Light Cues\n", "utf8"))
-        stream.write(
-            bytes("! $$TEXT  Unicode encoded version of the same text\n", "utf8")
-        )
-        stream.write(bytes("CLEAR $GROUP\n\n", "utf8"))
-
-        for group, _ in enumerate(App().groups):
-            stream.write(
-                bytes("$GROUP " + str(App().groups[group].index) + "\n", "utf8")
-            )
-            stream.write(
-                bytes("TEXT " + ascii(App().groups[group].text)[1:-1] + "\n", "utf8")
-                .decode("utf8")
-                .encode("ascii")
-            )
-            stream.write(bytes("$$TEXT " + App().groups[group].text + "\n", "utf8"))
-            channels = ""
-            i = 1
-            for chan, _ in enumerate(App().groups[group].channels):
-                level = App().groups[group].channels[chan]
-                if level != 0:
-                    level = "H" + format(level, "02X")
-                    channels += " " + str(chan + 1) + "/" + level
-                    # 6 channels per line
-                    if not i % 6 and channels != "":
-                        stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                        channels = ""
-                    i += 1
-            if channels != "":
-                stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-            stream.write(bytes("\n", "utf8"))
-
-        # Masters
-        stream.write(
-            bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-                "utf8",
-            )
-        )
-        stream.write(bytes("! Master Pages\n", "utf8"))
-        stream.write(bytes("! $MASTPAGE     Master page number\n", "utf8"))
-        stream.write(bytes("! TEXT          Master page text\n", "utf8"))
-        stream.write(
-            bytes("! $TEXT         Unicode encoded version of the same text\n", "utf8")
-        )
-        stream.write(bytes("! $MASTPAGEITEM Page number, Master number,\n", "utf8"))
-        stream.write(
-            bytes("!               Content type (2 = Channels, 3 = Chaser,\n", "utf8")
-        )
-        stream.write(
-            bytes(
-                "!               13 = Group), Content value (Chaser#, Group#),\n",
-                "utf8",
-            )
-        )
-        stream.write(bytes("!               Time In, Wait time, Time Out,\n", "utf8"))
-        stream.write(bytes("!               Flash level (0-255)\n", "utf8"))
-        stream.write(bytes("CLEAR $MASTPAGE\n\n", "utf8"))
-        stream.write(bytes("$MASTPAGE 1 0 0 0\n", "utf8"))
-        page = 1
-        for master, _ in enumerate(App().masters):
-            if App().masters[master].page != page:
-                page = App().masters[master].page
-                stream.write(bytes("\n$MASTPAGE " + str(page) + " 0 0 0\n", "utf8"))
-            # MASTPAGEITEM :
-            # page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
-            stream.write(
-                bytes(
-                    "$MASTPAGEITEM "
-                    + str(App().masters[master].page)
-                    + " "
-                    + str(App().masters[master].number)
-                    + " "
-                    + str(App().masters[master].content_type)
-                    + " "
-                    + str(App().masters[master].content_value)
-                    + " 5 0 5 255\n",
-                    "utf8",
-                )
-            )
-            # Master of Channels, save them
-            if App().masters[master].content_type == 2:
-                channels = ""
-                i = 1
-                for chan, _ in enumerate(App().masters[master].channels):
-                    level = App().masters[master].channels[chan]
-                    if level != 0:
-                        level = "H" + format(level, "02X")
-                        channels += " " + str(chan + 1) + "/" + level
-                        # 6 channels per line
-                        if not i % 6 and channels != "":
-                            stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-                            channels = ""
-                        i += 1
-                if channels != "":
-                    stream.write(bytes("CHAN" + channels + "\n", "utf8"))
-        stream.write(bytes("\n", "utf8"))
-
-        # Patch
-        stream.write(
-            bytes(
-                "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
-                "utf8",
-            )
-        )
-        stream.write(bytes("! Patch\n", "utf8"))
-        stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
-        patch = ""
-        i = 1
-        for universe in range(NB_UNIVERSES):
-            for output in range(512):
-                if App().patch.outputs[universe][output][0]:
-                    patch += (
-                        " "
-                        + str(App().patch.outputs[universe][output][0])
-                        + "<"
-                        + str(output + 1 + (512 * universe))
-                        + "@"
-                        + str(App().patch.outputs[universe][output][1])
-                    )
-                    if not i % 4 and patch != "":
-                        stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
-                        patch = ""
-                    i += 1
-        if patch != "":
-            stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
+        save_main_playback(stream)
+        save_chasers(stream)
+        save_groups(stream)
+        save_congo_groups(stream)
+        save_masters(stream)
+        save_patch(stream)
 
         stream.write(bytes("\nENDDATA\n", "utf8"))
 
@@ -1164,3 +552,298 @@ class Ascii:
 
         self.modified = False
         App().window.header.set_title(self.basename)
+
+    def _update_ui(self):
+        """Update display afteri file loading"""
+        # Set main window's title with the file name
+        App().window.header.set_title(self.basename)
+        # Set main window's subtitle
+        subtitle = (
+            "Mem. : 0 - Next Mem. : "
+            + str(App().sequence.steps[0].cue.memory)
+            + " "
+            + App().sequence.steps[0].cue.text
+        )
+        App().window.header.set_subtitle(subtitle)
+
+        # Redraw crossfade :
+        # On se place au début de la séquence
+        App().sequence.position = 0
+        # On récupère les temps de la mémoire suivante
+        t_in = App().sequence.steps[1].time_in
+        t_out = App().sequence.steps[1].time_out
+        d_in = App().sequence.steps[1].delay_in
+        d_out = App().sequence.steps[1].delay_out
+        t_wait = App().sequence.steps[1].wait
+        t_total = App().sequence.steps[1].total_time
+        App().window.sequential.time_in = t_in
+        App().window.sequential.time_out = t_out
+        App().window.sequential.wait = t_wait
+        App().window.sequential.delay_in = d_in
+        App().window.sequential.delay_out = d_out
+        App().window.sequential.total_time = t_total
+
+        # On met à jour la liste des mémoires
+        App().window.cues_liststore1.clear()
+        App().window.cues_liststore2.clear()
+        # 2 lignes vides au début
+        App().window.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+        )
+        App().window.cues_liststore1.append(
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+        )
+        for i in range(App().sequence.last):
+            # Si on a des entiers, on les affiche comme tels
+            if App().sequence.steps[i].wait.is_integer():
+                wait = str(int(App().sequence.steps[i].wait))
+                if wait == "0":
+                    wait = ""
+            else:
+                wait = str(App().sequence.steps[i].wait)
+            if App().sequence.steps[i].time_out.is_integer():
+                t_out = int(App().sequence.steps[i].time_out)
+            else:
+                t_out = App().sequence.steps[i].time_out
+            if App().sequence.steps[i].delay_out.is_integer():
+                d_out = str(int(App().sequence.steps[i].delay_out))
+            else:
+                d_out = str(App().sequence.steps[i].delay_out)
+            if d_out == "0":
+                d_out = ""
+            if App().sequence.steps[i].time_in.is_integer():
+                t_in = int(App().sequence.steps[i].time_in)
+            else:
+                t_in = App().sequence.steps[i].time_in
+            if App().sequence.steps[i].delay_in.is_integer():
+                d_in = str(int(App().sequence.steps[i].delay_in))
+            else:
+                d_in = str(App().sequence.steps[i].delay_in)
+            if d_in == "0":
+                d_in = ""
+            channel_time = str(len(App().sequence.steps[i].channel_time))
+            if channel_time == "0":
+                channel_time = ""
+            if i == 0:
+                background = "#997004"
+            elif i == 1:
+                background = "#555555"
+            else:
+                background = "#232729"
+            # Actual and Next Cue in Bold
+            if i in (0, 1):
+                weight = Pango.Weight.HEAVY
+            else:
+                weight = Pango.Weight.NORMAL
+            if i in (0, App().sequence.last - 1):
+                App().window.cues_liststore1.append(
+                    [
+                        str(i),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        background,
+                        Pango.Weight.NORMAL,
+                        99,
+                    ]
+                )
+                App().window.cues_liststore2.append(
+                    [str(i), "", "", "", "", "", "", "", ""]
+                )
+            else:
+                App().window.cues_liststore1.append(
+                    [
+                        str(i),
+                        str(App().sequence.steps[i].cue.memory),
+                        str(App().sequence.steps[i].text),
+                        wait,
+                        d_out,
+                        str(t_out),
+                        d_in,
+                        str(t_in),
+                        channel_time,
+                        background,
+                        weight,
+                        99,
+                    ]
+                )
+                App().window.cues_liststore2.append(
+                    [
+                        str(i),
+                        str(App().sequence.steps[i].cue.memory),
+                        str(App().sequence.steps[i].text),
+                        wait,
+                        d_out,
+                        str(t_out),
+                        d_in,
+                        str(t_in),
+                        channel_time,
+                    ]
+                )
+
+        App().window.step_filter1 = App().window.cues_liststore1.filter_new()
+        App().window.step_filter1.set_visible_func(App().window.step_filter_func1)
+
+        App().window.step_filter2 = App().window.cues_liststore2.filter_new()
+        App().window.step_filter2.set_visible_func(App().window.step_filter_func2)
+
+        App().window.treeview1.set_model(App().window.step_filter1)
+        App().window.treeview2.set_model(App().window.step_filter2)
+
+        App().window.step_filter1.refilter()
+        App().window.step_filter2.refilter()
+
+        path = Gtk.TreePath.new_from_indices([0])
+        App().window.treeview1.set_cursor(path, None, False)
+        App().window.treeview2.set_cursor(path, None, False)
+
+        App().window.seq_grid.queue_draw()
+
+        # Redraw Group Tab if exist
+        if App().group_tab:
+            # Remove Old Groups
+            del App().group_tab.grps[:]
+            App().group_tab.scrolled2.remove(App().group_tab.flowbox2)
+            App().group_tab.flowbox2.destroy()
+            # New FlowBox
+            App().group_tab.flowbox2 = Gtk.FlowBox()
+            App().group_tab.flowbox2.set_valign(Gtk.Align.START)
+            App().group_tab.flowbox2.set_max_children_per_line(20)
+            App().group_tab.flowbox2.set_homogeneous(True)
+            App().group_tab.flowbox2.set_activate_on_single_click(True)
+            App().group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
+            App().group_tab.flowbox2.set_filter_func(
+                App().group_tab.filter_groups, None
+            )
+            App().group_tab.scrolled2.add(App().group_tab.flowbox2)
+            # Add Groups to FlowBox
+            for i, _ in enumerate(App().groups):
+                App().group_tab.grps.append(
+                    GroupWidget(
+                        i,
+                        App().groups[i].index,
+                        App().groups[i].text,
+                        App().group_tab.grps,
+                    )
+                )
+                App().group_tab.flowbox2.add(App().group_tab.grps[i])
+            App().group_tab.flowbox1.invalidate_filter()
+            App().group_tab.flowbox2.invalidate_filter()
+            App().window.show_all()
+
+        # Redraw Sequences Tab if exist
+        if App().sequences_tab:
+            App().sequences_tab.liststore1.clear()
+
+            App().sequences_tab.liststore1.append(
+                [App().sequence.index, App().sequence.type_seq, App().sequence.text]
+            )
+
+            for chaser in App().chasers:
+                App().sequences_tab.liststore1.append(
+                    [chaser.index, chaser.type_seq, chaser.text]
+                )
+
+            App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
+            path = Gtk.TreePath.new_first()
+            App().sequences_tab.treeview1.set_cursor(path, None, False)
+            # TODO: List of steps of selected sequence
+            selection = App().sequences_tab.treeview1.get_selection()
+            App().sequences_tab.on_sequence_changed(selection)
+
+        # Redraw Patch Outputs Tab if exist
+        if App().patch_outputs_tab:
+            App().patch_outputs_tab.flowbox.queue_draw()
+
+        # Redraw Patch Channels Tab if exist
+        if App().patch_channels_tab:
+            App().patch_channels_tab.flowbox.queue_draw()
+
+        # Redraw List of Memories Tab if exist
+        if App().memories_tab:
+            App().memories_tab.liststore.clear()
+            for mem in App().memories:
+                channels = 0
+                for chan in range(MAX_CHANNELS):
+                    if mem.channels[chan]:
+                        channels += 1
+                App().memories_tab.liststore.append(
+                    [str(mem.memory), mem.text, channels]
+                )
+            App().memories_tab.flowbox.invalidate_filter()
+
+        # Redraw Masters if Virtual Console is open
+        if App().virtual_console:
+            if App().virtual_console.props.visible:
+                for page in range(2):
+                    for master in App().masters:
+                        if master.page == page + 1:
+                            App().virtual_console.flashes[
+                                master.number - 1 + (page * 20)
+                            ].label = master.text
+                            App().virtual_console.flashes[
+                                master.number - 1 + (page * 20)
+                            ].queue_draw()
+
+        # Redraw Edit Masters Tab if exist
+        if App().masters_tab:
+            App().masters_tab.liststore.clear()
+            for page in range(2):
+                for i in range(20):
+                    index = i + (page * 20)
+
+                    # Type : None
+                    if App().masters[index].content_type == 0:
+                        App().masters_tab.liststore.append([index + 1, "", "", ""])
+
+                    # Type : Preset
+                    elif App().masters[index].content_type == 1:
+                        content_value = str(App().masters[index].content_value)
+                        App().masters_tab.liststore.append(
+                            [index + 1, "Preset", content_value, ""]
+                        )
+
+                    # Type : Channels
+                    elif App().masters[index].content_type == 2:
+                        nb_chan = 0
+                        for chan in range(MAX_CHANNELS):
+                            if App().masters[index].channels[chan]:
+                                nb_chan += 1
+                        App().masters_tab.liststore.append(
+                            [index + 1, "Channels", str(nb_chan), ""]
+                        )
+
+                    # Type : Sequence
+                    elif App().masters[index].content_type == 3:
+                        if App().masters[index].content_value.is_integer():
+                            content_value = str(int(App().masters[index].content_value))
+                        else:
+                            content_value = str(App().masters[index].content_value)
+                        App().masters_tab.liststore.append(
+                            [index + 1, "Sequence", content_value, ""]
+                        )
+
+                    # Type : Group
+                    elif App().masters[index].content_type == 13:
+                        if App().masters[index].content_value.is_integer():
+                            content_value = str(int(App().masters[index].content_value))
+                        else:
+                            content_value = str(App().masters[index].content_value)
+                        App().masters_tab.liststore.append(
+                            [index + 1, "Group", content_value, "Exclusif"]
+                        )
+
+                    # Type : Unknown
+                    else:
+                        App().masters_tab.liststore.append(
+                            [index + 1, "Unknown", "", ""]
+                        )
+
+            App().masters_tab.flowbox.invalidate_filter()
+
+        # TODO: Redraw Track Channels Tab if exist

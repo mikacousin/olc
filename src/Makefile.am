@@ -3,6 +3,7 @@ appdir = $(pythondir)/olc/
 app_PYTHON = \
 	application.py \
 	ascii.py \
+	ascii_save.py \
 	channel_time.py \
 	crossfade.py \
 	cue.py \
