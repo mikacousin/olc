@@ -50,3 +50,4 @@ $ ./autogen.sh
 $ make
 # make install
 ```
+[![Sourcery](https://img.shields.io/badge/Sourcery-enabled-brightgreen)](https://sourcery.ai)
