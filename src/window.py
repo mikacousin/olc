@@ -240,9 +240,7 @@ class Window(Gtk.ApplicationWindow):
             if int(model[treeiter][11]) == 0:
                 return False
             return int(model[treeiter][0]) in [0, 1, 2]
-        if int(model[treeiter][11]) == 1:
-            return False
-        if int(model[treeiter][11]) == 0:
+        if int(model[treeiter][11]) in [0, 1]:
             return False
 
         return int(model[treeiter][0]) in [
@@ -259,13 +257,14 @@ class Window(Gtk.ApplicationWindow):
     def filter_func(self, child, _user_data):
         """Filter for channels window"""
         if self.view_type == 0:
+            # Display only patched channels
             i = child.get_index()
             for channel in App().patch.channels[i][0]:
                 if channel != 0:
-                    # print("Chanel:", i+1, "Output:", App().patch.channels[i][j])
                     return child
                 return False
         else:
+            # Display all channels
             return True
 
     def button_clicked_cb(self, button):
