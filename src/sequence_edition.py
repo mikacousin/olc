@@ -1011,9 +1011,7 @@ class SequenceTab(Gtk.Grid):
             # cue = self.seq.steps[step].cue.memory
             self.seq.steps.pop(step)
             self.seq.last -= 1
-            self.liststore2 = Gtk.ListStore(
-                str, str, str, str, str, str, str, str, str
-            )
+            self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
             self.populate_liststore(step)
 
     def _keypress_N(self):
