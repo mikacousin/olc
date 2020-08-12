@@ -48,7 +48,7 @@ def update_channels(position):
 
 
 class Sequence:
-    def __init__(self, index, patch, type_seq="Normal", text=""):
+    def __init__(self, index, type_seq="Normal", text=""):
         self.index = index
         self.type_seq = type_seq
         self.text = text
@@ -63,10 +63,6 @@ class Sequence:
         self.run = False
         # Thread for chasers
         self.thread = None
-        # Pour accéder à la fenêtre du séquentiel
-        self.window = None
-        # On a besoin de connaitre le patch
-        self.patch = patch
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
@@ -169,13 +165,13 @@ class Sequence:
             d_in = self.steps[position + 1].delay_in
             d_out = self.steps[position + 1].delay_out
             t_wait = self.steps[position + 1].wait
-            self.window.sequential.total_time = self.steps[position + 1].total_time
-            self.window.sequential.time_in = t_in
-            self.window.sequential.time_out = t_out
-            self.window.sequential.delay_in = d_in
-            self.window.sequential.delay_out = d_out
-            self.window.sequential.wait = t_wait
-            self.window.sequential.channel_time = self.steps[position + 1].channel_time
+            App().window.sequential.total_time = self.steps[position + 1].total_time
+            App().window.sequential.time_in = t_in
+            App().window.sequential.time_out = t_out
+            App().window.sequential.delay_in = d_in
+            App().window.sequential.delay_out = d_out
+            App().window.sequential.wait = t_wait
+            App().window.sequential.channel_time = self.steps[position + 1].channel_time
             App().window.sequential.position_a = 0
             App().window.sequential.position_b = 0
 
@@ -199,7 +195,7 @@ class Sequence:
             # Send DMX values
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.patch.outputs[univ][output][0]
+                    channel = App().patch.outputs[univ][output][0]
                     if channel:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
@@ -230,13 +226,13 @@ class Sequence:
             d_in = self.steps[position + 1].delay_in
             d_out = self.steps[position + 1].delay_out
             t_wait = self.steps[position + 1].wait
-            self.window.sequential.total_time = self.steps[position + 1].total_time
-            self.window.sequential.time_in = t_in
-            self.window.sequential.time_out = t_out
-            self.window.sequential.delay_in = d_in
-            self.window.sequential.delay_out = d_out
-            self.window.sequential.wait = t_wait
-            self.window.sequential.channel_time = self.steps[position + 1].channel_time
+            App().window.sequential.total_time = self.steps[position + 1].total_time
+            App().window.sequential.time_in = t_in
+            App().window.sequential.time_out = t_out
+            App().window.sequential.delay_in = d_in
+            App().window.sequential.delay_out = d_out
+            App().window.sequential.wait = t_wait
+            App().window.sequential.channel_time = self.steps[position + 1].channel_time
             App().window.sequential.position_a = 0
             App().window.sequential.position_b = 0
 
@@ -260,7 +256,7 @@ class Sequence:
             # Send DMX values
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = self.patch.outputs[univ][output][0]
+                    channel = App().patch.outputs[univ][output][0]
                     if channel:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
@@ -287,13 +283,13 @@ class Sequence:
                 d_in = self.steps[position + 1].delay_in
                 d_out = self.steps[position + 1].delay_out
                 t_wait = App().sequence.steps[position + 1].wait
-                self.window.sequential.total_time = self.steps[position + 1].total_time
+                App().window.sequential.total_time = self.steps[position + 1].total_time
                 App().window.sequential.time_in = t_in
                 App().window.sequential.time_out = t_out
-                self.window.sequential.delay_in = d_in
-                self.window.sequential.delay_out = d_out
+                App().window.sequential.delay_in = d_in
+                App().window.sequential.delay_out = d_out
                 App().window.sequential.wait = t_wait
-                self.window.sequential.channel_time = self.steps[
+                App().window.sequential.channel_time = self.steps[
                     position + 1
                 ].channel_time
                 App().window.sequential.position_a = 0

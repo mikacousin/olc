@@ -1075,7 +1075,7 @@ class SequenceTab(Gtk.Grid):
             index_seq = 2
 
         # Create Chaser
-        App().chasers.append(Sequence(index_seq, App().patch, type_seq="Chaser"))
+        App().chasers.append(Sequence(index_seq, type_seq="Chaser"))
         del App().chasers[-1].steps[1:]
         App().chasers[-1].last = len(App().chasers[-1].steps)
 

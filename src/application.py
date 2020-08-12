@@ -74,7 +74,7 @@ class Application(Gtk.Application):
         self.ola_thread.start()
 
         # Create Main Playback
-        self.sequence = Sequence(1, self.patch, text="Main Playback")
+        self.sequence = Sequence(1, text="Main Playback")
 
         # Create List of Global Memories
         self.memories = []
@@ -121,8 +121,7 @@ class Application(Gtk.Application):
     def do_activate(self):
 
         # Create Main Window
-        self.window = Window(self.patch)
-        self.sequence.window = self.window
+        self.window = Window()
         self.window.show_all()
         # No selected channel on startup
         self.window.flowbox.unselect_all()
@@ -344,7 +343,7 @@ class Application(Gtk.Application):
         # Reset Patch
         self.patch.patch_1on1()
         # Reset Main Playback
-        self.sequence = Sequence(1, self.patch)
+        self.sequence = Sequence(1)
         self.sequence.position = 0
         self.sequence.window = self.window
         # Delete memories, groups, chasers, masters

@@ -114,7 +114,7 @@ class Ascii:
                                 )
                             )
                     App().patch.patch_empty()
-                    App().sequence = Sequence(1, App().patch, text="Main Playback")
+                    App().sequence = Sequence(1, text="Main Playback")
                     del App().sequence.steps[1:]
                     App().sequence.window = App().window
 
@@ -127,7 +127,7 @@ class Ascii:
                         type_seq = "Chaser"
                         index_seq = int(p[0])
                         App().chasers.append(
-                            Sequence(index_seq, App().patch, type_seq=type_seq)
+                            Sequence(index_seq, type_seq=type_seq)
                         )
                         del App().chasers[-1].steps[1:]
                     flag_seq = True

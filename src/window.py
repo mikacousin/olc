@@ -14,36 +14,34 @@ from olc.widgets_grand_master import GMWidget
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
-    def __init__(self, patch):
-
-        self.patch = patch
+    def __init__(self):
 
         # 0 : patched channels
         # 1 : all channels
         self.view_type = 0
 
-        self.percent_level = App().settings.get_boolean("percent")
-
         Gtk.ApplicationWindow.__init__(
             self, title="Open Lighting Console", application=App()
         )
-        self.set_default_size(1400, 1200)
+        self.set_default_size(1400, 1080)
         self.set_name("olc")
 
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
-        self.header.set_subtitle("Fonctionne avec ola")
+        self.header.set_subtitle("")
         self.header.props.show_close_button = True
 
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        # Gtk.StyleContext.add_class(box.get_style_context(), "linked")
+        # Grand Master viewer
         self.grand_master = GMWidget()
         box.add(self.grand_master)
+        # All/Patched channels button
         button = Gtk.Button()
         icon = Gio.ThemedIcon(name="view-grid-symbolic")
         image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
         button.connect("clicked", self.button_clicked_cb)
         button.add(image)
         box.add(button)
+        # Menu button
         button = Gtk.MenuButton()
         icon = Gio.ThemedIcon(name="open-menu-symbolic")
         image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
@@ -57,7 +55,6 @@ class Window(Gtk.ApplicationWindow):
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.paned.set_position(950)
-        # self.paned.set_wide_handle(True)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -65,7 +62,6 @@ class Window(Gtk.ApplicationWindow):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        # self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.flowbox.set_filter_func(self.filter_func, None)
 
@@ -86,7 +82,7 @@ class Window(Gtk.ApplicationWindow):
         self.context_id = self.statusbar.get_context_id("keypress")
 
         self.grid = Gtk.Grid()
-        label = Gtk.Label("Saisie clavier : ")
+        label = Gtk.Label("Input : ")
         self.grid.add(label)
         self.grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
         self.paned.add2(self.grid)
@@ -95,19 +91,16 @@ class Window(Gtk.ApplicationWindow):
         self.paned2.set_position(800)
         self.paned2.add1(self.paned)
 
-        self.seq = App().sequence
-
         # Sequential part of the window
-
-        if self.seq.last > 1:
-            position = self.seq.position
-            t_total = self.seq.steps[position].total_time
-            t_in = self.seq.steps[position].time_in
-            t_out = self.seq.steps[position].time_out
-            d_in = self.seq.steps[position].delay_in
-            d_out = self.seq.steps[position].delay_out
-            t_wait = self.seq.steps[position].wait
-            channel_time = self.seq.steps[position].channel_time
+        if App().sequence.last > 1:
+            position = App().sequence.position
+            t_total = App().sequence.steps[position].total_time
+            t_in = App().sequence.steps[position].time_in
+            t_out = App().sequence.steps[position].time_out
+            d_in = App().sequence.steps[position].delay_in
+            d_out = App().sequence.steps[position].delay_out
+            t_wait = App().sequence.steps[position].wait
+            channel_time = App().sequence.steps[position].channel_time
         else:
             position = 0
             t_total = 5.0
@@ -117,12 +110,10 @@ class Window(Gtk.ApplicationWindow):
             d_out = 0.0
             t_wait = 0.0
             channel_time = {}
-
         # Crossfade widget
         self.sequential = SequentialWidget(
             t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
         )
-
         # Main Playback
         self.cues_liststore1 = Gtk.ListStore(
             str, str, str, str, str, str, str, str, str, str, int, int
@@ -216,11 +207,8 @@ class Window(Gtk.ApplicationWindow):
 
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
-
         self.notebook.append_page(self.seq_grid, Gtk.Label("Main Playback"))
-
         self.paned2.add2(self.notebook)
-
         self.add(self.paned2)
 
         self.connect("key_press_event", self.on_key_press_event)
