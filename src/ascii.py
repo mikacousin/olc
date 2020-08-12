@@ -640,58 +640,10 @@ class Ascii:
 
         # Redraw Edit Masters Tab if exist
         if App().masters_tab:
+            # Delete
             App().masters_tab.liststore.clear()
-            for page in range(2):
-                for i in range(20):
-                    index = i + (page * 20)
-
-                    # Type : None
-                    if App().masters[index].content_type == 0:
-                        App().masters_tab.liststore.append([index + 1, "", "", ""])
-
-                    # Type : Preset
-                    elif App().masters[index].content_type == 1:
-                        content_value = str(App().masters[index].content_value)
-                        App().masters_tab.liststore.append(
-                            [index + 1, "Preset", content_value, ""]
-                        )
-
-                    # Type : Channels
-                    elif App().masters[index].content_type == 2:
-                        nb_chan = 0
-                        for chan in range(MAX_CHANNELS):
-                            if App().masters[index].channels[chan]:
-                                nb_chan += 1
-                        App().masters_tab.liststore.append(
-                            [index + 1, "Channels", str(nb_chan), ""]
-                        )
-
-                    # Type : Sequence
-                    elif App().masters[index].content_type == 3:
-                        if App().masters[index].content_value.is_integer():
-                            content_value = str(int(App().masters[index].content_value))
-                        else:
-                            content_value = str(App().masters[index].content_value)
-                        App().masters_tab.liststore.append(
-                            [index + 1, "Sequence", content_value, ""]
-                        )
-
-                    # Type : Group
-                    elif App().masters[index].content_type == 13:
-                        if App().masters[index].content_value.is_integer():
-                            content_value = str(int(App().masters[index].content_value))
-                        else:
-                            content_value = str(App().masters[index].content_value)
-                        App().masters_tab.liststore.append(
-                            [index + 1, "Group", content_value, "Exclusif"]
-                        )
-
-                    # Type : Unknown
-                    else:
-                        App().masters_tab.liststore.append(
-                            [index + 1, "Unknown", "", ""]
-                        )
-
+            # Redraw
+            App().masters_tab.populate_tab()
             App().masters_tab.flowbox.invalidate_filter()
 
         # TODO: Redraw Track Channels Tab if exist

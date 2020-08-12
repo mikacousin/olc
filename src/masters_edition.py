@@ -50,49 +50,8 @@ class MastersTab(Gtk.Paned):
 
         self.liststore = Gtk.ListStore(int, str, str, str)
 
-        # Masters (2 pages of 20 Masters)
-        for page in range(2):
-            for i in range(20):
-                index = i + (page * 20)
-
-                # Type : None
-                if App().masters[index].content_type == 0:
-                    self.liststore.append([index + 1, "", "", ""])
-
-                # Type : Preset
-                elif App().masters[index].content_type == 1:
-                    content_value = str(App().masters[index].content_value)
-                    self.liststore.append([index + 1, "Preset", content_value, ""])
-
-                # Type : Channels
-                elif App().masters[index].content_type == 2:
-                    nb_chan = 0
-                    for chan in range(MAX_CHANNELS):
-                        if App().masters[index].channels[chan]:
-                            nb_chan += 1
-                    self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
-
-                # Type : Sequence
-                elif App().masters[index].content_type == 3:
-                    if App().masters[index].content_value.is_integer():
-                        content_value = str(int(App().masters[index].content_value))
-                    else:
-                        content_value = str(App().masters[index].content_value)
-                    self.liststore.append([index + 1, "Sequence", content_value, ""])
-
-                # Type : Group
-                elif App().masters[index].content_type == 13:
-                    if App().masters[index].content_value.is_integer():
-                        content_value = str(int(App().masters[index].content_value))
-                    else:
-                        content_value = str(App().masters[index].content_value)
-                    self.liststore.append(
-                        [index + 1, "Group", content_value, "Exclusif"]
-                    )
-
-                # Type : Unknown
-                else:
-                    self.liststore.append([index + 1, "Unknown", "", ""])
+        # Populate with masters
+        self.populate_tab()
 
         self.filter = self.liststore.filter_new()
         self.filter.set_visible_func(self.filter_master)
@@ -142,6 +101,46 @@ class MastersTab(Gtk.Paned):
         # Select First Master
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
+
+    def populate_tab(self):
+        """Add Masters to tab"""
+        # Masters (2 pages of 20 Masters)
+        for page in range(2):
+            for i in range(20):
+                index = i + (page * 20)
+                # Type : None
+                if App().masters[index].content_type == 0:
+                    self.liststore.append([index + 1, "", "", ""])
+                # Type : Preset
+                elif App().masters[index].content_type == 1:
+                    content_value = str(App().masters[index].content_value)
+                    self.liststore.append([index + 1, "Preset", content_value, ""])
+                # Type : Channels
+                elif App().masters[index].content_type == 2:
+                    nb_chan = 0
+                    for chan in range(MAX_CHANNELS):
+                        if App().masters[index].channels[chan]:
+                            nb_chan += 1
+                    self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
+                # Type : Sequence
+                elif App().masters[index].content_type == 3:
+                    if App().masters[index].content_value.is_integer():
+                        content_value = str(int(App().masters[index].content_value))
+                    else:
+                        content_value = str(App().masters[index].content_value)
+                    self.liststore.append([index + 1, "Sequence", content_value, ""])
+                # Type : Group
+                elif App().masters[index].content_type == 13:
+                    if App().masters[index].content_value.is_integer():
+                        content_value = str(int(App().masters[index].content_value))
+                    else:
+                        content_value = str(App().masters[index].content_value)
+                    self.liststore.append(
+                        [index + 1, "Group", content_value, "Exclusif"]
+                    )
+                # Type : Unknown
+                else:
+                    self.liststore.append([index + 1, "Unknown", "", ""])
 
     def filter_master(self, _model, _i, _data):
         return True
