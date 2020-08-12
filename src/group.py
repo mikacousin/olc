@@ -45,6 +45,17 @@ class GroupTab(Gtk.Paned):
         self.scrolled2 = Gtk.ScrolledWindow()
         self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
+        self.grps = []
+
+        self.populate_tab()
+
+        self.add2(self.scrolled2)
+
+        self.flowbox1.set_filter_func(self.filter_channels, None)
+
+    def populate_tab(self):
+        """Add groups to tab"""
+        # New FlowBox
         self.flowbox2 = Gtk.FlowBox()
         self.flowbox2.set_valign(Gtk.Align.START)
         self.flowbox2.set_max_children_per_line(20)
@@ -52,20 +63,13 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.set_activate_on_single_click(True)
         self.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
         self.flowbox2.set_filter_func(self.filter_groups, None)
-
-        self.grps = []
-
+        # Add groups to FlowBox
         for i, _ in enumerate(App().groups):
             self.grps.append(
                 GroupWidget(i, App().groups[i].index, App().groups[i].text, self.grps)
             )
             self.flowbox2.add(self.grps[i])
-
         self.scrolled2.add(self.flowbox2)
-
-        self.add2(self.scrolled2)
-
-        self.flowbox1.set_filter_func(self.filter_channels, None)
 
     def filter_channels(self, child, _user_data):
         """ Pour n'afficher que les channels du groupe """

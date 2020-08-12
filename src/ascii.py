@@ -19,7 +19,6 @@ from olc.channel_time import ChannelTime
 from olc.sequence import Sequence
 from olc.group import Group
 from olc.master import Master
-from olc.widgets_group import GroupWidget
 
 
 def get_time(string):
@@ -568,9 +567,9 @@ class Ascii:
             + App().sequence.steps[0].cue.text
         )
         App().window.header.set_subtitle(subtitle)
-        # Crossfade
+        # Redraw Crossfade
         App().window.update_xfade_display(0)
-        # Main Playback
+        # Redraw Main Playback
         App().window.update_sequence_display()
 
         # Redraw Group Tab if exist
@@ -579,28 +578,8 @@ class Ascii:
             del App().group_tab.grps[:]
             App().group_tab.scrolled2.remove(App().group_tab.flowbox2)
             App().group_tab.flowbox2.destroy()
-            # New FlowBox
-            App().group_tab.flowbox2 = Gtk.FlowBox()
-            App().group_tab.flowbox2.set_valign(Gtk.Align.START)
-            App().group_tab.flowbox2.set_max_children_per_line(20)
-            App().group_tab.flowbox2.set_homogeneous(True)
-            App().group_tab.flowbox2.set_activate_on_single_click(True)
-            App().group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-            App().group_tab.flowbox2.set_filter_func(
-                App().group_tab.filter_groups, None
-            )
-            App().group_tab.scrolled2.add(App().group_tab.flowbox2)
-            # Add Groups to FlowBox
-            for i, _ in enumerate(App().groups):
-                App().group_tab.grps.append(
-                    GroupWidget(
-                        i,
-                        App().groups[i].index,
-                        App().groups[i].text,
-                        App().group_tab.grps,
-                    )
-                )
-                App().group_tab.flowbox2.add(App().group_tab.grps[i])
+            # Update Group tab
+            App().group_tab.populate_tab()
             App().group_tab.flowbox1.invalidate_filter()
             App().group_tab.flowbox2.invalidate_filter()
             App().window.show_all()
