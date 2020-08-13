@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
-  <gresource prefix="/org/gnome/OpenLightingConsole">
+  <gresource prefix="/com/github/mikacousin/olc">
     <file preprocess="xml-stripblanks">AboutDialog.ui</file>
-    <file alias="gtk/menus.ui" preprocess="xml-stripblanks">app-menu.ui</file>
+    <file alias="menus.ui" preprocess="xml-stripblanks">app-menu.ui</file>
     <file alias="gtk/help-overlay.ui" preprocess="xml-stripblanks">help-overlay.ui</file>
     <file>application.css</file>
     <file preprocess="xml-stripblanks">settings.ui</file>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.olc" path="/org/gnome/OpenLightingConsole/" gettext-domain="olc">
+  <schema id="com.github.mikacousin.olc" path="/com/github/mikacousin/olc/" gettext-domain="olc">
     <key name="percent" type="b">
       <default>true</default>
       <summary>Display in percent</summary>
@@ -43,4 +43,3 @@
     </key>
   </schema>
 </schemalist>
-

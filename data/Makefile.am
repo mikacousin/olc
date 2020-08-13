@@ -45,7 +45,7 @@ update-icon-cache:
 								echo "***   $(gtk_update_hicolor_icon_cache)"; \
 				fi
 
-gsettings_SCHEMAS = org.gnome.OpenLightingConsole.gschema.xml
+gsettings_SCHEMAS = com.github.mikacousin.olc.gschema.xml
 
 # For uninstalled use
 gschemas.compiled: $(gsettings_SCHEMAS) Makefile
@@ -58,7 +58,7 @@ EXTRA_DIST = \
 	$(resource_files) \
 	olc.desktop.in \
 	olc.gresource.xml \
-	org.gnome.OpenLightingConsole.gschema.xml \
+	com.github.mikacousin.olc.gschema.xml \
 	$(NULL)
 
 CLEANFILES = \

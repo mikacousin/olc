@@ -15,7 +15,7 @@ class Settings(Gio.Settings):
 
     def new():
 
-        settings = Gio.Settings.new("org.gnome.olc")
+        settings = Gio.Settings.new("com.github.mikacousin.olc")
         settings.__class__ = Settings
         return settings
 
@@ -24,7 +24,7 @@ class SettingsDialog:
     def __init__(self):
 
         builder = Gtk.Builder()
-        builder.add_from_resource("/org/gnome/OpenLightingConsole/settings.ui")
+        builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
 
         self.settings_dialog = builder.get_object("settings_dialog")
 

@@ -34,13 +34,15 @@ from gi.repository import Gtk, Gio, GLib, Gdk, GObject  # noqa: E402
 class Application(Gtk.Application):
     def __init__(self):
         Gtk.Application.__init__(
-            self, application_id="org.gnome.olc", flags=Gio.ApplicationFlags.FLAGS_NONE
+            self,
+            application_id="com.github.mikacousin.olc",
+            flags=Gio.ApplicationFlags.FLAGS_NONE,
         )
         GLib.set_application_name("OpenLightingConsole")
         GLib.set_prgname("olc")
 
         css_provider_file = Gio.File.new_for_uri(
-            "resource://org/gnome/OpenLightingConsole/application.css"
+            "resource://com/github/mikacousin/olc/application.css"
         )
         css_provider = Gtk.CssProvider()
         css_provider.load_from_file(css_provider_file)
@@ -215,8 +217,6 @@ class Application(Gtk.Application):
     def do_startup(self):
         Gtk.Application.do_startup(self)
 
-        self.setup_app_menu()
-
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])
         self.set_accels_for_action("app.open", ["<Control>o"])
@@ -234,7 +234,7 @@ class Application(Gtk.Application):
         """ Setup application menu, return Gio.Menu """
         builder = Gtk.Builder()
 
-        builder.add_from_resource("/org/gnome/OpenLightingConsole/gtk/menus.ui")
+        builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
 
         menu = builder.get_object("app-menu")
 
@@ -839,7 +839,7 @@ class Application(Gtk.Application):
     def _shortcuts(self, _action, _parameter):
         """Create Shortcuts Window"""
         builder = Gtk.Builder()
-        builder.add_from_resource("/org/gnome/OpenLightingConsole/gtk/help-overlay.ui")
+        builder.add_from_resource("/com/github/mikacousin/olc/gtk/help-overlay.ui")
         self.shortcuts = builder.get_object("help_overlay")
         self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
@@ -851,7 +851,7 @@ class Application(Gtk.Application):
         """
         if not self.about_window:
             builder = Gtk.Builder()
-            builder.add_from_resource("/org/gnome/OpenLightingConsole/AboutDialog.ui")
+            builder.add_from_resource("/com/github/mikacousin/olc/AboutDialog.ui")
             self.about_window = builder.get_object("about_dialog")
             self.about_window.set_transient_for(self.window)
             self.about_window.connect("response", self._about_response)
