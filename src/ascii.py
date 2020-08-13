@@ -605,27 +605,23 @@ class Ascii:
         if App().memories_tab:
             App().memories_tab.liststore.clear()
             for mem in App().memories:
-                channels = 0
-                for chan in range(MAX_CHANNELS):
-                    if mem.channels[chan]:
-                        channels += 1
+                channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
                 App().memories_tab.liststore.append(
                     [str(mem.memory), mem.text, channels]
                 )
             App().memories_tab.flowbox.invalidate_filter()
 
         # Redraw Masters if Virtual Console is open
-        if App().virtual_console:
-            if App().virtual_console.props.visible:
-                for page in range(2):
-                    for master in App().masters:
-                        if master.page == page + 1:
-                            App().virtual_console.flashes[
-                                master.number - 1 + (page * 20)
-                            ].label = master.text
-                            App().virtual_console.flashes[
-                                master.number - 1 + (page * 20)
-                            ].queue_draw()
+        if App().virtual_console and App().virtual_console.props.visible:
+            for page in range(2):
+                for master in App().masters:
+                    if master.page == page + 1:
+                        App().virtual_console.flashes[
+                            master.number - 1 + (page * 20)
+                        ].label = master.text
+                        App().virtual_console.flashes[
+                            master.number - 1 + (page * 20)
+                        ].queue_draw()
 
         # Redraw Edit Masters Tab if exist
         if App().masters_tab:

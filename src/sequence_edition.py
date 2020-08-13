@@ -111,25 +111,25 @@ class SequenceTab(Gtk.Grid):
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            if i == 3:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.wait_edited)
-            if i == 4:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.delay_out_edited)
-            if i == 5:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.out_edited)
-            if i == 6:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.delay_in_edited)
-            if i == 7:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.in_edited)
             if i == 2:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.text_edited)
 
+            elif i == 3:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.wait_edited)
+            elif i == 4:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.delay_out_edited)
+            elif i == 5:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.out_edited)
+            elif i == 6:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.delay_in_edited)
+            elif i == 7:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.in_edited)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
 
             if i == 2:
