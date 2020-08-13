@@ -1,3 +1,6 @@
+"""A Step is used to store times and a Cue in a Sequence"""
+
+
 class Step:
     """Step"""
 
