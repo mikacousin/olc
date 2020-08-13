@@ -1,3 +1,5 @@
+"""Crossfade Widget"""
+
 import math
 from gi.repository import Gtk, Gdk
 import cairo
@@ -6,6 +8,8 @@ from olc.define import App
 
 
 class SequentialWidget(Gtk.Widget):
+    """Crossfade widget"""
+
     __gtype_name__ = "SequentialWidget"
 
     def __init__(
@@ -27,6 +31,7 @@ class SequentialWidget(Gtk.Widget):
         self.set_size_request(800, 300)
 
     def do_draw(self, cr):
+        """Draw xfade widget"""
         if self.time_in + self.delay_in > self.time_out + self.delay_out:
             time_max = self.time_in + self.delay_in
             time_min = self.time_out + self.delay_out
@@ -45,7 +50,7 @@ class SequentialWidget(Gtk.Widget):
 
         allocation = self.get_allocation()
 
-        # dessine un cadre
+        # Draw frame
         if self.position_a or self.position_b:  # Red filter in fades
             cr.set_source_rgba(1, 0, 0, 0.1)
         cr.rectangle(0, 0, allocation.width, allocation.height)
@@ -434,6 +439,7 @@ class SequentialWidget(Gtk.Widget):
                 cr.show_text(str(time_min))
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

@@ -1,3 +1,5 @@
+"""Channel Widget"""
+
 import cairo
 from gi.repository import Gtk, Gdk
 
@@ -5,6 +7,8 @@ from olc.define import App
 
 
 class ChannelWidget(Gtk.Widget):
+    """Channel widget"""
+
     __gtype_name__ = "ChannelWidget"
 
     def __init__(self, channel, level, next_level):
@@ -14,20 +18,16 @@ class ChannelWidget(Gtk.Widget):
         self.level = level
         self.next_level = next_level
         self.clicked = False
-        self.color_level_red = 0.9
-        self.color_level_green = 0.9
-        self.color_level_blue = 0.9
+        self.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
         self.scale = 1.0
         self.width = 80 * self.scale
-
-        self.percent_level = App().settings.get_boolean("percent")
 
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
     def on_click(self, tgt, _ev):
-        # Select clicked widget
+        """"Select clicked widget"""
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
 
@@ -39,10 +39,11 @@ class ChannelWidget(Gtk.Widget):
             App().window.last_chan_selected = str(int(self.channel) - 1)
 
     def do_draw(self, cr):
+        """Draw widget"""
         self.width = 80 * self.scale
         self.set_size_request(self.width, self.width)
 
-        self.percent_level = App().settings.get_boolean("percent")
+        percent_level = App().settings.get_boolean("percent")
 
         allocation = self.get_allocation()
 
@@ -65,7 +66,6 @@ class ChannelWidget(Gtk.Widget):
         # TODO: Get background color
         background.parse("#33393B")
         cr.set_source_rgba(*list(background))
-        # cr.rectangle(4, 4, allocation.width-8, 72)
         cr.rectangle(4, 4, allocation.width - 8, allocation.height - 8)
         cr.fill()
         # draw background of channel number
@@ -84,13 +84,15 @@ class ChannelWidget(Gtk.Widget):
         cr.show_text(self.channel)
         # draw level
         cr.set_source_rgb(
-            self.color_level_red, self.color_level_green, self.color_level_blue
+            self.color_level.get("red"),
+            self.color_level.get("green"),
+            self.color_level.get("blue"),
         )
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(13 * self.scale)
         cr.move_to(6 * self.scale, 48 * self.scale)
         if self.level != 0 or self.next_level != 0:  # Don't show 0 level
-            if self.percent_level:
+            if percent_level:
                 if self.level == 255:
                     cr.show_text("F")
                 else:
@@ -134,7 +136,7 @@ class ChannelWidget(Gtk.Widget):
                 offset_x + (24 * self.scale),
                 offset_y + allocation.height - (6 * self.scale),
             )
-            if self.percent_level:
+            if percent_level:
                 if self.next_level == 255:
                     cr.show_text("F")
                 else:
@@ -158,7 +160,7 @@ class ChannelWidget(Gtk.Widget):
             )
             cr.set_font_size(10 * self.scale)
             cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
-            if self.percent_level:
+            if percent_level:
                 if self.next_level == 255:
                     cr.show_text("F")
                 else:
@@ -168,6 +170,7 @@ class ChannelWidget(Gtk.Widget):
                 cr.show_text(str(self.next_level))  # Level in 0 to 255 value
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

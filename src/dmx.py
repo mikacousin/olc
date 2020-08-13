@@ -40,9 +40,11 @@ class Dmx(threading.Thread):
                         univ.append(universe)
                     # Level in Sequence
                     level = self.sequence[channel]
-                    App().window.channels[channel].color_level_red = 0.9
-                    App().window.channels[channel].color_level_green = 0.9
-                    App().window.channels[channel].color_level_blue = 0.9
+                    App().window.channels[channel].color_level = {
+                        "red": 0.9,
+                        "green": 0.9,
+                        "blue": 0.9,
+                    }
                     if not App().sequence.on_go and self.user[channel] != -1:
                         # If not on Go, use user level
                         level = self.user[channel]
@@ -50,9 +52,11 @@ class Dmx(threading.Thread):
                         # If master level is bigger, use it
                         if master.dmx[channel] > level:
                             level = master.dmx[channel]
-                            App().window.channels[channel].color_level_red = 0.4
-                            App().window.channels[channel].color_level_green = 0.7
-                            App().window.channels[channel].color_level_blue = 0.4
+                            App().window.channels[channel].color_level = {
+                                "red": 0.4,
+                                "green": 0.7,
+                                "blue": 0.4,
+                            }
                     # Proportional patch level
                     level = level * (App().patch.outputs[universe][output][1] / 100)
                     # Grand Master

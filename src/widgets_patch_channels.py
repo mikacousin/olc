@@ -1,3 +1,5 @@
+"""Widgets for Patch Channels Tab"""
+
 import math
 import cairo
 from gi.repository import Gtk, Gdk
@@ -7,6 +9,8 @@ from olc.widgets import rounded_rectangle_fill
 
 
 class PatchChannelHeader(Gtk.Widget):
+    """Header widget"""
+
     __gtype_name__ = "PatchChannelHeader"
 
     def __init__(self):
@@ -21,7 +25,7 @@ class PatchChannelHeader(Gtk.Widget):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
-
+        """Draw Header widget"""
         # Draw channel box
         area = (0, 60, 0, 60)
         cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -64,6 +68,7 @@ class PatchChannelHeader(Gtk.Widget):
         cr.show_text("Text")
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD
@@ -90,6 +95,8 @@ class PatchChannelHeader(Gtk.Widget):
 
 
 class PatchChannelWidget(Gtk.Widget):
+    """Patch Channel widget"""
+
     __gtype_name__ = "PatchChannelWidget"
 
     def __init__(self, channel, patch):
@@ -106,15 +113,14 @@ class PatchChannelWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, _ev):
+        """Widget clicked"""
         App().patch_channels_tab.flowbox.unselect_all()
         child = App().patch_channels_tab.flowbox.get_child_at_index(self.channel - 1)
         App().window.set_focus(child)
         App().patch_channels_tab.flowbox.select_child(child)
-        # App().patch_channels_tab.last_out_selected = str(self.channels)
 
     def do_draw(self, cr):
-        # self.set_size_request(self.width, self.height)
-
+        """Draw widget"""
         # Draw Grey background if selected
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.2, 0.2, 0.2)
@@ -253,17 +259,17 @@ class PatchChannelWidget(Gtk.Widget):
                             )
                             cr.show_text("...")
                             break
-                        else:
-                            (_x, _y, w, h, _dx, _dy) = cr.text_extents(
-                                str(output) + "." + str(univ)
-                            )
-                            cr.move_to(
-                                65 + (j * 35) + (30 / 2) - w / 2,
-                                (30 / 2 - (h - 20) / 2) + 30,
-                            )
-                            cr.show_text(str(output) + "." + str(univ))
+                        (_x, _y, w, h, _dx, _dy) = cr.text_extents(
+                            str(output) + "." + str(univ)
+                        )
+                        cr.move_to(
+                            65 + (j * 35) + (30 / 2) - w / 2,
+                            (30 / 2 - (h - 20) / 2) + 30,
+                        )
+                        cr.show_text(str(output) + "." + str(univ))
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

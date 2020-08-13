@@ -1,3 +1,5 @@
+"""Group widget"""
+
 import cairo
 from gi.repository import Gtk, Gdk
 
@@ -6,6 +8,8 @@ from olc.widgets import rounded_rectangle_fill
 
 
 class GroupWidget(Gtk.Widget):
+    """Group widget"""
+
     __gtype_name__ = "GroupWidget"
 
     def __init__(self, index, number, name, grps):
@@ -21,6 +25,7 @@ class GroupWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, _ev):
+        """Group clicked"""
         App().group_tab.flowbox2.unselect_all()
         child = App().group_tab.flowbox2.get_child_at_index(self.index)
         App().window.set_focus(child)
@@ -29,7 +34,7 @@ class GroupWidget(Gtk.Widget):
         App().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
-
+        """Draw Group widget"""
         allocation = self.get_allocation()
 
         # paint background
@@ -65,6 +70,7 @@ class GroupWidget(Gtk.Widget):
             cr.show_text(self.name)
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

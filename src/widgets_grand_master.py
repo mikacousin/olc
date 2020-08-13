@@ -1,3 +1,5 @@
+"""Widget to show Grand Master level"""
+
 import cairo
 from gi.repository import Gtk, Gdk
 
@@ -6,6 +8,8 @@ from olc.widgets import rounded_rectangle
 
 
 class GMWidget(Gtk.Widget):
+    """Grand Master widget"""
+
     __gtype_name__ = "GMWidget"
 
     def __init__(self):
@@ -19,6 +23,7 @@ class GMWidget(Gtk.Widget):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
+        """Draw Grand Master widget"""
         if App().dmx.grand_master != 255:
             # Draw rounded box
             cr.set_source_rgb(0.7, 0.7, 0.7)
@@ -36,6 +41,7 @@ class GMWidget(Gtk.Widget):
             cr.show_text(self.label)
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

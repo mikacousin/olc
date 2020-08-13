@@ -1,3 +1,5 @@
+"""Patch Output Widget"""
+
 import cairo
 from gi.repository import Gtk, Gdk
 
@@ -6,6 +8,8 @@ from olc.widgets import rounded_rectangle_fill
 
 
 class PatchWidget(Gtk.Widget):
+    """Patch output widget"""
+
     __gtype_name__ = "PatchWidget"
 
     def __init__(self, universe, output, patch):
@@ -23,6 +27,7 @@ class PatchWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, _ev):
+        """Widget clicked"""
         # Deselect selected widgets
         App().window.flowbox.unselect_all()
         App().patch_outputs_tab.flowbox.unselect_all()
@@ -35,6 +40,7 @@ class PatchWidget(Gtk.Widget):
         App().patch_outputs_tab.last_out_selected = str(self.output)
 
     def do_draw(self, cr):
+        """Draw widget"""
         self.width = 60 * self.scale
         self.set_size_request(self.width, self.width)
         allocation = self.get_allocation()
@@ -125,6 +131,7 @@ class PatchWidget(Gtk.Widget):
             cr.show_text(text)
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

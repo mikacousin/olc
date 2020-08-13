@@ -141,7 +141,8 @@ disable=print-statement,
         comprehension-escape,
         C0330,
         C0413,
-	R0801
+        R0801,
+        arguments-differ # Pylint fails at this with the Gtk do_* methods, so no thanks.
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option

@@ -1,3 +1,5 @@
+"""Flash button widget for Virtual Console"""
+
 import cairo
 from gi.repository import Gtk, Gdk, GObject
 
@@ -6,6 +8,8 @@ from olc.widgets import rounded_rectangle_fill, rounded_rectangle
 
 
 class FlashWidget(Gtk.Widget):
+    """Flash widget"""
+
     __gtype_name__ = "FlashWidget"
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
@@ -30,15 +34,18 @@ class FlashWidget(Gtk.Widget):
         self.connect("button-release-event", self.on_release)
 
     def on_press(self, _tgt, _ev):
+        """Flash button pressed"""
         self.pressed = True
         self.queue_draw()
 
     def on_release(self, _tgt, _ev):
+        """Flash button released"""
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
 
     def do_draw(self, cr):
+        """Draw Flash button"""
         # Draw rounded box
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
@@ -74,6 +81,7 @@ class FlashWidget(Gtk.Widget):
         cr.show_text(self.label[6:12])
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

@@ -1,3 +1,5 @@
+"""Widgets for Track Channels Tab"""
+
 import cairo
 from gi.repository import Gtk, Gdk
 
@@ -6,6 +8,8 @@ from olc.widgets import rounded_rectangle_fill
 
 
 class TrackChannelsHeader(Gtk.Widget):
+    """Header widget"""
+
     __gtype_name__ = "TrackChannelsHeader"
 
     def __init__(self, channels):
@@ -19,7 +23,7 @@ class TrackChannelsHeader(Gtk.Widget):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
-
+        """Draw header"""
         # Draw Step box
         area = (0, 60, 0, 60)
         cr.set_source_rgb(0.2, 0.3, 0.2)
@@ -77,6 +81,7 @@ class TrackChannelsHeader(Gtk.Widget):
             cr.show_text(str(channel + 1))
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD
@@ -103,6 +108,8 @@ class TrackChannelsHeader(Gtk.Widget):
 
 
 class TrackChannelsWidget(Gtk.Widget):
+    """Track Channel widget"""
+
     __gtype_name__ = "TrackChannelsWidget"
 
     def __init__(self, step, memory, text, levels):
@@ -123,6 +130,7 @@ class TrackChannelsWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, event):
+        """Widget clicked"""
         App().track_channels_tab.flowbox.unselect_all()
         child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
         App().window.set_focus(child)
@@ -133,16 +141,14 @@ class TrackChannelsWidget(Gtk.Widget):
             App().track_channels_tab.channel_selected = chan
 
     def do_draw(self, cr):
-
+        """Draw widget"""
         self.set_size_request(535 + (len(self.levels) * 65), self.height)
 
-        """
         # Draw Grey background if selected
-        if self.get_parent().is_selected():
-            cr.set_source_rgb(0.2, 0.2, 0.2)
-            area = (0, 800, 0, 60)
-            rounded_rectangle_fill(cr, area, self.radius)
-        """
+        # if self.get_parent().is_selected():
+        #     cr.set_source_rgb(0.2, 0.2, 0.2)
+        #     area = (0, 800, 0, 60)
+        #     rounded_rectangle_fill(cr, area, self.radius)
 
         # Draw Step box
         area = (0, 60, 0, 60)
@@ -225,6 +231,7 @@ class TrackChannelsWidget(Gtk.Widget):
                 cr.show_text(level)
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD

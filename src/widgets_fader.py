@@ -1,3 +1,5 @@
+"""Fader Widget for Virtual Console"""
+
 from gi.repository import Gtk, Gdk, GObject
 
 from olc.define import App
@@ -5,6 +7,8 @@ from olc.widgets import rounded_rectangle_fill, rounded_rectangle
 
 
 class FaderWidget(Gtk.Scale):
+    """Fader widget, inherits from Gtk.scale"""
+
     __gtype_name__ = "FaderWidget"
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
@@ -25,6 +29,7 @@ class FaderWidget(Gtk.Scale):
         self.connect("button-release-event", self.on_release)
 
     def on_press(self, _tgt, _ev):
+        """Fader pressed"""
         self.pressed = True
         self.queue_draw()
 
@@ -32,11 +37,13 @@ class FaderWidget(Gtk.Scale):
             App().crossfade.manual = True
 
     def on_release(self, _tgt, _ev):
+        """Fader released"""
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
 
     def do_draw(self, cr):
+        """Draw Fader"""
         allocation = self.get_allocation()
         width = allocation.width
         height = allocation.height

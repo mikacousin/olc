@@ -1,3 +1,5 @@
+"""Go button for Virtual Console"""
+
 import cairo
 from gi.repository import Gtk, Gdk, GObject
 
@@ -6,6 +8,8 @@ from olc.widgets import rounded_rectangle_fill, rounded_rectangle
 
 
 class GoWidget(Gtk.Widget):
+    """Go button widget"""
+
     __gtype_name__ = "GoWidget"
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
@@ -27,15 +31,18 @@ class GoWidget(Gtk.Widget):
         self.connect("button-release-event", self.on_release)
 
     def on_press(self, _tgt, _ev):
+        """Go pressed"""
         self.pressed = True
         self.queue_draw()
 
     def on_release(self, _tgt, _ev):
+        """Go released"""
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
 
     def do_draw(self, cr):
+        """Draw Go button"""
         # Draw rounded box
         if self.pressed:
             if App().midi.midi_learn == "go":
@@ -62,6 +69,7 @@ class GoWidget(Gtk.Widget):
         cr.show_text("Go")
 
     def do_realize(self):
+        """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
         attr.window_type = Gdk.WindowType.CHILD
