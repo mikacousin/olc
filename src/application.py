@@ -483,20 +483,22 @@ class Application(Gtk.Application):
 
                     # Type : Sequence
                     elif self.masters[index].content_type == 3:
-                        if self.masters[index].content_value.is_integer():
-                            content_value = str(int(self.masters[index].content_value))
-                        else:
-                            content_value = str(self.masters[index].content_value)
+                        content_value = (
+                            str(int(self.masters[index].content_value))
+                            if self.masters[index].content_value.is_integer()
+                            else str(self.masters[index].content_value)
+                        )
                         self.masters_tab.liststore.append(
                             [index + 1, "Sequence", content_value, ""]
                         )
 
                     # Type : Group
                     elif self.masters[index].content_type == 13:
-                        if self.masters[index].content_value.is_integer():
-                            content_value = str(int(self.masters[index].content_value))
-                        else:
-                            content_value = str(self.masters[index].content_value)
+                        content_value = (
+                            str(int(self.masters[index].content_value))
+                            if self.masters[index].content_value.is_integer()
+                            else str(self.masters[index].content_value)
+                        )
                         self.masters_tab.liststore.append(
                             [index + 1, "Group", content_value, "Exclusif"]
                         )

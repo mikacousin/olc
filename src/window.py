@@ -302,30 +302,35 @@ class Window(Gtk.ApplicationWindow):
             ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
         )
         for i in range(App().sequence.last):
-            if App().sequence.steps[i].wait.is_integer():
-                wait = str(int(App().sequence.steps[i].wait))
-                if wait == "0":
-                    wait = ""
-            else:
-                wait = str(App().sequence.steps[i].wait)
-            if App().sequence.steps[i].time_out.is_integer():
-                t_out = int(App().sequence.steps[i].time_out)
-            else:
-                t_out = App().sequence.steps[i].time_out
-            if App().sequence.steps[i].delay_out.is_integer():
-                d_out = str(int(App().sequence.steps[i].delay_out))
-            else:
-                d_out = str(App().sequence.steps[i].delay_out)
+            wait = (
+                str(int(App().sequence.steps[i].wait))
+                if App().sequence.steps[i].wait.is_integer()
+                else str(App().sequence.steps[i].wait)
+            )
+            if wait == "0":
+                wait = ""
+            t_out = (
+                int(App().sequence.steps[i].time_out)
+                if App().sequence.steps[i].time_out.is_integer()
+                else App().sequence.steps[i].time_out
+            )
+            d_out = (
+                str(int(App().sequence.steps[i].delay_out))
+                if App().sequence.steps[i].delay_out.is_integer()
+                else str(App().sequence.steps[i].delay_out)
+            )
             if d_out == "0":
                 d_out = ""
-            if App().sequence.steps[i].time_in.is_integer():
-                t_in = int(App().sequence.steps[i].time_in)
-            else:
-                t_in = App().sequence.steps[i].time_in
-            if App().sequence.steps[i].delay_in.is_integer():
-                d_in = str(int(App().sequence.steps[i].delay_in))
-            else:
-                d_in = str(App().sequence.steps[i].delay_in)
+            t_in = (
+                int(App().sequence.steps[i].time_in)
+                if App().sequence.steps[i].time_in.is_integer()
+                else App().sequence.steps[i].time_in
+            )
+            d_in = (
+                str(int(App().sequence.steps[i].delay_in))
+                if App().sequence.steps[i].delay_in.is_integer()
+                else str(App().sequence.steps[i].delay_in)
+            )
             if d_in == "0":
                 d_in = ""
             channel_time = str(len(App().sequence.steps[i].channel_time))

@@ -1138,32 +1138,37 @@ class SequenceTab(Gtk.Grid):
 
     def add_step_to_liststore(self, step):
         """Add Step to the list"""
-        if self.seq.steps[step].wait.is_integer():
-            wait = str(int(self.seq.steps[step].wait))
-            if wait == "0":
-                wait = ""
-        else:
-            wait = str(self.seq.steps[step].wait)
-        if self.seq.steps[step].time_out.is_integer():
-            t_out = str(int(self.seq.steps[step].time_out))
-        else:
-            t_out = str(self.seq.steps[step].time_out)
-        if self.seq.steps[step].delay_out.is_integer():
-            d_out = str(int(self.seq.steps[step].delay_out))
-            if d_out == "0":
-                d_out = ""
-        else:
-            d_out = str(self.seq.steps[step].delay_out)
-        if self.seq.steps[step].time_in.is_integer():
-            t_in = str(int(self.seq.steps[step].time_in))
-        else:
-            t_in = str(self.seq.steps[step].time_in)
-        if self.seq.steps[step].delay_in.is_integer():
-            d_in = str(int(self.seq.steps[step].delay_in))
-            if d_in == "0":
-                d_in = ""
-        else:
-            d_in = str(self.seq.steps[step].delay_in)
+        wait = (
+            str(int(self.seq.steps[step].wait))
+            if self.seq.steps[step].wait.is_integer()
+            else str(self.seq.steps[step].wait)
+        )
+        if wait == "0":
+            wait = ""
+        t_out = (
+            str(int(self.seq.steps[step].time_out))
+            if self.seq.steps[step].time_out.is_integer()
+            else str(self.seq.steps[step].time_out)
+        )
+        d_out = (
+            str(int(self.seq.steps[step].delay_out))
+            if self.seq.steps[step].delay_out.is_integer()
+            else str(self.seq.steps[step].delay_out)
+        )
+        if d_out == "0":
+            d_out = ""
+        t_in = (
+            str(int(self.seq.steps[step].time_in))
+            if self.seq.steps[step].time_in.is_integer()
+            else str(self.seq.steps[step].time_in)
+        )
+        d_in = (
+            str(int(self.seq.steps[step].delay_in))
+            if self.seq.steps[step].delay_in.is_integer()
+            else str(self.seq.steps[step].delay_in)
+        )
+        if d_in == "0":
+            d_in = ""
         channel_time = str(len(self.seq.steps[step].channel_time))
         if channel_time == "0":
             channel_time = ""

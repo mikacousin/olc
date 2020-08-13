@@ -66,21 +66,20 @@ class ChanneltimeTab(Gtk.Paned):
         self.step = self.sequence.steps[int(position)]
 
         for channel in self.step.channel_time.keys():
-
-            if self.step.channel_time[channel].delay.is_integer():
-                delay = str(int(self.step.channel_time[channel].delay))
-                if delay == "0":
-                    delay = ""
-            else:
-                delay = str(self.step.channel_time[channel].delay)
-
-            if self.step.channel_time[channel].time.is_integer():
-                time = str(int(self.step.channel_time[channel].time))
-                if time == "0":
-                    time = ""
-            else:
-                time = str(self.step.channel_time[channel].time)
-
+            delay = (
+                str(int(self.step.channel_time[channel].delay))
+                if self.step.channel_time[channel].delay.is_integer()
+                else str(self.step.channel_time[channel].delay)
+            )
+            if delay == "0":
+                delay = ""
+            time = (
+                str(int(self.step.channel_time[channel].time))
+                if self.step.channel_time[channel].time.is_integer()
+                else str(self.step.channel_time[channel].time)
+            )
+            if time == "0":
+                time = ""
             self.liststore.append([channel, delay, time])
 
         self.treeview = Gtk.TreeView(model=self.liststore)
@@ -125,18 +124,20 @@ class ChanneltimeTab(Gtk.Paned):
                 # Redraw list of Channel Time
                 self.liststore.clear()
                 for channel in self.step.channel_time.keys():
-                    if self.step.channel_time[channel].delay.is_integer():
-                        delay = str(int(self.step.channel_time[channel].delay))
-                        if delay == "0":
-                            delay = ""
-                    else:
-                        delay = str(self.step.channel_time[channel].delay)
-                    if self.step.channel_time[channel].time.is_integer():
-                        time = str(int(self.step.channel_time[channel].time))
-                        if time == "0":
-                            time = ""
-                    else:
-                        time = str(self.step.channel_time[channel].time)
+                    delay = (
+                        str(int(self.step.channel_time[channel].delay))
+                        if self.step.channel_time[channel].delay.is_integer()
+                        else str(self.step.channel_time[channel].delay)
+                    )
+                    if delay == "0":
+                        delay = ""
+                    time = (
+                        str(int(self.step.channel_time[channel].time))
+                        if self.step.channel_time[channel].time.is_integer()
+                        else str(self.step.channel_time[channel].time)
+                    )
+                    if time == "0":
+                        time = ""
                     self.liststore.append([channel, delay, time])
                     self.treeview.set_model(self.liststore)
             else:
@@ -203,18 +204,20 @@ class ChanneltimeTab(Gtk.Paned):
                 # Redraw List of Channel Time
                 self.liststore.clear()
                 for channel in self.step.channel_time.keys():
-                    if self.step.channel_time[channel].delay.is_integer():
-                        delay = str(int(self.step.channel_time[channel].delay))
-                        if delay == "0":
-                            delay = ""
-                    else:
-                        delay = str(self.step.channel_time[channel].delay)
-                    if self.step.channel_time[channel].time.is_integer():
-                        time = str(int(self.step.channel_time[channel].time))
-                        if time == "0":
-                            time = ""
-                    else:
-                        time = str(self.step.channel_time[channel].time)
+                    delay = (
+                        str(int(self.step.channel_time[channel].delay))
+                        if self.step.channel_time[channel].delay.is_integer()
+                        else str(self.step.channel_time[channel].delay)
+                    )
+                    if delay == "0":
+                        delay = ""
+                    time = (
+                        str(int(self.step.channel_time[channel].time))
+                        if self.step.channel_time[channel].time.is_integer()
+                        else str(self.step.channel_time[channel].time)
+                    )
+                    if time == "0":
+                        time = ""
                     self.liststore.append([channel, delay, time])
                     self.treeview.set_model(self.liststore)
             else:

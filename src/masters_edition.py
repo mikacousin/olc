@@ -124,17 +124,19 @@ class MastersTab(Gtk.Paned):
                     self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
                 # Type : Sequence
                 elif App().masters[index].content_type == 3:
-                    if App().masters[index].content_value.is_integer():
-                        content_value = str(int(App().masters[index].content_value))
-                    else:
-                        content_value = str(App().masters[index].content_value)
+                    content_value = (
+                        str(int(App().masters[index].content_value))
+                        if App().masters[index].content_value.is_integer()
+                        else str(App().masters[index].content_value)
+                    )
                     self.liststore.append([index + 1, "Sequence", content_value, ""])
                 # Type : Group
                 elif App().masters[index].content_type == 13:
-                    if App().masters[index].content_value.is_integer():
-                        content_value = str(int(App().masters[index].content_value))
-                    else:
-                        content_value = str(App().masters[index].content_value)
+                    content_value = (
+                        str(int(App().masters[index].content_value))
+                        if App().masters[index].content_value.is_integer()
+                        else str(App().masters[index].content_value)
+                    )
                     self.liststore.append(
                         [index + 1, "Group", content_value, "Exclusif"]
                     )
