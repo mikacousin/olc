@@ -12,16 +12,14 @@ class PatchWidget(Gtk.Widget):
 
     __gtype_name__ = "PatchWidget"
 
-    def __init__(self, universe, output, patch):
+    def __init__(self, universe, output):
 
-        self.type = "Output"
         self.universe = universe
         self.output = output
-        self.patch = patch
 
         Gtk.Widget.__init__(self)
         self.scale = 1.0
-        self.width = 60 * self.scale
+        self.width = 50 * self.scale
         self.set_size_request(self.width, self.width)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
@@ -41,35 +39,46 @@ class PatchWidget(Gtk.Widget):
 
     def do_draw(self, cr):
         """Draw widget"""
-        self.width = 60 * self.scale
+        self.width = 50 * self.scale
         self.set_size_request(self.width, self.width)
         allocation = self.get_allocation()
-        # paint background
-        area = (0, allocation.width, 0, allocation.height)
+        # Draw background
+        self._draw_background(cr, allocation)
+        # Draw output number
+        self._draw_output_number(cr, allocation)
+        # Draw channel number if patched
+        if App().patch.outputs[self.universe][self.output - 1][0] != 0:
+            self._draw_channel_number(cr, allocation)
+        # Draw Output level
+        self._draw_output_level(cr, allocation)
+        # Draw Proportional Level
+        self._draw_proportional_level(cr, allocation)
 
+    def _draw_background(self, cr, allocation):
+        """Draw background"""
+        area = (0, allocation.width, 0, allocation.height)
         if (
-            self.patch.outputs[self.universe][self.output - 1][1] == 0
-            and self.patch.outputs[self.universe][self.output - 1][0] != 0
+            App().patch.outputs[self.universe][self.output - 1][1] == 0
+            and App().patch.outputs[self.universe][self.output - 1][0] != 0
         ):
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.8, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.1, 0.1)
             rounded_rectangle_fill(cr, area, 10)
-
-        elif self.patch.outputs[self.universe][self.output - 1][0] != 0:
+        elif App().patch.outputs[self.universe][self.output - 1][0] != 0:
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
             rounded_rectangle_fill(cr, area, 10)
-
         else:
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
                 rounded_rectangle_fill(cr, area, 10)
 
-        # draw output number
+    def _draw_output_number(self, cr, allocation):
+        """Draw Output number"""
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
@@ -80,20 +89,21 @@ class PatchWidget(Gtk.Widget):
         )
         cr.show_text(text)
 
-        if self.patch.outputs[self.universe][self.output - 1][0] != 0:
-            # draw channel number
-            cr.set_source_rgb(0.9, 0.6, 0.2)
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-            cr.set_font_size(12 * self.scale)
-            text = str(self.patch.outputs[self.universe][self.output - 1][0])
-            (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-            cr.move_to(
-                allocation.width / 2 - width / 2,
-                3 * (allocation.height / 4 - (height - 20) / 4),
-            )
-            cr.show_text(text)
+    def _draw_channel_number(self, cr, allocation):
+        """Draw Channel number"""
+        cr.set_source_rgb(0.9, 0.6, 0.2)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.set_font_size(12 * self.scale)
+        text = str(App().patch.outputs[self.universe][self.output - 1][0])
+        (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
+        cr.move_to(
+            allocation.width / 2 - width / 2,
+            3 * (allocation.height / 4 - (height - 20) / 4),
+        )
+        cr.show_text(text)
 
-        # Draw Output level
+    def _draw_output_level(self, cr, allocation):
+        """Draw Output level"""
         if App().dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
@@ -106,17 +116,18 @@ class PatchWidget(Gtk.Widget):
             )
             cr.show_text(text)
 
-        # Draw Proportional Level
+    def _draw_proportional_level(self, cr, allocation):
+        """Draw Proportional Level"""
         if (
-            self.patch.outputs[self.universe][self.output - 1][1] != 100
-            and self.patch.outputs[self.universe][self.output - 1][0] != 0
+            App().patch.outputs[self.universe][self.output - 1][1] != 100
+            and App().patch.outputs[self.universe][self.output - 1][0] != 0
         ):
             cr.rectangle(
                 allocation.width - 9,
                 allocation.height - 2,
                 6 * self.scale,
                 -((50 / 100) * self.scale)
-                * self.patch.outputs[self.universe][self.output - 1][1],
+                * App().patch.outputs[self.universe][self.output - 1][1],
             )
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.8, 0.1, 0.1)
@@ -126,7 +137,7 @@ class PatchWidget(Gtk.Widget):
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.set_font_size(8 * self.scale)
-            text = str(self.patch.outputs[self.universe][self.output - 1][1]) + "%"
+            text = str(App().patch.outputs[self.universe][self.output - 1][1]) + "%"
             cr.move_to(allocation.width - 20, allocation.height - 2)
             cr.show_text(text)
 

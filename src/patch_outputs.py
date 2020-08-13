@@ -44,7 +44,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         for universe in range(NB_UNIVERSES):
             for i in range(512):
-                self.outputs.append(PatchWidget(universe, i + 1, App().patch))
+                self.outputs.append(PatchWidget(universe, i + 1))
         for output in self.outputs:
             self.flowbox.add(output)
 
@@ -56,9 +56,7 @@ class PatchOutputsTab(Gtk.Grid):
         self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
     def filter_func(self, child, _user_data):
-        if child.get_children()[0].type == "Output":
-            return child
-        return False
+        return child
 
     def on_scroll(self, _widget, event):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
