@@ -126,7 +126,6 @@ class PatchChannelWidget(Gtk.Widget):
             cr.set_source_rgb(0.2, 0.2, 0.2)
             area = (0, 800, 0, 60)
             rounded_rectangle_fill(cr, area, self.radius)
-
         # Draw channel box
         area = (0, 60, 0, 60)
         if self.get_parent().is_selected():
@@ -134,8 +133,13 @@ class PatchChannelWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         rounded_rectangle_fill(cr, area, self.radius)
-
         # Draw Channel number
+        self._draw_channel_number(cr)
+        # Draw outputs boxes
+        self._draw_output_boxes(cr)
+
+    def _draw_channel_number(self, cr):
+        """Draw Channel number"""
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
@@ -178,95 +182,101 @@ class PatchChannelWidget(Gtk.Widget):
         cr.close_path()
         cr.stroke()
 
-        # Draw outputs boxes
+    def _draw_output_boxes(self, cr):
+        """Draw outputs boxes"""
         nb_outputs = len(self.patch.channels[self.channel - 1])
 
         if nb_outputs <= 8:
-            for i, item in enumerate(self.patch.channels[self.channel - 1]):
-                univ = item[1]
-                output = item[0]
-                if output != 0:
-                    area = (65 + (i * 65), 125 + (i * 65), 0, 60)
-                    if self.get_parent().is_selected():
-                        cr.set_source_rgb(0.4, 0.5, 0.4)
-                    else:
-                        cr.set_source_rgb(0.3, 0.4, 0.3)
-                    cr.move_to(65 + (i * 65), 0)
-                    rounded_rectangle_fill(cr, area, self.radius)
+            self._draw_one_line(cr)
+        else:
+            # If more than 8 outputs
+            self._draw_two_lines(cr)
+
+    def _draw_one_line(self, cr):
+        """Draw Outputs on a single line"""
+        for i, item in enumerate(self.patch.channels[self.channel - 1]):
+            univ = item[1]
+            output = item[0]
+            if output != 0:
+                area = (65 + (i * 65), 125 + (i * 65), 0, 60)
+                if self.get_parent().is_selected():
+                    cr.set_source_rgb(0.4, 0.5, 0.4)
+                else:
+                    cr.set_source_rgb(0.3, 0.4, 0.3)
+                cr.move_to(65 + (i * 65), 0)
+                rounded_rectangle_fill(cr, area, self.radius)
+
+                # Draw Output number
+                cr.set_source_rgb(0.9, 0.9, 0.9)
+                cr.select_font_face(
+                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                )
+                cr.set_font_size(12)
+                (_x, _y, w, h, _dx, _dy) = cr.text_extents(
+                    str(output) + "." + str(univ)
+                )
+                cr.move_to(65 + (i * 65) + (60 / 2) - w / 2, 60 / 2 - (h - 20) / 2)
+                cr.show_text(str(output) + "." + str(univ))
+
+    def _draw_two_lines(self, cr):
+        """Draw Outputs on two lines"""
+        line = 0
+        for i, item in enumerate(self.patch.channels[self.channel - 1]):
+            if i > 14:
+                line = 2
+            output = item[0]
+            univ = item[1]
+            if output != 0:
+                if self.get_parent().is_selected():
+                    cr.set_source_rgb(0.4, 0.5, 0.4)
+                else:
+                    cr.set_source_rgb(0.3, 0.4, 0.3)
+                if line == 0:
+                    # First line
+                    area = (65 + (i * 35), 95 + (i * 35), 0, 30)
+                    cr.move_to(65 + (i * 35), 0)
+                    rounded_rectangle_fill(cr, area, self.radius / 2)
 
                     # Draw Output number
                     cr.set_source_rgb(0.9, 0.9, 0.9)
                     cr.select_font_face(
                         "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                     )
-                    cr.set_font_size(12)
+                    cr.set_font_size(10)
                     (_x, _y, w, h, _dx, _dy) = cr.text_extents(
                         str(output) + "." + str(univ)
                     )
-                    cr.move_to(65 + (i * 65) + (60 / 2) - w / 2, 60 / 2 - (h - 20) / 2)
+                    cr.move_to(65 + (i * 35) + (30 / 2) - w / 2, 30 / 2 - (h - 20) / 2)
                     cr.show_text(str(output) + "." + str(univ))
-        else:
-            # If more than 8 outputs
-            line = 0
-            for i, item in enumerate(self.patch.channels[self.channel - 1]):
-                if i > 14:
-                    line = 2
-                output = item[0]
-                univ = item[1]
-                if output != 0:
-                    if self.get_parent().is_selected():
-                        cr.set_source_rgb(0.4, 0.5, 0.4)
-                    else:
-                        cr.set_source_rgb(0.3, 0.4, 0.3)
-                    if line == 0:
-                        # First line
-                        area = (65 + (i * 35), 95 + (i * 35), 0, 30)
-                        cr.move_to(65 + (i * 35), 0)
-                        rounded_rectangle_fill(cr, area, self.radius / 2)
+                else:
+                    # Second line
+                    j = i - 15
+                    area = (65 + (j * 35), 95 + (j * 35), 30, 60)
+                    cr.move_to(65 + (j * 35), 30)
+                    rounded_rectangle_fill(cr, area, self.radius / 2)
 
-                        # Draw Output number
-                        cr.set_source_rgb(0.9, 0.9, 0.9)
-                        cr.select_font_face(
-                            "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                        )
-                        cr.set_font_size(10)
-                        (_x, _y, w, h, _dx, _dy) = cr.text_extents(
-                            str(output) + "." + str(univ)
-                        )
-                        cr.move_to(
-                            65 + (i * 35) + (30 / 2) - w / 2, 30 / 2 - (h - 20) / 2
-                        )
-                        cr.show_text(str(output) + "." + str(univ))
-                    else:
-                        # Second line
-                        j = i - 15
-                        area = (65 + (j * 35), 95 + (j * 35), 30, 60)
-                        cr.move_to(65 + (j * 35), 30)
-                        rounded_rectangle_fill(cr, area, self.radius / 2)
-
-                        # Draw Output number
-                        cr.set_source_rgb(0.9, 0.9, 0.9)
-                        cr.select_font_face(
-                            "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                        )
-                        cr.set_font_size(10)
-                        if i == 29:
-                            # Draw '...' in the last box
-                            (_x, _y, w, h, _dx, _dy) = cr.text_extents("...")
-                            cr.move_to(
-                                65 + (j * 35) + (30 / 2) - w / 2,
-                                (30 / 2 - (h - 20) / 2) + 30,
-                            )
-                            cr.show_text("...")
-                            break
-                        (_x, _y, w, h, _dx, _dy) = cr.text_extents(
-                            str(output) + "." + str(univ)
-                        )
+                    # Draw Output number
+                    cr.set_source_rgb(0.9, 0.9, 0.9)
+                    cr.select_font_face(
+                        "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    )
+                    cr.set_font_size(10)
+                    if i == 29:
+                        # Draw '...' in the last box
+                        (_x, _y, w, h, _dx, _dy) = cr.text_extents("...")
                         cr.move_to(
                             65 + (j * 35) + (30 / 2) - w / 2,
                             (30 / 2 - (h - 20) / 2) + 30,
                         )
-                        cr.show_text(str(output) + "." + str(univ))
+                        cr.show_text("...")
+                        break
+                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(
+                        str(output) + "." + str(univ)
+                    )
+                    cr.move_to(
+                        65 + (j * 35) + (30 / 2) - w / 2, (30 / 2 - (h - 20) / 2) + 30,
+                    )
+                    cr.show_text(str(output) + "." + str(univ))
 
     def do_realize(self):
         """Realize widget"""
