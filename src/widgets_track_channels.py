@@ -123,8 +123,6 @@ class TrackChannelsWidget(Gtk.Widget):
         self.height = 60
         self.radius = 10
 
-        self.percent_level = App().settings.get_boolean("percent")
-
         self.set_size_request(self.width, self.height)
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
@@ -150,14 +148,24 @@ class TrackChannelsWidget(Gtk.Widget):
         #     area = (0, 800, 0, 60)
         #     rounded_rectangle_fill(cr, area, self.radius)
 
-        # Draw Step box
+        # Draw Step number box
+        self._draw_step_box(cr)
+        # Draw Cue number box
+        self._draw_cue_box(cr)
+        # Draw Text box
+        self._draw_text_box(cr)
+        # Draw level boxex
+        self._draw_level_boxes(cr)
+
+    def _draw_step_box(self, cr):
+        """Draw Step box"""
+        # Draw box
         area = (0, 60, 0, 60)
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         rounded_rectangle_fill(cr, area, self.radius)
-
         # Draw Step number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
@@ -166,7 +174,9 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.step))
 
-        # Draw Memory box
+    def _draw_cue_box(self, cr):
+        """Draw cue box"""
+        # Draw box
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
         if self.get_parent().is_selected():
@@ -174,7 +184,6 @@ class TrackChannelsWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         rounded_rectangle_fill(cr, area, self.radius)
-
         # Draw Memory number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
@@ -183,7 +192,9 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.memory))
 
-        # Draw Text box
+    def _draw_text_box(self, cr):
+        """Draw text box"""
+        # Draw box
         cr.move_to(130, 0)
         area = (130, 530, 0, 60)
         if self.get_parent().is_selected():
@@ -191,17 +202,18 @@ class TrackChannelsWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         rounded_rectangle_fill(cr, area, self.radius)
-
         # Draw Text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.text)
+        (_x, _y, _w, h, _dx, _dy) = cr.text_extents(self.text)
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
         cr.show_text(self.text)
 
+    def _draw_level_boxes(self, cr):
+        """Draw Level boxes"""
         for i, lvl in enumerate(self.levels):
-            # Draw Level boxes
+            # Draw boxes
             cr.move_to(535 + (i * 65), 0)
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
             if (
@@ -217,7 +229,7 @@ class TrackChannelsWidget(Gtk.Widget):
             if lvl:
                 level = (
                     str(int(round(((lvl / 255) * 100))))
-                    if self.percent_level
+                    if App().settings.get_boolean("percent")
                     else str(lvl)
                 )
 
