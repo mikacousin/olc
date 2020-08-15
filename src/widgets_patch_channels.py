@@ -195,7 +195,6 @@ class PatchChannelWidget(Gtk.Widget):
     def _draw_one_line(self, cr):
         """Draw Outputs on a single line"""
         for i, item in enumerate(self.patch.channels[self.channel - 1]):
-            univ = item[1]
             output = item[0]
             if output != 0:
                 area = (65 + (i * 65), 125 + (i * 65), 0, 60)
@@ -212,6 +211,7 @@ class PatchChannelWidget(Gtk.Widget):
                     "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                 )
                 cr.set_font_size(12)
+                univ = item[1]
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(
                     str(output) + "." + str(univ)
                 )
@@ -225,12 +225,12 @@ class PatchChannelWidget(Gtk.Widget):
             if i > 14:
                 line = 2
             output = item[0]
-            univ = item[1]
             if output != 0:
                 if self.get_parent().is_selected():
                     cr.set_source_rgb(0.4, 0.5, 0.4)
                 else:
                     cr.set_source_rgb(0.3, 0.4, 0.3)
+                univ = item[1]
                 if line == 0:
                     # First line
                     area = (65 + (i * 35), 95 + (i * 35), 0, 30)
@@ -247,7 +247,6 @@ class PatchChannelWidget(Gtk.Widget):
                         str(output) + "." + str(univ)
                     )
                     cr.move_to(65 + (i * 35) + (30 / 2) - w / 2, 30 / 2 - (h - 20) / 2)
-                    cr.show_text(str(output) + "." + str(univ))
                 else:
                     # Second line
                     j = i - 15
@@ -276,7 +275,8 @@ class PatchChannelWidget(Gtk.Widget):
                     cr.move_to(
                         65 + (j * 35) + (30 / 2) - w / 2, (30 / 2 - (h - 20) / 2) + 30,
                     )
-                    cr.show_text(str(output) + "." + str(univ))
+
+                cr.show_text(str(output) + "." + str(univ))
 
     def do_realize(self):
         """Realize widget"""
