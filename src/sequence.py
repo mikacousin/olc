@@ -537,11 +537,10 @@ class ThreadGo(threading.Thread):
         ) * i
         GLib.idle_add(App().window.sequential.queue_draw)
         # Move Virtual Console's XFade
-        if App().virtual_console:
-            if App().virtual_console.props.visible:
-                val = round((255 / self.total_time) * i)
-                GLib.idle_add(App().virtual_console.scale_a.set_value, val)
-                GLib.idle_add(App().virtual_console.scale_b.set_value, val)
+        if App().virtual_console and App().virtual_console.props.visible:
+            val = round((255 / self.total_time) * i)
+            GLib.idle_add(App().virtual_console.scale_a.set_value, val)
+            GLib.idle_add(App().virtual_console.scale_b.set_value, val)
         # Wait for wait time
         if i > self.wait:
             for channel in range(MAX_CHANNELS):
@@ -631,7 +630,7 @@ class ThreadGo(threading.Thread):
                     )
                     + old_level
                 )
-            elif i >= ct_delay + ct_time + self.wait:
+            else:
                 level = next_level
         else:
             if i < ct_delay + self.wait:
@@ -643,7 +642,7 @@ class ThreadGo(threading.Thread):
                         * (i - ct_delay - self.wait)
                     )
                 )
-            elif i >= ct_delay + ct_time + self.wait:
+            else:
                 level = next_level
         return level
 
