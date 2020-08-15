@@ -1,3 +1,5 @@
+"""A Sequence is a collection of Steps"""
+
 import array
 import threading
 import time
@@ -9,6 +11,7 @@ from olc.step import Step
 
 
 def update_ui(position, subtitle):
+    """Update UI when Step is in scene"""
     # Update Sequential Tab
     App().window.update_active_cues_display()
     App().window.seq_grid.queue_draw()
@@ -28,7 +31,7 @@ def update_ui(position, subtitle):
 
 
 def update_channels(position):
-    # Update levels of main window channels
+    """Update levels of main window channels"""
     for channel in range(MAX_CHANNELS):
         level = App().sequence.steps[position].cue.channels[channel]
         if (
@@ -48,6 +51,8 @@ def update_channels(position):
 
 
 class Sequence:
+    """Sequence"""
+
     def __init__(self, index, type_seq="Normal", text=""):
         self.index = index
         self.type_seq = type_seq
@@ -55,9 +60,9 @@ class Sequence:
         self.steps = []
         self.position = 0
         self.last = 0
-        # Flag pour savoir si on a un Go en cours
+        # Flag to know if we have a Go in progress
         self.on_go = False
-        # Liste des channels présent dans le sequentiel
+        # Channels present in this sequence
         self.channels = array.array("B", [0] * MAX_CHANNELS)
         # Flag for chasers
         self.run = False
@@ -72,6 +77,7 @@ class Sequence:
         self.add_step(step)
 
     def add_step(self, step):
+        """Add step at the end"""
         self.steps.append(step)
         self.last = len(self.steps)
         # Channels used in sequential
@@ -80,6 +86,7 @@ class Sequence:
                 self.channels[channel] = 1
 
     def insert_step(self, index, step):
+        """Insert step at index"""
         self.steps.insert(index, step)
         self.last = len(self.steps)
         # Channels used in sequential
@@ -97,6 +104,7 @@ class Sequence:
             found (bool), step (int)
         """
         found = False
+        step = 0
         # Cue already exist ?
         for step, item in enumerate(self.steps):
             if item.cue.memory == cue:
@@ -306,6 +314,7 @@ class Sequence:
                 break
 
     def go(self, _action, _param):
+        """Go"""
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if App().sequence.on_go and App().sequence.thread:
             # Stop actual Thread
@@ -368,7 +377,7 @@ class Sequence:
             App().sequence.thread.start()
 
     def go_back(self, _action, _param):
-
+        """Go Back"""
         # Just return if we are at the beginning
         position = App().sequence.position
         if position == 0:
@@ -422,69 +431,34 @@ class Sequence:
 class ThreadGo(threading.Thread):
     """Thread object for Go"""
 
-    def __init__(self, name=""):
+    def __init__(self):
         threading.Thread.__init__(self)
-        self.name = name
         self._stopevent = threading.Event()
         # To save dmx levels when user send Go
         self.dmxlevels = []
         for _univ in range(NB_UNIVERSES):
             self.dmxlevels.append(array.array("B", [0] * 512))
+        next_step = App().sequence.position + 1
+        self.total_time = App().sequence.steps[next_step].total_time * 1000
+        self.time_in = App().sequence.steps[next_step].time_in * 1000
+        self.time_out = App().sequence.steps[next_step].time_out * 1000
+        self.wait = App().sequence.steps[next_step].wait * 1000
+        self.delay_in = App().sequence.steps[next_step].delay_in * 1000
+        self.delay_out = App().sequence.steps[next_step].delay_out * 1000
 
     def run(self):
-        # Position dans le séquentiel
-        position = App().sequence.position
-
         # Levels when Go is sent
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 self.dmxlevels[univ][output] = App().dmx.frame[univ][output]
 
-        # If sequential is empty, just return
-        if App().sequence.last == 0:
-            return
-
-        # On récupère les temps de montée et de descente de la mémoire suivante
-        t_in = App().sequence.steps[position + 1].time_in
-        t_out = App().sequence.steps[position + 1].time_out
-        d_in = App().sequence.steps[position + 1].delay_in
-        d_out = App().sequence.steps[position + 1].delay_out
-        t_wait = App().sequence.steps[position + 1].wait
-        t_total = App().sequence.steps[position + 1].total_time
-
-        # Quel est le temps le plus long
-        if t_in + d_in > t_out + d_out:
-            t_max = t_in + d_in
-            t_min = t_out + d_out
-        else:
-            t_max = t_out + d_out
-            t_min = t_in + d_in
-
-        t_max = t_max + t_wait
-        t_min = t_min + t_wait
-
         start_time = time.time() * 1000  # actual time in ms
-        delay = t_total * 1000
-        delay_in = t_in * 1000
-        delay_out = t_out * 1000
-        delay_wait = t_wait * 1000
-        delay_d_in = d_in * 1000
-        delay_d_out = d_out * 1000
         i = (time.time() * 1000) - start_time
 
-        # Boucle sur le temps de montée ou de descente (le plus grand)
-        while i < delay and not self._stopevent.isSet():
+        # Loop on total time
+        while i < self.total_time and not self._stopevent.isSet():
             # Update DMX levels
-            self.update_levels(
-                delay,
-                delay_in,
-                delay_out,
-                delay_d_in,
-                delay_d_out,
-                delay_wait,
-                i,
-                position,
-            )
+            self.update_levels(i)
             # Sleep for 50ms
             time.sleep(0.05)
             i = (time.time() * 1000) - start_time
@@ -498,273 +472,190 @@ class ThreadGo(threading.Thread):
             for output in range(512):
                 channel = App().patch.outputs[univ][output][0]
                 if channel:
-                    if position < App().sequence.last - 1:
+                    if App().sequence.position < App().sequence.last - 1:
                         level = (
-                            App().sequence.steps[position + 1].cue.channels[channel - 1]
+                            App()
+                            .sequence.steps[App().sequence.position + 1]
+                            .cue.channels[channel - 1]
                         )
                     else:
                         level = App().sequence.steps[0].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
+                    App().dmx.frame[univ][output] = level
 
-        # Le Go est terminé
+        # Go is completed
         # App().dmx.send()
         App().sequence.on_go = False
-        # On vide le tableau des valeurs entrées par l'utilisateur
+        # Empty DMX user array
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
 
-        # On se positionne à la mémoire suivante
-        position = App().sequence.position
-        position += 1
+        # Next step
+        next_step = App().sequence.position + 1
 
-        # Si elle existe
-        if position < App().sequence.last - 1:
+        # If there is a next step
+        if next_step < App().sequence.last - 1:
             App().sequence.position += 1
-            t_in = App().sequence.steps[position + 1].time_in
-            t_out = App().sequence.steps[position + 1].time_out
-            d_in = App().sequence.steps[position + 1].delay_in
-            d_out = App().sequence.steps[position + 1].delay_out
-            t_wait = App().sequence.steps[position + 1].wait
-            App().window.sequential.total_time = (
-                App().sequence.steps[position + 1].total_time
-            )
-            App().window.sequential.time_in = t_in
-            App().window.sequential.time_out = t_out
-            App().window.sequential.delay_in = d_in
-            App().window.sequential.delay_out = d_out
-            App().window.sequential.wait = t_wait
-            App().window.sequential.channel_time = (
-                App().sequence.steps[position + 1].channel_time
-            )
-            App().window.sequential.position_a = 0
-            App().window.sequential.position_b = 0
-
-            # Set main window's subtitle
-            subtitle = (
-                "Mem. : "
-                + str(App().sequence.steps[position].cue.memory)
-                + " "
-                + App().sequence.steps[position].text
-                + " - Next Mem. : "
-                + str(App().sequence.steps[position + 1].cue.memory)
-                + " "
-                + App().sequence.steps[position + 1].text
-            )
-
-            # Update Gtk in the main thread
-            GLib.idle_add(update_ui, position, subtitle)
-
-            # Si la mémoire a un Wait
-            if App().sequence.steps[position + 1].wait:
-                App().sequence.go(None, None)
-
-        # Sinon, on revient au début
+            next_step += 1
+        # If no next step, go to beggining
         else:
             App().sequence.position = 0
-            position = 0
-            t_in = App().sequence.steps[position + 1].time_in
-            t_out = App().sequence.steps[position + 1].time_out
-            d_in = App().sequence.steps[position + 1].delay_in
-            d_out = App().sequence.steps[position + 1].delay_out
-            t_wait = App().sequence.steps[position + 1].wait
-            App().window.sequential.total_time = (
-                App().sequence.steps[position + 1].total_time
-            )
-            App().window.sequential.time_in = t_in
-            App().window.sequential.time_out = t_out
-            App().window.sequential.delay_in = d_in
-            App().window.sequential.delay_out = d_out
-            App().window.sequential.wait = t_wait
-            App().window.sequential.channel_time = (
-                App().sequence.steps[position + 1].channel_time
-            )
-            App().window.sequential.position_a = 0
-            App().window.sequential.position_b = 0
+            next_step = 1
 
-            # Set main window's subtitle
-            subtitle = (
-                "Mem. : "
-                + str(App().sequence.steps[position].cue.memory)
-                + " "
-                + App().sequence.steps[position].text
-                + " - Next Mem. : "
-                + str(App().sequence.steps[position + 1].cue.memory)
-                + " "
-                + App().sequence.steps[position + 1].text
-            )
+        App().window.sequential.total_time = App().sequence.steps[next_step].total_time
+        App().window.sequential.time_in = App().sequence.steps[next_step].time_in
+        App().window.sequential.time_out = App().sequence.steps[next_step].time_out
+        App().window.sequential.delay_in = App().sequence.steps[next_step].delay_in
+        App().window.sequential.delay_out = App().sequence.steps[next_step].delay_out
+        App().window.sequential.wait = App().sequence.steps[next_step].wait
+        App().window.sequential.channel_time = (
+            App().sequence.steps[next_step].channel_time
+        )
+        App().window.sequential.position_a = 0
+        App().window.sequential.position_b = 0
 
-            # Update Gtk in the main thread
-            GLib.idle_add(update_ui, position, subtitle)
+        # Set main window's subtitle
+        subtitle = (
+            "Mem. : "
+            + str(App().sequence.steps[App().sequence.position].cue.memory)
+            + " "
+            + App().sequence.steps[App().sequence.position].text
+            + " - Next Mem. : "
+            + str(App().sequence.steps[next_step].cue.memory)
+            + " "
+            + App().sequence.steps[next_step].text
+        )
+
+        # Update Gtk in main thread
+        GLib.idle_add(update_ui, App().sequence.position, subtitle)
+
+        # Wait, launch next step
+        if App().sequence.steps[next_step].wait:
+            App().sequence.go(None, None)
 
     def stop(self):
+        """Stop"""
         self._stopevent.set()
 
-    def update_levels(
-        self,
-        delay,
-        delay_in,
-        delay_out,
-        delay_d_in,
-        delay_d_out,
-        delay_wait,
-        i,
-        position,
-    ):
+    def update_levels(self, i):
+        """Update levels"""
         # Update sliders position
-        # Get width of the sequential widget to place cursors correctly
-        allocation = App().window.sequential.get_allocation()
-        App().window.sequential.position_a = ((allocation.width - 32) / delay) * i
-        App().window.sequential.position_b = ((allocation.width - 32) / delay) * i
+        App().window.sequential.position_a = (
+            (App().window.sequential.get_allocation().width - 32) / self.total_time
+        ) * i
+        App().window.sequential.position_b = (
+            (App().window.sequential.get_allocation().width - 32) / self.total_time
+        ) * i
         GLib.idle_add(App().window.sequential.queue_draw)
-
         # Move Virtual Console's XFade
         if App().virtual_console:
             if App().virtual_console.props.visible:
-                val = round((255 / delay) * i)
+                val = round((255 / self.total_time) * i)
                 GLib.idle_add(App().virtual_console.scale_a.set_value, val)
                 GLib.idle_add(App().virtual_console.scale_b.set_value, val)
-
-        # On attend que le temps d'un éventuel wait soit passé pour changer
-        # les levels
-        if i > delay_wait:
-
-            for univ in range(NB_UNIVERSES):
-
-                for output in range(512):
-
-                    # DMX values with Grand Master correction
-                    old_level = round(
-                        self.dmxlevels[univ][output] * (255 / App().dmx.grand_master)
-                    )
-
-                    channel = App().patch.outputs[univ][output][0]
-
-                    if channel:
-
-                        if position < App().sequence.last - 1:
+        # Wait for wait time
+        if i > self.wait:
+            for channel in range(MAX_CHANNELS):
+                for chan in App().patch.channels[channel]:
+                    output = chan[0]
+                    if output:
+                        output -= 1
+                        univ = chan[1]
+                        old_level = round(
+                            self.dmxlevels[univ][output]
+                            * (255 / App().dmx.grand_master)
+                        )
+                        if App().sequence.position < App().sequence.last - 1:
                             next_level = (
                                 App()
-                                .sequence.steps[position + 1]
-                                .cue.channels[channel - 1]
+                                .sequence.steps[App().sequence.position + 1]
+                                .cue.channels[channel]
                             )
                         else:
-                            next_level = (
-                                App().sequence.steps[0].cue.channels[channel - 1]
-                            )
+                            next_level = App().sequence.steps[0].cue.channels[channel]
+                            App().sequence.position = 0
 
-                        channel_time = App().sequence.steps[position + 1].channel_time
-
-                        # If channel is in a channel time
-                        if channel in channel_time:
-                            ct_delay = channel_time[channel].delay * 1000
-                            ct_time = channel_time[channel].time * 1000
-
-                            if next_level > old_level:
-
-                                if i < ct_delay + delay_wait:
-                                    level = old_level
-
-                                elif (
-                                    ct_delay + delay_wait
-                                    <= i
-                                    < ct_delay + ct_time + delay_wait
-                                ):
-                                    level = (
-                                        int(
-                                            ((next_level - old_level + 1) / ct_time)
-                                            * (i - ct_delay - delay_wait)
-                                        )
-                                        + old_level
-                                    )
-
-                                elif i >= ct_delay + ct_time + delay_wait:
-                                    level = next_level
-
-                            else:
-                                if i < ct_delay + delay_wait:
-                                    level = old_level
-
-                                elif (
-                                    ct_delay + delay_wait
-                                    <= i
-                                    < ct_delay + ct_time + delay_wait
-                                ):
-                                    level = old_level - abs(
-                                        int(
-                                            ((next_level - old_level - 1) / ct_time)
-                                            * (i - ct_delay - delay_wait)
-                                        )
-                                    )
-
-                                elif i >= ct_delay + ct_time + delay_wait:
-                                    level = next_level
-
-                            App().dmx.sequence[channel - 1] = level
-
-                        # Else channel is normal
-                        else:
-                            # On boucle sur les mémoires et on revient à 0
-                            if position < App().sequence.last - 1:
-                                next_level = (
-                                    App()
-                                    .sequence.steps[position + 1]
-                                    .cue.channels[channel - 1]
-                                )
-                            else:
-                                next_level = (
-                                    App().sequence.steps[0].cue.channels[channel - 1]
-                                )
-                                App().sequence.position = 0
-
-                            # Si le level augmente,
-                            # on prends le temps de montée
-                            if (
-                                next_level > old_level
-                                and delay_wait + delay_d_in
-                                < i
-                                < delay_in + delay_wait + delay_d_in
-                            ):
-                                level = (
-                                    int(
-                                        ((next_level - old_level + 1) / delay_in)
-                                        * (i - delay_wait - delay_d_in)
-                                    )
-                                    + old_level
-                                )
-
-                            elif (
-                                next_level > old_level
-                                and i > delay_in + delay_wait + delay_d_in
-                            ):
-                                level = next_level
-
-                            # Si le level descend,
-                            # on prend le temps de descente
-                            elif (
-                                next_level < old_level
-                                and delay_wait + delay_d_out
-                                < i
-                                < delay_out + delay_wait + delay_d_out
-                            ):
-                                level = old_level - abs(
-                                    int(
-                                        ((next_level - old_level - 1) / delay_out)
-                                        * (i - delay_wait - delay_d_out)
-                                    )
-                                )
-
-                            elif (
-                                next_level < old_level
-                                and i > delay_out + delay_wait + delay_d_out
-                            ):
-                                level = next_level
-
-                            # Sinon, la valeur est déjà bonne
-                            else:
-                                level = old_level
-
-                            App().dmx.sequence[channel - 1] = level
-
+                        self._set_level(channel, i, old_level, next_level)
             # App().dmx.send()
+
+    def _set_level(self, channel, i, old_level, next_level):
+        """Get level"""
+        channel_time = App().sequence.steps[App().sequence.position + 1].channel_time
+        if channel + 1 in channel_time:
+            # Channel is in a channel time
+            level = self._channel_time_level(
+                i, channel_time[channel + 1], old_level, next_level
+            )
+        # Else channel is normal
+        else:
+            level = self._channel_level(i, old_level, next_level)
+        App().dmx.sequence[channel] = level
+
+    def _channel_level(self, i, old_level, next_level):
+        """Return channel level"""
+        # If level increases, use Time In
+        if (
+            next_level > old_level
+            and self.wait + self.delay_in < i < self.time_in + self.wait + self.delay_in
+        ):
+            level = (
+                int(
+                    ((next_level - old_level + 1) / self.time_in)
+                    * (i - self.wait - self.delay_in)
+                )
+                + old_level
+            )
+        elif next_level > old_level and i > self.time_in + self.wait + self.delay_in:
+            level = next_level
+        # If level decreases, use Time Out
+        elif (
+            next_level < old_level
+            and self.wait + self.delay_out
+            < i
+            < self.time_out + self.wait + self.delay_out
+        ):
+            level = old_level - abs(
+                int(
+                    ((next_level - old_level - 1) / self.time_out)
+                    * (i - self.wait - self.delay_out)
+                )
+            )
+        elif next_level < old_level and i > self.time_out + self.wait + self.delay_out:
+            level = next_level
+        # Level doesn't change
+        else:
+            level = old_level
+        return level
+
+    def _channel_time_level(self, i, channel_time, old_level, next_level):
+        """Return channel level if in channel time"""
+        ct_delay = channel_time.delay * 1000
+        ct_time = channel_time.time * 1000
+        if next_level > old_level:
+            if i < ct_delay + self.wait:
+                level = old_level
+            elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
+                level = (
+                    int(
+                        ((next_level - old_level + 1) / ct_time)
+                        * (i - ct_delay - self.wait)
+                    )
+                    + old_level
+                )
+            elif i >= ct_delay + ct_time + self.wait:
+                level = next_level
+        else:
+            if i < ct_delay + self.wait:
+                level = old_level
+            elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
+                level = old_level - abs(
+                    int(
+                        ((next_level - old_level - 1) / ct_time)
+                        * (i - ct_delay - self.wait)
+                    )
+                )
+            elif i >= ct_delay + ct_time + self.wait:
+                level = next_level
+        return level
 
 
 class ThreadGoBack(threading.Thread):
@@ -855,9 +746,11 @@ class ThreadGoBack(threading.Thread):
             App().sequence.go(None, None)
 
     def stop(self):
+        """Stop"""
         self._stopevent.set()
 
     def update_levels(self, go_back_time, i, position):
+        """Update levels"""
         # Update sliders position
         allocation = App().window.sequential.get_allocation()
         App().window.sequential.position_a = (
