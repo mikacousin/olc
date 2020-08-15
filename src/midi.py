@@ -627,7 +627,7 @@ class Midi:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 App().virtual_console.go_button.emit("button-press-event", event)
             else:
-                App().sequence.go(None, None)
+                App().sequence.do_go(None, None)
 
     def _function_go_back(self, msg):
         """Go Back"""

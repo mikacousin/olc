@@ -102,7 +102,7 @@ class CrossFade:
             # If Wait
             if App().sequence.steps[next_step].wait:
                 App().sequence.on_go = False
-                App().sequence.go(None, None)
+                App().sequence.do_go(None, None)
 
     def update_slider(self, scale, level):
         """Update sliders position"""

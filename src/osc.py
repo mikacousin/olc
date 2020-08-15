@@ -130,7 +130,7 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 self.client.send("/seq/go", App().window.keystring)
-                GLib.idle_add(App().sequence.go, None, None)
+                GLib.idle_add(App().sequence.do_go, None, None)
 
     def _seqplus_cb(self, path, args, types):
         """Seq +"""

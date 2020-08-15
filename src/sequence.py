@@ -284,21 +284,17 @@ class Sequence:
             if float(step.cue.memory) == float(keystring):
                 # Position to the one just before
                 App().sequence.position = i - 1
-                position = App().sequence.position
+                # position = App().sequence.position
+                next_step = App().sequence.position + 1
                 # Redraw Sequential window with new times
-                t_in = App().sequence.steps[position + 1].time_in
-                t_out = App().sequence.steps[position + 1].time_out
-                d_in = self.steps[position + 1].delay_in
-                d_out = self.steps[position + 1].delay_out
-                t_wait = App().sequence.steps[position + 1].wait
-                App().window.sequential.total_time = self.steps[position + 1].total_time
-                App().window.sequential.time_in = t_in
-                App().window.sequential.time_out = t_out
-                App().window.sequential.delay_in = d_in
-                App().window.sequential.delay_out = d_out
-                App().window.sequential.wait = t_wait
+                App().window.sequential.total_time = self.steps[next_step].total_time
+                App().window.sequential.time_in = self.steps[next_step].time_in
+                App().window.sequential.time_out = self.steps[next_step].time_out
+                App().window.sequential.delay_in = self.steps[next_step].delay_in
+                App().window.sequential.delay_out = self.steps[next_step].delay_out
+                App().window.sequential.wait = self.steps[next_step].wait
                 App().window.sequential.channel_time = self.steps[
-                    position + 1
+                    next_step
                 ].channel_time
                 App().window.sequential.position_a = 0
                 App().window.sequential.position_b = 0
@@ -310,10 +306,10 @@ class Sequence:
                 App().window.seq_grid.queue_draw()
 
                 # Launch Go
-                self.go(None, None)
+                self.do_go(None, None)
                 break
 
-    def go(self, _action, _param):
+    def do_go(self, _action, _param):
         """Go"""
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if App().sequence.on_go and App().sequence.thread:
@@ -332,19 +328,20 @@ class Sequence:
             else:
                 App().sequence.position = 0
                 position = 0
-            t_in = App().sequence.steps[position + 1].time_in
-            t_out = App().sequence.steps[position + 1].time_out
-            d_in = App().sequence.steps[position + 1].delay_in
-            d_out = App().sequence.steps[position + 1].delay_out
-            t_wait = App().sequence.steps[position + 1].wait
             App().window.sequential.total_time = (
                 App().sequence.steps[position + 1].total_time
             )
-            App().window.sequential.time_in = t_in
-            App().window.sequential.time_out = t_out
-            App().window.sequential.delay_in = d_in
-            App().window.sequential.delay_out = d_out
-            App().window.sequential.wait = t_wait
+            App().window.sequential.time_in = App().sequence.steps[position + 1].time_in
+            App().window.sequential.time_out = (
+                App().sequence.steps[position + 1].time_out
+            )
+            App().window.sequential.delay_in = (
+                App().sequence.steps[position + 1].delay_in
+            )
+            App().window.sequential.delay_out = (
+                App().sequence.steps[position + 1].delay_out
+            )
+            App().window.sequential.wait = App().sequence.steps[position + 1].wait
             App().window.sequential.channel_time = (
                 App().sequence.steps[position + 1].channel_time
             )
@@ -368,7 +365,7 @@ class Sequence:
             # Update Main Window's Subtitle
             App().window.header.set_subtitle(subtitle)
 
-            self.go(None, None)
+            self.do_go(None, None)
 
         else:
             # On indique qu'un Go est en cours
@@ -379,7 +376,7 @@ class Sequence:
     def go_back(self, _action, _param):
         """Go Back"""
         # Just return if we are at the beginning
-        position = App().sequence.position
+        position = self.position
         if position == 0:
             return False
 
@@ -391,20 +388,13 @@ class Sequence:
                 print("Error :", str(e))
             App().sequence.on_go = False
 
-        # Time for Go Back in Settings
-        # go_back_time = App().settings.get_double("go-back-time")
-
-        App().window.sequential.total_time = (
-            App().sequence.steps[position - 1].total_time
-        )
-        App().window.sequential.time_in = App().sequence.steps[position - 1].time_in
-        App().window.sequential.time_out = App().sequence.steps[position - 1].time_out
-        App().window.sequential.delay_in = App().sequence.steps[position - 1].delay_in
-        App().window.sequential.delay_out = App().sequence.steps[position - 1].delay_out
-        App().window.sequential.wait = App().sequence.steps[position - 1].wait
-        App().window.sequential.channel_time = (
-            App().sequence.steps[position - 1].channel_time
-        )
+        App().window.sequential.total_time = self.steps[position - 1].total_time
+        App().window.sequential.time_in = self.steps[position - 1].time_in
+        App().window.sequential.time_out = self.steps[position - 1].time_out
+        App().window.sequential.delay_in = self.steps[position - 1].delay_in
+        App().window.sequential.delay_out = self.steps[position - 1].delay_out
+        App().window.sequential.wait = self.steps[position - 1].wait
+        App().window.sequential.channel_time = self.steps[position - 1].channel_time
         App().window.sequential.position_a = 0
         App().window.sequential.position_b = 0
 
@@ -412,13 +402,13 @@ class Sequence:
 
         subtitle = (
             "Mem. : "
-            + str(App().sequence.steps[position].cue.memory)
+            + str(self.steps[position].cue.memory)
             + " "
-            + App().sequence.steps[position].text
+            + self.steps[position].text
             + " - Next Mem. : "
-            + str(App().sequence.steps[position - 1].cue.memory)
+            + str(self.steps[position - 1].cue.memory)
             + " "
-            + App().sequence.steps[position - 1].text
+            + self.steps[position - 1].text
         )
         App().window.header.set_subtitle(subtitle)
 
@@ -530,7 +520,7 @@ class ThreadGo(threading.Thread):
 
         # Wait, launch next step
         if App().sequence.steps[next_step].wait:
-            App().sequence.go(None, None)
+            App().sequence.do_go(None, None)
 
     def stop(self):
         """Stop"""
@@ -674,76 +664,68 @@ class ThreadGoBack(threading.Thread):
         if App().sequence.last == 2:
             return
 
-        position = App().sequence.position
+        prev_step = App().sequence.position - 1
 
         # Levels when Go Back starts
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 self.dmxlevels[univ][output] = App().dmx.frame[univ][output]
-
         # Go Back's default time
         go_back_time = App().settings.get_double("go-back-time") * 1000
-
         # Actual time in ms
         start_time = time.time() * 1000
         i = (time.time() * 1000) - start_time
-
         while i < go_back_time and not self._stopevent.isSet():
             # Update DMX levels
-            self.update_levels(go_back_time, i, position)
+            self.update_levels(go_back_time, i, App().sequence.position)
             # Sleep 50ms
             time.sleep(0.05)
             i = (time.time() * 1000) - start_time
-
         # Finish to load preset
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 channel = App().patch.outputs[univ][output][0]
                 if channel:
-                    # TODO: Handle first position
-                    level = App().sequence.steps[position - 1].cue.channels[channel - 1]
+                    level = App().sequence.steps[prev_step].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
-
+                    App().dmx.frame[univ][output] = level
         # App().dmx.send()
-        App().sequence.go = False
-
+        App().sequence.on_go = False
+        # Reset user levels
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
-
-        # TODO: Gérer la position
-        position -= 1
-
-        App().sequence.position = position
-        App().window.sequential.time_in = App().sequence.steps[position + 1].time_in
-        App().window.sequential.time_out = App().sequence.steps[position + 1].time_out
-        App().window.sequential.delay_in = App().sequence.steps[position + 1].delay_in
-        App().window.sequential.delay_out = App().sequence.steps[position + 1].delay_out
-        App().window.sequential.wait = App().sequence.steps[position + 1].wait
+        # Prev step
+        App().sequence.position = prev_step
+        App().window.sequential.time_in = App().sequence.steps[prev_step + 1].time_in
+        App().window.sequential.time_out = App().sequence.steps[prev_step + 1].time_out
+        App().window.sequential.delay_in = App().sequence.steps[prev_step + 1].delay_in
+        App().window.sequential.delay_out = (
+            App().sequence.steps[prev_step + 1].delay_out
+        )
+        App().window.sequential.wait = App().sequence.steps[prev_step + 1].wait
         App().window.sequential.total_time = (
-            App().sequence.steps[position + 1].total_time
+            App().sequence.steps[prev_step + 1].total_time
         )
         App().window.sequential.channel_time = (
-            App().sequence.steps[position + 1].channel_time
+            App().sequence.steps[prev_step + 1].channel_time
         )
         App().window.sequential.position_a = 0
         App().window.sequential.position_b = 0
-
-        # Set main window's subtitle
+        # Main window's subtitle
         subtitle = (
             "Mem. : "
-            + str(App().sequence.steps[position].cue.memory)
+            + str(App().sequence.steps[prev_step].cue.memory)
             + " "
-            + App().sequence.steps[position].text
+            + App().sequence.steps[prev_step].text
             + " - Next Mem. : "
-            + str(App().sequence.steps[position + 1].cue.memory)
+            + str(App().sequence.steps[prev_step + 1].cue.memory)
             + " "
-            + App().sequence.steps[position + 1].text
+            + App().sequence.steps[prev_step + 1].text
         )
-
         # Update Gtk in the main thread
-        GLib.idle_add(update_ui, position, subtitle)
-
-        if App().sequence.steps[position + 1].wait:
-            App().sequence.go(None, None)
+        GLib.idle_add(update_ui, prev_step, subtitle)
+        # Wait
+        if App().sequence.steps[prev_step + 1].wait:
+            App().sequence.do_go(None, None)
 
     def stop(self):
         """Stop"""
@@ -760,29 +742,21 @@ class ThreadGoBack(threading.Thread):
             (allocation.width - 32) / go_back_time
         ) * i
         GLib.idle_add(App().window.sequential.queue_draw)
-
         # Move Virtual Console's XFade
         if App().virtual_console and App().virtual_console.props.visible:
             val = round((255 / go_back_time) * i)
             GLib.idle_add(App().virtual_console.scale_a.set_value, val)
             GLib.idle_add(App().virtual_console.scale_b.set_value, val)
-
         for univ in range(NB_UNIVERSES):
-
             for output in range(512):
-
                 old_level = round(
                     self.dmxlevels[univ][output] * (255 / App().dmx.grand_master)
                 )
-
                 channel = App().patch.outputs[univ][output][0]
-
                 if channel:
-
                     next_level = (
                         App().sequence.steps[position - 1].cue.channels[channel - 1]
                     )
-
                     if next_level > old_level:
                         level = (
                             round(((next_level - old_level) / go_back_time) * i)
@@ -794,7 +768,5 @@ class ThreadGoBack(threading.Thread):
                         )
                     else:
                         level = next_level
-
                     App().dmx.sequence[channel - 1] = level
-
         # App().dmx.send()
