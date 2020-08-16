@@ -444,7 +444,6 @@ class ThreadGo(threading.Thread):
 
         start_time = time.time() * 1000  # actual time in ms
         i = (time.time() * 1000) - start_time
-
         # Loop on total time
         while i < self.total_time and not self._stopevent.isSet():
             # Update DMX levels
@@ -452,11 +451,9 @@ class ThreadGo(threading.Thread):
             # Sleep for 50ms
             time.sleep(0.05)
             i = (time.time() * 1000) - start_time
-
         # Stop thread if we send stop message
         if self._stopevent.isSet():
             return
-
         # Finish to load memory
         for univ in range(NB_UNIVERSES):
             for output in range(512):
@@ -472,16 +469,18 @@ class ThreadGo(threading.Thread):
                         level = App().sequence.steps[0].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
                     App().dmx.frame[univ][output] = level
-
         # Go is completed
-        # App().dmx.send()
         App().sequence.on_go = False
         # Empty DMX user array
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
+        next_step = self._next_step()
+        # Wait, launch next step
+        if App().sequence.steps[next_step].wait:
+            App().sequence.do_go(None, None)
 
-        # Next step
+    def _next_step(self):
+        """Next Step after Go"""
         next_step = App().sequence.position + 1
-
         # If there is a next step
         if next_step < App().sequence.last - 1:
             App().sequence.position += 1
@@ -490,7 +489,7 @@ class ThreadGo(threading.Thread):
         else:
             App().sequence.position = 0
             next_step = 1
-
+        # Update times for visual xfade
         App().window.sequential.total_time = App().sequence.steps[next_step].total_time
         App().window.sequential.time_in = App().sequence.steps[next_step].time_in
         App().window.sequential.time_out = App().sequence.steps[next_step].time_out
@@ -502,8 +501,7 @@ class ThreadGo(threading.Thread):
         )
         App().window.sequential.position_a = 0
         App().window.sequential.position_b = 0
-
-        # Set main window's subtitle
+        # Main window's subtitle
         subtitle = (
             "Mem. : "
             + str(App().sequence.steps[App().sequence.position].cue.memory)
@@ -514,13 +512,9 @@ class ThreadGo(threading.Thread):
             + " "
             + App().sequence.steps[next_step].text
         )
-
         # Update Gtk in main thread
         GLib.idle_add(update_ui, App().sequence.position, subtitle)
-
-        # Wait, launch next step
-        if App().sequence.steps[next_step].wait:
-            App().sequence.do_go(None, None)
+        return next_step
 
     def stop(self):
         """Stop"""
