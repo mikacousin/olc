@@ -297,7 +297,7 @@ class PatchOutputsTab(Gtk.Grid):
                 univ = patchwidget.universe
 
                 # Unpatch if no entry
-                if self.keystring == "" or self.keystring == "0":
+                if self.keystring in ["", "0"]:
                     channel = App().patch.outputs[univ][output][0]
                     if channel != 0:
                         channel -= 1
