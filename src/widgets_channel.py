@@ -1,8 +1,12 @@
 """Channel Widget"""
 
 import cairo
-from gi.repository import Gdk, Gtk
+import gi
 from olc.define import App
+
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
+from gi.repository import Gdk, Gtk  # noqa: E402
 
 
 class ChannelWidget(Gtk.Widget):

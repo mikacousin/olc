@@ -3,7 +3,7 @@
 import array
 from io import StringIO
 
-from gi.repository import Gio, GObject, Gtk
+import gi
 from olc.ascii_save import (save_chasers, save_congo_groups, save_groups,
                             save_main_playback, save_masters, save_patch)
 from olc.channel_time import ChannelTime
@@ -13,6 +13,9 @@ from olc.group import Group
 from olc.master import Master
 from olc.sequence import Sequence
 from olc.step import Step
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gio, GObject, Gtk  # noqa: E402
 
 
 def get_time(string):

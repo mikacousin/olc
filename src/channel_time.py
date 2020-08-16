@@ -1,6 +1,9 @@
-from gi.repository import Gdk, Gtk
+import gi
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gdk, Gtk  # noqa: E402
 
 
 class ChannelTime:
