@@ -608,9 +608,7 @@ def _next_step():
     App().window.sequential.delay_in = App().sequence.steps[next_step].delay_in
     App().window.sequential.delay_out = App().sequence.steps[next_step].delay_out
     App().window.sequential.wait = App().sequence.steps[next_step].wait
-    App().window.sequential.channel_time = (
-        App().sequence.steps[next_step].channel_time
-    )
+    App().window.sequential.channel_time = App().sequence.steps[next_step].channel_time
     App().window.sequential.position_a = 0
     App().window.sequential.position_b = 0
     # Main window's subtitle
