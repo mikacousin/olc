@@ -2,23 +2,17 @@
 
 import array
 from io import StringIO
-from gi.repository import Gio, Gtk, GObject
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
-from olc.ascii_save import (
-    save_main_playback,
-    save_chasers,
-    save_groups,
-    save_congo_groups,
-    save_masters,
-    save_patch,
-)
-from olc.cue import Cue
-from olc.step import Step
+from gi.repository import Gio, GObject, Gtk
+from olc.ascii_save import (save_chasers, save_congo_groups, save_groups,
+                            save_main_playback, save_masters, save_patch)
 from olc.channel_time import ChannelTime
-from olc.sequence import Sequence
+from olc.cue import Cue
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.group import Group
 from olc.master import Master
+from olc.sequence import Sequence
+from olc.step import Step
 
 
 def get_time(string):

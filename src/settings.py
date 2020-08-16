@@ -1,11 +1,9 @@
+import gi
 import mido
-
 from olc.define import App
 
-import gi
-
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, Gtk, GLib  # noqa: E402
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 
 class Settings(Gio.Settings):

@@ -1,14 +1,14 @@
 """Open Lighting Console's Main window"""
 
 import array
-from gi.repository import Gio, Gtk, Gdk, Pango
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
+from gi.repository import Gdk, Gio, Gtk, Pango
 from olc.cue import Cue
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.step import Step
-from olc.widgets_sequential import SequentialWidget
 from olc.widgets_channel import ChannelWidget
 from olc.widgets_grand_master import GMWidget
+from olc.widgets_sequential import SequentialWidget
 
 
 class Window(Gtk.ApplicationWindow):

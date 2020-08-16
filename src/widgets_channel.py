@@ -1,8 +1,7 @@
 """Channel Widget"""
 
 import cairo
-from gi.repository import Gtk, Gdk
-
+from gi.repository import Gdk, Gtk
 from olc.define import App
 
 

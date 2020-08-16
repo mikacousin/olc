@@ -2,7 +2,6 @@
 
 import mido
 from gi.repository import Gdk, GLib
-
 from olc.define import App
 
 

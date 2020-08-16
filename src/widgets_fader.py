@@ -1,9 +1,8 @@
 """Fader Widget for Virtual Console"""
 
-from gi.repository import Gtk, Gdk, GObject
-
+from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
-from olc.widgets import rounded_rectangle_fill, rounded_rectangle
+from olc.widgets import rounded_rectangle, rounded_rectangle_fill
 
 
 class FaderWidget(Gtk.Scale):

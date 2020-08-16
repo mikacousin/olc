@@ -1,10 +1,9 @@
 """OSC client / server"""
 
 import sys
+
 import liblo
-
 from gi.repository import Gdk, GLib
-
 from olc.define import App
 
 

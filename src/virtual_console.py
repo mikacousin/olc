@@ -1,10 +1,9 @@
-from gi.repository import Gtk, Gdk
-
+from gi.repository import Gdk, Gtk
 from olc.define import App
 from olc.widgets_button import ButtonWidget
-from olc.widgets_go import GoWidget
 from olc.widgets_fader import FaderWidget
 from olc.widgets_flash import FlashWidget
+from olc.widgets_go import GoWidget
 
 
 class VirtualConsoleWindow(Gtk.Window):

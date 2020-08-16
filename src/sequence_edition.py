@@ -1,13 +1,13 @@
 """Sequences edition"""
 
 import array
-from gi.repository import Gtk, Gdk
 
-from olc.define import MAX_CHANNELS, App
-from olc.widgets_channel import ChannelWidget
-from olc.sequence import Sequence
+from gi.repository import Gdk, Gtk
 from olc.cue import Cue
+from olc.define import MAX_CHANNELS, App
+from olc.sequence import Sequence
 from olc.step import Step
+from olc.widgets_channel import ChannelWidget
 
 
 class SequenceTab(Gtk.Grid):

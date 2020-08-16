@@ -1,6 +1,6 @@
 import array
-from gi.repository import Gtk, Gdk
 
+from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 from olc.widgets_group import GroupWidget

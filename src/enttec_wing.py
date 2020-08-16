@@ -1,8 +1,8 @@
 """Enttec Wing"""
 
 import socket
-from gi.repository import GLib, Gdk
 
+from gi.repository import Gdk, GLib
 from olc.define import App
 
 

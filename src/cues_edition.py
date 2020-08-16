@@ -1,9 +1,9 @@
 import array
-from gi.repository import Gtk, Gdk
 
+from gi.repository import Gdk, Gtk
+from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
-from olc.cue import Cue
 
 
 class CuesEditionTab(Gtk.Paned):

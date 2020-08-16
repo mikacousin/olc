@@ -1,9 +1,9 @@
 """Widgets for Patch Channels Tab"""
 
 import math
-import cairo
-from gi.repository import Gtk, Gdk
 
+import cairo
+from gi.repository import Gdk, Gtk
 from olc.define import App
 from olc.widgets import rounded_rectangle_fill
 

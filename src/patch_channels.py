@@ -1,5 +1,4 @@
-from gi.repository import Gtk, Gdk
-
+from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_patch_channels import PatchChannelHeader, PatchChannelWidget
 

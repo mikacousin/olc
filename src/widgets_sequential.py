@@ -1,9 +1,9 @@
 """Crossfade Widget"""
 
 import math
-from gi.repository import Gtk, Gdk
-import cairo
 
+import cairo
+from gi.repository import Gdk, Gtk
 from olc.define import App
 
 

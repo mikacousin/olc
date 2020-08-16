@@ -6,7 +6,7 @@
 import array
 import threading
 
-from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 
 
 class Dmx(threading.Thread):

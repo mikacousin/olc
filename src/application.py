@@ -1,34 +1,33 @@
-import sys
 import select
+import sys
 
-from olc.define import NB_UNIVERSES, MAX_CHANNELS
-from olc.ola_thread import OlaThread
-from olc.settings import Settings, SettingsDialog
-from olc.window import Window
-from olc.patch_outputs import PatchOutputsTab
-from olc.patch_channels import PatchChannelsTab
-from olc.dmx import Dmx, PatchDmx
+import gi
+from olc.ascii import Ascii
+from olc.channel_time import ChanneltimeTab
+from olc.crossfade import CrossFade
 from olc.cues_edition import CuesEditionTab
-from olc.sequence import Sequence
-from olc.sequence_edition import SequenceTab
+from olc.define import MAX_CHANNELS, NB_UNIVERSES
+from olc.dmx import Dmx, PatchDmx
+from olc.enttec_wing import WingPlayback
 from olc.group import GroupTab
 from olc.master import Master
 from olc.masters_edition import MastersTab
-from olc.channel_time import ChanneltimeTab
-from olc.osc import OscServer
-from olc.ascii import Ascii
 from olc.midi import Midi
-from olc.enttec_wing import WingPlayback
+from olc.ola_thread import OlaThread
+from olc.osc import OscServer
+from olc.patch_channels import PatchChannelsTab
+from olc.patch_outputs import PatchOutputsTab
+from olc.sequence import Sequence
+from olc.sequence_edition import SequenceTab
+from olc.settings import Settings, SettingsDialog
 from olc.track_channels import TrackChannelsTab
-from olc.crossfade import CrossFade
 from olc.virtual_console import VirtualConsoleWindow
 from olc.widgets_group import GroupWidget
 from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
-
-import gi
+from olc.window import Window
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, Gio, GLib, Gdk, GObject  # noqa: E402
+from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 
 class Application(Gtk.Application):

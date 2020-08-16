@@ -1,6 +1,5 @@
-from gi.repository import Gtk, Gdk
-
-from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
+from gi.repository import Gdk, Gtk
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.widgets_patch_outputs import PatchWidget
 
 

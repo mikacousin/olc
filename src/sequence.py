@@ -3,10 +3,10 @@
 import array
 import threading
 import time
-from gi.repository import GLib, Pango
 
-from olc.define import NB_UNIVERSES, MAX_CHANNELS, App
+from gi.repository import GLib, Pango
 from olc.cue import Cue
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.step import Step
 
 

@@ -1,12 +1,11 @@
 """Thread to communicate with ola"""
 
-import threading
 import array
+import threading
 from functools import partial
 
-from ola import OlaClient
 from gi.repository import GLib
-
+from ola import OlaClient
 from olc.define import NB_UNIVERSES, App
 
 
