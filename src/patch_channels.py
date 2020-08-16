@@ -158,7 +158,7 @@ class PatchChannelsTab(Gtk.Grid):
                 channel = patchchannelwidget.channel - 1
 
                 # Unpatch if no entry
-                if self.keystring == "" or self.keystring == "0":
+                if self.keystring in ["", "0"]:
                     # outputs = App().patch.channels[channel]
                     for item in App().patch.channels[channel]:
                         output = item[0] - 1
@@ -214,13 +214,12 @@ class PatchChannelsTab(Gtk.Grid):
                 App().window.flowbox.invalidate_filter()
 
         # Select next channel
-        if sel:
-            if channel < MAX_CHANNELS - 1:
-                self.flowbox.unselect_all()
-                child = self.flowbox.get_child_at_index(channel + 1)
-                App().window.set_focus(child)
-                self.flowbox.select_child(child)
-                self.last_chan_selected = str(channel + 1)
+        if sel and channel < MAX_CHANNELS - 1:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(channel + 1)
+            App().window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = str(channel + 1)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

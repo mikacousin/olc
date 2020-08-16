@@ -175,7 +175,7 @@ def update_a(channel, old_level, next_level, wait, pos):
                     )
                 )
             )
-        elif next_level < old_level:
+        else:
             lvl = next_level
     if lvl != -1:
         App().dmx.sequence[channel - 1] = lvl
