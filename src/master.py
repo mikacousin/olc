@@ -90,7 +90,6 @@ class Master:
                                 else:
                                     level = int(round(level / (255 / self.value)))
                                 self.dmx[channel - 1] = level
-                # App().dmx.send()
 
         # Master type is Channels
         elif self.content_type == 2:
@@ -101,7 +100,6 @@ class Master:
                     level = int(round(lvl / (255 / self.value)))
 
                 self.dmx[channel] = level
-            # App().dmx.send()
 
         # Master Type is Group
         elif self.content_type == 13:
@@ -123,7 +121,6 @@ class Master:
                             level = int(round(level_group / (255 / self.value)))
                         # Update level in master array
                         self.dmx[channel] = level
-                # App().dmx.send()
 
         # Master type is Chaser
         elif self.content_type == 3:
@@ -154,7 +151,6 @@ class Master:
                                 App().chasers[k].thread.stop()
                                 for channel in range(MAX_CHANNELS):
                                     self.dmx[channel - 1] = 0
-                                # App().dmx.send()
 
 
 class ThreadChaser(threading.Thread):
@@ -276,5 +272,3 @@ class ThreadChaser(threading.Thread):
                     # Mise à jour de la valeur des masters
                     # App().dmx.masters[channel-1] = level
                     self.master.dmx[channel - 1] = level
-
-        # App().dmx.send()

@@ -207,7 +207,6 @@ class Sequence:
                     if channel:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
-            # App().dmx.send()
             update_channels(position)
 
     def sequence_minus(self):
@@ -268,7 +267,6 @@ class Sequence:
                     if channel:
                         level = self.steps[position].cue.channels[channel - 1]
                         App().dmx.sequence[channel - 1] = level
-            # App().dmx.send()
             update_channels(position)
 
     def goto(self, keystring):
@@ -558,7 +556,6 @@ class ThreadGo(threading.Thread):
                             App().sequence.position = 0
 
                         self._set_level(channel, i, old_level, next_level)
-            # App().dmx.send()
 
     def _set_level(self, channel, i, old_level, next_level):
         """Get level"""
@@ -682,7 +679,6 @@ class ThreadGoBack(threading.Thread):
                     level = App().sequence.steps[prev_step].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
                     App().dmx.frame[univ][output] = level
-        # App().dmx.send()
         App().sequence.on_go = False
         # Reset user levels
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
@@ -762,4 +758,3 @@ class ThreadGoBack(threading.Thread):
                     else:
                         level = next_level
                     App().dmx.sequence[channel - 1] = level
-        # App().dmx.send()

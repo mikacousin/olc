@@ -714,8 +714,6 @@ class Window(Gtk.ApplicationWindow):
                     level = App().dmx.frame[univ][out - 1]
                     App().dmx.user[channel] = min(level + lvl, 255)
 
-        # App().dmx.send()
-
     def _keypress_colon(self):
         """ Level - (% level) of selected channels """
         lvl = App().settings.get_int("percent-level")
@@ -735,8 +733,6 @@ class Window(Gtk.ApplicationWindow):
                     univ = output[1]
                     level = App().dmx.frame[univ][out - 1]
                     App().dmx.user[channel] = max(level - lvl, 0)
-
-        # App().dmx.send()
 
     def _keypress_KP_Enter(self):
         """ @ Level """
@@ -763,8 +759,6 @@ class Window(Gtk.ApplicationWindow):
                 else:
                     if 0 <= level <= 255:
                         App().dmx.user[channel] = level
-
-        # App().dmx.send()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
