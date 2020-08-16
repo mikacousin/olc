@@ -232,21 +232,7 @@ class PatchChannelWidget(Gtk.Widget):
                     cr.set_source_rgb(0.3, 0.4, 0.3)
                 univ = item[1]
                 if line == 0:
-                    # First line
-                    area = (65 + (i * 35), 95 + (i * 35), 0, 30)
-                    cr.move_to(65 + (i * 35), 0)
-                    rounded_rectangle_fill(cr, area, self.radius / 2)
-
-                    # Draw Output number
-                    cr.set_source_rgb(0.9, 0.9, 0.9)
-                    cr.select_font_face(
-                        "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                    )
-                    cr.set_font_size(10)
-                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(
-                        str(output) + "." + str(univ)
-                    )
-                    cr.move_to(65 + (i * 35) + (30 / 2) - w / 2, 30 / 2 - (h - 20) / 2)
+                    self._draw_first_line(cr, i, output, univ)
                 else:
                     # Second line
                     j = i - 15
@@ -277,6 +263,19 @@ class PatchChannelWidget(Gtk.Widget):
                     )
 
                 cr.show_text(str(output) + "." + str(univ))
+
+    def _draw_first_line(self, cr, i, output, univ):
+        """Draw First line of outputs"""
+        area = (65 + (i * 35), 95 + (i * 35), 0, 30)
+        cr.move_to(65 + (i * 35), 0)
+        rounded_rectangle_fill(cr, area, self.radius / 2)
+
+        # Draw Output number
+        cr.set_source_rgb(0.9, 0.9, 0.9)
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.set_font_size(10)
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(output) + "." + str(univ))
+        cr.move_to(65 + (i * 35) + (30 / 2) - w / 2, 30 / 2 - (h - 20) / 2)
 
     def do_realize(self):
         """Realize widget"""

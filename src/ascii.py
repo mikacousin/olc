@@ -4,8 +4,14 @@ import array
 from io import StringIO
 
 import gi
-from olc.ascii_save import (save_chasers, save_congo_groups, save_groups,
-                            save_main_playback, save_masters, save_patch)
+from olc.ascii_save import (
+    save_chasers,
+    save_congo_groups,
+    save_groups,
+    save_main_playback,
+    save_masters,
+    save_patch,
+)
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App

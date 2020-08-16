@@ -77,15 +77,11 @@ class CrossFade:
             App().sequence.position = 0
             next_step = 1
         # Update UI
-        App().window.sequential.total_time = (
-            App().sequence.steps[next_step].total_time
-        )
+        App().window.sequential.total_time = App().sequence.steps[next_step].total_time
         App().window.sequential.time_in = App().sequence.steps[next_step].time_in
         App().window.sequential.time_out = App().sequence.steps[next_step].time_out
         App().window.sequential.delay_in = App().sequence.steps[next_step].delay_in
-        App().window.sequential.delay_out = (
-            App().sequence.steps[next_step].delay_out
-        )
+        App().window.sequential.delay_out = App().sequence.steps[next_step].delay_out
         App().window.sequential.wait = App().sequence.steps[next_step].wait
         App().window.sequential.channel_time = (
             App().sequence.steps[next_step].channel_time
