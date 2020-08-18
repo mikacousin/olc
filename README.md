@@ -50,3 +50,12 @@ $ cd olc
 $ meson builddir --prefix=/usr/local
 # sudo ninja -C builddir install
 ```
+
+## Test flakpak package
+```bash
+$ git clone https://github.com/mikacousin/olc.git
+$ cd olc
+$ flatpak-builder flatpak com.github.mikacousin.olc.json
+$ olad &
+$ flatpak-builder --run flatpak com.github.mikacousin.olc.json olc
+```
