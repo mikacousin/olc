@@ -44,10 +44,9 @@ And with `sudo apt install` :
 - libjack-dev
 
 ## Building from git
-```
+```bash
 $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
-$ ./autogen.sh
-$ make
-# make install
+$ meson builddir --prefix=/usr/local
+# sudo ninja -C builddir install
 ```

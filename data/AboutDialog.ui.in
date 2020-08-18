@@ -6,13 +6,13 @@
     <property name="modal">True</property>
     <property name="type_hint">normal</property>
     <property name="program_name">Open Lighting Console</property>
-    <property name="version">@PACKAGE_VERSION@</property>
-    <property name="copyright">Copyright © 2015-2016 Mika Cousin</property>
+    <property name="version">@REVISION@</property>
+    <property name="copyright">Copyright © 2015-2020 Mika Cousin</property>
     <property name="comments" translatable="yes">A Lighting Console.</property>
     <property name="website">@PACKAGE_URL@</property>
     <property name="website_label" translatable="yes">Visit Open Lighting Console website</property>
     <property name="authors">Mika Cousin &lt;mika.cousin@gmail.com&gt;</property>
-    <property name="logo_icon_name">olc</property>
+    <property name="logo_icon_name">com.github.mikacousin.olc</property>
     <property name="license_type">gpl-3-0</property>
     <child internal-child="vbox">
       <object class="GtkBox" id="aboutdialog-vbox1">
