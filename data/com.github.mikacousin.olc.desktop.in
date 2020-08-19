@@ -1,6 +1,4 @@
 [Desktop Entry]
-Version=0.1
-Encoding=UTF-8
 Name=Open Lighting Console
 Comment=Lighting Console
 Exec=olc
