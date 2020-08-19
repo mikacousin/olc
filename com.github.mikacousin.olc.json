@@ -17,7 +17,7 @@
       "name": "cython",
       "buildsystem": "simple",
       "build-commands": [
-        "pip3 --verbose install --no-index --no-deps --ignore-installed --no-build-isolation --prefix=${FLATPAK_DEST} Cython-0.29.20-cp37-cp37m-manylinux1_x86_64.whl"
+        "pip3 install --prefix=/app Cython-0.29.20-cp37-cp37m-manylinux1_x86_64.whl"
       ],
       "sources": [
         {
@@ -26,6 +26,18 @@
           "sha256": "c5df2c42d4066cda175cd4d075225501e1842cfdbdaeeb388eb7685c367cc3ce"
         }
       ]
+    },
+    {
+      "name" : "psutil",
+      "buildsystem": "simple",
+      "build-commands": [
+        "pip3 install --prefix=/app psutil-5.7.2.tar.gz"
+      ],
+      "sources" : [{
+        "type" : "file",
+        "url" : "https://files.pythonhosted.org/packages/aa/3e/d18f2c04cf2b528e18515999b0c8e698c136db78f62df34eee89cee205f1/psutil-5.7.2.tar.gz",
+        "sha256" : "90990af1c3c67195c44c9a889184f84f5b2320dce3ee3acbd054e3ba0b4a7beb"
+      }]
     },
     {
       "name": "liblo",
@@ -71,7 +83,7 @@
       "name": "python-google-protobuf",
       "buildsystem": "simple",
       "build-commands": [
-        "pip3 install --verbose --no-index --no-deps --prefix=${FLATPAK_DEST} protobuf-3.1.0.post1-py2.py3-none-any.whl"
+        "pip3 install --prefix=/app protobuf-3.1.0.post1-py2.py3-none-any.whl"
       ],
       "sources": [
         {
@@ -92,7 +104,6 @@
         "--disable-unittests",
         "--disable-examples",
         "--disable-osc",
-        "--disable-http",
         "--enable-python-libs"
       ],
       "sources": [
@@ -128,7 +139,7 @@
       "name": "python-rtmidi",
       "buildsystem": "simple",
       "build-commands": [
-        "pip3 --verbose install --no-index --no-deps --ignore-installed --no-build-isolation --prefix=${FLATPAK_DEST} python-rtmidi-1.4.1.tar.gz"
+        "pip3 install --prefix=/app python-rtmidi-1.4.1.tar.gz"
       ],
       "sources": [
         {
