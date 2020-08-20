@@ -8,6 +8,8 @@ import subprocess
 import sys
 import time
 
+from ola.ClientWrapper import ClientWrapper
+from ola import OlaClient
 from gi.repository import Gio
 
 # Make sure we'll find the olc modules, even in JHBuild
@@ -44,7 +46,13 @@ if __name__ == "__main__":
     if not is_running('olad'):
         # Launch olad if not running
         olad_pid = subprocess.Popen('olad')
-        time.sleep(0.5)
+        # Wait olad starting
+        wrapper = None
+        while not wrapper:
+            try:
+                wrapper = ClientWrapper()
+            except (OlaClient.OLADNotRunningException, ConnectionError):
+                time.sleep(0.1)
     else:
         olad_pid = None
 
