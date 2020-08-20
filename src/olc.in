@@ -3,9 +3,10 @@
 import gettext
 import locale
 import os
-import sys
 import psutil
 import subprocess
+import sys
+import time
 
 from gi.repository import Gio
 
@@ -43,6 +44,7 @@ if __name__ == "__main__":
     if not is_running('olad'):
         # Launch olad if not running
         olad_pid = subprocess.Popen('olad')
+        time.sleep(0.5)
     else:
         olad_pid = None
 
