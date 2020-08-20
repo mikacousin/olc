@@ -14,7 +14,7 @@ Virtual console :
 ## Depends on
 - gtk3 >= 3.20
 - python3
-- psutil (python-psutil on archlinnux)
+- psutil (python-psutil on archlinux)
 - python-gobject
 - gobject-introspection
 - ola (with python3 support) 
