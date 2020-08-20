@@ -41,3 +41,5 @@ stamp-h1
 /builddir
 /.flatpak-builder
 /flatpak
+/repo
+*.flatpak
