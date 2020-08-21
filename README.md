@@ -61,7 +61,7 @@ $ flatpak-builder --run flatpak com.github.mikacousin.olc.json olc
 ```
 To create flatpak file:
 ```bash
-$ flatpak-builder --repo=repo --force-clean builddir com.github.mikacousin.olc.json
+$ flatpak-builder --repo=repo --force-clean flatpak com.github.mikacousin.olc.json
 $ flatpak build-bundle repo olc.flatpak com.github.mikacousin.olc
 ```
 To install and launch flatpak file:

@@ -28,15 +28,15 @@
       ]
     },
     {
-      "name" : "psutil",
+      "name": "psutil",
       "buildsystem": "simple",
       "build-commands": [
         "pip3 install --prefix=/app psutil-5.7.2.tar.gz"
       ],
-      "sources" : [{
-        "type" : "file",
-        "url" : "https://files.pythonhosted.org/packages/aa/3e/d18f2c04cf2b528e18515999b0c8e698c136db78f62df34eee89cee205f1/psutil-5.7.2.tar.gz",
-        "sha256" : "90990af1c3c67195c44c9a889184f84f5b2320dce3ee3acbd054e3ba0b4a7beb"
+      "sources": [{
+        "type": "file",
+        "url": "https://files.pythonhosted.org/packages/aa/3e/d18f2c04cf2b528e18515999b0c8e698c136db78f62df34eee89cee205f1/psutil-5.7.2.tar.gz",
+        "sha256": "90990af1c3c67195c44c9a889184f84f5b2320dce3ee3acbd054e3ba0b4a7beb"
       }]
     },
     {
@@ -55,15 +55,15 @@
       ]
     },
     {
-      "name" : "python-liblo",
+      "name": "python-liblo",
       "buildsystem": "simple",
       "build-commands": [
         "pip3 install --prefix=/app pyliblo-0.10.0.tar.gz"
       ],
-      "sources" : [{
-        "type" : "file",
-        "url" : "https://files.pythonhosted.org/packages/c0/da/4b8052ab5aa07952d7fe7b068d737a042e76373573eadd340f7550eddea9/pyliblo-0.10.0.tar.gz",
-        "sha256" : "fc67f1950b827272b00f9f0dc4ed7113c0ccef0c1c09e9976dead40ebbf1798f"
+      "sources": [{
+        "type": "file",
+        "url": "https://files.pythonhosted.org/packages/c0/da/4b8052ab5aa07952d7fe7b068d737a042e76373573eadd340f7550eddea9/pyliblo-0.10.0.tar.gz",
+        "sha256": "fc67f1950b827272b00f9f0dc4ed7113c0ccef0c1c09e9976dead40ebbf1798f"
       }]
     },
     {
@@ -150,25 +150,27 @@
       ]
     },
     {
-      "name" : "mido",
+      "name": "mido",
       "buildsystem": "simple",
       "build-commands": [
         "pip3 install --prefix=/app mido-1.2.9-py2.py3-none-any.whl"
       ],
-      "sources" : [{
-        "type" : "file",
-        "url" : "https://files.pythonhosted.org/packages/20/0a/81beb587b1ae832ea6a1901dc7c6faa380e8dd154e0a862f0a9f3d2afab9/mido-1.2.9-py2.py3-none-any.whl",
-        "sha256" : "fc6364efa028c8405166f63e6a83cbc6c17aaeac2c28680abe64ae48703a89dd"
+      "sources": [{
+        "type": "file",
+        "url": "https://files.pythonhosted.org/packages/20/0a/81beb587b1ae832ea6a1901dc7c6faa380e8dd154e0a862f0a9f3d2afab9/mido-1.2.9-py2.py3-none-any.whl",
+        "sha256": "fc6364efa028c8405166f63e6a83cbc6c17aaeac2c28680abe64ae48703a89dd"
       }]
     },
     {
-      "name" : "olc",
-      "builddir" : true,
-      "buildsystem" : "meson",
-      "sources" : [
+      "name": "olc",
+      "builddir": true,
+      "buildsystem": "meson",
+      "sources": [
         {
-          "type" : "git",
-          "url" : "https://github.com/mikacousin/olc.git"
+          "type": "git",
+          "url": "https://github.com/mikacousin/olc.git",
+          "tag": "0.2.alpha",
+          "commit": "96a8bb5966d8d40769b34c023932f890569a5c8e"
         }
       ]
     }
