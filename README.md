@@ -22,6 +22,14 @@ Virtual console :
 - mido (python-mido on archlinux)
 - liblo (python-pyliblo on archlinux)
 
+## Building from git
+```bash
+$ git clone https://github.com/mikacousin/olc.git
+$ cd olc
+$ meson builddir --prefix=/usr/local
+# sudo ninja -C builddir install
+```
+
 ## Quick test on Raspberry Pi 3B+
 Seems to work with **1 universe and 512 channels** (edit src/define.py)
 
@@ -43,15 +51,8 @@ And with `sudo apt install` :
 - libjack0
 - libjack-dev
 
-## Building from git
-```bash
-$ git clone https://github.com/mikacousin/olc.git
-$ cd olc
-$ meson builddir --prefix=/usr/local
-# sudo ninja -C builddir install
-```
-
-## Test flakpak package
+## Create and test flakpak package
+Compile and run:
 ```bash
 $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
