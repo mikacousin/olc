@@ -1,4 +1,7 @@
-# Open Lighting Console ![olc logo](https://raw.githubusercontent.com/mikacousin/olc/master/data/icons/hicolor/48x48/apps/com.github.mikacousin.olc.png)
+<p align="center">
+<img src="https://raw.githubusercontent.com/mikacousin/olc/master/data/icons/hicolor/256x256/apps/com.github.mikacousin.olc.png" alt="logo" width="60" height="60">
+</p>
+# Open Lighting Console
 ![License](https://img.shields.io/github/license/mikacousin/olc) [![Sourcery](https://img.shields.io/badge/Sourcery-enabled-brightgreen)](https://sourcery.ai)
 
 Open Lighting Console (olc) is a linux software to control lights on shows.
