@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2015 Mika Cousin -->
 <component type="desktop">
   <id>com.github.mikacousin.olc.desktop</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
+  <name>Open Lighting Console</name>
+  <summary>Control your lighting shows</summary>
   <description>
     <p>Open Light Console is a free software to control lights on theater shows.</p>
   </description>
+  <releases>
+    <release version="0.2.alpha" date="2020-08-21">
+      <description>
+      </description>
+    </release>
+  </releases>
+  <screenshots>
+    <screenshot type="default">
+      <image type="source" width="1600" height="878">https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/mikacousin/olc</url>
+  <content_rating type="oars-1.1" />
 </component>
