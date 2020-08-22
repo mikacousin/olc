@@ -20,6 +20,7 @@
       <image type="source" width="1600" height="878">https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png</image>
     </screenshot>
   </screenshots>
+  <translation type="gettext">olc</translation>
   <url type="homepage">https://github.com/mikacousin/olc</url>
   <content_rating type="oars-1.1" />
 </component>
