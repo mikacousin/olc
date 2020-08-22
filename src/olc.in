@@ -47,12 +47,18 @@ if __name__ == "__main__":
         # Launch olad if not running
         olad_pid = subprocess.Popen('olad')
         # Wait olad starting
+        timeout = 15
+        timer = 0
         wrapper = None
         while not wrapper:
             try:
                 wrapper = ClientWrapper()
             except (OlaClient.OLADNotRunningException, ConnectionError):
                 time.sleep(0.1)
+                timer += 0.1
+                if timer >= timeout:
+                    print("Can't start olad")
+                    break
     else:
         olad_pid = None
 
