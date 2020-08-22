@@ -11,7 +11,14 @@ Main Window :
 Virtual console :
 ![VirtualConsole](../assets/virtual_console.png?raw=true)
 
-## Depends on
+## Installation
+
+### Packages:
+Archlinux: [![AUR](https://img.shields.io/aur/version/olc-git)](https://aur.archlinux.org/packages/olc-git)
+
+### Manually:
+
+#### Depends on
 - gtk3 >= 3.20
 - python3
 - psutil (python-psutil on archlinux)
@@ -22,12 +29,31 @@ Virtual console :
 - mido (python-mido on archlinux)
 - liblo (python-pyliblo on archlinux)
 
-## Building from git
+#### Building from git
 ```bash
 $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
 $ meson builddir --prefix=/usr/local
 # sudo ninja -C builddir install
+```
+
+## Create and test flakpak package
+Compile and run:
+```bash
+$ git clone https://github.com/mikacousin/olc.git
+$ cd olc
+$ flatpak-builder flatpak com.github.mikacousin.olc.json
+$ flatpak-builder --run flatpak com.github.mikacousin.olc.json olc
+```
+To create flatpak file:
+```bash
+$ flatpak-builder --repo=repo --force-clean flatpak com.github.mikacousin.olc.json
+$ flatpak build-bundle repo olc.flatpak com.github.mikacousin.olc
+```
+To install and launch flatpak file:
+```bash
+$ flatpak install olc.flatpak
+$ flatpak run com.github.mikacousin.olc
 ```
 
 ## Quick test on Raspberry Pi 3B+
@@ -51,21 +77,3 @@ And with `sudo apt install` :
 - libjack0
 - libjack-dev
 
-## Create and test flakpak package
-Compile and run:
-```bash
-$ git clone https://github.com/mikacousin/olc.git
-$ cd olc
-$ flatpak-builder flatpak com.github.mikacousin.olc.json
-$ flatpak-builder --run flatpak com.github.mikacousin.olc.json olc
-```
-To create flatpak file:
-```bash
-$ flatpak-builder --repo=repo --force-clean flatpak com.github.mikacousin.olc.json
-$ flatpak build-bundle repo olc.flatpak com.github.mikacousin.olc
-```
-To install and launch flatpak file:
-```bash
-$ flatpak install olc.flatpak
-$ flatpak run com.github.mikacousin.olc
-```
