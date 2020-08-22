@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Copyright 2015 Mika Cousin -->
-<component type="desktop">
+<component type="desktop-application">
   <id>com.github.mikacousin.olc.desktop</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
