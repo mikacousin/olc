@@ -879,8 +879,7 @@ def _function_master(msg, master_index):
         for master in App().masters:
             if master.page == page and master.number == number:
                 break
-        master.value = val
-        master.level_changed()
+        master.set_level(val)
 
 
 def _function_flash(msg, master_index):
@@ -898,8 +897,7 @@ def _function_flash(msg, master_index):
             for master in App().masters:
                 if master.page == page and master.number == number:
                     break
-            master.value = master.old_value
-            master.level_changed()
+            master.set_level(master.old_value)
 
     elif msg.velocity == 127:
         if App().virtual_console:
@@ -915,5 +913,4 @@ def _function_flash(msg, master_index):
                 if master.page == page and master.number == number:
                     break
             master.old_value = master.value
-            master.value = 255
-            master.level_changed()
+            master.set_level(255)

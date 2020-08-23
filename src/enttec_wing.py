@@ -135,8 +135,7 @@ class WingPlayback:
             else:
                 for i in range(10):
                     if self.old_message[i + 15] != message[i + 15]:
-                        App().masters[i].value = int(message[i + 15])
-                        App().masters[i].level_changed()
+                        App().masters[i].set_level(int(message[i + 15]))
 
             self.old_message = message
 
@@ -159,8 +158,7 @@ def _function_flash(pressed, master_index):
                 if master.page == page and master.number == number:
                     break
             master.old_value = master.value
-            master.value = 255
-            master.level_changed()
+            master.set_level(255)
     else:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -174,5 +172,4 @@ def _function_flash(pressed, master_index):
             for master in App().masters:
                 if master.page == page and master.number == number:
                     break
-            master.value = master.old_value
-            master.level_changed()
+            master.set_level(master.old_value)

@@ -90,9 +90,7 @@ class Application(Gtk.Application):
         self.masters = []
         for page in range(2):
             for i in range(20):
-                self.masters.append(
-                    Master(page + 1, i + 1, 0, 0, self.groups, self.chasers)
-                )
+                self.masters.append(Master(page + 1, i + 1, 0, 0))
 
         # For Windows
         self.window = None
@@ -352,9 +350,7 @@ class Application(Gtk.Application):
         del self.masters[:]
         for page in range(2):
             for i in range(20):
-                self.masters.append(
-                    Master(page + 1, i + 1, 0, 0, self.groups, self.chasers)
-                )
+                self.masters.append(Master(page + 1, i + 1, 0, 0))
         # Redraw Sequential Window
         self.window.sequential.time_in = self.sequence.steps[1].time_in
         self.window.sequential.time_out = self.sequence.steps[1].time_out

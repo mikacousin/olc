@@ -119,7 +119,7 @@ class MastersTab(Gtk.Paned):
                 elif App().masters[index].content_type == 2:
                     nb_chan = 0
                     for chan in range(MAX_CHANNELS):
-                        if App().masters[index].channels[chan]:
+                        if App().masters[index].content_value[chan]:
                             nb_chan += 1
                     self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
                 # Type : Sequence
@@ -188,7 +188,7 @@ class MastersTab(Gtk.Paned):
 
             # Type : Channels
             if App().masters[row].content_type == 2:
-                channels = App().masters[row].channels
+                channels = App().masters[row].content_value
 
                 if channels[index] or self.channels[index].clicked:
                     if self.user_channels[index] == -1:
@@ -271,8 +271,10 @@ class MastersTab(Gtk.Paned):
             App().masters[index].content_type = content_type
 
             # Update content value
-            App().masters[index].content_value = -1
-            App().masters[index].channels = array.array("B", [0] * MAX_CHANNELS)
+            if content_type == 2:
+                App().masters[index].content_type = array.array("B", [0] * MAX_CHANNELS)
+            else:
+                App().masters[index].content_value = -1
             App().masters[index].text = ""
 
             # Update ui
@@ -567,23 +569,20 @@ class MastersTab(Gtk.Paned):
             # Master's channels
             if App().masters[row].content_type == 1:
                 preset = App().masters[row].content_value
-                mem = None
-                found = any(mem.memory == preset for mem in App().memories)
-                if found:
-                    channels = mem.channels
+                cue = next(mem for mem in App().memories if mem.memory == preset)
+                if cue:
+                    channels = cue.channels
                 else:
                     return False
             elif App().masters[row].content_type == 13:
                 group = App().masters[row].content_value
-                grp = None
-                found = any(grp.index == group for grp in App().groups)
-                if found:
+                grp = next(grp for grp in App().groups if grp.index == group)
+                if grp:
                     channels = grp.channels
                 else:
                     return False
-
             elif App().masters[row].content_type == 2:
-                channels = App().masters[row].channels
+                channels = App().masters[row].content_value
 
             # Select channels with a level
             for chan in range(MAX_CHANNELS):
@@ -710,7 +709,7 @@ class MastersTab(Gtk.Paned):
 
             # Type : Channels
             if App().masters[row].content_type == 2:
-                channels = App().masters[row].channels
+                channels = App().masters[row].content_value
 
                 nb_chan = 0
                 text = "Ch"

@@ -675,8 +675,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     # Save Master's value
                     App().masters[i].old_value = App().masters[i].value
                     self.masters[i].set_value(255)
-                    App().masters[i].value = 255
-                    App().masters[i].level_changed()
+                    App().masters[i].set_level(255)
 
     def flash_off(self, widget, _event):
         if not self.midi_learn:
@@ -684,8 +683,7 @@ class VirtualConsoleWindow(Gtk.Window):
                 if flash == widget:
                     # Restore Master's value
                     self.masters[i].set_value(App().masters[i].old_value)
-                    App().masters[i].value = App().masters[i].old_value
-                    App().masters[i].level_changed()
+                    App().masters[i].set_level(App().masters[i].old_value)
 
     def on_flash(self, widget):
         if self.midi_learn:
@@ -703,8 +701,7 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             value = master.get_value()
             index = self.masters.index(master)
-            App().masters[index].value = value
-            App().masters[index].level_changed()
+            App().masters[index].set_level(value)
 
     def master_clicked(self, master):
         if self.midi_learn:

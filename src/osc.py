@@ -372,6 +372,5 @@ class OscServer(liblo.ServerThread):
             for master in App().masters:
                 if master.page == page and master.number == number:
                     break
-            master.value = level
-            master.level_changed()
+            master.set_level(level)
         self.client.send("/subStick/level", ("i", master_index), ("i", level))

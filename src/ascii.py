@@ -111,11 +111,7 @@ class Ascii:
                     del App().masters[:]
                     for page in range(2):
                         for i in range(20):
-                            App().masters.append(
-                                Master(
-                                    page + 1, i + 1, 0, 0, App().groups, App().chasers,
-                                )
-                            )
+                            App().masters.append(Master(page + 1, i + 1, 0, 0))
                     App().patch.patch_empty()
                     App().sequence = Sequence(1, text="Main Playback")
                     del App().sequence.steps[1:]
@@ -469,13 +465,7 @@ class Ascii:
                     ) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
                         App().masters[index] = Master(
-                            int(item[0]),
-                            int(item[1]),
-                            item[2],
-                            item[3],
-                            App().groups,
-                            App().chasers,
-                            channels=channels,
+                            int(item[0]), int(item[1]), item[2], channels,
                         )
                         flag_master = False
 
@@ -495,12 +485,7 @@ class Ascii:
                     elif int(item[1]) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
                         App().masters[index] = Master(
-                            int(item[0]),
-                            int(item[1]),
-                            item[2],
-                            item[3],
-                            App().groups,
-                            App().chasers,
+                            int(item[0]), int(item[1]), item[2], item[3],
                         )
 
             # Add Empty Step at the end
