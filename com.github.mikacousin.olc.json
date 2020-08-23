@@ -7,7 +7,7 @@
   "finish-args": [
     "--share=ipc",
     "--share=network",
-    "--socket=x11",
+    "--socket=fallback-x11",
     "--socket=wayland",
     "--filesystem=home",
     "--device=all"
@@ -188,7 +188,9 @@
       "sources": [
         {
           "type": "git",
-          "url": "https://github.com/mikacousin/olc.git"
+          "url": "https://github.com/mikacousin/olc.git",
+          "tag": "0.2.1.alpha",
+          "commit": "40f8edbcba4a5048e638920206acb94ed08ab797"
         }
       ]
     }
