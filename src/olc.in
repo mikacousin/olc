@@ -13,23 +13,23 @@ from ola import OlaClient
 from gi.repository import Gio
 
 # Make sure we'll find the olc modules, even in JHBuild
-sys.path.insert(1, '@pythondir@')
+sys.path.insert(1, "@pythondir@")
 
 from olc.application import Application  # noqa: E402
 
-localedir = '@localedir@'
-pkgdatadir = '@pkgdatadir@'
+localedir = "@localedir@"
+pkgdatadir = "@pkgdatadir@"
 
 
 def is_running(name):
-    '''Check if there is any running process that contains the given name processName.
+    """Check if there is any running process that contains the given name processName.
 
     Args:
         name (str): process name
 
     Returns:
         bool: True if running, False otherwise
-    '''
+    """
     # Iterate over the all the running process
     for proc in psutil.process_iter():
         try:
@@ -43,9 +43,9 @@ def is_running(name):
 
 if __name__ == "__main__":
 
-    if not is_running('olad'):
+    if not is_running("olad"):
         # Launch olad if not running
-        olad_pid = subprocess.Popen('olad')
+        olad_pid = subprocess.Popen("olad")
         # Wait olad starting
         timeout = 15
         timer = 0
@@ -62,12 +62,12 @@ if __name__ == "__main__":
     else:
         olad_pid = None
 
-    locale.bindtextdomain('olc', localedir)
-    locale.textdomain('olc')
-    gettext.bindtextdomain('olc', localedir)
-    gettext.textdomain('olc')
+    locale.bindtextdomain("olc", localedir)
+    locale.textdomain("olc")
+    gettext.bindtextdomain("olc", localedir)
+    gettext.textdomain("olc")
 
-    resource = Gio.resource_load(os.path.join(pkgdatadir, 'olc.gresource'))
+    resource = Gio.resource_load(os.path.join(pkgdatadir, "olc.gresource"))
     Gio.Resource._register(resource)
 
     app = Application()
