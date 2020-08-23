@@ -493,10 +493,7 @@ class ThreadGo(threading.Thread):
                     if output:
                         output -= 1
                         univ = chan[1]
-                        old_level = round(
-                            self.dmxlevels[univ][output]
-                            * (255 / App().dmx.grand_master)
-                        )
+                        old_level = self.dmxlevels[univ][output]
                         if App().sequence.position < App().sequence.last - 1:
                             next_level = (
                                 App()
