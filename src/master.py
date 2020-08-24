@@ -98,7 +98,9 @@ class Master:
                     # Preset level
                     level = mem.channels[channel]
                     # Level in master
-                    level = 0 if self.value == 0 else int(round(level / (255 / self.value)))
+                    level = (
+                        0 if self.value == 0 else int(round(level / (255 / self.value)))
+                    )
                     self.dmx[channel] = level
 
     def _level_changed_channels(self):
@@ -116,7 +118,9 @@ class Master:
             for channel, lvl in enumerate(group.channels):
                 if lvl:
                     # Calculate level
-                    level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
+                    level = (
+                        0 if self.value == 0 else int(round(lvl / (255 / self.value)))
+                    )
                     # Update level in master array
                     self.dmx[channel] = level
 
@@ -160,7 +164,7 @@ class ThreadChaser(threading.Thread):
         position = 0
 
         while App().chasers[self.chaser].run:
-            # On récupère les temps du pas suivant
+            # Next Step Time In and Time Out
             if position != App().chasers[self.chaser].last - 1:
                 t_in = App().chasers[self.chaser].steps[position + 1].time_in
                 t_out = App().chasers[self.chaser].steps[position + 1].time_out
@@ -168,13 +172,8 @@ class ThreadChaser(threading.Thread):
                 t_in = App().chasers[self.chaser].steps[1].time_in
                 t_out = App().chasers[self.chaser].steps[1].time_out
 
-            # Quel est le temps le plus long
-            if t_in > t_out:
-                t_max = t_in
-                # t_min = t_out
-            else:
-                t_max = t_out
-                # t_min = t_in
+            # Longest Time
+            t_max = max([t_in, t_out])
 
             start_time = time.time() * 1000  # actual time in ms
             delay = t_max * 1000
@@ -182,9 +181,9 @@ class ThreadChaser(threading.Thread):
             delay_out = t_out * 1000
             i = (time.time() * 1000) - start_time
 
-            # Boucle sur le temps de monté ou de descente (le plus grand)
+            # Loop on longest time
             while i < delay and App().chasers[self.chaser].run:
-                # Mise à jour des niveaux
+                # Update levels
                 self.update_levels(delay_in, delay_out, i, position)
                 time.sleep(0.05)
                 i = (time.time() * 1000) - start_time
