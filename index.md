@@ -4,14 +4,14 @@
 
 - Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
 - [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) syntax
-- Open / Save ASCII files
+- Open / Save ASCII files (from Congo, DLight for example)
+- Patch / Unpatch by channels or by outputs
 - Main Playback
 - Chasers (as Sequences)
-- Patch / Unpatch
 - Groups
 - Masters
-- Virtual console
-- MIDI controllers
+- Track channels
+- Virtual console with easy MIDI learning for controllers
 
 ## Documentation 
 
