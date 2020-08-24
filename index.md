@@ -11,6 +11,7 @@
 - Masters
 - Track channels
 - Virtual console with easy MIDI learning for controllers
+- [Open Sound Control](https://en.wikipedia.org/wiki/Open_Sound_Control)
 
 ## Documentation 
 > Note:  
@@ -61,3 +62,12 @@ A Step contains a cue and times
 ### Open Lighting Architecture
 On start-up, Open Lighting Console will launched olad if not already running.  
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
+
+### Open Sound Control
+OSC Path | Value | Command
+-------- | ----- | -------
+/seq/go | 1 | Go
+/seq/plus | 1 | Seq+
+/seq/moins | 1 | Seq-
+/pad/1 | | 1
+/pad/2 | | 2
