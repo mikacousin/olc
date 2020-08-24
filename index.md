@@ -13,9 +13,9 @@
 - Virtual console with easy MIDI learning for controllers
 
 ## Documentation 
-> Note:
-> `Buttons` are console keys. You can see them on the virtual console.
-> [key] are keyboard shortcuts. Combined shortcuts are written like this [key1 + key2].
+> Note:  
+> `Buttons` are console keys. You can see them on the virtual console.  
+> [key] are keyboard shortcuts. Combined shortcuts are written like this [key1 + key2].  
 > For example, button `Ch` is key [C] on keyboard, `Thru` is [>]... To find keyboards shortcuts, see the menu entry in the application.
 
 ### Virtual console
