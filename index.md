@@ -22,18 +22,41 @@
 Open with Burger menu or [Shift + Ctrl + C]
 ![VirtualConsole](https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png)
 
-### Select channels
+### Main window
+#### Select channels
 - Select channel 1: `1 Ch`
 - Select channel from 1 to 10: `1 Ch 10 Thru`
 - Select channel 1, 3, 5 : `1 Ch 3 + 5 +`
 - Select channel from 1 to 5 and from 7 to 10: `1 Ch 10 Thru 6 -`
 
-### Set channels level
+#### Set channels level
 - Channel 1 at Full: `1 Ch 100 @`
 - Channel from 1 to 5 at 50%: `1 Ch 5 Thru 50 @`
 - Add 5% to selected channels: `+%`
 - Substract 5% to selected channels: `-%`
 > values of `+%` and `-%` can be changed in settings
+
+#### Manipulate Steps and Preset
+A Preset store channels levels
+- Record Preset with next free number:  `Record`
+- Record Preset 10 :  `10 Record`
+- Update Preset: `Update`
+A Step contains a cue and times
+- Time In of 3s: [3], [Shift + I]
+- Time Out of 2s: [2], [Shift + O]
+- Time In and Time Out of 10s: [10], [Shift + T]
+- Delay In of 1s: [1], [Shift + K]
+- Delay Out of 2s: [2], [Shift + L]
+- Delay In and Delay Out of 3s: [3], [Shift + D]
+- Wait of 0.5s: [0.5], [Shift + W]
+
+#### Move in Sequence
+- Go: `Go`
+- Jump to next step: `Seq+`
+- Jump to previous step: `Seq-`
+- Go to Preset 2.0: `2 Goto`
+- Go to the previous Step:  `Go Back`
+> Go Back Time can be changed in settings
 
 ### Open Lighting Architecture
 On start-up, Open Lighting Console will launched olad if not already running.  
