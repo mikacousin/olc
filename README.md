@@ -38,25 +38,6 @@ $ meson builddir --prefix=/usr/local
 # sudo ninja -C builddir install
 ```
 
-## Create and test flakpak package
-Compile and run:
-```bash
-$ git clone https://github.com/mikacousin/olc.git
-$ cd olc
-$ flatpak-builder flatpak com.github.mikacousin.olc.json
-$ flatpak-builder --run flatpak com.github.mikacousin.olc.json olc
-```
-To create flatpak file:
-```bash
-$ flatpak-builder --repo=repo --force-clean flatpak com.github.mikacousin.olc.json
-$ flatpak build-bundle repo olc.flatpak com.github.mikacousin.olc
-```
-To install and launch flatpak file:
-```bash
-$ flatpak install olc.flatpak
-$ flatpak run com.github.mikacousin.olc
-```
-
 ## Quick test on Raspberry Pi 3B+
 Seems to work with **1 universe and 512 channels** (edit src/define.py)
 
