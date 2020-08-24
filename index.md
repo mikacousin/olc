@@ -13,7 +13,7 @@
 - Virtual console with easy MIDI learning for controllers
 
 ## Documentation 
-Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C`, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
+Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C` on keyboard, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
 
 ### Select channels
 - Select channel 1: `1 Ch`
