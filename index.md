@@ -18,7 +18,7 @@
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090).
 
 ### Select channels
-Note: `Button` are not keyboard shortcuts but the names on the virtual console. For example button `Ch` is key `C`, `Thru` is `>`. To find keyboards shortcuts, see the menu entry in the application.
+Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C`, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
 - Select channel 1: `1 Ch`
 - Select channel from 1 to 10: `1 Ch 10 Thru`
 - Select channel 1, 3, 5 : `1 Ch 3 + 5 +`
