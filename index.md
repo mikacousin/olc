@@ -13,7 +13,7 @@
 - Virtual console with easy MIDI learning for controllers
 
 ## Documentation 
-Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C` on keyboard, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
+> Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C` on keyboard, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
 
 ### Select channels
 - Select channel 1: `1 Ch`
@@ -22,6 +22,5 @@ Note: `Buttons` are not keyboard shortcuts but the names on the virtual console.
 - Select channel from 1 to 5 and from 7 to 10: `1 Ch 10 Thru 6 -`
 
 ### Open Lighting Architecture
-On start-up, Open Lighting Console will launched olad if not already running.
-
-To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) with olad running.
+On start-up, Open Lighting Console will launched olad if not already running.  
+To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
