@@ -3,6 +3,7 @@
 ## Features
 
 - Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
+- [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) syntax
 - Open / Save ASCII files
 - Main Playback
 - Chasers (as Sequences)
