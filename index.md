@@ -2,7 +2,15 @@
 
 ## Features
 
-List features here
+- Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
+- Open / Save ASCII files
+- Main Playback
+- Chasers (as Sequences)
+- Patch / Unpatch
+- Groups
+- Masters
+- Virtual console
+- MIDI controllers
 
 ## Documentation 
 
