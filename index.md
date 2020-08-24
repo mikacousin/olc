@@ -15,6 +15,9 @@
 ## Documentation 
 > Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C` on keyboard, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
 
+### Virtual console
+![VirtualConsole](https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png)
+
 ### Select channels
 - Select channel 1: `1 Ch`
 - Select channel from 1 to 10: `1 Ch 10 Thru`
