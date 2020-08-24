@@ -21,6 +21,13 @@
 - Select channel 1, 3, 5 : `1 Ch 3 + 5 +`
 - Select channel from 1 to 5 and from 7 to 10: `1 Ch 10 Thru 6 -`
 
+### Set channels level
+- Channel 1 at Full: `1 Ch 100 @`
+- Channel from 1 to 5 at 50%: `1 Ch 5 Thru 50 @`
+- Add 5% to selected channels: `+%`
+- Substract 5% to selected channels: `-%`
+> values of `+%` and `-%` can be changed in settings
+
 ### Open Lighting Architecture
 On start-up, Open Lighting Console will launched olad if not already running.  
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
