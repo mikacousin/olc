@@ -13,9 +13,13 @@
 - Virtual console with easy MIDI learning for controllers
 
 ## Documentation 
-> Note: `Buttons` are not keyboard shortcuts but the names on the virtual console. For example, button `Ch` is key `C` on keyboard, `Thru` is `>`... To find keyboards shortcuts, see the menu entry in the application.
+> Note:
+> `Buttons` are console keys. You can see them on the virtual console.
+> [key] are keyboard shortcuts. Combined shortcuts are written like this [key1 + key2].
+> For example, button `Ch` is key [C] on keyboard, `Thru` is [>]... To find keyboards shortcuts, see the menu entry in the application.
 
 ### Virtual console
+Open with Burger menu or [Shift + Ctrl + C]
 ![VirtualConsole](https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png)
 
 ### Select channels
