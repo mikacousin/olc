@@ -1,4 +1,4 @@
-![Window](../assets/olc.png?raw=true)
+![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
 
 ## Features
 
