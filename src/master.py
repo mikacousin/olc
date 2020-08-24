@@ -98,19 +98,13 @@ class Master:
                     # Preset level
                     level = mem.channels[channel]
                     # Level in master
-                    if self.value == 0:
-                        level = 0
-                    else:
-                        level = int(round(level / (255 / self.value)))
+                    level = 0 if self.value == 0 else int(round(level / (255 / self.value)))
                     self.dmx[channel] = level
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
         for channel, lvl in enumerate(self.content_value):
-            if self.value == 0:
-                level = 0
-            else:
-                level = int(round(lvl / (255 / self.value)))
+            level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
             self.dmx[channel] = level
 
     def _level_changed_group(self):
@@ -122,10 +116,7 @@ class Master:
             for channel, lvl in enumerate(group.channels):
                 if lvl:
                     # Calculate level
-                    if self.value == 0:
-                        level = 0
-                    else:
-                        level = int(round(lvl / (255 / self.value)))
+                    level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
                     # Update level in master array
                     self.dmx[channel] = level
 
