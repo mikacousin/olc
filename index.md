@@ -1,7 +1,6 @@
 ![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
 
 ## Features
-
 - Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
 - [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) syntax
 - Open / Save ASCII files (from Congo, DLight for example)
@@ -15,4 +14,12 @@
 
 ## Documentation 
 
-Write some documentation
+### Open Lighting Architecture
+To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090).
+
+### Select channels
+Note: `Button` are not keyboard shortcuts but the names on the virtual console. To find keybords shortcuts, see the menu entry in the application.
+- Select channel 1: `1 Ch`
+- Select channel from 1 to 10: `1 Ch 10 Thru`
+- Select channel 1, 3, 5 : `1 Ch 3 + 5 +`
+- Select channel from 1 to 5 and from 7 to 10: `1 Ch 10 Thru 6 -`
