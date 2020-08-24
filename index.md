@@ -23,4 +23,5 @@ Note: `Buttons` are not keyboard shortcuts but the names on the virtual console.
 
 ### Open Lighting Architecture
 On start-up, Open Lighting Console will launched olad if not already running.
+
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) with olad running.
