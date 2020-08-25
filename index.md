@@ -64,7 +64,7 @@ On start-up, Open Lighting Console will launched olad if not already running.
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
 
 ### MIDI controllers
-> For now, MIDI mapping isn't save.
+> For now, MIDI mapping isn't save.  
 - You need to activate your controllers in settings.
 - In Virtual Console, toggle MIDI button to be in learning mode.
 - In Learning mode, select an object (Go for example) and push a button on on of your controllers
