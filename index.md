@@ -64,6 +64,8 @@ On start-up, Open Lighting Console will launched olad if not already running.
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
 
 ### Open Sound Control
+By default olc listen on port 7000 and send infos to IP address 10.0.0.3, port 9000.  
+This can be changed in settings
 <style>
 .tablelines table, .tablelines td, .tablelines th {
         border: 1px solid black;
