@@ -341,7 +341,7 @@ class Application(Gtk.Application):
         # Reset Patch
         self.patch.patch_1on1()
         # Reset Main Playback
-        self.sequence = Sequence(1)
+        self.sequence.__init__(1, "Main Playback")
         self.sequence.position = 0
         self.sequence.window = self.window
         # Delete memories, groups, chasers, masters
