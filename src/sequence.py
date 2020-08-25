@@ -119,7 +119,7 @@ class Sequence:
                 if item.cue.memory > cue:
                     exist = True
                     break
-            if not exist and self is not self:
+            if not exist and self is not App().sequence:
                 step += 1
         elif step:
             step += 1
