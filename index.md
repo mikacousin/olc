@@ -88,7 +88,7 @@ OSC Path | Value | Command
 /pad/clear | | C
 /pad/channel | | Ch
 /pad/thru | | Thru
-/pad/plus [ | +
+/pad/plus | | +
 /pad/moins | | -
 /pad/all | | All
 /pad/level | | @
@@ -96,4 +96,4 @@ OSC Path | Value | Command
 /pad/moinspourcent | | -%
 /pad/ff | | Full
 /subStick/flash | master(1-40), level(0-255) | Flash Master
-/subStick/level | mester(1-40), level(0-255) | Master at level
+/subStick/level | master(1-40), level(0-255) | Master at level
