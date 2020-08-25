@@ -71,7 +71,7 @@ To configure OLA, use the web interface on [http://localhost:9090](http://localh
 - Toggle MIDI button to quit learning mode
 - Play with buttons and faders on your controllers
 > Note:  
-> For now, MIDI mapping isn't save.
+> MIDI mapping is save in ASCII files.
 
 ### Open Sound Control
 By default olc listen on port 7000 and send infos to IP address 10.0.0.3, port 9000.  
