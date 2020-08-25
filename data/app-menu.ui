@@ -39,10 +39,14 @@
         <attribute name="label" translatable="yes">_Sequences</attribute>
         <attribute name="accel">&lt;Primary&gt;t</attribute>
       </item>
-        <item>
+      <item>
         <attribute name="action">app.masters</attribute>
         <attribute name="label" translatable="yes">_Masters</attribute>
         <attribute name="accel">&lt;Primary&gt;m</attribute>
+      </item>
+      <item>
+        <attribute name="action">app.track_channels</attribute>
+        <attribute name="label" translatable="yes">_Track channels</attribute>
       </item>
     </section>
     <section>

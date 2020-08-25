@@ -154,11 +154,6 @@ class Application(Gtk.Application):
         action.connect("activate", self.sequence.do_go)
         self.add_action(action)
         self.set_accels_for_action("app.go", ["<Control>g"])
-        # Track Channels
-        action = Gio.SimpleAction.new("track_channels", None)
-        action.connect("activate", self.track_channels)
-        self.add_action(action)
-        self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         # Go Back
         action = Gio.SimpleAction.new("go_back", None)
         action.connect("activate", self.sequence.go_back)
@@ -224,6 +219,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.masters", ["<Control>m"])
+        self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.about", ["F3"])
 
@@ -274,6 +270,11 @@ class Application(Gtk.Application):
         masters_action = Gio.SimpleAction.new("masters", None)
         masters_action.connect("activate", self._masters)
         self.add_action(masters_action)
+
+        # Track Channels
+        action = Gio.SimpleAction.new("track_channels", None)
+        action.connect("activate", self.track_channels)
+        self.add_action(action)
 
         virtual_console_action = Gio.SimpleAction.new("virtual_console", None)
         virtual_console_action.connect("activate", self._virtual_console)
