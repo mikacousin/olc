@@ -11,6 +11,7 @@ from olc.ascii_save import (
     save_main_playback,
     save_masters,
     save_patch,
+    save_midi_mapping,
 )
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
@@ -488,6 +489,18 @@ class Ascii:
                             int(item[0]), int(item[1]), item[2], item[3],
                         )
 
+                # MIDI mapping
+                if line[:10].upper() == "$$MIDINOTE":
+                    item = line[11:].split(" ")
+                    App().midi.midi_notes.update(
+                        {item[0]: [int(item[1]), int(item[2])]}
+                    )
+                if line[:8].upper() == "$$MIDICC":
+                    item = line[9:].split(" ")
+                    App().midi.midi_notes.update(
+                        {item[0]: [int(item[1]), int(item[2])]}
+                    )
+
             # Add Empty Step at the end
             cue = Cue(0, 0.0)
             step = Step(1, cue=cue)
@@ -524,8 +537,9 @@ class Ascii:
         save_congo_groups(stream)
         save_masters(stream)
         save_patch(stream)
+        save_midi_mapping(stream)
 
-        stream.write(bytes("\nENDDATA\n", "utf8"))
+        stream.write(bytes("ENDDATA\n", "utf8"))
 
         stream.close()
 

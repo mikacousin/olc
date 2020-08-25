@@ -194,6 +194,14 @@ def save_masters(stream):
             stream.write(bytes("\n$MASTPAGE " + str(page) + " 0 0 0\n", "utf8"))
         # MASTPAGEITEM :
         # page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
+        if not master.content_value or master.content_type == 2:
+            content = "0"
+        else:
+            content = (
+                str(int(master.content_value))
+                if master.content_value.is_integer()
+                else str(master.content_value)
+            )
         stream.write(
             bytes(
                 "$MASTPAGEITEM "
@@ -203,14 +211,14 @@ def save_masters(stream):
                 + " "
                 + str(master.content_type)
                 + " "
-                + str(master.content_value)
+                + content
                 + " 5 0 5 255\n",
                 "utf8",
             )
         )
         # Master of Channels, save them
         if master.content_type == 2:
-            _save_channels(stream, master.channels)
+            _save_channels(stream, master.content_value)
 
     stream.write(bytes("\n", "utf8"))
 
@@ -244,6 +252,23 @@ def save_patch(stream):
                 i += 1
     if patch != "":
         stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
+    stream.write(bytes("\n", "utf8"))
+
+
+def save_midi_mapping(stream):
+    """Save MIDI mapping"""
+    stream.write(
+        bytes(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+            "utf8",
+        )
+    )
+    stream.write(bytes("! MIDI mapping\n\n", "utf8"))
+    for key, value in App().midi.midi_notes.items():
+        stream.write(bytes(f"$$MIDINOTE {key} {value[0]} {value[1]}\n", "utf8"))
+    for key, value in App().midi.midi_cc.items():
+        stream.write(bytes(f"$$MIDICC {key} {value[0]} {value[1]}\n", "utf8"))
+    stream.write(bytes("\n", "utf8"))
 
 
 def _save_channels(stream, channels_array):
