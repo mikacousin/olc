@@ -64,6 +64,11 @@ On start-up, Open Lighting Console will launched olad if not already running.
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
 
 ### Open Sound Control
+<style>
+.tablelines table, .tablelines td, .tablelines th {
+        border: 1px solid black;
+        }
+</style>
 OSC Path | Value | Command
 -------- | ----- | -------
 /seq/go | 1 | Go
@@ -71,3 +76,12 @@ OSC Path | Value | Command
 /seq/moins | 1 | Seq-
 /pad/1 | | 1
 /pad/2 | | 2
+/pad/3 | | 3
+/pad/4 | | 4
+/pad/5 | | 5
+/pad/6 | | 6
+/pad/7 | | 7
+/pad/8 | | 8
+/pad/9 | | 9
+/pad/9 | | 0
+/pad/dot | | .
