@@ -77,6 +77,7 @@ class Midi:
             "percent_minus": [0, -1],
             "update": [0, -1],
             "record": [0, -1],
+            "time": [0, -1],
             "flash_1": [0, -1],
             "flash_2": [0, -1],
             "flash_3": [0, -1],
@@ -263,6 +264,21 @@ class Midi:
             else:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_colon
+                App().window.on_key_press_event(None, event)
+
+    def _function_time(self, msg):
+        """Time"""
+        if msg.velocity == 0:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+                App().virtual_console.time.emit("button-release-event", event)
+        elif msg.velocity == 127:
+            if App().virtual_console:
+                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+                App().virtual_console.time.emit("button-press-event", event)
+            else:
+                event = Gdk.EventKey()
+                event.keyval = Gdk.KEY_T
                 App().window.on_key_press_event(None, event)
 
     def _function_ch(self, msg):

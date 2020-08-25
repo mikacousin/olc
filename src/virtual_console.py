@@ -72,7 +72,8 @@ class VirtualConsoleWindow(Gtk.Window):
         self.time_pad = Gtk.Grid()
         # self.time_pad.set_column_homogeneous(True)
         # self.time_pad.set_row_homogeneous(True)
-        self.time = ButtonWidget("Time")
+        self.time = ButtonWidget("Time", "time")
+        self.time.connect("clicked", self.on_time)
         self.delay = ButtonWidget("Delay")
         self.button_in = ButtonWidget("In")
         self.button_out = ButtonWidget("Out")
@@ -372,6 +373,15 @@ class VirtualConsoleWindow(Gtk.Window):
             self.midi_learn = False
             App().midi.midi_learn = ""
             App().virtual_console.queue_draw()
+
+    def on_time(self, _widget):
+        if self.midi_learn:
+            App().midi.midi_learn = "time"
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_T
+            App().window.on_key_press_event(None, event)
 
     def on_go(self, _widget):
         if self.midi_learn:
