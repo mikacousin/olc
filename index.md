@@ -65,11 +65,12 @@ To configure OLA, use the web interface on [http://localhost:9090](http://localh
 
 ### MIDI controllers
 - You need to activate your controllers in settings.
-- In Virtual Console, toggle MIDI button to be in learning mode.
-- In Learning mode, select an object (Go for example) and push a button on on of your controllers
+- Open Virtual Console, toggle MIDI button to be in learning mode.
+- In Learning mode, select an object (Go for example) and push a button on one of your controllers
 - You can learn as many object you want (buttons, faders)
 - Toggle MIDI button to quit learning mode
-- Play with buttons and faders of your controllers
+- Play with buttons and faders on your controllers
+> Note:  
 > For now, MIDI mapping isn't save.
 
 ### Open Sound Control
