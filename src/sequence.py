@@ -119,7 +119,7 @@ class Sequence:
                 if item.cue.memory > cue:
                     exist = True
                     break
-            if not exist and self is not App().sequence:
+            if not exist and self is not self:
                 step += 1
         elif step:
             step += 1
@@ -152,11 +152,11 @@ class Sequence:
 
     def sequence_plus(self):
         """Sequence +"""
-        if App().sequence.on_go and App().sequence.thread:
+        if self.on_go and self.thread:
             try:
                 # Stop actual Thread
-                App().sequence.thread.stop()
-                App().sequence.on_go = False
+                self.thread.stop()
+                self.on_go = False
                 # Stop at the end
                 if self.position > self.last - 3:
                     self.position = self.last - 3
@@ -206,14 +206,14 @@ class Sequence:
 
     def sequence_minus(self):
         """Sequence -"""
-        if self.on_go and App().sequence.thread:
+        if self.on_go and self.thread:
             try:
                 # Stop actual Thread
-                App().sequence.thread.stop()
-                App().sequence.on_go = False
+                self.thread.stop()
+                self.on_go = False
                 # Stop at the begining
-                if App().sequence.position < 1:
-                    App().sequence.position = 1
+                if self.position < 1:
+                    self.position = 1
             except Exception as e:
                 print("Error :", str(e))
 
@@ -261,7 +261,7 @@ class Sequence:
 
     def goto(self, keystring):
         """ Jump to cue number """
-        old_pos = App().sequence.position
+        old_pos = self.position
 
         if not keystring:
             return
@@ -271,9 +271,9 @@ class Sequence:
             # Until we find the good one
             if float(step.cue.memory) == float(keystring):
                 # Position to the one just before
-                App().sequence.position = i - 1
-                # position = App().sequence.position
-                next_step = App().sequence.position + 1
+                self.position = i - 1
+                # position = self.position
+                next_step = self.position + 1
                 # Redraw Sequential window with new times
                 App().window.sequential.total_time = self.steps[next_step].total_time
                 App().window.sequential.time_in = self.steps[next_step].time_in
@@ -300,52 +300,42 @@ class Sequence:
     def do_go(self, _action, _param):
         """Go"""
         # Si un Go est en cours, on bascule sur la mémoire suivante
-        if App().sequence.on_go and App().sequence.thread:
+        if self.on_go and self.thread:
             # Stop actual Thread
             try:
-                App().sequence.thread.stop()
-                App().sequence.thread.join()
+                self.thread.stop()
+                self.thread.join()
             except Exception as e:
                 print("Error :", str(e))
-            App().sequence.on_go = False
+            self.on_go = False
             # Launch another Go
-            position = App().sequence.position
+            position = self.position
             position += 1
-            if position < App().sequence.last - 1:
-                App().sequence.position += 1
+            if position < self.last - 1:
+                self.position += 1
             else:
-                App().sequence.position = 0
+                self.position = 0
                 position = 0
-            App().window.sequential.total_time = (
-                App().sequence.steps[position + 1].total_time
-            )
-            App().window.sequential.time_in = App().sequence.steps[position + 1].time_in
-            App().window.sequential.time_out = (
-                App().sequence.steps[position + 1].time_out
-            )
-            App().window.sequential.delay_in = (
-                App().sequence.steps[position + 1].delay_in
-            )
-            App().window.sequential.delay_out = (
-                App().sequence.steps[position + 1].delay_out
-            )
-            App().window.sequential.wait = App().sequence.steps[position + 1].wait
-            App().window.sequential.channel_time = (
-                App().sequence.steps[position + 1].channel_time
-            )
+            App().window.sequential.total_time = self.steps[position + 1].total_time
+            App().window.sequential.time_in = self.steps[position + 1].time_in
+            App().window.sequential.time_out = self.steps[position + 1].time_out
+            App().window.sequential.delay_in = self.steps[position + 1].delay_in
+            App().window.sequential.delay_out = self.steps[position + 1].delay_out
+            App().window.sequential.wait = self.steps[position + 1].wait
+            App().window.sequential.channel_time = self.steps[position + 1].channel_time
             App().window.sequential.position_a = 0
             App().window.sequential.position_b = 0
 
             # Set main window's subtitle
             subtitle = (
                 "Mem. : "
-                + str(App().sequence.steps[position].cue.memory)
+                + str(self.steps[position].cue.memory)
                 + " "
-                + App().sequence.steps[position].text
+                + self.steps[position].text
                 + " - Next Mem. : "
-                + str(App().sequence.steps[position + 1].cue.memory)
+                + str(self.steps[position + 1].cue.memory)
                 + " "
-                + App().sequence.steps[position + 1].text
+                + self.steps[position + 1].text
             )
             # Update Sequential Tab
             App().window.update_active_cues_display()
@@ -357,9 +347,9 @@ class Sequence:
 
         else:
             # On indique qu'un Go est en cours
-            App().sequence.on_go = True
-            App().sequence.thread = ThreadGo()
-            App().sequence.thread.start()
+            self.on_go = True
+            self.thread = ThreadGo()
+            self.thread.start()
 
     def go_back(self, _action, _param):
         """Go Back"""
@@ -368,13 +358,13 @@ class Sequence:
         if position == 0:
             return False
 
-        if App().sequence.on_go and App().sequence.thread:
+        if self.on_go and self.thread:
             try:
-                App().sequence.thread.stop()
-                App().sequence.thread.join()
+                self.thread.stop()
+                self.thread.join()
             except Exception as e:
                 print("Error :", str(e))
-            App().sequence.on_go = False
+            self.on_go = False
 
         App().window.sequential.total_time = self.steps[position - 1].total_time
         App().window.sequential.time_in = self.steps[position - 1].time_in
@@ -400,9 +390,9 @@ class Sequence:
         )
         App().window.header.set_subtitle(subtitle)
 
-        App().sequence.on_go = True
-        App().sequence.thread = ThreadGoBack()
-        App().sequence.thread.start()
+        self.on_go = True
+        self.thread = ThreadGoBack()
+        self.thread.start()
         return True
 
 

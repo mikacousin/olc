@@ -114,7 +114,7 @@ class Ascii:
                         for i in range(20):
                             App().masters.append(Master(page + 1, i + 1, 0, 0))
                     App().patch.patch_empty()
-                    App().sequence = Sequence(1, text="Main Playback")
+                    App().sequence.__init__(1, text="Main Playback")
                     del App().sequence.steps[1:]
                     App().sequence.window = App().window
 
