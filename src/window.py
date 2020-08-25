@@ -990,7 +990,8 @@ class Window(Gtk.ApplicationWindow):
         App().sequence.steps[position + 1].set_wait(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position + 3][3] = str(time)
+        time = "" if time == 0 else str(time)
+        self.cues_liststore1[position + 3][3] = time
         self.step_filter1.refilter()
         self.sequential.wait = App().sequence.steps[position + 1].wait
         self.sequential.total_time = App().sequence.steps[position + 1].total_time
@@ -1014,8 +1015,9 @@ class Window(Gtk.ApplicationWindow):
         App().sequence.steps[position + 1].set_delay(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position + 3][4] = str(time)
-        self.cues_liststore1[position + 3][6] = str(time)
+        time = "" if time == 0 else str(time)
+        self.cues_liststore1[position + 3][4] = time
+        self.cues_liststore1[position + 3][6] = time
         self.step_filter1.refilter()
         self.sequential.delay_in = App().sequence.steps[position + 1].delay_in
         self.sequential.delay_out = App().sequence.steps[position + 1].delay_out
@@ -1040,7 +1042,8 @@ class Window(Gtk.ApplicationWindow):
         App().sequence.steps[position + 1].set_delay_in(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position + 3][6] = str(time)
+        time = "" if time == 0 else str(time)
+        self.cues_liststore1[position + 3][6] = time
         self.step_filter1.refilter()
         self.sequential.delay_in = App().sequence.steps[position + 1].delay_in
         self.sequential.total_time = App().sequence.steps[position + 1].total_time
@@ -1064,7 +1067,8 @@ class Window(Gtk.ApplicationWindow):
         App().sequence.steps[position + 1].set_delay_out(time)
         if time.is_integer():
             time = int(time)
-        self.cues_liststore1[position + 3][4] = str(time)
+        time = "" if time == 0 else str(time)
+        self.cues_liststore1[position + 3][4] = time
         self.step_filter1.refilter()
         self.sequential.delay_out = App().sequence.steps[position + 1].delay_out
         self.sequential.total_time = App().sequence.steps[position + 1].total_time
