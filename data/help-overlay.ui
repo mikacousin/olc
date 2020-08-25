@@ -12,6 +12,20 @@
             <property name="visible">1</property>
             <property name="title" translatable="yes" context="shortcut window">General</property>
             <child>
+              <object class="GtkShortcutsShortcut" id="fullscreen">
+                <property name="visible">1</property>
+                <property name="accelerator">F11</property>
+                <property name="title" translatable="yes" context="shortcut window">Fullscreen</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="about">
+                <property name="visible">1</property>
+                <property name="accelerator">F3</property>
+                <property name="title" translatable="yes" context="shortcut window">About</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="open">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;O</property>

@@ -96,105 +96,115 @@ msgstr "Général"
 
 #: help-overlay.ui:18
 msgctxt "shortcut window"
+msgid "Fullscreen"
+msgstr "Plein écran"
+
+#: help-overlay.ui:25
+msgctxt "shortcut window"
+msgid "About"
+msgstr "À propos"
+
+#: help-overlay.ui:32
+msgctxt "shortcut window"
 msgid "Open ASCII File"
 msgstr "Ouvrir un fichier ASCII"
 
-#: help-overlay.ui:25
+#: help-overlay.ui:39
 msgctxt "shortcut window"
 msgid "Save ASCII File"
 msgstr "Enregistrer un fichier ASCII"
 
-#: help-overlay.ui:32
+#: help-overlay.ui:46
 msgctxt "shortcut window"
 msgid "Save with file name"
 msgstr "Enregistrer sous"
 
-#: help-overlay.ui:39
+#: help-overlay.ui:53
 msgctxt "shortcut window"
 msgid "Patch Outputs"
 msgstr "Patch outputs"
 
-#: help-overlay.ui:46
+#: help-overlay.ui:60
 msgctxt "shortcut window"
 msgid "Patch Channels"
 msgstr "Patch circuits"
 
-#: help-overlay.ui:53
+#: help-overlay.ui:67
 msgctxt "shortcut window"
 msgid "Masters"
 msgstr "Masters"
 
-#: help-overlay.ui:60
+#: help-overlay.ui:74
 msgctxt "shortcut window"
 msgid "Edit Sequence"
 msgstr "Éditer séquences"
 
-#: help-overlay.ui:67
+#: help-overlay.ui:81
 msgctxt "shortcut window"
 msgid "Track Channels"
 msgstr "Suivi de circuits"
 
-#: help-overlay.ui:74
+#: help-overlay.ui:88
 msgctxt "shortcut window"
 msgid "Virtual Console"
 msgstr "Console virtuelle"
 
-#: help-overlay.ui:81
+#: help-overlay.ui:95
 msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quitter"
 
-#: help-overlay.ui:88
+#: help-overlay.ui:102
 msgctxt "shortcut window"
 msgid "Close Tab"
 msgstr "Fermer onglet"
 
-#: help-overlay.ui:95
+#: help-overlay.ui:109
 msgctxt "shortcut window"
 msgid "Clear"
 msgstr "Effacer saisie"
 
-#: help-overlay.ui:103
+#: help-overlay.ui:117
 msgctxt "shortcut window"
 msgid "Move"
 msgstr "Déplacement"
 
-#: help-overlay.ui:108
+#: help-overlay.ui:122
 msgctxt "shortcut window"
 msgid "Right"
 msgstr "Droite"
 
-#: help-overlay.ui:115
+#: help-overlay.ui:129
 msgctxt "shortcut window"
 msgid "Left"
 msgstr "Gauche"
 
-#: help-overlay.ui:122
+#: help-overlay.ui:136
 msgctxt "shortcut window"
 msgid "Up"
 msgstr "Haut"
 
-#: help-overlay.ui:129
+#: help-overlay.ui:143
 msgctxt "shortcut window"
 msgid "Down"
 msgstr "Bas"
 
-#: help-overlay.ui:137
+#: help-overlay.ui:151
 msgctxt "shortcut window"
 msgid "Select Channels"
 msgstr "Sélection des circuits"
 
-#: help-overlay.ui:142
+#: help-overlay.ui:156
 msgctxt "shortcut window"
 msgid "Select channel number"
 msgstr "Sélection du numéro de circuit"
 
-#: help-overlay.ui:149
+#: help-overlay.ui:163
 msgctxt "shortcut window"
 msgid "Add channel number"
 msgstr "Ajoute le numéro de circuit"
 
-#: help-overlay.ui:156
+#: help-overlay.ui:170
 msgctxt "shortcut window"
 msgid "Remove channel number"
 msgstr "Retire le numéro de circuit"

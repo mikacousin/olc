@@ -159,6 +159,10 @@ class Application(Gtk.Application):
         action.connect("activate", self.sequence.go_back)
         self.add_action(action)
         self.set_accels_for_action("app.go_back", ["<Control>b"])
+        # Fullscreen
+        action = Gio.SimpleAction.new("fullscreen", None)
+        action.connect("activate", self.window.fullscreen_toggle)
+        self.add_action(action)
 
         # Create several DMX arrays
         self.dmx = Dmx()
@@ -222,6 +226,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.about", ["F3"])
+        self.set_accels_for_action("app.fullscreen", ["F11"])
 
     def setup_app_menu(self):
         """ Setup application menu, return Gio.Menu """

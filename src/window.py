@@ -20,6 +20,9 @@ class Window(Gtk.ApplicationWindow):
         # 1 : all channels
         self.view_type = 0
 
+        # Fullscreen
+        self.full = False
+
         Gtk.ApplicationWindow.__init__(
             self, title="Open Lighting Console", application=App()
         )
@@ -215,6 +218,15 @@ class Window(Gtk.ApplicationWindow):
         self.connect("scroll-event", self.on_scroll)
 
         self.set_icon_name("olc")
+
+    def fullscreen_toggle(self, _action, _param):
+        """Toggle fullscreen"""
+        if self.full:
+            self.unfullscreen()
+            self.full = False
+        else:
+            self.fullscreen()
+            self.full = True
 
     def step_filter_func1(self, model, treeiter, _data):
         """Filter for the first part of the cues list"""
