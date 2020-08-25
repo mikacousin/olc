@@ -74,7 +74,8 @@ class VirtualConsoleWindow(Gtk.Window):
         # self.time_pad.set_row_homogeneous(True)
         self.time = ButtonWidget("Time", "time")
         self.time.connect("clicked", self.on_time)
-        self.delay = ButtonWidget("Delay")
+        self.delay = ButtonWidget("Delay", "delay")
+        self.delay.connect("clicked", self.on_delay)
         self.button_in = ButtonWidget("In")
         self.button_out = ButtonWidget("Out")
         # self.labelGM = Gtk.Label('Grand Master')
@@ -381,6 +382,15 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_T
+            App().window.on_key_press_event(None, event)
+
+    def on_delay(self, _widget):
+        if self.midi_learn:
+            App().midi.midi_learn = "delay"
+            self.queue_draw()
+        else:
+            event = Gdk.EventKey()
+            event.keyval = Gdk.KEY_D
             App().window.on_key_press_event(None, event)
 
     def on_go(self, _widget):
