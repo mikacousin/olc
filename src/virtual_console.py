@@ -1,6 +1,7 @@
 from gi.repository import Gdk, Gtk
 from olc.define import App
 from olc.widgets_button import ButtonWidget
+from olc.widgets_controller import ControllerWidget
 from olc.widgets_fader import FaderWidget
 from olc.widgets_flash import FlashWidget
 from olc.widgets_go import GoWidget
@@ -222,6 +223,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.label = Gtk.Label("")
         self.modify_pad.attach(self.label, 0, 1, 1, 1)
 
+        # Controller for channels level
+        self.wheel = ControllerWidget(text="wheel")
+        self.wheel.connect("moved", self.on_wheel)
+        self.wheel.connect("clicked", self.controller_clicked)
+
         # Crossfade and more
         self.crossfade_pad = Gtk.Grid()
         # self.crossfade_pad.set_column_homogeneous(True)
@@ -355,6 +361,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.grid.attach(self.rec_pad, 2, 0, 1, 1)
         self.grid.attach(self.thru_pad, 2, 1, 1, 1)
         self.grid.attach(self.modify_pad, 3, 0, 1, 1)
+        self.grid.attach(self.wheel, 3, 1, 1, 1)
         self.grid.attach(self.crossfade_pad, 4, 0, 1, 2)
         self.grid.attach(self.go_pad, 5, 1, 1, 1)
         self.grid.attach(self.masters_pad, 6, 0, 1, 2)
@@ -785,3 +792,33 @@ class VirtualConsoleWindow(Gtk.Window):
 
             App().dmx.grand_master = value
             App().window.grand_master.queue_draw()
+
+    def controller_clicked(self, widget):
+        """Controller clicked"""
+        if self.midi_learn and widget == self.wheel:
+            App().midi.midi_learn = "wheel"
+        self.queue_draw()
+
+    def on_wheel(self, _widget, direction, step):
+        """Wheel for channels level
+
+        Args:
+            widget:
+            direction (Gdk.ScrollDirection): Up or down
+            step (int): increment or decrement step size
+        """
+        if not self.midi_learn:
+            # For each selected channels
+            sel = App().window.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for channelwidget in children:
+                    channel = int(channelwidget.channel) - 1
+                    for output in App().patch.channels[channel]:
+                        out = output[0]
+                        univ = output[1]
+                        level = App().dmx.frame[univ][out - 1]
+                        if direction == Gdk.ScrollDirection.UP:
+                            App().dmx.user[channel] = min(level + step, 255)
+                        elif direction == Gdk.ScrollDirection.DOWN:
+                            App().dmx.user[channel] = max(level - step, 0)

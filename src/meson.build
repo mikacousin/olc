@@ -45,6 +45,7 @@ olc_sources = [
   'widgets.py',
   'widgets_button.py',
   'widgets_channel.py',
+  'widgets_controller.py',
   'widgets_fader.py',
   'widgets_flash.py',
   'widgets_go.py',

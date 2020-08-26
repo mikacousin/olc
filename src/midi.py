@@ -122,6 +122,7 @@ class Midi:
         }
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
+            "wheel": [3, 1],
             "gm": [3, 108],
             "master_1": [0, 1],
             "master_2": [0, 2],
@@ -823,6 +824,32 @@ class Midi:
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_R
                 App().window.on_key_press_event(None, event)
+
+    def _function_wheel(self, msg):
+        """Wheel for channels level"""
+        val = msg.value
+        if val > 64:
+            direction = Gdk.ScrollDirection.UP
+            step = val - 64
+        elif val < 64:
+            direction = Gdk.ScrollDirection.DOWN
+            step = 64 - val
+        if App().virtual_console:
+            App().virtual_console.wheel.emit("moved", direction, step)
+        else:
+            sel = App().window.flowbox.get_selected_children()
+            for flowboxchild in sel:
+                children = flowboxchild.get_children()
+                for channelwidget in children:
+                    channel = int(channelwidget.channel) - 1
+                    for output in App().patch.channels[channel]:
+                        out = output[0]
+                        univ = output[1]
+                        level = App().dmx.frame[univ][out - 1]
+                        if direction == Gdk.ScrollDirection.UP:
+                            App().dmx.user[channel] = min(level + step, 255)
+                        elif direction == Gdk.ScrollDirection.DOWN:
+                            App().dmx.user[channel] = max(level - step, 0)
 
     def _function_gm(self, msg):
         """Grand Master"""
