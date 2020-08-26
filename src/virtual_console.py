@@ -5,6 +5,7 @@ from olc.widgets_controller import ControllerWidget
 from olc.widgets_fader import FaderWidget
 from olc.widgets_flash import FlashWidget
 from olc.widgets_go import GoWidget
+from olc.widgets_knob import KnobWidget
 
 
 class VirtualConsoleWindow(Gtk.Window):
@@ -281,6 +282,21 @@ class VirtualConsoleWindow(Gtk.Window):
         self.label = Gtk.Label("")
         self.crossfade_pad.attach(self.label, 0, 7, 1, 1)
 
+        # Independents
+        self.independents = Gtk.Grid()
+        self.independent1 = KnobWidget(text="inde_1")
+        self.independent1.connect("clicked", self.inde_clicked)
+        self.independent1.connect("changed", self.inde_changed)
+        self.independent2 = KnobWidget(text="inde_2")
+        self.independent2.connect("clicked", self.inde_clicked)
+        self.independent2.connect("changed", self.inde_changed)
+        self.independent3 = KnobWidget(text="inde_3")
+        self.independent3.connect("clicked", self.inde_clicked)
+        self.independent3.connect("changed", self.inde_changed)
+        self.independents.attach(self.independent1, 0, 0, 1, 1)
+        self.independents.attach(self.independent2, 1, 0, 1, 1)
+        self.independents.attach(self.independent3, 2, 0, 1, 1)
+
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
         # self.go_pad.set_column_homogeneous(True)
@@ -363,6 +379,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.grid.attach(self.modify_pad, 3, 0, 1, 1)
         self.grid.attach(self.wheel, 3, 1, 1, 1)
         self.grid.attach(self.crossfade_pad, 4, 0, 1, 2)
+        self.grid.attach(self.independents, 5, 0, 1, 1)
         self.grid.attach(self.go_pad, 5, 1, 1, 1)
         self.grid.attach(self.masters_pad, 6, 0, 1, 2)
 
@@ -822,3 +839,20 @@ class VirtualConsoleWindow(Gtk.Window):
                             App().dmx.user[channel] = min(level + step, 255)
                         elif direction == Gdk.ScrollDirection.DOWN:
                             App().dmx.user[channel] = max(level - step, 0)
+
+    def inde_clicked(self, widget):
+        """Independent clicked"""
+        if self.midi_learn:
+            if widget == self.independent1:
+                App().midi.midi_learn = "inde_1"
+            elif widget == self.independent2:
+                App().midi.midi_learn = "inde_2"
+            elif widget == self.independent3:
+                App().midi.midi_learn = "inde_3"
+            self.queue_draw()
+
+    def inde_changed(self, widget):
+        """Independent value changed"""
+        if not self.midi_learn:
+            # print(widget.value)
+            pass

@@ -51,6 +51,7 @@ olc_sources = [
   'widgets_go.py',
   'widgets_grand_master.py',
   'widgets_group.py',
+  'widgets_knob.py',
   'widgets_patch_channels.py',
   'widgets_patch_outputs.py',
   'widgets_sequential.py',

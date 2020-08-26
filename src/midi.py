@@ -123,6 +123,9 @@ class Midi:
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
             "wheel": [3, 1],
+            "inde_1": [0, -1],
+            "inde_2": [0, -1],
+            "inde_3": [0, -1],
             "gm": [3, 108],
             "master_1": [0, 1],
             "master_2": [0, 2],
@@ -215,6 +218,8 @@ class Midi:
                     if key[:7] == "master_":
                         # We need to pass master number to masters function
                         GLib.idle_add(_function_master, msg, int(key[7:]))
+                    if key[:5] == "inde_":
+                        GLib.idle_add(_function_inde, msg, int(key[5:]))
                     else:
                         func = getattr(self, "_function_" + key, None)
                         if func:
@@ -973,3 +978,20 @@ def _function_flash(msg, master_index):
                     break
             master.old_value = master.value
             master.set_level(255)
+
+
+def _function_inde(msg, independent):
+    val = (msg.value / 127) * 255
+    if App().virtual_console:
+        if independent == 1:
+            App().virtual_console.independent1.value = val
+            App().virtual_console.independent1.emit("changed")
+            App().virtual_console.independent1.queue_draw()
+        elif independent == 2:
+            App().virtual_console.independent2.value = val
+            App().virtual_console.independent2.emit("changed")
+            App().virtual_console.independent2.queue_draw()
+        elif independent == 3:
+            App().virtual_console.independent3.value = val
+            App().virtual_console.independent3.emit("changed")
+            App().virtual_console.independent3.queue_draw()
