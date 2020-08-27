@@ -17,7 +17,14 @@ class ControllerWidget(Gtk.DrawingArea):
     __gtype_name__ = "ControllerWidget"
 
     __gsignals__ = {
-        "moved": (GObject.SignalFlags.RUN_FIRST, None, (Gdk.ScrollDirection, int,)),
+        "moved": (
+            GObject.SignalFlags.RUN_FIRST,
+            None,
+            (
+                Gdk.ScrollDirection,
+                int,
+            ),
+        ),
         "clicked": (GObject.SignalFlags.ACTION, None, ()),
     }
 

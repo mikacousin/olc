@@ -133,14 +133,10 @@ class CrossFade:
                 else:
                     next_level = App().sequence.steps[0].cue.channels[channel]
                 if scale == self.scale_a:
-                    update_a(
-                        channel + 1, old_level, next_level, wait, position,
-                    )
+                    update_a(channel + 1, old_level, next_level, wait, position)
                 elif scale == self.scale_b:
                     # Get SequentialWindow's width to place cursor
-                    update_b(
-                        channel + 1, old_level, next_level, wait, position,
-                    )
+                    update_b(channel + 1, old_level, next_level, wait, position)
 
 
 def update_a(channel, old_level, next_level, wait, pos):

@@ -212,7 +212,7 @@ class SequentialWidget(Gtk.Widget):
                         allocation.height - 12 - (ct_nb * 12),
                     )
                     cr.line_to(
-                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12),
+                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12)
                     )
                     cr.stroke()
                 else:
@@ -239,7 +239,7 @@ class SequentialWidget(Gtk.Widget):
                         allocation.height - 12 - (ct_nb * 12),
                     )
                     cr.line_to(
-                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12),
+                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12)
                     )
                     cr.stroke()
                 else:

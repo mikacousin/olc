@@ -849,8 +849,8 @@ class Application(Gtk.Application):
 
     def _about(self, _action, _parameter):
         """Setup about dialog
-            @param action as Gio.SimpleAction
-            @param param as GLib.Variant
+        @param action as Gio.SimpleAction
+        @param param as GLib.Variant
         """
         if not self.about_window:
             builder = Gtk.Builder()
@@ -864,8 +864,8 @@ class Application(Gtk.Application):
 
     def _about_response(self, dialog, _response):
         """Destroy about dialog when closed
-            @param dialog as Gtk.Dialog
-            @param response as int
+        @param dialog as Gtk.Dialog
+        @param response as int
         """
         dialog.destroy()
         self.about_window = None

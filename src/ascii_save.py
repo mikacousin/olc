@@ -37,10 +37,10 @@ def save_main_playback(stream):
                 else str(step.delay_in)
             )
             wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
-            stream.write(bytes("CUE " + str(step.cue.memory) + "\n", "utf8",))
-            stream.write(bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8",))
-            stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8",))
-            stream.write(bytes("$$WAIT " + wait + "\n", "utf8",))
+            stream.write(bytes("CUE " + str(step.cue.memory) + "\n", "utf8"))
+            stream.write(bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8"))
+            stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8"))
+            stream.write(bytes("$$WAIT " + wait + "\n", "utf8"))
             #  Chanel Time if any
             for chan in step.channel_time.keys():
                 delay = (
@@ -53,10 +53,10 @@ def save_main_playback(stream):
                     if step.channel_time[chan].time.is_integer()
                     else str(step.channel_time[chan].time)
                 )
-                stream.write(bytes("$$PARTTIME " + delay + " " + time + "\n", "utf8",))
+                stream.write(bytes("$$PARTTIME " + delay + " " + time + "\n", "utf8"))
                 stream.write(bytes("$$PARTTIMECHAN " + str(chan) + "\n", "utf8"))
             stream.write(bytes("TEXT " + step.text + "\n", "iso-8859-1"))
-            stream.write(bytes("$$TEXT " + ascii(step.text)[1:-1] + "\n", "ascii",))
+            stream.write(bytes("$$TEXT " + ascii(step.text)[1:-1] + "\n", "ascii"))
             _save_channels(stream, step.cue.channels)
             stream.write(bytes("\n", "utf8"))
 
@@ -98,11 +98,9 @@ def save_chasers(stream):
                         "utf8",
                     )
                 )
-                stream.write(
-                    bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8",)
-                )
-                stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8",))
-                stream.write(bytes("$$WAIT " + wait + "\n", "utf8",))
+                stream.write(bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8"))
+                stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8"))
+                stream.write(bytes("$$WAIT " + wait + "\n", "utf8"))
                 _save_channels(stream, step.cue.channels)
                 stream.write(bytes("\n", "utf8"))
 
@@ -179,9 +177,7 @@ def save_masters(stream):
         bytes("!               Content type (2 = Channels, 3 = Chaser,\n", "utf8")
     )
     stream.write(
-        bytes(
-            "!               13 = Group), Content value (Chaser#, Group#),\n", "utf8",
-        )
+        bytes("!               13 = Group), Content value (Chaser#, Group#),\n", "utf8")
     )
     stream.write(bytes("!               Time In, Wait time, Time Out,\n", "utf8"))
     stream.write(bytes("!               Flash level (0-255)\n", "utf8"))

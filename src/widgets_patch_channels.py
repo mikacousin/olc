@@ -259,7 +259,7 @@ class PatchChannelWidget(Gtk.Widget):
                         str(output) + "." + str(univ)
                     )
                     cr.move_to(
-                        65 + (j * 35) + (30 / 2) - w / 2, (30 / 2 - (h - 20) / 2) + 30,
+                        65 + (j * 35) + (30 / 2) - w / 2, (30 / 2 - (h - 20) / 2) + 30
                     )
 
                 cr.show_text(str(output) + "." + str(univ))

@@ -26,8 +26,9 @@ from gi.repository import Gio, GObject, Gtk  # noqa: E402
 
 
 def get_time(string):
-    """ String format : [[hours:]minutes:]seconds[.tenths]
-        Return time in seconds """
+    """String format : [[hours:]minutes:]seconds[.tenths]
+    Return time in seconds
+    """
     if ":" in string:
         tsplit = string.split(":")
         if len(tsplit) == 2:
@@ -466,7 +467,7 @@ class Ascii:
                     ) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
                         App().masters[index] = Master(
-                            int(item[0]), int(item[1]), item[2], channels,
+                            int(item[0]), int(item[1]), item[2], channels
                         )
                         flag_master = False
 
@@ -486,7 +487,7 @@ class Ascii:
                     elif int(item[1]) <= 20:
                         index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
                         App().masters[index] = Master(
-                            int(item[0]), int(item[1]), item[2], item[3],
+                            int(item[0]), int(item[1]), item[2], item[3]
                         )
 
                 # MIDI mapping
