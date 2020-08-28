@@ -57,6 +57,14 @@ class Dmx(threading.Thread):
                                 "green": 0.7,
                                 "blue": 0.4,
                             }
+                    for inde in App().independents.independents:
+                        if channel in inde.channels:
+                            level = inde.dmx[channel]
+                            App().window.channels[channel].color_level = {
+                                "red": 0.4,
+                                "green": 0.4,
+                                "blue": 0.7,
+                            }
                     # Proportional patch level
                     level = level * (App().patch.outputs[universe][output][1] / 100)
                     # Grand Master

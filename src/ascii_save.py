@@ -251,6 +251,24 @@ def save_patch(stream):
     stream.write(bytes("\n", "utf8"))
 
 
+def save_independents(stream):
+    """Save Independents"""
+    stream.write(
+        bytes(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+            "utf8",
+        )
+    )
+    stream.write(bytes("! Independents\n\n", "utf8"))
+    for inde in App().independents.independents:
+        stream.write(bytes(f"$SPECIALFUNCTION {inde.number} 0 0\n", "utf8"))
+        stream.write(bytes(f"TEXT {inde.text}\n", "iso-8859-1"))
+        stream.write(bytes(f"$$TEXT {ascii(inde.text)[1:-1]}\n", "ascii"))
+        _save_channels(stream, inde.levels)
+        stream.write(bytes("\n", "utf8"))
+    stream.write(bytes("\n", "utf8"))
+
+
 def save_midi_mapping(stream):
     """Save MIDI mapping"""
     stream.write(

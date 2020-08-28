@@ -451,20 +451,22 @@ class Window(Gtk.ApplicationWindow):
         child = self.notebook.get_nth_page(page)
         if child == App().group_tab:
             return App().group_tab.on_key_press_event(widget, event)
-        if child == App().patch_outputs_tab:
+        elif child == App().patch_outputs_tab:
             return App().patch_outputs_tab.on_key_press_event(widget, event)
-        if child == App().patch_channels_tab:
+        elif child == App().patch_channels_tab:
             return App().patch_channels_tab.on_key_press_event(widget, event)
-        if child == App().sequences_tab:
+        elif child == App().sequences_tab:
             return App().sequences_tab.on_key_press_event(widget, event)
-        if child == App().channeltime_tab:
+        elif child == App().channeltime_tab:
             return App().channeltime_tab.on_key_press_event(widget, event)
-        if child == App().track_channels_tab:
+        elif child == App().track_channels_tab:
             return App().track_channels_tab.on_key_press_event(widget, event)
-        if child == App().memories_tab:
+        elif child == App().memories_tab:
             return App().memories_tab.on_key_press_event(widget, event)
-        if child == App().masters_tab:
+        elif child == App().masters_tab:
             return App().masters_tab.on_key_press_event(widget, event)
+        elif child == App().inde_tab:
+            return App().inde_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
@@ -906,10 +908,11 @@ class Window(Gtk.ApplicationWindow):
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = App().patch.outputs[univ][output][0]
-                    level = App().dmx.frame[univ][output]
+                    channel = App().patch.outputs[univ][output][0] - 1
+                    if channel not in App().independents.channels:
+                        level = App().dmx.frame[univ][output]
 
-                    App().sequence.steps[position].cue.channels[channel - 1] = level
+                    App().sequence.steps[position].cue.channels[channel] = level
 
             # Tag filename as modified
             App().ascii.modified = True

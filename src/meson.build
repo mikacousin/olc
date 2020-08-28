@@ -29,6 +29,8 @@ olc_sources = [
   'dmx.py',
   'enttec_wing.py',
   'group.py',
+  'independent.py',
+  'independents_edition.py',
   'master.py',
   'masters_edition.py',
   'midi.py',

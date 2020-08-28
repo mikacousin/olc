@@ -10,6 +10,8 @@ from olc.define import MAX_CHANNELS, NB_UNIVERSES
 from olc.dmx import Dmx, PatchDmx
 from olc.enttec_wing import WingPlayback
 from olc.group import GroupTab
+from olc.independent import Independents
+from olc.independents_edition import IndependentsTab
 from olc.master import Master
 from olc.masters_edition import MastersTab
 from olc.midi import Midi
@@ -92,6 +94,9 @@ class Application(Gtk.Application):
             for i in range(20):
                 self.masters.append(Master(page + 1, i + 1, 0, 0))
 
+        # Independents
+        self.independents = Independents()
+
         # For Windows
         self.window = None
         self.about_window = None
@@ -108,6 +113,7 @@ class Application(Gtk.Application):
         self.sequences_tab = None
         self.channeltime_tab = None
         self.track_channels_tab = None
+        self.inde_tab = None
 
         self.dmx = None
         self.crossfade = None
@@ -224,6 +230,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.sequences", ["<Control>t"])
         self.set_accels_for_action("app.masters", ["<Control>m"])
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
+        self.set_accels_for_action("app.independents", ["<Control>i"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.about", ["F3"])
         self.set_accels_for_action("app.fullscreen", ["F11"])
@@ -279,6 +286,11 @@ class Application(Gtk.Application):
         # Track Channels
         action = Gio.SimpleAction.new("track_channels", None)
         action.connect("activate", self.track_channels)
+        self.add_action(action)
+
+        # Independents
+        action = Gio.SimpleAction.new("independents", None)
+        action.connect("activate", self._independents)
         self.add_action(action)
 
         virtual_console_action = Gio.SimpleAction.new("virtual_console", None)
@@ -824,6 +836,27 @@ class Application(Gtk.Application):
             self.window.notebook.set_current_page(-1)
         else:
             page = self.window.notebook.page_num(self.masters_tab)
+            self.window.notebook.set_current_page(page)
+
+    def _independents(self, _action, _parameter):
+        """Create Independents Tab"""
+        if self.inde_tab is None:
+            self.inde_tab = IndependentsTab()
+            # Label with a close icon
+            button = Gtk.Button()
+            button.set_relief(Gtk.ReliefStyle.NONE)
+            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
+            button.connect("clicked", self.inde_tab.on_close_icon)
+            label = Gtk.Box()
+            label.pack_start(Gtk.Label("Independents"), False, False, 0)
+            label.pack_start(button, False, False, 0)
+            label.show_all()
+
+            self.window.notebook.append_page(self.inde_tab, label)
+            self.window.show_all()
+            self.window.notebook.set_current_page(-1)
+        else:
+            page = self.window.notebook.page_num(self.inde_tab)
             self.window.notebook.set_current_page(page)
 
     def _virtual_console(self, _action, _parameter):

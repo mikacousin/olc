@@ -854,5 +854,12 @@ class VirtualConsoleWindow(Gtk.Window):
     def inde_changed(self, widget):
         """Independent value changed"""
         if not self.midi_learn:
-            # print(widget.value)
-            pass
+            if widget == self.independent1:
+                App().independents.independents[0].level = widget.value
+                App().independents.independents[0].update_dmx()
+            elif widget == self.independent2:
+                App().independents.independents[1].level = widget.value
+                App().independents.independents[1].update_dmx()
+            elif widget == self.independent3:
+                App().independents.independents[2].level = widget.value
+                App().independents.independents[2].update_dmx()

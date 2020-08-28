@@ -48,6 +48,10 @@
         <attribute name="action">app.track_channels</attribute>
         <attribute name="label" translatable="yes">_Track channels</attribute>
       </item>
+      <item>
+        <attribute name="action">app.independents</attribute>
+        <attribute name="label" translatable="yes">_Independents</attribute>
+      </item>
     </section>
     <section>
       <item>

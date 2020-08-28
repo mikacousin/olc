@@ -11,12 +11,14 @@ from olc.ascii_save import (
     save_main_playback,
     save_masters,
     save_patch,
+    save_independents,
     save_midi_mapping,
 )
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.group import Group
+from olc.independent import Independent
 from olc.master import Master
 from olc.sequence import Sequence
 from olc.step import Step
@@ -77,6 +79,7 @@ class Ascii:
             flag_master = False
             flag_group = False
             flag_preset = False
+            flag_inde = False
 
             type_seq = "Normal"
             playback = False
@@ -117,7 +120,7 @@ class Ascii:
                     App().patch.patch_empty()
                     App().sequence.__init__(1, text="Main Playback")
                     del App().sequence.steps[1:]
-                    App().sequence.window = App().window
+                    App().independents.__init__()
 
                 if line[:9].upper() == "$SEQUENCE":
                     p = line[10:].split(" ")
@@ -133,6 +136,7 @@ class Ascii:
                     flag_patch = False
                     flag_master = False
                     flag_group = False
+                    flag_inde = False
                     flag_preset = False
 
                 if flag_seq and type_seq == "Chaser":
@@ -322,6 +326,7 @@ class Ascii:
                     flag_patch = True
                     flag_master = False
                     flag_group = False
+                    flag_inde = False
                     flag_preset = False
                     App().patch.patch_empty()  # Empty patch
                     App().window.flowbox.invalidate_filter()
@@ -353,6 +358,7 @@ class Ascii:
                     flag_patch = False
                     flag_master = False
                     flag_group = False
+                    flag_inde = False
                     flag_preset = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     preset_nb = float(line[6:])
@@ -362,6 +368,7 @@ class Ascii:
                     flag_patch = False
                     flag_master = False
                     flag_group = False
+                    flag_inde = False
                     flag_preset = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     preset_nb = float(line[8:])
@@ -408,6 +415,7 @@ class Ascii:
                     flag_patch = False
                     flag_master = False
                     flag_preset = False
+                    flag_inde = False
                     flag_group = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     group_nb = float(line[6:])
@@ -416,6 +424,7 @@ class Ascii:
                     flag_patch = False
                     flag_master = False
                     flag_preset = False
+                    flag_inde = False
                     flag_group = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     group_nb = float(line[7:])
@@ -481,6 +490,7 @@ class Ascii:
                         flag_patch = False
                         flag_group = False
                         flag_preset = False
+                        flag_inde = False
                         flag_master = True
                         channels = array.array("B", [0] * MAX_CHANNELS)
                     # Only 20 Masters per pages
@@ -489,6 +499,41 @@ class Ascii:
                         App().masters[index] = Master(
                             int(item[0]), int(item[1]), item[2], item[3]
                         )
+
+                # Independents
+                if line[:16].upper() == "$SPECIALFUNCTION":
+                    flag_seq = False
+                    flag_patch = False
+                    flag_master = False
+                    flag_preset = False
+                    flag_group = False
+                    flag_inde = True
+                    channels = array.array("B", [0] * MAX_CHANNELS)
+                    items = line[17:].split(" ")
+                    number = items[0]
+                    # Parameters not implemented:
+                    # ftype = items[1]  # 0: inclusive, 1: Inhibit, 2: Exclusive
+                    # button_mode = items[2]  # 0: Momentary, 1: Toggling
+                if flag_inde:
+                    if line[:1] == "!":
+                        flag_inde = False
+                    if line[:4].upper() == "TEXT":
+                        text = line[5:]
+                    if line[:6].upper() == "$$TEXT" and not text:
+                        text = line[7:]
+                    if line[:4].upper() == "CHAN":
+                        chan_list = line[5:].split(" ")
+                        for channel in chan_list:
+                            item = channel.split("/")
+                            if item[0]:
+                                chan = int(item[0])
+                                level = int(item[1][1:], 16)
+                                if chan <= MAX_CHANNELS:
+                                    channels[chan - 1] = level
+                    if line == "":
+                        inde = Independent(number, text=text, levels=channels)
+                        App().independents.add(inde)
+                        flag_inde = False
 
                 # MIDI mapping
                 if line[:10].upper() == "$$MIDINOTE":
@@ -538,6 +583,7 @@ class Ascii:
         save_congo_groups(stream)
         save_masters(stream)
         save_patch(stream)
+        save_independents(stream)
         save_midi_mapping(stream)
 
         stream.write(bytes("ENDDATA\n", "utf8"))
