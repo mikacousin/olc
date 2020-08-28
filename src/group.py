@@ -302,6 +302,8 @@ class GroupTab(Gtk.Paned):
         """ Channel """
 
         self.flowbox1.unselect_all()
+        for channel in range(MAX_CHANNELS):
+            self.channels[channel].clicked = False
 
         if self.keystring != "" and self.keystring != "0":
             channel = int(self.keystring) - 1
@@ -310,16 +312,13 @@ class GroupTab(Gtk.Paned):
                 # Only patched channel
                 if App().patch.channels[channel][0] != [0, 0]:
                     self.channels[channel].clicked = True
-                    self.flowbox1.invalidate_filter()
 
                     child = self.flowbox1.get_child_at_index(channel)
                     App().window.set_focus(child)
                     self.flowbox1.select_child(child)
                     self.last_chan_selected = self.keystring
-        else:
-            for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-            self.flowbox1.invalidate_filter()
+
+        self.flowbox1.invalidate_filter()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
