@@ -49,12 +49,9 @@ class PatchChannelsTab(Gtk.Grid):
 
     def on_key_press_event(self, widget, event):
 
-        # TODO: Hack to know if user is editing something
+        # Hack to know if user is editing something
         widget = App().window.get_focus()
-        # print(widget.get_path().is_type(Gtk.Entry))
-        if not widget:
-            return False
-        if widget.get_path().is_type(Gtk.Entry):
+        if widget and widget.get_path().is_type(Gtk.Entry):
             return False
 
         keyname = Gdk.keyval_name(event.keyval)
