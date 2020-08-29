@@ -241,6 +241,8 @@ class MastersTab(Gtk.Paned):
         self.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         for channel in range(MAX_CHANNELS):
+            self.channels[channel].level = 0
+            self.channels[channel].next_level = 0
             self.channels[channel].clicked = False
             self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
@@ -347,9 +349,7 @@ class MastersTab(Gtk.Paned):
         # Hack to know if user is editing something
         # TODO: Bug with CellRendererCombo (entry blocked)
         widget = App().window.get_focus()
-        if not widget:
-            return False
-        if widget.get_path().is_type(Gtk.Entry):
+        if widget and widget.get_path().is_type(Gtk.Entry):
             return False
 
         keyname = Gdk.keyval_name(event.keyval)
@@ -739,9 +739,8 @@ class MastersTab(Gtk.Paned):
                         found = True
                         break
                 if found:
-                    channels = grp.channels
                     for chan in range(MAX_CHANNELS):
-                        channels[chan] = self.channels[chan].level
+                        grp.channels[chan] = self.channels[chan].level
                     # Update Group Tab if open
                     if App().group_tab:
                         App().group_tab.flowbox1.invalidate_filter()
