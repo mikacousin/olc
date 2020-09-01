@@ -43,6 +43,9 @@ class IndependentsTab(Gtk.Paned):
         self.treeview.connect("cursor-changed", self.on_changed)
         for i, column_title in enumerate(["Number", "Text"]):
             renderer = Gtk.CellRendererText()
+            if i == 1:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.text_edited)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             self.treeview.append_column(column)
         scrollable = Gtk.ScrolledWindow()
@@ -103,8 +106,19 @@ class IndependentsTab(Gtk.Paned):
         App().window.notebook.remove_page(page)
         App().inde_tab = None
 
+    def text_edited(self, _widget, path, text):
+        """Independent text edited"""
+        self.liststore[path][1] = text
+        number = self.liststore[path][0]
+        App().independents.independents[number - 1].text = text
+
     def on_key_press_event(self, _widget, event):
         """Keyboard events"""
+        # Hack to know if user is editing something
+        widget = App().window.get_focus()
+        if widget and widget.get_path().is_type(Gtk.Entry):
+            return False
+
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
@@ -136,7 +150,7 @@ class IndependentsTab(Gtk.Paned):
         """Close Tab"""
         page = App().window.notebook.get_current_page()
         App().window.notebook.remove_page(page)
-        App().memories_tab = None
+        App().inde_tab = None
 
     def _keypress_BackSpace(self):
         self.keystring = ""
@@ -302,7 +316,6 @@ class IndependentsTab(Gtk.Paned):
 
     def _keypress_exclam(self):
         """Level + %"""
-
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
 
@@ -324,3 +337,19 @@ class IndependentsTab(Gtk.Paned):
                 self.channels[channel].next_level = level
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
+
+    def _keypress_U(self):
+        """Update independent channels"""
+        # Find independent
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            selected = path.get_indices()[0]
+            number = self.liststore[selected][0]
+            # Update channels level
+            channels = array.array("B", [0] * MAX_CHANNELS)
+            for channel in range(MAX_CHANNELS):
+                channels[channel] = self.channels[channel].level
+            App().independents.independents[number - 1].set_levels(channels)
+
+            # Reset user modifications
+            self.user_channels = array.array("h", [-1] * MAX_CHANNELS)

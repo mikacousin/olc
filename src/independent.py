@@ -18,7 +18,7 @@ class Independent:
     """
 
     def __init__(self, number, text="", levels=array.array("B", [0] * MAX_CHANNELS)):
-        self.number = int(number)
+        self.number = number
         self.level = 0
         self.channels = set()
         self.levels = levels
@@ -63,6 +63,10 @@ class Independents:
         self.independents = []
         self.channels = set()
 
+        # Create 9 Independents
+        for i in range(9):
+            self.add(Independent(i + 1))
+
     def add(self, independent):
         """Add an independent"""
         number = independent.number
@@ -73,6 +77,15 @@ class Independents:
         self.independents.append(independent)
         self._update_channels()
         return True
+
+    def update(self, independent):
+        """Update independent"""
+        number = independent.number
+        text = independent.text
+        levels = independent.levels
+        self.independents[number - 1].text = text
+        self.independents[number - 1].set_levels(levels)
+        self._update_channels()
 
     def get_channels(self):
         """Returns: (set) channels presents in all independent"""

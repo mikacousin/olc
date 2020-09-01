@@ -510,7 +510,7 @@ class Ascii:
                     flag_inde = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                     items = line[17:].split(" ")
-                    number = items[0]
+                    number = int(items[0])
                     # Parameters not implemented:
                     # ftype = items[1]  # 0: inclusive, 1: Inhibit, 2: Exclusive
                     # button_mode = items[2]  # 0: Momentary, 1: Toggling
@@ -532,7 +532,7 @@ class Ascii:
                                     channels[chan - 1] = level
                     if line == "":
                         inde = Independent(number, text=text, levels=channels)
-                        App().independents.add(inde)
+                        App().independents.update(inde)
                         flag_inde = False
 
                 # MIDI mapping
@@ -679,5 +679,13 @@ class Ascii:
             # Redraw
             App().masters_tab.populate_tab()
             App().masters_tab.flowbox.invalidate_filter()
+
+        # Redraw Independents Tab
+        if App().inde_tab:
+            App().inde_tab.liststore.clear()
+            for inde in App().independents.independents:
+                App().inde_tab.liststore.append([inde.number, inde.text])
+            path = Gtk.TreePath.new_first()
+            App().inde_tab.treeview.set_cursor(path, None, False)
 
         # TODO: Redraw Track Channels Tab if exist

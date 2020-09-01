@@ -293,9 +293,45 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent3 = KnobWidget(text="inde_3")
         self.independent3.connect("clicked", self.inde_clicked)
         self.independent3.connect("changed", self.inde_changed)
+        self.independent4 = KnobWidget(text="inde_4")
+        self.independent4.connect("clicked", self.inde_clicked)
+        self.independent4.connect("changed", self.inde_changed)
+        self.independent5 = KnobWidget(text="inde_5")
+        self.independent5.connect("clicked", self.inde_clicked)
+        self.independent5.connect("changed", self.inde_changed)
+        self.independent6 = KnobWidget(text="inde_6")
+        self.independent6.connect("clicked", self.inde_clicked)
+        self.independent6.connect("changed", self.inde_changed)
+        self.independent7 = FlashWidget(text="inde_7")
+        self.independent7.width = 34
+        self.independent7.height = 34
+        self.independent7.radius = 5
+        self.independent7.connect("clicked", self.inde_clicked)
+        self.independent7.connect("button-press-event", self.inde_on)
+        self.independent7.connect("button-release-event", self.inde_off)
+        self.independent8 = FlashWidget(text="inde_8")
+        self.independent8.width = 34
+        self.independent8.height = 34
+        self.independent8.radius = 5
+        self.independent8.connect("clicked", self.inde_clicked)
+        self.independent8.connect("button-press-event", self.inde_on)
+        self.independent8.connect("button-release-event", self.inde_off)
+        self.independent9 = FlashWidget(text="inde_9")
+        self.independent9.width = 34
+        self.independent9.height = 34
+        self.independent9.radius = 5
+        self.independent9.connect("clicked", self.inde_clicked)
+        self.independent9.connect("button-press-event", self.inde_on)
+        self.independent9.connect("button-release-event", self.inde_off)
         self.independents.attach(self.independent1, 0, 0, 1, 1)
         self.independents.attach(self.independent2, 1, 0, 1, 1)
         self.independents.attach(self.independent3, 2, 0, 1, 1)
+        self.independents.attach(self.independent4, 0, 1, 1, 1)
+        self.independents.attach(self.independent5, 1, 1, 1, 1)
+        self.independents.attach(self.independent6, 2, 1, 1, 1)
+        self.independents.attach(self.independent7, 0, 2, 1, 1)
+        self.independents.attach(self.independent8, 1, 2, 1, 1)
+        self.independents.attach(self.independent9, 2, 2, 1, 1)
 
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
@@ -849,7 +885,43 @@ class VirtualConsoleWindow(Gtk.Window):
                 App().midi.midi_learn = "inde_2"
             elif widget == self.independent3:
                 App().midi.midi_learn = "inde_3"
+            elif widget == self.independent4:
+                App().midi.midi_learn = "inde_4"
+            elif widget == self.independent5:
+                App().midi.midi_learn = "inde_5"
+            elif widget == self.independent6:
+                App().midi.midi_learn = "inde_6"
+            elif widget == self.independent7:
+                App().midi.midi_learn = "inde_7"
+            elif widget == self.independent8:
+                App().midi.midi_learn = "inde_8"
+            elif widget == self.independent9:
+                App().midi.midi_learn = "inde_9"
             self.queue_draw()
+
+    def inde_on(self, widget, _event):
+        if not self.midi_learn:
+            if widget == self.independent7:
+                App().independents.independents[6].level = 255
+                App().independents.independents[6].update_dmx()
+            elif widget == self.independent8:
+                App().independents.independents[7].level = 255
+                App().independents.independents[7].update_dmx()
+            elif widget == self.independent9:
+                App().independents.independents[8].level = 255
+                App().independents.independents[8].update_dmx()
+
+    def inde_off(self, widget, _event):
+        if not self.midi_learn:
+            if widget == self.independent7:
+                App().independents.independents[6].level = 0
+                App().independents.independents[6].update_dmx()
+            elif widget == self.independent8:
+                App().independents.independents[7].level = 0
+                App().independents.independents[7].update_dmx()
+            elif widget == self.independent9:
+                App().independents.independents[8].level = 0
+                App().independents.independents[8].update_dmx()
 
     def inde_changed(self, widget):
         """Independent value changed"""
@@ -863,3 +935,12 @@ class VirtualConsoleWindow(Gtk.Window):
             elif widget == self.independent3:
                 App().independents.independents[2].level = widget.value
                 App().independents.independents[2].update_dmx()
+            elif widget == self.independent4:
+                App().independents.independents[3].level = widget.value
+                App().independents.independents[3].update_dmx()
+            elif widget == self.independent5:
+                App().independents.independents[4].level = widget.value
+                App().independents.independents[4].update_dmx()
+            elif widget == self.independent6:
+                App().independents.independents[5].level = widget.value
+                App().independents.independents[5].update_dmx()
