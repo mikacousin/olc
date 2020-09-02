@@ -35,15 +35,15 @@ class IndependentsTab(Gtk.Paned):
         self.add(scrolled)
 
         # List of independents
-        self.liststore = Gtk.ListStore(int, str)
+        self.liststore = Gtk.ListStore(int, str, str)
         for inde in App().independents.independents:
-            self.liststore.append([inde.number, inde.text])
+            self.liststore.append([inde.number, inde.inde_type, inde.text])
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_changed)
-        for i, column_title in enumerate(["Number", "Text"]):
+        for i, column_title in enumerate(["Number", "Type", "Text"]):
             renderer = Gtk.CellRendererText()
-            if i == 1:
+            if i == 2:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.text_edited)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
@@ -108,7 +108,7 @@ class IndependentsTab(Gtk.Paned):
 
     def text_edited(self, _widget, path, text):
         """Independent text edited"""
-        self.liststore[path][1] = text
+        self.liststore[path][2] = text
         number = self.liststore[path][0]
         App().independents.independents[number - 1].text = text
 
@@ -171,7 +171,7 @@ class IndependentsTab(Gtk.Paned):
                     child = self.flowbox.get_child_at_index(channel)
                     App().window.set_focus(child)
                     self.flowbox.select_child(child)
-                    self.last_chan_selected = self.keystring
+                    self.last_selected_channel = self.keystring
         self.flowbox.invalidate_filter()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -186,12 +186,12 @@ class IndependentsTab(Gtk.Paned):
         if len(selected_children) == 1:
             flowboxchild = selected_children[0]
             channelwidget = flowboxchild.get_children()[0]
-            self.last_chan_selected = channelwidget.channel
-        if self.last_chan_selected:
+            self.last_selected_channel = channelwidget.channel
+        if self.last_selected_channel:
             to_chan = int(self.keystring)
             if 0 < to_chan < MAX_CHANNELS:
-                if to_chan > int(self.last_chan_selected):
-                    for channel in range(int(self.last_chan_selected) - 1, to_chan):
+                if to_chan > int(self.last_selected_channel):
+                    for channel in range(int(self.last_selected_channel) - 1, to_chan):
                         # Only patched channels
                         if App().patch.channels[channel][0] != [0, 0]:
                             self.channels[channel].clicked = True
@@ -199,7 +199,7 @@ class IndependentsTab(Gtk.Paned):
                             App().window.set_focus(child)
                             self.flowbox.select_child(child)
                 else:
-                    for channel in range(to_chan - 1, int(self.last_chan_selected)):
+                    for channel in range(to_chan - 1, int(self.last_selected_channel)):
                         # Only patched channels
                         if App().patch.channels[channel][0] != [0, 0]:
                             self.channels[channel].clicked = True
@@ -223,7 +223,7 @@ class IndependentsTab(Gtk.Paned):
                 child = self.flowbox.get_child_at_index(channel)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
+                self.last_selected_channel = self.keystring
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -240,7 +240,7 @@ class IndependentsTab(Gtk.Paned):
                 child = self.flowbox.get_child_at_index(channel)
                 App().window.set_focus(child)
                 self.flowbox.unselect_child(child)
-                self.last_chan_selected = self.keystring
+                self.last_selected_channel = self.keystring
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -350,6 +350,10 @@ class IndependentsTab(Gtk.Paned):
             for channel in range(MAX_CHANNELS):
                 channels[channel] = self.channels[channel].level
             App().independents.independents[number - 1].set_levels(channels)
+            App().independents._update_channels()
+            App().independents.independents[number - 1].update_dmx()
+            App().window.flowbox.queue_draw()
+            self.queue_draw()
 
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)

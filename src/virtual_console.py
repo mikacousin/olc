@@ -6,6 +6,7 @@ from olc.widgets_fader import FaderWidget
 from olc.widgets_flash import FlashWidget
 from olc.widgets_go import GoWidget
 from olc.widgets_knob import KnobWidget
+from olc.widgets_toggle import ToggleWidget
 
 
 class VirtualConsoleWindow(Gtk.Window):
@@ -302,6 +303,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent6 = KnobWidget(text="inde_6")
         self.independent6.connect("clicked", self.inde_clicked)
         self.independent6.connect("changed", self.inde_changed)
+        self.independent7 = ToggleWidget(text="inde_7")
+        self.independent7.connect("clicked", self.inde_clicked)
+        self.independent8 = ToggleWidget(text="inde_8")
+        self.independent8.connect("clicked", self.inde_clicked)
+        self.independent9 = ToggleWidget(text="inde_9")
+        self.independent9.connect("clicked", self.inde_clicked)
+        """
         self.independent7 = FlashWidget(text="inde_7")
         self.independent7.width = 34
         self.independent7.height = 34
@@ -323,6 +331,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent9.connect("clicked", self.inde_clicked)
         self.independent9.connect("button-press-event", self.inde_on)
         self.independent9.connect("button-release-event", self.inde_off)
+        """
         self.independents.attach(self.independent1, 0, 0, 1, 1)
         self.independents.attach(self.independent2, 1, 0, 1, 1)
         self.independents.attach(self.independent3, 2, 0, 1, 1)
@@ -898,6 +907,25 @@ class VirtualConsoleWindow(Gtk.Window):
             elif widget == self.independent9:
                 App().midi.midi_learn = "inde_9"
             self.queue_draw()
+        else:
+            if widget == self.independent7 and widget.get_active():
+                App().independents.independents[6].level = 255
+                App().independents.independents[6].update_dmx()
+            elif widget == self.independent7 and not widget.get_active():
+                App().independents.independents[6].level = 0
+                App().independents.independents[6].update_dmx()
+            if widget == self.independent8 and widget.get_active():
+                App().independents.independents[7].level = 255
+                App().independents.independents[7].update_dmx()
+            elif widget == self.independent8 and not widget.get_active():
+                App().independents.independents[7].level = 0
+                App().independents.independents[7].update_dmx()
+            if widget == self.independent9 and widget.get_active():
+                App().independents.independents[8].level = 255
+                App().independents.independents[8].update_dmx()
+            elif widget == self.independent9 and not widget.get_active():
+                App().independents.independents[8].level = 0
+                App().independents.independents[8].update_dmx()
 
     def inde_on(self, widget, _event):
         if not self.midi_learn:

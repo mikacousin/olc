@@ -81,6 +81,8 @@ class ChannelWidget(Gtk.Widget):
         cr.fill()
         # draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
+        if int(self.channel) - 1 in App().independents.get_channels():
+            cr.set_source_rgb(0.5, 0.5, 0.8)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
         cr.move_to(50 * self.scale, 15 * self.scale)
@@ -94,7 +96,12 @@ class ChannelWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(13 * self.scale)
         cr.move_to(6 * self.scale, 48 * self.scale)
-        if self.level != 0 or self.next_level != 0:  # Don't show 0 level
+        # Don't show level 0
+        if (
+            self.level != 0
+            or self.next_level != 0
+            and not int(self.channel) - 1 in App().independents.get_channels()
+        ):
             if percent_level:
                 if self.level == 255:
                     cr.show_text("F")
@@ -112,6 +119,9 @@ class ChannelWidget(Gtk.Widget):
         )
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
+        # Don't draw next level if channel is in an independent
+        if int(self.channel) - 1 in App().independents.get_channels():
+            return
         # draw down icon
         if self.next_level < self.level:
             offset_x = 6 * self.scale

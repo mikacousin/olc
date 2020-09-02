@@ -14,15 +14,23 @@ class Independent:
         channels (set): channels present in independent
         levels (array): channels levels
         text (str): independent text
+        inde_type (str): knob or button
         dmx (array): DMX levels
     """
 
-    def __init__(self, number, text="", levels=array.array("B", [0] * MAX_CHANNELS)):
+    def __init__(
+        self,
+        number,
+        text="",
+        levels=array.array("B", [0] * MAX_CHANNELS),
+        inde_type="knob",
+    ):
         self.number = number
         self.level = 0
         self.channels = set()
         self.levels = levels
         self.text = text
+        self.inde_type = inde_type
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
 
         self.update_channels()
@@ -64,8 +72,10 @@ class Independents:
         self.channels = set()
 
         # Create 9 Independents
-        for i in range(9):
+        for i in range(6):
             self.add(Independent(i + 1))
+        for i in range(6, 9):
+            self.add(Independent(i + 1, inde_type="button"))
 
     def add(self, independent):
         """Add an independent"""

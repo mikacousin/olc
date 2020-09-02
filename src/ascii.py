@@ -684,7 +684,9 @@ class Ascii:
         if App().inde_tab:
             App().inde_tab.liststore.clear()
             for inde in App().independents.independents:
-                App().inde_tab.liststore.append([inde.number, inde.text])
+                App().inde_tab.liststore.append(
+                    [inde.number, inde.inde_type, inde.text]
+                )
             path = Gtk.TreePath.new_first()
             App().inde_tab.treeview.set_cursor(path, None, False)
 

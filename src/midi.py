@@ -119,6 +119,9 @@ class Midi:
             "flash_38": [0, -1],
             "flash_39": [0, -1],
             "flash_40": [0, -1],
+            "inde_7": [0, -1],
+            "inde_8": [0, -1],
+            "inde_9": [0, -1],
         }
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
@@ -126,6 +129,9 @@ class Midi:
             "inde_1": [0, -1],
             "inde_2": [0, -1],
             "inde_3": [0, -1],
+            "inde_4": [0, -1],
+            "inde_5": [0, -1],
+            "inde_6": [0, -1],
             "gm": [3, 108],
             "master_1": [0, 1],
             "master_2": [0, 2],
@@ -208,6 +214,8 @@ class Midi:
                     if key[:6] == "flash_":
                         # We need to pass master number to flash function
                         GLib.idle_add(_function_flash, msg, int(key[6:]))
+                    elif key[:5] == "inde_":
+                        GLib.idle_add(_function_inde_button, msg, int(key[5:]))
                     else:
                         func = getattr(self, "_function_" + key, None)
                         if func:
@@ -218,7 +226,7 @@ class Midi:
                     if key[:7] == "master_":
                         # We need to pass master number to masters function
                         GLib.idle_add(_function_master, msg, int(key[7:]))
-                    if key[:5] == "inde_":
+                    elif key[:5] == "inde_":
                         GLib.idle_add(_function_inde, msg, int(key[5:]))
                     else:
                         func = getattr(self, "_function_" + key, None)
@@ -981,6 +989,7 @@ def _function_flash(msg, master_index):
 
 
 def _function_inde(msg, independent):
+    """Change independent knob level"""
     val = (msg.value / 127) * 255
     if App().virtual_console:
         if independent == 1:
@@ -995,3 +1004,55 @@ def _function_inde(msg, independent):
             App().virtual_console.independent3.value = val
             App().virtual_console.independent3.emit("changed")
             App().virtual_console.independent3.queue_draw()
+        elif independent == 4:
+            App().virtual_console.independent4.value = val
+            App().virtual_console.independent4.emit("changed")
+            App().virtual_console.independent4.queue_draw()
+        elif independent == 5:
+            App().virtual_console.independent5.value = val
+            App().virtual_console.independent5.emit("changed")
+            App().virtual_console.independent5.queue_draw()
+        elif independent == 6:
+            App().virtual_console.independent6.value = val
+            App().virtual_console.independent6.emit("changed")
+            App().virtual_console.independent6.queue_draw()
+
+
+def _function_inde_button(msg, independent):
+    """Toggle independent button"""
+    if msg.type == "note_off":
+        if App().virtual_console:
+            if independent == 7:
+                App().virtual_console.independent7.set_active(False)
+            elif independent == 8:
+                App().virtual_console.independent8.set_active(False)
+            elif independent == 9:
+                App().virtual_console.independent9.set_active(False)
+        else:
+            if independent == 7:
+                App().independents.independents[6].level = 0
+                App().independents.independents[6].update_dmx()
+            elif independent == 8:
+                App().independents.independents[7].level = 0
+                App().independents.independents[7].update_dmx()
+            elif independent == 9:
+                App().independents.independents[8].level = 0
+                App().independents.independents[8].update_dmx()
+    if msg.type == "note_on":
+        if App().virtual_console:
+            if independent == 7:
+                App().virtual_console.independent7.set_active(True)
+            elif independent == 8:
+                App().virtual_console.independent8.set_active(True)
+            elif independent == 9:
+                App().virtual_console.independent9.set_active(True)
+        else:
+            if independent == 7:
+                App().independents.independents[6].level = 255
+                App().independents.independents[6].update_dmx()
+            elif independent == 8:
+                App().independents.independents[7].level = 255
+                App().independents.independents[7].update_dmx()
+            elif independent == 9:
+                App().independents.independents[8].level = 255
+                App().independents.independents[8].update_dmx()
