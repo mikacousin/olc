@@ -60,9 +60,11 @@ class Dmx(threading.Thread):
                     # Independents
                     level_inde = -1
                     for inde in App().independents.independents:
-                        if channel in inde.channels:
-                            if inde.dmx[channel] > level_inde:
-                                level_inde = inde.dmx[channel]
+                        if (
+                            channel in inde.channels
+                            and inde.dmx[channel] > level_inde
+                        ):
+                            level_inde = inde.dmx[channel]
                     if level_inde != -1:
                         level = level_inde
                         App().window.channels[channel].color_level = {

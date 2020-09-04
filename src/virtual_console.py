@@ -869,21 +869,22 @@ class VirtualConsoleWindow(Gtk.Window):
             direction (Gdk.ScrollDirection): Up or down
             step (int): increment or decrement step size
         """
-        if not self.midi_learn:
-            # For each selected channels
-            sel = App().window.flowbox.get_selected_children()
-            for flowboxchild in sel:
-                children = flowboxchild.get_children()
-                for channelwidget in children:
-                    channel = int(channelwidget.channel) - 1
-                    for output in App().patch.channels[channel]:
-                        out = output[0]
-                        univ = output[1]
-                        level = App().dmx.frame[univ][out - 1]
-                        if direction == Gdk.ScrollDirection.UP:
-                            App().dmx.user[channel] = min(level + step, 255)
-                        elif direction == Gdk.ScrollDirection.DOWN:
-                            App().dmx.user[channel] = max(level - step, 0)
+        if self.midi_learn:
+            return
+        # For each selected channels
+        sel = App().window.flowbox.get_selected_children()
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+            for channelwidget in children:
+                channel = int(channelwidget.channel) - 1
+                for output in App().patch.channels[channel]:
+                    out = output[0]
+                    univ = output[1]
+                    level = App().dmx.frame[univ][out - 1]
+                    if direction == Gdk.ScrollDirection.UP:
+                        App().dmx.user[channel] = min(level + step, 255)
+                    elif direction == Gdk.ScrollDirection.DOWN:
+                        App().dmx.user[channel] = max(level - step, 0)
 
     def inde_clicked(self, widget):
         """Independent clicked"""
@@ -914,18 +915,20 @@ class VirtualConsoleWindow(Gtk.Window):
             elif widget == self.independent7 and not widget.get_active():
                 App().independents.independents[6].level = 0
                 App().independents.independents[6].update_dmx()
-            if widget == self.independent8 and widget.get_active():
-                App().independents.independents[7].level = 255
-                App().independents.independents[7].update_dmx()
-            elif widget == self.independent8 and not widget.get_active():
-                App().independents.independents[7].level = 0
-                App().independents.independents[7].update_dmx()
-            if widget == self.independent9 and widget.get_active():
-                App().independents.independents[8].level = 255
-                App().independents.independents[8].update_dmx()
-            elif widget == self.independent9 and not widget.get_active():
-                App().independents.independents[8].level = 0
-                App().independents.independents[8].update_dmx()
+            if widget == self.independent8:
+                if widget.get_active():
+                    App().independents.independents[7].level = 255
+                    App().independents.independents[7].update_dmx()
+                elif not widget.get_active():
+                    App().independents.independents[7].level = 0
+                    App().independents.independents[7].update_dmx()
+            if widget == self.independent9:
+                if widget.get_active():
+                    App().independents.independents[8].level = 255
+                    App().independents.independents[8].update_dmx()
+                elif not widget.get_active():
+                    App().independents.independents[8].level = 0
+                    App().independents.independents[8].update_dmx()
 
     def inde_on(self, widget, _event):
         if not self.midi_learn:
@@ -953,22 +956,23 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def inde_changed(self, widget):
         """Independent value changed"""
-        if not self.midi_learn:
-            if widget == self.independent1:
-                App().independents.independents[0].level = widget.value
-                App().independents.independents[0].update_dmx()
-            elif widget == self.independent2:
-                App().independents.independents[1].level = widget.value
-                App().independents.independents[1].update_dmx()
-            elif widget == self.independent3:
-                App().independents.independents[2].level = widget.value
-                App().independents.independents[2].update_dmx()
-            elif widget == self.independent4:
-                App().independents.independents[3].level = widget.value
-                App().independents.independents[3].update_dmx()
-            elif widget == self.independent5:
-                App().independents.independents[4].level = widget.value
-                App().independents.independents[4].update_dmx()
-            elif widget == self.independent6:
-                App().independents.independents[5].level = widget.value
-                App().independents.independents[5].update_dmx()
+        if self.midi_learn:
+            return
+        if widget == self.independent1:
+            App().independents.independents[0].level = widget.value
+            App().independents.independents[0].update_dmx()
+        elif widget == self.independent2:
+            App().independents.independents[1].level = widget.value
+            App().independents.independents[1].update_dmx()
+        elif widget == self.independent3:
+            App().independents.independents[2].level = widget.value
+            App().independents.independents[2].update_dmx()
+        elif widget == self.independent4:
+            App().independents.independents[3].level = widget.value
+            App().independents.independents[3].update_dmx()
+        elif widget == self.independent5:
+            App().independents.independents[4].level = widget.value
+            App().independents.independents[4].update_dmx()
+        elif widget == self.independent6:
+            App().independents.independents[5].level = widget.value
+            App().independents.independents[5].update_dmx()

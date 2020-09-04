@@ -109,10 +109,11 @@ class ControllerWidget(Gtk.DrawingArea):
             self.angle -= 360
         elif self.angle < -360:
             self.angle += 360
-        if scroll and direction == Gdk.ScrollDirection.UP:
-            self.emit("moved", Gdk.ScrollDirection.UP, step)
-        elif scroll and direction == Gdk.ScrollDirection.DOWN:
-            self.emit("moved", Gdk.ScrollDirection.DOWN, step)
+        if scroll:
+            if direction == Gdk.ScrollDirection.UP:
+                self.emit("moved", Gdk.ScrollDirection.UP, step)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                self.emit("moved", Gdk.ScrollDirection.DOWN, step)
         self.queue_draw()
 
     def do_draw(self, cr):
