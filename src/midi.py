@@ -1021,38 +1021,24 @@ def _function_inde(msg, independent):
 def _function_inde_button(msg, independent):
     """Toggle independent button"""
     if msg.type == "note_off":
-        if App().virtual_console:
-            if independent == 7:
+        if independent == 7:
+            if App().virtual_console:
                 App().virtual_console.independent7.set_active(False)
-            elif independent == 8:
-                App().virtual_console.independent8.set_active(False)
-            elif independent == 9:
-                App().virtual_console.independent9.set_active(False)
-        else:
-            if independent == 7:
+            else:
                 App().independents.independents[6].level = 0
                 App().independents.independents[6].update_dmx()
-            elif independent == 8:
-                App().independents.independents[7].level = 0
-                App().independents.independents[7].update_dmx()
-            elif independent == 9:
-                App().independents.independents[8].level = 0
-                App().independents.independents[8].update_dmx()
-    if msg.type == "note_on":
-        if App().virtual_console:
-            if independent == 7:
+        elif independent == 8:
+            App().virtual_console.independent8.set_active(False)
+        elif independent == 9:
+            App().virtual_console.independent9.set_active(False)
+    elif msg.type == "note_on":
+        if independent == 7:
+            if App().virtual_console:
                 App().virtual_console.independent7.set_active(True)
-            elif independent == 8:
-                App().virtual_console.independent8.set_active(True)
-            elif independent == 9:
-                App().virtual_console.independent9.set_active(True)
-        else:
-            if independent == 7:
+            else:
                 App().independents.independents[6].level = 255
                 App().independents.independents[6].update_dmx()
-            elif independent == 8:
-                App().independents.independents[7].level = 255
-                App().independents.independents[7].update_dmx()
-            elif independent == 9:
-                App().independents.independents[8].level = 255
-                App().independents.independents[8].update_dmx()
+        elif independent == 8:
+            App().virtual_console.independent8.set_active(True)
+        elif independent == 9:
+            App().virtual_console.independent9.set_active(True)

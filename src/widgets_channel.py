@@ -100,7 +100,7 @@ class ChannelWidget(Gtk.Widget):
         if (
             self.level != 0
             or self.next_level != 0
-            and not int(self.channel) - 1 in App().independents.get_channels()
+            and int(self.channel) - 1 not in App().independents.get_channels()
         ):
             if percent_level:
                 if self.level == 255:
