@@ -18,7 +18,7 @@ class ControllerWidget(Gtk.DrawingArea):
 
     __gsignals__ = {
         "moved": (
-            GObject.SignalFlags.RUN_FIRST,
+            GObject.SignalFlags.ACTION,
             None,
             (
                 Gdk.ScrollDirection,
@@ -35,15 +35,64 @@ class ControllerWidget(Gtk.DrawingArea):
         self.led = False
         self.text = text
 
+        # Mouse position when button clicked
+        self.x1 = 0
+        self.y1 = 0
+        self.old_angle = 0
+
         self.add_events(Gdk.EventMask.SCROLL_MASK)
         self.connect("scroll-event", self.on_scroll)
         self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.connect("button-press-event", self.on_press)
         self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.connect("button-release-event", self.on_release)
+        self.add_events(Gdk.EventMask.BUTTON1_MOTION_MASK)
+        self.connect("motion-notify-event", self.on_motion)
+
+    def on_press(self, _tgt, event):
+        """Mouse button pressed"""
+        self.x1 = event.x
+        self.y1 = event.y
+        self.old_angle = math.radians(self.angle)
 
     def on_release(self, _tgt, _ev):
-        """Emit 'clicked' when released"""
+        """Mouse button released"""
+        self.old_angle = 0
         self.emit("clicked")
+
+    def on_motion(self, _tgt, event):
+        """Track mouse to rotate controller"""
+        # Center
+        x0 = self.get_allocation().width / 2
+        y0 = self.get_allocation().height / 2
+        # Actual position
+        x2 = event.x
+        y2 = event.y
+        # Angle of movement
+        y = (self.x1 - x0) * (y2 - y0) - (self.y1 - y0) * (x2 - x0)
+        x = (self.x1 - x0) * (x2 - x0) + (self.y1 - y0) * (y2 - y0)
+        angle = math.atan2(y, x)
+        if angle > math.pi / 2:
+            self.old_angle = self.old_angle + math.pi / 2
+            angle = angle - math.pi / 2
+            self.x1 = x2
+            self.y1 = y2
+        elif angle < -math.pi / 2:
+            self.old_angle = self.old_angle - math.pi / 2
+            angle = angle + math.pi / 2
+            self.x1 = x2
+            self.y1 = y2
+        self.angle = math.degrees(self.old_angle + angle)
+        if self.angle > 360:
+            self.angle -= 360
+        elif self.angle < -360:
+            self.angle += 360
+        step = math.degrees(abs(angle)) * (100 / 360)
+        if angle > 0:
+            self.emit("moved", Gdk.ScrollDirection.UP, step)
+        else:
+            self.emit("moved", Gdk.ScrollDirection.DOWN, step)
+        self.queue_draw()
 
     def on_scroll(self, _widget, event):
         """On scroll wheel event"""
@@ -52,18 +101,6 @@ class ControllerWidget(Gtk.DrawingArea):
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             step = 1
         (scroll, direction) = event.get_scroll_direction()
-        if scroll and direction == Gdk.ScrollDirection.UP:
-            self.emit("moved", Gdk.ScrollDirection.UP, step)
-        elif scroll and direction == Gdk.ScrollDirection.DOWN:
-            self.emit("moved", Gdk.ScrollDirection.DOWN, step)
-
-    def do_moved(self, direction, step):
-        """On 'moved' signal
-
-        Args:
-            direction (Gdk.ScrollDirection): UP or DOWN
-            step (int): increment or decrement step size
-        """
         if direction == Gdk.ScrollDirection.UP:
             self.angle += step
         elif direction == Gdk.ScrollDirection.DOWN:
@@ -72,6 +109,10 @@ class ControllerWidget(Gtk.DrawingArea):
             self.angle -= 360
         elif self.angle < -360:
             self.angle += 360
+        if scroll and direction == Gdk.ScrollDirection.UP:
+            self.emit("moved", Gdk.ScrollDirection.UP, step)
+        elif scroll and direction == Gdk.ScrollDirection.DOWN:
+            self.emit("moved", Gdk.ScrollDirection.DOWN, step)
         self.queue_draw()
 
     def do_draw(self, cr):
