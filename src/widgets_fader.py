@@ -81,7 +81,7 @@ class FaderWidget(Gtk.Scale):
                 cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             if self.pressed:
-                cr.set_source_rgb(0.1, 0.1, 0.1)
+                cr.set_source_rgb(0.5, 0.3, 0.0)
             else:
                 cr.set_source_rgb(0.2, 0.2, 0.2)
         rounded_rectangle_fill(cr, area, radius)

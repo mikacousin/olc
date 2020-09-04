@@ -53,7 +53,7 @@ class FlashWidget(Gtk.Widget):
                 if App().midi.midi_learn == self.text:
                     cr.set_source_rgb(0.2, 0.1, 0.1)
                 else:
-                    cr.set_source_rgb(0.1, 0.1, 0.1)
+                    cr.set_source_rgb(0.5, 0.3, 0.0)
             else:
                 if App().midi.midi_learn == self.text:
                     cr.set_source_rgb(0.3, 0.2, 0.2)

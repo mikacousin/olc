@@ -79,6 +79,10 @@ class KnobWidget(Gtk.DrawingArea):
 
         angle = (self.get_value() / 255) * 260
         # LED
+        cr.set_line_width(2)
+        cr.set_source_rgba(0.25, 0.25, 0.25, 1.0)
+        cr.arc(0, 0, 15, math.radians(0), math.radians(260))
+        cr.stroke()
         cr.set_line_width(3)
         cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
         cr.arc(0, 0, 15, math.radians(0), math.radians(angle))
