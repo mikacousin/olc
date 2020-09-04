@@ -11,6 +11,34 @@ from olc.widgets_grand_master import GMWidget
 from olc.widgets_sequential import SequentialWidget
 
 
+def step_filter_func1(model, treeiter, _data):
+    """Filter for the first part of the cues list"""
+    if App().sequence.position <= 0:
+        if int(model[treeiter][11]) in [0, 1]:
+            return True
+        return int(model[treeiter][0]) in [0, 1]
+    if App().sequence.position == 1:
+        if int(model[treeiter][11]) == 1:
+            return True
+        if int(model[treeiter][11]) == 0:
+            return False
+        return int(model[treeiter][0]) in [0, 1, 2]
+    if int(model[treeiter][11]) in [0, 1]:
+        return False
+
+    return int(model[treeiter][0]) in [
+        App().sequence.position,
+        App().sequence.position + 1,
+        App().sequence.position - 1,
+        App().sequence.position - 2,
+    ]
+
+
+def step_filter_func2(model, treeiter, _data):
+    """Filter for the second part of the cues list"""
+    return int(model[treeiter][0]) > App().sequence.position + 1
+
+
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
@@ -126,9 +154,9 @@ class Window(Gtk.ApplicationWindow):
         )
         # Filters
         self.step_filter1 = self.cues_liststore1.filter_new()
-        self.step_filter1.set_visible_func(self.step_filter_func1)
+        self.step_filter1.set_visible_func(step_filter_func1)
         self.step_filter2 = self.cues_liststore2.filter_new()
-        self.step_filter2.set_visible_func(self.step_filter_func2)
+        self.step_filter2.set_visible_func(step_filter_func2)
         # Lists
         self.treeview1 = Gtk.TreeView(model=self.step_filter1)
         self.treeview1.set_enable_search(False)
@@ -228,32 +256,6 @@ class Window(Gtk.ApplicationWindow):
             self.fullscreen()
             self.full = True
 
-    def step_filter_func1(self, model, treeiter, _data):
-        """Filter for the first part of the cues list"""
-        if App().sequence.position <= 0:
-            if int(model[treeiter][11]) in [0, 1]:
-                return True
-            return int(model[treeiter][0]) in [0, 1]
-        if App().sequence.position == 1:
-            if int(model[treeiter][11]) == 1:
-                return True
-            if int(model[treeiter][11]) == 0:
-                return False
-            return int(model[treeiter][0]) in [0, 1, 2]
-        if int(model[treeiter][11]) in [0, 1]:
-            return False
-
-        return int(model[treeiter][0]) in [
-            App().sequence.position,
-            App().sequence.position + 1,
-            App().sequence.position - 1,
-            App().sequence.position - 2,
-        ]
-
-    def step_filter_func2(self, model, treeiter, _data):
-        """Filter for the second part of the cues list"""
-        return int(model[treeiter][0]) > App().sequence.position + 1
-
     def filter_func(self, child, _user_data):
         """Filter for channels window"""
         if self.view_type == 0:
@@ -307,6 +309,7 @@ class Window(Gtk.ApplicationWindow):
         self.populate_sequence()
 
     def populate_sequence(self):
+        """Display main playback"""
         self.cues_liststore1.append(
             ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
         )
@@ -451,21 +454,21 @@ class Window(Gtk.ApplicationWindow):
         child = self.notebook.get_nth_page(page)
         if child == App().group_tab:
             return App().group_tab.on_key_press_event(widget, event)
-        elif child == App().patch_outputs_tab:
+        if child == App().patch_outputs_tab:
             return App().patch_outputs_tab.on_key_press_event(widget, event)
-        elif child == App().patch_channels_tab:
+        if child == App().patch_channels_tab:
             return App().patch_channels_tab.on_key_press_event(widget, event)
-        elif child == App().sequences_tab:
+        if child == App().sequences_tab:
             return App().sequences_tab.on_key_press_event(widget, event)
-        elif child == App().channeltime_tab:
+        if child == App().channeltime_tab:
             return App().channeltime_tab.on_key_press_event(widget, event)
-        elif child == App().track_channels_tab:
+        if child == App().track_channels_tab:
             return App().track_channels_tab.on_key_press_event(widget, event)
-        elif child == App().memories_tab:
+        if child == App().memories_tab:
             return App().memories_tab.on_key_press_event(widget, event)
-        elif child == App().masters_tab:
+        if child == App().masters_tab:
             return App().masters_tab.on_key_press_event(widget, event)
-        elif child == App().inde_tab:
+        if child == App().inde_tab:
             return App().inde_tab.on_key_press_event(widget, event)
 
         keyname = Gdk.keyval_name(event.keyval)
