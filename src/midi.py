@@ -897,14 +897,12 @@ class Midi:
         if fader == self.xfade_out:
             if App().virtual_console:
                 App().virtual_console.scale_a.set_value(val)
-                App().virtual_console.scale_moved(App().virtual_console.scale_a)
             else:
                 App().crossfade.scale_a.set_value(val)
                 App().crossfade.scale_moved(App().crossfade.scale_a)
         elif fader == self.xfade_in:
             if App().virtual_console:
                 App().virtual_console.scale_b.set_value(val)
-                App().virtual_console.scale_moved(App().virtual_console.scale_b)
             else:
                 App().crossfade.scale_b.set_value(val)
                 App().crossfade.scale_moved(App().crossfade.scale_b)
