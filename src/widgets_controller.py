@@ -18,7 +18,7 @@ class ControllerWidget(Gtk.DrawingArea):
 
     __gsignals__ = {
         "moved": (
-            GObject.SignalFlags.ACTION,
+            GObject.SignalFlags.RUN_FIRST,
             None,
             (
                 Gdk.ScrollDirection,
@@ -83,16 +83,11 @@ class ControllerWidget(Gtk.DrawingArea):
             self.x1 = x2
             self.y1 = y2
         self.angle = math.degrees(self.old_angle + angle)
-        if self.angle > 360:
-            self.angle -= 360
-        elif self.angle < -360:
-            self.angle += 360
         step = math.degrees(abs(angle)) * (100 / 360)
         if angle > 0:
             self.emit("moved", Gdk.ScrollDirection.UP, step)
         else:
             self.emit("moved", Gdk.ScrollDirection.DOWN, step)
-        self.queue_draw()
 
     def on_scroll(self, _widget, event):
         """On scroll wheel event"""
@@ -101,6 +96,19 @@ class ControllerWidget(Gtk.DrawingArea):
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             step = 1
         (scroll, direction) = event.get_scroll_direction()
+        if scroll:
+            if direction == Gdk.ScrollDirection.UP:
+                self.emit("moved", Gdk.ScrollDirection.UP, step)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                self.emit("moved", Gdk.ScrollDirection.DOWN, step)
+
+    def do_moved(self, direction, step):
+        """On 'moved' signal
+
+        Args:
+            direction (Gdk.ScrollDirection): UP or DOWN
+            step (int): increment or decrement step size
+        """
         if direction == Gdk.ScrollDirection.UP:
             self.angle += step
         elif direction == Gdk.ScrollDirection.DOWN:
@@ -109,11 +117,6 @@ class ControllerWidget(Gtk.DrawingArea):
             self.angle -= 360
         elif self.angle < -360:
             self.angle += 360
-        if scroll:
-            if direction == Gdk.ScrollDirection.UP:
-                self.emit("moved", Gdk.ScrollDirection.UP, step)
-            elif direction == Gdk.ScrollDirection.DOWN:
-                self.emit("moved", Gdk.ScrollDirection.DOWN, step)
         self.queue_draw()
 
     def do_draw(self, cr):
