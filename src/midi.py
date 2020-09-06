@@ -902,8 +902,12 @@ class Midi:
                 App().crossfade.scale_a.set_value(val)
                 App().crossfade.scale_moved(App().crossfade.scale_a)
         elif fader == self.xfade_in:
-            App().virtual_console.scale_b.set_value(val)
-            App().virtual_console.scale_moved(App().virtual_console.scale_b)
+            if App().virtual_console:
+                App().virtual_console.scale_b.set_value(val)
+                App().virtual_console.scale_moved(App().virtual_console.scale_b)
+            else:
+                App().crossfade.scale_b.set_value(val)
+                App().crossfade.scale_moved(App().crossfade.scale_b)
         if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
             if self.xfade_out.get_inverted():
                 self.xfade_out.set_inverted(False)
