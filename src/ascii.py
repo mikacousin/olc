@@ -509,6 +509,7 @@ class Ascii:
                     flag_group = False
                     flag_inde = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
+                    text = ""
                     items = line[17:].split(" ")
                     number = int(items[0])
                     # Parameters not implemented:
