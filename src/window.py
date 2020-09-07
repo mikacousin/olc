@@ -85,7 +85,7 @@ class Window(Gtk.ApplicationWindow):
         self.set_titlebar(self.header)
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        self.paned.set_position(950)
+        self.paned.set_position(1100)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -106,7 +106,7 @@ class Window(Gtk.ApplicationWindow):
             self.flowbox.add(self.channels[i])
 
         self.scrolled.add(self.flowbox)
-        self.paned.add1(self.scrolled)
+        self.paned.pack1(self.scrolled, resize=True, shrink=False)
 
         # Gtk.Statusbar to display keyboard's keys
         self.statusbar = Gtk.Statusbar()
@@ -116,11 +116,11 @@ class Window(Gtk.ApplicationWindow):
         label = Gtk.Label("Input : ")
         self.grid.add(label)
         self.grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
-        self.paned.add2(self.grid)
+        self.paned.pack2(self.grid, resize=True, shrink=False)
 
         self.paned2 = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         self.paned2.set_position(800)
-        self.paned2.add1(self.paned)
+        self.paned2.pack1(self.paned, resize=True, shrink=False)
 
         # Sequential part of the window
         if App().sequence.last > 1:
@@ -183,7 +183,7 @@ class Window(Gtk.ApplicationWindow):
                 column_title, renderer, text=i, background=9, weight=10
             )
             if i == 2:
-                column.set_min_width(600)
+                column.set_min_width(400)
                 column.set_resizable(True)
             self.treeview1.append_column(column)
         self.treeview2 = Gtk.TreeView(model=self.step_filter2)
@@ -209,7 +209,7 @@ class Window(Gtk.ApplicationWindow):
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
-                column.set_min_width(600)
+                column.set_min_width(400)
                 column.set_resizable(True)
             self.treeview2.append_column(column)
         # Put Cues List in a scrolled window
@@ -239,7 +239,7 @@ class Window(Gtk.ApplicationWindow):
         # Sequential in a Tab
         self.notebook = Gtk.Notebook()
         self.notebook.append_page(self.seq_grid, Gtk.Label("Main Playback"))
-        self.paned2.add2(self.notebook)
+        self.paned2.pack2(self.notebook, resize=True, shrink=False)
         self.add(self.paned2)
 
         self.connect("key_press_event", self.on_key_press_event)
@@ -300,6 +300,7 @@ class Window(Gtk.ApplicationWindow):
                 for i in range(MAX_CHANNELS):
                     if self.channels[i].scale >= 1.1:
                         self.channels[i].scale -= 0.1
+            self.flowbox.queue_draw()
         return True
 
     def update_sequence_display(self):
