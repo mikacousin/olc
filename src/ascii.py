@@ -600,10 +600,10 @@ class Ascii:
         App().window.header.set_title(self.basename)
         # Set main window's subtitle
         subtitle = (
-            "Mem. : 0 - Next Mem. : "
-            + str(App().sequence.steps[0].cue.memory)
+            "Mem. : 0.0 - Next Mem. : "
+            + str(App().sequence.steps[1].cue.memory)
             + " "
-            + App().sequence.steps[0].cue.text
+            + App().sequence.steps[1].cue.text
         )
         App().window.header.set_subtitle(subtitle)
         # Redraw Crossfade
