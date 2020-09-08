@@ -82,7 +82,7 @@ class PatchOutputsTab(Gtk.Grid):
         if button_label == "Patch Vide":
             App().patch.patch_empty()
             self.flowbox.queue_draw()
-            App().window.flowbox.invalidate_filter()
+            App().window.channels_view.flowbox.invalidate_filter()
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
@@ -95,14 +95,15 @@ class PatchOutputsTab(Gtk.Grid):
             for univ in range(NB_UNIVERSES):
                 for channel in range(512):
                     level = App().dmx.frame[univ][channel]
-                    App().window.channels[channel].level = level
-                    App().window.channels[channel].queue_draw()
-            App().window.flowbox.invalidate_filter()
+                    App().window.channels_view.channels[channel].level = level
+                    App().window.channels_view.channels[channel].queue_draw()
+            App().window.channels_view.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
-        page = App().window.notebook.page_num(self)
-        App().window.notebook.remove_page(page)
+        notebook = self.get_parent()
+        page = notebook.page_num(self)
+        notebook.remove_page(page)
         App().patch_outputs_tab = None
 
     def on_key_press_event(self, _widget, event):
@@ -111,7 +112,9 @@ class PatchOutputsTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname in (
             "KP_1",
@@ -126,11 +129,15 @@ class PatchOutputsTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname == "period":
             self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -139,13 +146,16 @@ class PatchOutputsTab(Gtk.Grid):
 
     def _keypress_Escape(self):
         """ Close Tab """
-        page = App().window.notebook.get_current_page()
-        App().window.notebook.remove_page(page)
+        notebook = self.get_parent()
+        page = notebook.get_current_page()
+        notebook.remove_page(page)
         App().patch_outputs_tab = None
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_Right(self):
         """ Next Output """
@@ -247,7 +257,9 @@ class PatchOutputsTab(Gtk.Grid):
                 self.flowbox.select_child(widget)
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_KP_Divide(self):
         self._keypress_greater()
@@ -281,7 +293,9 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = self.keystring
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_c(self):
         """ Attribute Channel """
@@ -325,9 +339,9 @@ class PatchOutputsTab(Gtk.Grid):
                 # Update list of channels
                 if 0 <= channel < MAX_CHANNELS:
                     level = App().dmx.frame[univ][output]
-                    App().window.channels[channel].level = level
-                    App().window.channels[channel].queue_draw()
-                    App().window.flowbox.invalidate_filter()
+                    App().window.channels_view.channels[channel].level = level
+                    App().window.channels_view.channels[channel].queue_draw()
+                    App().window.channels_view.flowbox.invalidate_filter()
             # Select next output
             if output < 511:
                 self.flowbox.unselect_all()
@@ -337,7 +351,9 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = str(output + 1 + (512 * univ))
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_exclam(self):
         """ Proportional level + """
@@ -359,7 +375,9 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_colon(self):
         """ Proportional level - """
@@ -381,4 +399,6 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )

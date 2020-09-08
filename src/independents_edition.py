@@ -102,8 +102,8 @@ class IndependentsTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
-        page = App().window.notebook.page_num(self)
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.page_num(self)
+        App().window.playback.remove_page(page)
         App().inde_tab = None
 
     def text_edited(self, _widget, path, text):
@@ -123,7 +123,9 @@ class IndependentsTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
         if keyname in (
             "KP_1",
             "KP_2",
@@ -137,10 +139,14 @@ class IndependentsTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
         if keyname == "period":
             self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
             return func()
@@ -148,13 +154,15 @@ class IndependentsTab(Gtk.Paned):
 
     def _keypress_Escape(self):
         """Close Tab"""
-        page = App().window.notebook.get_current_page()
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.get_current_page()
+        App().window.playback.remove_page(page)
         App().inde_tab = None
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_c(self):
         """Channel"""
@@ -174,7 +182,9 @@ class IndependentsTab(Gtk.Paned):
                     self.last_selected_channel = self.keystring
         self.flowbox.invalidate_filter()
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_KP_Divide(self):
         """Channel Thru"""
@@ -208,7 +218,9 @@ class IndependentsTab(Gtk.Paned):
                             self.flowbox.select_child(child)
                 self.flowbox.invalidate_filter()
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_plus(self):
         """Channel +"""
@@ -225,7 +237,9 @@ class IndependentsTab(Gtk.Paned):
                 self.flowbox.select_child(child)
                 self.last_selected_channel = self.keystring
             self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
     def _keypress_minus(self):
         """Channel -"""
@@ -242,7 +256,9 @@ class IndependentsTab(Gtk.Paned):
                 self.flowbox.unselect_child(child)
                 self.last_selected_channel = self.keystring
             self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
     def _keypress_a(self):
         """All channels"""
@@ -288,7 +304,9 @@ class IndependentsTab(Gtk.Paned):
                     self.user_channels[channel] = level
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_colon(self):
         """Level - %"""
@@ -352,7 +370,7 @@ class IndependentsTab(Gtk.Paned):
             App().independents.independents[number - 1].set_levels(channels)
             App().independents._update_channels()
             App().independents.independents[number - 1].update_dmx()
-            App().window.flowbox.queue_draw()
+            App().window.channels_view.flowbox.queue_draw()
             self.queue_draw()
 
             # Reset user modifications

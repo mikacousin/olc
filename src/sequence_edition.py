@@ -238,15 +238,17 @@ class SequenceTab(Gtk.Grid):
             if self.seq == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
-                    App().window.cues_liststore1[path][3] = ""
-                    App().window.cues_liststore2[path][3] = ""
+                    App().window.playback.cues_liststore1[path][3] = ""
+                    App().window.playback.cues_liststore2[path][3] = ""
                 else:
-                    App().window.cues_liststore1[path][3] = text
-                    App().window.cues_liststore2[path][3] = text
+                    App().window.playback.cues_liststore1[path][3] = text
+                    App().window.playback.cues_liststore2[path][3] = text
                 if App().sequence.position + 1 == step:
-                    App().window.sequential.wait = float(text)
-                    App().window.sequential.total_time = self.seq.steps[step].total_time
-                    App().window.sequential.queue_draw()
+                    App().window.playback.sequential.wait = float(text)
+                    App().window.playback.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
+                    App().window.playback.sequential.queue_draw()
 
     def out_edited(self, _widget, path, text):
         """Time Out edited"""
@@ -305,12 +307,14 @@ class SequenceTab(Gtk.Grid):
         # Update Sequential Tab
         if self.seq == App().sequence:
             path = str(int(path) + 1)
-            App().window.cues_liststore1[path][5] = text
-            App().window.cues_liststore2[path][5] = text
+            App().window.playback.cues_liststore1[path][5] = text
+            App().window.playback.cues_liststore2[path][5] = text
             if App().sequence.position + 1 == step:
-                App().window.sequential.time_out = float(text)
-                App().window.sequential.total_time = self.seq.steps[step].total_time
-                App().window.sequential.queue_draw()
+                App().window.playback.sequential.time_out = float(text)
+                App().window.playback.sequential.total_time = self.seq.steps[
+                    step
+                ].total_time
+                App().window.playback.sequential.queue_draw()
 
     def in_edited(self, _widget, path, text):
         """Time in edited"""
@@ -369,12 +373,14 @@ class SequenceTab(Gtk.Grid):
         # Update Sequential Tab
         if self.seq == App().sequence:
             path = str(int(path) + 1)
-            App().window.cues_liststore1[path][7] = text
-            App().window.cues_liststore2[path][7] = text
+            App().window.playback.cues_liststore1[path][7] = text
+            App().window.playback.cues_liststore2[path][7] = text
             if App().sequence.position + 1 == step:
-                App().window.sequential.time_in = float(text)
-                App().window.sequential.total_time = self.seq.steps[step].total_time
-                App().window.sequential.queue_draw()
+                App().window.playback.sequential.time_in = float(text)
+                App().window.playback.sequential.total_time = self.seq.steps[
+                    step
+                ].total_time
+                App().window.playback.sequential.queue_draw()
 
     def delay_out_edited(self, _widget, path, text):
         """Delay Out edited"""
@@ -435,15 +441,17 @@ class SequenceTab(Gtk.Grid):
             if self.seq == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
-                    App().window.cues_liststore1[path][4] = ""
-                    App().window.cues_liststore2[path][4] = ""
+                    App().window.playback.cues_liststore1[path][4] = ""
+                    App().window.playback.cues_liststore2[path][4] = ""
                 else:
-                    App().window.cues_liststore1[path][4] = text
-                    App().window.cues_liststore2[path][4] = text
+                    App().window.playback.cues_liststore1[path][4] = text
+                    App().window.playback.cues_liststore2[path][4] = text
                 if App().sequence.position + 1 == step:
-                    App().window.sequential.delay_out = float(text)
-                    App().window.sequential.total_time = self.seq.steps[step].total_time
-                    App().window.sequential.queue_draw()
+                    App().window.playback.sequential.delay_out = float(text)
+                    App().window.playback.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
+                    App().window.playback.sequential.queue_draw()
 
     def delay_in_edited(self, _widget, path, text):
         """Delay In edited"""
@@ -504,15 +512,17 @@ class SequenceTab(Gtk.Grid):
             if self.seq == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
-                    App().window.cues_liststore1[path][6] = ""
-                    App().window.cues_liststore2[path][6] = ""
+                    App().window.playback.cues_liststore1[path][6] = ""
+                    App().window.playback.cues_liststore2[path][6] = ""
                 else:
-                    App().window.cues_liststore1[path][6] = text
-                    App().window.cues_liststore2[path][6] = text
+                    App().window.playback.cues_liststore1[path][6] = text
+                    App().window.playback.cues_liststore2[path][6] = text
                 if App().sequence.position + 1 == step:
-                    App().window.sequential.delay_in = float(text)
-                    App().window.sequential.total_time = self.seq.steps[step].total_time
-                    App().window.sequential.queue_draw()
+                    App().window.playback.sequential.delay_in = float(text)
+                    App().window.playback.sequential.total_time = self.seq.steps[
+                        step
+                    ].total_time
+                    App().window.playback.sequential.queue_draw()
 
     def text_edited(self, _widget, path, text):
         """Step's Text edited"""
@@ -541,8 +551,8 @@ class SequenceTab(Gtk.Grid):
         # Update Main Playback
         if self.seq == App().sequence:
             path = str(int(path) + 1)
-            App().window.cues_liststore1[path][2] = text
-            App().window.cues_liststore2[path][2] = text
+            App().window.playback.cues_liststore1[path][2] = text
+            App().window.playback.cues_liststore2[path][2] = text
 
             # Update window's subtitle if needed
             if App().sequence.position == step:
@@ -650,8 +660,8 @@ class SequenceTab(Gtk.Grid):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        page = App().window.notebook.page_num(self)
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.page_num(self)
+        App().window.playback.remove_page(page)
         App().sequences_tab = None
 
     def on_key_press_event(self, widget, event):
@@ -665,7 +675,9 @@ class SequenceTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname in (
             "KP_1",
@@ -680,11 +692,15 @@ class SequenceTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname == "period":
             self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -693,14 +709,16 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_Escape(self):
         """Close Tab"""
-        page = App().window.notebook.get_current_page()
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.get_current_page()
+        App().window.playback.remove_page(page)
         App().sequences_tab = None
 
     def _keypress_BackSpace(self):
         """Empty keys buffer"""
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_Q(self):
         """Cycle Sequences"""
@@ -795,7 +813,9 @@ class SequenceTab(Gtk.Grid):
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_KP_Divide(self):
         """Channel Thru"""
@@ -829,7 +849,9 @@ class SequenceTab(Gtk.Grid):
                         self.flowbox.select_child(child)
             self.flowbox.invalidate_filter()
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_plus(self):
         """Channel +"""
@@ -850,7 +872,9 @@ class SequenceTab(Gtk.Grid):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_minus(self):
         """Channel -"""
@@ -871,7 +895,9 @@ class SequenceTab(Gtk.Grid):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_equal(self):
         """@ Level"""
@@ -894,7 +920,9 @@ class SequenceTab(Gtk.Grid):
                         self.user_channels[channel] = level
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_colon(self):
         """Level - %"""
@@ -976,10 +1004,10 @@ class SequenceTab(Gtk.Grid):
                 # Update Main playback display
                 if self.seq == App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
-                        App().window.channels[channel].next_level = self.seq.steps[
-                            step
-                        ].cue.channels[channel]
-                        App().window.channels[channel].queue_draw()
+                        App().window.channels_view.channels[
+                            channel
+                        ].next_level = self.seq.steps[step].cue.channels[channel]
+                        App().window.channels_view.channels[channel].queue_draw()
 
             dialog.destroy()
 
@@ -1059,7 +1087,9 @@ class SequenceTab(Gtk.Grid):
             mem = float(self.keystring)
             found, step = self.seq.get_step(cue=mem)
             self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if not found:  # New Cue
             # Create Cue
@@ -1125,10 +1155,10 @@ class SequenceTab(Gtk.Grid):
                 # Update Channels tab
                 if self.seq is App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
-                        App().window.channels[channel].next_level = self.channels[
+                        App().window.channels_view.channels[
                             channel
-                        ].level
-                        App().window.channels[channel].queue_draw()
+                        ].next_level = self.channels[channel].level
+                        App().window.channels_view.channels[channel].queue_draw()
 
             dialog.destroy()
 
@@ -1207,10 +1237,10 @@ class SequenceTab(Gtk.Grid):
             for i in range(step, self.seq.last - 2):
                 self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
             # Update Main Tab
-            App().window.update_sequence_display()
+            App().window.playback.update_sequence_display()
             if App().sequence.position + 1 == step:
                 # Update Crossfade
-                App().window.update_xfade_display(step - 1)
+                App().window.playback.update_xfade_display(step - 1)
                 # Update Channels Tab
                 App().window.update_channels_display(step - 1)
         # Update Chasers

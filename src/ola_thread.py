@@ -50,7 +50,7 @@ class OlaThread(threading.Thread):
         for output, level in diff:
             channel = App().patch.outputs[univ][output][0] - 1
             # New level
-            App().window.channels[channel].level = level
+            App().window.channels_view.channels[channel].level = level
             # Find next level
             if (
                 App().sequence.last > 1
@@ -65,9 +65,9 @@ class OlaThread(threading.Thread):
                 next_level = App().sequence.steps[0].cue.channels[channel]
             else:
                 next_level = level
-            App().window.channels[channel].next_level = next_level
+            App().window.channels_view.channels[channel].next_level = next_level
             # Display new levels
-            GLib.idle_add(App().window.channels[channel].queue_draw)
+            GLib.idle_add(App().window.channels_view.channels[channel].queue_draw)
             if App().patch_outputs_tab:
                 GLib.idle_add(
                     App().patch_outputs_tab.outputs[output + (univ * 512)].queue_draw

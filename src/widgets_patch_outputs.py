@@ -26,7 +26,7 @@ class PatchWidget(Gtk.Widget):
     def on_click(self, _tgt, _ev):
         """Widget clicked"""
         # Deselect selected widgets
-        App().window.flowbox.unselect_all()
+        App().window.channels_view.flowbox.unselect_all()
         App().patch_outputs_tab.flowbox.unselect_all()
         # Select clicked widget
         child = App().patch_outputs_tab.flowbox.get_child_at_index(

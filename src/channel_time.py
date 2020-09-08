@@ -178,17 +178,19 @@ class ChanneltimeTab(Gtk.Paned):
                 path2 = Gtk.TreePath.new_from_indices([int(self.position)])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
-                    App().window.cues_liststore1[path1][8] = ""
-                    App().window.cues_liststore2[path2][8] = ""
+                    App().window.playback.cues_liststore1[path1][8] = ""
+                    App().window.playback.cues_liststore2[path2][8] = ""
                 else:
-                    App().window.cues_liststore1[path1][8] = str(ct_nb)
-                    App().window.cues_liststore2[path2][8] = str(ct_nb)
+                    App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
+                    App().window.playback.cues_liststore2[path2][8] = str(ct_nb)
                 if App().sequence.position + 1 == int(self.position):
-                    App().window.sequential.total_time = self.step.total_time
-                    App().window.sequential.queue_draw()
+                    App().window.playback.sequential.total_time = self.step.total_time
+                    App().window.playback.sequential.queue_draw()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def time_edited(self, _widget, path, text):
         if text == "":
@@ -258,17 +260,19 @@ class ChanneltimeTab(Gtk.Paned):
                 path2 = Gtk.TreePath.new_from_indices([int(self.position)])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
-                    App().window.cues_liststore1[path1][8] = ""
-                    App().window.cues_liststore2[path2][8] = ""
+                    App().window.playback.cues_liststore1[path1][8] = ""
+                    App().window.playback.cues_liststore2[path2][8] = ""
                 else:
-                    App().window.cues_liststore1[path1][8] = str(ct_nb)
-                    App().window.cues_liststore2[path2][8] = str(ct_nb)
+                    App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
+                    App().window.playback.cues_liststore2[path2][8] = str(ct_nb)
                 if App().sequence.position + 1 == int(self.position):
-                    App().window.sequential.total_time = self.step.total_time
-                    App().window.sequential.queue_draw()
+                    App().window.playback.sequential.total_time = self.step.total_time
+                    App().window.playback.sequential.queue_draw()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def filter_channels(self, child, _user_data):
         """ Filter Channels """
@@ -318,8 +322,8 @@ class ChanneltimeTab(Gtk.Paned):
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
 
-        page = App().window.notebook.page_num(self)
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.page_num(self)
+        App().window.playback.remove_page(page)
         App().channeltime_tab = None
 
     def on_key_press_event(self, _widget, event):
@@ -327,7 +331,9 @@ class ChanneltimeTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname in (
             "KP_1",
@@ -342,11 +348,15 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname == "period":
             self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -363,13 +373,15 @@ class ChanneltimeTab(Gtk.Paned):
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
 
-        page = App().window.notebook.get_current_page()
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.get_current_page()
+        App().window.playback.remove_page(page)
         App().channeltime_tab = None
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_c(self):
         """ Channel """
@@ -394,7 +406,9 @@ class ChanneltimeTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_q(self):
         """ Prev Channel Time """

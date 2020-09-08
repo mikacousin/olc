@@ -40,7 +40,7 @@ class Dmx(threading.Thread):
                         univ.append(universe)
                     # Level in Sequence
                     level = self.sequence[channel]
-                    App().window.channels[channel].color_level = {
+                    App().window.channels_view.channels[channel].color_level = {
                         "red": 0.9,
                         "green": 0.9,
                         "blue": 0.9,
@@ -52,7 +52,7 @@ class Dmx(threading.Thread):
                         # If master level is bigger, use it
                         if master.dmx[channel] > level:
                             level = master.dmx[channel]
-                            App().window.channels[channel].color_level = {
+                            App().window.channels_view.channels[channel].color_level = {
                                 "red": 0.4,
                                 "green": 0.7,
                                 "blue": 0.4,
@@ -64,7 +64,7 @@ class Dmx(threading.Thread):
                             level_inde = inde.dmx[channel]
                     if level_inde != -1:
                         level = level_inde
-                        App().window.channels[channel].color_level = {
+                        App().window.channels_view.channels[channel].color_level = {
                             "red": 0.4,
                             "green": 0.4,
                             "blue": 0.7,

@@ -525,7 +525,9 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             App().sequence.goto(App().window.keystring)
             App().window.keystring = ""
-            App().window.statusbar.push(App().window.context_id, "")
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, ""
+            )
 
     def on_channel(self, _widget):
         """Channel button"""
@@ -684,7 +686,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "0"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_1(self, _widget):
         """1"""
@@ -693,7 +697,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "1"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_2(self, _widget):
         """2"""
@@ -702,7 +708,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "2"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_3(self, _widget):
         """3"""
@@ -711,7 +719,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "3"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_4(self, _widget):
         """4"""
@@ -720,7 +730,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "4"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_5(self, _widget):
         """5"""
@@ -729,7 +741,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "5"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_6(self, _widget):
         """6"""
@@ -738,7 +752,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "6"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_7(self, _widget):
         """7"""
@@ -747,7 +763,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "7"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_8(self, _widget):
         """8"""
@@ -756,7 +774,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "8"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_9(self, _widget):
         """9"""
@@ -765,7 +785,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "9"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def on_dot(self, _widget):
         """."""
@@ -774,7 +796,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             App().window.keystring += "."
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, App().window.keystring
+            )
 
     def flash_on(self, widget, _event):
         """Flash button pressed"""
@@ -899,7 +923,7 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.midi_learn:
             return
         # For each selected channels
-        sel = App().window.flowbox.get_selected_children()
+        sel = App().window.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
             children = flowboxchild.get_children()
             for channelwidget in children:

@@ -77,17 +77,27 @@ class CrossFade:
             App().sequence.position = 0
             next_step = 1
         # Update UI
-        App().window.sequential.total_time = App().sequence.steps[next_step].total_time
-        App().window.sequential.time_in = App().sequence.steps[next_step].time_in
-        App().window.sequential.time_out = App().sequence.steps[next_step].time_out
-        App().window.sequential.delay_in = App().sequence.steps[next_step].delay_in
-        App().window.sequential.delay_out = App().sequence.steps[next_step].delay_out
-        App().window.sequential.wait = App().sequence.steps[next_step].wait
-        App().window.sequential.channel_time = (
+        App().window.playback.sequential.total_time = (
+            App().sequence.steps[next_step].total_time
+        )
+        App().window.playback.sequential.time_in = (
+            App().sequence.steps[next_step].time_in
+        )
+        App().window.playback.sequential.time_out = (
+            App().sequence.steps[next_step].time_out
+        )
+        App().window.playback.sequential.delay_in = (
+            App().sequence.steps[next_step].delay_in
+        )
+        App().window.playback.sequential.delay_out = (
+            App().sequence.steps[next_step].delay_out
+        )
+        App().window.playback.sequential.wait = App().sequence.steps[next_step].wait
+        App().window.playback.sequential.channel_time = (
             App().sequence.steps[next_step].channel_time
         )
-        App().window.sequential.position_a = 0
-        App().window.sequential.position_b = 0
+        App().window.playback.sequential.position_a = 0
+        App().window.playback.sequential.position_b = 0
         subtitle = (
             "Mem. :"
             + str(App().sequence.steps[App().sequence.position].cue.memory)
@@ -110,14 +120,16 @@ class CrossFade:
         wait = App().sequence.steps[App().sequence.position + 1].wait * 1000
         position = (level / 255) * total_time
         if scale == self.scale_a:
-            App().window.sequential.position_a = (
-                (App().window.sequential.get_allocation().width - 32) / total_time
+            App().window.playback.sequential.position_a = (
+                (App().window.playback.sequential.get_allocation().width - 32)
+                / total_time
             ) * position
         elif scale == self.scale_b:
-            App().window.sequential.position_b = (
-                (App().window.sequential.get_allocation().width - 32) / total_time
+            App().window.playback.sequential.position_b = (
+                (App().window.playback.sequential.get_allocation().width - 32)
+                / total_time
             ) * position
-        App().window.sequential.queue_draw()
+        App().window.playback.sequential.queue_draw()
         # Update levels
         if position >= wait:
             for channel in range(MAX_CHANNELS):

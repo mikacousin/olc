@@ -484,8 +484,8 @@ class Midi:
                 App().virtual_console.zero.emit("button-press-event", event)
             else:
                 App().window.keystring += "0"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_1(self, msg):
@@ -501,8 +501,8 @@ class Midi:
                 App().virtual_console.one.emit("button-press-event", event)
             else:
                 App().window.keystring += "1"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_2(self, msg):
@@ -518,8 +518,8 @@ class Midi:
                 App().virtual_console.two.emit("button-press-event", event)
             else:
                 App().window.keystring += "2"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_3(self, msg):
@@ -535,8 +535,8 @@ class Midi:
                 App().virtual_console.three.emit("button-press-event", event)
             else:
                 App().window.keystring += "3"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_4(self, msg):
@@ -552,8 +552,8 @@ class Midi:
                 App().virtual_console.four.emit("button-press-event", event)
             else:
                 App().window.keystring += "4"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_5(self, msg):
@@ -569,8 +569,8 @@ class Midi:
                 App().virtual_console.five.emit("button-press-event", event)
             else:
                 App().window.keystring += "5"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_6(self, msg):
@@ -586,8 +586,8 @@ class Midi:
                 App().virtual_console.six.emit("button-press-event", event)
             else:
                 App().window.keystring += "6"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_7(self, msg):
@@ -603,8 +603,8 @@ class Midi:
                 App().virtual_console.seven.emit("button-press-event", event)
             else:
                 App().window.keystring += "7"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_8(self, msg):
@@ -620,8 +620,8 @@ class Midi:
                 App().virtual_console.eight.emit("button-press-event", event)
             else:
                 App().window.keystring += "8"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_number_9(self, msg):
@@ -637,8 +637,8 @@ class Midi:
                 App().virtual_console.nine.emit("button-press-event", event)
             else:
                 App().window.keystring += "9"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_dot(self, msg):
@@ -654,8 +654,8 @@ class Midi:
                 App().virtual_console.dot.emit("button-press-event", event)
             else:
                 App().window.keystring += "."
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, App().window.keystring
                 )
 
     def _function_go(self, msg):
@@ -702,7 +702,9 @@ class Midi:
             else:
                 App().sequence.goto(App().window.keystring)
                 App().window.keystring = ""
-                App().window.statusbar.push(App().window.context_id, "")
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, ""
+                )
 
     def _function_seq_minus(self, msg):
         """Seq -"""
@@ -718,7 +720,9 @@ class Midi:
             else:
                 App().sequence.sequence_minus()
                 App().window.keystring = ""
-                App().window.statusbar.push(App().window.context_id, "")
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, ""
+                )
 
     def _function_seq_plus(self, msg):
         """Seq +"""
@@ -734,7 +738,9 @@ class Midi:
             else:
                 App().sequence.sequence_plus()
                 App().window.keystring = ""
-                App().window.statusbar.push(App().window.context_id, "")
+                App().window.channels_view.statusbar.push(
+                    App().window.channels_view.context_id, ""
+                )
 
     def _function_output(self, msg):
         """Output"""
@@ -850,7 +856,7 @@ class Midi:
         if App().virtual_console:
             App().virtual_console.wheel.emit("moved", direction, step)
         else:
-            sel = App().window.flowbox.get_selected_children()
+            sel = App().window.channels_view.flowbox.get_selected_children()
             for flowboxchild in sel:
                 children = flowboxchild.get_children()
                 for channelwidget in children:

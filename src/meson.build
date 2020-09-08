@@ -60,6 +60,8 @@ olc_sources = [
   'widgets_toggle.py',
   'widgets_track_channels.py',
   'window.py',
+  'window_channels.py',
+  'window_playback.py',
 ]
 
 install_data(

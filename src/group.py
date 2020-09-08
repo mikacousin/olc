@@ -91,8 +91,8 @@ class GroupTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """ Close Tab with the icon clicked """
-        page = App().window.notebook.page_num(self)
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.page_num(self)
+        App().window.playback.remove_page(page)
         App().group_tab = None
 
     def on_key_press_event(self, _widget, event):
@@ -101,7 +101,9 @@ class GroupTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname in (
             "KP_1",
@@ -116,11 +118,15 @@ class GroupTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         if keyname == "period":
             self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -129,12 +135,14 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_Escape(self):
         """ Close Tab """
-        page = App().window.notebook.get_current_page()
-        App().window.notebook.remove_page(page)
+        page = App().window.playback.get_current_page()
+        App().window.playback.remove_page(page)
         App().group_tab = None
 
     def _keypress_Right(self):
@@ -275,7 +283,9 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.invalidate_filter()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_a(self):
         """ All Channels """
@@ -321,7 +331,9 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_KP_Divide(self):
         self._keypress_greater()
@@ -363,7 +375,9 @@ class GroupTab(Gtk.Paned):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_plus(self):
         """ Channel + """
@@ -385,7 +399,9 @@ class GroupTab(Gtk.Paned):
             self.last_chan_selected = self.keystring
 
             self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
     def _keypress_minus(self):
         """ Channel - """
@@ -408,7 +424,9 @@ class GroupTab(Gtk.Paned):
             self.last_chan_selected = self.keystring
 
             self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.channels_view.statusbar.push(
+                App().window.channels_view.context_id, self.keystring
+            )
 
     def _keypress_equal(self):
         """ @ Level """
@@ -445,7 +463,9 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_colon(self):
         """ Level - % """
@@ -509,7 +529,9 @@ class GroupTab(Gtk.Paned):
             group_nb = int(self.keystring)
 
         self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
         channels = array.array("B", [0] * MAX_CHANNELS)
         txt = str(float(group_nb))

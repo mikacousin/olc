@@ -13,8 +13,8 @@ from olc.step import Step
 def update_ui(position, subtitle):
     """Update UI when Step is in scene"""
     # Update Sequential Tab
-    App().window.update_active_cues_display()
-    App().window.seq_grid.queue_draw()
+    App().window.playback.update_active_cues_display()
+    App().window.playback.grid.queue_draw()
     # Update Main Window's Subtitle
     App().window.header.set_subtitle(subtitle)
     # Virtual Console's Xfade
@@ -45,9 +45,8 @@ def update_channels(position):
             next_level = App().sequence.steps[0].cue.channels[channel]
         else:
             next_level = level
-        # App().window.channels[channel].level = level
-        App().window.channels[channel].next_level = next_level
-        App().window.channels[channel].queue_draw()
+        App().window.channels_view.channels[channel].next_level = next_level
+        App().window.channels_view.channels[channel].queue_draw()
 
 
 class Sequence:
@@ -168,15 +167,25 @@ class Sequence:
         position += 1
         if position < self.last - 1:  # Stop on the last cue
             self.position += 1
-            App().window.sequential.total_time = self.steps[position + 1].total_time
-            App().window.sequential.time_in = self.steps[position + 1].time_in
-            App().window.sequential.time_out = self.steps[position + 1].time_out
-            App().window.sequential.delay_in = self.steps[position + 1].delay_in
-            App().window.sequential.delay_out = self.steps[position + 1].delay_out
-            App().window.sequential.wait = self.steps[position + 1].wait
-            App().window.sequential.channel_time = self.steps[position + 1].channel_time
-            App().window.sequential.position_a = 0
-            App().window.sequential.position_b = 0
+            App().window.playback.sequential.total_time = self.steps[
+                position + 1
+            ].total_time
+            App().window.playback.sequential.time_in = self.steps[position + 1].time_in
+            App().window.playback.sequential.time_out = self.steps[
+                position + 1
+            ].time_out
+            App().window.playback.sequential.delay_in = self.steps[
+                position + 1
+            ].delay_in
+            App().window.playback.sequential.delay_out = self.steps[
+                position + 1
+            ].delay_out
+            App().window.playback.sequential.wait = self.steps[position + 1].wait
+            App().window.playback.sequential.channel_time = self.steps[
+                position + 1
+            ].channel_time
+            App().window.playback.sequential.position_a = 0
+            App().window.playback.sequential.position_b = 0
 
             # Window's subtitle
             subtitle = (
@@ -223,15 +232,25 @@ class Sequence:
         if position >= 0:
             self.position -= 1
             # Always use times for next cue
-            App().window.sequential.total_time = self.steps[position + 1].total_time
-            App().window.sequential.time_in = self.steps[position + 1].time_in
-            App().window.sequential.time_out = self.steps[position + 1].time_out
-            App().window.sequential.delay_in = self.steps[position + 1].delay_in
-            App().window.sequential.delay_out = self.steps[position + 1].delay_out
-            App().window.sequential.wait = self.steps[position + 1].wait
-            App().window.sequential.channel_time = self.steps[position + 1].channel_time
-            App().window.sequential.position_a = 0
-            App().window.sequential.position_b = 0
+            App().window.playback.sequential.total_time = self.steps[
+                position + 1
+            ].total_time
+            App().window.playback.sequential.time_in = self.steps[position + 1].time_in
+            App().window.playback.sequential.time_out = self.steps[
+                position + 1
+            ].time_out
+            App().window.playback.sequential.delay_in = self.steps[
+                position + 1
+            ].delay_in
+            App().window.playback.sequential.delay_out = self.steps[
+                position + 1
+            ].delay_out
+            App().window.playback.sequential.wait = self.steps[position + 1].wait
+            App().window.playback.sequential.channel_time = self.steps[
+                position + 1
+            ].channel_time
+            App().window.playback.sequential.position_a = 0
+            App().window.playback.sequential.position_b = 0
 
             # Window's subtitle
             subtitle = (
@@ -275,23 +294,31 @@ class Sequence:
                 # position = self.position
                 next_step = self.position + 1
                 # Redraw Sequential window with new times
-                App().window.sequential.total_time = self.steps[next_step].total_time
-                App().window.sequential.time_in = self.steps[next_step].time_in
-                App().window.sequential.time_out = self.steps[next_step].time_out
-                App().window.sequential.delay_in = self.steps[next_step].delay_in
-                App().window.sequential.delay_out = self.steps[next_step].delay_out
-                App().window.sequential.wait = self.steps[next_step].wait
-                App().window.sequential.channel_time = self.steps[
+                App().window.playback.sequential.total_time = self.steps[
+                    next_step
+                ].total_time
+                App().window.playback.sequential.time_in = self.steps[next_step].time_in
+                App().window.playback.sequential.time_out = self.steps[
+                    next_step
+                ].time_out
+                App().window.playback.sequential.delay_in = self.steps[
+                    next_step
+                ].delay_in
+                App().window.playback.sequential.delay_out = self.steps[
+                    next_step
+                ].delay_out
+                App().window.playback.sequential.wait = self.steps[next_step].wait
+                App().window.playback.sequential.channel_time = self.steps[
                     next_step
                 ].channel_time
-                App().window.sequential.position_a = 0
-                App().window.sequential.position_b = 0
+                App().window.playback.sequential.position_a = 0
+                App().window.playback.sequential.position_b = 0
 
                 # Update ui
-                App().window.cues_liststore1[old_pos][9] = "#232729"
-                App().window.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
-                App().window.update_active_cues_display()
-                App().window.seq_grid.queue_draw()
+                App().window.playback.cues_liststore1[old_pos][9] = "#232729"
+                App().window.playback.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
+                App().window.playback.update_active_cues_display()
+                App().window.playback.grid.queue_draw()
 
                 # Launch Go
                 self.do_go(None, None)
@@ -316,15 +343,25 @@ class Sequence:
             else:
                 self.position = 0
                 position = 0
-            App().window.sequential.total_time = self.steps[position + 1].total_time
-            App().window.sequential.time_in = self.steps[position + 1].time_in
-            App().window.sequential.time_out = self.steps[position + 1].time_out
-            App().window.sequential.delay_in = self.steps[position + 1].delay_in
-            App().window.sequential.delay_out = self.steps[position + 1].delay_out
-            App().window.sequential.wait = self.steps[position + 1].wait
-            App().window.sequential.channel_time = self.steps[position + 1].channel_time
-            App().window.sequential.position_a = 0
-            App().window.sequential.position_b = 0
+            App().window.playback.sequential.total_time = self.steps[
+                position + 1
+            ].total_time
+            App().window.playback.sequential.time_in = self.steps[position + 1].time_in
+            App().window.playback.sequential.time_out = self.steps[
+                position + 1
+            ].time_out
+            App().window.playback.sequential.delay_in = self.steps[
+                position + 1
+            ].delay_in
+            App().window.playback.sequential.delay_out = self.steps[
+                position + 1
+            ].delay_out
+            App().window.playback.sequential.wait = self.steps[position + 1].wait
+            App().window.playback.sequential.channel_time = self.steps[
+                position + 1
+            ].channel_time
+            App().window.playback.sequential.position_a = 0
+            App().window.playback.sequential.position_b = 0
 
             # Set main window's subtitle
             subtitle = (
@@ -338,8 +375,8 @@ class Sequence:
                 + self.steps[position + 1].text
             )
             # Update Sequential Tab
-            App().window.update_active_cues_display()
-            App().window.seq_grid.queue_draw()
+            App().window.playback.update_active_cues_display()
+            App().window.playback.grid.queue_draw()
             # Update Main Window's Subtitle
             App().window.header.set_subtitle(subtitle)
 
@@ -366,17 +403,21 @@ class Sequence:
                 print("Error :", str(e))
             self.on_go = False
 
-        App().window.sequential.total_time = self.steps[position - 1].total_time
-        App().window.sequential.time_in = self.steps[position - 1].time_in
-        App().window.sequential.time_out = self.steps[position - 1].time_out
-        App().window.sequential.delay_in = self.steps[position - 1].delay_in
-        App().window.sequential.delay_out = self.steps[position - 1].delay_out
-        App().window.sequential.wait = self.steps[position - 1].wait
-        App().window.sequential.channel_time = self.steps[position - 1].channel_time
-        App().window.sequential.position_a = 0
-        App().window.sequential.position_b = 0
+        App().window.playback.sequential.total_time = self.steps[
+            position - 1
+        ].total_time
+        App().window.playback.sequential.time_in = self.steps[position - 1].time_in
+        App().window.playback.sequential.time_out = self.steps[position - 1].time_out
+        App().window.playback.sequential.delay_in = self.steps[position - 1].delay_in
+        App().window.playback.sequential.delay_out = self.steps[position - 1].delay_out
+        App().window.playback.sequential.wait = self.steps[position - 1].wait
+        App().window.playback.sequential.channel_time = self.steps[
+            position - 1
+        ].channel_time
+        App().window.playback.sequential.position_a = 0
+        App().window.playback.sequential.position_b = 0
 
-        App().window.seq_grid.queue_draw()
+        App().window.playback.grid.queue_draw()
 
         subtitle = (
             "Mem. : "
@@ -463,13 +504,15 @@ class ThreadGo(threading.Thread):
     def update_levels(self, i):
         """Update levels"""
         # Update sliders position
-        App().window.sequential.position_a = (
-            (App().window.sequential.get_allocation().width - 32) / self.total_time
+        App().window.playback.sequential.position_a = (
+            (App().window.playback.sequential.get_allocation().width - 32)
+            / self.total_time
         ) * i
-        App().window.sequential.position_b = (
-            (App().window.sequential.get_allocation().width - 32) / self.total_time
+        App().window.playback.sequential.position_b = (
+            (App().window.playback.sequential.get_allocation().width - 32)
+            / self.total_time
         ) * i
-        GLib.idle_add(App().window.sequential.queue_draw)
+        GLib.idle_add(App().window.playback.sequential.queue_draw)
         # Move Virtual Console's XFade
         if App().virtual_console and App().virtual_console.props.visible:
             val = round((255 / self.total_time) * i)
@@ -589,15 +632,21 @@ def _next_step():
         App().sequence.position = 0
         next_step = 1
     # Update times for visual xfade
-    App().window.sequential.total_time = App().sequence.steps[next_step].total_time
-    App().window.sequential.time_in = App().sequence.steps[next_step].time_in
-    App().window.sequential.time_out = App().sequence.steps[next_step].time_out
-    App().window.sequential.delay_in = App().sequence.steps[next_step].delay_in
-    App().window.sequential.delay_out = App().sequence.steps[next_step].delay_out
-    App().window.sequential.wait = App().sequence.steps[next_step].wait
-    App().window.sequential.channel_time = App().sequence.steps[next_step].channel_time
-    App().window.sequential.position_a = 0
-    App().window.sequential.position_b = 0
+    App().window.playback.sequential.total_time = (
+        App().sequence.steps[next_step].total_time
+    )
+    App().window.playback.sequential.time_in = App().sequence.steps[next_step].time_in
+    App().window.playback.sequential.time_out = App().sequence.steps[next_step].time_out
+    App().window.playback.sequential.delay_in = App().sequence.steps[next_step].delay_in
+    App().window.playback.sequential.delay_out = (
+        App().sequence.steps[next_step].delay_out
+    )
+    App().window.playback.sequential.wait = App().sequence.steps[next_step].wait
+    App().window.playback.sequential.channel_time = (
+        App().sequence.steps[next_step].channel_time
+    )
+    App().window.playback.sequential.position_a = 0
+    App().window.playback.sequential.position_b = 0
     # Main window's subtitle
     subtitle = (
         "Mem. : "
@@ -660,21 +709,27 @@ class ThreadGoBack(threading.Thread):
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
         # Prev step
         App().sequence.position = prev_step
-        App().window.sequential.time_in = App().sequence.steps[prev_step + 1].time_in
-        App().window.sequential.time_out = App().sequence.steps[prev_step + 1].time_out
-        App().window.sequential.delay_in = App().sequence.steps[prev_step + 1].delay_in
-        App().window.sequential.delay_out = (
+        App().window.playback.sequential.time_in = (
+            App().sequence.steps[prev_step + 1].time_in
+        )
+        App().window.playback.sequential.time_out = (
+            App().sequence.steps[prev_step + 1].time_out
+        )
+        App().window.playback.sequential.delay_in = (
+            App().sequence.steps[prev_step + 1].delay_in
+        )
+        App().window.playback.sequential.delay_out = (
             App().sequence.steps[prev_step + 1].delay_out
         )
-        App().window.sequential.wait = App().sequence.steps[prev_step + 1].wait
-        App().window.sequential.total_time = (
+        App().window.playback.sequential.wait = App().sequence.steps[prev_step + 1].wait
+        App().window.playback.sequential.total_time = (
             App().sequence.steps[prev_step + 1].total_time
         )
-        App().window.sequential.channel_time = (
+        App().window.playback.sequential.channel_time = (
             App().sequence.steps[prev_step + 1].channel_time
         )
-        App().window.sequential.position_a = 0
-        App().window.sequential.position_b = 0
+        App().window.playback.sequential.position_a = 0
+        App().window.playback.sequential.position_b = 0
         # Main window's subtitle
         subtitle = (
             "Mem. : "
@@ -699,14 +754,14 @@ class ThreadGoBack(threading.Thread):
     def update_levels(self, go_back_time, i, position):
         """Update levels"""
         # Update sliders position
-        allocation = App().window.sequential.get_allocation()
-        App().window.sequential.position_a = (
+        allocation = App().window.playback.sequential.get_allocation()
+        App().window.playback.sequential.position_a = (
             (allocation.width - 32) / go_back_time
         ) * i
-        App().window.sequential.position_b = (
+        App().window.playback.sequential.position_b = (
             (allocation.width - 32) / go_back_time
         ) * i
-        GLib.idle_add(App().window.sequential.queue_draw)
+        GLib.idle_add(App().window.playback.sequential.queue_draw)
         # Move Virtual Console's XFade
         if App().virtual_console and App().virtual_console.props.visible:
             val = round((255 / go_back_time) * i)

@@ -129,7 +129,7 @@ class Application(Gtk.Application):
         self.window = Window()
         self.window.show_all()
         # No selected channel on startup
-        self.window.flowbox.unselect_all()
+        self.window.channels_view.flowbox.unselect_all()
 
         # Maximize window on startup
         self.window.maximize()
@@ -332,7 +332,7 @@ class Application(Gtk.Application):
             channel = self.patch.outputs[univ][output][0]
             if channel:
                 self.dmx.frame[univ][output] = level
-                self.window.channels[channel - 1].level = level
+                self.window.channels_view.channels[channel - 1].level = level
                 if (
                     self.sequence.last > 1
                     and self.sequence.position < self.sequence.last
@@ -344,8 +344,8 @@ class Application(Gtk.Application):
                     next_level = self.sequence.steps[0].cue.channels[channel - 1]
                 else:
                     next_level = level
-                self.window.channels[channel - 1].next_level = next_level
-                self.window.channels[channel - 1].queue_draw()
+                self.window.channels_view.channels[channel - 1].next_level = next_level
+                self.window.channels_view.channels[channel - 1].queue_draw()
                 if self.patch_outputs_tab:
                     self.patch_outputs_tab.outputs[output + (512 * univ)].queue_draw()
 
@@ -354,7 +354,7 @@ class Application(Gtk.Application):
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
-        self.window.flowbox.unselect_all()
+        self.window.channels_view.flowbox.unselect_all()
         # Reset Patch
         self.patch.patch_1on1()
         # Reset Main Playback
@@ -370,14 +370,14 @@ class Application(Gtk.Application):
             for i in range(20):
                 self.masters.append(Master(page + 1, i + 1, 0, 0))
         # Redraw Sequential Window
-        self.window.sequential.time_in = self.sequence.steps[1].time_in
-        self.window.sequential.time_out = self.sequence.steps[1].time_out
-        self.window.sequential.wait = self.sequence.steps[1].wait
-        self.window.sequential.delay_in = self.sequence.steps[1].delay_in
-        self.window.sequential.delay_out = self.sequence.steps[1].delay_out
-        self.window.sequential.total_time = self.sequence.steps[1].total_time
-        self.window.update_sequence_display()
-        self.window.update_xfade_display(self.sequence.position)
+        self.window.playback.sequential.time_in = self.sequence.steps[1].time_in
+        self.window.playback.sequential.time_out = self.sequence.steps[1].time_out
+        self.window.playback.sequential.wait = self.sequence.steps[1].wait
+        self.window.playback.sequential.delay_in = self.sequence.steps[1].delay_in
+        self.window.playback.sequential.delay_out = self.sequence.steps[1].delay_out
+        self.window.playback.sequential.total_time = self.sequence.steps[1].total_time
+        self.window.playback.update_sequence_display()
+        self.window.playback.update_xfade_display(self.sequence.position)
         # Turn off all channels
         self.dmx.send()
         self.window.update_channels_display(self.sequence.position)
@@ -678,12 +678,13 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.patch_outputs_tab, label)
+            self.window.playback.append_page(self.patch_outputs_tab, label)
+            self.window.playback.set_tab_reorderable(self.patch_outputs_tab, True)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.patch_outputs_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.patch_outputs_tab)
+            self.window.playback.set_current_page(page)
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
@@ -700,12 +701,13 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.patch_channels_tab, label)
+            self.window.playback.append_page(self.patch_channels_tab, label)
+            self.window.playback.set_tab_reorderable(self.patch_channels_tab, True)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.patch_channels_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.patch_channels_tab)
+            self.window.playback.set_current_page(page)
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""
@@ -722,12 +724,12 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.track_channels_tab, label)
+            self.window.playback.append_page(self.track_channels_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.track_channels_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.track_channels_tab)
+            self.window.playback.set_current_page(page)
 
     def memories_cb(self, action, parameter):
         """Create Memories Tab"""
@@ -744,12 +746,12 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.memories_tab, label)
+            self.window.playback.append_page(self.memories_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.memories_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.memories_tab)
+            self.window.playback.set_current_page(page)
 
     def groups_cb(self, action, parameter):
         """Create Groups Tab"""
@@ -766,12 +768,12 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.group_tab, label)
+            self.window.playback.append_page(self.group_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.group_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.group_tab)
+            self.window.playback.set_current_page(page)
 
     def sequences(self, _action, _parameter):
         """Create Sequences Tab"""
@@ -787,13 +789,13 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.sequences_tab, label)
+            self.window.playback.append_page(self.sequences_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
-            self.window.notebook.grab_focus()
+            self.window.playback.set_current_page(-1)
+            self.window.playback.grab_focus()
         else:
-            page = self.window.notebook.page_num(self.sequences_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.sequences_tab)
+            self.window.playback.set_current_page(page)
 
     def channeltime(self, sequence, step):
         """Create Channel Time Tab"""
@@ -809,12 +811,12 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.channeltime_tab, label)
+            self.window.playback.append_page(self.channeltime_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.channeltime_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.channeltime_tab)
+            self.window.playback.set_current_page(page)
 
     def _masters(self, _action, _parameter):
         """Create Masters Tab"""
@@ -831,12 +833,12 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.masters_tab, label)
+            self.window.playback.append_page(self.masters_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.masters_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.masters_tab)
+            self.window.playback.set_current_page(page)
 
     def _independents(self, _action, _parameter):
         """Create Independents Tab"""
@@ -852,12 +854,12 @@ class Application(Gtk.Application):
             label.pack_start(button, False, False, 0)
             label.show_all()
 
-            self.window.notebook.append_page(self.inde_tab, label)
+            self.window.playback.append_page(self.inde_tab, label)
             self.window.show_all()
-            self.window.notebook.set_current_page(-1)
+            self.window.playback.set_current_page(-1)
         else:
-            page = self.window.notebook.page_num(self.inde_tab)
-            self.window.notebook.set_current_page(page)
+            page = self.window.playback.page_num(self.inde_tab)
+            self.window.playback.set_current_page(page)
 
     def _virtual_console(self, _action, _parameter):
         """Virtual Console Window"""

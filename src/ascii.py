@@ -329,7 +329,7 @@ class Ascii:
                     flag_inde = False
                     flag_preset = False
                     App().patch.patch_empty()  # Empty patch
-                    App().window.flowbox.invalidate_filter()
+                    App().window.channels_view.flowbox.invalidate_filter()
                 if flag_patch and line[:0] == "!":
                     flag_patch = False
                 if line[:7].upper() == "PATCH 1":
@@ -346,7 +346,7 @@ class Ascii:
                                 if channel < MAX_CHANNELS:
                                     out = output - (512 * univ)
                                     App().patch.add_output(channel, out, univ, level)
-                                    App().window.flowbox.invalidate_filter()
+                                    App().window.channels_view.flowbox.invalidate_filter()
                                 else:
                                     print("Plus de", MAX_CHANNELS, "Circuits")
                             else:
@@ -607,9 +607,9 @@ class Ascii:
         )
         App().window.header.set_subtitle(subtitle)
         # Redraw Crossfade
-        App().window.update_xfade_display(0)
+        App().window.playback.update_xfade_display(0)
         # Redraw Main Playback
-        App().window.update_sequence_display()
+        App().window.playback.update_sequence_display()
 
         # Redraw Group Tab if exist
         if App().group_tab:
