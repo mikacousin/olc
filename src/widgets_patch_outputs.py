@@ -34,7 +34,7 @@ class PatchWidget(Gtk.Widget):
         )
         App().window.set_focus(child)
         App().patch_outputs_tab.flowbox.select_child(child)
-        App().patch_outputs_tab.last_out_selected = str(self.output)
+        App().patch_outputs_tab.last_out_selected = str(self.output - 1)
 
     def do_draw(self, cr):
         """Draw widget"""
