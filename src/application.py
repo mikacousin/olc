@@ -725,6 +725,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.track_channels_tab, label)
+            self.window.playback.set_tab_reorderable(self.track_channels_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:
@@ -747,6 +748,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.memories_tab, label)
+            self.window.playback.set_tab_reorderable(self.memories_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:
@@ -769,6 +771,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.group_tab, label)
+            self.window.playback.set_tab_reorderable(self.group_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:
@@ -790,6 +793,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.sequences_tab, label)
+            self.window.playback.set_tab_reorderable(self.sequences_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
             self.window.playback.grab_focus()
@@ -812,6 +816,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.channeltime_tab, label)
+            self.window.playback.set_tab_reorderable(self.channeltime_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:
@@ -834,6 +839,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.masters_tab, label)
+            self.window.playback.set_tab_reorderable(self.masters_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:
@@ -855,6 +861,7 @@ class Application(Gtk.Application):
             label.show_all()
 
             self.window.playback.append_page(self.inde_tab, label)
+            self.window.playback.set_tab_reorderable(self.inde_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:

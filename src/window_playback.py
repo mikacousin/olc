@@ -155,6 +155,7 @@ class MainPlaybackView(Gtk.Notebook):
             )
 
         self.append_page(self.grid, Gtk.Label("Main Playback"))
+        self.set_tab_reorderable(self.grid, True)
 
     def update_sequence_display(self):
         """Update Sequence display"""
