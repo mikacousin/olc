@@ -348,9 +348,9 @@ class Ascii:
                                     App().patch.add_output(channel, out, univ, level)
                                     App().window.channels_view.flowbox.invalidate_filter()
                                 else:
-                                    print("Plus de", MAX_CHANNELS, "Circuits")
+                                    print("More than", MAX_CHANNELS, "channels")
                             else:
-                                print("Plus de", NB_UNIVERSES, "univers")
+                                print("More than", NB_UNIVERSES, "universes")
 
                 if line[:5].upper() == "GROUP" and console == "CONGO":
                     # On Congo, Preset not in sequence
@@ -692,3 +692,7 @@ class Ascii:
             App().inde_tab.treeview.set_cursor(path, None, False)
 
         # TODO: Redraw Track Channels Tab if exist
+
+        App().window.channels_view.flowbox.unselect_all()
+        App().window.channels_view.grab_focus()
+        App().window.last_chan_selected = ""

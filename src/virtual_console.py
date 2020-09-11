@@ -410,6 +410,9 @@ class VirtualConsoleWindow(Gtk.Window):
 
         self.add(self.grid)
 
+        # Send keyboard events to a dispatch function
+        self.connect("key_press_event", App().window.channels_view.on_key_press_event)
+
     def close(self, _widget, _param):
         """Mark Window as closed"""
         App().virtual_console = None

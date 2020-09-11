@@ -118,8 +118,9 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
-        page = App().window.playback.page_num(self)
-        App().window.playback.remove_page(page)
+        notebook = self.get_parent()
+        page = notebook.page_num(self)
+        notebook.remove_page(page)
         App().memories_tab = None
 
     def on_scroll(self, _widget, event):

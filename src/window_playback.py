@@ -5,6 +5,11 @@ from olc.define import App
 from olc.widgets_sequential import SequentialWidget
 
 
+def on_page_added(notebook, _child, _page_num):
+    """Get focus"""
+    notebook.grab_focus()
+
+
 def step_filter_func1(model, treeiter, _data):
     """Filter for the first part of the cues list"""
     if App().sequence.position <= 0:
@@ -156,6 +161,11 @@ class MainPlaybackView(Gtk.Notebook):
 
         self.append_page(self.grid, Gtk.Label("Main Playback"))
         self.set_tab_reorderable(self.grid, True)
+        self.set_tab_detachable(self.grid, True)
+
+        self.connect("key_press_event", self.on_key_press_event)
+        self.connect("page-added", on_page_added)
+        self.connect("page-removed", on_page_added)
 
     def update_sequence_display(self):
         """Update Sequence display"""
@@ -292,3 +302,29 @@ class MainPlaybackView(Gtk.Notebook):
         self.sequential.wait = App().sequence.steps[step + 1].wait
         self.sequential.channel_time = App().sequence.steps[step + 1].channel_time
         self.sequential.queue_draw()
+
+    def on_key_press_event(self, widget, event):
+        """On key press event"""
+        # Find open page in notebook to send keyboard events
+        page = self.get_current_page()
+        child = self.get_nth_page(page)
+        if child == App().patch_outputs_tab:
+            return App().patch_outputs_tab.on_key_press_event(widget, event)
+        if child == App().patch_channels_tab:
+            return App().patch_channels_tab.on_key_press_event(widget, event)
+        if child == App().group_tab:
+            return App().group_tab.on_key_press_event(widget, event)
+        if child == App().sequences_tab:
+            return App().sequences_tab.on_key_press_event(widget, event)
+        if child == App().channeltime_tab:
+            return App().channeltime_tab.on_key_press_event(widget, event)
+        if child == App().track_channels_tab:
+            return App().track_channels_tab.on_key_press_event(widget, event)
+        if child == App().memories_tab:
+            return App().memories_tab.on_key_press_event(widget, event)
+        if child == App().masters_tab:
+            return App().masters_tab.on_key_press_event(widget, event)
+        if child == App().inde_tab:
+            return App().inde_tab.on_key_press_event(widget, event)
+
+        return App().window.on_key_press_event(widget, event)
