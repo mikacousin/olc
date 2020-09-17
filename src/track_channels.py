@@ -1,11 +1,14 @@
+"""Track channels"""
+
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 
 class TrackChannelsTab(Gtk.Grid):
-    def __init__(self):
+    """Tab to track channels"""
 
+    def __init__(self):
         self.percent_level = App().settings.get_boolean("percent")
 
         self.keystring = ""
@@ -58,6 +61,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.attach(self.scrollable, 0, 0, 1, 1)
 
     def filter_func(self, child, _user_data):
+        """Step filter"""
         if child == self.steps[0].get_parent():
             return child
         if len(self.steps) <= App().sequence.last - 1:
@@ -66,15 +70,38 @@ class TrackChannelsTab(Gtk.Grid):
             return False
         return child
 
+    def update_display(self):
+        """Update diplay of tracked channels"""
+        # Find selected channels
+        self.channels = []
+        sel = App().window.channels_view.flowbox.get_selected_children()
+        for flowboxchild in sel:
+            children = flowboxchild.get_children()
+            for channelwidget in children:
+                channel = int(channelwidget.channel) - 1
+                if App().patch.channels[channel][0] != [0, 0]:
+                    self.channels.append(channel)
+        self.channel_selected = 0
+        # Update Track Channels Tab
+        self.steps[0].channels = self.channels
+        levels = []
+        for step in range(App().sequence.last):
+            levels.append([])
+            for channel in self.channels:
+                level = App().sequence.steps[step].cue.channels[channel]
+                levels[step].append(level)
+            self.steps[step].levels = levels[step]
+        self.flowbox.queue_draw()
+
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
+        """Close Tab on close clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)
         App().track_channels_tab = None
 
     def on_key_press_event(self, _widget, event):
-
+        """Keyboard events"""
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 
@@ -107,19 +134,20 @@ class TrackChannelsTab(Gtk.Grid):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().track_channels_tab = None
 
     def _keypress_BackSpace(self):
+        """Empty keys buffer"""
         self.keystring = ""
         App().window.channels_view.statusbar.push(
             App().window.channels_view.context_id, self.keystring
         )
 
     def _keypress_Right(self):
-        """ Next Channel """
+        """Next Channel"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
@@ -136,7 +164,7 @@ class TrackChannelsTab(Gtk.Grid):
                         widget.queue_draw()
 
     def _keypress_Left(self):
-        """ Previous Channel """
+        """Previous Channel"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
@@ -153,7 +181,7 @@ class TrackChannelsTab(Gtk.Grid):
                         widget.queue_draw()
 
     def _keypress_Down(self):
-        """ Next Step """
+        """Next Step"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
@@ -169,7 +197,7 @@ class TrackChannelsTab(Gtk.Grid):
             self.last_step_selected = str(index)
 
     def _keypress_Up(self):
-        """ Previous Step """
+        """Previous Step"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
@@ -185,7 +213,7 @@ class TrackChannelsTab(Gtk.Grid):
             self.last_step_selected = str(index)
 
     def _keypress_m(self):
-        """ Modify Level """
+        """Modify Level"""
 
         # Find selected Channel
         sel = self.flowbox.get_selected_children()
@@ -209,7 +237,7 @@ class TrackChannelsTab(Gtk.Grid):
         )
 
     def _keypress_c(self):
-        """ Select Channel """
+        """Select Channel"""
 
         App().window.channels_view.flowbox.unselect_all()
 
@@ -221,29 +249,7 @@ class TrackChannelsTab(Gtk.Grid):
                 App().window.channels_view.flowbox.select_child(child)
                 App().window.last_chan_selected = str(channel)
 
-        # Find selected channels
-        self.channels = []
-        sel = App().window.channels_view.flowbox.get_selected_children()
-        for flowboxchild in sel:
-            children = flowboxchild.get_children()
-            for channelwidget in children:
-                channel = int(channelwidget.channel) - 1
-                if App().patch.channels[channel][0] != [0, 0]:
-                    self.channels.append(channel)
-
-        self.channel_selected = 0
-
-        # Update Track Channels Tab
-        self.steps[0].channels = self.channels
-
-        levels = []
-        for step in range(App().sequence.last):
-            levels.append([])
-            for channel in self.channels:
-                level = App().sequence.steps[step].cue.channels[channel]
-                levels[step].append(level)
-            self.steps[step].levels = levels[step]
-        self.flowbox.queue_draw()
+        self.update_display()
 
         self.keystring = ""
         App().window.channels_view.statusbar.push(
@@ -251,10 +257,11 @@ class TrackChannelsTab(Gtk.Grid):
         )
 
     def _keypress_KP_Divide(self):
+        """Channel Thru"""
         self._keypress_greater()
 
     def _keypress_greater(self):
-        """ Channel Thru """
+        """Channel Thru"""
 
         sel = App().window.channels_view.flowbox.get_selected_children()
 
@@ -291,30 +298,7 @@ class TrackChannelsTab(Gtk.Grid):
 
             App().window.last_chan_selected = self.keystring
 
-            # Find selected channels
-            self.channels = []
-            sel = App().window.channels_view.flowbox.get_selected_children()
-            for flowboxchild in sel:
-                children = flowboxchild.get_children()
-                for channelwidget in children:
-                    channel = int(channelwidget.channel) - 1
-                    if App().patch.channels[channel][0] != [0, 0]:
-                        self.channels.append(channel)
-
-            if self.channel_selected > len(self.channels) - 1:
-                self.channel_selected = 0
-
-            # Update Track Channels Tab
-            self.steps[0].channels = self.channels
-
-            levels = []
-            for step in range(App().sequence.last):
-                levels.append([])
-                for channel in self.channels:
-                    level = App().sequence.steps[step].cue.channels[channel]
-                    levels[step].append(level)
-                self.steps[step].levels = levels[step]
-            self.flowbox.queue_draw()
+            self.update_display()
 
         self.keystring = ""
         App().window.channels_view.statusbar.push(
@@ -322,10 +306,11 @@ class TrackChannelsTab(Gtk.Grid):
         )
 
     def _keypress_KP_Add(self):
+        """Channel +"""
         self._keypress_plus()
 
     def _keypress_plus(self):
-        """ Channel + """
+        """Channel +"""
 
         if self.keystring == "":
             return
@@ -337,30 +322,7 @@ class TrackChannelsTab(Gtk.Grid):
             App().window.channels_view.flowbox.select_child(child)
             App().window.last_chan_selected = self.keystring
 
-            # Find selected channels
-            self.channels = []
-            sel = App().window.channels_view.flowbox.get_selected_children()
-            for flowboxchild in sel:
-                children = flowboxchild.get_children()
-                for channelwidget in children:
-                    channel = int(channelwidget.channel) - 1
-                    if App().patch.channels[channel][0] != [0, 0]:
-                        self.channels.append(channel)
-
-            if self.channel_selected > len(self.channels) - 1:
-                self.channel_selected = 0
-
-            # Update Track Channels Tab
-            self.steps[0].channels = self.channels
-
-            levels = []
-            for step in range(App().sequence.last):
-                levels.append([])
-                for channel in self.channels:
-                    level = App().sequence.steps[step].cue.channels[channel]
-                    levels[step].append(level)
-                self.steps[step].levels = levels[step]
-            self.flowbox.queue_draw()
+            self.update_display()
 
         self.keystring = ""
         App().window.channels_view.statusbar.push(
@@ -368,10 +330,11 @@ class TrackChannelsTab(Gtk.Grid):
         )
 
     def _keypress_KP_Subtract(self):
+        """Channel -"""
         self._keypress_minus()
 
     def _keypress_minus(self):
-        """ Channel - """
+        """Channel -"""
 
         if self.keystring == "":
             return
@@ -383,30 +346,7 @@ class TrackChannelsTab(Gtk.Grid):
             App().window.channels_view.flowbox.unselect_child(child)
             App().window.last_chan_selected = self.keystring
 
-            # Find selected channels
-            self.channels = []
-            sel = App().window.channels_view.flowbox.get_selected_children()
-            for flowboxchild in sel:
-                children = flowboxchild.get_children()
-                for channelwidget in children:
-                    channel = int(channelwidget.channel) - 1
-                    if App().patch.channels[channel][0] != [0, 0]:
-                        self.channels.append(channel)
-
-            if self.channel_selected > len(self.channels) - 1:
-                self.channel_selected = 0
-
-            # Update Track Channels Tab
-            self.steps[0].channels = self.channels
-
-            levels = []
-            for step in range(App().sequence.last):
-                levels.append([])
-                for channel in self.channels:
-                    level = App().sequence.steps[step].cue.channels[channel]
-                    levels[step].append(level)
-                self.steps[step].levels = levels[step]
-            self.flowbox.queue_draw()
+            self.update_display()
 
         self.keystring = ""
         App().window.channels_view.statusbar.push(
