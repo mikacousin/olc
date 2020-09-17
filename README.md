@@ -38,7 +38,7 @@ $ meson builddir --prefix=/usr/local
 # sudo ninja -C builddir install
 ```
 
-## Quick test on Raspberry Pi 3B+
+## Raspberry Pi 3B+ (not really tested)
 Seems to work with **1 universe and 512 channels** (edit src/define.py)
 
 Install ola fom git with python3 support.
