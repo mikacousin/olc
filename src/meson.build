@@ -20,6 +20,7 @@ configure_file(
 olc_sources = [
   'application.py',
   'ascii.py',
+  'ascii_load.py',
   'ascii_save.py',
   'channel_time.py',
   'crossfade.py',

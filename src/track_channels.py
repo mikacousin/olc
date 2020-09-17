@@ -36,6 +36,21 @@ class TrackChannelsTab(Gtk.Grid):
                 if App().patch.channels[channel][0] != [0, 0]:
                     self.channels.append(channel)
 
+        self.populate_steps()
+
+        self.flowbox.set_filter_func(self.filter_func, None)
+
+        self.scrollable = Gtk.ScrolledWindow()
+        self.scrollable.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.scrollable.add(self.flowbox)
+
+        self.attach(self.scrollable, 0, 0, 1, 1)
+
+    def populate_steps(self):
+        """Main Playback's Steps"""
+        # Clear flowbox
+        for child in self.flowbox.get_children():
+            self.flowbox.remove(child)
         # Levels in each steps
         levels = []
         self.steps = []
@@ -51,14 +66,6 @@ class TrackChannelsTab(Gtk.Grid):
                 levels[step].append(level)
             self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
             self.flowbox.add(self.steps[step])
-
-        self.flowbox.set_filter_func(self.filter_func, None)
-
-        self.scrollable = Gtk.ScrolledWindow()
-        self.scrollable.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        self.scrollable.add(self.flowbox)
-
-        self.attach(self.scrollable, 0, 0, 1, 1)
 
     def filter_func(self, child, _user_data):
         """Step filter"""
