@@ -837,7 +837,7 @@ class Window(Gtk.ApplicationWindow):
                 channel = int(channelwidget.channel) - 1
                 if App().patch.channels[channel][0] != [0, 0]:
                     App().track_channels_tab.channels.append(channel)
-        self.channel_selected = 0
+        App().track_channels_tab.channel_selected = 0
         # Update Track Channels Tab
         App().track_channels_tab.steps[0].channels = App().track_channels_tab.channels
         levels = []
