@@ -41,6 +41,9 @@ class ChannelWidget(Gtk.Widget):
             flowbox.select_child(flowboxchild)
             App().window.last_chan_selected = str(int(self.channel) - 1)
 
+        if flowbox is App().window.channels_view.flowbox and App().track_channels_tab:
+            App().track_channels_tab.update_display()
+
     def do_draw(self, cr):
         """Draw widget"""
         self.width = 80 * self.scale

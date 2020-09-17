@@ -482,6 +482,8 @@ class Window(Gtk.ApplicationWindow):
         """ Unselect all channels """
         self.channels_view.flowbox.unselect_all()
         self.last_chan_selected = ""
+        if App().track_channels_tab:
+            App().track_channels_tab.update_display()
 
     def _keypress_q(self):
         """ Seq - """
