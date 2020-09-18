@@ -1,6 +1,6 @@
 """Channels view in main window"""
 
-from gi.repository import Gtk
+from gi.repository import Gtk, Gdk
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 
@@ -59,6 +59,8 @@ class ChannelsView(Gtk.Notebook):
         self.connect("key_press_event", self.on_key_press_event)
         self.connect("page-added", on_page_added)
         self.connect("page-removed", on_page_added)
+        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
+        self.flowbox.connect("scroll-event", self.on_scroll)
 
     def filter_func(self, child, _user_data):
         """Filter for channels window"""
@@ -72,6 +74,25 @@ class ChannelsView(Gtk.Notebook):
         else:
             # Display all channels
             return True
+
+    def on_scroll(self, widget, event):
+        """Executed on scroll wheel mouse event"""
+        # Zoom In/Out Channels in Live View
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if (
+            event.state & accel_mask
+            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        ):
+            (scroll, direction) = event.get_scroll_direction()
+            if scroll and direction == Gdk.ScrollDirection.UP:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale < 2:
+                        self.channels[i].scale += 0.1
+            if scroll and direction == Gdk.ScrollDirection.DOWN:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale >= 1.1:
+                        self.channels[i].scale -= 0.1
+            self.flowbox.queue_draw()
 
     def on_key_press_event(self, widget, event):
         """On key press event"""

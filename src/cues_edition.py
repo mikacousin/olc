@@ -72,6 +72,9 @@ class CuesEditionTab(Gtk.Paned):
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
 
+        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
+        self.flowbox.connect("scroll-event", self.on_scroll)
+
     def filter_channel_func(self, child, _user_data):
         """ Filter channels """
         # If no Presets, just return

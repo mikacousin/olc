@@ -69,8 +69,6 @@ class Window(Gtk.ApplicationWindow):
 
         self.add(paned)
 
-        self.connect("scroll-event", self.on_scroll)
-
         self.set_icon_name("olc")
 
     def fullscreen_toggle(self, _action, _param):
@@ -86,35 +84,6 @@ class Window(Gtk.ApplicationWindow):
         """Toggle type of view : patched channels or all channels"""
         self.channels_view.view_type = 1 if self.channels_view.view_type == 0 else 0
         self.channels_view.flowbox.invalidate_filter()
-
-    def on_scroll(self, widget, event):
-        """Executed on scroll wheel mouse event"""
-        # Send Events to notebook's pages
-        page = self.playback.get_current_page()
-        child = self.playback.get_nth_page(page)
-
-        if child == App().patch_outputs_tab:
-            return App().patch_outputs_tab.on_scroll(widget, event)
-        if child == App().memories_tab:
-            return App().memories_tab.on_scroll(widget, event)
-
-        # Zoom In/Out Channels in Live View
-        accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if (
-            event.state & accel_mask
-            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
-        ):
-            (scroll, direction) = event.get_scroll_direction()
-            if scroll and direction == Gdk.ScrollDirection.UP:
-                for i in range(MAX_CHANNELS):
-                    if self.channels_view.channels[i].scale < 2:
-                        self.channels_view.channels[i].scale += 0.1
-            if scroll and direction == Gdk.ScrollDirection.DOWN:
-                for i in range(MAX_CHANNELS):
-                    if self.channels_view.channels[i].scale >= 1.1:
-                        self.channels_view.channels[i].scale -= 0.1
-            self.channels_view.flowbox.queue_draw()
-        return True
 
     def update_channels_display(self, step):
         """Update Channels levels display"""

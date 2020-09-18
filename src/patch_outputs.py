@@ -54,6 +54,9 @@ class PatchOutputsTab(Gtk.Grid):
         self.attach(self.header, 0, 0, 1, 1)
         self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
+        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
+        self.flowbox.connect("scroll-event", self.on_scroll)
+
     def filter_func(self, child, _user_data):
         return child
 
