@@ -58,6 +58,13 @@ class CrossFade:
             # In and Out Crossfades at Full
             self.at_full()
 
+        if self.scale_a.get_value() == 0 and self.scale_b.get_value() == 0:
+            # Stop Xfade if return to 0
+            if not App().sequence.on_go:
+                return
+            self.manual = False
+            App().sequence.on_go = False
+
     def at_full(self):
         """Slider A and B at Full"""
         if not App().sequence.on_go:
