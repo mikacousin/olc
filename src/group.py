@@ -52,6 +52,8 @@ class GroupTab(Gtk.Paned):
         self.add2(self.scrolled2)
 
         self.flowbox1.set_filter_func(self.filter_channels, None)
+        self.flowbox1.add_events(Gdk.EventMask.SCROLL_MASK)
+        self.flowbox1.connect("scroll-event", self.on_scroll)
 
     def populate_tab(self):
         """Add groups to tab"""
@@ -88,6 +90,25 @@ class GroupTab(Gtk.Paned):
 
     def filter_groups(self, child, _user_data):
         return child
+
+    def on_scroll(self, widget, event):
+        """Executed on scroll wheel mouse event"""
+        # Zoom In/Out Channels in Live View
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if (
+            event.state & accel_mask
+            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        ):
+            (scroll, direction) = event.get_scroll_direction()
+            if scroll and direction == Gdk.ScrollDirection.UP:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale < 2:
+                        self.channels[i].scale += 0.1
+            if scroll and direction == Gdk.ScrollDirection.DOWN:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale >= 1.1:
+                        self.channels[i].scale -= 0.1
+            self.flowbox1.queue_draw()
 
     def on_close_icon(self, _widget):
         """ Close Tab with the icon clicked """

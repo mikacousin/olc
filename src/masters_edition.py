@@ -97,6 +97,8 @@ class MastersTab(Gtk.Paned):
         self.add(self.scrollable)
 
         self.flowbox.set_filter_func(self.filter_channel_func, None)
+        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
+        self.flowbox.connect("scroll-event", self.on_scroll)
 
         # Select First Master
         path = Gtk.TreePath.new_first()
@@ -143,6 +145,25 @@ class MastersTab(Gtk.Paned):
                 # Type : Unknown
                 else:
                     self.liststore.append([index + 1, "Unknown", "", ""])
+
+    def on_scroll(self, widget, event):
+        """Executed on scroll wheel mouse event"""
+        # Zoom In/Out Channels in Live View
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if (
+            event.state & accel_mask
+            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        ):
+            (scroll, direction) = event.get_scroll_direction()
+            if scroll and direction == Gdk.ScrollDirection.UP:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale < 2:
+                        self.channels[i].scale += 0.1
+            if scroll and direction == Gdk.ScrollDirection.DOWN:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale >= 1.1:
+                        self.channels[i].scale -= 0.1
+            self.flowbox.queue_draw()
 
     def filter_master(self, _model, _i, _data):
         return True

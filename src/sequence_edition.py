@@ -149,6 +149,8 @@ class SequenceTab(Gtk.Grid):
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
         self.flowbox.set_filter_func(self.filter_func, None)
+        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
+        self.flowbox.connect("scroll-event", self.on_scroll)
 
         # Select Main Playback
         path = Gtk.TreePath.new_first()
@@ -179,6 +181,25 @@ class SequenceTab(Gtk.Grid):
             # Edit Channel Time
             step = self.liststore2[path][0]
             App().channeltime(seq, step)
+
+    def on_scroll(self, widget, event):
+        """Executed on scroll wheel mouse event"""
+        # Zoom In/Out Channels in Live View
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if (
+            event.state & accel_mask
+            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
+        ):
+            (scroll, direction) = event.get_scroll_direction()
+            if scroll and direction == Gdk.ScrollDirection.UP:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale < 2:
+                        self.channels[i].scale += 0.1
+            if scroll and direction == Gdk.ScrollDirection.DOWN:
+                for i in range(MAX_CHANNELS):
+                    if self.channels[i].scale >= 1.1:
+                        self.channels[i].scale -= 0.1
+            self.flowbox.queue_draw()
 
     def wait_edited(self, _widget, path, text):
         """Edit Wait"""
