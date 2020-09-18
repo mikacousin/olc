@@ -11,6 +11,7 @@ class Scale:
 
     def __init__(self):
         self.value = 0
+        self.moved = False
 
     def set_value(self, value):
         """Set scale value"""
@@ -33,6 +34,7 @@ class CrossFade:
 
     def scale_moved(self, scale):
         """On moved"""
+        scale.moved = True
         level = scale.get_value()
 
         if level not in (255, 0):
@@ -54,7 +56,12 @@ class CrossFade:
             # Update sliders position
             self.update_slider(scale, level)
 
-        if self.scale_a.get_value() == 255 and self.scale_b.get_value() == 255:
+        if (
+            self.scale_a.get_value() == 255
+            and self.scale_b.get_value() == 255
+            and self.scale_a.moved
+            and self.scale_b.moved
+        ):
             # In and Out Crossfades at Full
             self.at_full()
 
@@ -62,6 +69,8 @@ class CrossFade:
             # Stop Xfade if return to 0
             if not App().sequence.on_go:
                 return
+            self.scale_a.moved = False
+            self.scale_b.moved = False
             self.manual = False
             App().sequence.on_go = False
 
@@ -69,6 +78,8 @@ class CrossFade:
         """Slider A and B at Full"""
         if not App().sequence.on_go:
             return
+        self.scale_a.moved = False
+        self.scale_b.moved = False
         self.manual = False
         App().sequence.on_go = False
         # Empty array of levels enter by user
