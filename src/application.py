@@ -342,17 +342,16 @@ class Application(Gtk.Application):
             self.memories_tab.flowbox.invalidate_filter()
 
         # Redraw Masters in Virtual Console
-        if self.virtual_console:
-            if self.virtual_console.props.visible:
-                for page in range(2):
-                    for master in self.masters:
-                        if master.page == page + 1:
-                            self.virtual_console.flashes[
-                                master.number - 1 + (page * 20)
-                            ].label = master.text
-                            self.virtual_console.flashes[
-                                master.number - 1 + (page * 20)
-                            ].queue_draw()
+        if self.virtual_console and self.virtual_console.props.visible:
+            for page in range(2):
+                for master in self.masters:
+                    if master.page == page + 1:
+                        self.virtual_console.flashes[
+                            master.number - 1 + (page * 20)
+                        ].label = master.text
+                        self.virtual_console.flashes[
+                            master.number - 1 + (page * 20)
+                        ].queue_draw()
 
         # Redraw Sequences Tab
         if self.sequences_tab:
@@ -523,11 +522,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.patch_outputs_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.patch_outputs_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
@@ -549,11 +548,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.patch_channels_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.patch_channels_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""
@@ -575,11 +574,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.track_channels_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.track_channels_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def memories_cb(self, action, parameter):
         """Create Memories Tab"""
@@ -601,11 +600,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.memories_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.memories_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def groups_cb(self, action, parameter):
         """Create Groups Tab"""
@@ -627,11 +626,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.group_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.group_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def sequences(self, _action, _parameter):
         """Create Sequences Tab"""
@@ -653,11 +652,11 @@ class Application(Gtk.Application):
             self.window.show_all()
             self.window.playback.set_current_page(-1)
             self.window.playback.grab_focus()
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.sequences_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def channeltime(self, sequence, step):
         """Create Channel Time Tab"""
@@ -678,11 +677,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.channeltime_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.channeltime_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def _masters(self, _action, _parameter):
         """Create Masters Tab"""
@@ -704,11 +703,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.masters_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.masters_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def _independents(self, _action, _parameter):
         """Create Independents Tab"""
@@ -729,11 +728,11 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.inde_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.inde_tab)
             self.window.playback.set_current_page(page)
-            self.window.playback.grab_focus()
+
+        self.window.playback.grab_focus()
 
     def _virtual_console(self, _action, _parameter):
         """Virtual Console Window"""

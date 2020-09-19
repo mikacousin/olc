@@ -118,27 +118,29 @@ class PatchWidget(Gtk.Widget):
     def _draw_proportional_level(self, cr, allocation):
         """Draw Proportional Level"""
         if (
-            App().patch.outputs[self.universe][self.output - 1][1] != 100
-            and App().patch.outputs[self.universe][self.output - 1][0] != 0
+            App().patch.outputs[self.universe][self.output - 1][1] == 100
+            or App().patch.outputs[self.universe][self.output - 1][0] == 0
         ):
-            cr.rectangle(
-                allocation.width - 9,
-                allocation.height - 2,
-                6 * self.scale,
-                -((50 / 100) * self.scale)
-                * App().patch.outputs[self.universe][self.output - 1][1],
-            )
-            if self.get_parent().is_selected():
-                cr.set_source_rgb(0.8, 0.1, 0.1)
-            else:
-                cr.set_source_rgb(0.5, 0.1, 0.1)
-            cr.fill()
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-            cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.set_font_size(8 * self.scale)
-            text = str(App().patch.outputs[self.universe][self.output - 1][1]) + "%"
-            cr.move_to(allocation.width - 20, allocation.height - 2)
-            cr.show_text(text)
+            return
+
+        cr.rectangle(
+            allocation.width - 9,
+            allocation.height - 2,
+            6 * self.scale,
+            -((50 / 100) * self.scale)
+            * App().patch.outputs[self.universe][self.output - 1][1],
+        )
+        if self.get_parent().is_selected():
+            cr.set_source_rgb(0.8, 0.1, 0.1)
+        else:
+            cr.set_source_rgb(0.5, 0.1, 0.1)
+        cr.fill()
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+        cr.set_source_rgb(0.7, 0.7, 0.7)
+        cr.set_font_size(8 * self.scale)
+        text = str(App().patch.outputs[self.universe][self.output - 1][1]) + "%"
+        cr.move_to(allocation.width - 20, allocation.height - 2)
+        cr.show_text(text)
 
     def do_realize(self):
         """Realize widget"""
