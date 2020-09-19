@@ -5,6 +5,7 @@ import array
 from gi.repository import Gtk, Gdk
 from olc.define import App, MAX_CHANNELS
 from olc.widgets_channel import ChannelWidget
+from olc.zoom import zoom
 
 
 class IndependentsTab(Gtk.Paned):
@@ -56,7 +57,7 @@ class IndependentsTab(Gtk.Paned):
 
         self.flowbox.set_filter_func(self.filter_channel_func, None)
         self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", self.on_scroll)
+        self.flowbox.connect("scroll-event", zoom)
 
         # Select first independent
         path = Gtk.TreePath.new_first()
@@ -92,25 +93,6 @@ class IndependentsTab(Gtk.Paned):
             self.channels[i].next_level = self.user_channels[i]
             return child
         return False
-
-    def on_scroll(self, widget, event):
-        """Executed on scroll wheel mouse event"""
-        # Zoom In/Out Channels in Live View
-        accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if (
-            event.state & accel_mask
-            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
-        ):
-            (scroll, direction) = event.get_scroll_direction()
-            if scroll and direction == Gdk.ScrollDirection.UP:
-                for i in range(MAX_CHANNELS):
-                    if self.channels[i].scale < 2:
-                        self.channels[i].scale += 0.1
-            if scroll and direction == Gdk.ScrollDirection.DOWN:
-                for i in range(MAX_CHANNELS):
-                    if self.channels[i].scale >= 1.1:
-                        self.channels[i].scale -= 0.1
-            self.flowbox.queue_draw()
 
     def on_changed(self, _treeview):
         """Select independent"""

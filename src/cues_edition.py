@@ -4,6 +4,7 @@ from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
+from olc.zoom import zoom
 
 
 class CuesEditionTab(Gtk.Paned):
@@ -73,7 +74,7 @@ class CuesEditionTab(Gtk.Paned):
         self.treeview.set_cursor(path, None, False)
 
         self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", self.on_scroll)
+        self.flowbox.connect("scroll-event", zoom)
 
     def filter_channel_func(self, child, _user_data):
         """ Filter channels """
@@ -125,29 +126,6 @@ class CuesEditionTab(Gtk.Paned):
         page = notebook.page_num(self)
         notebook.remove_page(page)
         App().memories_tab = None
-
-    def on_scroll(self, _widget, event):
-        accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if (
-            event.state & accel_mask
-            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
-        ):
-            (scroll, direction) = event.get_scroll_direction()
-            if scroll and direction == Gdk.ScrollDirection.UP:
-                for i in range(MAX_CHANNELS):
-                    if self.channels[i].scale <= 2:
-                        self.channels[i].scale += 0.1
-                self.flowbox.queue_draw()
-            if scroll and direction == Gdk.ScrollDirection.DOWN:
-                for i in range(MAX_CHANNELS):
-                    if self.channels[i].scale >= 1.1:
-                        self.channels[i].scale -= 0.1
-                self.flowbox.queue_draw()
-            # TODO: Fix widgets dimensions
-            if self.channels[0].scale > 1:
-                self.flowbox.set_homogeneous(False)
-            else:
-                self.flowbox.set_homogeneous(True)
 
     def on_key_press_event(self, _widget, event):
 

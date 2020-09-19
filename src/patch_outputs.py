@@ -1,6 +1,7 @@
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.widgets_patch_outputs import PatchWidget
+from olc.zoom import zoom
 
 
 class PatchOutputsTab(Gtk.Grid):
@@ -30,7 +31,6 @@ class PatchOutputsTab(Gtk.Grid):
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.scrolled.connect("scroll-event", self.on_scroll)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
@@ -55,28 +55,10 @@ class PatchOutputsTab(Gtk.Grid):
         self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
 
         self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", self.on_scroll)
+        self.flowbox.connect("scroll-event", zoom)
 
     def filter_func(self, child, _user_data):
         return child
-
-    def on_scroll(self, _widget, event):
-        accel_mask = Gtk.accelerator_get_default_mod_mask()
-        if (
-            event.state & accel_mask
-            == Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.SHIFT_MASK
-        ):
-            (scroll, direction) = event.get_scroll_direction()
-            if scroll and direction == Gdk.ScrollDirection.UP:
-                for output in self.outputs:
-                    if output.scale <= 2:
-                        output.scale += 0.1
-                self.flowbox.queue_draw()
-            if scroll and direction == Gdk.ScrollDirection.DOWN:
-                for output in self.outputs:
-                    if output.scale >= 1.1:
-                        output.scale -= 0.1
-                self.flowbox.queue_draw()
 
     def on_button_clicked(self, widget):
 

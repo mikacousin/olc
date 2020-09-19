@@ -63,6 +63,7 @@ olc_sources = [
   'window.py',
   'window_channels.py',
   'window_playback.py',
+  'zoom.py',
 ]
 
 install_data(
