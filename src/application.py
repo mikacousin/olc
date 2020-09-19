@@ -1,3 +1,5 @@
+"""Open Lighting Console Application Class"""
+
 import select
 import sys
 
@@ -24,8 +26,6 @@ from olc.sequence_edition import SequenceTab
 from olc.settings import Settings, SettingsDialog
 from olc.track_channels import TrackChannelsTab
 from olc.virtual_console import VirtualConsoleWindow
-from olc.widgets_group import GroupWidget
-from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
 from olc.window import Window
 
 gi.require_version("Gtk", "3.0")
@@ -33,6 +33,8 @@ from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 
 class Application(Gtk.Application):
+    """Application Class"""
+
     def __init__(self):
         Gtk.Application.__init__(
             self,
@@ -134,26 +136,6 @@ class Application(Gtk.Application):
         # Maximize window on startup
         self.window.maximize()
 
-        """
-        # TODO: Test this code without window manager
-        nb_monitors = Gdk.Display.get_default().get_n_monitors()
-        #print(nb_monitors)
-        if nb_monitors == 2:
-            display = Gdk.Display.get_default()
-            #print(display)
-            monitor = display.get_monitor(1)
-            #print(monitor)
-            monitor_geometry = monitor.get_geometry()
-            print(monitor_geometry.x, monitor_geometry.y)
-            print(self.window.get_position())
-            self.window.move(monitor_geometry.x, monitor_geometry.y)
-            #self.window.move(100, 100)
-            print(self.window.get_position())
-            #self.window.maximize()
-            #self.window.fullscreen_on_monitor(self.window.get_screen(), 1)
-            self.window.fullscreen()
-        """
-
         # Add global shortcuts
         # Go
         action = Gio.SimpleAction.new("go", None)
@@ -238,81 +220,32 @@ class Application(Gtk.Application):
     def setup_app_menu(self):
         """ Setup application menu, return Gio.Menu """
         builder = Gtk.Builder()
-
         builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
-
         menu = builder.get_object("app-menu")
-
-        new_action = Gio.SimpleAction.new("new", None)
-        new_action.connect("activate", self._new)
-        self.add_action(new_action)
-
-        open_action = Gio.SimpleAction.new("open", None)
-        open_action.connect("activate", self._open)
-        self.add_action(open_action)
-
-        save_action = Gio.SimpleAction.new("save", None)
-        save_action.connect("activate", self._save)
-        self.add_action(save_action)
-
-        save_as_action = Gio.SimpleAction.new("save_as", None)
-        save_as_action.connect("activate", self._saveas)
-        self.add_action(save_as_action)
-
-        patch_outputs_action = Gio.SimpleAction.new("patch_outputs", None)
-        patch_outputs_action.connect("activate", self.patch_outputs)
-        self.add_action(patch_outputs_action)
-
-        patch_channels_action = Gio.SimpleAction.new("patch_channels", None)
-        patch_channels_action.connect("activate", self._patch_channels)
-        self.add_action(patch_channels_action)
-
-        memories_action = Gio.SimpleAction.new("memories", None)
-        memories_action.connect("activate", self.memories_cb)
-        self.add_action(memories_action)
-
-        groups_action = Gio.SimpleAction.new("groups", None)
-        groups_action.connect("activate", self.groups_cb)
-        self.add_action(groups_action)
-
-        sequences_action = Gio.SimpleAction.new("sequences", None)
-        sequences_action.connect("activate", self.sequences)
-        self.add_action(sequences_action)
-
-        masters_action = Gio.SimpleAction.new("masters", None)
-        masters_action.connect("activate", self._masters)
-        self.add_action(masters_action)
-
-        # Track Channels
-        action = Gio.SimpleAction.new("track_channels", None)
-        action.connect("activate", self.track_channels)
-        self.add_action(action)
-
-        # Independents
-        action = Gio.SimpleAction.new("independents", None)
-        action.connect("activate", self._independents)
-        self.add_action(action)
-
-        virtual_console_action = Gio.SimpleAction.new("virtual_console", None)
-        virtual_console_action.connect("activate", self._virtual_console)
-        self.add_action(virtual_console_action)
-
-        settings_action = Gio.SimpleAction.new("settings", None)
-        settings_action.connect("activate", self._settings)
-        self.add_action(settings_action)
-
-        shortcuts_action = Gio.SimpleAction.new("show-help-overlay", None)
-        shortcuts_action.connect("activate", self._shortcuts)
-        self.add_action(shortcuts_action)
-
-        about_action = Gio.SimpleAction.new("about", None)
-        about_action.connect("activate", self._about)
-        self.add_action(about_action)
-
-        quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", self._exit)
-        self.add_action(quit_action)
-
+        actions = {
+            "new": "_new",
+            "open": "_open",
+            "save": "_save",
+            "save_as": "_saveas",
+            "patch_outputs": "patch_outputs",
+            "patch_channels": "_patch_channels",
+            "memories": "memories_cb",
+            "groups": "groups_cb",
+            "sequences": "sequences",
+            "masters": "_masters",
+            "track_channels": "track_channels",
+            "independents": "_independents",
+            "virtual_console": "_virtual_console",
+            "settings": "_settings",
+            "show-help-overlay": "_shortcuts",
+            "about": "_about",
+            "quit": "_exit",
+        }
+        for name, func in actions.items():
+            function = getattr(self, func, None)
+            action = Gio.SimpleAction.new(name, None)
+            action.connect("activate", function)
+            self.add_action(action)
         return menu
 
     def on_fd_read(self, _fd, _condition, _data):
@@ -325,6 +258,7 @@ class Application(Gtk.Application):
         return True
 
     def fetch_dmx(self, _request, univ, dmxframe):
+        """Fetch DMX"""
         if not dmxframe:
             return
         self.ola_thread.old_frame[univ] = dmxframe
@@ -370,12 +304,6 @@ class Application(Gtk.Application):
             for i in range(20):
                 self.masters.append(Master(page + 1, i + 1, 0, 0))
         # Redraw Sequential Window
-        self.window.playback.sequential.time_in = self.sequence.steps[1].time_in
-        self.window.playback.sequential.time_out = self.sequence.steps[1].time_out
-        self.window.playback.sequential.wait = self.sequence.steps[1].wait
-        self.window.playback.sequential.delay_in = self.sequence.steps[1].delay_in
-        self.window.playback.sequential.delay_out = self.sequence.steps[1].delay_out
-        self.window.playback.sequential.total_time = self.sequence.steps[1].total_time
         self.window.playback.update_sequence_display()
         self.window.playback.update_xfade_display(self.sequence.position)
         # Turn off all channels
@@ -394,26 +322,8 @@ class Application(Gtk.Application):
             del self.group_tab.grps[:]
             self.group_tab.scrolled2.remove(self.group_tab.flowbox2)
             self.group_tab.flowbox2.destroy()
-            # New flowbox
-            self.group_tab.flowbox2 = Gtk.FlowBox()
-            self.group_tab.flowbox2.set_valign(Gtk.Align.START)
-            self.group_tab.flowbox2.set_max_children_per_line(20)
-            self.group_tab.flowbox2.set_homogeneous(True)
-            self.group_tab.flowbox2.set_activate_on_single_click(True)
-            self.group_tab.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-            self.group_tab.flowbox2.set_filter_func(self.group_tab.filter_groups, None)
-            self.group_tab.scrolled2.add(self.group_tab.flowbox2)
-            # Add Groups to FlowBox
-            for i, _ in enumerate(self.groups):
-                self.group_tab.grps.append(
-                    GroupWidget(
-                        i,
-                        self.groups[i].index,
-                        self.groups[i].text,
-                        self.group_tab.grps,
-                    )
-                )
-                self.group_tab.flowbox2.add(self.group_tab.grps[i])
+            # Update Group Tab
+            self.group_tab.populate_tab()
             self.group_tab.flowbox1.invalidate_filter()
             self.group_tab.flowbox2.invalidate_filter()
             self.window.show_all()
@@ -425,10 +335,7 @@ class Application(Gtk.Application):
             path = Gtk.TreePath.new_first()
             self.memories_tab.treeview.set_cursor(path, None, False)
             for mem in self.memories:
-                channels = 0
-                for chan in range(MAX_CHANNELS):
-                    if mem.channels[chan]:
-                        channels += 1
+                channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
                 self.memories_tab.liststore.append(
                     [str(mem.memory), mem.text, channels]
                 )
@@ -469,59 +376,7 @@ class Application(Gtk.Application):
         # Redraw Masters Tab
         if self.masters_tab:
             self.masters_tab.liststore.clear()
-            for page in range(2):
-                for i in range(20):
-                    index = i + (page * 20)
-
-                    # Type : None
-                    if self.masters[index].content_type == 0:
-                        self.masters_tab.liststore.append([index + 1, "", "", ""])
-
-                    # Type : Preset
-                    elif self.masters[index].content_type == 1:
-                        content_value = str(self.masters[index].content_value)
-                        self.masters_tab.liststore.append(
-                            [index + 1, "Preset", content_value, ""]
-                        )
-
-                    # Type : Channels
-                    elif self.masters[index].content_type == 2:
-                        nb_chan = 0
-                        for chan in range(MAX_CHANNELS):
-                            if self.masters[index].channels[chan]:
-                                nb_chan += 1
-                        self.masters_tab.liststore.append(
-                            [index + 1, "Channels", str(nb_chan), ""]
-                        )
-
-                    # Type : Sequence
-                    elif self.masters[index].content_type == 3:
-                        content_value = (
-                            str(int(self.masters[index].content_value))
-                            if self.masters[index].content_value.is_integer()
-                            else str(self.masters[index].content_value)
-                        )
-                        self.masters_tab.liststore.append(
-                            [index + 1, "Sequence", content_value, ""]
-                        )
-
-                    # Type : Group
-                    elif self.masters[index].content_type == 13:
-                        content_value = (
-                            str(int(self.masters[index].content_value))
-                            if self.masters[index].content_value.is_integer()
-                            else str(self.masters[index].content_value)
-                        )
-                        self.masters_tab.liststore.append(
-                            [index + 1, "Group", content_value, "Exclusif"]
-                        )
-
-                    # Type : Unknown
-                    else:
-                        self.masters_tab.liststore.append(
-                            [index + 1, "Unknown", "", ""]
-                        )
-
+            self.masters_tab.populate_tab()
             self.masters_tab.flowbox.invalidate_filter()
 
         # Redraw Channel Time Tab
@@ -531,28 +386,10 @@ class Application(Gtk.Application):
 
         # Redraw Track Channels
         if self.track_channels_tab:
-            for widget in self.track_channels_tab.flowbox:
-                widget.destroy()
-            self.track_channels_tab.channels = []
-            levels = []
-            self.track_channels_tab.steps = []
-            self.track_channels_tab.steps.append(
-                TrackChannelsHeader(self.track_channels_tab.channels)
-            )
-            levels.append([])
-            self.track_channels_tab.flowbox.add(self.track_channels_tab.steps[0])
-            for step in range(1, self.sequence.last):
-                memory = self.sequence.steps[step].cue.memory
-                text = self.sequence.steps[step].text
-                levels.append([])
-                for channel in self.track_channels_tab.channels:
-                    level = self.sequence.steps[step].cue.channels[channel]
-                    levels[step].append(level)
-                self.track_channels_tab.steps.append(
-                    TrackChannelsWidget(step, memory, text, levels[step])
-                )
-                self.track_channels_tab.flowbox.add(self.track_channels_tab.steps[step])
+            self.track_channels_tab.populate_steps()
             self.track_channels_tab.flowbox.invalidate_filter()
+            self.track_channels_tab.show_all()
+            self.track_channels_tab.update_display()
 
         self.window.channels_view.grab_focus()
         self.window.last_chan_selected = ""
