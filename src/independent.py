@@ -85,7 +85,7 @@ class Independents:
                 print("Independent already exist")
                 return False
         self.independents.append(independent)
-        self._update_channels()
+        self.update_channels()
         return True
 
     def update(self, independent):
@@ -95,13 +95,13 @@ class Independents:
         levels = independent.levels
         self.independents[number - 1].text = text
         self.independents[number - 1].set_levels(levels)
-        self._update_channels()
+        self.update_channels()
 
     def get_channels(self):
         """Returns: (set) channels presents in all independent"""
         return self.channels
 
-    def _update_channels(self):
+    def update_channels(self):
         """Update set of channels present in all independents"""
         self.channels = set()
         for inde in self.independents:

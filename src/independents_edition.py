@@ -372,7 +372,7 @@ class IndependentsTab(Gtk.Paned):
             for channel in range(MAX_CHANNELS):
                 channels[channel] = self.channels[channel].level
             App().independents.independents[number - 1].set_levels(channels)
-            App().independents._update_channels()
+            App().independents.update_channels()
             App().independents.independents[number - 1].update_dmx()
             App().window.channels_view.flowbox.queue_draw()
             self.queue_draw()
