@@ -245,50 +245,54 @@ class CuesEditionTab(Gtk.Paned):
     def _keypress_plus(self):
         """ Channel + """
 
-        if self.keystring != "":
+        if self.keystring == "":
 
-            channel = int(self.keystring) - 1
+            return
 
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                0,
-                0,
-            ]:
-                self.channels[channel].clicked = True
-                self.flowbox.invalidate_filter()
+        channel = int(self.keystring) - 1
 
-                child = self.flowbox.get_child_at_index(channel)
-                App().window.set_focus(child)
-                self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
+        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
+            0,
+            0,
+        ]:
+            self.channels[channel].clicked = True
+            self.flowbox.invalidate_filter()
 
-            self.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            child = self.flowbox.get_child_at_index(channel)
+            App().window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_chan_selected = self.keystring
+
+        self.keystring = ""
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_minus(self):
         """ Channel - """
 
-        if self.keystring != "":
+        if self.keystring == "":
 
-            channel = int(self.keystring) - 1
+            return
 
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                0,
-                0,
-            ]:
-                self.channels[channel].clicked = False
-                self.flowbox.invalidate_filter()
+        channel = int(self.keystring) - 1
 
-                child = self.flowbox.get_child_at_index(channel)
-                App().window.set_focus(child)
-                self.flowbox.unselect_child(child)
-                self.last_chan_selected = self.keystring
+        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
+            0,
+            0,
+        ]:
+            self.channels[channel].clicked = False
+            self.flowbox.invalidate_filter()
 
-            self.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            child = self.flowbox.get_child_at_index(channel)
+            App().window.set_focus(child)
+            self.flowbox.unselect_child(child)
+            self.last_chan_selected = self.keystring
+
+        self.keystring = ""
+        App().window.channels_view.statusbar.push(
+            App().window.channels_view.context_id, self.keystring
+        )
 
     def _keypress_a(self):
         """ All Channels """

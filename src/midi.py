@@ -998,8 +998,8 @@ def _function_flash(msg, master_index):
 
 def _function_inde(msg, independent):
     """Change independent knob level"""
-    val = (msg.value / 127) * 255
     if App().virtual_console:
+        val = (msg.value / 127) * 255
         if independent == 1:
             App().virtual_console.independent1.value = val
             App().virtual_console.independent1.emit("changed")
