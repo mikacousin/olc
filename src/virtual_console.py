@@ -254,6 +254,7 @@ class VirtualConsoleWindow(Gtk.Window):
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=adjustment,
         )
+        self.scale_a.led = False
         self.scale_a.connect("clicked", self.scale_clicked)
         self.scale_a.set_draw_value(False)
         self.scale_a.set_vexpand(True)
@@ -269,6 +270,7 @@ class VirtualConsoleWindow(Gtk.Window):
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=adjustment,
         )
+        self.scale_b.led = False
         self.scale_b.connect("clicked", self.scale_clicked)
         self.scale_b.set_draw_value(False)
         self.scale_b.set_vexpand(True)

@@ -18,7 +18,7 @@ class FaderWidget(Gtk.Scale):
         self.red = red
         self.green = green
         self.blue = blue
-
+        self.led = True
         self.pressed = False
 
         self.text = text
@@ -59,9 +59,9 @@ class FaderWidget(Gtk.Scale):
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, radius / 2)
 
+        # Cursor height
         value = self.get_value()
 
-        # Draw Cursor
         if inverted:
             h = height - (((height - layout_h - 10 - (20 / 2)) / 255) * value)
         else:
@@ -72,6 +72,13 @@ class FaderWidget(Gtk.Scale):
                 + (((height - layout_h - 10 - (20 / 2)) / 255) * value)
             )
 
+        # Draw LED
+        if self.led:
+            cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
+            area = ((width / 2) - 2, (width / 2) + 2, h - 10, height - 10)
+            rounded_rectangle_fill(cr, area, radius / 2)
+
+        # Draw Cursor
         area = ((width / 2) - 19, (width / 2) + 19, h - 20, h)
 
         if App().midi.midi_learn == self.text:
