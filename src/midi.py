@@ -209,27 +209,35 @@ class Midi:
 
         # Find action actived
         if msg.type in ("note_on", "note_off"):
-            for key, value in self.midi_notes.items():
-                if msg.channel == value[0] and msg.note == value[1]:
-                    if key[:6] == "flash_":
-                        # We need to pass master number to flash function
-                        GLib.idle_add(_function_flash, msg, int(key[6:]))
-                    elif key[:5] == "inde_":
-                        GLib.idle_add(_function_inde_button, msg, int(key[5:]))
-                    else:
-                        GLib.idle_add(globals()["_function_" + key], msg)
+            self._scan_notes(msg)
         elif msg.type == "control_change":
-            for key, value in self.midi_cc.items():
-                if msg.channel == value[0] and msg.control == value[1]:
-                    if key[:7] == "master_":
-                        # We need to pass master number to masters function
-                        GLib.idle_add(_function_master, msg, int(key[7:]))
-                    elif key[:5] == "inde_":
-                        GLib.idle_add(_function_inde, msg, int(key[5:]))
-                    else:
-                        func = getattr(self, "_function_" + key, None)
-                        if func:
-                            GLib.idle_add(func, msg)
+            self._scan_cc(msg)
+
+    def _scan_notes(self, msg):
+        """Scan MIDI notes"""
+        for key, value in self.midi_notes.items():
+            if msg.channel == value[0] and msg.note == value[1]:
+                if key[:6] == "flash_":
+                    # We need to pass master number to flash function
+                    GLib.idle_add(_function_flash, msg, int(key[6:]))
+                elif key[:5] == "inde_":
+                    GLib.idle_add(_function_inde_button, msg, int(key[5:]))
+                else:
+                    GLib.idle_add(globals()["_function_" + key], msg)
+
+    def _scan_cc(self, msg):
+        """Scan MIDI control changes"""
+        for key, value in self.midi_cc.items():
+            if msg.channel == value[0] and msg.control == value[1]:
+                if key[:7] == "master_":
+                    # We need to pass master number to masters function
+                    GLib.idle_add(_function_master, msg, int(key[7:]))
+                elif key[:5] == "inde_":
+                    GLib.idle_add(_function_inde, msg, int(key[5:]))
+                else:
+                    func = getattr(self, "_function_" + key, None)
+                    if func:
+                        GLib.idle_add(func, msg)
 
     def _function_wheel(self, msg):
         """Wheel for channels level"""
