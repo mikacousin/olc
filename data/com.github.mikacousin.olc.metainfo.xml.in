@@ -8,6 +8,20 @@
   <summary>Control your lighting shows</summary>
   <description>
     <p>Open Lighting Console is a free software to control lights on theater shows.</p>
+    <p>Some features:</p>
+    <ul>
+      <li>Used Open Lighting Architecture to send DMX</li>
+      <li>RPN syntax</li>
+      <li>Open / Save ASCII shows</li>
+      <li>Patch / Unpatch by channels or by outputs</li>
+      <li>Main Playback</li>
+      <li>Chasers</li>
+      <li>Groups</li>
+      <li>Masters</li>
+      <li>Track channels</li>
+      <li>Virtual console with easy MIDI learning for controllers</li>
+      <li>Open Sound Control</li>
+    </ul>
   </description>
   <releases>
     <release version="0.3.2.alpha" date="2020-09-20">
@@ -18,6 +32,7 @@
   <screenshots>
     <screenshot type="default">
       <image type="source" width="1600" height="878">https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png</image>
+      <image type="source" width="1600" height="878">https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png</image>
     </screenshot>
   </screenshots>
   <translation type="gettext">olc</translation>
