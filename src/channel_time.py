@@ -191,9 +191,7 @@ class ChanneltimeTab(Gtk.Paned):
                     App().window.playback.sequential.queue_draw()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def time_edited(self, _widget, path, text):
         if text == "":
@@ -273,9 +271,7 @@ class ChanneltimeTab(Gtk.Paned):
                     App().window.playback.sequential.queue_draw()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def filter_channels(self, child, _user_data):
         """ Filter Channels """
@@ -335,9 +331,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -352,15 +346,11 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -383,9 +373,7 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
         """ Channel """
@@ -410,9 +398,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_q(self):
         """ Prev Channel Time """

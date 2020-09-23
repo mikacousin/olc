@@ -58,9 +58,7 @@ class PatchChannelsTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -75,15 +73,11 @@ class PatchChannelsTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -98,9 +92,7 @@ class PatchChannelsTab(Gtk.Grid):
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Down(self):
         """ Select Next Channel """
@@ -118,9 +110,7 @@ class PatchChannelsTab(Gtk.Grid):
             self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Up(self):
         """ Select Previous Channel """
@@ -137,9 +127,7 @@ class PatchChannelsTab(Gtk.Grid):
             self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
         """ Select Channel """
@@ -154,9 +142,7 @@ class PatchChannelsTab(Gtk.Grid):
                 self.last_chan_selected = str(channel)
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_m(self):
         """ Modify Output """
@@ -233,9 +219,7 @@ class PatchChannelsTab(Gtk.Grid):
             self.last_chan_selected = str(channel + 1)
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_i(self):
         """ Insert Output """
@@ -285,9 +269,7 @@ class PatchChannelsTab(Gtk.Grid):
                         App().window.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_r(self):
         """ Remove Output """
@@ -329,6 +311,4 @@ class PatchChannelsTab(Gtk.Grid):
                 App().window.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)

@@ -97,9 +97,7 @@ class PatchOutputsTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -114,15 +112,11 @@ class PatchOutputsTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -138,9 +132,7 @@ class PatchOutputsTab(Gtk.Grid):
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Right(self):
         """ Next Output """
@@ -242,9 +234,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.flowbox.select_child(widget)
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_KP_Divide(self):
         self._keypress_greater()
@@ -278,9 +268,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = self.keystring
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
         """ Attribute Channel """
@@ -338,9 +326,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = str(output + 1 + (512 * univ))
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_exclam(self):
         """ Proportional level + """
@@ -362,9 +348,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """ Proportional level - """
@@ -386,6 +370,4 @@ class PatchOutputsTab(Gtk.Grid):
                 self.outputs[output + (512 * univ)].queue_draw()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)

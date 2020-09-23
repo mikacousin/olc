@@ -148,8 +148,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "1"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -158,8 +158,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "2"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -168,8 +168,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "3"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -178,8 +178,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "4"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -188,8 +188,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "5"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -198,8 +198,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "6"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -208,8 +208,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "7"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -218,8 +218,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "8"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -228,8 +228,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "9"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -238,8 +238,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "0"
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 
@@ -248,8 +248,8 @@ class OscServer(liblo.ServerThread):
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "."
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, App().window.keystring
+                App().window.statusbar.push(
+                    App().window.context_id, App().window.keystring
                 )
                 self.client.send("/pad/saisieText", App().window.keystring)
 

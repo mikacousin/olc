@@ -679,9 +679,7 @@ class SequenceTab(Gtk.Grid):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -696,15 +694,11 @@ class SequenceTab(Gtk.Grid):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -720,9 +714,7 @@ class SequenceTab(Gtk.Grid):
     def _keypress_BackSpace(self):
         """Empty keys buffer"""
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Q(self):
         """Cycle Sequences"""
@@ -817,9 +809,7 @@ class SequenceTab(Gtk.Grid):
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_KP_Divide(self):
         """Channel Thru"""
@@ -853,9 +843,7 @@ class SequenceTab(Gtk.Grid):
                         self.flowbox.select_child(child)
             self.flowbox.invalidate_filter()
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_plus(self):
         """Channel +"""
@@ -876,9 +864,7 @@ class SequenceTab(Gtk.Grid):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
         """Channel -"""
@@ -899,9 +885,7 @@ class SequenceTab(Gtk.Grid):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_equal(self):
         """@ Level"""
@@ -924,9 +908,7 @@ class SequenceTab(Gtk.Grid):
                         self.user_channels[channel] = level
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """Level - %"""
@@ -1091,9 +1073,7 @@ class SequenceTab(Gtk.Grid):
             mem = float(self.keystring)
             found, step = self.seq.get_step(cue=mem)
             self.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if not found:  # New Cue
             # Create Cue

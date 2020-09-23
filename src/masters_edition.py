@@ -360,9 +360,7 @@ class MastersTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -377,15 +375,11 @@ class MastersTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -400,9 +394,7 @@ class MastersTab(Gtk.Paned):
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
         """ Channel """
@@ -417,9 +409,7 @@ class MastersTab(Gtk.Paned):
                 or App().masters[row].content_type == 3
             ):
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
 
             self.flowbox.unselect_all()
@@ -443,9 +433,7 @@ class MastersTab(Gtk.Paned):
             self.flowbox.invalidate_filter()
 
             self.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
         return False
 
@@ -462,9 +450,7 @@ class MastersTab(Gtk.Paned):
 
             if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
 
             selected_children = self.flowbox.get_selected_children()
@@ -495,9 +481,7 @@ class MastersTab(Gtk.Paned):
                     self.flowbox.invalidate_filter()
 
             self.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
         return False
 
@@ -511,9 +495,7 @@ class MastersTab(Gtk.Paned):
 
             if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
 
             if self.keystring != "":
@@ -533,9 +515,7 @@ class MastersTab(Gtk.Paned):
                     self.last_chan_selected = self.keystring
 
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
             return False
         return False
@@ -550,9 +530,7 @@ class MastersTab(Gtk.Paned):
 
             if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
 
             if self.keystring != "":
@@ -572,9 +550,7 @@ class MastersTab(Gtk.Paned):
                     self.last_chan_selected = self.keystring
 
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
             return False
         return False
@@ -589,9 +565,7 @@ class MastersTab(Gtk.Paned):
 
             if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
 
             self.flowbox.unselect_all()
@@ -652,9 +626,7 @@ class MastersTab(Gtk.Paned):
                     self.user_channels[channel] = level
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """ Level - % """
@@ -778,9 +750,7 @@ class MastersTab(Gtk.Paned):
                         App().group_tab.flowbox1.invalidate_filter()
 
             self.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
 
         return False

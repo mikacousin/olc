@@ -22,9 +22,6 @@ class ChannelsView(Gtk.Notebook):
         # 1 : all channels
         self.view_type = 0
 
-        paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        paned.set_position(1100)
-
         scrolled = Gtk.ScrolledWindow()
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
@@ -41,21 +38,10 @@ class ChannelsView(Gtk.Notebook):
             self.flowbox.add(self.channels[i])
 
         scrolled.add(self.flowbox)
-        paned.pack1(scrolled, resize=True, shrink=False)
 
-        # Gtk.Statusbar to display keyboard's keys
-        self.statusbar = Gtk.Statusbar()
-        self.context_id = self.statusbar.get_context_id("keypress")
-
-        grid = Gtk.Grid()
-        label = Gtk.Label("Input : ")
-        grid.add(label)
-        grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
-        paned.pack2(grid, resize=True, shrink=False)
-
-        self.append_page(paned, Gtk.Label("Channels"))
-        self.set_tab_reorderable(paned, True)
-        self.set_tab_detachable(paned, True)
+        self.append_page(scrolled, Gtk.Label("Channels"))
+        self.set_tab_reorderable(scrolled, True)
+        self.set_tab_detachable(scrolled, True)
 
         self.connect("key_press_event", self.on_key_press_event)
         self.connect("page-added", on_page_added)

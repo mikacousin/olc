@@ -730,9 +730,7 @@ def _function_number_0(msg):
             App().virtual_console.zero.emit("button-press-event", event)
         else:
             App().window.keystring += "0"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_1(msg):
@@ -748,9 +746,7 @@ def _function_number_1(msg):
             App().virtual_console.one.emit("button-press-event", event)
         else:
             App().window.keystring += "1"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_2(msg):
@@ -766,9 +762,7 @@ def _function_number_2(msg):
             App().virtual_console.two.emit("button-press-event", event)
         else:
             App().window.keystring += "2"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_3(msg):
@@ -784,9 +778,7 @@ def _function_number_3(msg):
             App().virtual_console.three.emit("button-press-event", event)
         else:
             App().window.keystring += "3"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_4(msg):
@@ -802,9 +794,7 @@ def _function_number_4(msg):
             App().virtual_console.four.emit("button-press-event", event)
         else:
             App().window.keystring += "4"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_5(msg):
@@ -820,9 +810,7 @@ def _function_number_5(msg):
             App().virtual_console.five.emit("button-press-event", event)
         else:
             App().window.keystring += "5"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_6(msg):
@@ -838,9 +826,7 @@ def _function_number_6(msg):
             App().virtual_console.six.emit("button-press-event", event)
         else:
             App().window.keystring += "6"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_7(msg):
@@ -856,9 +842,7 @@ def _function_number_7(msg):
             App().virtual_console.seven.emit("button-press-event", event)
         else:
             App().window.keystring += "7"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_8(msg):
@@ -874,9 +858,7 @@ def _function_number_8(msg):
             App().virtual_console.eight.emit("button-press-event", event)
         else:
             App().window.keystring += "8"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_number_9(msg):
@@ -892,9 +874,7 @@ def _function_number_9(msg):
             App().virtual_console.nine.emit("button-press-event", event)
         else:
             App().window.keystring += "9"
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_dot(msg):
@@ -910,9 +890,7 @@ def _function_dot(msg):
             App().virtual_console.dot.emit("button-press-event", event)
         else:
             App().window.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, App().window.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
 
 def _function_go_back(msg):
@@ -944,9 +922,7 @@ def _function_goto(msg):
         else:
             App().sequence.goto(App().window.keystring)
             App().window.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, ""
-            )
+            App().window.statusbar.push(App().window.context_id, "")
 
 
 def _function_seq_minus(msg):
@@ -963,9 +939,7 @@ def _function_seq_minus(msg):
         else:
             App().sequence.sequence_minus()
             App().window.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, ""
-            )
+            App().window.statusbar.push(App().window.context_id, "")
 
 
 def _function_seq_plus(msg):
@@ -982,9 +956,7 @@ def _function_seq_plus(msg):
         else:
             App().sequence.sequence_plus()
             App().window.keystring = ""
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, ""
-            )
+            App().window.statusbar.push(App().window.context_id, "")
 
 
 def _function_output(msg):

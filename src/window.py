@@ -59,9 +59,20 @@ class Window(Gtk.ApplicationWindow):
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         paned.set_position(800)
 
-        # Channels view
+        # Channels
         self.channels_view = ChannelsView()
-        paned.pack1(self.channels_view, resize=True, shrink=False)
+        paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
+        paned_chan.set_position(1100)
+        paned_chan.pack1(self.channels_view, resize=True, shrink=False)
+        # Gtk.Statusbar to display keyboard's keys
+        self.statusbar = Gtk.Statusbar()
+        self.context_id = self.statusbar.get_context_id("keypress")
+        grid = Gtk.Grid()
+        label = Gtk.Label("Input : ")
+        grid.add(label)
+        grid.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
+        paned_chan.pack2(grid, resize=True, shrink=False)
+        paned.pack1(paned_chan, resize=True, shrink=False)
 
         # Main Playback
         self.playback = MainPlaybackView()
@@ -100,9 +111,7 @@ class Window(Gtk.ApplicationWindow):
         # print(keyname)
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            self.channels_view.statusbar.push(
-                self.channels_view.context_id, self.keystring
-            )
+            self.statusbar.push(self.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -117,15 +126,11 @@ class Window(Gtk.ApplicationWindow):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            self.channels_view.statusbar.push(
-                self.channels_view.context_id, self.keystring
-            )
+            self.statusbar.push(self.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            self.channels_view.statusbar.push(
-                self.channels_view.context_id, self.keystring
-            )
+            self.statusbar.push(self.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
 
@@ -278,7 +283,7 @@ class Window(Gtk.ApplicationWindow):
             App().track_channels_tab.update_display()
 
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_KP_Divide(self):
         """Thru"""
@@ -321,7 +326,7 @@ class Window(Gtk.ApplicationWindow):
             App().track_channels_tab.update_display()
 
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_KP_Add(self):
         """ + """
@@ -346,7 +351,7 @@ class Window(Gtk.ApplicationWindow):
             App().track_channels_tab.update_display()
 
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_KP_Subtract(self):
         """ - """
@@ -371,7 +376,7 @@ class Window(Gtk.ApplicationWindow):
             App().track_channels_tab.update_display()
 
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_exclam(self):
         """ Level + (% level) of selected channels """
@@ -440,12 +445,12 @@ class Window(Gtk.ApplicationWindow):
                         App().dmx.user[channel] = level
 
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_BackSpace(self):
         """ Empty keys buffer """
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_Escape(self):
         """ Unselect all channels """
@@ -458,19 +463,19 @@ class Window(Gtk.ApplicationWindow):
         """ Seq - """
         App().sequence.sequence_minus()
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_w(self):
         """ Seq + """
         App().sequence.sequence_plus()
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_G(self):
         """ Goto """
         App().sequence.goto(self.keystring)
         self.keystring = ""
-        self.channels_view.statusbar.push(self.channels_view.context_id, self.keystring)
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_R(self):
         """ Record new Step and new Preset """
@@ -557,12 +562,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_U(self):
         """ Update Cue """
@@ -585,7 +588,7 @@ class Window(Gtk.ApplicationWindow):
 
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            self.header.set_title(App().ascii.basename + "*")
 
         dialog.destroy()
 
@@ -612,12 +615,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_I(self):
         """Change Time In of next step"""
@@ -640,12 +641,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_O(self):
         """Change Time Out of next step"""
@@ -668,12 +667,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_W(self):
         """Change Wait Time of next step"""
@@ -697,12 +694,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_D(self):
         """Change Delay In and Out of next step"""
@@ -730,12 +725,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_K(self):
         """Change Delay In of next step"""
@@ -759,12 +752,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_L(self):
         """Change Delay Out of next step"""
@@ -790,12 +781,10 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        self.statusbar.push(self.context_id, self.keystring)
 
 
 class Dialog(Gtk.Dialog):

@@ -133,9 +133,7 @@ class CuesEditionTab(Gtk.Paned):
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname in (
             "KP_1",
@@ -150,15 +148,11 @@ class CuesEditionTab(Gtk.Paned):
             "KP_0",
         ):
             self.keystring += keyname[3:]
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         if keyname == "period":
             self.keystring += "."
-            App().window.channels_view.statusbar.push(
-                App().window.channels_view.context_id, self.keystring
-            )
+            App().window.statusbar.push(App().window.context_id, self.keystring)
 
         func = getattr(self, "_keypress_" + keyname, None)
         if func:
@@ -173,9 +167,7 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_BackSpace(self):
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
         """ Channel """
@@ -200,9 +192,7 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_KP_Divide(self):
         self._keypress_greater()
@@ -238,9 +228,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.flowbox.invalidate_filter()
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_plus(self):
         """ Channel + """
@@ -264,9 +252,7 @@ class CuesEditionTab(Gtk.Paned):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
         """ Channel - """
@@ -290,9 +276,7 @@ class CuesEditionTab(Gtk.Paned):
             self.last_chan_selected = self.keystring
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_a(self):
         """ All Channels """
@@ -343,9 +327,7 @@ class CuesEditionTab(Gtk.Paned):
                     self.user_channels[channel] = level
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """ Level - % """
@@ -522,9 +504,7 @@ class CuesEditionTab(Gtk.Paned):
                     App().window.header.set_title(App().ascii.basename + "*")
 
                 self.keystring = ""
-                App().window.channels_view.statusbar.push(
-                    App().window.channels_view.context_id, self.keystring
-                )
+                App().window.statusbar.push(App().window.context_id, self.keystring)
 
                 return True
 
@@ -557,9 +537,7 @@ class CuesEditionTab(Gtk.Paned):
                 App().window.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
         return True
 
@@ -664,8 +642,6 @@ class CuesEditionTab(Gtk.Paned):
         App().window.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
-        App().window.channels_view.statusbar.push(
-            App().window.channels_view.context_id, self.keystring
-        )
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
         return True
