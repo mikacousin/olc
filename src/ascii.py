@@ -149,7 +149,6 @@ class Ascii:
             App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
             path = Gtk.TreePath.new_first()
             App().sequences_tab.treeview1.set_cursor(path, None, False)
-            # TODO: List of steps of selected sequence
             selection = App().sequences_tab.treeview1.get_selection()
             App().sequences_tab.on_sequence_changed(selection)
 
