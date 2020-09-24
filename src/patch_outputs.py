@@ -1,41 +1,39 @@
+"""Patch by outputs"""
+
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
 from olc.widgets_patch_outputs import PatchWidget
 from olc.zoom import zoom
 
 
-class PatchOutputsTab(Gtk.Grid):
+class PatchOutputsTab(Gtk.Box):
+    """Tab to Patch by outputs"""
+
     def __init__(self):
 
         self.keystring = ""
         self.last_out_selected = ""
-        self.last_chan_selected = ""
 
-        Gtk.Grid.__init__(self)
-        self.set_column_homogeneous(True)
-        self.set_row_homogeneous(True)
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
         # Headerbar with buttons
-        self.header = Gtk.HeaderBar()
+        header = Gtk.HeaderBar()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         button = Gtk.Button()
         button = Gtk.Button("Patch 1:1")
         button.connect("clicked", self.on_button_clicked)
         box.add(button)
-        button = Gtk.Button("Patch Vide")
+        button = Gtk.Button("Unpatch all")
         button.connect("clicked", self.on_button_clicked)
         box.add(button)
-        self.label = Gtk.Label("View: by Outputs")
-        self.header.pack_start(self.label)
-        self.header.pack_end(box)
+        header.pack_end(box)
 
-        self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        # self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
         self.outputs = []
@@ -47,24 +45,19 @@ class PatchOutputsTab(Gtk.Grid):
         for output in self.outputs:
             self.flowbox.add(output)
 
-        self.flowbox.set_filter_func(self.filter_func, None)
+        scrolled.add(self.flowbox)
 
-        self.scrolled.add(self.flowbox)
-
-        self.attach(self.header, 0, 0, 1, 1)
-        self.attach_next_to(self.scrolled, self.header, Gtk.PositionType.BOTTOM, 1, 10)
+        self.pack_start(header, False, False, 0)
+        self.pack_start(scrolled, True, True, 0)
 
         self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
         self.flowbox.connect("scroll-event", zoom)
 
-    def filter_func(self, child, _user_data):
-        return child
-
     def on_button_clicked(self, widget):
-
+        """On buttons clicked"""
         button_label = widget.get_label()
 
-        if button_label == "Patch Vide":
+        if button_label == "Unpatch all":
             App().patch.patch_empty()
             self.flowbox.queue_draw()
             App().window.channels_view.flowbox.invalidate_filter()
@@ -85,13 +78,14 @@ class PatchOutputsTab(Gtk.Grid):
             App().window.channels_view.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
+        """Close Tab on close clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)
         App().patch_outputs_tab = None
 
     def on_key_press_event(self, _widget, event):
+        """On key press event"""
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 
@@ -124,18 +118,19 @@ class PatchOutputsTab(Gtk.Grid):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         notebook = self.get_parent()
         page = notebook.get_current_page()
         notebook.remove_page(page)
         App().patch_outputs_tab = None
 
     def _keypress_BackSpace(self):
+        """Empty keys buffer"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Right(self):
-        """ Next Output """
+        """Next Output"""
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -150,7 +145,7 @@ class PatchOutputsTab(Gtk.Grid):
             self.last_out_selected = str(int(self.last_out_selected) + 1)
 
     def _keypress_Left(self):
-        """ Previous Output """
+        """Previous Output"""
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -165,7 +160,7 @@ class PatchOutputsTab(Gtk.Grid):
             self.last_out_selected = str(int(self.last_out_selected) - 1)
 
     def _keypress_Down(self):
-        """ Next Line """
+        """Next Line"""
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -186,7 +181,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = str(index)
 
     def _keypress_Up(self):
-        """ Previous Line """
+        """Previous Line"""
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -207,7 +202,7 @@ class PatchOutputsTab(Gtk.Grid):
                 self.last_out_selected = str(index)
 
     def _keypress_o(self):
-        """ Select Output """
+        """Select Output"""
 
         self.flowbox.unselect_all()
 
@@ -237,11 +232,15 @@ class PatchOutputsTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_KP_Divide(self):
-        self._keypress_greater()
+        """Output Thru"""
+        self.thru()
 
     def _keypress_greater(self):
-        """ Output Thru """
+        """Output Thru"""
+        self.thru()
 
+    def thru(self):
+        """Output Thru"""
         # If just one output is selected, start from it
         selected = self.flowbox.get_selected_children()
         if len(selected) == 1:
@@ -270,19 +269,85 @@ class PatchOutputsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
+    def _keypress_KP_Add(self):
+        """+"""
+        self._keypress_plus()
+
+    def _keypress_plus(self):
+        """+"""
+        if self.keystring != "":
+            if "." in self.keystring:
+                if self.keystring[0] != ".":
+                    split = self.keystring.split(".")
+                    output = int(split[0]) - 1
+                    univ = int(split[1])
+            else:
+                output = int(self.keystring) - 1
+                univ = 0
+
+            if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
+                index = output + (univ * 512)
+                child = self.flowbox.get_child_at_index(index)
+                App().window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_out_selected = str(output)
+        else:
+            # Verify focus is on Output Widget
+            widget = App().window.get_focus()
+            if widget.get_path().is_type(Gtk.FlowBoxChild):
+                self.flowbox.select_child(widget)
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _keypress_KP_Subtract(self):
+        """-"""
+        self._keypress_minus()
+
+    def _keypress_minus(self):
+        """-"""
+        if self.keystring != "":
+            if "." in self.keystring:
+                if self.keystring[0] != ".":
+                    split = self.keystring.split(".")
+                    output = int(split[0]) - 1
+                    univ = int(split[1])
+            else:
+                output = int(self.keystring) - 1
+                univ = 0
+
+            if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
+                index = output + (univ * 512)
+                child = self.flowbox.get_child_at_index(index)
+                App().window.set_focus(child)
+                self.flowbox.unselect_child(child)
+                self.last_out_selected = str(output)
+        else:
+            # Verify focus is on Output Widget
+            widget = App().window.get_focus()
+            if widget.get_path().is_type(Gtk.FlowBoxChild):
+                self.flowbox.unselect_child(widget)
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
     def _keypress_c(self):
-        """ Attribute Channel """
-
-        # Find Selected Output
+        """Patch Channel(s)"""
+        several = False
+        # Find Selected Outputs
         sel = self.flowbox.get_selected_children()
-        children = []
-        for flowboxchild in sel:
+        # If several outputs: choose how to patch
+        if len(sel) > 1 and self.keystring not in ["", "0"]:
+            dialog = SeveralOutputsDialog(App().window, int(self.keystring), len(sel))
+            response = dialog.run()
+            if response == Gtk.ResponseType.OK:
+                several = True
+            dialog.destroy()
+        for i, flowboxchild in enumerate(sel):
             children = flowboxchild.get_children()
-
             for patchwidget in children:
                 output = patchwidget.output - 1
                 univ = patchwidget.universe
-
                 # Unpatch if no entry
                 if self.keystring in ["", "0"]:
                     channel = App().patch.outputs[univ][output][0]
@@ -293,9 +358,9 @@ class PatchOutputsTab(Gtk.Grid):
                         if len(App().patch.channels[channel]) == 0:
                             App().patch.channels[channel] = [[0, 0]]
                         App().dmx.frame[univ][output] = 0
+                # Patch
                 else:
                     channel = int(self.keystring) - 1
-
                     if 0 <= channel < MAX_CHANNELS:
                         # Unpatch old value if exist
                         old_channel = App().patch.outputs[univ][output][0]
@@ -305,31 +370,33 @@ class PatchOutputsTab(Gtk.Grid):
                             )
                             if len(App().patch.channels[old_channel - 1]) == 0:
                                 App().patch.channels[old_channel - 1] = [[0, 0]]
-
-                        # Patch Channel : same channel for every outputs
-                        App().patch.add_output(channel + 1, output + 1, univ)
-                # Update ui
+                        if several:
+                            # Patch Channel : increment channels for each output
+                            App().patch.add_output(channel + 1 + i, output + 1, univ)
+                        else:
+                            # Patch Channel : same channel for every outputs
+                            App().patch.add_output(channel + 1, output + 1, univ)
+                # Update outputs view
                 self.outputs[output + (512 * univ)].queue_draw()
-
-                # Update list of channels
+                # Update channels view
                 if 0 <= channel < MAX_CHANNELS:
                     level = App().dmx.frame[univ][output]
                     App().window.channels_view.channels[channel].level = level
                     App().window.channels_view.channels[channel].queue_draw()
                     App().window.channels_view.flowbox.invalidate_filter()
-            # Select next output
-            if output < 511:
-                self.flowbox.unselect_all()
-                child = self.flowbox.get_child_at_index(output + 1 + (512 * univ))
-                App().window.set_focus(child)
-                self.flowbox.select_child(child)
-                self.last_out_selected = str(output + 1 + (512 * univ))
+        # Select next output
+        if output < 511:
+            self.flowbox.unselect_all()
+            child = self.flowbox.get_child_at_index(output + 1 + (512 * univ))
+            App().window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = str(output + 1 + (512 * univ))
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_exclam(self):
-        """ Proportional level + """
+        """Proportional level +"""
 
         sel = self.flowbox.get_selected_children()
         children = []
@@ -351,7 +418,7 @@ class PatchOutputsTab(Gtk.Grid):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
-        """ Proportional level - """
+        """Proportional level -"""
 
         sel = self.flowbox.get_selected_children()
         children = []
@@ -371,3 +438,31 @@ class PatchOutputsTab(Gtk.Grid):
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+
+class SeveralOutputsDialog(Gtk.Dialog):
+    """Several Outputs Dialog"""
+
+    def __init__(self, parent, channel, out):
+        Gtk.Dialog.__init__(
+            self,
+            "Patch confirmation",
+            parent,
+            0,
+            (
+                f"Patch to channel {channel}",
+                Gtk.ResponseType.CANCEL,
+                f"Patch to {out} channels starting at {channel}",
+                Gtk.ResponseType.OK,
+            ),
+        )
+
+        self.set_default_size(150, 100)
+
+        label = Gtk.Label(
+            f"Do you want to patch {out} selected outputs to one or several channels ?"
+        )
+
+        box = self.get_content_area()
+        box.add(label)
+        self.show_all()

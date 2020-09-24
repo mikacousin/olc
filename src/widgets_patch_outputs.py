@@ -23,18 +23,35 @@ class PatchWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, _tgt, _ev):
+    def on_click(self, _tgt, event):
         """Widget clicked"""
-        # Deselect selected widgets
-        App().window.channels_view.flowbox.unselect_all()
-        App().patch_outputs_tab.flowbox.unselect_all()
-        # Select clicked widget
-        child = App().patch_outputs_tab.flowbox.get_child_at_index(
-            self.output - 1 + (512 * self.universe)
-        )
-        App().window.set_focus(child)
-        App().patch_outputs_tab.flowbox.select_child(child)
-        App().patch_outputs_tab.last_out_selected = str(self.output - 1)
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+            # Thru
+            App().patch_outputs_tab.keystring = str(self.output)
+            App().patch_outputs_tab.thru()
+        elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
+            # Toggle selected status
+            child = App().patch_outputs_tab.flowbox.get_child_at_index(
+                self.output - 1 + (512 * self.universe)
+            )
+            App().window.set_focus(child)
+            if self.get_parent().is_selected():
+                App().patch_outputs_tab.flowbox.unselect_child(child)
+            else:
+                App().patch_outputs_tab.flowbox.select_child(child)
+            App().patch_outputs_tab.last_out_selected = str(self.output - 1)
+        else:
+            # Deselect selected widgets
+            App().window.channels_view.flowbox.unselect_all()
+            App().patch_outputs_tab.flowbox.unselect_all()
+            # Select clicked widget
+            child = App().patch_outputs_tab.flowbox.get_child_at_index(
+                self.output - 1 + (512 * self.universe)
+            )
+            App().window.set_focus(child)
+            App().patch_outputs_tab.flowbox.select_child(child)
+            App().patch_outputs_tab.last_out_selected = str(self.output - 1)
 
     def do_draw(self, cr):
         """Draw widget"""
