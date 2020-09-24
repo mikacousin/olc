@@ -47,7 +47,7 @@ class ChannelWidget(Gtk.Widget):
                 flowbox.unselect_child(flowboxchild)
             else:
                 flowbox.select_child(flowboxchild)
-            App().window.last_chan_selected = self.channel
+                App().window.last_chan_selected = self.channel
         # If Main channels view, update Track Channels if opened
         if flowbox is App().window.channels_view.flowbox and App().track_channels_tab:
             App().track_channels_tab.update_display()
