@@ -36,7 +36,10 @@ class ChannelWidget(Gtk.Widget):
         flowbox = flowboxchild.get_parent()
 
         App().window.set_focus(flowboxchild)
-        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+        if (
+            flowbox is App().window.channels_view.flowbox
+            and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
+        ):
             App().window.keystring = self.channel
             App().window.thru()
         else:
