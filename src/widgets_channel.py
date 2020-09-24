@@ -29,18 +29,23 @@ class ChannelWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
-    def on_click(self, tgt, _ev):
+    def on_click(self, tgt, event):
         """"Select clicked widget"""
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
 
         App().window.set_focus(flowboxchild)
-        if flowboxchild.is_selected():
-            flowbox.unselect_child(flowboxchild)
+        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+            App().window.keystring = self.channel
+            App().window.thru()
         else:
-            flowbox.select_child(flowboxchild)
-            App().window.last_chan_selected = str(int(self.channel) - 1)
-
+            if flowboxchild.is_selected():
+                flowbox.unselect_child(flowboxchild)
+            else:
+                flowbox.select_child(flowboxchild)
+            App().window.last_chan_selected = self.channel
+        # If Main channels view, update Track Channels if opened
         if flowbox is App().window.channels_view.flowbox and App().track_channels_tab:
             App().track_channels_tab.update_display()
 

@@ -287,9 +287,13 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_KP_Divide(self):
         """Thru"""
-        self._keypress_greater()
+        self.thru()
 
     def _keypress_greater(self):
+        """Thru"""
+        self.thru()
+
+    def thru(self):
         """Thru"""
         sel = self.channels_view.flowbox.get_selected_children()
         if len(sel) == 1:
