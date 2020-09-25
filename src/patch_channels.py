@@ -1,19 +1,20 @@
+"""Patch by channels notebook tab"""
+
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_patch_channels import PatchChannelHeader, PatchChannelWidget
 
 
-class PatchChannelsTab(Gtk.Grid):
+class PatchChannelsTab(Gtk.Box):
+    """Tab to patch by channels"""
     def __init__(self):
 
         self.keystring = ""
         self.last_chan_selected = ""
 
-        Gtk.Grid.__init__(self)
-        self.set_column_homogeneous(True)
-        self.set_row_homogeneous(True)
+        Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
-        self.header = PatchChannelHeader()
+        header = PatchChannelHeader()
 
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
@@ -27,19 +28,16 @@ class PatchChannelsTab(Gtk.Grid):
             self.channels.append(PatchChannelWidget(channel + 1, App().patch))
             self.flowbox.add(self.channels[channel])
 
-        self.flowbox.set_filter_func(self.filter_func, None)
-
         self.scrollable = Gtk.ScrolledWindow()
         self.scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.scrollable.add(self.flowbox)
 
-        self.attach(self.header, 0, 0, 1, 1)
-        self.attach_next_to(
-            self.scrollable, self.header, Gtk.PositionType.BOTTOM, 1, 10
-        )
+        self.pack_start(header, False, False, 2)
+        self.pack_start(self.scrollable, True, True, 0)
 
-    def filter_func(self, _child, _user_data):
-        return True
+        child = self.flowbox.get_child_at_index(0)
+        self.flowbox.select_child(child)
+        self.last_chan_selected = "0"
 
     def on_close_icon(self, _widget):
         """ Close Tab on close clicked """
@@ -48,7 +46,7 @@ class PatchChannelsTab(Gtk.Grid):
         App().patch_channels_tab = None
 
     def on_key_press_event(self, widget, event):
-
+        """Key press events"""
         # Hack to know if user is editing something
         widget = App().window.get_focus()
         if widget and widget.get_path().is_type(Gtk.Entry):
@@ -144,11 +142,50 @@ class PatchChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
+    def _keypress_KP_Divide(self):
+        """Thru"""
+        self.thru()
+
+    def _keypress_greater(self):
+        """Thru"""
+        self.thru()
+
+    def thru(self):
+        """Thru"""
+        # If one channel is selected, start from it
+        selected = self.flowbox.get_selected_children()
+        if len(selected) == 1:
+            patchwidget = selected[0].get_children()
+            channel = patchwidget[0].channel - 1
+            self.last_chan_selected = str(channel)
+
+        if not self.last_chan_selected:
+            return
+
+        to_chan = int(self.keystring)
+
+        if to_chan > int(self.last_chan_selected):
+            for chan in range(int(self.last_chan_selected), to_chan):
+                child = self.flowbox.get_child_at_index(chan)
+                App().window.set_focus(child)
+                self.flowbox.select_child(child)
+        else:
+            for chan in range(to_chan - 1, int(self.last_chan_selected)):
+                child = self.flowbox.get_child_at_index(chan)
+                App().window.set_focus(child)
+                self.flowbox.select_child(child)
+        self.last_chan_selected = str(to_chan - 1)
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
     def _keypress_m(self):
         """ Modify Output """
+        several = False
         sel = self.flowbox.get_selected_children()
-        children = []
-        for flowboxchild in sel:
+        if len(sel) > 1:
+            several = True
+        for i, flowboxchild in enumerate(sel):
             children = flowboxchild.get_children()
 
             for patchchannelwidget in children:
@@ -156,7 +193,6 @@ class PatchChannelsTab(Gtk.Grid):
 
                 # Unpatch if no entry
                 if self.keystring in ["", "0"]:
-                    # outputs = App().patch.channels[channel]
                     for item in App().patch.channels[channel]:
                         output = item[0] - 1
                         universe = item[1]
@@ -172,6 +208,7 @@ class PatchChannelsTab(Gtk.Grid):
                             # ".universe" for change universe
                             output = App().patch.channels[channel][0][0] - 1
                             universe = int(self.keystring[1:])
+                            several = False
                         else:
                             # "output.universe"
                             split = self.keystring.split(".")
@@ -182,24 +219,27 @@ class PatchChannelsTab(Gtk.Grid):
                         output = int(self.keystring) - 1
                         universe = 0
 
-                    if 0 <= output < 512:
+                    if 0 <= output + i < 512:
                         # Unpatch old values
-                        # outputs = App().patch.channels[channel]
                         for item in App().patch.channels[channel]:
                             out = item[0] - 1
                             univ = item[1]
                             App().patch.outputs[univ][out][0] = 0
-                        old_channel = App().patch.outputs[universe][output][0]
+                        old_channel = App().patch.outputs[universe][output + i][0]
                         if old_channel:
-                            App().patch.outputs[universe][output][0] = 0
+                            App().patch.outputs[universe][output + i][0] = 0
                             App().patch.channels[old_channel - 1].remove(
-                                [output + 1, universe]
+                                [output + 1 + i, universe]
                             )
                             if len(App().patch.channels[old_channel - 1]) == 0:
                                 App().patch.channels[old_channel - 1] = [[0, 0]]
                         # Patch
-                        App().patch.channels[channel] = [[output + 1, universe]]
-                        App().patch.outputs[universe][output][0] = channel + 1
+                        if several:
+                            App().patch.channels[channel] = [[output + 1 + i, universe]]
+                            App().patch.outputs[universe][output + i][0] = channel + 1
+                        else:
+                            App().patch.channels[channel] = [[output + 1, universe]]
+                            App().patch.outputs[universe][output][0] = channel + 1
                         # Update ui
                         self.channels[old_channel - 1].queue_draw()
                         self.channels[channel].queue_draw()
