@@ -7,6 +7,7 @@ from olc.widgets_patch_channels import PatchChannelHeader, PatchChannelWidget
 
 class PatchChannelsTab(Gtk.Box):
     """Tab to patch by channels"""
+
     def __init__(self):
 
         self.keystring = ""
