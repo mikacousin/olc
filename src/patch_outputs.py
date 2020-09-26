@@ -45,6 +45,9 @@ class PatchOutputsTab(Gtk.Box):
         for output in self.outputs:
             self.flowbox.add(output)
 
+        for child in self.flowbox.get_children():
+            child.set_name("flowbox_outputs")
+
         scrolled.add(self.flowbox)
 
         self.pack_start(header, False, False, 0)

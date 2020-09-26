@@ -72,7 +72,7 @@ class PatchWidget(Gtk.Widget):
 
     def _draw_background(self, cr, allocation):
         """Draw background"""
-        area = (0, allocation.width, 0, allocation.height)
+        area = (1, allocation.width - 2, 1, allocation.height - 2)
         if (
             App().patch.outputs[self.universe][self.output - 1][1] == 0
             and App().patch.outputs[self.universe][self.output - 1][0] != 0
@@ -97,7 +97,7 @@ class PatchWidget(Gtk.Widget):
         """Draw Output number"""
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-        cr.set_font_size(12 * self.scale)
+        cr.set_font_size(11 * self.scale)
         text = str(self.output) + "." + str(self.universe)
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
         cr.move_to(
@@ -109,7 +109,8 @@ class PatchWidget(Gtk.Widget):
         """Draw Channel number"""
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-        cr.set_font_size(12 * self.scale)
+        cr.set_font_size(11 * self.scale)
+        # Dimer
         text = str(App().patch.outputs[self.universe][self.output - 1][0])
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
         cr.move_to(
@@ -123,7 +124,7 @@ class PatchWidget(Gtk.Widget):
         if App().dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-            cr.set_font_size(12 * self.scale)
+            cr.set_font_size(10 * self.scale)
             text = str(App().dmx.frame[self.universe][self.output - 1])
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
             cr.move_to(
