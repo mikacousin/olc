@@ -16,9 +16,11 @@ class Dmx(threading.Thread):
         threading.Thread.__init__(self)
         self.grand_master = 255
         self.frame = []
-        # les valeurs du séquentiel
+        # Dimers levels
         self.sequence = array.array("B", [0] * MAX_CHANNELS)
-        # les valeurs modifiées par l'utilisateur
+        # Devices levels
+        self.devices = {}
+        # User levels
         self.user = array.array("h", [-1] * MAX_CHANNELS)
 
     def run(self):
@@ -32,6 +34,18 @@ class Dmx(threading.Thread):
         for channel in range(MAX_CHANNELS):
             for i in App().patch.channels[channel]:
                 output = i[0]
+                if output < 0:
+                    device_number = abs(output)
+                    device = App().patch.devices[device_number]
+                    universe = i[1]
+                    for out in device.outputs:
+                        level = self.devices.get(out - 1)
+                        if level is not None:
+                            self.frame[universe][out - 1] = level
+                    # Intensity
+                    param = device.template.parameters.get(0)
+                    offset = param.offset.get("High Byte")
+                    output = device.output + offset
                 if output:
                     # If channel is patched
                     output -= 1
@@ -81,18 +95,24 @@ class Dmx(threading.Thread):
 
 
 class PatchDmx:
-    """To store and manipulate DMX patch"""
+    """To store and manipulate DMX patch
+
+    Attributes:
+        channels (list): list of list of [output, universe]
+        outputs (list): list of universes who are list of [channel, level]
+        devices (dict of int: Device): devices (channel: device)
+    """
 
     def __init__(self):
-        # 2 lists to store patch (default 1:1)
-        #
+        # Default 1:1
+
         # List of channels
         self.channels = []
         for channel in range(MAX_CHANNELS):
             univ = int(channel / 512)
             chan = channel - (512 * univ)
             self.channels.append([[chan + 1, univ]])
-
+        # List of outputs
         self.outputs = []
         for universe in range(NB_UNIVERSES):
             self.outputs.append([])
@@ -102,6 +122,8 @@ class PatchDmx:
                     self.outputs[universe].append([channel, 100])
                 else:
                     self.outputs[universe].append([0, 100])
+        # List of devices
+        self.devices = {}
 
         # for channel in range(MAX_CHANNELS):
         #     print("Channel", channel, "Output", self.channels[channel][0][0],
@@ -113,12 +135,14 @@ class PatchDmx:
         #         self.outputs[universe][i][1])
 
     def patch_empty(self):
-        """ Set patch to Zero """
+        """Set Dimmers patch to Zero"""
         for channel in range(MAX_CHANNELS):
-            self.channels[channel] = [[0, 0]]
+            if self.channels[channel][0][0] > 0:
+                self.channels[channel] = [[0, 0]]
         for universe in range(NB_UNIVERSES):
             for output in range(512):
-                self.outputs[universe][output][0] = 0
+                if self.outputs[universe][output][0] > 0:
+                    self.outputs[universe][output][0] = 0
 
     def patch_1on1(self):
         """ Set patch 1:1 """
@@ -140,3 +164,19 @@ class PatchDmx:
             self.channels[channel - 1] = sorted(self.channels[channel - 1])
         self.outputs[univ][output - 1][0] = channel
         self.outputs[univ][output - 1][1] = level
+
+    def add_device(self, device, level=100):
+        """Patch a device"""
+        channel = device.channel - 1
+        # Add device
+        self.devices[channel] = device
+        for out in device.outputs:
+            # Unpatch outputs
+            chan = self.outputs[device.universe][out][0]
+            self.channels[chan] = [[0, 0]]
+            self.outputs[device.universe][out][0] = 0
+            # Patch outputs
+            self.outputs[device.universe][out - 1][0] = -channel
+            self.outputs[device.universe][out - 1][1] = level
+        # Patch channel
+        self.channels[channel] = [[-channel, device.universe]]

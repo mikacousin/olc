@@ -1,6 +1,6 @@
 """Channels view in main window"""
 
-from gi.repository import Gtk, Gdk
+from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 from olc.zoom import zoom
@@ -54,8 +54,8 @@ class ChannelsView(Gtk.Notebook):
         if self.view_type == 0:
             # Display only patched channels
             i = child.get_index()
-            for channel in App().patch.channels[i][0]:
-                if channel != 0:
+            for output in App().patch.channels[i][0]:
+                if output != 0:
                     return child
                 return False
         else:

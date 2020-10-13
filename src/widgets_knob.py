@@ -2,7 +2,7 @@
 
 import math
 
-from gi.repository import GObject, Gtk, Gdk
+from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
 
 

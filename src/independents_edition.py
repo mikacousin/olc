@@ -2,8 +2,8 @@
 
 import array
 
-from gi.repository import Gtk, Gdk
-from olc.define import App, MAX_CHANNELS
+from gi.repository import Gdk, Gtk
+from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 from olc.zoom import zoom
 

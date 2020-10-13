@@ -99,6 +99,11 @@ class Application(Gtk.Application):
         # Independents
         self.independents = Independents()
 
+        # Devices parameters
+        self.parameters = {}
+        # Devices templates
+        self.templates = []
+
         # For Windows
         self.window = None
         self.about_window = None

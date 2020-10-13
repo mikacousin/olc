@@ -1,6 +1,6 @@
 """Zoom function"""
 
-from gi.repository import Gtk, Gdk
+from gi.repository import Gdk, Gtk
 
 
 def zoom(widget, event):

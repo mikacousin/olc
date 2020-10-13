@@ -1,6 +1,6 @@
 """Main playback in main window"""
 
-from gi.repository import Gtk, Gdk, Pango
+from gi.repository import Gdk, Gtk, Pango
 from olc.define import App
 from olc.widgets_sequential import SequentialWidget
 

@@ -85,9 +85,17 @@ class ChannelWidget(Gtk.Widget):
         # draw background of channel number
         flowboxchild = self.get_parent()
         if flowboxchild.is_selected():
-            cr.set_source_rgb(0.4, 0.4, 0.4)
+            if App().patch.channels[int(self.channel) - 1][0][0] < 0:
+                # Some red for devices
+                cr.set_source_rgb(0.5, 0.4, 0.4)
+            else:
+                cr.set_source_rgb(0.4, 0.4, 0.4)
         else:
-            cr.set_source_rgb(0.2, 0.2, 0.2)
+            if App().patch.channels[int(self.channel) - 1][0][0] < 0:
+                # Some red for devices
+                cr.set_source_rgb(0.3, 0.2, 0.2)
+            else:
+                cr.set_source_rgb(0.2, 0.2, 0.2)
         cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
         cr.fill()
         # draw channel number

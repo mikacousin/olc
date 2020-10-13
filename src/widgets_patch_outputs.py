@@ -62,9 +62,8 @@ class PatchWidget(Gtk.Widget):
         self._draw_background(cr, allocation)
         # Draw output number
         self._draw_output_number(cr, allocation)
-        # Draw channel number if patched
-        if App().patch.outputs[self.universe][self.output - 1][0] != 0:
-            self._draw_channel_number(cr, allocation)
+        # Draw channel number
+        self._draw_channel_number(cr, allocation)
         # Draw Output level
         self._draw_output_level(cr, allocation)
         # Draw Proportional Level
@@ -73,22 +72,26 @@ class PatchWidget(Gtk.Widget):
     def _draw_background(self, cr, allocation):
         """Draw background"""
         area = (1, allocation.width - 2, 1, allocation.height - 2)
+        # Dimmer
         if (
             App().patch.outputs[self.universe][self.output - 1][1] == 0
             and App().patch.outputs[self.universe][self.output - 1][0] != 0
         ):
+            # Level's output at 0
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.8, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.1, 0.1)
             rounded_rectangle_fill(cr, area, 10)
         elif App().patch.outputs[self.universe][self.output - 1][0] != 0:
+            # Patch output
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
             rounded_rectangle_fill(cr, area, 10)
         else:
+            # Unpatch output
             if self.get_parent().is_selected():
                 cr.set_source_rgb(0.6, 0.4, 0.1)
                 rounded_rectangle_fill(cr, area, 10)
@@ -110,14 +113,93 @@ class PatchWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
-        # Dimer
+        # Dimmer
         text = str(App().patch.outputs[self.universe][self.output - 1][0])
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-        cr.move_to(
-            allocation.width / 2 - width / 2,
-            3 * (allocation.height / 4 - (height - 20) / 4),
-        )
-        cr.show_text(text)
+        if App().patch.outputs[self.universe][self.output - 1][0] > 0:
+            cr.move_to(
+                allocation.width / 2 - width / 2,
+                3 * (allocation.height / 4 - (height - 20) / 4),
+            )
+            cr.show_text(text)
+        # Device
+        if App().patch.outputs[self.universe][self.output - 1][0] < 0:
+            channel = abs(App().patch.outputs[self.universe][self.output - 1][0])
+            device_number = abs(App().patch.channels[channel][0][0])
+            device = App().patch.devices.get(device_number)
+            text = str(device.channel)
+            (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
+            if self.output in device.outputs and device.universe == self.universe:
+                if self.output == device.output:
+                    cr.set_source_rgba(1, 0, 0, 0.3)
+                    cr.rectangle(
+                        10,
+                        3 * (allocation.height / 4 - (height - 20) / 4) - height - 2,
+                        allocation.width,
+                        15 * self.scale,
+                    )
+                    cr.fill()
+                    cr.set_source_rgb(0.9, 0.6, 0.2)
+                    cr.move_to(
+                        allocation.width / 2 - width / 2,
+                        3 * (allocation.height / 4 - (height - 20) / 4),
+                    )
+                    cr.show_text(text)
+                    cr.set_source_rgba(1, 1, 1, 1)
+                    cr.set_line_width(1)
+                    cr.move_to(
+                        allocation.width,
+                        3 * (allocation.height / 4 - (height - 20) / 4) - height - 2,
+                    )
+                    cr.line_to(
+                        10, 3 * (allocation.height / 4 - (height - 20) / 4) - height - 2
+                    )
+                    cr.line_to(10, allocation.height)
+                    cr.line_to(allocation.width, allocation.height)
+                    cr.stroke()
+                elif self.output == device.output + device.template.footprint - 1:
+                    cr.set_source_rgba(1, 0, 0, 0.3)
+                    cr.rectangle(
+                        0,
+                        3 * (allocation.height / 4 - (height - 20) / 4) - height - 2,
+                        allocation.width - 10,
+                        15 * self.scale,
+                    )
+                    cr.fill()
+                    cr.set_source_rgba(1, 1, 1, 1)
+                    cr.set_line_width(1)
+                    cr.move_to(
+                        0, 3 * (allocation.height / 4 - (height - 20) / 4) - height - 2
+                    )
+                    cr.line_to(
+                        allocation.width - 10,
+                        3 * (allocation.height / 4 - (height - 20) / 4) - height - 2,
+                    )
+                    cr.line_to(allocation.width - 10, allocation.height)
+                    cr.line_to(0, allocation.height)
+                    cr.stroke()
+                else:
+                    cr.set_source_rgba(1, 0, 0, 0.3)
+                    cr.rectangle(
+                        0,
+                        3 * (allocation.height / 4 - (height - 20) / 4) - height - 2,
+                        allocation.width,
+                        15 * self.scale,
+                    )
+                    cr.fill()
+                    cr.set_source_rgba(1, 1, 1, 1)
+                    cr.set_line_width(1)
+                    cr.move_to(
+                        0, 3 * (allocation.height / 4 - (height - 20) / 4) - height - 2
+                    )
+                    cr.line_to(
+                        allocation.width,
+                        3 * (allocation.height / 4 - (height - 20) / 4) - height - 2,
+                    )
+                    cr.stroke()
+                    cr.move_to(0, allocation.height)
+                    cr.line_to(allocation.width, allocation.height)
+                    cr.stroke()
 
     def _draw_output_level(self, cr, allocation):
         """Draw Output level"""
