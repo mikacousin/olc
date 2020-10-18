@@ -8,12 +8,13 @@ import subprocess
 import sys
 import time
 
-from ola.ClientWrapper import ClientWrapper
-from ola import OlaClient
 from gi.repository import Gio
 
-# Make sure we'll find the olc modules, even in JHBuild
+# Make sure we'll find all modules
 sys.path.insert(1, "@pythondir@")
+
+from ola.ClientWrapper import ClientWrapper  # noqa: 402
+from ola import OlaClient  # noqa: E402
 
 from olc.application import Application  # noqa: E402
 
