@@ -55,15 +55,21 @@ class ChannelWidget(Gtk.Widget):
     def do_draw(self, cr):
         """Draw widget"""
         self.width = 80 * self.scale
-        self.set_size_request(self.width, self.width)
+        if App().patch.channels[int(self.channel) - 1][0][0] < 0:
+            self.set_size_request(self.width, 130 * self.scale)
+        else:
+            self.set_size_request(self.width, self.width)
 
         percent_level = App().settings.get_boolean("percent")
 
         allocation = self.get_allocation()
+        # Force widget height if Channel is a dimmer
+        if App().patch.channels[int(self.channel) - 1][0][0] > 0:
+            allocation.height = self.width
 
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
 
-        # paint background
+        # Paint background
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
@@ -71,34 +77,26 @@ class ChannelWidget(Gtk.Widget):
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
 
-        # draw rectangle
+        # Draw rectangle
         cr.set_source_rgb(0.3, 0.3, 0.3)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.stroke()
-        # draw background
+        # Draw background
         background = Gdk.RGBA()
         # TODO: Get background color
         background.parse("#33393B")
         cr.set_source_rgba(*list(background))
-        cr.rectangle(4, 4, allocation.width - 8, allocation.height - 8)
+        cr.rectangle(4, 4, allocation.width - 8, self.width - 8)
         cr.fill()
-        # draw background of channel number
+        # Draw background of channel number
         flowboxchild = self.get_parent()
         if flowboxchild.is_selected():
-            if App().patch.channels[int(self.channel) - 1][0][0] < 0:
-                # Some red for devices
-                cr.set_source_rgb(0.5, 0.4, 0.4)
-            else:
-                cr.set_source_rgb(0.4, 0.4, 0.4)
+            cr.set_source_rgb(0.4, 0.4, 0.4)
         else:
-            if App().patch.channels[int(self.channel) - 1][0][0] < 0:
-                # Some red for devices
-                cr.set_source_rgb(0.3, 0.2, 0.2)
-            else:
-                cr.set_source_rgb(0.2, 0.2, 0.2)
+            cr.set_source_rgb(0.2, 0.2, 0.2)
         cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
         cr.fill()
-        # draw channel number
+        # Draw channel number
         cr.set_source_rgb(0.9, 0.6, 0.2)
         if int(self.channel) - 1 in App().independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
@@ -106,7 +104,34 @@ class ChannelWidget(Gtk.Widget):
         cr.set_font_size(12 * self.scale)
         cr.move_to(50 * self.scale, 15 * self.scale)
         cr.show_text(self.channel)
-        # draw level
+        # Draw Device name
+        if App().patch.channels[int(self.channel) - 1][0][0] < 0:
+            # Background
+            cr.set_source_rgb(0.15, 0.15, 0.15)
+            cr.rectangle(4, self.width - 6, allocation.width - 8, 18 * self.scale)
+            cr.fill()
+            background.parse("#33393B")
+            cr.set_source_rgba(*list(background))
+            cr.rectangle(
+                4,
+                92 * self.scale,
+                allocation.width - 8,
+                allocation.height - 6 - 90 * self.scale,
+            )
+            cr.fill()
+            # Device name
+            cr.set_source_rgb(0.9, 0.9, 0.9)
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+            cr.set_font_size(8 * self.scale)
+            device_number = abs(App().patch.channels[int(self.channel) - 1][0][0])
+            device = App().patch.devices.get(device_number)
+            text = device.template.model_name
+            if len(text) > 15:
+                text = text[:13] + "..."
+            (_, _, width, _, _, _) = cr.text_extents(text)
+            cr.move_to(allocation.width / 2 - width / 2, 87 * self.scale)
+            cr.show_text(text)
+        # Draw level
         cr.set_source_rgb(
             self.color_level.get("red"),
             self.color_level.get("green"),
@@ -129,10 +154,10 @@ class ChannelWidget(Gtk.Widget):
                     cr.show_text(str(int(round((self.level / 255) * 100))))
             else:
                 cr.show_text(str(self.level))  # Level in 0 to 255 value
-        # draw level bar
+        # Draw level bar
         cr.rectangle(
             allocation.width - 9,
-            allocation.height - 2,
+            self.width - 4,
             6 * self.scale,
             -((50 / 255) * self.scale) * self.level,
         )
@@ -141,21 +166,21 @@ class ChannelWidget(Gtk.Widget):
         # Don't draw next level if channel is in an independent
         if int(self.channel) - 1 in App().independents.get_channels():
             return
-        # draw down icon
+        # Draw down icon
         if self.next_level < self.level:
             offset_x = 6 * self.scale
             offset_y = -6 * self.scale
             cr.move_to(
                 offset_x + 11 * self.scale,
-                offset_y + allocation.height - 6 * self.scale,
+                offset_y + self.width - 6 * self.scale,
             )
             cr.line_to(
                 offset_x + 6 * self.scale,
-                offset_y + allocation.height - 16 * self.scale,
+                offset_y + self.width - 16 * self.scale,
             )
             cr.line_to(
                 offset_x + 16 * self.scale,
-                offset_y + allocation.height - 16 * self.scale,
+                offset_y + self.width - 16 * self.scale,
             )
             cr.close_path()
             cr.set_source_rgb(0.5, 0.5, 0.9)
@@ -166,7 +191,7 @@ class ChannelWidget(Gtk.Widget):
             cr.set_font_size(10 * self.scale)
             cr.move_to(
                 offset_x + (24 * self.scale),
-                offset_y + allocation.height - (6 * self.scale),
+                offset_y + self.width - (6 * self.scale),
             )
             if percent_level:
                 if self.next_level == 255:
@@ -176,7 +201,7 @@ class ChannelWidget(Gtk.Widget):
                     cr.show_text(str(int(round((self.next_level / 255) * 100))))
             else:
                 cr.show_text(str(self.next_level))  # Level in 0 to 255 value
-        # draw up icon
+        # Draw up icon
         if self.next_level > self.level:
             offset_x = 6 * self.scale
             offset_y = 15 * self.scale
