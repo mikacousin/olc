@@ -44,8 +44,9 @@ class Dmx(threading.Thread):
                             self.frame[universe][out - 1] = level
                     # Intensity
                     param = device.template.parameters.get(0)
-                    offset = param.offset.get("High Byte")
-                    output = device.output + offset
+                    if param:
+                        offset = param.offset.get("High Byte")
+                        output = device.output + offset
                 if output:
                     # If channel is patched
                     output -= 1
@@ -155,7 +156,7 @@ class PatchDmx:
                 self.outputs[univ][output][0] = output + 1
 
     def add_output(self, channel, output, univ, level=100):
-        """ Add an output to a channel """
+        """Add an output to a channel"""
         if self.channels[channel - 1] == [[0, 0]]:
             self.channels[channel - 1] = [[output, univ]]
         else:
