@@ -4,7 +4,7 @@ import math
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
+from olc.define import App, MAX_CHANNELS
 
 
 class SequentialWidget(Gtk.Widget):
@@ -165,6 +165,8 @@ class SequentialWidget(Gtk.Widget):
         self.set_size_request(800, 300 + (len(self.channel_time) * 8))
 
         for channel in self.channel_time.keys():
+            if channel > MAX_CHANNELS:
+                continue
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
             # draw Channel number
