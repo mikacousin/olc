@@ -348,7 +348,7 @@ class OscServer(liblo.ServerThread):
                 self.client.send("/pad/saisieText", "")
 
     def _sub_launch_cb(self, path, args, types):
-        """ Launch Sub page """
+        """Launch Sub page"""
         for i in range(10):
             self.client.send(
                 "/subStick/text", ("i", i + 1), ("s", App().masters[i].text)

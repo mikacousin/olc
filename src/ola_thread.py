@@ -49,26 +49,6 @@ class OlaThread(threading.Thread):
         # Loop on outputs with different level
         for output, level in diff:
             channel = App().patch.outputs[univ][output][0] - 1
-            if channel < 0:
-                # Devices
-                channel = abs(channel) - 1
-                device_number = abs(App().patch.channels[channel][0][0])
-                device = App().patch.devices.get(device_number)
-                if device:
-                    param = device.template.parameters.get(0)
-                    if param:
-                        offset = param.offset.get("High Byte")
-                        # Output isn't intensity level
-                        if output != device.output + offset - 1:
-                            # Patch outputs: display DMX levels
-                            if App().patch_outputs_tab:
-                                GLib.idle_add(
-                                    App()
-                                    .patch_outputs_tab.outputs[output + (univ * 512)]
-                                    .queue_draw
-                                )
-                            # Channels view: only display intensity
-                            continue
             # New level
             App().window.channels_view.channels[channel].level = level
             # Find next level

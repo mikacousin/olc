@@ -67,8 +67,6 @@ class Sequence:
         self.run = False
         # Thread for chasers
         self.thread = None
-        # Device parameters for goto
-        self.devices = {}
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
@@ -210,21 +208,6 @@ class Sequence:
             for channel in range(MAX_CHANNELS):
                 for i in App().patch.channels[channel]:
                     output = i[0]
-                    # Devices parameters
-                    for chan, params in self.steps[position].cue.devices.items():
-                        if chan == channel + 1:
-                            device_number = abs(output)
-                            device = App().patch.devices[device_number]
-                            out = device.output - 1
-                            for param_value in params.values():
-                                high_byte = param_value.get("high byte")
-                                low_byte = param_value.get("low byte")
-                                value = param_value.get("value")
-                                high = (value >> 8) & 0xFF
-                                low = value & 0xFF
-                                App().dmx.devices[out + high_byte] = high
-                                if low_byte:
-                                    App().dmx.devices[out + low_byte] = low
                     # Intensity
                     if output:
                         level = self.steps[position].cue.channels[channel]
@@ -287,24 +270,6 @@ class Sequence:
             # Empty DMX user array
             App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
 
-            # Send DMX values
-            for pos, step in enumerate(self.steps):
-                # Devices parameters
-                for chan, params in step.cue.devices.items():
-                    device_number = chan - 1
-                    device = App().patch.devices[device_number]
-                    out = device.output - 1
-                    for param_value in params.values():
-                        high_byte = param_value.get("high byte")
-                        low_byte = param_value.get("low byte")
-                        value = param_value.get("value")
-                        high = (value >> 8) & 0xFF
-                        low = value & 0xFF
-                        App().dmx.devices[out + high_byte] = high
-                        if low_byte:
-                            App().dmx.devices[out + low_byte] = low
-                if pos == position:
-                    break
             for channel in range(MAX_CHANNELS):
                 # Intensity
                 for i in App().patch.channels[channel]:
@@ -315,7 +280,7 @@ class Sequence:
             update_channels(position)
 
     def goto(self, keystring):
-        """ Jump to cue number """
+        """Jump to cue number"""
         old_pos = self.position
 
         if not keystring:
@@ -323,21 +288,6 @@ class Sequence:
 
         # Scan all cues
         for i, step in enumerate(self.steps):
-            # Devices parameters
-            for chan, params in self.steps[i].cue.devices.items():
-                device_number = chan - 1
-                device = App().patch.devices[device_number]
-                out = device.output - 1
-                univ = device.universe
-                for param_value in params.values():
-                    high_byte = param_value.get("high byte")
-                    low_byte = param_value.get("low byte")
-                    value = param_value.get("value")
-                    high = (value >> 8) & 0xFF
-                    low = value & 0xFF
-                    self.devices[out + high_byte] = {"universe": univ, "value": high}
-                    if low_byte:
-                        self.devices[out + low_byte] = {"universe": univ, "value": low}
             # Until we find the good one
             if float(step.cue.memory) == float(keystring):
                 # Position to the one just before
@@ -529,15 +479,6 @@ class ThreadGo(threading.Thread):
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 channel = App().patch.outputs[univ][output][0]
-                if channel < 0:
-                    device_number = abs(channel)
-                    device = App().patch.devices[device_number]
-                    param = device.template.parameters.get(0)
-                    offset = param.offset.get("High Byte")
-                    if output == device.output - 1 + offset:
-                        channel = abs(channel) + 1
-                    else:
-                        channel = 0
                 if channel:
                     if App().sequence.position < App().sequence.last - 1:
                         level = (
@@ -588,21 +529,9 @@ class ThreadGo(threading.Thread):
 
     def _do_goto(self, i):
         """Goto"""
-        for out, values in App().sequence.devices.items():
-            univ = values.get("universe")
-            old_level = self.dmxlevels[univ][out]
-            next_level = values.get("value")
-            level = self._channel_level(i, old_level, next_level)
-            App().dmx.devices[out] = level
         for channel in range(MAX_CHANNELS):
             for chan in App().patch.channels[channel]:
                 output = chan[0]
-                if output < 0:
-                    device_number = abs(output)
-                    device = App().patch.devices[device_number]
-                    param = device.template.parameters.get(0)
-                    offset = param.offset.get("High Byte")
-                    output = device.output + offset
                 if output:
                     output -= 1
                     univ = chan[1]
@@ -624,40 +553,6 @@ class ThreadGo(threading.Thread):
         for channel in range(MAX_CHANNELS):
             for chan in App().patch.channels[channel]:
                 output = chan[0]
-                # Devices parameters
-                params = (
-                    App()
-                    .sequence.steps[App().sequence.position + 1]
-                    .cue.devices.get(channel + 1)
-                )
-                if params:
-                    device_number = abs(output)
-                    device = App().patch.devices[device_number]
-                    out = device.output - 1
-                    for param_number, param_value in params.items():
-                        if param_number:
-                            univ = chan[1]
-                            high_byte = param_value.get("high byte")
-                            low_byte = param_value.get("low byte")
-                            value = param_value.get("value")
-                            high = (value >> 8) & 0xFF
-                            low = value & 0xFF
-                            old_level = self.dmxlevels[univ][out + high_byte]
-                            next_level = high
-                            level = self._channel_level(i, old_level, next_level)
-                            App().dmx.devices[out + high_byte] = level
-                            if low_byte:
-                                old_level = self.dmxlevels[univ][out + low_byte]
-                                next_level = low
-                                level = self._channel_level(i, old_level, next_level)
-                                App().dmx.devices[out + low_byte] = level
-                # Devices intensity
-                if output < 0:
-                    device_number = abs(output)
-                    device = App().patch.devices[device_number]
-                    param = device.template.parameters.get(0)
-                    offset = param.offset.get("High Byte")
-                    output = device.output + offset
                 # Dimmers
                 if output:
                     output -= 1
@@ -833,45 +728,9 @@ class ThreadGoBack(threading.Thread):
             time.sleep(0.05)
             i = (time.time() * 1000) - start_time
         # Finish to load preset
-        found = False
-        patched_devices = set(App().patch.devices.keys())
-        found_devices = set()
-        for step in App().sequence.steps[App().sequence.position - 1::-1]:
-            # Devices parameters
-            for chan, params in step.cue.devices.items():
-                device_number = chan - 1
-                if device_number not in found_devices:
-                    device = App().patch.devices[device_number]
-                    out = device.output - 1
-                    univ = device.universe
-                    for param_value in params.values():
-                        high_byte = param_value.get("high byte")
-                        low_byte = param_value.get("low byte")
-                        value = param_value.get("value")
-                        high = (value >> 8) & 0xFF
-                        low = value & 0xFF
-                        level = high
-                        App().dmx.devices[out + high_byte] = level
-                        if low_byte:
-                            level = low
-                            App().dmx.devices[out + low_byte] = level
-                    found_devices.add(device_number)
-                    if found_devices == patched_devices:
-                        found = True
-            if found:
-                break
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 channel = App().patch.outputs[univ][output][0]
-                if channel < 0:
-                    device_number = abs(channel)
-                    device = App().patch.devices[device_number]
-                    param = device.template.parameters.get(0)
-                    offset = param.offset.get("High Byte")
-                    if output == device.output - 1 + offset:
-                        channel = abs(channel) + 1
-                    else:
-                        channel = 0
                 if channel:
                     level = App().sequence.steps[prev_step].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
@@ -939,53 +798,9 @@ class ThreadGoBack(threading.Thread):
             val = round((255 / go_back_time) * i)
             GLib.idle_add(App().virtual_console.scale_a.set_value, val)
             GLib.idle_add(App().virtual_console.scale_b.set_value, val)
-        found = False
-        patched_devices = set(App().patch.devices.keys())
-        found_devices = set()
-        for step in App().sequence.steps[position - 1::-1]:
-            # Devices parameters
-            for chan, params in step.cue.devices.items():
-                device_number = chan - 1
-                if device_number not in found_devices:
-                    device = App().patch.devices[device_number]
-                    out = device.output - 1
-                    univ = device.universe
-                    for param_value in params.values():
-                        high_byte = param_value.get("high byte")
-                        low_byte = param_value.get("low byte")
-                        value = param_value.get("value")
-                        high = (value >> 8) & 0xFF
-                        low = value & 0xFF
-                        old_level = self.dmxlevels[univ][out + high_byte]
-                        next_level = high
-                        level = self._channel_level(
-                            i, old_level, next_level, go_back_time
-                        )
-                        App().dmx.devices[out + high_byte] = level
-                        if low_byte:
-                            old_level = self.dmxlevels[univ][out + low_byte]
-                            next_level = low
-                            level = self._channel_level(
-                                i, old_level, next_level, go_back_time
-                            )
-                            App().dmx.devices[out + low_byte] = level
-                    found_devices.add(device_number)
-                    if found_devices == patched_devices:
-                        found = True
-            if found:
-                break
         for univ in range(NB_UNIVERSES):
             for output in range(512):
                 channel = App().patch.outputs[univ][output][0]
-                if channel < 0:
-                    device_number = abs(channel)
-                    device = App().patch.devices[device_number]
-                    param = device.template.parameters.get(0)
-                    offset = param.offset.get("High Byte")
-                    if output == device.output - 1 + offset:
-                        channel = abs(channel) + 1
-                    else:
-                        channel = 0
                 if channel:
                     old_level = self.dmxlevels[univ][output]
                     next_level = (

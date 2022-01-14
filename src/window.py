@@ -332,11 +332,11 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_KP_Add(self):
-        """ + """
+        """+"""
         self._keypress_plus()
 
     def _keypress_plus(self):
-        """ + """
+        """+"""
         if self.keystring == "":
             return
 
@@ -357,11 +357,11 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_KP_Subtract(self):
-        """ - """
+        """-"""
         self._keypress_minus()
 
     def _keypress_minus(self):
-        """ - """
+        """-"""
         if self.keystring == "":
             return
 
@@ -382,7 +382,7 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_exclam(self):
-        """ Level + (% level) of selected channels """
+        """Level + (% level) of selected channels"""
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
         if percent:
@@ -402,7 +402,7 @@ class Window(Gtk.ApplicationWindow):
                     App().dmx.user[channel] = min(level + lvl, 255)
 
     def _keypress_colon(self):
-        """ Level - (% level) of selected channels """
+        """Level - (% level) of selected channels"""
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
         if percent:
@@ -422,11 +422,11 @@ class Window(Gtk.ApplicationWindow):
                     App().dmx.user[channel] = max(level - lvl, 0)
 
     def _keypress_KP_Enter(self):
-        """ @ Level """
+        """@ Level"""
         self._keypress_equal()
 
     def _keypress_equal(self):
-        """ @ Level """
+        """@ Level"""
         if self.keystring == "":
             return
 
@@ -451,37 +451,37 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_BackSpace(self):
-        """ Empty keys buffer """
+        """Empty keys buffer"""
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_Escape(self):
-        """ Unselect all channels """
+        """Unselect all channels"""
         self.channels_view.flowbox.unselect_all()
         self.last_chan_selected = ""
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
 
     def _keypress_q(self):
-        """ Seq - """
+        """Seq -"""
         App().sequence.sequence_minus()
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_w(self):
-        """ Seq + """
+        """Seq +"""
         App().sequence.sequence_plus()
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_G(self):
-        """ Goto """
+        """Goto"""
         App().sequence.goto(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_R(self):
-        """ Record new Step and new Preset """
+        """Record new Step and new Preset"""
         found = False
 
         if self.keystring == "":
@@ -571,7 +571,7 @@ class Window(Gtk.ApplicationWindow):
         self.statusbar.push(self.context_id, self.keystring)
 
     def _keypress_U(self):
-        """ Update Cue """
+        """Update Cue"""
         position = App().sequence.position
         memory = App().sequence.steps[position].cue.memory
 
@@ -791,7 +791,7 @@ class Window(Gtk.ApplicationWindow):
 
 
 class Dialog(Gtk.Dialog):
-    """ Confirmation dialog when update Cue """
+    """Confirmation dialog when update Cue"""
 
     def __init__(self, parent, memory):
         Gtk.Dialog.__init__(

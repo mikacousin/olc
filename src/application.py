@@ -99,11 +99,6 @@ class Application(Gtk.Application):
         # Independents
         self.independents = Independents()
 
-        # Devices parameters
-        self.parameters = {}
-        # Devices templates
-        self.templates = []
-
         # For Windows
         self.window = None
         self.about_window = None
@@ -223,7 +218,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.fullscreen", ["F11"])
 
     def setup_app_menu(self):
-        """ Setup application menu, return Gio.Menu """
+        """Setup application menu, return Gio.Menu"""
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
         menu = builder.get_object("app-menu")

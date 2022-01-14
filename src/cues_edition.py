@@ -77,7 +77,7 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.connect("scroll-event", zoom)
 
     def filter_channel_func(self, child, _user_data):
-        """ Filter channels """
+        """Filter channels"""
         # If no Presets, just return
         if not App().memories:
             return False
@@ -112,7 +112,7 @@ class CuesEditionTab(Gtk.Paned):
         return True
 
     def on_cue_changed(self, _treeview):
-        """ Selected Cue """
+        """Selected Cue"""
         self.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         for channel in range(MAX_CHANNELS):
@@ -121,7 +121,7 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
+        """Close Tab on close clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)
@@ -160,7 +160,7 @@ class CuesEditionTab(Gtk.Paned):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().memories_tab = None
@@ -170,7 +170,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
-        """ Channel """
+        """Channel"""
 
         self.flowbox.unselect_all()
         for channel in range(MAX_CHANNELS):
@@ -198,7 +198,7 @@ class CuesEditionTab(Gtk.Paned):
         self._keypress_greater()
 
     def _keypress_greater(self):
-        """ Channel Thru """
+        """Channel Thru"""
 
         selected_children = self.flowbox.get_selected_children()
         if len(selected_children) == 1:
@@ -231,7 +231,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_plus(self):
-        """ Channel + """
+        """Channel +"""
 
         if self.keystring == "":
 
@@ -255,7 +255,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
-        """ Channel - """
+        """Channel -"""
 
         if self.keystring == "":
 
@@ -279,7 +279,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_a(self):
-        """ All Channels """
+        """All Channels"""
 
         self.flowbox.unselect_all()
 
@@ -305,7 +305,7 @@ class CuesEditionTab(Gtk.Paned):
             self.flowbox.invalidate_filter()
 
     def _keypress_equal(self):
-        """ @ level """
+        """@ level"""
 
         level = int(self.keystring)
 
@@ -330,7 +330,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
-        """ Level - % """
+        """Level - %"""
 
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
@@ -355,7 +355,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.user_channels[channel] = level
 
     def _keypress_exclam(self):
-        """ Level + % """
+        """Level + %"""
 
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
@@ -380,7 +380,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.user_channels[channel] = level
 
     def _keypress_U(self):
-        """ Update Memory """
+        """Update Memory"""
 
         self.flowbox.unselect_all()
 
@@ -409,7 +409,7 @@ class CuesEditionTab(Gtk.Paned):
             App().window.header.set_title(App().ascii.basename + "*")
 
     def _keypress_Delete(self):
-        """ Deletes selected Memory """
+        """Deletes selected Memory"""
 
         # TODO: Ask confirmation
 
@@ -468,7 +468,7 @@ class CuesEditionTab(Gtk.Paned):
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
     def _keypress_R(self):
-        """ Records a copy of the current Memory with a new number """
+        """Records a copy of the current Memory with a new number"""
 
         if self.keystring != "":
             mem = float(self.keystring)
@@ -542,7 +542,7 @@ class CuesEditionTab(Gtk.Paned):
         return True
 
     def _keypress_Insert(self):
-        """ Insert a new Memory """
+        """Insert a new Memory"""
 
         if self.keystring == "":
             # Insert memory with the next free number

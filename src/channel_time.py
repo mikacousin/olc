@@ -274,7 +274,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def filter_channels(self, child, _user_data):
-        """ Filter Channels """
+        """Filter Channels"""
 
         # Find selected Channel Time
         path, _focus_column = self.treeview.get_cursor()
@@ -305,14 +305,14 @@ class ChanneltimeTab(Gtk.Paned):
         return False
 
     def on_channeltime_changed(self, _treeview):
-        """ Select a Channel Time """
+        """Select a Channel Time"""
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
             # self.channels[channel].queue_draw()
         self.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
-        """ Close Tab with the icon clicked """
+        """Close Tab with the icon clicked"""
         # If channel times has no delay and no time, delete it
         keys = list(self.step.channel_time.keys())
         for channel in keys:
@@ -358,7 +358,7 @@ class ChanneltimeTab(Gtk.Paned):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         # If channel times has no delay and no time, delete it
         keys = list(self.step.channel_time.keys())
         for channel in keys:
@@ -376,7 +376,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
-        """ Channel """
+        """Channel"""
         # TODO: Bug on Empty Channel time
 
         self.flowbox.unselect_all()
@@ -401,7 +401,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_q(self):
-        """ Prev Channel Time """
+        """Prev Channel Time"""
 
         self.flowbox.unselect_all()
 
@@ -416,7 +416,7 @@ class ChanneltimeTab(Gtk.Paned):
             App().window.set_focus(self.treeview)
 
     def _keypress_w(self):
-        """ Next Channel Time """
+        """Next Channel Time"""
 
         self.flowbox.unselect_all()
 
@@ -430,7 +430,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.set_focus(self.treeview)
 
     def _keypress_Insert(self):
-        """ Add Channel Time """
+        """Add Channel Time"""
 
         # Find selected channels
         sel = self.flowbox.get_selected_children()

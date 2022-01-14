@@ -18,7 +18,7 @@ class PatchChannelHeader(Gtk.Misc):
         self.height = 40
         self.radius = 5
         self.channel = "Channel"
-        self.outputs = "Outputs / Devices"
+        self.outputs = "Outputs"
 
         self.set_size_request(self.width, self.height)
 
@@ -145,23 +145,6 @@ class PatchChannelWidget(Gtk.Widget):
 
     def _draw_one_line(self, cr):
         """Draw Outputs on a single line"""
-        if self.patch.channels[self.channel - 1][0][0] < 0:
-            device_number = abs(self.patch.channels[self.channel - 1][0][0])
-            device = self.patch.devices.get(device_number)
-            cr.move_to(65, 0)
-            area = (65, 600, 0, self.height)
-            if self.get_parent().is_selected():
-                cr.set_source_rgb(0.4, 0.5, 0.4)
-            else:
-                cr.set_source_rgb(0.3, 0.4, 0.3)
-            rounded_rectangle_fill(cr, area, self.radius)
-            cr.set_source_rgb(0.9, 0.9, 0.9)
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-            cr.set_font_size(12)
-            (_x, _y, w, h, _dx, _dy) = cr.text_extents(device.template.name)
-            cr.move_to(68, self.height / 2 - (h - 20) / 2)
-            cr.show_text(device.template.name)
-            return
         for i, item in enumerate(self.patch.channels[self.channel - 1]):
             output = item[0]
             if output != 0:

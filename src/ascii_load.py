@@ -5,7 +5,6 @@ import array
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
-from olc.device import Device, Parameter, Template
 from olc.group import Group
 from olc.independent import Independent
 from olc.master import Master
@@ -47,8 +46,6 @@ class AsciiParser:
         flag_group = False
         flag_preset = False
         flag_inde = False
-        flag_template = False
-        flag_parameter = False
 
         type_seq = "MainPlayback"
         playback = False
@@ -61,9 +58,6 @@ class AsciiParser:
         channels = False
         mem = False
         channel_time = {}
-        template = None
-        devices = {}
-        parameters = {}
 
         console = ""
         item = ""
@@ -108,7 +102,6 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = False
-                flag_template = False
             # Chasers
             if flag_seq and type_seq == "Chaser":
                 if line[:4].upper() == "TEXT":
@@ -238,26 +231,6 @@ class AsciiParser:
                                 if channel < MAX_CHANNELS:
                                     level = int(r[1][1:], 16)
                                     channels[channel - 1] = level
-                    if line[:5].upper() == "$$AL ":
-                        items = line[5:].split(" ")
-                        channel = int(items[0])
-                    if line[:4].upper() == "$$A ":
-                        items = line[4:].split(" ")
-                        channel = int(items[0])
-                        param_number = int(items[1])
-                        value = int(items[2])
-                        if channel < MAX_CHANNELS:
-                            device_number = abs(App().patch.channels[channel - 1][0][0])
-                            device = App().patch.devices[device_number]
-                            param = device.template.parameters.get(param_number)
-                            high_byte = param.offset.get("High Byte")
-                            low_byte = param.offset.get("Low Byte")
-                            parameters[param_number] = {
-                                "high byte": high_byte,
-                                "low byte": low_byte,
-                                "value": value,
-                            }
-                            devices[channel] = parameters
                     if line == "":
                         if not wait:
                             wait = 0.0
@@ -272,7 +245,7 @@ class AsciiParser:
                         if not d_out:
                             d_out = 0.0
                         # Create Cue
-                        cue = Cue(0, mem, channels, text=txt, devices=devices)
+                        cue = Cue(0, mem, channels, text=txt)
                         # Add cue to the list
                         App().memories.append(cue)
                         # Create Step
@@ -297,8 +270,6 @@ class AsciiParser:
                         mem = False
                         channels = False
                         channel_time = {}
-                        devices = {}
-                        parameters = {}
             # Dimmers Patch
             if line[:11].upper() == "CLEAR PATCH":
                 flag_seq = False
@@ -307,7 +278,6 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = False
-                flag_template = False
                 App().patch.patch_empty()  # Empty patch
                 App().window.channels_view.flowbox.invalidate_filter()
             if flag_patch and line[:0] == "!":
@@ -330,98 +300,6 @@ class AsciiParser:
                                 print("More than", MAX_CHANNELS, "channels")
                         else:
                             print("More than", NB_UNIVERSES, "universes")
-            # Parameter Definitions
-            if line[:9].upper() == "$PARAMDEF":
-                item = line[10:].split(" ")
-                number = int(item[0])
-                group = int(item[1])
-                name = item[2]
-                name = ""
-                for i in range(2, len(item)):
-                    name += item[i] + " "
-                name = name[:-1]
-                App().parameters[number] = [group, name]
-            # Device Template
-            if flag_template:
-                if line[:0] == "!":
-                    flag_template = False
-                if line[:14].upper() == "$$MANUFACTURER":
-                    template.manufacturer = line[15:]
-                if line[:11].upper() == "$$MODELNAME":
-                    template.model_name = line[12:]
-                if line[:10].upper() == "$$MODENAME":
-                    template.mode_name = line[11:]
-                if line[:10].upper() == "$$COLORCAL":
-                    pass
-                if line[:11].upper() == "$$FOOTPRINT":
-                    template.footprint = int(line[12:])
-                if line[:11].upper() == "$$PARAMETER":
-                    item = line[12:].split(" ")
-                    param_number = int(item[0])
-                    # param_type = int(item[1])
-                    # param_xfade = int(item[2])
-                    parameter = Parameter(param_number)
-                    flag_parameter = True
-                if flag_parameter:
-                    if line[:8].upper() == "$$OFFSET":
-                        item = line[9:].split(" ")
-                        parameter.offset = {
-                            "High Byte": int(item[0]),
-                            "Low Byte": int(item[1]),
-                            "Step": int(item[2]),
-                        }
-                    if line[:9].upper() == "$$DEFAULT":
-                        parameter.default = int(line[10:])
-                    if line[:11].upper() == "$$HIGHLIGHT":
-                        parameter.highlight = int(line[12:])
-                    if line[:7].upper() == "$$TABLE":
-                        item = line[8:].split(" ")
-                        start = int(item[0])
-                        stop = int(item[1])
-                        flags = int(item[2])
-                        range_name = ""
-                        for i in range(3, len(item)):
-                            range_name += item[i] + " "
-                        range_name = range_name[:-1]
-                        parameter.table.append([start, stop, flags, range_name])
-                    if line[:8].upper() == "$$RANGE ":
-                        item = line[8:].split(" ")
-                        percent = int(item[2]) == 1
-                        parameter.range = {
-                            "Minimum": int(item[0]),
-                            "Maximum": int(item[1]),
-                            "Percent": percent,
-                        }
-                    if line[:12].upper() == "$$RANGEGROUP":
-                        pass
-                    if line == "":
-                        template.parameters[parameter.number] = parameter
-                        flag_parameter = False
-            if line[:9].upper() == "$TEMPLATE":
-                flag_seq = False
-                flag_patch = False
-                flag_master = False
-                flag_group = False
-                flag_inde = False
-                flag_preset = False
-                flag_template = True
-                name = line[10:]
-                template = Template(name)
-                App().templates.append(template)
-            # Devices
-            if line[:8].upper() == "$DEVICE ":
-                item = line[8:].split(" ")
-                channel = int(item[0])
-                output = int(item[1])
-                universe = int((output - 1) / 512)
-                output = output - (512 * universe)
-                template = ""
-                for i in range(6, len(item)):
-                    template += item[i] + " "
-                template = template[:-1]
-                if channel < MAX_CHANNELS and universe < NB_UNIVERSES:
-                    device = Device(channel, output, universe, template)
-                    App().patch.add_device(device)
             # Presets not in sequence
             if line[:5].upper() == "GROUP" and console == "CONGO":
                 # On Congo, Preset not in sequence
@@ -431,7 +309,6 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = True
-                flag_template = False
                 channels = array.array("B", [0] * MAX_CHANNELS)
                 preset_nb = float(line[6:])
             if line[:7].upper() == "$PRESET" and (console in ("DLIGHT", "VLC")):
@@ -441,7 +318,6 @@ class AsciiParser:
                 flag_master = False
                 flag_group = False
                 flag_inde = False
-                flag_template = False
                 flag_preset = True
                 channels = array.array("B", [0] * MAX_CHANNELS)
                 preset_nb = float(line[8:])
@@ -489,7 +365,6 @@ class AsciiParser:
                 flag_master = False
                 flag_preset = False
                 flag_inde = False
-                flag_template = False
                 flag_group = True
                 channels = array.array("B", [0] * MAX_CHANNELS)
                 group_nb = float(line[6:])
@@ -499,7 +374,6 @@ class AsciiParser:
                 flag_master = False
                 flag_preset = False
                 flag_inde = False
-                flag_template = False
                 flag_group = True
                 channels = array.array("B", [0] * MAX_CHANNELS)
                 group_nb = float(line[7:])
@@ -563,7 +437,6 @@ class AsciiParser:
                     flag_group = False
                     flag_preset = False
                     flag_inde = False
-                    flag_template = False
                     flag_master = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
                 # Only 20 Masters per pages
@@ -579,7 +452,6 @@ class AsciiParser:
                 flag_master = False
                 flag_preset = False
                 flag_group = False
-                flag_template = False
                 flag_inde = True
                 channels = array.array("B", [0] * MAX_CHANNELS)
                 text = ""

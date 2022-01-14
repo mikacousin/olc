@@ -104,7 +104,7 @@ class SettingsDialog:
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
     def _update_ui_percent(self, _widget, state):
-        """ Change levels view (0-100) or (0-255) """
+        """Change levels view (0-100) or (0-255)"""
         App().settings.set_value("percent", GLib.Variant("b", state))
 
         # Force redraw of main window

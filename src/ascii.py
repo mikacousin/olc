@@ -66,47 +66,8 @@ class Ascii:
             cue = Cue(0, 0.0)
             step = Step(1, cue=cue)
             App().sequence.add_step(step)
-            # Devices at home in step 0
-            devices = {}
-            for channel, device in App().patch.devices.items():
-                parameters = {}
-                for param in device.template.parameters.values():
-                    number = param.number
-                    high_byte = param.offset.get("High Byte")
-                    low_byte = param.offset.get("Low Byte")
-                    value = param.default
-                    parameters[number] = {
-                        "high byte": high_byte,
-                        "low byte": low_byte,
-                        "value": value,
-                    }
-                devices[channel + 1] = parameters
-            App().sequence.steps[0].cue.devices = devices
             # Position main playback at start
             App().sequence.position = 0
-            # Send DMX values
-            for channel in range(MAX_CHANNELS):
-                for i in App().patch.channels[channel]:
-                    output = i[0]
-                    # Devices parameters
-                    params = App().sequence.steps[0].cue.devices.get(channel + 1)
-                    if params:
-                        device_number = abs(output)
-                        device = App().patch.devices[device_number]
-                        out = device.output - 1
-                        for param_value in params.values():
-                            high_byte = param_value.get("high byte")
-                            low_byte = param_value.get("low byte")
-                            value = param_value.get("value")
-                            high = (value >> 8) & 0xFF
-                            low = value & 0xFF
-                            App().dmx.devices[out + high_byte] = high
-                            if low_byte:
-                                App().dmx.devices[out + low_byte] = low
-                    # Intensity
-                    if output:
-                        level = App().sequence.steps[0].cue.channels[channel]
-                        App().dmx.sequence[channel] = level
             # Update display informations
             self._update_ui()
         except GObject.GError as e:

@@ -104,7 +104,7 @@ class IndependentsTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
+        """Close Tab on close clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)

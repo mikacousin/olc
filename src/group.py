@@ -75,7 +75,7 @@ class GroupTab(Gtk.Paned):
         self.scrolled2.add(self.flowbox2)
 
     def filter_channels(self, child, _user_data):
-        """ Pour n'afficher que les channels du groupe """
+        """Pour n'afficher que les channels du groupe"""
         i = child.get_index()  # Numéro du widget qu'on filtre (channel - 1)
         # On cherche le groupe actuellement séléctionné
         for j, _ in enumerate(self.grps):
@@ -93,7 +93,7 @@ class GroupTab(Gtk.Paned):
         return child
 
     def on_close_icon(self, _widget):
-        """ Close Tab with the icon clicked """
+        """Close Tab with the icon clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)
@@ -136,13 +136,13 @@ class GroupTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().group_tab = None
 
     def _keypress_Right(self):
-        """ Next Group """
+        """Next Group"""
 
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
@@ -167,7 +167,7 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = str(int(self.last_group_selected) + 1)
 
     def _keypress_Left(self):
-        """ Previous Group """
+        """Previous Group"""
 
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
@@ -192,7 +192,7 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = str(int(self.last_group_selected) - 1)
 
     def _keypress_Down(self):
-        """ Group on Next Line """
+        """Group on Next Line"""
 
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
@@ -224,7 +224,7 @@ class GroupTab(Gtk.Paned):
                 self.last_group_selected = str(index)
 
     def _keypress_Up(self):
-        """ Group on Previous Line """
+        """Group on Previous Line"""
 
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
@@ -256,7 +256,7 @@ class GroupTab(Gtk.Paned):
                 self.last_group_selected = str(index)
 
     def _keypress_g(self):
-        """ Select Group """
+        """Select Group"""
 
         self.flowbox2.unselect_all()
 
@@ -282,7 +282,7 @@ class GroupTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_a(self):
-        """ All Channels """
+        """All Channels"""
 
         self.flowbox1.unselect_all()
 
@@ -303,7 +303,7 @@ class GroupTab(Gtk.Paned):
                         self.flowbox1.select_child(child)
 
     def _keypress_c(self):
-        """ Channel """
+        """Channel"""
 
         self.flowbox1.unselect_all()
         for channel in range(MAX_CHANNELS):
@@ -331,7 +331,7 @@ class GroupTab(Gtk.Paned):
         self._keypress_greater()
 
     def _keypress_greater(self):
-        """ Channel Thru """
+        """Channel Thru"""
 
         sel = self.flowbox1.get_selected_children()
         if len(sel) == 1:
@@ -370,7 +370,7 @@ class GroupTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_plus(self):
-        """ Channel + """
+        """Channel +"""
 
         if self.keystring == "":
             return
@@ -392,7 +392,7 @@ class GroupTab(Gtk.Paned):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
-        """ Channel - """
+        """Channel -"""
 
         if self.keystring == "":
             return
@@ -415,7 +415,7 @@ class GroupTab(Gtk.Paned):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_equal(self):
-        """ @ Level """
+        """@ Level"""
 
         if self.keystring == "":
             return
@@ -452,7 +452,7 @@ class GroupTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
-        """ Level - % """
+        """Level - %"""
         lvl = App().settings.get_int("percent-level")
 
         sel2 = self.flowbox2.get_selected_children()
@@ -479,7 +479,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
 
     def _keypress_exclam(self):
-        """ Level + % """
+        """Level + %"""
         lvl = App().settings.get_int("percent-level")
 
         sel2 = self.flowbox2.get_selected_children()
@@ -505,7 +505,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.invalidate_filter()
 
     def _keypress_N(self):
-        """ New Group """
+        """New Group"""
         # If no group number, use the next one
         if self.keystring == "":
             group_nb = 1 if len(App().groups) == 0 else App().groups[-1].index + 1

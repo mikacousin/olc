@@ -15,7 +15,6 @@ class Cue:
         memory (float): cue's number
         channels (array): channels's levels
         text (str): cue's text
-        devices (dict): dict of channel: parameters
     """
 
     def __init__(
@@ -24,17 +23,12 @@ class Cue:
         memory,
         channels=array.array("B", [0] * MAX_CHANNELS),
         text="",
-        devices=None,
     ):
 
         self.sequence = sequence
         self.memory = memory
         self.channels = channels
         self.text = text
-        if not devices:
-            self.devices = {}
-        else:
-            self.devices = devices
 
     def set_level(self, channel, level):
         """Set level of a channel.

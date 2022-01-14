@@ -151,7 +151,7 @@ class MastersTab(Gtk.Paned):
         return True
 
     def filter_channel_func(self, child, _user_data):
-        """ Filter channels """
+        """Filter channels"""
         # Find selected row
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -240,7 +240,7 @@ class MastersTab(Gtk.Paned):
         return False
 
     def on_master_changed(self, _treeview):
-        """ New master is selected """
+        """New master is selected"""
         self.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         for channel in range(MAX_CHANNELS):
@@ -342,7 +342,7 @@ class MastersTab(Gtk.Paned):
                 App().virtual_console.flashes[index].queue_draw()
 
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
+        """Close Tab on close clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)
@@ -387,7 +387,7 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().masters_tab = None
@@ -397,7 +397,7 @@ class MastersTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
-        """ Channel """
+        """Channel"""
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -441,7 +441,7 @@ class MastersTab(Gtk.Paned):
         self._keypress_greater()
 
     def _keypress_greater(self):
-        """ Channel Thru """
+        """Channel Thru"""
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -486,7 +486,7 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_plus(self):
-        """ Channel + """
+        """Channel +"""
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -521,7 +521,7 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_minus(self):
-        """ Channel - """
+        """Channel -"""
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -556,7 +556,7 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_a(self):
-        """ All Channels """
+        """All Channels"""
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -604,7 +604,7 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_equal(self):
-        """ @ level """
+        """@ level"""
 
         level = int(self.keystring)
 
@@ -629,7 +629,7 @@ class MastersTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
-        """ Level - % """
+        """Level - %"""
 
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
@@ -654,7 +654,7 @@ class MastersTab(Gtk.Paned):
                 self.user_channels[channel] = level
 
     def _keypress_exclam(self):
-        """ Level + % """
+        """Level + %"""
 
         lvl = App().settings.get_int("percent-level")
         percent = App().settings.get_boolean("percent")
@@ -682,7 +682,7 @@ class MastersTab(Gtk.Paned):
         self._keypress_R()
 
     def _keypress_R(self):
-        """ Record Master """
+        """Record Master"""
 
         self.flowbox.unselect_all()
 

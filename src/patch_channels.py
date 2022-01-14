@@ -41,7 +41,7 @@ class PatchChannelsTab(Gtk.Box):
         self.last_chan_selected = "0"
 
     def on_close_icon(self, _widget):
-        """ Close Tab on close clicked """
+        """Close Tab on close clicked"""
         page = App().window.playback.page_num(self)
         App().window.playback.remove_page(page)
         App().patch_channels_tab = None
@@ -84,7 +84,7 @@ class PatchChannelsTab(Gtk.Box):
         return False
 
     def _keypress_Escape(self):
-        """ Close Tab """
+        """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().patch_channels_tab = None
@@ -94,7 +94,7 @@ class PatchChannelsTab(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Down(self):
-        """ Select Next Channel """
+        """Select Next Channel"""
 
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -112,7 +112,7 @@ class PatchChannelsTab(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_Up(self):
-        """ Select Previous Channel """
+        """Select Previous Channel"""
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
             App().window.set_focus(child)
@@ -129,7 +129,7 @@ class PatchChannelsTab(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
-        """ Select Channel """
+        """Select Channel"""
         self.flowbox.unselect_all()
 
         if self.keystring != "":
@@ -181,7 +181,7 @@ class PatchChannelsTab(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_m(self):
-        """ Modify Output """
+        """Modify Output"""
         several = False
         sel = self.flowbox.get_selected_children()
         if len(sel) > 1:
@@ -263,7 +263,7 @@ class PatchChannelsTab(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_i(self):
-        """ Insert Output """
+        """Insert Output"""
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:
@@ -313,7 +313,7 @@ class PatchChannelsTab(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_r(self):
-        """ Remove Output """
+        """Remove Output"""
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:
