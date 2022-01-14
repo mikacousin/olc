@@ -24,7 +24,11 @@ class PatchWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, event):
-        """Widget clicked"""
+        """Widget clicked
+
+        Args:
+            event: Gdk.Event
+        """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Thru
@@ -54,7 +58,11 @@ class PatchWidget(Gtk.Widget):
             App().patch_outputs_tab.last_out_selected = str(self.output - 1)
 
     def do_draw(self, cr):
-        """Draw widget"""
+        """Draw widget
+
+        Args:
+            cr: Cairo context
+        """
         self.width = 50 * self.scale
         self.set_size_request(self.width, self.width)
         allocation = self.get_allocation()
@@ -70,7 +78,12 @@ class PatchWidget(Gtk.Widget):
         self._draw_proportional_level(cr, allocation)
 
     def _draw_background(self, cr, allocation):
-        """Draw background"""
+        """Draw background
+
+        Args:
+            cr: Cairo context
+            allocation: Widget's allocation
+        """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
         # Dimmer
         if (
@@ -97,7 +110,12 @@ class PatchWidget(Gtk.Widget):
                 rounded_rectangle_fill(cr, area, 10)
 
     def _draw_output_number(self, cr, allocation):
-        """Draw Output number"""
+        """Draw Output number
+
+        Args:
+            cr: Cairo context
+            allocation: Widget alocation
+        """
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
@@ -109,7 +127,12 @@ class PatchWidget(Gtk.Widget):
         cr.show_text(text)
 
     def _draw_channel_number(self, cr, allocation):
-        """Draw Channel number"""
+        """Draw Channel number
+
+        Args:
+            cr: Cairo context
+            allocation: Widget allocation
+        """
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
@@ -124,7 +147,12 @@ class PatchWidget(Gtk.Widget):
             cr.show_text(text)
 
     def _draw_output_level(self, cr, allocation):
-        """Draw Output level"""
+        """Draw Output level
+
+        Args:
+            cr: Cairo context
+            allocation: Widget allocation
+        """
         if App().dmx.frame[self.universe][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
@@ -138,7 +166,12 @@ class PatchWidget(Gtk.Widget):
             cr.show_text(text)
 
     def _draw_proportional_level(self, cr, allocation):
-        """Draw Proportional Level"""
+        """Draw Proportional Level
+
+        Args:
+            cr: Cairo context
+            allocation: Widget allocation
+        """
         if (
             App().patch.outputs[self.universe][self.output - 1][1] == 100
             or App().patch.outputs[self.universe][self.output - 1][0] == 0

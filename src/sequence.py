@@ -11,7 +11,12 @@ from olc.step import Step
 
 
 def update_ui(position, subtitle):
-    """Update UI when Step is in scene"""
+    """Update UI when Step is in scene
+
+    Args:
+        position: Step
+        subtitle: Memories number in headerbar
+    """
     # Update Sequential Tab
     App().window.playback.update_active_cues_display()
     App().window.playback.grid.queue_draw()
@@ -31,7 +36,11 @@ def update_ui(position, subtitle):
 
 
 def update_channels(position):
-    """Update levels of main window channels"""
+    """Update levels of main window channels
+
+    Args:
+        position: Step
+    """
     for channel in range(MAX_CHANNELS):
         level = App().sequence.steps[position].cue.channels[channel]
         if (
@@ -76,7 +85,11 @@ class Sequence:
         self.add_step(step)
 
     def add_step(self, step):
-        """Add step at the end"""
+        """Add step at the end
+
+        Args:
+            step: Step number
+        """
         self.steps.append(step)
         self.last = len(self.steps)
         # Channels used in sequential
@@ -85,7 +98,12 @@ class Sequence:
                 self.channels[channel] = 1
 
     def insert_step(self, index, step):
-        """Insert step at index"""
+        """Insert step at index
+
+        Args:
+            index: Index
+            step: Step
+        """
         self.steps.insert(index, step)
         self.last = len(self.steps)
         # Channels used in sequential
@@ -99,7 +117,7 @@ class Sequence:
         Args:
             cue (float): Cue number
 
-        Return:
+        Returns:
             found (bool), step (int)
         """
         found = False
@@ -131,7 +149,7 @@ class Sequence:
         Args:
             step (int): Actual Cue's Step number
 
-        Return:
+        Returns:
             cue (float)
         """
         mem = 1.0  # Default first cue number
@@ -280,7 +298,11 @@ class Sequence:
             update_channels(position)
 
     def goto(self, keystring):
-        """Jump to cue number"""
+        """Jump to cue number
+
+        Args:
+            keystring (str): Memory number
+        """
         old_pos = self.position
 
         if not keystring:
@@ -326,7 +348,11 @@ class Sequence:
                 break
 
     def do_go(self, _action, goto):
-        """Go"""
+        """Go
+
+        Args:
+            goto:  True if Goto, False if Go
+        """
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.on_go and self.thread:
             # Stop actual Thread
@@ -390,7 +416,11 @@ class Sequence:
             self.thread.start()
 
     def go_back(self, _action, _param):
-        """Go Back"""
+        """Go Back
+
+        Returns:
+            True or False
+        """
         # Just return if we are at the beginning
         position = self.position
         if position == 0:
@@ -504,7 +534,11 @@ class ThreadGo(threading.Thread):
         self._stopevent.set()
 
     def update_levels(self, i):
-        """Update levels"""
+        """Update levels
+
+        Args:
+            i: Time spent
+        """
         # Update sliders position
         App().window.playback.sequential.position_a = (
             (App().window.playback.sequential.get_allocation().width - 32)
@@ -528,7 +562,11 @@ class ThreadGo(threading.Thread):
                 self._do_go(i)
 
     def _do_goto(self, i):
-        """Goto"""
+        """Goto
+
+        Args:
+            i: Time spent
+        """
         for channel in range(MAX_CHANNELS):
             for chan in App().patch.channels[channel]:
                 output = chan[0]
@@ -549,7 +587,11 @@ class ThreadGo(threading.Thread):
                     self._set_level(channel, i, old_level, next_level)
 
     def _do_go(self, i):
-        """Go"""
+        """Go
+
+        Args:
+            i: Time spent
+        """
         for channel in range(MAX_CHANNELS):
             for chan in App().patch.channels[channel]:
                 output = chan[0]
@@ -571,7 +613,14 @@ class ThreadGo(threading.Thread):
                     self._set_level(channel, i, old_level, next_level)
 
     def _set_level(self, channel, i, old_level, next_level):
-        """Get level"""
+        """Get level
+
+        Args:
+            channel: Channel number
+            i: Time spent
+            old_level: Old level
+            next_level: Next level
+        """
         channel_time = App().sequence.steps[App().sequence.position + 1].channel_time
         if channel + 1 in channel_time:
             # Channel is in a channel time
@@ -584,7 +633,16 @@ class ThreadGo(threading.Thread):
         App().dmx.sequence[channel] = level
 
     def _channel_level(self, i, old_level, next_level):
-        """Return channel level"""
+        """Return channel level
+
+        Args:
+            i: Time spent
+            old_level: Old level
+            next_level: Next level
+
+        Returns:
+            channel level
+        """
         # If level increases, use Time In
         if (
             next_level > old_level
@@ -620,7 +678,17 @@ class ThreadGo(threading.Thread):
         return level
 
     def _channel_time_level(self, i, channel_time, old_level, next_level):
-        """Return channel level if in channel time"""
+        """Return channel level if in channel time
+
+        Args:
+            i: Time spent
+            channel_time: Channel time
+            old_level: Old level
+            next_level: Next level
+
+        Returns:
+            Channel level
+        """
         ct_delay = channel_time.delay * 1000
         ct_time = channel_time.time * 1000
         if next_level > old_level:
@@ -652,7 +720,11 @@ class ThreadGo(threading.Thread):
 
 
 def _next_step():
-    """Next Step after Go"""
+    """Next Step after Go
+
+    Returns:
+        Step
+    """
     next_step = App().sequence.position + 1
     # If there is a next step
     if next_step < App().sequence.last - 1:
@@ -783,7 +855,13 @@ class ThreadGoBack(threading.Thread):
         self._stopevent.set()
 
     def update_levels(self, go_back_time, i, position):
-        """Update levels"""
+        """Update levels
+
+        Args:
+            go_back_time: Default GoBack time
+            i: Time spent
+            position: Step
+        """
         # Update sliders position
         allocation = App().window.playback.sequential.get_allocation()
         App().window.playback.sequential.position_a = (
@@ -810,7 +888,17 @@ class ThreadGoBack(threading.Thread):
                     App().dmx.sequence[channel - 1] = level
 
     def _channel_level(self, i, old_level, next_level, go_back_time):
-        """Return channel level"""
+        """Return channel level
+
+        Args:
+            i: Time spent
+            old_level: Old level
+            next_level: Next level
+            go_back_time: Default GoBack time
+
+        Returns:
+            Channel level
+        """
         if next_level > old_level:
             level = round(((next_level - old_level) / go_back_time) * i) + old_level
         elif next_level < old_level:

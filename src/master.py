@@ -67,7 +67,11 @@ class Master:
             print("Master Type : Unknown")
 
     def set_level(self, value):
-        """Set master level"""
+        """Set master level
+
+        Args:
+            value: New level
+        """
         self.value = value
         self.level_changed()
 
@@ -197,7 +201,14 @@ class ThreadChaser(threading.Thread):
         self._stopevent.set()
 
     def update_levels(self, delay_in, delay_out, i, position):
-        """Update levels every 50ms"""
+        """Update levels every 50ms
+
+        Args:
+            delay_in: Time In
+            delay_out: Time Out
+            i: Time spent
+            position: Step
+        """
         for universe in range(NB_UNIVERSES):
             for output in range(512):
                 channel = App().patch.outputs[universe][output][0]

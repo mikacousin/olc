@@ -42,7 +42,11 @@ class FaderWidget(Gtk.Scale):
         self.emit("clicked")
 
     def do_draw(self, cr):
-        """Draw Fader"""
+        """Draw Fader
+
+        Args:
+            cr: Cairo context
+        """
         allocation = self.get_allocation()
         width = allocation.width
         height = allocation.height

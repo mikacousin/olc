@@ -7,7 +7,11 @@ from olc.zoom import zoom
 
 
 def on_page_added(notebook, _child, _page_num):
-    """Get focus"""
+    """Get focus
+
+    Args:
+        notebook: Gtk Notebook
+    """
     notebook.grab_focus()
 
 
@@ -50,7 +54,14 @@ class ChannelsView(Gtk.Notebook):
         self.flowbox.connect("scroll-event", zoom)
 
     def filter_func(self, child, _user_data):
-        """Filter for channels window"""
+        """Filter for channels window
+
+        Args:
+            child: Child object
+
+        Returns:
+            True, child or False
+        """
         if self.view_type == 0:
             # Display only patched channels
             i = child.get_index()
@@ -63,7 +74,15 @@ class ChannelsView(Gtk.Notebook):
             return True
 
     def on_key_press_event(self, widget, event):
-        """On key press event"""
+        """On key press event
+
+        Args:
+            widget: Gtk Widget
+            event: Gdk.EventKey
+
+        Returns:
+            function() to handle keys pressed
+        """
         # Find open page in notebook to send keyboard events
         page = self.get_current_page()
         child = self.get_nth_page(page)

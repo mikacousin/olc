@@ -416,12 +416,21 @@ class VirtualConsoleWindow(Gtk.Window):
         self.connect("key_press_event", App().window.channels_view.on_key_press_event)
 
     def close(self, _widget, _param):
-        """Mark Window as closed"""
+        """Mark Window as closed
+
+        Returns:
+            False
+        """
         App().virtual_console = None
         return False
 
     def on_button_toggled(self, button, name):
-        """MIDI learn On / Off"""
+        """MIDI learn On / Off
+
+        Args:
+            button: Button clicked
+            name: Name of the button
+        """
         if button.get_active() and name == "MIDI":
             self.midi_learn = True
             App().midi.midi_learn = " "
@@ -782,7 +791,11 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
 
     def flash_on(self, widget, _event):
-        """Flash button pressed"""
+        """Flash button pressed
+
+        Args:
+            widget: Button clicked
+        """
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
@@ -792,7 +805,11 @@ class VirtualConsoleWindow(Gtk.Window):
                     App().masters[i].set_level(255)
 
     def flash_off(self, widget, _event):
-        """Flash button released"""
+        """Flash button released
+
+        Args:
+            widget: Button clicked
+        """
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
@@ -801,7 +818,11 @@ class VirtualConsoleWindow(Gtk.Window):
                     App().masters[i].set_level(App().masters[i].old_value)
 
     def on_flash(self, widget):
-        """Flash button clicked"""
+        """Flash button clicked
+
+        Args:
+            widget: Button clicked
+        """
         if self.midi_learn:
             index = self.flashes.index(widget) + 1
             text = "flash_" + str(index)
@@ -809,7 +830,11 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
 
     def master_moved(self, master):
-        """Fader moved"""
+        """Fader moved
+
+        Args:
+            master: FaderWidget
+        """
         if self.midi_learn:
             index = self.masters.index(master) + 1
             text = "master_" + str(index)
@@ -821,7 +846,11 @@ class VirtualConsoleWindow(Gtk.Window):
             App().masters[index].set_level(value)
 
     def master_clicked(self, master):
-        """Fader clicked"""
+        """Fader clicked
+
+        Args:
+            master: FaderWidget
+        """
         if self.midi_learn:
             index = self.masters.index(master) + 1
             text = "master_" + str(index)
@@ -829,7 +858,11 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
 
     def scale_moved(self, scale):
-        """Crossfade moved"""
+        """Crossfade moved
+
+        Args:
+            scale (FaderWidget): xfade fader
+        """
         if self.midi_learn:
             if scale == self.scale_a:
                 App().midi.midi_learn = "crossfade_out"
@@ -866,7 +899,11 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.scale_b.emit("button-release-event", event)
 
     def scale_clicked(self, scale):
-        """Crossfade or Grand Master clicked"""
+        """Crossfade or Grand Master clicked
+
+        Args:
+            scale: FaderWidget
+        """
         if self.midi_learn:
             if scale == self.scale_a:
                 App().midi.midi_learn = "crossfade_out"
@@ -877,7 +914,11 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
 
     def grand_master_moved(self, scale):
-        """Grand Master moved"""
+        """Grand Master moved
+
+        Args:
+            scale: GM FaderWidget
+        """
         if self.midi_learn:
             App().midi.midi_learn = "gm"
             self.queue_draw()
@@ -888,7 +929,11 @@ class VirtualConsoleWindow(Gtk.Window):
             App().window.grand_master.queue_draw()
 
     def controller_clicked(self, widget):
-        """Controller clicked"""
+        """Controller clicked
+
+        Args:
+            widget: Object clicked
+        """
         if self.midi_learn and widget == self.wheel:
             App().midi.midi_learn = "wheel"
         self.queue_draw()
@@ -897,7 +942,6 @@ class VirtualConsoleWindow(Gtk.Window):
         """Wheel for channels level
 
         Args:
-            widget:
             direction (Gdk.ScrollDirection): Up or down
             step (int): increment or decrement step size
         """
@@ -919,7 +963,11 @@ class VirtualConsoleWindow(Gtk.Window):
                         App().dmx.user[channel] = max(level - step, 0)
 
     def inde_clicked(self, widget):
-        """Independent clicked"""
+        """Independent clicked
+
+        Args:
+            widget: Object clicked
+        """
         if self.midi_learn:
             if widget == self.independent1:
                 App().midi.midi_learn = "inde_1"
@@ -963,7 +1011,11 @@ class VirtualConsoleWindow(Gtk.Window):
                     App().independents.independents[8].update_dmx()
 
     def inde_changed(self, widget):
-        """Independent value changed"""
+        """Independent value changed
+
+        Args:
+            widget: Object changed
+        """
         if self.midi_learn:
             return
         if widget == self.independent1:

@@ -78,7 +78,14 @@ class Independents:
             self.add(Independent(i + 1, inde_type="button"))
 
     def add(self, independent):
-        """Add an independent"""
+        """Add an independent
+
+        Args:
+            independent: Independent object
+
+        Returns:
+            True or False
+        """
         number = independent.number
         for inde in self.independents:
             if inde.number == number:
@@ -89,7 +96,11 @@ class Independents:
         return True
 
     def update(self, independent):
-        """Update independent"""
+        """Update independent
+
+        Args:
+            independent: Independent object
+        """
         number = independent.number
         text = independent.text
         levels = independent.levels
@@ -98,7 +109,10 @@ class Independents:
         self.update_channels()
 
     def get_channels(self):
-        """Returns: (set) channels presents in all independent"""
+        """
+        Returns:
+            (set) channels presents in all independent
+        """
         return self.channels
 
     def update_channels(self):

@@ -274,7 +274,14 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def filter_channels(self, child, _user_data):
-        """Filter Channels"""
+        """Filter Channels
+
+        Args:
+            child: Gtk.Widget
+
+        Returns:
+            Gtk.Widget or False
+        """
 
         # Find selected Channel Time
         path, _focus_column = self.treeview.get_cursor()

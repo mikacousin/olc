@@ -158,7 +158,12 @@ class SequenceTab(Gtk.Grid):
         self.treeview1.set_cursor(path, None, False)
 
     def on_row_activated(self, _treeview, path, column):
-        """Open Channel Time Edition if double clicked"""
+        """Open Channel Time Edition if double clicked
+
+        Args:
+            path: Gtk.TreePath
+            column: Column number
+        """
         # Find double clicked cell
         columns = self.treeview2.get_columns()
         col_nb = 0
@@ -184,7 +189,12 @@ class SequenceTab(Gtk.Grid):
             App().channeltime(seq, step)
 
     def wait_edited(self, _widget, path, text):
-        """Edit Wait"""
+        """Edit Wait
+
+        Args:
+            path: Gtk.TreePath
+            text: string
+        """
         if text == "":
             text = "0"
 
@@ -254,7 +264,12 @@ class SequenceTab(Gtk.Grid):
                     App().window.playback.sequential.queue_draw()
 
     def out_edited(self, _widget, path, text):
-        """Time Out edited"""
+        """Time Out edited
+
+        Args:
+            path: Gtk.TreePath
+            text: string
+        """
         if not text.replace(".", "", 1).isdigit():
 
             return
@@ -320,7 +335,12 @@ class SequenceTab(Gtk.Grid):
                 App().window.playback.sequential.queue_draw()
 
     def in_edited(self, _widget, path, text):
-        """Time in edited"""
+        """Time in edited
+
+        Args:
+            path: Gtk.TreePath
+            text: string
+        """
         if not text.replace(".", "", 1).isdigit():
 
             return
@@ -386,7 +406,12 @@ class SequenceTab(Gtk.Grid):
                 App().window.playback.sequential.queue_draw()
 
     def delay_out_edited(self, _widget, path, text):
-        """Delay Out edited"""
+        """Delay Out edited
+
+        Args:
+            path: Gtk.TreePath
+            text: string
+        """
         if text == "":
             text = "0"
 
@@ -457,7 +482,12 @@ class SequenceTab(Gtk.Grid):
                     App().window.playback.sequential.queue_draw()
 
     def delay_in_edited(self, _widget, path, text):
-        """Delay In edited"""
+        """Delay In edited
+
+        Args:
+            path: Gtk.TreePath
+            text: string
+        """
         if text == "":
             text = "0"
 
@@ -528,7 +558,12 @@ class SequenceTab(Gtk.Grid):
                     App().window.playback.sequential.queue_draw()
 
     def text_edited(self, _widget, path, text):
-        """Step's Text edited"""
+        """Step's Text edited
+
+        Args:
+            path: Gtk.TreePath
+            text: string
+        """
         self.liststore2[path][2] = text
 
         # Find selected sequence
@@ -592,7 +627,15 @@ class SequenceTab(Gtk.Grid):
         self.flowbox.invalidate_filter()
 
     def filter_func(self, child, _user_data):
-        """Filter channels"""
+        """Filter channels
+
+        Args:
+            child: Child object
+
+
+        Returns:
+            child or False
+        """
         # Find selected sequence
         path, _focus_column = self.treeview1.get_cursor()
         if path:
@@ -641,7 +684,11 @@ class SequenceTab(Gtk.Grid):
         return False
 
     def on_sequence_changed(self, selection):
-        """Select Sequence"""
+        """Select Sequence
+
+        Args:
+            selection: Object selected
+        """
         # Empty ListStore
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
 
@@ -668,8 +715,15 @@ class SequenceTab(Gtk.Grid):
         notebook.remove_page(page)
         App().sequences_tab = None
 
-    def on_key_press_event(self, widget, event):
-        """Receive keyboard event"""
+    def on_key_press_event(self, _widget, event):
+        """Receive keyboard event
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            function() or False
+        """
         # Hack to know if user is editing something
         widget = App().window.get_focus()
         if widget and widget.get_path().is_type(Gtk.Entry):
@@ -1147,7 +1201,11 @@ class SequenceTab(Gtk.Grid):
             dialog.destroy()
 
     def add_step_to_liststore(self, step):
-        """Add Step to the list"""
+        """Add Step to the list
+
+        Args:
+            step: Step
+        """
         wait = (
             str(int(self.seq.steps[step].wait))
             if self.seq.steps[step].wait.is_integer()
@@ -1198,7 +1256,11 @@ class SequenceTab(Gtk.Grid):
         )
 
     def populate_liststore(self, step):
-        """Populate liststore with steps"""
+        """Populate liststore with steps
+
+        Args:
+            step: Step
+        """
         # Liststore with infos from the sequence
         if self.seq == App().sequence:
             for i in range(self.seq.last)[1:-1]:
@@ -1213,7 +1275,11 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.set_cursor(path, None, False)
 
     def update_sequence_display(self, step):
-        """Update Sequence display"""
+        """Update Sequence display
+
+        Args:
+            step: Step
+        """
         self.add_step_to_liststore(step)
         # Update Main Playback
         if self.seq is App().sequence:

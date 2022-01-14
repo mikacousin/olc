@@ -22,7 +22,11 @@ class TrackChannelsHeader(Gtk.Widget):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
-        """Draw header"""
+        """Draw header
+
+        Args:
+            cr: Cairo context
+        """
         # Draw Step box
         area = (0, 60, 0, 60)
         cr.set_source_rgb(0.2, 0.3, 0.2)
@@ -127,7 +131,11 @@ class TrackChannelsWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, event):
-        """Widget clicked"""
+        """Widget clicked
+
+        Args:
+            event: Gdk.Event
+        """
         App().track_channels_tab.flowbox.unselect_all()
         child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
         App().window.set_focus(child)
@@ -138,7 +146,11 @@ class TrackChannelsWidget(Gtk.Widget):
             App().track_channels_tab.channel_selected = chan
 
     def do_draw(self, cr):
-        """Draw widget"""
+        """Draw widget
+
+        Args:
+            cr: Cairo context
+        """
         self.set_size_request(535 + (len(self.levels) * 65), self.height)
 
         # Draw Grey background if selected
@@ -157,7 +169,11 @@ class TrackChannelsWidget(Gtk.Widget):
         self._draw_level_boxes(cr)
 
     def _draw_step_box(self, cr):
-        """Draw Step box"""
+        """Draw Step box
+
+        Args:
+            cr: Cairo context
+        """
         # Draw box
         area = (0, 60, 0, 60)
         if self.get_parent().is_selected():
@@ -174,7 +190,11 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.show_text(str(self.step))
 
     def _draw_cue_box(self, cr):
-        """Draw cue box"""
+        """Draw cue box
+
+        Args:
+            cr: Cairo context
+        """
         # Draw box
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
@@ -192,7 +212,11 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.show_text(str(self.memory))
 
     def _draw_text_box(self, cr):
-        """Draw text box"""
+        """Draw text box
+
+        Args:
+            cr: Cairo context
+        """
         # Draw box
         cr.move_to(130, 0)
         area = (130, 530, 0, 60)
@@ -210,7 +234,11 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.show_text(self.text)
 
     def _draw_level_boxes(self, cr):
-        """Draw Level boxes"""
+        """Draw Level boxes
+
+        Args:
+            cr: Cairo context
+        """
         for i, lvl in enumerate(self.levels):
             # Draw boxes
             cr.move_to(535 + (i * 65), 0)

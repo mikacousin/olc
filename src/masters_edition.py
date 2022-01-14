@@ -151,7 +151,14 @@ class MastersTab(Gtk.Paned):
         return True
 
     def filter_channel_func(self, child, _user_data):
-        """Filter channels"""
+        """Filter channels
+
+        Args:
+            child: Child object
+
+        Returns:
+            child or False
+        """
         # Find selected row
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -397,7 +404,11 @@ class MastersTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_c(self):
-        """Channel"""
+        """Channel
+
+        Returns:
+            True or False
+        """
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -441,7 +452,11 @@ class MastersTab(Gtk.Paned):
         self._keypress_greater()
 
     def _keypress_greater(self):
-        """Channel Thru"""
+        """Channel Thru
+
+        Returns:
+            True or False
+        """
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -486,7 +501,11 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_plus(self):
-        """Channel +"""
+        """Channel +
+
+        Returns:
+            True or False
+        """
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -521,7 +540,11 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_minus(self):
-        """Channel -"""
+        """Channel -
+
+        Returns:
+            True or False
+        """
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -556,7 +579,11 @@ class MastersTab(Gtk.Paned):
         return False
 
     def _keypress_a(self):
-        """All Channels"""
+        """All Channels
+
+        Returns:
+            True or False
+        """
 
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
@@ -682,7 +709,11 @@ class MastersTab(Gtk.Paned):
         self._keypress_R()
 
     def _keypress_R(self):
-        """Record Master"""
+        """Record Master
+
+        Returns:
+            True or False
+        """
 
         self.flowbox.unselect_all()
 

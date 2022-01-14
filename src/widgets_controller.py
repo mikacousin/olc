@@ -50,7 +50,11 @@ class ControllerWidget(Gtk.DrawingArea):
         self.connect("motion-notify-event", self.on_motion)
 
     def on_press(self, _tgt, event):
-        """Mouse button pressed"""
+        """Mouse button pressed
+
+        Args:
+            event: Gdk.Event
+        """
         self.x1 = event.x
         self.y1 = event.y
         self.old_angle = math.radians(self.angle)
@@ -61,7 +65,11 @@ class ControllerWidget(Gtk.DrawingArea):
         self.emit("clicked")
 
     def on_motion(self, _tgt, event):
-        """Track mouse to rotate controller"""
+        """Track mouse to rotate controller
+
+        Args:
+            event: Gdk.Event
+        """
         # Center
         x0 = self.get_allocation().width / 2
         y0 = self.get_allocation().height / 2
@@ -90,7 +98,11 @@ class ControllerWidget(Gtk.DrawingArea):
             self.emit("moved", Gdk.ScrollDirection.DOWN, step)
 
     def on_scroll(self, _widget, event):
-        """On scroll wheel event"""
+        """On scroll wheel event
+
+        Args:
+            event: Gdk.Event
+        """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         step = 10
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
@@ -120,7 +132,11 @@ class ControllerWidget(Gtk.DrawingArea):
         self.queue_draw()
 
     def do_draw(self, cr):
-        """Draw Controller"""
+        """Draw Controller
+
+        Args:
+            cr: Cairo context
+        """
         scale = 2
         self.set_size_request(60 * scale, 60 * scale)
         width = self.get_allocation().width

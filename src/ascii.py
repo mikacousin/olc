@@ -23,8 +23,13 @@ from gi.repository import Gio, GObject, Gtk  # noqa: E402
 
 
 def get_time(string):
-    """String format : [[hours:]minutes:]seconds[.tenths]
-    Return time in seconds
+    """Convert a string time to float
+
+    Args:
+        string (str): format [[hours:]minutes:]seconds[.tenths]
+
+    Returns:
+        time in seconds
     """
     if ":" in string:
         tsplit = string.split(":")

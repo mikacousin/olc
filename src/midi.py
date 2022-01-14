@@ -13,20 +13,34 @@ class MidiFader:
         self.inverted = True
 
     def get_inverted(self):
-        """Return inverted status"""
+        """
+        Returns:
+            inverted status
+        """
         return self.inverted
 
     def set_inverted(self, inv):
-        """Set inverted status"""
+        """Set inverted status
+
+        Args:
+            inv: True or False
+        """
         if inv is False or inv is True:
             self.inverted = inv
 
     def get_value(self):
-        """Return fader's value"""
+        """
+        Returns:
+            Fader's value
+        """
         return self.value
 
     def set_value(self, value):
-        """Set fader's value"""
+        """Set fader's value
+
+        Args:
+            value: New value
+        """
         if 0 <= value < 128:
             self.value = value
 
@@ -182,7 +196,11 @@ class Midi:
         self.xfade_in = MidiFader()
 
     def open_input(self, ports):
-        """Open MIDI inputs"""
+        """Open MIDI inputs
+
+        Args:
+            ports: MIDI ports to open
+        """
         input_names = mido.get_input_names()
         for port in ports:
             if port in input_names:
@@ -201,6 +219,9 @@ class Midi:
     def scan(self, msg):
         """Scan MIDI messages.
         Executed with mido callback, in another thread
+
+        Args:
+            msg: MIDI message
         """
         # print(msg)
 
@@ -214,7 +235,11 @@ class Midi:
             self._scan_cc(msg)
 
     def _scan_notes(self, msg):
-        """Scan MIDI notes"""
+        """Scan MIDI notes
+
+        Args:
+            msg: MIDI message
+        """
         for key, value in self.midi_notes.items():
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
@@ -226,7 +251,11 @@ class Midi:
                     GLib.idle_add(globals()["_function_" + key], msg)
 
     def _scan_cc(self, msg):
-        """Scan MIDI control changes"""
+        """Scan MIDI control changes
+
+        Args:
+            msg: MIDI message
+        """
         for key, value in self.midi_cc.items():
             if msg.channel == value[0] and msg.control == value[1]:
                 if key[:7] == "master_":
@@ -240,7 +269,11 @@ class Midi:
                         GLib.idle_add(func, msg)
 
     def _function_wheel(self, msg):
-        """Wheel for channels level"""
+        """Wheel for channels level
+
+        Args:
+            msg: MIDI message
+        """
         val = msg.value
         if val > 64:
             direction = Gdk.ScrollDirection.UP
@@ -266,7 +299,11 @@ class Midi:
                             App().dmx.user[channel] = max(level - step, 0)
 
     def _function_gm(self, msg):
-        """Grand Master"""
+        """Grand Master
+
+        Args:
+            msg: MIDI message
+        """
         val = (msg.value / 127) * 255
         if App().virtual_console:
             App().virtual_console.scale_grand_master.set_value(val)
@@ -278,11 +315,19 @@ class Midi:
             App().window.grand_master.queue_draw()
 
     def _function_crossfade_out(self, msg):
-        """Crossfade Out"""
+        """Crossfade Out
+
+        Args:
+            msg: MIDI message
+        """
         self._xfade(self.xfade_out, msg.value)
 
     def _function_crossfade_in(self, msg):
-        """Crossfade Out"""
+        """Crossfade Out
+
+        Args:
+            msg: MIDI message
+        """
         self._xfade(self.xfade_in, msg.value)
 
     def _xfade(self, fader, value):
@@ -318,7 +363,11 @@ class Midi:
             self.xfade_in.set_value(0)
 
     def _learn(self, msg):
-        """Learn new MIDI control"""
+        """Learn new MIDI control
+
+        Args:
+            msg: MIDI message
+        """
         if self.midi_notes.get(self.midi_learn) and msg.type == "note_on":
             # MIDI notes:
             # Find if values are alreadu used
@@ -340,7 +389,12 @@ class Midi:
 
 
 def _function_master(msg, master_index):
-    """Masters"""
+    """Masters
+
+    Args:
+        msg: MIDI message
+        master_index: Master number
+    """
     val = (msg.value / 127) * 255
     if App().virtual_console:
         App().virtual_console.masters[master_index - 1].set_value(val)
@@ -358,7 +412,12 @@ def _function_master(msg, master_index):
 
 
 def _function_flash(msg, master_index):
-    """Flash Master"""
+    """Flash Master
+
+    Args:
+        msg: MIDI message
+        master_index: Master number
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -392,7 +451,12 @@ def _function_flash(msg, master_index):
 
 
 def _function_inde(msg, independent):
-    """Change independent knob level"""
+    """Change independent knob level
+
+    Args:
+        msg: MIDI message
+        independent: Independent number
+    """
     if App().virtual_console:
         val = (msg.value / 127) * 255
         if independent == 1:
@@ -422,7 +486,12 @@ def _function_inde(msg, independent):
 
 
 def _function_inde_button(msg, independent):
-    """Toggle independent button"""
+    """Toggle independent button
+
+    Args:
+        msg: MIDI message
+        independent: Independent number
+    """
     if msg.type == "note_off":
         if independent == 7:
             if App().virtual_console:
@@ -448,7 +517,11 @@ def _function_inde_button(msg, independent):
 
 
 def _function_go(msg):
-    """Go"""
+    """Go
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         # Go released
         if App().virtual_console:
@@ -465,7 +538,11 @@ def _function_go(msg):
 
 
 def _function_at(msg):
-    """At level"""
+    """At level
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -482,7 +559,11 @@ def _function_at(msg):
 
 
 def _function_percent_plus(msg):
-    """% +"""
+    """% +
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -499,7 +580,11 @@ def _function_percent_plus(msg):
 
 
 def _function_percent_minus(msg):
-    """% -"""
+    """% -
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -516,7 +601,11 @@ def _function_percent_minus(msg):
 
 
 def _function_time(msg):
-    """Time"""
+    """Time
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -532,7 +621,11 @@ def _function_time(msg):
 
 
 def _function_delay(msg):
-    """Delay"""
+    """Delay
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -548,7 +641,11 @@ def _function_delay(msg):
 
 
 def _function_ch(msg):
-    """Channel"""
+    """Channel
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -565,7 +662,11 @@ def _function_ch(msg):
 
 
 def _function_thru(msg):
-    """Thru"""
+    """Thru
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -582,7 +683,11 @@ def _function_thru(msg):
 
 
 def _function_plus(msg):
-    """Channel +"""
+    """Channel +
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -599,7 +704,11 @@ def _function_plus(msg):
 
 
 def _function_minus(msg):
-    """Channel -"""
+    """Channel -
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -616,7 +725,11 @@ def _function_minus(msg):
 
 
 def _function_all(msg):
-    """All Channels"""
+    """All Channels
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -633,7 +746,11 @@ def _function_all(msg):
 
 
 def _function_right(msg):
-    """Right"""
+    """Right
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -650,7 +767,11 @@ def _function_right(msg):
 
 
 def _function_left(msg):
-    """Left"""
+    """Left
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -667,7 +788,11 @@ def _function_left(msg):
 
 
 def _function_up(msg):
-    """Up"""
+    """Up
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -684,7 +809,11 @@ def _function_up(msg):
 
 
 def _function_down(msg):
-    """Down"""
+    """Down
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -701,7 +830,11 @@ def _function_down(msg):
 
 
 def _function_clear(msg):
-    """Clear keyboard"""
+    """Clear keyboard
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -718,7 +851,11 @@ def _function_clear(msg):
 
 
 def _function_number_0(msg):
-    """0"""
+    """0
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -734,7 +871,11 @@ def _function_number_0(msg):
 
 
 def _function_number_1(msg):
-    """1"""
+    """1
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -750,7 +891,11 @@ def _function_number_1(msg):
 
 
 def _function_number_2(msg):
-    """2"""
+    """2
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -766,7 +911,11 @@ def _function_number_2(msg):
 
 
 def _function_number_3(msg):
-    """3"""
+    """3
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -782,7 +931,11 @@ def _function_number_3(msg):
 
 
 def _function_number_4(msg):
-    """4"""
+    """4
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -798,7 +951,11 @@ def _function_number_4(msg):
 
 
 def _function_number_5(msg):
-    """5"""
+    """5
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -814,7 +971,11 @@ def _function_number_5(msg):
 
 
 def _function_number_6(msg):
-    """6"""
+    """6
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -830,7 +991,11 @@ def _function_number_6(msg):
 
 
 def _function_number_7(msg):
-    """7"""
+    """7
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -846,7 +1011,11 @@ def _function_number_7(msg):
 
 
 def _function_number_8(msg):
-    """8"""
+    """8
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -862,7 +1031,11 @@ def _function_number_8(msg):
 
 
 def _function_number_9(msg):
-    """9"""
+    """9
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -878,7 +1051,11 @@ def _function_number_9(msg):
 
 
 def _function_dot(msg):
-    """Dot"""
+    """Dot
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -894,7 +1071,11 @@ def _function_dot(msg):
 
 
 def _function_go_back(msg):
-    """Go Back"""
+    """Go Back
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -909,7 +1090,11 @@ def _function_go_back(msg):
 
 
 def _function_goto(msg):
-    """Goto Cue"""
+    """Goto Cue
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -926,7 +1111,11 @@ def _function_goto(msg):
 
 
 def _function_seq_minus(msg):
-    """Seq -"""
+    """Seq -
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -943,7 +1132,11 @@ def _function_seq_minus(msg):
 
 
 def _function_seq_plus(msg):
-    """Seq +"""
+    """Seq +
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -960,7 +1153,11 @@ def _function_seq_plus(msg):
 
 
 def _function_output(msg):
-    """Output"""
+    """Output
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -975,7 +1172,11 @@ def _function_output(msg):
 
 
 def _function_seq(msg):
-    """Sequences"""
+    """Sequences
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -990,7 +1191,11 @@ def _function_seq(msg):
 
 
 def _function_group(msg):
-    """Groups"""
+    """Groups
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -1005,7 +1210,11 @@ def _function_group(msg):
 
 
 def _function_preset(msg):
-    """Presets"""
+    """Presets
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -1020,7 +1229,11 @@ def _function_preset(msg):
 
 
 def _function_track(msg):
-    """Track channels"""
+    """Track channels
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -1035,7 +1248,11 @@ def _function_track(msg):
 
 
 def _function_update(msg):
-    """Update Cue"""
+    """Update Cue
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
@@ -1052,7 +1269,11 @@ def _function_update(msg):
 
 
 def _function_record(msg):
-    """Record Cue"""
+    """Record Cue
+
+    Args:
+        msg: MIDI message
+    """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)

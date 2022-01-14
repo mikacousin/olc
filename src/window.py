@@ -90,13 +90,17 @@ class Window(Gtk.ApplicationWindow):
             self.fullscreen()
             self.full = True
 
-    def button_clicked_cb(self, button):
+    def button_clicked_cb(self, _button):
         """Toggle type of view : patched channels or all channels"""
         self.channels_view.view_type = 1 if self.channels_view.view_type == 0 else 0
         self.channels_view.flowbox.invalidate_filter()
 
     def update_channels_display(self, step):
-        """Update Channels levels display"""
+        """Update Channels levels display
+
+        Args:
+            step: Step
+        """
         for channel in range(MAX_CHANNELS):
             level = App().sequence.steps[step].cue.channels[channel]
             next_level = App().sequence.steps[step + 1].cue.channels[channel]
@@ -105,7 +109,14 @@ class Window(Gtk.ApplicationWindow):
             self.channels_view.channels[channel].queue_draw()
 
     def on_key_press_event(self, _widget, event):
-        """Executed on key press event"""
+        """Executed on key press event
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            function() or False
+        """
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):

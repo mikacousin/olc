@@ -75,7 +75,14 @@ class GroupTab(Gtk.Paned):
         self.scrolled2.add(self.flowbox2)
 
     def filter_channels(self, child, _user_data):
-        """Pour n'afficher que les channels du groupe"""
+        """Pour n'afficher que les channels du groupe
+
+        Args:
+            child: Child object
+
+        Returns:
+            child or False
+        """
         i = child.get_index()  # Numéro du widget qu'on filtre (channel - 1)
         # On cherche le groupe actuellement séléctionné
         for j, _ in enumerate(self.grps):

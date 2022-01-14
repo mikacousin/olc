@@ -38,7 +38,11 @@ class KnobWidget(Gtk.DrawingArea):
         self.connect("motion-notify-event", self.on_motion)
 
     def on_press(self, _tgt, event):
-        """Mouse button pressed"""
+        """Mouse button pressed
+
+        Args:
+            event: Gdk.Event
+        """
         self.x1 = event.x
         self.y1 = event.y
         self.old_value = self.value
@@ -49,7 +53,11 @@ class KnobWidget(Gtk.DrawingArea):
         self.emit("clicked")
 
     def on_motion(self, _tgt, event):
-        """Track mouse to rotate knob"""
+        """Track mouse to rotate knob
+
+        Args:
+            event: Gdk.Event
+        """
         x0 = self.get_allocation().width / 2
         y0 = self.get_allocation().height / 2
         x2 = event.x
@@ -78,11 +86,18 @@ class KnobWidget(Gtk.DrawingArea):
         self.queue_draw()
 
     def get_value(self):
-        """Return value (0-255)"""
+        """
+        Returns:
+            value (0-255)
+        """
         return self.value
 
     def on_scroll(self, _widget, event):
-        """On mouse wheel event"""
+        """On mouse wheel event
+
+        Args:
+            event: Gdk.Event
+        """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         step = 10
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
@@ -100,7 +115,11 @@ class KnobWidget(Gtk.DrawingArea):
         self.queue_draw()
 
     def do_draw(self, cr):
-        """Draw Knob"""
+        """Draw Knob
+
+        Args:
+            cr: Cairo context
+        """
         scale = 1.5
         self.set_size_request(34 * scale, 34 * scale)
         width = self.get_allocation().width

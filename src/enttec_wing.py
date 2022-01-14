@@ -23,8 +23,12 @@ class WingPlayback:
             0, self.fd, GLib.IOCondition.IN, self.incoming_connection_cb, None
         )
 
-    def incoming_connection_cb(self, fd, condition, data):
-        """Listen messages"""
+    def incoming_connection_cb(self, _fd, _condition, _data):
+        """Listen messages
+
+        Returns:
+            True
+        """
         message = self.sock.recv(1024)
         if message[0:4] == b"WODD":
             # print("Wing output data", message[0:4])
@@ -143,7 +147,12 @@ class WingPlayback:
 
 
 def _function_flash(pressed, master_index):
-    """Flash Master"""
+    """Flash Master
+
+    Args:
+        pressed: Button pressed or released
+        master_index: Master number
+    """
     if pressed:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)

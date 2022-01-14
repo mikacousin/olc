@@ -14,12 +14,20 @@ class Scale:
         self.moved = False
 
     def set_value(self, value):
-        """Set scale value"""
+        """Set scale value
+
+        Args:
+            value: int
+        """
         if 0 <= value < 256:
             self.value = value
 
     def get_value(self):
-        """Return scale value"""
+        """Return scale value
+
+        Returns:
+            int
+        """
         return self.value
 
 
@@ -33,7 +41,11 @@ class CrossFade:
         self.manual = False
 
     def scale_moved(self, scale):
-        """On moved"""
+        """On moved
+
+        Args:
+            scale: Scale object
+        """
         scale.moved = True
         level = scale.get_value()
 
@@ -133,7 +145,12 @@ class CrossFade:
             App().sequence.do_go(None, None)
 
     def update_slider(self, scale, level):
-        """Update sliders position"""
+        """Update sliders position
+
+        Args:
+            scale: Scale object
+            level: int
+        """
         total_time = App().sequence.steps[App().sequence.position + 1].total_time * 1000
         wait = App().sequence.steps[App().sequence.position + 1].wait * 1000
         position = (level / 255) * total_time
@@ -170,7 +187,15 @@ class CrossFade:
 
 
 def update_a(channel, old_level, next_level, wait, pos):
-    """Update channel level with A Slider"""
+    """Update channel level with A Slider
+
+    Args:
+        channel: Channel to update
+        old_level: Old level
+        next_level: Next level
+        wait: Wait value
+        pos: Position in xfade
+    """
     time_out = App().sequence.steps[App().sequence.position + 1].time_out * 1000
     delay_out = App().sequence.steps[App().sequence.position + 1].delay_out * 1000
     # Channel Time
@@ -210,6 +235,13 @@ def update_a(channel, old_level, next_level, wait, pos):
 def _update_a_channel_time(channel, old_level, next_level, wait, pos):
     """Update channel level in Channel Time
 
+    Args:
+        channel: Channel to update
+        old_level: Old level
+        next_level: Next level
+        wait: Wait value
+        pos: Position in xfade
+
     Returns:
         channel level or -1
     """
@@ -234,7 +266,15 @@ def _update_a_channel_time(channel, old_level, next_level, wait, pos):
 
 
 def update_b(channel, old_level, next_level, wait, pos):
-    """Update channel level with B Slider"""
+    """Update channel level with B Slider
+
+    Args:
+        channel: Channel to update
+        old_level: Old level
+        next_level: Next level
+        wait: Wait value
+        pos: Position in xfade
+    """
     lvl = -1
     time_in = App().sequence.steps[App().sequence.position + 1].time_in * 1000
     delay_in = App().sequence.steps[App().sequence.position + 1].delay_in * 1000
@@ -269,6 +309,13 @@ def update_b(channel, old_level, next_level, wait, pos):
 
 def _update_b_channel_time(channel, old_level, next_level, wait, pos):
     """Update channel level in Channel Time
+
+    Args:
+        channel: Channel to update
+        old_level: Old level
+        next_level: Next level
+        wait: Wait value
+        pos: Position in xfade
 
     Returns:
         channel level or -1

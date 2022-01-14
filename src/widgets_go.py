@@ -41,7 +41,11 @@ class GoWidget(Gtk.Widget):
         self.emit("clicked")
 
     def do_draw(self, cr):
-        """Draw Go button"""
+        """Draw Go button
+
+        Args:
+            cr: Cairo context
+        """
         # Draw rounded box
         if self.pressed:
             if App().midi.midi_learn == "go":

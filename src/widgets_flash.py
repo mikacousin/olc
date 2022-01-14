@@ -44,7 +44,11 @@ class FlashWidget(Gtk.Widget):
         self.emit("clicked")
 
     def do_draw(self, cr):
-        """Draw Flash button"""
+        """Draw Flash button
+
+        Args:
+            cr: Cairo context
+        """
         # Draw rounded box
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)

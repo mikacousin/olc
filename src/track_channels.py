@@ -68,7 +68,14 @@ class TrackChannelsTab(Gtk.Grid):
             self.flowbox.add(self.steps[step])
 
     def filter_func(self, child, _user_data):
-        """Step filter"""
+        """Step filter
+
+        Args:
+            child: Child object
+
+        Returns:
+            child or False
+        """
         if child == self.steps[0].get_parent():
             return child
         if len(self.steps) <= App().sequence.last - 1:
@@ -108,7 +115,14 @@ class TrackChannelsTab(Gtk.Grid):
         App().track_channels_tab = None
 
     def on_key_press_event(self, _widget, event):
-        """Keyboard events"""
+        """Keyboard events
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            function() or False
+        """
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 

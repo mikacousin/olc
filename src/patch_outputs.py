@@ -57,7 +57,11 @@ class PatchOutputsTab(Gtk.Box):
         self.flowbox.connect("scroll-event", zoom)
 
     def on_button_clicked(self, widget):
-        """On buttons clicked"""
+        """On buttons clicked
+
+        Args:
+            widget: Clicked button
+        """
         button_label = widget.get_label()
 
         if button_label == "Unpatch all":
@@ -88,7 +92,14 @@ class PatchOutputsTab(Gtk.Box):
         App().patch_outputs_tab = None
 
     def on_key_press_event(self, _widget, event):
-        """On key press event"""
+        """On key press event
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            function() or False
+        """
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 

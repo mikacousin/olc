@@ -31,7 +31,11 @@ class SequentialWidget(Gtk.Widget):
         self.set_size_request(800, 300)
 
     def do_draw(self, cr):
-        """Draw xfade widget"""
+        """Draw xfade widget
+
+        Args:
+            cr: Cairo context
+        """
         if self.time_in + self.delay_in > self.time_out + self.delay_out:
             time_max = self.time_in + self.delay_in
             time_min = self.time_out + self.delay_out

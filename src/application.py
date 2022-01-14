@@ -192,7 +192,8 @@ class Application(Gtk.Application):
     def _on_timeout(self, _user_data):
         """Executed every timeout
 
-        Return: True
+        Returns:
+            True
         """
         # Send DMX
         self.dmx.send()
@@ -218,7 +219,11 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.fullscreen", ["F11"])
 
     def setup_app_menu(self):
-        """Setup application menu, return Gio.Menu"""
+        """Setup application menu
+
+        Returns:
+            Gio.Menu
+        """
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
         menu = builder.get_object("app-menu")
@@ -249,7 +254,11 @@ class Application(Gtk.Application):
         return menu
 
     def on_fd_read(self, _fd, _condition, _data):
-        """Ola messages"""
+        """Ola messages
+
+        Returns:
+            True
+        """
         readable, _writable, _exceptional = select.select(
             [self.ola_thread.sock], [], [], 0
         )
@@ -258,7 +267,12 @@ class Application(Gtk.Application):
         return True
 
     def fetch_dmx(self, _request, univ, dmxframe):
-        """Fetch DMX"""
+        """Fetch DMX
+
+        Args:
+            univ: DMX universe
+            dmxframe: List of DMX data
+        """
         if not dmxframe:
             return
         self.ola_thread.old_frame[univ] = dmxframe
@@ -425,7 +439,12 @@ class Application(Gtk.Application):
         open_dialog.show()
 
     def _open_response_cb(self, dialog, response_id):
-        """Callback function for the dialog open_dialog"""
+        """Callback function for the dialog open_dialog
+
+        Args:
+            dialog: Gtk.Dialog
+            response_id: Gtk.ResponseType
+        """
         open_dialog = dialog
 
         # if response is "ACCEPT" (the button "Open" has been clicked)
@@ -446,12 +465,12 @@ class Application(Gtk.Application):
         # destroy the FileChooserDialog
         dialog.destroy()
 
-    def _save(self, action, parameter):
+    def _save(self, _action, _parameter):
         """Save"""
         if self.file is not None:
             self.ascii.save()
         else:
-            self._saveas(action, parameter)
+            self._saveas(_action, _parameter)
 
     def _saveas(self, _action, _parameter):
         """Save as"""
@@ -484,7 +503,12 @@ class Application(Gtk.Application):
         save_dialog.show()
 
     def _save_response_cb(self, dialog, response_id):
-        """Callback function for the dialog save_dialog"""
+        """Callback function for the dialog save_dialog
+
+        Args:
+            dialog: Gtk.Dialog
+            response_id: Gtk.ResponseType
+        """
         save_dialog = dialog
         # if response is "ACCEPT" (the button "Save" has been clicked)
         if response_id == Gtk.ResponseType.ACCEPT:
@@ -580,7 +604,7 @@ class Application(Gtk.Application):
 
         self.window.playback.grab_focus()
 
-    def memories_cb(self, action, parameter):
+    def memories_cb(self, _action, _parameter):
         """Create Memories Tab"""
         if self.memories_tab is None:
             self.memories_tab = CuesEditionTab()
@@ -606,7 +630,7 @@ class Application(Gtk.Application):
 
         self.window.playback.grab_focus()
 
-    def groups_cb(self, action, parameter):
+    def groups_cb(self, _action, _parameter):
         """Create Groups Tab"""
         if self.group_tab is None:
             self.group_tab = GroupTab()
@@ -659,7 +683,12 @@ class Application(Gtk.Application):
         self.window.playback.grab_focus()
 
     def channeltime(self, sequence, step):
-        """Create Channel Time Tab"""
+        """Create Channel Time Tab
+
+        Args:
+            sequence: Sequence number
+            step: Position in sequence
+        """
         if self.channeltime_tab is None:
             self.channeltime_tab = ChanneltimeTab(sequence, step)
 
@@ -772,8 +801,10 @@ class Application(Gtk.Application):
 
     def _about_response(self, dialog, _response):
         """Destroy about dialog when closed
-        @param dialog as Gtk.Dialog
-        @param response as int
+
+        Args:
+            dialog: Gtk.Dialog
+            _response: int
         """
         dialog.destroy()
         self.about_window = None

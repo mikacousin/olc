@@ -77,7 +77,14 @@ class CuesEditionTab(Gtk.Paned):
         self.flowbox.connect("scroll-event", zoom)
 
     def filter_channel_func(self, child, _user_data):
-        """Filter channels"""
+        """Filter channels
+
+        Args:
+            child: Child object
+
+        Returns:
+            child or False
+        """
         # If no Presets, just return
         if not App().memories:
             return False
@@ -468,7 +475,11 @@ class CuesEditionTab(Gtk.Paned):
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
     def _keypress_R(self):
-        """Records a copy of the current Memory with a new number"""
+        """Records a copy of the current Memory with a new number
+
+        Returns:
+            True or False
+        """
 
         if self.keystring != "":
             mem = float(self.keystring)
@@ -542,7 +553,11 @@ class CuesEditionTab(Gtk.Paned):
         return True
 
     def _keypress_Insert(self):
-        """Insert a new Memory"""
+        """Insert a new Memory
+
+        Returns:
+            True or False
+        """
 
         if self.keystring == "":
             # Insert memory with the next free number

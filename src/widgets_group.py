@@ -33,7 +33,11 @@ class GroupWidget(Gtk.Widget):
         App().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):
-        """Draw Group widget"""
+        """Draw Group widget
+
+        Args:
+            cr: Cairo context
+        """
         allocation = self.get_allocation()
 
         # paint background

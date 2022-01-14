@@ -136,7 +136,14 @@ class PatchDmx:
                 self.outputs[univ][output][0] = output + 1
 
     def add_output(self, channel, output, univ, level=100):
-        """Add an output to a channel"""
+        """Add an output to a channel
+
+        Args:
+            channel: Channel number
+            output: Dimmer number
+            univ: Universe number
+            level: Max level
+        """
         if self.channels[channel - 1] == [[0, 0]]:
             self.channels[channel - 1] = [[output, univ]]
         else:

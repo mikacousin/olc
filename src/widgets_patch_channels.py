@@ -23,7 +23,11 @@ class PatchChannelHeader(Gtk.Misc):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
-        """Draw Header widget"""
+        """Draw Header widget
+
+        Args:
+            cr: Cairo context
+        """
         # Draw channel box
         area = (3, 63, 0, self.height)
         cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -85,7 +89,11 @@ class PatchChannelWidget(Gtk.Widget):
         self.connect("touch-event", self.on_click)
 
     def on_click(self, _tgt, event):
-        """Widget clicked"""
+        """Widget clicked
+
+        Args:
+            event: Gdk.Event
+        """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Thru
@@ -101,7 +109,11 @@ class PatchChannelWidget(Gtk.Widget):
             App().patch_channels_tab.last_chan_selected = str(self.channel - 1)
 
     def do_draw(self, cr):
-        """Draw widget"""
+        """Draw widget
+
+        Args:
+            cr: Cairo context
+        """
         # Draw Grey background if selected
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.2, 0.2, 0.2)
@@ -125,7 +137,11 @@ class PatchChannelWidget(Gtk.Widget):
         self._draw_output_boxes(cr)
 
     def _draw_channel_number(self, cr):
-        """Draw Channel number"""
+        """Draw Channel number
+
+        Args:
+            cr: Cairo context
+        """
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
@@ -134,7 +150,11 @@ class PatchChannelWidget(Gtk.Widget):
         cr.show_text(str(self.channel))
 
     def _draw_output_boxes(self, cr):
-        """Draw outputs boxes"""
+        """Draw outputs boxes
+
+        Args:
+            cr: Cairo context
+        """
         nb_outputs = len(self.patch.channels[self.channel - 1])
 
         if nb_outputs <= 8:
@@ -144,7 +164,11 @@ class PatchChannelWidget(Gtk.Widget):
             self._draw_two_lines(cr)
 
     def _draw_one_line(self, cr):
-        """Draw Outputs on a single line"""
+        """Draw Outputs on a single line
+
+        Args:
+            cr: Cairo context
+        """
         for i, item in enumerate(self.patch.channels[self.channel - 1]):
             output = item[0]
             if output != 0:
@@ -172,7 +196,11 @@ class PatchChannelWidget(Gtk.Widget):
                 cr.show_text(str(output) + "." + str(univ))
 
     def _draw_two_lines(self, cr):
-        """Draw Outputs on two lines"""
+        """Draw Outputs on two lines
+
+        Args:
+            cr: Cairo context
+        """
         two_lines = False
         for i, item in enumerate(self.patch.channels[self.channel - 1]):
             if i > 15:
@@ -224,7 +252,14 @@ class PatchChannelWidget(Gtk.Widget):
                 cr.show_text(str(output) + "." + str(univ))
 
     def _draw_first_line(self, cr, i, output, univ):
-        """Draw First line of outputs"""
+        """Draw First line of outputs
+
+        Args:
+            cr: Cairo context
+            i: Output number
+            output: Output value
+            univ: Universe
+        """
         area = (65 + (i * 32), 95 + (i * 32), 1, self.height / 2 - 1)
         cr.move_to(65 + (i * 32), 0)
         rounded_rectangle_fill(cr, area, self.radius / 2)

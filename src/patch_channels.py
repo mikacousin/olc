@@ -46,8 +46,15 @@ class PatchChannelsTab(Gtk.Box):
         App().window.playback.remove_page(page)
         App().patch_channels_tab = None
 
-    def on_key_press_event(self, widget, event):
-        """Key press events"""
+    def on_key_press_event(self, _widget, event):
+        """Key press events
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            function() or False
+        """
         # Hack to know if user is editing something
         widget = App().window.get_focus()
         if widget and widget.get_path().is_type(Gtk.Entry):

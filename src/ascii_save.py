@@ -4,7 +4,11 @@ from olc.define import NB_UNIVERSES, App
 
 
 def save_main_playback(stream):
-    """Save Main Sequence"""
+    """Save Main Sequence
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -62,7 +66,11 @@ def save_main_playback(stream):
 
 
 def save_chasers(stream):
-    """Save Chasers"""
+    """Save Chasers
+
+    Args:
+        stream: File
+    """
     stream.write(bytes("! Additional Sequences\n\n", "utf8"))
 
     for chaser in App().chasers:
@@ -106,7 +114,11 @@ def save_chasers(stream):
 
 
 def save_groups(stream):
-    """Save Groups"""
+    """Save Groups
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -132,7 +144,11 @@ def save_groups(stream):
 
 
 def save_congo_groups(stream):
-    """Save Congo Groups"""
+    """Save Congo Groups
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -159,7 +175,11 @@ def save_congo_groups(stream):
 
 
 def save_masters(stream):
-    """Save Masters"""
+    """Save Masters
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -220,7 +240,11 @@ def save_masters(stream):
 
 
 def save_patch(stream):
-    """Save Patch"""
+    """Save Patch
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -252,7 +276,11 @@ def save_patch(stream):
 
 
 def save_independents(stream):
-    """Save Independents"""
+    """Save Independents
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -270,7 +298,11 @@ def save_independents(stream):
 
 
 def save_midi_mapping(stream):
-    """Save MIDI mapping"""
+    """Save MIDI mapping
+
+    Args:
+        stream: File
+    """
     stream.write(
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
@@ -286,7 +318,12 @@ def save_midi_mapping(stream):
 
 
 def _save_channels(stream, channels_array):
-    """Save channels"""
+    """Save channels
+
+    Args:
+        stream: File
+        channels_array: Array of channels
+    """
     channels = ""
     i = 1
     for chan, level in enumerate(channels_array):

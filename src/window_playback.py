@@ -6,12 +6,24 @@ from olc.widgets_sequential import SequentialWidget
 
 
 def on_page_added(notebook, _child, _page_num):
-    """Get focus"""
+    """Get focus
+
+    Args:
+        notebook: Gtk Notebook
+    """
     notebook.grab_focus()
 
 
 def step_filter_func1(model, treeiter, _data):
-    """Filter for the first part of the cues list"""
+    """Filter for the first part of the cues list
+
+    Args:
+        model: Model
+        treeiter: Treeiter
+
+    Returns:
+        True, False or step
+    """
     if App().sequence.position <= 0:
         if int(model[treeiter][11]) in [0, 1]:
             return True
@@ -34,7 +46,15 @@ def step_filter_func1(model, treeiter, _data):
 
 
 def step_filter_func2(model, treeiter, _data):
-    """Filter for the second part of the cues list"""
+    """Filter for the second part of the cues list
+
+    Args:
+        model: Model
+        treeiter: Treeiter
+
+    Returns:
+        True or False
+    """
     return int(model[treeiter][0]) > App().sequence.position + 1
 
 
@@ -293,7 +313,11 @@ class MainPlaybackView(Gtk.Notebook):
         self.treeview2.set_cursor(path2, None, False)
 
     def update_xfade_display(self, step):
-        """Update Crossfade display"""
+        """Update Crossfade display
+
+        Args:
+            step: Step
+        """
         self.sequential.total_time = App().sequence.steps[step + 1].total_time
         self.sequential.time_in = App().sequence.steps[step + 1].time_in
         self.sequential.time_out = App().sequence.steps[step + 1].time_out
@@ -304,7 +328,15 @@ class MainPlaybackView(Gtk.Notebook):
         self.sequential.queue_draw()
 
     def on_key_press_event(self, widget, event):
-        """On key press event"""
+        """On key press event
+
+        Args:
+            widget: Gtk Widget
+            event: Gdk.EventKey
+
+        Returns:
+            function() to handle keys pressed
+        """
         # Find open page in notebook to send keyboard events
         page = self.get_current_page()
         child = self.get_nth_page(page)

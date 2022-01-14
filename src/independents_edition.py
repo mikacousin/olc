@@ -64,7 +64,14 @@ class IndependentsTab(Gtk.Paned):
         self.treeview.set_cursor(path, None, False)
 
     def filter_channel_func(self, child, _user_data):
-        """Filter channels"""
+        """Filter channels
+
+        Args:
+            child: Child object
+
+        Returns:
+            child or False
+        """
         # If independent, just return
         if not App().independents.independents:
             return False
@@ -111,13 +118,25 @@ class IndependentsTab(Gtk.Paned):
         App().inde_tab = None
 
     def text_edited(self, _widget, path, text):
-        """Independent text edited"""
+        """Independent text edited
+
+        Args:
+            path: Path to object
+            text: New text
+        """
         self.liststore[path][2] = text
         number = self.liststore[path][0]
         App().independents.independents[number - 1].text = text
 
     def on_key_press_event(self, _widget, event):
-        """Keyboard events"""
+        """Keyboard events
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            function() or False
+        """
         # Hack to know if user is editing something
         widget = App().window.get_focus()
         if widget and widget.get_path().is_type(Gtk.Entry):

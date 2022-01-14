@@ -19,7 +19,11 @@ class ToggleWidget(Gtk.ToggleButton):
         self.text = text
 
     def do_draw(self, cr):
-        """Draw Toggle button"""
+        """Draw Toggle button
+
+        Args:
+            cr: Cairo context
+        """
         self.set_size_request(self.width, self.height)
         # Button
         area = (10, self.width - 10, 10, self.height - 10)

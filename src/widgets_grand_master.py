@@ -22,7 +22,11 @@ class GMWidget(Gtk.Widget):
         self.set_size_request(self.width, self.height)
 
     def do_draw(self, cr):
-        """Draw Grand Master widget"""
+        """Draw Grand Master widget
+
+        Args:
+            cr: Cairo context
+        """
         if App().dmx.grand_master != 255:
             # Draw rounded box
             cr.set_source_rgb(0.7, 0.7, 0.7)

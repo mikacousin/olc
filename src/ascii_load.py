@@ -13,8 +13,13 @@ from olc.step import Step
 
 
 def get_time(string):
-    """String format : [[hours:]minutes:]seconds[.tenths]
-    Return time in seconds
+    """Convert a string time to float
+
+    Args:
+        string: format = [[hours:]minutes:]seconds[.tenths]
+
+    Returns:
+        time in seconds
     """
     if ":" in string:
         tsplit = string.split(":")
@@ -38,7 +43,11 @@ class AsciiParser:
         self.default_time = App().settings.get_double("default-time")
 
     def parse(self, readlines):
-        """Parse stream"""
+        """Parse stream
+
+        Args:
+            readlines (list): Lines to parse
+        """
         flag_seq = False
         in_cue = False
         flag_patch = False

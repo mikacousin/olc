@@ -74,13 +74,24 @@ class SettingsDialog:
         self.settings_dialog.connect("delete-event", self._close)
 
     def _close(self, widget, _param):
-        """Mark window as closed"""
+        """Mark window as closed
+
+        Args:
+            widget: Widget to destroy
+
+        Returns:
+            True
+        """
         App().win_settings = None
         widget.destroy()
         return True
 
     def _on_midi_toggle(self, button):
-        """Active / Unactive MIDI controllers"""
+        """Active / Unactive MIDI controllers
+
+        Args:
+            button: Button clicked
+        """
         midi_ports = App().settings.get_strv("midi-in")
         if button.get_active():
             midi_ports.append(button.get_label())
@@ -104,7 +115,11 @@ class SettingsDialog:
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
     def _update_ui_percent(self, _widget, state):
-        """Change levels view (0-100) or (0-255)"""
+        """Change levels view (0-100) or (0-255)
+
+        Args:
+            state: State of the toggle
+        """
         App().settings.set_value("percent", GLib.Variant("b", state))
 
         # Force redraw of main window

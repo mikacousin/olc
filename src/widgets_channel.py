@@ -30,7 +30,12 @@ class ChannelWidget(Gtk.Widget):
         self.set_size_request(self.width, self.width)
 
     def on_click(self, tgt, event):
-        """ "Select clicked widget"""
+        """Select clicked widget
+
+        Args:
+            tgt: Target
+            event: Gdk.EventButton or Gdk.EventTouch
+        """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
@@ -53,7 +58,11 @@ class ChannelWidget(Gtk.Widget):
             App().track_channels_tab.update_display()
 
     def do_draw(self, cr):
-        """Draw widget"""
+        """Draw widget
+
+        Args:
+            cr: Cairo context
+        """
         self.width = 80 * self.scale
         self.set_size_request(self.width, self.width)
 
