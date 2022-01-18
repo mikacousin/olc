@@ -82,6 +82,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="independents">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;I</property>
+                <property name="title" translatable="yes" context="shortcut window">Independents</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="virtual_console">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;C</property>
