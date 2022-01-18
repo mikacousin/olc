@@ -74,7 +74,7 @@ class Sequence:
         self.channels = array.array("B", [0] * MAX_CHANNELS)
         # Flag for chasers
         self.run = False
-        # Thread for chasers
+        # Thread for Go and GoBack
         self.thread = None
 
         # Step and Cue 0
@@ -351,12 +351,13 @@ class Sequence:
         """Go
 
         Args:
-            goto:  True if Goto, False if Go
+            goto: True if Goto, False if Go
         """
         # Si un Go est en cours, on bascule sur la mémoire suivante
         if self.on_go and self.thread:
             # Stop actual Thread
             try:
+                self.thread.pause.set()
                 self.thread.stop()
                 self.thread.join()
             except Exception as e:
@@ -428,6 +429,7 @@ class Sequence:
 
         if self.on_go and self.thread:
             try:
+                self.thread.pause.set()
                 self.thread.stop()
                 self.thread.join()
             except Exception as e:
@@ -467,6 +469,13 @@ class Sequence:
         self.thread.start()
         return True
 
+    def pause(self, _action, _param):
+        """Toggle pause"""
+        if self.thread.pause.is_set():
+            self.thread.pause.clear()
+        else:
+            self.thread.pause.set()
+
 
 class ThreadGo(threading.Thread):
     """Thread object for Go"""
@@ -474,6 +483,8 @@ class ThreadGo(threading.Thread):
     def __init__(self, goto):
         threading.Thread.__init__(self)
         self._stopevent = threading.Event()
+        self.pause = threading.Event()
+        self.pause.set()
         # To save dmx levels when user send Go
         self.dmxlevels = []
         for _univ in range(NB_UNIVERSES):
@@ -493,17 +504,27 @@ class ThreadGo(threading.Thread):
             for output in range(512):
                 self.dmxlevels[univ][output] = App().dmx.frame[univ][output]
 
+        start_pause = None
+        pause_time = 0
         start_time = time.time() * 1000  # actual time in ms
         i = (time.time() * 1000) - start_time
         # Loop on total time
-        while i < self.total_time and not self._stopevent.isSet():
-            # Update DMX levels
-            self.update_levels(i)
-            # Sleep for 50ms
-            time.sleep(0.05)
-            i = (time.time() * 1000) - start_time
+        while i < self.total_time and not self._stopevent.is_set():
+            # Pause
+            if not self.pause.is_set():
+                if not start_pause:
+                    start_pause = time.time() * 1000
+                self.pause.wait()
+                pause_time += (time.time() * 1000) - start_pause
+            else:
+                start_pause = None
+                i = (time.time() * 1000) - (start_time + pause_time)
+                # Update DMX levels
+                self.update_levels(i)
+                # Sleep for 50ms
+                time.sleep(0.05)
         # Stop thread if we send stop message
-        if self._stopevent.isSet():
+        if self._stopevent.is_set():
             return
         # Finish to load memory
         for univ in range(NB_UNIVERSES):
@@ -772,6 +793,8 @@ class ThreadGoBack(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self._stopevent = threading.Event()
+        self.pause = threading.Event()
+        self.pause.set()
 
         self.dmxlevels = []
         for _univ in range(NB_UNIVERSES):
@@ -790,15 +813,25 @@ class ThreadGoBack(threading.Thread):
                 self.dmxlevels[univ][output] = App().dmx.frame[univ][output]
         # Go Back's default time
         go_back_time = App().settings.get_double("go-back-time") * 1000
+        # Pause initialisation
+        start_pause = None
+        pause_time = 0
         # Actual time in ms
         start_time = time.time() * 1000
         i = (time.time() * 1000) - start_time
-        while i < go_back_time and not self._stopevent.isSet():
-            # Update DMX levels
-            self.update_levels(go_back_time, i, App().sequence.position)
-            # Sleep 50ms
-            time.sleep(0.05)
-            i = (time.time() * 1000) - start_time
+        while i < go_back_time and not self._stopevent.is_set():
+            if not self.pause.is_set():
+                if not start_pause:
+                    start_pause = time.time() * 1000
+                self.pause.wait()
+                pause_time += (time.time() * 1000) - start_pause
+            else:
+                start_pause = None
+                # Update DMX levels
+                self.update_levels(go_back_time, i, App().sequence.position)
+                # Sleep 50ms
+                time.sleep(0.05)
+                i = (time.time() * 1000) - (start_time + pause_time)
         # Finish to load preset
         for univ in range(NB_UNIVERSES):
             for output in range(512):

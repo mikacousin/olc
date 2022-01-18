@@ -280,6 +280,20 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="goback">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;B</property>
+                <property name="title" translatable="yes" context="shortcut window">GoBack</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="pause">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;Z</property>
+                <property name="title" translatable="yes" context="shortcut window">Toggle Pause</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="seq+">
                 <property name="visible">1</property>
                 <property name="accelerator">w</property>

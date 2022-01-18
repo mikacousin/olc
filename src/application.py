@@ -147,6 +147,11 @@ class Application(Gtk.Application):
         action.connect("activate", self.sequence.go_back)
         self.add_action(action)
         self.set_accels_for_action("app.go_back", ["<Control>b"])
+        # Pause
+        action = Gio.SimpleAction.new("pause", None)
+        action.connect("activate", self.sequence.pause)
+        self.add_action(action)
+        self.set_accels_for_action("app.pause", ["<Control>z"])
         # Fullscreen
         action = Gio.SimpleAction.new("fullscreen", None)
         action.connect("activate", self.window.fullscreen_toggle)
