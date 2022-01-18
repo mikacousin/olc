@@ -2,7 +2,7 @@
 # Copyright (C) 2016 olc's COPYRIGHT HOLDER
 # This file is distributed under the same license as the olc package.
 # Translators :
-# Mika Cousin <mika.cousin@gmail.com>, 2016-2017
+# Mika Cousin <mika.cousin@gmail.com>, 2016-2022
 #
 msgid ""
 msgstr ""
@@ -15,301 +15,243 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 2.4.1\n"
+"X-Generator: Poedit 3.0\n"
 "X-Poedit-Basepath: ../data\n"
 "X-Poedit-SearchPath-0: app-menu.ui\n"
 "X-Poedit-SearchPath-1: help-overlay.ui\n"
 "X-Poedit-SearchPath-2: AboutDialog.ui\n"
 
-#: AboutDialog.ui:11
 msgid "A Lighting Console."
 msgstr "Une console lumière."
 
-#: AboutDialog.ui:13
 msgid "Visit Open Lighting Console website"
 msgstr "Visiter le site web de Open Lighting Console"
 
-#: app-menu.ui:6
 msgid "_New"
 msgstr "Nouveau"
 
-#: app-menu.ui:11
 msgid "_Open"
 msgstr "Ouvrir"
 
-#: app-menu.ui:16
 msgid "_Save"
 msgstr "Enregistrer"
 
-#: app-menu.ui:21
 msgid "_Save As"
 msgstr "Enregistrer sous"
 
-#: app-menu.ui:25
 msgid "_Patch"
 msgstr "Patch"
 
-#: app-menu.ui:30
 msgid "_Memories"
 msgstr "Mémoires"
 
-#: app-menu.ui:34
 msgid "_Groups"
 msgstr "Groupes"
 
-#: app-menu.ui:39
 msgid "_Sequences"
 msgstr "Séquences"
 
-#: app-menu.ui:44
 msgid "_Masters"
 msgstr "Masters"
 
-#: app-menu.ui:49
 msgid "_Track channels"
 msgstr "Suivi de circuits"
 
-#: app-menu.ui:55
 msgid "_Virtual Console"
 msgstr "Console virtuelle"
 
-#: app-menu.ui:61
 msgid "_Preferences"
 msgstr "Préférences"
 
-#: app-menu.ui:67
 msgid "_Keyboard Shortcuts"
 msgstr "Raccourcis claviers"
 
-#: app-menu.ui:71
 msgid "_About OLC"
 msgstr "À propos"
 
-#: app-menu.ui:75
 msgid "_Quit"
 msgstr "Quitter"
 
-#: help-overlay.ui:13
 msgctxt "shortcut window"
 msgid "General"
 msgstr "Général"
 
-#: help-overlay.ui:18
 msgctxt "shortcut window"
 msgid "Fullscreen"
 msgstr "Plein écran"
 
-#: help-overlay.ui:25
 msgctxt "shortcut window"
 msgid "About"
 msgstr "À propos"
 
-#: help-overlay.ui:32
 msgctxt "shortcut window"
 msgid "Open ASCII File"
 msgstr "Ouvrir un fichier ASCII"
 
-#: help-overlay.ui:39
 msgctxt "shortcut window"
 msgid "Save ASCII File"
 msgstr "Enregistrer un fichier ASCII"
 
-#: help-overlay.ui:46
 msgctxt "shortcut window"
 msgid "Save with file name"
 msgstr "Enregistrer sous"
 
-#: help-overlay.ui:53
 msgctxt "shortcut window"
 msgid "Patch Outputs"
 msgstr "Patch outputs"
 
-#: help-overlay.ui:60
 msgctxt "shortcut window"
 msgid "Patch Channels"
 msgstr "Patch circuits"
 
-#: help-overlay.ui:67
 msgctxt "shortcut window"
 msgid "Masters"
 msgstr "Masters"
 
-#: help-overlay.ui:74
 msgctxt "shortcut window"
 msgid "Edit Sequence"
 msgstr "Éditer séquences"
 
-#: help-overlay.ui:81
 msgctxt "shortcut window"
 msgid "Track Channels"
 msgstr "Suivi de circuits"
 
-#: help-overlay.ui:88
+msgctxt "shortcut window"
+msgid "Independents"
+msgstr "Indépendants"
+
 msgctxt "shortcut window"
 msgid "Virtual Console"
 msgstr "Console virtuelle"
 
-#: help-overlay.ui:95
 msgctxt "shortcut window"
 msgid "Quit"
 msgstr "Quitter"
 
-#: help-overlay.ui:102
 msgctxt "shortcut window"
 msgid "Close Tab"
 msgstr "Fermer onglet"
 
-#: help-overlay.ui:109
 msgctxt "shortcut window"
 msgid "Clear"
 msgstr "Effacer saisie"
 
-#: help-overlay.ui:117
 msgctxt "shortcut window"
 msgid "Move"
 msgstr "Déplacement"
 
-#: help-overlay.ui:122
 msgctxt "shortcut window"
 msgid "Right"
 msgstr "Droite"
 
-#: help-overlay.ui:129
 msgctxt "shortcut window"
 msgid "Left"
 msgstr "Gauche"
 
-#: help-overlay.ui:136
 msgctxt "shortcut window"
 msgid "Up"
 msgstr "Haut"
 
-#: help-overlay.ui:143
 msgctxt "shortcut window"
 msgid "Down"
 msgstr "Bas"
 
-#: help-overlay.ui:151
 msgctxt "shortcut window"
 msgid "Select Channels"
 msgstr "Sélection des circuits"
 
-#: help-overlay.ui:156
 msgctxt "shortcut window"
 msgid "Select channel number"
 msgstr "Sélection du numéro de circuit"
 
-#: help-overlay.ui:163
 msgctxt "shortcut window"
 msgid "Add channel number"
 msgstr "Ajoute le numéro de circuit"
 
-#: help-overlay.ui:170
 msgctxt "shortcut window"
 msgid "Remove channel number"
 msgstr "Retire le numéro de circuit"
 
-#: help-overlay.ui:163
 msgctxt "shortcut window"
 msgid "Thru channel number"
 msgstr "Thru"
 
-#: help-overlay.ui:170
 msgctxt "shortcut window"
 msgid "All channels"
 msgstr "Tous les circuits"
 
-#: help-overlay.ui:178
 msgctxt "shortcut window"
 msgid "Levels"
 msgstr "Niveaux"
 
-#: help-overlay.ui:183
 msgctxt "shortcut window"
 msgid "@ level"
 msgstr "@ niveau"
 
-#: help-overlay.ui:190
 msgctxt "shortcut window"
 msgid "Level + %"
 msgstr "Niveau + %"
 
-#: help-overlay.ui:197
 msgctxt "shortcut window"
 msgid "Level - %"
 msgstr "Niveau - %"
 
-#: help-overlay.ui:205 help-overlay.ui:210
 msgctxt "shortcut window"
 msgid "Time"
 msgstr "Temps"
 
-#: help-overlay.ui:217
 msgctxt "shortcut window"
 msgid "Time In"
 msgstr "Temps de monté"
 
-#: help-overlay.ui:224
 msgctxt "shortcut window"
 msgid "Time Out"
 msgstr "Temps de descente"
 
-#: help-overlay.ui:231
 msgctxt "shortcut window"
 msgid "Delay"
 msgstr "Délai"
 
-#: help-overlay.ui:238
 msgctxt "shortcut window"
 msgid "Delay In"
 msgstr "Délai de monté"
 
-#: help-overlay.ui:245
 msgctxt "shortcut window"
 msgid "Delay Out"
 msgstr "Délai de descente"
 
-#: help-overlay.ui:252
 msgctxt "shortcut window"
 msgid "Wait"
 msgstr "Wait"
 
-#: help-overlay.ui:260
 msgctxt "shortcut window"
 msgid "Sequence"
 msgstr "Séquence"
 
-#: help-overlay.ui:265
 msgctxt "shortcut window"
 msgid "Go"
 msgstr "Go"
 
-#: help-overlay.ui:272
 msgctxt "shortcut window"
 msgid "Sequence +"
 msgstr "Séquence +"
 
-#: help-overlay.ui:279
 msgctxt "shortcut window"
 msgid "Sequence -"
 msgstr "Séquence -"
 
-#: help-overlay.ui:286
 msgctxt "shortcut window"
 msgid "Goto cue"
 msgstr "Aller à la mémoire"
 
-#: help-overlay.ui:294
 msgctxt "shortcut window"
 msgid "Cue"
 msgstr "Mémoire"
 
-#: help-overlay.ui:299
 msgctxt "shortcut window"
 msgid "Update cue"
 msgstr "Mettre à jour la mémoire"
 
-#: help-overlay.ui:306
 msgctxt "shortcut window"
 msgid "Record cue"
 msgstr "Enregistrer mémoire"
