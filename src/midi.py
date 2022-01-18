@@ -57,6 +57,7 @@ class Midi:
         self.midi_notes = {
             "go": [0, 11],
             "go_back": [0, -1],
+            "pause": [0, -1],
             "seq_minus": [0, 12],
             "seq_plus": [0, 13],
             "output": [0, -1],
@@ -1068,6 +1069,25 @@ def _function_dot(msg):
         else:
             App().window.keystring += "."
             App().window.statusbar.push(App().window.context_id, App().window.keystring)
+
+
+def _function_pause(msg):
+    """Pause
+
+    Args:
+        msg: MIDI message
+    """
+    if msg.velocity == 0:
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+            App().virtual_console.pause.emit("button-release-event", event)
+
+    elif msg.velocity == 127:
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            App().virtual_console.pause.emit("button-press-event", event)
+        else:
+            App().sequence.pause(App(), None)
 
 
 def _function_go_back(msg):
