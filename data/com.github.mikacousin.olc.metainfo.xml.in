@@ -32,6 +32,8 @@
   <screenshots>
     <screenshot type="default">
       <image type="source" width="1600" height="878">https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png</image>
+    </screenshot>
+    <screenshot type="default">
       <image type="source" width="1699" height="527">https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png</image>
     </screenshot>
   </screenshots>
