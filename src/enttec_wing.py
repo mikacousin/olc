@@ -39,10 +39,13 @@ class WingPlayback:
             if not message[6] & 16:
                 # Go pressed
                 App().sequence.do_go(None, None)
+                # if message[6] & 16: Go is released
             # Back
             if not message[6] & 32:
                 # Back pressed
                 App().sequence.go_back(None, None)
+            # message[6] & 64: PageDown
+            # message[6] & 128: PageUp
             # TODO: Flashes don't work
             """
             if message[7] & 1:

@@ -104,6 +104,7 @@ class PatchWidget(Gtk.Widget):
                 cr.set_source_rgb(0.3, 0.3, 0.3)
             rounded_rectangle_fill(cr, area, 10)
         elif self.get_parent().is_selected():
+            # Unpatched output
             cr.set_source_rgb(0.6, 0.4, 0.1)
             rounded_rectangle_fill(cr, area, 10)
 

@@ -315,9 +315,11 @@ class GroupTab(Gtk.Paned):
 
         if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
-                0
-            ] != [0, 0]:
+            # Only patched channels
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
+                0,
+                0,
+            ]:
                 self.channels[channel].clicked = True
 
                 child = self.flowbox1.get_child_at_index(channel)

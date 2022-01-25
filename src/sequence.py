@@ -152,8 +152,6 @@ class Sequence:
         Returns:
             cue (float)
         """
-        mem = 1.0  # Default first cue number
-
         memory = self.steps[step].cue.memory
         if step >= self.last - 1:
             return memory + 1
@@ -223,7 +221,7 @@ class Sequence:
             # Send DMX values
             for channel in range(MAX_CHANNELS):
                 for i in App().patch.channels[channel]:
-                    if output := i[0]:
+                    if i[0]:  # Output
                         level = self.steps[position].cue.channels[channel]
                         App().dmx.sequence[channel] = level
             update_channels(position)
@@ -286,7 +284,7 @@ class Sequence:
             for channel in range(MAX_CHANNELS):
                 # Intensity
                 for i in App().patch.channels[channel]:
-                    if output := i[0]:
+                    if i[0]:  # Output
                         level = self.steps[position].cue.channels[channel]
                         App().dmx.sequence[channel] = level
             update_channels(position)
@@ -666,6 +664,7 @@ class ThreadGo(threading.Thread):
             )
         elif next_level > old_level and i > self.time_in + self.wait + self.delay_in:
             return next_level
+        # If level decreases, use Time Out
         elif (
             next_level < old_level
             and self.wait + self.delay_out
@@ -680,6 +679,7 @@ class ThreadGo(threading.Thread):
             )
         elif next_level < old_level and i > self.time_out + self.wait + self.delay_out:
             return next_level
+        # Level doesn't change
         else:
             return old_level
 
@@ -915,8 +915,6 @@ class ThreadGoBack(threading.Thread):
         if next_level > old_level:
             return round(((next_level - old_level) / go_back_time) * i) + old_level
         elif next_level < old_level:
-            return old_level - abs(
-                round(((next_level - old_level) / go_back_time) * i)
-            )
+            return old_level - abs(round(((next_level - old_level) / go_back_time) * i))
         else:
             return next_level

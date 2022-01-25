@@ -848,9 +848,11 @@ class SequenceTab(Gtk.Grid):
 
         if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
-                0
-            ] != [0, 0]:
+            # Only patched channels
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
+                0,
+                0,
+            ]:
                 self.channels[channel].clicked = True
 
                 child = self.flowbox.get_child_at_index(channel)
@@ -1079,6 +1081,7 @@ class SequenceTab(Gtk.Grid):
     def _keypress_N(self):
         """New Chaser"""
         # Use the next free index
+        # 1 is for Main Playback, Chasers start at 2
         index_seq = App().chasers[-1].index + 1 if len(App().chasers) > 0 else 2
         # Create Chaser
         App().chasers.append(Sequence(index_seq, type_seq="Chaser"))

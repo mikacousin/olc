@@ -111,12 +111,14 @@ class MastersTab(Gtk.Paned):
         for page in range(2):
             for i in range(20):
                 index = i + (page * 20)
-                # Type : None
+                # Type: None
                 if App().masters[index].content_type == 0:
                     self.liststore.append([index + 1, "", "", ""])
+                # Type: Preset
                 elif App().masters[index].content_type == 1:
                     content_value = str(App().masters[index].content_value)
                     self.liststore.append([index + 1, "Preset", content_value, ""])
+                # Type: Group
                 elif App().masters[index].content_type == 13:
                     content_value = (
                         str(int(App().masters[index].content_value))
@@ -126,6 +128,7 @@ class MastersTab(Gtk.Paned):
                     self.liststore.append(
                         [index + 1, "Group", content_value, "Exclusif"]
                     )
+                # Type: Channels
                 elif App().masters[index].content_type == 2:
                     nb_chan = sum(
                         1
@@ -134,6 +137,7 @@ class MastersTab(Gtk.Paned):
                     )
 
                     self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
+                # Type: Sequence
                 elif App().masters[index].content_type == 3:
                     content_value = (
                         str(int(App().masters[index].content_value))
@@ -422,9 +426,11 @@ class MastersTab(Gtk.Paned):
 
             if self.keystring not in ["", "0"]:
                 channel = int(self.keystring) - 1
-                if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
-                    0
-                ] != [0, 0]:
+                # Only patched channels
+                if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
+                    0,
+                    0,
+                ]:
                     self.channels[channel].clicked = True
                     self.flowbox.invalidate_filter()
 
@@ -592,9 +598,7 @@ class MastersTab(Gtk.Paned):
             # Master's channels
             if App().masters[row].content_type == 1:
                 preset = App().masters[row].content_value
-                if cue := next(
-                    mem for mem in App().memories if mem.memory == preset
-                ):
+                if cue := next(mem for mem in App().memories if mem.memory == preset):
                     channels = cue.channels
                 else:
                     return False
@@ -651,7 +655,7 @@ class MastersTab(Gtk.Paned):
         """Level - %"""
 
         lvl = App().settings.get_int("percent-level")
-        if percent := App().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
@@ -674,7 +678,7 @@ class MastersTab(Gtk.Paned):
         """Level + %"""
 
         lvl = App().settings.get_int("percent-level")
-        if percent := App().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()

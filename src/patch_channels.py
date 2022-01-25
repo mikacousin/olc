@@ -268,6 +268,8 @@ class PatchChannelsTab(Gtk.Box):
 
     def _keypress_i(self):
         """Insert Output"""
+        if self.keystring in ["", "0"]:
+            return
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:
@@ -317,6 +319,8 @@ class PatchChannelsTab(Gtk.Box):
 
     def _keypress_r(self):
         """Remove Output"""
+        if self.keystring in ["", "0"]:
+            return
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:

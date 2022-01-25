@@ -391,7 +391,7 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_exclam(self):
         """Level + (% level) of selected channels"""
         lvl = App().settings.get_int("percent-level")
-        if percent := App().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         sel = self.channels_view.flowbox.get_selected_children()
@@ -410,7 +410,7 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_colon(self):
         """Level - (% level) of selected channels"""
         lvl = App().settings.get_int("percent-level")
-        if percent := App().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         sel = self.channels_view.flowbox.get_selected_children()

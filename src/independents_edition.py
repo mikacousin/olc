@@ -185,9 +185,11 @@ class IndependentsTab(Gtk.Paned):
             self.channels[channel].clicked = False
         if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
-                0
-            ] != [0, 0]:
+            # Only patched channels
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
+                0,
+                0,
+            ]:
                 self.channels[channel].clicked = True
 
                 child = self.flowbox.get_child_at_index(channel)
@@ -319,7 +321,7 @@ class IndependentsTab(Gtk.Paned):
     def _keypress_colon(self):
         """Level - %"""
         lvl = App().settings.get_int("percent-level")
-        if percent := App().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
@@ -341,7 +343,7 @@ class IndependentsTab(Gtk.Paned):
     def _keypress_exclam(self):
         """Level + %"""
         lvl = App().settings.get_int("percent-level")
-        if percent := App().settings.get_boolean("percent"):
+        if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
