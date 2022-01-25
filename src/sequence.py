@@ -155,17 +155,15 @@ class Sequence:
         mem = 1.0  # Default first cue number
 
         memory = self.steps[step].cue.memory
-        # Find next cue number
-        if step < self.last - 1:
-            next_memory = self.steps[step + 1].cue.memory
-            if next_memory != 0.0 and (next_memory - memory) <= 1:
-                mem = ((next_memory - memory) / 2) + memory
-            else:
-                mem = memory + 1
-        else:
-            mem = memory + 1
+        if step >= self.last - 1:
+            return memory + 1
 
-        return mem
+        next_memory = self.steps[step + 1].cue.memory
+        return (
+            ((next_memory - memory) / 2) + memory
+            if next_memory != 0.0 and (next_memory - memory) <= 1
+            else memory + 1
+        )
 
     def sequence_plus(self):
         """Sequence +"""
@@ -225,9 +223,7 @@ class Sequence:
             # Send DMX values
             for channel in range(MAX_CHANNELS):
                 for i in App().patch.channels[channel]:
-                    output = i[0]
-                    # Intensity
-                    if output:
+                    if output := i[0]:
                         level = self.steps[position].cue.channels[channel]
                         App().dmx.sequence[channel] = level
             update_channels(position)
@@ -240,8 +236,7 @@ class Sequence:
                 self.thread.stop()
                 self.on_go = False
                 # Stop at the begining
-                if self.position < 1:
-                    self.position = 1
+                self.position = max(self.position, 1)
             except Exception as e:
                 print("Error :", str(e))
 
@@ -291,8 +286,7 @@ class Sequence:
             for channel in range(MAX_CHANNELS):
                 # Intensity
                 for i in App().patch.channels[channel]:
-                    output = i[0]
-                    if output:
+                    if output := i[0]:
                         level = self.steps[position].cue.channels[channel]
                         App().dmx.sequence[channel] = level
             update_channels(position)
@@ -486,9 +480,7 @@ class ThreadGo(threading.Thread):
         self.pause = threading.Event()
         self.pause.set()
         # To save dmx levels when user send Go
-        self.dmxlevels = []
-        for _univ in range(NB_UNIVERSES):
-            self.dmxlevels.append(array.array("B", [0] * 512))
+        self.dmxlevels = [array.array("B", [0] * 512) for _univ in range(NB_UNIVERSES)]
         next_step = App().sequence.position + 1
         self.total_time = App().sequence.steps[next_step].total_time * 1000
         self.time_in = App().sequence.steps[next_step].time_in * 1000
@@ -529,8 +521,7 @@ class ThreadGo(threading.Thread):
         # Finish to load memory
         for univ in range(NB_UNIVERSES):
             for output in range(512):
-                channel = App().patch.outputs[univ][output][0]
-                if channel:
+                if channel := App().patch.outputs[univ][output][0]:
                     if App().sequence.position < App().sequence.last - 1:
                         level = (
                             App()
@@ -590,8 +581,7 @@ class ThreadGo(threading.Thread):
         """
         for channel in range(MAX_CHANNELS):
             for chan in App().patch.channels[channel]:
-                output = chan[0]
-                if output:
+                if output := chan[0]:
                     output -= 1
                     univ = chan[1]
                     old_level = self.dmxlevels[univ][output]
@@ -615,9 +605,7 @@ class ThreadGo(threading.Thread):
         """
         for channel in range(MAX_CHANNELS):
             for chan in App().patch.channels[channel]:
-                output = chan[0]
-                # Dimmers
-                if output:
+                if output := chan[0]:
                     output -= 1
                     univ = chan[1]
                     old_level = self.dmxlevels[univ][output]
@@ -669,7 +657,7 @@ class ThreadGo(threading.Thread):
             next_level > old_level
             and self.wait + self.delay_in < i < self.time_in + self.wait + self.delay_in
         ):
-            level = (
+            return (
                 int(
                     ((next_level - old_level + 1) / self.time_in)
                     * (i - self.wait - self.delay_in)
@@ -677,26 +665,23 @@ class ThreadGo(threading.Thread):
                 + old_level
             )
         elif next_level > old_level and i > self.time_in + self.wait + self.delay_in:
-            level = next_level
-        # If level decreases, use Time Out
+            return next_level
         elif (
             next_level < old_level
             and self.wait + self.delay_out
             < i
             < self.time_out + self.wait + self.delay_out
         ):
-            level = old_level - abs(
+            return old_level - abs(
                 int(
                     ((next_level - old_level - 1) / self.time_out)
                     * (i - self.wait - self.delay_out)
                 )
             )
         elif next_level < old_level and i > self.time_out + self.wait + self.delay_out:
-            level = next_level
-        # Level doesn't change
+            return next_level
         else:
-            level = old_level
-        return level
+            return old_level
 
     def _channel_time_level(self, i, channel_time, old_level, next_level):
         """Return channel level if in channel time
@@ -725,18 +710,17 @@ class ThreadGo(threading.Thread):
                 )
             else:
                 level = next_level
-        else:
-            if i < ct_delay + self.wait:
-                level = old_level
-            elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
-                level = old_level - abs(
-                    int(
-                        ((next_level - old_level - 1) / ct_time)
-                        * (i - ct_delay - self.wait)
-                    )
+        elif i < ct_delay + self.wait:
+            level = old_level
+        elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
+            level = old_level - abs(
+                int(
+                    ((next_level - old_level - 1) / ct_time)
+                    * (i - ct_delay - self.wait)
                 )
-            else:
-                level = next_level
+            )
+        else:
+            level = next_level
         return level
 
 
@@ -796,9 +780,7 @@ class ThreadGoBack(threading.Thread):
         self.pause = threading.Event()
         self.pause.set()
 
-        self.dmxlevels = []
-        for _univ in range(NB_UNIVERSES):
-            self.dmxlevels.append(array.array("B", [0] * 512))
+        self.dmxlevels = [array.array("B", [0] * 512) for _univ in range(NB_UNIVERSES)]
 
     def run(self):
         # If sequential is empty, just return
@@ -835,8 +817,7 @@ class ThreadGoBack(threading.Thread):
         # Finish to load preset
         for univ in range(NB_UNIVERSES):
             for output in range(512):
-                channel = App().patch.outputs[univ][output][0]
-                if channel:
+                if channel := App().patch.outputs[univ][output][0]:
                     level = App().sequence.steps[prev_step].cue.channels[channel - 1]
                     App().dmx.sequence[channel - 1] = level
                     App().dmx.frame[univ][output] = level
@@ -911,8 +892,7 @@ class ThreadGoBack(threading.Thread):
             GLib.idle_add(App().virtual_console.scale_b.set_value, val)
         for univ in range(NB_UNIVERSES):
             for output in range(512):
-                channel = App().patch.outputs[univ][output][0]
-                if channel:
+                if channel := App().patch.outputs[univ][output][0]:
                     old_level = self.dmxlevels[univ][output]
                     next_level = (
                         App().sequence.steps[position - 1].cue.channels[channel - 1]
@@ -933,11 +913,10 @@ class ThreadGoBack(threading.Thread):
             Channel level
         """
         if next_level > old_level:
-            level = round(((next_level - old_level) / go_back_time) * i) + old_level
+            return round(((next_level - old_level) / go_back_time) * i) + old_level
         elif next_level < old_level:
-            level = old_level - abs(
+            return old_level - abs(
                 round(((next_level - old_level) / go_back_time) * i)
             )
         else:
-            level = next_level
-        return level
+            return next_level

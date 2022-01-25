@@ -126,8 +126,7 @@ class PatchOutputsTab(Gtk.Box):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -184,10 +183,9 @@ class PatchOutputsTab(Gtk.Box):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_out_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(
+            if child := self.flowbox.get_child_at_pos(
                 allocation.x, allocation.y + allocation.height
-            )
-            if child:
+            ):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 App().window.set_focus(child)
@@ -205,10 +203,9 @@ class PatchOutputsTab(Gtk.Box):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_out_selected))
             allocation = child.get_allocation()
-            child = self.flowbox.get_child_at_pos(
+            if child := self.flowbox.get_child_at_pos(
                 allocation.x, allocation.y - allocation.height / 2
-            )
-            if child:
+            ):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 App().window.set_focus(child)
@@ -423,8 +420,9 @@ class PatchOutputsTab(Gtk.Box):
 
                 App().patch.outputs[univ][output][1] += 1
 
-                if App().patch.outputs[univ][output][1] > 100:
-                    App().patch.outputs[univ][output][1] = 100
+                App().patch.outputs[univ][output][1] = min(
+                    App().patch.outputs[univ][output][1], 100
+                )
 
                 self.outputs[output + (512 * univ)].queue_draw()
 
@@ -445,8 +443,9 @@ class PatchOutputsTab(Gtk.Box):
 
                 App().patch.outputs[univ][output][1] -= 1
 
-                if App().patch.outputs[univ][output][1] < 0:
-                    App().patch.outputs[univ][output][1] = 0
+                App().patch.outputs[univ][output][1] = max(
+                    App().patch.outputs[univ][output][1], 0
+                )
 
                 self.outputs[output + (512 * univ)].queue_draw()
 

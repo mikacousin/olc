@@ -164,8 +164,7 @@ class IndependentsTab(Gtk.Paned):
         if keyname == "period":
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -184,17 +183,17 @@ class IndependentsTab(Gtk.Paned):
         self.flowbox.unselect_all()
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS:
-                # Only patched channel
-                if App().patch.channels[channel][0] != [0, 0]:
-                    self.channels[channel].clicked = True
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
+                0
+            ] != [0, 0]:
+                self.channels[channel].clicked = True
 
-                    child = self.flowbox.get_child_at_index(channel)
-                    App().window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_selected_channel = self.keystring
+                child = self.flowbox.get_child_at_index(channel)
+                App().window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_selected_channel = self.keystring
         self.flowbox.invalidate_filter()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -320,9 +319,7 @@ class IndependentsTab(Gtk.Paned):
     def _keypress_colon(self):
         """Level - %"""
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
@@ -344,9 +341,7 @@ class IndependentsTab(Gtk.Paned):
     def _keypress_exclam(self):
         """Level + %"""
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()

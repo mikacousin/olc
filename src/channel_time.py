@@ -359,8 +359,7 @@ class ChanneltimeTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -391,7 +390,7 @@ class ChanneltimeTab(Gtk.Paned):
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
 
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 self.channels[channel].clicked = True

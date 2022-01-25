@@ -62,16 +62,13 @@ class ChannelsView(Gtk.Notebook):
         Returns:
             True, child or False
         """
-        if self.view_type == 0:
-            # Display only patched channels
-            i = child.get_index()
-            for output in App().patch.channels[i][0]:
-                if output != 0:
-                    return child
-                return False
-        else:
+        if self.view_type != 0:
             # Display all channels
             return True
+        # Display only patched channels
+        i = child.get_index()
+        for output in App().patch.channels[i][0]:
+            return child if output != 0 else False
 
     def on_key_press_event(self, widget, event):
         """On key press event

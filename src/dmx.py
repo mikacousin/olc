@@ -31,8 +31,7 @@ class Dmx(threading.Thread):
         univ = []  # To store universes changed
         for channel in range(MAX_CHANNELS):
             for i in App().patch.channels[channel]:
-                output = i[0]
-                if output:
+                if output := i[0]:
                     # If channel is patched
                     output -= 1
                     universe = i[1]

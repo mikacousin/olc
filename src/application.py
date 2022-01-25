@@ -63,10 +63,7 @@ class Application(Gtk.Application):
         self.settings = Settings.new()
 
         # Universes
-        self.universes = []
-        for i in range(NB_UNIVERSES):
-            self.universes.append(i)
-
+        self.universes = list(range(NB_UNIVERSES))
         # Create patch (1:1)
         self.patch = PatchDmx()
 
@@ -282,8 +279,7 @@ class Application(Gtk.Application):
             return
         self.ola_thread.old_frame[univ] = dmxframe
         for output, level in enumerate(dmxframe):
-            channel = self.patch.outputs[univ][output][0]
-            if channel:
+            if channel := self.patch.outputs[univ][output][0]:
                 self.dmx.frame[univ][output] = level
                 self.window.channels_view.channels[channel - 1].level = level
                 if (

@@ -161,8 +161,7 @@ class CuesEditionTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -183,18 +182,17 @@ class CuesEditionTab(Gtk.Paned):
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
 
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
+                0
+            ] != [0, 0]:
+                self.channels[channel].clicked = True
 
-                # Only patched channel
-                if App().patch.channels[channel][0] != [0, 0]:
-                    self.channels[channel].clicked = True
-
-                    child = self.flowbox.get_child_at_index(channel)
-                    App().window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_chan_selected = self.keystring
+                child = self.flowbox.get_child_at_index(channel)
+                App().window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_chan_selected = self.keystring
 
         self.flowbox.invalidate_filter()
 
@@ -340,9 +338,7 @@ class CuesEditionTab(Gtk.Paned):
         """Level - %"""
 
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
@@ -365,9 +361,7 @@ class CuesEditionTab(Gtk.Paned):
         """Level + %"""
 
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
@@ -496,10 +490,12 @@ class CuesEditionTab(Gtk.Paned):
                     # Copy channels
                     App().memories[i].channels = App().memories[row].channels
                     # Count channels
-                    nb_chan = 0
-                    for chan in range(MAX_CHANNELS):
-                        if App().memories[i].channels[chan]:
-                            nb_chan += 1
+                    nb_chan = sum(
+                        1
+                        for chan in range(MAX_CHANNELS)
+                        if App().memories[i].channels[chan]
+                    )
+
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
@@ -537,10 +533,7 @@ class CuesEditionTab(Gtk.Paned):
                     break
             if i:
                 App().memories.insert(i, cue)
-                nb_chan = 0
-                for chan in range(MAX_CHANNELS):
-                    if channels[chan]:
-                        nb_chan += 1
+                nb_chan = sum(bool(channels[chan]) for chan in range(MAX_CHANNELS))
                 self.liststore.insert(i, [str(mem), "", nb_chan])
 
                 # Tag filename as modified
@@ -597,10 +590,7 @@ class CuesEditionTab(Gtk.Paned):
             # Create new memory
             cue = Cue(0, mem, channels)
             App().memories.insert(i + 1, cue)
-            nb_chan = 0
-            for chan in range(MAX_CHANNELS):
-                if channels[chan]:
-                    nb_chan += 1
+            nb_chan = sum(1 for chan in range(MAX_CHANNELS) if channels[chan])
             self.liststore.insert(i + 1, [str(mem), "", nb_chan])
 
             # Tag filename as modified
@@ -646,10 +636,7 @@ class CuesEditionTab(Gtk.Paned):
         App().memories.insert(i, cue)
 
         # Update display
-        nb_chan = 0
-        for chan in range(MAX_CHANNELS):
-            if channels[chan]:
-                nb_chan += 1
+        nb_chan = sum(bool(channels[chan]) for chan in range(MAX_CHANNELS))
         self.liststore.insert(i, [str(mem), "", nb_chan])
 
         # Tag filename as modified

@@ -99,9 +99,7 @@ class KnobWidget(Gtk.DrawingArea):
             event: Gdk.Event
         """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        step = 10
-        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            step = 1
+        step = 1 if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK else 10
         (scroll, direction) = event.get_scroll_direction()
         if scroll and direction == Gdk.ScrollDirection.UP:
             self.value += step
