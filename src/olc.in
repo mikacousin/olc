@@ -3,10 +3,10 @@
 import gettext
 import locale
 import os
-import psutil
 import subprocess
 import sys
 import time
+import psutil
 
 from gi.repository import Gio
 
@@ -18,8 +18,8 @@ from ola import OlaClient  # noqa: E402
 
 from olc.application import Application  # noqa: E402
 
-localedir = "@localedir@"
-pkgdatadir = "@pkgdatadir@"
+LOCALEDIR = "@localedir@"
+PKGDATADIR = "@pkgdatadir@"
 
 
 def is_running(name):
@@ -63,12 +63,12 @@ if __name__ == "__main__":
     else:
         olad_pid = None
 
-    locale.bindtextdomain("olc", localedir)
+    locale.bindtextdomain("olc", LOCALEDIR)
     locale.textdomain("olc")
-    gettext.bindtextdomain("olc", localedir)
+    gettext.bindtextdomain("olc", LOCALEDIR)
     gettext.textdomain("olc")
 
-    resource = Gio.resource_load(os.path.join(pkgdatadir, "olc.gresource"))
+    resource = Gio.resource_load(os.path.join(PKGDATADIR, "olc.gresource"))
     Gio.Resource._register(resource)
 
     app = Application()
