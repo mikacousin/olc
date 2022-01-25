@@ -133,8 +133,7 @@ class GroupTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -215,10 +214,9 @@ class GroupTab(Gtk.Paned):
         else:
             child = self.flowbox2.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
-            child = self.flowbox2.get_child_at_pos(
+            if child := self.flowbox2.get_child_at_pos(
                 allocation.x, allocation.y + allocation.height
-            )
-            if child:
+            ):
                 self.flowbox2.unselect_all()
                 index = child.get_index()
                 App().window.set_focus(child)
@@ -247,10 +245,9 @@ class GroupTab(Gtk.Paned):
         else:
             child = self.flowbox2.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
-            child = self.flowbox2.get_child_at_pos(
+            if child := self.flowbox2.get_child_at_pos(
                 allocation.x, allocation.y - allocation.height / 2
-            )
-            if child:
+            ):
                 self.flowbox2.unselect_all()
                 index = child.get_index()
                 App().window.set_focus(child)
@@ -316,18 +313,17 @@ class GroupTab(Gtk.Paned):
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
 
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
+                0
+            ] != [0, 0]:
+                self.channels[channel].clicked = True
 
-                # Only patched channel
-                if App().patch.channels[channel][0] != [0, 0]:
-                    self.channels[channel].clicked = True
-
-                    child = self.flowbox1.get_child_at_index(channel)
-                    App().window.set_focus(child)
-                    self.flowbox1.select_child(child)
-                    self.last_chan_selected = self.keystring
+                child = self.flowbox1.get_child_at_index(channel)
+                App().window.set_focus(child)
+                self.flowbox1.select_child(child)
+                self.last_chan_selected = self.keystring
 
         self.flowbox1.invalidate_filter()
 
@@ -431,9 +427,7 @@ class GroupTab(Gtk.Paned):
         if App().settings.get_boolean("percent"):
             level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
         else:
-            if level > 255:
-                level = 255
-
+            level = min(level, 255)
         sel = self.flowbox2.get_selected_children()
         children = []
         for flowboxchild in sel:

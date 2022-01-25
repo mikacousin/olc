@@ -264,10 +264,8 @@ class Midi:
                     GLib.idle_add(_function_master, msg, int(key[7:]))
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde, msg, int(key[5:]))
-                else:
-                    func = getattr(self, "_function_" + key, None)
-                    if func:
-                        GLib.idle_add(func, msg)
+                elif func := getattr(self, "_function_" + key, None):
+                    GLib.idle_add(func, msg)
 
     def _function_wheel(self, msg):
         """Wheel for channels level

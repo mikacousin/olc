@@ -103,11 +103,9 @@ class PatchWidget(Gtk.Widget):
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
             rounded_rectangle_fill(cr, area, 10)
-        else:
-            # Unpatch output
-            if self.get_parent().is_selected():
-                cr.set_source_rgb(0.6, 0.4, 0.1)
-                rounded_rectangle_fill(cr, area, 10)
+        elif self.get_parent().is_selected():
+            cr.set_source_rgb(0.6, 0.4, 0.1)
+            rounded_rectangle_fill(cr, area, 10)
 
     def _draw_output_number(self, cr, allocation):
         """Draw Output number

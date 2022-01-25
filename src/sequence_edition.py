@@ -754,8 +754,7 @@ class SequenceTab(Gtk.Grid):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -847,18 +846,17 @@ class SequenceTab(Gtk.Grid):
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
 
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS:
+            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
+                0
+            ] != [0, 0]:
+                self.channels[channel].clicked = True
 
-                # Only patched channel
-                if App().patch.channels[channel][0] != [0, 0]:
-                    self.channels[channel].clicked = True
-
-                    child = self.flowbox.get_child_at_index(channel)
-                    App().window.set_focus(child)
-                    self.flowbox.select_child(child)
-                    self.last_chan_selected = self.keystring
+                child = self.flowbox.get_child_at_index(channel)
+                App().window.set_focus(child)
+                self.flowbox.select_child(child)
+                self.last_chan_selected = self.keystring
 
         self.flowbox.invalidate_filter()
 
@@ -1081,12 +1079,7 @@ class SequenceTab(Gtk.Grid):
     def _keypress_N(self):
         """New Chaser"""
         # Use the next free index
-        if len(App().chasers) > 0:
-            index_seq = App().chasers[-1].index + 1
-        else:
-            # Or 2 (1 is for Main Playback)
-            index_seq = 2
-
+        index_seq = App().chasers[-1].index + 1 if len(App().chasers) > 0 else 2
         # Create Chaser
         App().chasers.append(Sequence(index_seq, type_seq="Chaser"))
         del App().chasers[-1].steps[1:]

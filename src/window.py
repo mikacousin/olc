@@ -142,9 +142,7 @@ class Window(Gtk.ApplicationWindow):
             self.keystring += "."
             self.statusbar.push(self.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -219,10 +217,9 @@ class Window(Gtk.ApplicationWindow):
                 int(self.last_chan_selected)
             )
             allocation = child.get_allocation()
-            child = self.channels_view.flowbox.get_child_at_pos(
+            if child := self.channels_view.flowbox.get_child_at_pos(
                 allocation.x, allocation.y + allocation.height
-            )
-            if child:
+            ):
                 self.channels_view.flowbox.unselect_all()
                 index = child.get_index()
                 self.set_focus(child)
@@ -248,10 +245,9 @@ class Window(Gtk.ApplicationWindow):
                 int(self.last_chan_selected)
             )
             allocation = child.get_allocation()
-            child = self.channels_view.flowbox.get_child_at_pos(
+            if child := self.channels_view.flowbox.get_child_at_pos(
                 allocation.x, allocation.y - allocation.height / 2
-            )
-            if child:
+            ):
                 self.channels_view.flowbox.unselect_all()
                 index = child.get_index()
                 self.set_focus(child)
@@ -281,7 +277,7 @@ class Window(Gtk.ApplicationWindow):
         """Channel"""
         self.channels_view.flowbox.unselect_all()
 
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.channels_view.flowbox.get_child_at_index(channel)
@@ -395,8 +391,7 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_exclam(self):
         """Level + (% level) of selected channels"""
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         sel = self.channels_view.flowbox.get_selected_children()
@@ -415,8 +410,7 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_colon(self):
         """Level - (% level) of selected channels"""
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         sel = self.channels_view.flowbox.get_selected_children()
@@ -454,9 +448,8 @@ class Window(Gtk.ApplicationWindow):
                 if App().settings.get_boolean("percent"):
                     if 0 <= level <= 100:
                         App().dmx.user[channel] = int(round((level / 100) * 255))
-                else:
-                    if 0 <= level <= 255:
-                        App().dmx.user[channel] = level
+                elif 0 <= level <= 255:
+                    App().dmx.user[channel] = level
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -510,8 +503,7 @@ class Window(Gtk.ApplicationWindow):
             channels = array.array("B", [0] * MAX_CHANNELS)
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
-                    channel = App().patch.outputs[univ][output][0]
-                    if channel:
+                    if channel := App().patch.outputs[univ][output][0]:
                         level = App().dmx.frame[univ][output]
                         channels[channel - 1] = level
             cue = Cue(1, mem, channels)
@@ -519,10 +511,7 @@ class Window(Gtk.ApplicationWindow):
 
             # Update Presets Tab if exist
             if App().memories_tab:
-                nb_chan = 0
-                for chan in range(MAX_CHANNELS):
-                    if channels[chan]:
-                        nb_chan += 1
+                nb_chan = sum(1 for chan in range(MAX_CHANNELS) if channels[chan])
                 App().memories_tab.liststore.insert(step - 1, [str(mem), "", nb_chan])
 
             App().sequence.position = step
@@ -554,10 +543,11 @@ class Window(Gtk.ApplicationWindow):
 
             # Update Presets Tab if exist
             if App().memories_tab:
-                nb_chan = 0
-                for chan in range(MAX_CHANNELS):
-                    if App().memories[i].channels[chan]:
-                        nb_chan += 1
+                nb_chan = sum(
+                    bool(App().memories[i].channels[chan])
+                    for chan in range(MAX_CHANNELS)
+                )
+
                 treeiter = App().memories_tab.liststore.get_iter(i)
                 App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
                 App().memories_tab.flowbox.invalidate_filter()

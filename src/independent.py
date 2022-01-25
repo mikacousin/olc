@@ -48,10 +48,7 @@ class Independent:
             levels (array): channels levels
         """
         self.levels = levels
-        self.channels = set()
-        for channel, level in enumerate(levels):
-            if level:
-                self.channels.add(channel)
+        self.channels = {channel for channel, level in enumerate(levels) if level}
 
     def update_dmx(self):
         """Update DMX levels"""

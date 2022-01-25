@@ -22,9 +22,7 @@ class OlaThread(threading.Thread):
         self.ola_client = OlaClient.OlaClient()
         self.sock = self.ola_client.GetSocket()
 
-        self.old_frame = []
-        for _ in range(NB_UNIVERSES):
-            self.old_frame.append(array.array("B", [0] * 512))
+        self.old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
 
     def run(self):
         """Register universes"""

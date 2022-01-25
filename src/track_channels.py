@@ -51,11 +51,9 @@ class TrackChannelsTab(Gtk.Grid):
         # Clear flowbox
         for child in self.flowbox.get_children():
             self.flowbox.remove(child)
-        # Levels in each steps
-        levels = []
         self.steps = []
         self.steps.append(TrackChannelsHeader(self.channels))
-        levels.append([])
+        levels = [[]]
         self.flowbox.add(self.steps[0])
         for step in range(1, App().sequence.last):
             memory = App().sequence.steps[step].cue.memory
@@ -145,8 +143,7 @@ class TrackChannelsTab(Gtk.Grid):
             self.keystring += keyname[3:]
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -254,7 +251,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         App().window.channels_view.flowbox.unselect_all()
 
-        if self.keystring != "" and self.keystring != "0":
+        if self.keystring not in ["", "0"]:
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = App().window.channels_view.flowbox.get_child_at_index(channel)

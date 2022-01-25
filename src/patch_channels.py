@@ -85,8 +85,7 @@ class PatchChannelsTab(Gtk.Box):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -189,10 +188,8 @@ class PatchChannelsTab(Gtk.Box):
 
     def _keypress_m(self):
         """Modify Output"""
-        several = False
         sel = self.flowbox.get_selected_children()
-        if len(sel) > 1:
-            several = True
+        several = len(sel) > 1
         for i, flowboxchild in enumerate(sel):
             children = flowboxchild.get_children()
 
@@ -279,42 +276,41 @@ class PatchChannelsTab(Gtk.Box):
             for patchchannelwidget in children:
                 channel = patchchannelwidget.channel - 1
 
-                if self.keystring != "" or self.keystring != "0":
-                    # New values
-                    if "." in self.keystring:
-                        if self.keystring[0] == ".":
-                            # ".universe" for change universe
-                            output = App().patch.channels[channel][0][0] - 1
-                            universe = int(self.keystring[1:])
-                        else:
-                            # "output.universe"
-                            split = self.keystring.split(".")
-                            output = int(split[0]) - 1
-                            universe = int(split[1])
+                # New values
+                if "." in self.keystring:
+                    if self.keystring[0] == ".":
+                        # ".universe" for change universe
+                        output = App().patch.channels[channel][0][0] - 1
+                        universe = int(self.keystring[1:])
                     else:
-                        # "output", universe is 0
-                        output = int(self.keystring) - 1
-                        universe = 0
+                        # "output.universe"
+                        split = self.keystring.split(".")
+                        output = int(split[0]) - 1
+                        universe = int(split[1])
+                else:
+                    # "output", universe is 0
+                    output = int(self.keystring) - 1
+                    universe = 0
 
-                    if 0 <= output < 512:
-                        # Unpatch old value
-                        old_channel = App().patch.outputs[universe][output][0]
-                        if old_channel:
-                            App().patch.outputs[universe][output][0] = 0
-                            App().patch.channels[old_channel - 1].remove(
-                                [output + 1, universe]
-                            )
-                            if len(App().patch.channels[old_channel - 1]) == 0:
-                                App().patch.channels[old_channel - 1] = [[0, 0]]
-                        # Patch
-                        App().patch.add_output(channel + 1, output + 1, universe)
-                        # Update ui
-                        self.channels[old_channel - 1].queue_draw()
-                        self.channels[channel].queue_draw()
+                if 0 <= output < 512:
+                    # Unpatch old value
+                    old_channel = App().patch.outputs[universe][output][0]
+                    if old_channel:
+                        App().patch.outputs[universe][output][0] = 0
+                        App().patch.channels[old_channel - 1].remove(
+                            [output + 1, universe]
+                        )
+                        if len(App().patch.channels[old_channel - 1]) == 0:
+                            App().patch.channels[old_channel - 1] = [[0, 0]]
+                    # Patch
+                    App().patch.add_output(channel + 1, output + 1, universe)
+                    # Update ui
+                    self.channels[old_channel - 1].queue_draw()
+                    self.channels[channel].queue_draw()
 
-                        # Update list of channels
-                        App().window.channels_view.channels[channel].queue_draw()
-                        App().window.channels_view.flowbox.invalidate_filter()
+                    # Update list of channels
+                    App().window.channels_view.channels[channel].queue_draw()
+                    App().window.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -328,31 +324,29 @@ class PatchChannelsTab(Gtk.Box):
 
             for patchchannelwidget in children:
                 channel = patchchannelwidget.channel - 1
-                # univ = App().patch.channels[channel][1]
+                if "." in self.keystring:
+                    if self.keystring[0] != ".":
+                        # "output.universe"
+                        split = self.keystring.split(".")
+                        output = int(split[0]) - 1
+                        universe = int(split[1])
+                else:
+                    # "output", universe is 0
+                    output = int(self.keystring) - 1
+                    universe = 0
 
-                if self.keystring != "" or self.keystring != "0":
-                    if "." in self.keystring:
-                        if self.keystring[0] != ".":
-                            # "output.universe"
-                            split = self.keystring.split(".")
-                            output = int(split[0]) - 1
-                            universe = int(split[1])
-                    else:
-                        # "output", universe is 0
-                        output = int(self.keystring) - 1
-                        universe = 0
-
-                    if 0 <= output < 512:
-                        # Verify Output is patched to the Channel
-                        if [output + 1, universe] in App().patch.channels[channel]:
-                            # Remove Output
-                            App().patch.channels[channel].remove([output + 1, universe])
-                            if len(App().patch.channels[channel]) == 0:
-                                App().patch.channels[channel] = [[0, 0]]
-                            App().patch.outputs[universe][output][0] = 0
-                            App().dmx.frame[universe][output] = 0
-                            # Update ui
-                            self.channels[channel].queue_draw()
+                if (
+                    0 <= output < 512
+                    and [output + 1, universe] in App().patch.channels[channel]
+                ):
+                    # Remove Output
+                    App().patch.channels[channel].remove([output + 1, universe])
+                    if len(App().patch.channels[channel]) == 0:
+                        App().patch.channels[channel] = [[0, 0]]
+                    App().patch.outputs[universe][output][0] = 0
+                    App().dmx.frame[universe][output] = 0
+                    # Update ui
+                    self.channels[channel].queue_draw()
 
                 # Update list of channels
                 App().window.channels_view.channels[channel].queue_draw()

@@ -34,34 +34,29 @@ class Master:
         # Type 0 : None
         if self.content_type == 0:
             pass
-        # Type 1 : Preset
         elif self.content_type == 1:
             self.content_value = float(content_value)
-            cue = next(
+            if cue := next(
                 mem for mem in App().memories if mem.memory == self.content_value
-            )
-            if cue:
+            ):
                 self.text = cue.text
-        # Type 2 : Channels
         elif self.content_type == 2:
             self.text += "Ch"
             self.content_value = content_value
             for channel, level in enumerate(content_value):
                 if level:
                     self.text += " " + str(channel + 1)
-        # Type 3 : Chaser
         elif self.content_type == 3:
             self.content_value = float(content_value)
-            chaser = next(
+            if chaser := next(
                 chsr for chsr in App().chasers if chsr.index == self.content_value
-            )
-            if chaser:
+            ):
                 self.text = chaser.text
-        # Type 13 : Group
         elif self.content_type == 13:
             self.content_value = float(content_value)
-            group = next(grp for grp in App().groups if grp.index == self.content_value)
-            if group:
+            if group := next(
+                grp for grp in App().groups if grp.index == self.content_value
+            ):
                 self.text = group.text
         else:
             print("Master Type : Unknown")
@@ -95,8 +90,9 @@ class Master:
 
     def _level_changed_preset(self):
         """New level and type is Preset"""
-        mem = next(cue for cue in App().memories if cue.memory == self.content_value)
-        if mem:
+        if mem := next(
+            cue for cue in App().memories if cue.memory == self.content_value
+        ):
             for channel in range(MAX_CHANNELS):
                 if mem.channels[channel]:
                     # Preset level
@@ -115,9 +111,9 @@ class Master:
 
     def _level_changed_group(self):
         """New level and type is Group"""
-        # Find group
-        group = next(grp for grp in App().groups if grp.index == self.content_value)
-        if group:
+        if group := next(
+            grp for grp in App().groups if grp.index == self.content_value
+        ):
             # Get Channels and Levels in group
             for channel, lvl in enumerate(group.channels):
                 if lvl:

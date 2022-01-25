@@ -114,26 +114,9 @@ class MastersTab(Gtk.Paned):
                 # Type : None
                 if App().masters[index].content_type == 0:
                     self.liststore.append([index + 1, "", "", ""])
-                # Type : Preset
                 elif App().masters[index].content_type == 1:
                     content_value = str(App().masters[index].content_value)
                     self.liststore.append([index + 1, "Preset", content_value, ""])
-                # Type : Channels
-                elif App().masters[index].content_type == 2:
-                    nb_chan = 0
-                    for chan in range(MAX_CHANNELS):
-                        if App().masters[index].content_value[chan]:
-                            nb_chan += 1
-                    self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
-                # Type : Sequence
-                elif App().masters[index].content_type == 3:
-                    content_value = (
-                        str(int(App().masters[index].content_value))
-                        if App().masters[index].content_value.is_integer()
-                        else str(App().masters[index].content_value)
-                    )
-                    self.liststore.append([index + 1, "Sequence", content_value, ""])
-                # Type : Group
                 elif App().masters[index].content_type == 13:
                     content_value = (
                         str(int(App().masters[index].content_value))
@@ -143,7 +126,21 @@ class MastersTab(Gtk.Paned):
                     self.liststore.append(
                         [index + 1, "Group", content_value, "Exclusif"]
                     )
-                # Type : Unknown
+                elif App().masters[index].content_type == 2:
+                    nb_chan = sum(
+                        1
+                        for chan in range(MAX_CHANNELS)
+                        if App().masters[index].content_value[chan]
+                    )
+
+                    self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
+                elif App().masters[index].content_type == 3:
+                    content_value = (
+                        str(int(App().masters[index].content_value))
+                        if App().masters[index].content_value.is_integer()
+                        else str(App().masters[index].content_value)
+                    )
+                    self.liststore.append([index + 1, "Sequence", content_value, ""])
                 else:
                     self.liststore.append([index + 1, "Unknown", "", ""])
 
@@ -388,8 +385,7 @@ class MastersTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        func = getattr(self, "_keypress_" + keyname, None)
-        if func:
+        if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
 
@@ -415,10 +411,7 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            if (
-                App().masters[row].content_type == 0
-                or App().masters[row].content_type == 3
-            ):
+            if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
@@ -427,19 +420,18 @@ class MastersTab(Gtk.Paned):
             for channel in range(MAX_CHANNELS):
                 self.channels[channel].clicked = False
 
-            if self.keystring != "" and self.keystring != "0":
+            if self.keystring not in ["", "0"]:
                 channel = int(self.keystring) - 1
-                if 0 <= channel < MAX_CHANNELS:
+                if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][
+                    0
+                ] != [0, 0]:
+                    self.channels[channel].clicked = True
+                    self.flowbox.invalidate_filter()
 
-                    # Only patched channels
-                    if App().patch.channels[channel][0] != [0, 0]:
-                        self.channels[channel].clicked = True
-                        self.flowbox.invalidate_filter()
-
-                        child = self.flowbox.get_child_at_index(channel)
-                        App().window.set_focus(child)
-                        self.flowbox.select_child(child)
-                        self.last_chan_selected = self.keystring
+                    child = self.flowbox.get_child_at_index(channel)
+                    App().window.set_focus(child)
+                    self.flowbox.select_child(child)
+                    self.last_chan_selected = self.keystring
 
             self.flowbox.invalidate_filter()
 
@@ -600,15 +592,15 @@ class MastersTab(Gtk.Paned):
             # Master's channels
             if App().masters[row].content_type == 1:
                 preset = App().masters[row].content_value
-                cue = next(mem for mem in App().memories if mem.memory == preset)
-                if cue:
+                if cue := next(
+                    mem for mem in App().memories if mem.memory == preset
+                ):
                     channels = cue.channels
                 else:
                     return False
             elif App().masters[row].content_type == 13:
                 group = App().masters[row].content_value
-                grp = next(grp for grp in App().groups if grp.index == group)
-                if grp:
+                if grp := next(grp for grp in App().groups if grp.index == group):
                     channels = grp.channels
                 else:
                     return False
@@ -659,9 +651,7 @@ class MastersTab(Gtk.Paned):
         """Level - %"""
 
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
@@ -684,9 +674,7 @@ class MastersTab(Gtk.Paned):
         """Level + %"""
 
         lvl = App().settings.get_int("percent-level")
-        percent = App().settings.get_boolean("percent")
-
-        if percent:
+        if percent := App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()

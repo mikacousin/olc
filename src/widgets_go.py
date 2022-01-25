@@ -52,11 +52,10 @@ class GoWidget(Gtk.Widget):
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
+        elif App().midi.midi_learn == "go":
+            cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
-            if App().midi.midi_learn == "go":
-                cr.set_source_rgb(0.3, 0.2, 0.2)
-            else:
-                cr.set_source_rgb(0.2, 0.2, 0.2)
+            cr.set_source_rgb(0.2, 0.2, 0.2)
         area = (1, self.width - 2, 1, self.height - 2)
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)

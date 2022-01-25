@@ -30,40 +30,19 @@ class WingPlayback:
             True
         """
         message = self.sock.recv(1024)
-        if message[0:4] == b"WODD":
+        if message[:4] == b"WODD":
             # print("Wing output data", message[0:4])
             # print("Wing firmware :", message[4])
             # print("Wing flags :", message[5])
 
             # Go
-            if message[6] & 16:
-                # Go released
-                pass
-            else:
+            if not message[6] & 16:
                 # Go pressed
                 App().sequence.do_go(None, None)
             # Back
-            if message[6] & 32:
-                # Back released
-                pass
-            else:
+            if not message[6] & 32:
                 # Back pressed
                 App().sequence.go_back(None, None)
-            # PageDown
-            if message[6] & 64:
-                # PageDown released
-                pass
-            else:
-                # PageDown pressed
-                pass
-            # PageUp
-            if message[6] & 128:
-                # PageUp released
-                pass
-            else:
-                # PageUp pressed
-                pass
-
             # TODO: Flashes don't work
             """
             if message[7] & 1:
@@ -168,17 +147,16 @@ def _function_flash(pressed, master_index):
                     break
             master.old_value = master.value
             master.set_level(255)
+    elif App().virtual_console:
+        event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+        App().virtual_console.flashes[master_index - 1].emit(
+            "button-release-event", event
+        )
     else:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.flashes[master_index - 1].emit(
-                "button-release-event", event
-            )
-        else:
-            page = int((master_index - 1) / 20) + 1
-            number = master_index if page == 1 else int(master_index / 2)
-            master = None
-            for master in App().masters:
-                if master.page == page and master.number == number:
-                    break
-            master.set_level(master.old_value)
+        page = int((master_index - 1) / 20) + 1
+        number = master_index if page == 1 else int(master_index / 2)
+        master = None
+        for master in App().masters:
+            if master.page == page and master.number == number:
+                break
+        master.set_level(master.old_value)
