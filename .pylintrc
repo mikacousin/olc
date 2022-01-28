@@ -18,7 +18,7 @@ ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook='import sys; sys.path.insert(1, "/usr/local/lib/python3.8/site-packages")'
+init-hook='import sys; sys.path.insert(1, "/usr/local/lib/python3.10/site-packages")'
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
@@ -141,14 +141,16 @@ disable=print-statement,
         comprehension-escape,
         C0330,
         C0413,
+        C0411,
         R0801,
+        no-member,
         arguments-differ # Pylint fails at this with the Gtk do_* methods, so no thanks.
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once). See also the "--disable" option for examples.
-enable=c-extension-no-member
+enable=
 
 
 [REPORTS]
