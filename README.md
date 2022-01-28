@@ -4,7 +4,8 @@
 
 Open Lighting Console (olc) is a linux software to control lights on shows.
 
-Alpha version. **Don't use originals ascii files, test with copies !**
+**Beta version**
+As a precaution, you should not use original ascii light files, but rather copies. This, in order not to lose information by saving in the same file.
 
 Main Window :
 ![Screenshot](../assets/olc.png?raw=true)
