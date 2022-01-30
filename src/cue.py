@@ -1,5 +1,17 @@
-"""A Cue or a Preset is used to store intensities for playback in a Sequence."""
-
+# -*- coding: utf-8 -*-
+# Open Lighting Console
+# Copyright (c) 2015-2022 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
 
 from olc.define import MAX_CHANNELS
@@ -8,7 +20,8 @@ from olc.define import MAX_CHANNELS
 class Cue:
     """Cue/Preset object
 
-    A cue is attached to a sequence and a preset is a global memory
+    A Cue or a Preset is used to store intensities for playback in a Sequence.
+    A Cue is attached to a sequence and a Preset is a global memory
 
     Attributes:
         sequence (int): sequence number (0 for Preset)
