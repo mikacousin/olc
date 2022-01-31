@@ -176,8 +176,8 @@ class MastersTab(Gtk.Paned):
             # Index of Channel
             index = child.get_index()
 
-            # Type : None
-            if App().masters[row].content_type == 0:
+            # Type : None or Sequence
+            if App().masters[row].content_type in [0, 3]:
                 return False
 
             # Type : Preset
@@ -224,10 +224,6 @@ class MastersTab(Gtk.Paned):
                 self.channels[index].next_level = self.user_channels[index]
                 return child
 
-            # Type : Sequence
-            if App().masters[row].content_type == 3:
-                return False
-
             # Type : Group
             if App().masters[row].content_type == 13:
                 found = False
@@ -268,6 +264,12 @@ class MastersTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
 
     def on_content_type_changed(self, _widget, path, text):
+        """Master type has been changed
+
+        Args:
+            path (int): Row (starting at 0)
+            text (str): Master type
+        """
         # Update display
         self.liststore[path][1] = text
 
@@ -310,9 +312,22 @@ class MastersTab(Gtk.Paned):
                 App().virtual_console.flashes[index].queue_draw()
 
     def on_mode_changed(self, _widget, path, text):
+        """Master mode has been changed
+        Master modes are not used for now, just change displayed text
+
+        Args:
+            path (int): Row number (starting at 0)
+            text (str): Mode
+        """
         self.liststore[path][3] = text
 
     def on_content_value_edited(self, _widget, path, text):
+        """Master Content value has been changed
+
+        Args:
+            path (int): Row number (starting at 0)
+            text (str): Value
+        """
         if text == "":
             text = "0"
 
@@ -365,8 +380,15 @@ class MastersTab(Gtk.Paned):
         notebook.remove_page(page)
         App().masters_tab = None
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, _widget, event):
+        """Key has been pressed
 
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            False or function
+        """
         # Hack to know if user is editing something
         # TODO: Bug with CellRendererCombo (entry blocked)
         widget = App().window.get_focus()
@@ -402,13 +424,15 @@ class MastersTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().masters_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -455,7 +479,7 @@ class MastersTab(Gtk.Paned):
             return True
         return False
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         self._keypress_greater()
 
     def _keypress_greater(self):
@@ -706,10 +730,10 @@ class MastersTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def _keypress_U(self):
+    def _keypress_U(self):  # pylint: disable=C0103
         self._keypress_R()
 
-    def _keypress_R(self):
+    def _keypress_R(self):  # pylint: disable=C0103
         """Record Master
 
         Returns:
