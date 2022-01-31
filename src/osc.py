@@ -137,9 +137,9 @@ class OscServer(liblo.ServerThread):
         self.start()
 
     def _fallback(self, path, args, types, src):
-        print("Got unknown message '%s' from '%s'" % (path, src.url))
+        print(f"Got unknown message '{path}' from '{src.url}'")
         for a, t in zip(args, types):
-            print("received argument %s of type %s" % (a, t))
+            print(f"received argument {a} of type {t}")
 
     def _seqgo_cb(self, _path, args, types):
         """Go
