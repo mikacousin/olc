@@ -676,10 +676,10 @@ class ThreadGo(threading.Thread):
                 )
                 + old_level
             )
-        elif next_level > old_level and i > self.time_in + self.wait + self.delay_in:
+        if next_level > old_level and i > self.time_in + self.wait + self.delay_in:
             return next_level
         # If level decreases, use Time Out
-        elif (
+        if (
             next_level < old_level
             and self.wait + self.delay_out
             < i
@@ -691,11 +691,10 @@ class ThreadGo(threading.Thread):
                     * (i - self.wait - self.delay_out)
                 )
             )
-        elif next_level < old_level and i > self.time_out + self.wait + self.delay_out:
+        if next_level < old_level and i > self.time_out + self.wait + self.delay_out:
             return next_level
         # Level doesn't change
-        else:
-            return old_level
+        return old_level
 
     def _channel_time_level(self, i, channel_time, old_level, next_level):
         """Return channel level if in channel time
@@ -928,7 +927,6 @@ class ThreadGoBack(threading.Thread):
         """
         if next_level > old_level:
             return round(((next_level - old_level) / go_back_time) * i) + old_level
-        elif next_level < old_level:
+        if next_level < old_level:
             return old_level - abs(round(((next_level - old_level) / go_back_time) * i))
-        else:
-            return next_level
+        return next_level
