@@ -182,6 +182,8 @@ class IndependentsTab(Gtk.Paned):
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().inde_tab = None

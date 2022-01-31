@@ -144,6 +144,8 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
         notebook = self.get_parent()
         page = notebook.get_current_page()
         notebook.remove_page(page)

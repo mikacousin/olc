@@ -379,6 +379,8 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
         # If channel times has no delay and no time, delete it
         keys = list(self.step.channel_time.keys())
         for channel in keys:
