@@ -22,6 +22,13 @@ from olc.zoom import zoom
 
 
 class Group:
+    """A Group is composed with channels at some levels
+
+    Attributes:
+        index: Group number
+        channels: Array of channels with levels
+        text: Group description
+    """
     def __init__(self, index, channels=array.array("B", [0] * MAX_CHANNELS), text=""):
         self.index = index
         self.channels = channels
@@ -29,6 +36,7 @@ class Group:
 
 
 class GroupTab(Gtk.Paned):
+    """Groups edition"""
     def __init__(self):
 
         self.keystring = ""
@@ -79,7 +87,6 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.set_homogeneous(True)
         self.flowbox2.set_activate_on_single_click(True)
         self.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.flowbox2.set_filter_func(self.filter_groups, None)
         # Add groups to FlowBox
         for i, _ in enumerate(App().groups):
             self.grps.append(
@@ -110,9 +117,6 @@ class GroupTab(Gtk.Paned):
                 return False
         return False
 
-    def filter_groups(self, child, _user_data):
-        return child
-
     def on_close_icon(self, _widget):
         """Close Tab with the icon clicked"""
         notebook = self.get_parent()
@@ -121,6 +125,14 @@ class GroupTab(Gtk.Paned):
         App().group_tab = None
 
     def on_key_press_event(self, _widget, event):
+        """Key has been presed
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            False or function
+        """
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
 
