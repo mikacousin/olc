@@ -179,13 +179,13 @@ class CuesEditionTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().memories_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -215,7 +215,7 @@ class CuesEditionTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         self._keypress_greater()
 
     def _keypress_greater(self):
@@ -396,7 +396,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def _keypress_U(self):
+    def _keypress_U(self):  # pylint: disable=C0103
         """Update Memory"""
 
         self.flowbox.unselect_all()
@@ -425,7 +425,7 @@ class CuesEditionTab(Gtk.Paned):
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
 
-    def _keypress_Delete(self):
+    def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
 
         # TODO: Ask confirmation
@@ -484,7 +484,7 @@ class CuesEditionTab(Gtk.Paned):
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
-    def _keypress_R(self):
+    def _keypress_R(self):  # pylint: disable=C0103
         """Records a copy of the current Memory with a new number
 
         Returns:
@@ -561,7 +561,7 @@ class CuesEditionTab(Gtk.Paned):
 
         return True
 
-    def _keypress_Insert(self):
+    def _keypress_Insert(self):  # pylint: disable=C0103
         """Insert a new Memory
 
         Returns:

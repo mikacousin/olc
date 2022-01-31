@@ -111,8 +111,8 @@ class TrackChannelsHeader(Gtk.Widget):
             | Gdk.EventMask.BUTTON_PRESS_MASK
             | Gdk.EventMask.TOUCH_MASK
         )
-        WAT = Gdk.WindowAttributesType
-        mask = WAT.X | WAT.Y | WAT.VISUAL
+        wat = Gdk.WindowAttributesType
+        mask = wat.X | wat.Y | wat.VISUAL
 
         window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
@@ -297,8 +297,8 @@ class TrackChannelsWidget(Gtk.Widget):
             | Gdk.EventMask.BUTTON_PRESS_MASK
             | Gdk.EventMask.TOUCH_MASK
         )
-        WAT = Gdk.WindowAttributesType
-        mask = WAT.X | WAT.Y | WAT.VISUAL
+        wat = Gdk.WindowAttributesType
+        mask = wat.X | wat.Y | wat.VISUAL
 
         window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)

@@ -151,17 +151,17 @@ class GroupTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().group_tab = None
 
-    def _keypress_Right(self):
+    def _keypress_Right(self):  # pylint: disable=C0103
         """Next Group"""
 
         if self.last_group_selected == "":
@@ -186,7 +186,7 @@ class GroupTab(Gtk.Paned):
             self.flowbox1.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) + 1)
 
-    def _keypress_Left(self):
+    def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Group"""
 
         if self.last_group_selected == "":
@@ -211,7 +211,7 @@ class GroupTab(Gtk.Paned):
             self.flowbox1.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
 
-    def _keypress_Down(self):
+    def _keypress_Down(self):  # pylint: disable=C0103
         """Group on Next Line"""
 
         if self.last_group_selected == "":
@@ -242,7 +242,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox1.invalidate_filter()
                 self.last_group_selected = str(index)
 
-    def _keypress_Up(self):
+    def _keypress_Up(self):  # pylint: disable=C0103
         """Group on Previous Line"""
 
         if self.last_group_selected == "":
@@ -346,7 +346,7 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         self._keypress_greater()
 
     def _keypress_greater(self):
@@ -521,7 +521,7 @@ class GroupTab(Gtk.Paned):
 
         self.flowbox1.invalidate_filter()
 
-    def _keypress_N(self):
+    def _keypress_N(self):  # pylint: disable=C0103
         """New Group"""
         # If no group number, use the next one
         if self.keystring == "":

@@ -158,7 +158,7 @@ class Window(Gtk.ApplicationWindow):
             return func()
         return False
 
-    def _keypress_Right(self):
+    def _keypress_Right(self):  # pylint: disable=C0103
         """Next Channel"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -186,7 +186,7 @@ class Window(Gtk.ApplicationWindow):
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
 
-    def _keypress_Left(self):
+    def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Channel"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -213,7 +213,7 @@ class Window(Gtk.ApplicationWindow):
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
 
-    def _keypress_Down(self):
+    def _keypress_Down(self):  # pylint: disable=C0103
         """Next Line"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -241,7 +241,7 @@ class Window(Gtk.ApplicationWindow):
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
 
-    def _keypress_Up(self):
+    def _keypress_Up(self):  # pylint: disable=C0103
         """Previous Line"""
         if self.last_chan_selected == "":
             # Find first patched channel
@@ -303,7 +303,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Thru"""
         self.thru()
 
@@ -350,7 +350,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_KP_Add(self):
+    def _keypress_KP_Add(self):  # pylint: disable=C0103
         """+"""
         self._keypress_plus()
 
@@ -375,7 +375,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_KP_Subtract(self):
+    def _keypress_KP_Subtract(self):  # pylint: disable=C0103
         """-"""
         self._keypress_minus()
 
@@ -438,7 +438,7 @@ class Window(Gtk.ApplicationWindow):
                     level = App().dmx.frame[univ][out - 1]
                     App().dmx.user[channel] = max(level - lvl, 0)
 
-    def _keypress_KP_Enter(self):
+    def _keypress_KP_Enter(self):  # pylint: disable=C0103
         """@ Level"""
         self._keypress_equal()
 
@@ -466,12 +466,12 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Unselect all channels"""
         self.channels_view.flowbox.unselect_all()
         self.last_chan_selected = ""
@@ -490,13 +490,13 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_G(self):
+    def _keypress_G(self):  # pylint: disable=C0103
         """Goto"""
         App().sequence.goto(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_R(self):
+    def _keypress_R(self):  # pylint: disable=C0103
         """Record new Step and new Preset"""
         found = False
 
@@ -583,7 +583,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_U(self):
+    def _keypress_U(self):  # pylint: disable=C0103
         """Update Cue"""
         position = App().sequence.position
         memory = App().sequence.steps[position].cue.memory
@@ -608,7 +608,7 @@ class Window(Gtk.ApplicationWindow):
 
         dialog.destroy()
 
-    def _keypress_T(self):
+    def _keypress_T(self):  # pylint: disable=C0103
         """Change Time In and Time Out of next step"""
         if self.keystring == "":
             return
@@ -636,7 +636,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_I(self):
+    def _keypress_I(self):  # pylint: disable=C0103
         """Change Time In of next step"""
         if self.keystring == "":
             return
@@ -662,7 +662,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_O(self):
+    def _keypress_O(self):  # pylint: disable=C0103
         """Change Time Out of next step"""
         if self.keystring == "":
             return
@@ -688,7 +688,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_W(self):
+    def _keypress_W(self):  # pylint: disable=C0103
         """Change Wait Time of next step"""
         if self.keystring == "":
             return
@@ -715,7 +715,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_D(self):
+    def _keypress_D(self):  # pylint: disable=C0103
         """Change Delay In and Out of next step"""
         if self.keystring == "":
             return
@@ -746,7 +746,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_K(self):
+    def _keypress_K(self):  # pylint: disable=C0103
         """Change Delay In of next step"""
         if self.keystring == "":
             return
@@ -773,7 +773,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_L(self):
+    def _keypress_L(self):  # pylint: disable=C0103
         """Change Delay Out of next step"""
         if self.keystring == "":
             return

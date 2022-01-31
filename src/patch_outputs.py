@@ -142,19 +142,19 @@ class PatchOutputsTab(Gtk.Box):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         notebook = self.get_parent()
         page = notebook.get_current_page()
         notebook.remove_page(page)
         App().patch_outputs_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Right(self):
+    def _keypress_Right(self):  # pylint: disable=C0103
         """Next Output"""
 
         if self.last_out_selected == "":
@@ -169,7 +169,7 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) + 1)
 
-    def _keypress_Left(self):
+    def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Output"""
 
         if self.last_out_selected == "":
@@ -184,7 +184,7 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) - 1)
 
-    def _keypress_Down(self):
+    def _keypress_Down(self):  # pylint: disable=C0103
         """Next Line"""
 
         if self.last_out_selected == "":
@@ -204,7 +204,7 @@ class PatchOutputsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
-    def _keypress_Up(self):
+    def _keypress_Up(self):  # pylint: disable=C0103
         """Previous Line"""
 
         if self.last_out_selected == "":
@@ -254,7 +254,7 @@ class PatchOutputsTab(Gtk.Box):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Output Thru"""
         self.thru()
 
@@ -292,7 +292,7 @@ class PatchOutputsTab(Gtk.Box):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Add(self):
+    def _keypress_KP_Add(self):  # pylint: disable=C0103
         """+"""
         self._keypress_plus()
 
@@ -323,7 +323,7 @@ class PatchOutputsTab(Gtk.Box):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Subtract(self):
+    def _keypress_KP_Subtract(self):  # pylint: disable=C0103
         """-"""
         self._keypress_minus()
 

@@ -770,18 +770,18 @@ class SequenceTab(Gtk.Grid):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().sequences_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Q(self):
+    def _keypress_Q(self):  # pylint: disable=C0103
         """Cycle Sequences"""
         path, _focus_column = self.treeview1.get_cursor()
         if path:
@@ -877,7 +877,7 @@ class SequenceTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Channel Thru"""
         self._keypress_greater()
 
@@ -1016,7 +1016,7 @@ class SequenceTab(Gtk.Grid):
                 self.channels[channel].queue_draw()
                 self.user_channels[channel] = level
 
-    def _keypress_U(self):
+    def _keypress_U(self):  # pylint: disable=C0103
         """Update Cue"""
         # Find selected sequence
         path, _focus_column = self.treeview1.get_cursor()
@@ -1066,7 +1066,7 @@ class SequenceTab(Gtk.Grid):
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
-    def _keypress_Delete(self):
+    def _keypress_Delete(self):  # pylint: disable=C0103
         """Delete selected Step"""
         # Find selected sequence
         path, _focus_column = self.treeview1.get_cursor()
@@ -1090,7 +1090,7 @@ class SequenceTab(Gtk.Grid):
             self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
             self.populate_liststore(step)
 
-    def _keypress_N(self):
+    def _keypress_N(self):  # pylint: disable=C0103
         """New Chaser"""
         # Use the next free index
         # 1 is for Main Playback, Chasers start at 2
@@ -1113,7 +1113,7 @@ class SequenceTab(Gtk.Grid):
         App().ascii.modified = True
         App().window.header.set_title(App().ascii.basename + "*")
 
-    def _keypress_R(self):
+    def _keypress_R(self):  # pylint: disable=C0103
         """New Step and new Cue"""
         found = False
 

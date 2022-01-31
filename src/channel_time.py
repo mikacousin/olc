@@ -377,7 +377,7 @@ class ChanneltimeTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         # If channel times has no delay and no time, delete it
         keys = list(self.step.channel_time.keys())
@@ -391,7 +391,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.playback.remove_page(page)
         App().channeltime_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -449,7 +449,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.treeview.set_cursor(path)
         App().window.set_focus(self.treeview)
 
-    def _keypress_Insert(self):
+    def _keypress_Insert(self):  # pylint: disable=C0103
         """Add Channel Time"""
 
         # Find selected channels

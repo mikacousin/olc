@@ -101,17 +101,17 @@ class PatchChannelsTab(Gtk.Box):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().patch_channels_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Down(self):
+    def _keypress_Down(self):  # pylint: disable=C0103
         """Select Next Channel"""
 
         if self.last_chan_selected == "":
@@ -129,7 +129,7 @@ class PatchChannelsTab(Gtk.Box):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Up(self):
+    def _keypress_Up(self):  # pylint: disable=C0103
         """Select Previous Channel"""
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -161,7 +161,7 @@ class PatchChannelsTab(Gtk.Box):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Thru"""
         self.thru()
 

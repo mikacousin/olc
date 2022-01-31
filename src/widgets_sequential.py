@@ -467,8 +467,8 @@ class SequentialWidget(Gtk.Widget):
         attr.height = allocation.height
         attr.visual = self.get_visual()
         attr.event_mask = self.get_events() | Gdk.EventMask.EXPOSURE_MASK
-        WAT = Gdk.WindowAttributesType
-        mask = WAT.X | WAT.Y | WAT.VISUAL
+        wat = Gdk.WindowAttributesType
+        mask = wat.X | wat.Y | wat.VISUAL
         window = Gdk.Window(self.get_parent_window(), attr, mask)
         self.set_window(window)
         self.register_window(window)

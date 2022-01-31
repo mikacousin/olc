@@ -159,18 +159,18 @@ class TrackChannelsTab(Gtk.Grid):
             return func()
         return False
 
-    def _keypress_Escape(self):
+    def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         page = App().window.playback.get_current_page()
         App().window.playback.remove_page(page)
         App().track_channels_tab = None
 
-    def _keypress_BackSpace(self):
+    def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Right(self):
+    def _keypress_Right(self):  # pylint: disable=C0103
         """Next Channel"""
 
         if self.last_step_selected == "":
@@ -187,7 +187,7 @@ class TrackChannelsTab(Gtk.Grid):
                         self.channel_selected += 1
                         widget.queue_draw()
 
-    def _keypress_Left(self):
+    def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Channel"""
 
         if self.last_step_selected == "":
@@ -204,7 +204,7 @@ class TrackChannelsTab(Gtk.Grid):
                         self.channel_selected -= 1
                         widget.queue_draw()
 
-    def _keypress_Down(self):
+    def _keypress_Down(self):  # pylint: disable=C0103
         """Next Step"""
 
         if self.last_step_selected == "":
@@ -220,7 +220,7 @@ class TrackChannelsTab(Gtk.Grid):
             index = child.get_index()
             self.last_step_selected = str(index)
 
-    def _keypress_Up(self):
+    def _keypress_Up(self):  # pylint: disable=C0103
         """Previous Step"""
 
         if self.last_step_selected == "":
@@ -276,7 +276,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Divide(self):
+    def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Channel Thru"""
         self._keypress_greater()
 
@@ -323,7 +323,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Add(self):
+    def _keypress_KP_Add(self):  # pylint: disable=C0103
         """Channel +"""
         self._keypress_plus()
 
@@ -345,7 +345,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_KP_Subtract(self):
+    def _keypress_KP_Subtract(self):  # pylint: disable=C0103
         """Channel -"""
         self._keypress_minus()
 
