@@ -240,8 +240,7 @@ class ThreadChaser(threading.Thread):
                         .sequence.steps[App().sequence.position]
                         .cue.channels[channel - 1]
                     )
-                    if old_level < seq_level:
-                        old_level = seq_level
+                    old_level = max(old_level, seq_level)
                     # Loop on cues and come back at first step
                     if position < App().chasers[self.chaser].last - 1:
                         next_level = (
@@ -250,8 +249,7 @@ class ThreadChaser(threading.Thread):
                             .steps[position + 1]
                             .cue.channels[channel - 1]
                         )
-                        if next_level < seq_level:
-                            next_level = seq_level
+                        next_level = max(next_level, seq_level)
                     else:
                         next_level = (
                             App()
@@ -259,8 +257,7 @@ class ThreadChaser(threading.Thread):
                             .steps[1]
                             .cue.channels[channel - 1]
                         )
-                        if next_level < seq_level:
-                            next_level = seq_level
+                        next_level = max(next_level, seq_level)
                         App().chasers[self.chaser].position = 1
                     # If level increases, use time In
                     if next_level > old_level and i < delay_in:
