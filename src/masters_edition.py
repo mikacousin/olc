@@ -21,6 +21,7 @@ from olc.zoom import zoom
 
 
 class MastersTab(Gtk.Paned):
+    """Masters edition"""
     def __init__(self):
 
         self.keystring = ""
@@ -68,10 +69,7 @@ class MastersTab(Gtk.Paned):
         # Populate with masters
         self.populate_tab()
 
-        self.filter = self.liststore.filter_new()
-        self.filter.set_visible_func(self.filter_master)
-
-        self.treeview = Gtk.TreeView(model=self.filter)
+        self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_master_changed)
 
@@ -161,9 +159,6 @@ class MastersTab(Gtk.Paned):
                     self.liststore.append([index + 1, "Sequence", content_value, ""])
                 else:
                     self.liststore.append([index + 1, "Unknown", "", ""])
-
-    def filter_master(self, _model, _i, _data):
-        return True
 
     def filter_channel_func(self, child, _user_data):
         """Filter channels
