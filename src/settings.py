@@ -21,6 +21,7 @@ from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 
 class Settings(Gio.Settings):
+    """Open Lighting Console settings"""
     def __init__(self):
 
         Gio.Settings.__init__(self)
@@ -33,6 +34,7 @@ class Settings(Gio.Settings):
 
 
 class SettingsDialog:
+    """Edit settings"""
     def __init__(self):
 
         builder = Gtk.Builder()
@@ -72,22 +74,22 @@ class SettingsDialog:
         self.spin_server_port.set_value(App().settings.get_int("osc-server-port"))
 
         # List of MIDI Controllers
-        self.midi_grid = builder.get_object("midi_grid")
-        self.midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
+        midi_grid = builder.get_object("midi_grid")
+        midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
         default = App().settings.get_strv("midi-in")
         for midi_in in mido.get_input_names():
             check_button = Gtk.CheckButton()
             check_button.set_label(midi_in)
-            check_button.connect("toggled", self._on_midi_toggle)
+            check_button.connect("toggled", self.on_midi_toggle)
             if midi_in in default:
                 check_button.set_active(True)
-            self.midi_grid.add(check_button)
+            midi_grid.add(check_button)
 
         builder.connect_signals(self)
 
-        self.settings_dialog.connect("delete-event", self._close)
+        self.settings_dialog.connect("delete-event", self.close)
 
-    def _close(self, widget, _param):
+    def close(self, widget, _param):  # pylint: disable=no-self-use
         """Mark window as closed
 
         Args:
@@ -100,7 +102,7 @@ class SettingsDialog:
         widget.destroy()
         return True
 
-    def _on_midi_toggle(self, button):
+    def on_midi_toggle(self, button):  # pylint: disable=no-self-use
         """Active / Unactive MIDI controllers
 
         Args:
@@ -128,7 +130,7 @@ class SettingsDialog:
         time = self.spin_go_back_time.get_value()
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
-    def _update_ui_percent(self, _widget, state):
+    def _update_ui_percent(self, _widget, state):  # pylint: disable=no-self-use
         """Change levels view (0-100) or (0-255)
 
         Args:
