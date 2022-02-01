@@ -1,5 +1,7 @@
 ![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
 
+[French](index.fr.md)
+
 ## Features
 - Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
 - [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) syntax
