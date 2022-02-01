@@ -19,10 +19,10 @@
 > Note:  
 > `Boutons` sont les boutons de la console. Ce sont ceux présents sur la console virtuelle.  
 > [touche] sont les raccourcis clavier. Les combinaisons de touches sont représentés ainsi [touche1 + touche2].  
-> Par exemple, le bouton `Ch` s'active avec la touche [C] du clavier, `Thru` avec [>]... Pour connaître les raccourcis clavier, ouvrez le menu correspondant directement d	ans l'application.
+> Par exemple, le bouton `Ch` s'active avec la touche [C] du clavier, `Thru` avec [>]... Pour connaître les raccourcis clavier, ouvrir le menu correspondant directement dans l'application.
 
 ### Console virtuelle
-Vous pouvez l'ouvrir avec le menu Burger ou avec [Shift + Ctrl + C]
+L'ouvrir avec le menu Burger ou avec [Shift + Ctrl + C]
 ![VirtualConsole](https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png)
 
 ### Fenêtre principale
