@@ -40,11 +40,15 @@ Vous pouvez l'ouvrir avec le menu Burger ou avec [Shift + Ctrl + C]
 > les valeurs de `+%` et `-%` peuvent être modifiées dans les Paramètres
 
 #### Modifier des Pas et des Mémoires
+
 Une mémoire stocke les niveaux des circuits
+
 - Enregistrer une mémoire avec le prochain numéro de libre :  `Record`
 - Enregistrer la mémoire 10 :  `10 Record`
 - Mettre à jour la mémoire active : `Update`  
-Un pas contient une mémoire et les temps
+
+Un pas contient une mémoire et des temps
+
 - Définir un temps de montée de 3s : [3], [Shift + I]
 - Définir un temps de descente de 2s : [2], [Shift + O]
 - Définir un temps de montée et de descente de 10s : [10], [Shift + T]

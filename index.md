@@ -40,11 +40,15 @@ Open with Burger menu or [Shift + Ctrl + C]
 > values of `+%` and `-%` can be changed in settings
 
 #### Manipulate Steps and Preset
+
 A Preset store channels levels
+
 - Record Preset with next free number:  `Record`
 - Record Preset 10 :  `10 Record`
 - Update Preset: `Update`
+
 A Step contains a cue and times
+
 - Time In of 3s: [3], [Shift + I]
 - Time Out of 2s: [2], [Shift + O]
 - Time In and Time Out of 10s: [10], [Shift + T]
