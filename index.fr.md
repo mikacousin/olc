@@ -1,3 +1,5 @@
+[English](index.md)
+
 ![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
 
 ## Fonctionnalités

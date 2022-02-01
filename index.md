@@ -1,6 +1,6 @@
-![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
-
 [French](index.fr.md)
+
+![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
 
 ## Features
 - Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
