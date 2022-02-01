@@ -2,30 +2,30 @@
 
 [![Release](https://img.shields.io/github/v/release/mikacousin/olc?include_prereleases)](https://github.com/mikacousin/olc/releases/latest) [![License](https://img.shields.io/github/license/mikacousin/olc?color=green)](https://github.com/mikacousin/olc/blob/master/COPYING) [![Sourcery](https://img.shields.io/badge/Sourcery-enabled-brightgreen)](https://sourcery.ai)
 
-[French](README.fr.md)
+[English](README.md)
 
-Open Lighting Console (olc) is a linux software to control lights on shows.
+Open Lighting Console (olc) est un logiciel fonctionnant sous linux pour piloter les lumières de spectacles.
 
-**Beta version**
+**version Beta**
 
-As a precaution, you should not use original ascii light files, but rather copies. This, in order not to lose information by saving in the same file.
+Par précaution, vous ne devriez pas utiliser de fichier ASCII-Light originaux, mais des copies. Ceci afin de ne pas perdre d'information en enregistrant dans le même fichier.
 
-Main Window :
+Fenêtre principale :
 ![Screenshot](../assets/olc.png?raw=true)
 
-Virtual console :
+Console virtuelle :
 ![VirtualConsole](../assets/virtual_console.png?raw=true)
 
 ## Installation
 
-### Packages:
+### Paquets:
 
 [![Flathub](https://img.shields.io/flathub/v/com.github.mikacousin.olc)](https://flathub.org/apps/details/com.github.mikacousin.olc)
 [![AUR](https://img.shields.io/aur/version/olc-git)](https://aur.archlinux.org/packages/olc-git)
 
-### Manually:
+### Manuellement:
 
-#### Depends on
+#### Dependances
 
 - gtk3 >= 3.20
 - python3
@@ -40,7 +40,7 @@ Virtual console :
 
 #### Ubuntu 20.04.1 LTS
 
-Install ola with python 3 support:
+Installez ola avec le support de python 3:
 ```bash
 $ sudo apt install git libcppunit-dev libcppunit-1.15-0 uuid-dev pkg-config libncurses5-dev libtool autoconf automake g++ libmicrohttpd-dev libmicrohttpd12 protobuf-compiler libprotobuf-lite17 python-protobuf libprotobuf-dev libprotoc-dev zlib1g-dev bison flex make libftdi-dev libftdi1 libusb-1.0-0-dev liblo-dev libavahi-client-dev python-numpy
 $ git clone https://github.com/OpenLightingProject/ola
@@ -51,12 +51,12 @@ $ make
 $ sudo make install
 $ sudo ldconfig
 ```
-Install olc dependencies:
+Installez les dépendances pour olc:
 ```bash
 $ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-psutil python3-liblo python3-mido python3-rtmidi
 ```
 
-#### Building from git
+#### Construction à partir de git
 
 ```bash
 $ git clone https://github.com/mikacousin/olc.git
@@ -67,13 +67,13 @@ $ sudo ninja -C builddir install
 
 #### Raspberry Pi 3B+
 
-**Need some tests**
+**PLus de tests sont nécessaires**
 
-Seems to work with **1 universe and 512 channels** (edit src/define.py)
+Semble fonctionner avec **1 univers et 512 circuits** (éditez le fichier src/define.py)
 
-Install ola fom git with python3 support.
+Installez ola à partir de  git avec le support de python3.
 
-And with `sudo apt install` :
+Et avec `sudo apt install` :
 
 - gnome-common
 - python-gobject
