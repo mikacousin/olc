@@ -156,7 +156,7 @@ class AsciiParser:
                             r = q.split("/")
                             if r[0] != "":
                                 channel = int(r[0])
-                                level = int(r[1][1:], 16)
+                                level = int(r[1][1:].upper(), 16)
                                 channels[channel - 1] = level
                     if line == "":
                         if not wait:
@@ -311,7 +311,10 @@ class AsciiParser:
                         channel = int(q[0])
                         output = int(r[0])
                         univ = int((output - 1) / 512)
-                        level = int(r[1])
+                        if r[1][0].upper() == "H":
+                            level = int(r[1][1:].upper(), 16)
+                        else:
+                            level = int(r[1])
                         if univ < NB_UNIVERSES:
                             if channel < MAX_CHANNELS:
                                 out = output - (512 * univ)
