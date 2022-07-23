@@ -22,6 +22,7 @@ from olc.zoom import zoom
 
 class MastersTab(Gtk.Paned):
     """Masters edition"""
+
     def __init__(self):
 
         self.keystring = ""

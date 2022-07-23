@@ -29,6 +29,7 @@ class Group:
         channels: Array of channels with levels
         text: Group description
     """
+
     def __init__(self, index, channels=array.array("B", [0] * MAX_CHANNELS), text=""):
         self.index = index
         self.channels = channels
@@ -37,6 +38,7 @@ class Group:
 
 class GroupTab(Gtk.Paned):
     """Groups edition"""
+
     def __init__(self):
 
         self.keystring = ""

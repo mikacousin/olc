@@ -22,6 +22,7 @@ from gi.repository import Gio, GLib, Gtk  # noqa: E402
 
 class Settings(Gio.Settings):
     """Open Lighting Console settings"""
+
     def __init__(self):
 
         Gio.Settings.__init__(self)
@@ -35,6 +36,7 @@ class Settings(Gio.Settings):
 
 class SettingsDialog:
     """Edit settings"""
+
     def __init__(self):
 
         builder = Gtk.Builder()
