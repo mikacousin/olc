@@ -79,7 +79,7 @@ class SettingsDialog:
         midi_grid = builder.get_object("midi_grid")
         midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
         default = App().settings.get_strv("midi-in")
-        for midi_in in mido.get_input_names():
+        for midi_in in list(set(mido.get_input_names())):
             check_button = Gtk.CheckButton()
             check_button.set_label(midi_in)
             check_button.connect("toggled", self.on_midi_toggle)
