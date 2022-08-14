@@ -425,16 +425,12 @@ class Application(Gtk.Application):
         the arguments are: title of the window, parent_window, action,
         (buttons, response)
         """
-        open_dialog = Gtk.FileChooserDialog(
+        open_dialog = Gtk.FileChooserNative.new(
             "Open ASCII File",
             self.window,
             Gtk.FileChooserAction.OPEN,
-            (
-                Gtk.STOCK_CANCEL,
-                Gtk.ResponseType.CANCEL,
-                Gtk.STOCK_OPEN,
-                Gtk.ResponseType.ACCEPT,
-            ),
+            "Open",
+            "Cancel"
         )
 
         filter_text = Gtk.FileFilter()
@@ -444,25 +440,14 @@ class Application(Gtk.Application):
 
         # not only local files can be selected in the file selector
         open_dialog.set_local_only(False)
-        # dialog always on top of the textview window
+        # dialog always on top
         open_dialog.set_modal(True)
-        # connect the dialog with the callback function open_response_cb()
-        open_dialog.connect("response", self._open_response_cb)
         # show the dialog
-        open_dialog.show()
-
-    def _open_response_cb(self, dialog, response_id):
-        """Callback function for the dialog open_dialog
-
-        Args:
-            dialog: Gtk.Dialog
-            response_id: Gtk.ResponseType
-        """
-        open_dialog = dialog
+        response = open_dialog.run()
 
         # if response is "ACCEPT" (the button "Open" has been clicked)
-        if response_id == Gtk.ResponseType.ACCEPT:
-            # self.file is the file that we get from the FileChooserDialog
+        if response == Gtk.ResponseType.ACCEPT:
+            # self.file is the file that we get from the FileChooserNative
             self.file = open_dialog.get_file()
 
             # Load the ASCII file
@@ -472,11 +457,11 @@ class Application(Gtk.Application):
             for univ in self.universes:
                 self.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
 
-        elif response_id == Gtk.ResponseType.CANCEL:
+        elif response == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")
 
-        # destroy the FileChooserDialog
-        dialog.destroy()
+        # destroy the FileChooserNative
+        open_dialog.destroy()
 
     def _save(self, _action, _parameter):
         """Save"""
@@ -487,16 +472,12 @@ class Application(Gtk.Application):
 
     def _saveas(self, _action, _parameter):
         """Save as"""
-        save_dialog = Gtk.FileChooserDialog(
+        save_dialog = Gtk.FileChooserNative.new(
             "Save ASCII file",
             self.window,
             Gtk.FileChooserAction.SAVE,
-            (
-                Gtk.STOCK_CANCEL,
-                Gtk.ResponseType.CANCEL,
-                Gtk.STOCK_SAVE,
-                Gtk.ResponseType.ACCEPT,
-            ),
+            "Save",
+            "Cancel"
         )
         # the dialog will present a confirmation dialog if the user types a file name
         # that already exists
@@ -510,21 +491,11 @@ class Application(Gtk.Application):
                 save_dialog.set_file(self.file)
             except GObject.GError as e:
                 print("Error: " + str(e))
-        # connect the dialog to the callback function save_response_cb()
-        save_dialog.connect("response", self._save_response_cb)
         # show the dialog
-        save_dialog.show()
+        response = save_dialog.run()
 
-    def _save_response_cb(self, dialog, response_id):
-        """Callback function for the dialog save_dialog
-
-        Args:
-            dialog: Gtk.Dialog
-            response_id: Gtk.ResponseType
-        """
-        save_dialog = dialog
         # if response is "ACCEPT" (the button "Save" has been clicked)
-        if response_id == Gtk.ResponseType.ACCEPT:
+        if response == Gtk.ResponseType.ACCEPT:
             # self.file is the currently selected file
             self.file = save_dialog.get_file()
             self.ascii.file = self.file
@@ -534,10 +505,10 @@ class Application(Gtk.Application):
             basename = self.file.get_basename()
             self.window.header.set_title(basename)
         # if response is "CANCEL" (the button "Cancel" has been clicked)
-        elif response_id == Gtk.ResponseType.CANCEL:
+        elif response == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.SAVE")
-        # destroy the FileChooserDialog
-        dialog.destroy()
+        # destroy the FileChooserNative
+        save_dialog.destroy()
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
