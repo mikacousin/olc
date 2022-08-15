@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import select
 import sys
+from gettext import gettext as _
 
 import gi
 from olc.ascii import Ascii
@@ -426,11 +427,11 @@ class Application(Gtk.Application):
         (buttons, response)
         """
         open_dialog = Gtk.FileChooserNative.new(
-            "Open ASCII File",
+            _("Open ASCII File"),
             self.window,
             Gtk.FileChooserAction.OPEN,
-            "Open",
-            "Cancel"
+            _("Open"),
+            _("Cancel"),
         )
 
         filter_text = Gtk.FileFilter()
@@ -473,11 +474,11 @@ class Application(Gtk.Application):
     def _saveas(self, _action, _parameter):
         """Save as"""
         save_dialog = Gtk.FileChooserNative.new(
-            "Save ASCII file",
+            _("Save ASCII file"),
             self.window,
             Gtk.FileChooserAction.SAVE,
-            "Save",
-            "Cancel"
+            _("Save"),
+            _("Cancel"),
         )
         # the dialog will present a confirmation dialog if the user types a file name
         # that already exists
