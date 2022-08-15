@@ -91,7 +91,7 @@ class SettingsDialog:
 
         self.settings_dialog.connect("delete-event", self.close)
 
-    def close(self, widget, _param):  # pylint: disable=no-self-use
+    def close(self, widget, _param):
         """Mark window as closed
 
         Args:
@@ -104,7 +104,7 @@ class SettingsDialog:
         widget.destroy()
         return True
 
-    def on_midi_toggle(self, button):  # pylint: disable=no-self-use
+    def on_midi_toggle(self, button):
         """Active / Unactive MIDI controllers
 
         Args:
@@ -132,7 +132,7 @@ class SettingsDialog:
         time = self.spin_go_back_time.get_value()
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
-    def _update_ui_percent(self, _widget, state):  # pylint: disable=no-self-use
+    def _update_ui_percent(self, _widget, state):
         """Change levels view (0-100) or (0-255)
 
         Args:
