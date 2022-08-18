@@ -15,6 +15,7 @@
 import gi
 import mido
 from olc.define import App
+from olc.widgets_midi_checkbutton import MidiCheckButtonWidget
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, GLib, Gtk  # noqa: E402
@@ -80,8 +81,9 @@ class SettingsDialog:
         midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
         default = App().settings.get_strv("midi-in")
         for midi_in in list(set(mido.get_input_names())):
-            check_button = Gtk.CheckButton()
-            check_button.set_label(midi_in)
+            check_button = MidiCheckButtonWidget()
+            check_button.set_midi_name(midi_in)
+            check_button.set_label(midi_in.split(":")[0])
             check_button.connect("toggled", self.on_midi_toggle)
             if midi_in in default:
                 check_button.set_active(True)
@@ -112,9 +114,9 @@ class SettingsDialog:
         """
         midi_ports = App().settings.get_strv("midi-in")
         if button.get_active():
-            midi_ports.append(button.get_label())
+            midi_ports.append(button.get_midi_name())
         else:
-            midi_ports.remove(button.get_label())
+            midi_ports.remove(button.get_midi_name())
         midi_ports = list(set(midi_ports))
         App().settings.set_strv("midi-in", midi_ports)
         App().midi.close_input()
