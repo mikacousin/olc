@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import mido
 from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
 from olc.widgets import rounded_rectangle, rounded_rectangle_fill
@@ -77,6 +78,19 @@ class FaderWidget(Gtk.Scale):
 
         # Cursor height
         value = self.get_value()
+
+        if self not in (App().virtual_console.scale_a, App().virtual_console.scale_b):
+            for outport in App().midi.outports:
+                item = App().midi.midi_cc[self.text]
+                if item[1] != -1:
+                    msg = mido.Message(
+                        "control_change",
+                        channel=item[0],
+                        control=item[1],
+                        value=int(value / 2),
+                        time=0,
+                    )
+                    outport.send(msg)
 
         if inverted:
             h = height - (((height - layout_h - 10 - (20 / 2)) / 255) * value)

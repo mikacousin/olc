@@ -178,10 +178,12 @@ class Application(Gtk.Application):
         # For Manual crossfade
         self.crossfade = CrossFade()
 
-        # Open MIDI Inputs
+        # Open MIDI Inputs and Outputs
         self.midi = Midi()
         ports = self.settings.get_strv("midi-in")
         self.midi.open_input(ports)
+        ports = self.settings.get_strv("midi-out")
+        self.midi.open_output(ports)
 
         # Init Enttec Wing Playback
         self.wing = WingPlayback()

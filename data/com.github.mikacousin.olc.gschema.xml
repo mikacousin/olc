@@ -41,5 +41,10 @@
       <summary>MIDI In</summary>
       <description></description>
     </key>
+    <key name="midi-out" type="as">
+      <default>[""]</default>
+      <summary>MIDI Out</summary>
+      <description></description>
+    </key>
   </schema>
 </schemalist>

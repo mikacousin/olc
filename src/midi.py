@@ -62,16 +62,17 @@ class Midi:
 
     def __init__(self):
         self.inports = []
+        self.outports = []
 
         self.midi_learn = ""
 
         # Default MIDI notes values : "action": Channel, Note
         self.midi_notes = {
-            "go": [0, 11],
-            "go_back": [0, -1],
-            "pause": [0, -1],
-            "seq_minus": [0, 12],
-            "seq_plus": [0, 13],
+            "go": [0, 94],
+            "go_back": [0, 86],
+            "pause": [0, 93],
+            "seq_minus": [0, 91],
+            "seq_plus": [0, 92],
             "output": [0, -1],
             "seq": [0, -1],
             "group": [0, -1],
@@ -224,10 +225,29 @@ class Midi:
                 inport = mido.open_input()
                 inport.callback = self.scan
 
+    def open_output(self, ports):
+        """Open MIDI outputs
+
+        Args:
+            ports: MIDI ports to open
+        """
+        output_names = mido.get_output_names()
+        for port in ports:
+            if port in output_names:
+                outport = mido.open_output(port)
+                self.outports.append(outport)
+            else:
+                outport = mido.open_output()
+
     def close_input(self):
         """Close MIDI inputs"""
         for inport in self.inports:
             inport.close()
+
+    def close_output(self):
+        """Close MIDI outputs"""
+        for outport in self.outports:
+            outport.close()
 
     def scan(self, msg):
         """Scan MIDI messages.
@@ -237,6 +257,10 @@ class Midi:
             msg: MIDI message
         """
         # print(msg)
+
+        if self.outports:
+            for outport in self.outports:
+                outport.send(msg)
 
         if self.midi_learn:
             self._learn(msg)

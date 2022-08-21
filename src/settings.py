@@ -76,16 +76,28 @@ class SettingsDialog:
         self.spin_server_port.set_adjustment(adjustment)
         self.spin_server_port.set_value(App().settings.get_int("osc-server-port"))
 
-        # List of MIDI Controllers
-        midi_grid = builder.get_object("midi_grid")
+        # List of MIDI Controllers (In)
+        midi_grid = builder.get_object("midi_in_grid")
         midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
         default = App().settings.get_strv("midi-in")
         for midi_in in list(set(mido.get_input_names())):
             check_button = MidiCheckButtonWidget()
             check_button.set_midi_name(midi_in)
             check_button.set_label(midi_in.split(":")[0])
-            check_button.connect("toggled", self.on_midi_toggle)
+            check_button.connect("toggled", self.on_midi_in_toggle)
             if midi_in in default:
+                check_button.set_active(True)
+            midi_grid.add(check_button)
+        # List of MIDI Controllers (Out)
+        midi_grid = builder.get_object("midi_out_grid")
+        midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
+        default = App().settings.get_strv("midi-out")
+        for midi_out in list(set(mido.get_output_names())):
+            check_button = MidiCheckButtonWidget()
+            check_button.set_midi_name(midi_out)
+            check_button.set_label(midi_out.split(":")[0])
+            check_button.connect("toggled", self.on_midi_out_toggle)
+            if midi_out in default:
                 check_button.set_active(True)
             midi_grid.add(check_button)
 
@@ -106,7 +118,7 @@ class SettingsDialog:
         widget.destroy()
         return True
 
-    def on_midi_toggle(self, button):
+    def on_midi_in_toggle(self, button):
         """Active / Unactive MIDI controllers
 
         Args:
@@ -121,6 +133,22 @@ class SettingsDialog:
         App().settings.set_strv("midi-in", midi_ports)
         App().midi.close_input()
         App().midi.open_input(midi_ports)
+
+    def on_midi_out_toggle(self, button):
+        """Active / Unactive MIDI controllers (output)
+
+        Args:
+            button: Button clicked
+        """
+        midi_ports = App().settings.get_strv("midi-out")
+        if button.get_active():
+            midi_ports.append(button.get_midi_name())
+        else:
+            midi_ports.remove(button.get_midi_name())
+        midi_ports = list(set(midi_ports))
+        App().settings.set_strv("midi-out", midi_ports)
+        App().midi.close_output()
+        App().midi.open_output(midi_ports)
 
     def _on_change_percent(self, _widget):
         lvl = self.spin_percent_level.get_value_as_int()
