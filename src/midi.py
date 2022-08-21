@@ -258,18 +258,14 @@ class Midi:
         """
         # print(msg)
 
-        if self.outports:
-            for outport in self.outports:
-                outport.send(msg)
-
         if self.midi_learn:
             self._learn(msg)
-
-        # Find action actived
-        if msg.type in ("note_on", "note_off"):
-            self._scan_notes(msg)
-        elif msg.type == "control_change":
-            self._scan_cc(msg)
+        else:
+            # Find action actived
+            if msg.type in ("note_on", "note_off"):
+                self._scan_notes(msg)
+            elif msg.type == "control_change":
+                self._scan_cc(msg)
 
     def _scan_notes(self, msg):
         """Scan MIDI notes
@@ -403,9 +399,13 @@ class Midi:
         Args:
             msg: MIDI message
         """
+        if self.outports:
+            for outport in self.outports:
+                outport.send(msg)
+
         if self.midi_notes.get(self.midi_learn) and msg.type == "note_on":
             # MIDI notes:
-            # Find if values are alreadu used
+            # Find if values are already used
             for key, value in self.midi_notes.items():
                 if value[0] == msg.channel and value[1] == msg.note:
                     # Delete it
@@ -414,7 +414,7 @@ class Midi:
             self.midi_notes.update({self.midi_learn: [msg.channel, msg.note]})
         elif self.midi_cc.get(self.midi_learn) and msg.type == "control_change":
             # MIDI control change:
-            # Find if values are alreadu used
+            # Find if values are already used
             for key, value in self.midi_cc.items():
                 if value[0] == msg.channel and value[1] == msg.control:
                     # Delete it
@@ -527,28 +527,106 @@ def _function_inde_button(msg, independent):
         msg: MIDI message
         independent: Independent number
     """
-    if msg.type == "note_off":
+    if independent == 7:
+        inde = App().independents.independents[6]
+    elif independent == 8:
+        inde = App().independents.independents[7]
+    elif independent == 9:
+        inde = App().independents.independents[8]
+    if msg.type == "note_off" or (
+        msg.type == "note_on" and msg.velocity == 127 and inde.level == 255
+    ):
         if independent == 7:
             if App().virtual_console:
                 App().virtual_console.independent7.set_active(False)
             else:
                 App().independents.independents[6].level = 0
                 App().independents.independents[6].update_dmx()
+                for outport in App().midi.outports:
+                    item = App().midi.midi_notes["inde_7"]
+                    if item[1] != -1:
+                        msg = mido.Message(
+                            "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                        )
+                        outport.send(msg)
         elif independent == 8:
-            App().virtual_console.independent8.set_active(False)
+            if App().virtual_console:
+                App().virtual_console.independent8.set_active(False)
+            else:
+                App().independents.independents[7].level = 0
+                App().independents.independents[7].update_dmx()
+                for outport in App().midi.outports:
+                    item = App().midi.midi_notes["inde_8"]
+                    if item[1] != -1:
+                        msg = mido.Message(
+                            "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                        )
+                        outport.send(msg)
         elif independent == 9:
-            App().virtual_console.independent9.set_active(False)
-    elif msg.type == "note_on":
+            if App().virtual_console:
+                App().virtual_console.independent9.set_active(False)
+            else:
+                App().independents.independents[8].level = 0
+                App().independents.independents[8].update_dmx()
+                for outport in App().midi.outports:
+                    item = App().midi.midi_notes["inde_9"]
+                    if item[1] != -1:
+                        msg = mido.Message(
+                            "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                        )
+                        outport.send(msg)
+    elif msg.type == "note_on" and msg.velocity == 127 and inde.level == 0:
         if independent == 7:
             if App().virtual_console:
                 App().virtual_console.independent7.set_active(True)
             else:
                 App().independents.independents[6].level = 255
                 App().independents.independents[6].update_dmx()
+                for outport in App().midi.outports:
+                    item = App().midi.midi_notes["inde_7"]
+                    if item[1] != -1:
+                        msg = mido.Message(
+                            "note_on",
+                            channel=item[0],
+                            note=item[1],
+                            velocity=127,
+                            time=0,
+                        )
+                        outport.send(msg)
         elif independent == 8:
-            App().virtual_console.independent8.set_active(True)
+            if App().virtual_console:
+                App().virtual_console.independent8.set_active(True)
+            else:
+                App().independents.independents[7].level = 255
+                App().independents.independents[7].update_dmx()
+                for outport in App().midi.outports:
+                    item = App().midi.midi_notes["inde_8"]
+                    if item[1] != -1:
+                        msg = mido.Message(
+                            "note_on",
+                            channel=item[0],
+                            note=item[1],
+                            velocity=127,
+                            time=0,
+                        )
+                        outport.send(msg)
         elif independent == 9:
-            App().virtual_console.independent9.set_active(True)
+            if App().virtual_console:
+                App().virtual_console.independent9.set_active(True)
+            else:
+                App().independents.independents[8].level = 255
+                App().independents.independents[8].update_dmx()
+                for outport in App().midi.outports:
+                    item = App().midi.midi_notes["inde_9"]
+                    if item[1] != -1:
+                        msg = mido.Message(
+                            "note_on",
+                            channel=item[0],
+                            note=item[1],
+                            velocity=127,
+                            time=0,
+                        )
+                        outport.send(msg)
 
 
 def _function_go(msg):

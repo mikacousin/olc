@@ -1004,10 +1004,13 @@ class VirtualConsoleWindow(Gtk.Window):
                 App().midi.midi_learn = "inde_6"
             elif widget == self.independent7:
                 App().midi.midi_learn = "inde_7"
+                widget.set_active(False)
             elif widget == self.independent8:
                 App().midi.midi_learn = "inde_8"
+                widget.set_active(False)
             elif widget == self.independent9:
                 App().midi.midi_learn = "inde_9"
+                widget.set_active(False)
             self.queue_draw()
         else:
             if widget == self.independent7 and widget.get_active():
