@@ -477,9 +477,9 @@ class Sequence:
 
     def pause(self, _action, _param):
         """Toggle pause"""
-        if self.thread.pause.is_set():
+        if self.thread and self.thread.pause.is_set():
             self.thread.pause.clear()
-        else:
+        elif self.thread:
             self.thread.pause.set()
 
 
