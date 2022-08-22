@@ -204,6 +204,18 @@ class Midi:
             "crossfade_out": [0, 8],
             "crossfade_in": [0, 9],
         }
+        # Default MIDI pitchwheel values : "action": Channel
+        self.midi_pw = {
+            "master_1": 0,
+            "master_2": 1,
+            "master_3": 2,
+            "master_4": 3,
+            "master_5": 4,
+            "master_6": 5,
+            "master_7": 6,
+            "master_8": 7,
+            "master_9": 8,
+        }
 
         # Create xfade Faders
         self.xfade_out = MidiFader()
@@ -266,6 +278,8 @@ class Midi:
                 self._scan_notes(msg)
             elif msg.type == "control_change":
                 self._scan_cc(msg)
+            elif msg.type == "pitchwheel":
+                self._scan_pw(msg)
 
     def _scan_notes(self, msg):
         """Scan MIDI notes
@@ -298,6 +312,33 @@ class Midi:
                     GLib.idle_add(_function_inde, msg, int(key[5:]))
                 elif func := getattr(self, "_function_" + key, None):
                     GLib.idle_add(func, msg)
+
+    def _scan_pw(self, msg):
+        """Scan MIDI pitchwheel messages
+
+        Args:
+            msg: MIDI message
+        """
+        if self.outports:
+            for outport in self.outports:
+                outport.send(msg)
+
+        for key, value in self.midi_pw.items():
+            if msg.channel == value:
+                val = ((msg.pitch + 8192) / 16383) * 255
+                if App().virtual_console:
+                    App().virtual_console.masters[value].set_value(val)
+                    App().virtual_console.master_moved(
+                        App().virtual_console.masters[value]
+                    )
+                else:
+                    page = int((value) / 20) + 1
+                    number = value if page == 1 else int(value / 2)
+                    master = None
+                    for master in App().masters:
+                        if master.page == page and master.number == number:
+                            break
+                        master.set_level(val)
 
     def _function_wheel(self, msg):
         """Wheel for channels level
