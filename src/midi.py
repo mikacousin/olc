@@ -333,12 +333,12 @@ class Midi:
                     )
                 else:
                     page = int((value) / 20) + 1
-                    number = value if page == 1 else int(value / 2)
+                    number = value + 1 if page == 1 else int((value + 1) / 2)
                     master = None
                     for master in App().masters:
                         if master.page == page and master.number == number:
                             break
-                        master.set_level(val)
+                    master.set_level(val)
 
     def _function_wheel(self, msg):
         """Wheel for channels level
