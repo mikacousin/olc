@@ -91,6 +91,11 @@ class FaderWidget(Gtk.Scale):
                         time=0,
                     )
                     outport.send(msg)
+                item = App().midi.midi_pw.get(self.text, -1)
+                if item != -1:
+                    val = int(((value / 255) * 16383) - 8192)
+                    msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                    outport.send(msg)
 
         if inverted:
             h = height - (((height - layout_h - 10 - (20 / 2)) / 255) * value)

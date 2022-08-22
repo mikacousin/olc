@@ -153,7 +153,7 @@ class Midi:
         }
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
-            "wheel": [0, 60],
+            "wheel": [0, -1],
             "inde_1": [0, -1],
             "inde_2": [0, -1],
             "inde_3": [0, -1],
