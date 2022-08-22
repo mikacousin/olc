@@ -153,7 +153,7 @@ class Midi:
         }
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
-            "wheel": [3, 1],
+            "wheel": [0, 60],
             "inde_1": [0, -1],
             "inde_2": [0, -1],
             "inde_3": [0, -1],
@@ -306,12 +306,22 @@ class Midi:
             msg: MIDI message
         """
         val = msg.value
+        # Mackie mode
+        if val > 64:
+            direction = Gdk.ScrollDirection.DOWN
+            step = val - 64
+        elif val < 65:
+            direction = Gdk.ScrollDirection.UP
+            step = val
+        """
+        # Relative mode
         if val > 64:
             direction = Gdk.ScrollDirection.UP
             step = val - 64
         elif val < 64:
             direction = Gdk.ScrollDirection.DOWN
             step = 64 - val
+        """
         if App().virtual_console:
             App().virtual_console.wheel.emit("moved", direction, step)
         else:
