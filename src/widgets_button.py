@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
 import mido
-from gi.repository import Gdk, GObject, Gtk
+from gi.repository import Gdk, GLib, GObject, Gtk
 from olc.define import App
 from olc.widgets import rounded_rectangle, rounded_rectangle_fill
 
@@ -53,7 +53,7 @@ class ButtonWidget(Gtk.Widget):
                 msg = mido.Message(
                     "note_on", channel=item[0], note=item[1], velocity=127, time=0
                 )
-                outport.send(msg)
+                GLib.idle_add(outport.send, msg)
         self.pressed = True
         self.queue_draw()
 
@@ -65,7 +65,7 @@ class ButtonWidget(Gtk.Widget):
                 msg = mido.Message(
                     "note_on", channel=item[0], note=item[1], velocity=0, time=0
                 )
-                outport.send(msg)
+                GLib.idle_add(outport.send, msg)
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")

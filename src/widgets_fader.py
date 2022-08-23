@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
-from gi.repository import Gdk, GObject, Gtk
+from gi.repository import Gdk, GLib, GObject, Gtk
 from olc.define import App
 from olc.widgets import rounded_rectangle, rounded_rectangle_fill
 
@@ -90,12 +90,12 @@ class FaderWidget(Gtk.Scale):
                         value=int(value / 2),
                         time=0,
                     )
-                    outport.send(msg)
+                    GLib.idle_add(outport.send, msg)
                 item = App().midi.midi_pw.get(self.text, -1)
                 if item != -1:
                     val = int(((value / 255) * 16383) - 8192)
                     msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                    outport.send(msg)
+                    GLib.idle_add(outport.send, msg)
 
         if inverted:
             h = height - (((height - layout_h - 10 - (20 / 2)) / 255) * value)

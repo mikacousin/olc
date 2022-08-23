@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
-from gi.repository import Gtk
+from gi.repository import GLib, Gtk
 from olc.define import App
 from olc.widgets import rounded_rectangle, rounded_rectangle_fill
 
@@ -50,7 +50,7 @@ class ToggleWidget(Gtk.ToggleButton):
                     msg = mido.Message(
                         "note_on", channel=item[0], note=item[1], velocity=127, time=0
                     )
-                    outport.send(msg)
+                    GLib.idle_add(outport.send, msg)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
             for outport in App().midi.outports:
@@ -59,7 +59,7 @@ class ToggleWidget(Gtk.ToggleButton):
                     msg = mido.Message(
                         "note_on", channel=item[0], note=item[1], velocity=0, time=0
                     )
-                    outport.send(msg)
+                    GLib.idle_add(outport.send, msg)
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.radius)
