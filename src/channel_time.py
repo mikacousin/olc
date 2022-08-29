@@ -22,26 +22,39 @@ from gi.repository import Gdk, Gtk  # noqa: E402
 
 
 class ChannelTime:
+    """Give a specific time to some channels in a step
+
+    Attributes:
+        delay (float): specific delay in seconds
+        time (float): specific time in seconds
+    """
+
     def __init__(self, delay=0.0, time=0.0):
         self.delay = delay
         self.time = time
 
     def get_delay(self):
+        """Get specific delay"""
         return self.delay
 
     def get_time(self):
+        """Get specific time"""
         return self.time
 
     def set_delay(self, delay):
+        """Set specific delay"""
         if isinstance(delay, float) and delay >= 0:
             self.delay = delay
 
     def set_time(self, time):
+        """Set specific time"""
         if isinstance(time, float) and time >= 0:
             self.time = time
 
 
 class ChanneltimeTab(Gtk.Paned):
+    """Channels time edition"""
+
     def __init__(self, sequence, position):
 
         self.sequence = sequence
@@ -128,6 +141,12 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.set_focus(self.treeview)
 
     def delay_edited(self, _widget, path, text):
+        """Delay changed
+
+        Args:
+            path: selected channel
+            text (str): new delay value
+        """
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
@@ -208,6 +227,12 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def time_edited(self, _widget, path, text):
+        """Time changed
+
+        Args:
+            path: selected channel
+            text (str): new time value
+        """
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
@@ -348,6 +373,14 @@ class ChanneltimeTab(Gtk.Paned):
         App().channeltime_tab = None
 
     def on_key_press_event(self, _widget, event):
+        """Key has been pressed
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            False or function
+        """
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
