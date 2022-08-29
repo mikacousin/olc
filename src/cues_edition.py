@@ -22,6 +22,8 @@ from olc.zoom import zoom
 
 
 class CuesEditionTab(Gtk.Paned):
+    """Cues edition"""
+
     def __init__(self):
 
         self.keystring = ""
@@ -61,7 +63,6 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.append([str(mem.memory), mem.text, channels])
 
         self.filter = self.liststore.filter_new()
-        self.filter.set_visible_func(self.filter_cue_func)
 
         self.treeview = Gtk.TreeView(model=self.filter)
         self.treeview.set_enable_search(False)
@@ -129,9 +130,6 @@ class CuesEditionTab(Gtk.Paned):
             return child
         return False
 
-    def filter_cue_func(self, _model, _i, _data):
-        return True
-
     def on_cue_changed(self, _treeview):
         """Selected Cue"""
         self.flowbox.unselect_all()
@@ -149,7 +147,14 @@ class CuesEditionTab(Gtk.Paned):
         App().memories_tab = None
 
     def on_key_press_event(self, _widget, event):
+        """Key has been pressed
 
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            False or function
+        """
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
