@@ -316,7 +316,12 @@ class Application(Gtk.Application):
 
     def _new(self, _action, _parameter):
         """New show"""
-        # TODO: Stop Chasers
+        # Stop Chasers
+        for chaser in self.chasers:
+            if chaser.run and chaser.thread:
+                chaser.run = False
+                chaser.thread.stop()
+                chaser.thread.join()
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
