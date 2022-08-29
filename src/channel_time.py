@@ -34,20 +34,36 @@ class ChannelTime:
         self.time = time
 
     def get_delay(self):
-        """Get specific delay"""
+        """Get specific delay
+
+        Returns:
+            Delay (float) in seconds
+        """
         return self.delay
 
     def get_time(self):
-        """Get specific time"""
+        """Get specific time
+
+        Returns:
+            Time (float) in seconds
+        """
         return self.time
 
     def set_delay(self, delay):
-        """Set specific delay"""
+        """Set specific delay
+
+        Args:
+            delay (float): Delay in seconds
+        """
         if isinstance(delay, float) and delay >= 0:
             self.delay = delay
 
     def set_time(self, time):
-        """Set specific time"""
+        """Set specific time
+
+        Args:
+            time (float): Time in seconds
+        """
         if isinstance(time, float) and time >= 0:
             self.time = time
 
