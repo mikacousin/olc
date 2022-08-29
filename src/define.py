@@ -20,6 +20,6 @@ NB_UNIVERSES = 4
 
 MAX_CHANNELS = 1024
 
-# MAX_OUTPUTS = NB_UNIVERSES * 512
+MAX_FADER_PAGE = 4
 
 App = Gio.Application.get_default

@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
 from gi.repository import Gdk, GLib
-from olc.define import App
+from olc.define import App, MAX_FADER_PAGE
 
 
 class MidiFader:
@@ -150,6 +150,8 @@ class Midi:
             "inde_7": [0, -1],
             "inde_8": [0, -1],
             "inde_9": [0, -1],
+            "fader_page_plus": [0, -1],
+            "fader_page_minus": [0, -1],
         }
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
@@ -215,6 +217,33 @@ class Midi:
             "master_7": 6,
             "master_8": 7,
             "master_9": 8,
+            "master_11": 0,
+            "master_12": 1,
+            "master_13": 2,
+            "master_14": 3,
+            "master_15": 4,
+            "master_16": 5,
+            "master_17": 6,
+            "master_18": 7,
+            "master_19": 8,
+            "master_21": 0,
+            "master_22": 1,
+            "master_23": 2,
+            "master_24": 3,
+            "master_25": 4,
+            "master_26": 5,
+            "master_27": 6,
+            "master_28": 7,
+            "master_29": 8,
+            "master_31": 0,
+            "master_32": 1,
+            "master_33": 2,
+            "master_34": 3,
+            "master_35": 4,
+            "master_36": 5,
+            "master_37": 6,
+            "master_38": 7,
+            "master_39": 8,
         }
 
         # Create xfade Faders
@@ -323,7 +352,7 @@ class Midi:
             for outport in self.outports:
                 outport.send(msg)
 
-        for key, value in self.midi_pw.items():
+        for _key, value in self.midi_pw.items():
             if msg.channel == value:
                 val = ((msg.pitch + 8192) / 16383) * 255
                 if App().virtual_console:
@@ -1470,3 +1499,69 @@ def _function_record(msg):
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_R
             App().window.on_key_press_event(None, event)
+
+
+def _function_fader_page_plus(msg):
+    """Increment Fader Page
+
+    Args:
+        msg: MIDI message
+    """
+    if msg.velocity == 0:
+        if App().virtuel_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+            App().virtual_console.fader_plage_plus.emit("button-release-event", event)
+
+    elif msg.velocity == 127:
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            App().virtual_console.fader_page_plus.emit("button-press-event", event)
+        else:
+            App().fader_page += 1
+            if App().fader_page > MAX_FADER_PAGE:
+                App().fader_page = 1
+            App().virtual_console.page_number.set_label(str(App().fader_page))
+            for master in App().masters:
+                if master.page == App().fader_page:
+                    text = "master_" + str(
+                        master.number + ((App().fader_page - 1) * 10)
+                    )
+                    App().virtual_console.masters[master.number - 1].text = text
+                    App().virtual_console.masters[master.number - 1].set_value(
+                        master.value
+                    )
+                    App().virtual_console.flashes[master.number - 1].label = master.text
+                    App().virtual_console.flashes[master.number - 1].queue_draw()
+
+
+def _function_fader_page_minus(msg):
+    """Decrement Fader Page
+
+    Args:
+        msg: MIDI message
+    """
+    if msg.velocity == 0:
+        if App().virtuel_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+            App().virtual_console.fader_plage_minus.emit("button-release-event", event)
+
+    elif msg.velocity == 127:
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            App().virtual_console.fader_page_minus.emit("button-press-event", event)
+        else:
+            App().fader_page -= 1
+            if App().fader_page > 1:
+                App().fader_page = MAX_FADER_PAGE
+            App().virtual_console.page_number.set_label(str(App().fader_page))
+            for master in App().masters:
+                if master.page == App().fader_page:
+                    text = "master_" + str(
+                        master.number + ((App().fader_page - 1) * 10)
+                    )
+                    App().virtual_console.masters[master.number - 1].text = text
+                    App().virtual_console.masters[master.number - 1].set_value(
+                        master.value
+                    )
+                    App().virtual_console.flashes[master.number - 1].label = master.text
+                    App().virtual_console.flashes[master.number - 1].queue_draw()

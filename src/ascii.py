@@ -189,15 +189,17 @@ class Ascii:
 
         # Redraw Masters if Virtual Console is open
         if App().virtual_console and App().virtual_console.props.visible:
-            for page in range(2):
-                for master in App().masters:
-                    if master.page == page + 1:
-                        App().virtual_console.flashes[
-                            master.number - 1 + (page * 20)
-                        ].label = master.text
-                        App().virtual_console.flashes[
-                            master.number - 1 + (page * 20)
-                        ].queue_draw()
+            for master in App().masters:
+                if master.page == App().fader_page:
+                    text = "master_" + str(
+                        master.number + ((App().fader_page - 1) * 10)
+                    )
+                    App().virtual_console.masters[master.number - 1].text = text
+                    App().virtual_console.masters[master.number - 1].set_value(
+                        master.value
+                    )
+                    App().virtual_console.flashes[master.number - 1].label = master.text
+            App().virtual_console.masters_pad.queue_draw()
 
         # Redraw Edit Masters Tab if exist
         if App().masters_tab:

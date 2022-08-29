@@ -16,7 +16,7 @@ import array
 
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE
 from olc.group import Group
 from olc.independent import Independent
 from olc.master import Master
@@ -99,8 +99,8 @@ class AsciiParser:
                 del App().chasers[:]
                 del App().groups[:]
                 del App().masters[:]
-                for page in range(2):
-                    for i in range(20):
+                for page in range(MAX_FADER_PAGE):
+                    for i in range(10):
                         App().masters.append(Master(page + 1, i + 1, 0, 0))
                 App().patch.patch_empty()
                 App().sequence.__init__(1, text="Main Playback")
@@ -444,8 +444,8 @@ class AsciiParser:
                                 channels[channel - 1] = level
                 if (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
                     item[1]
-                ) <= 20:
-                    index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
+                ) <= 10:
+                    index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
                     App().masters[index] = Master(
                         int(item[0]), int(item[1]), item[2], channels
                     )
@@ -463,9 +463,9 @@ class AsciiParser:
                     flag_inde = False
                     flag_master = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
-                # Only 20 Masters per pages
-                elif int(item[1]) <= 20:
-                    index = int(item[1]) - 1 + ((int(item[0]) - 1) * 20)
+                # Only 10 Masters per pages
+                elif int(item[1]) <= 10:
+                    index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
                     App().masters[index] = Master(
                         int(item[0]), int(item[1]), item[2], item[3]
                     )

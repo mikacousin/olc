@@ -21,7 +21,7 @@ from olc.ascii import Ascii
 from olc.channel_time import ChanneltimeTab
 from olc.crossfade import CrossFade
 from olc.cues_edition import CuesEditionTab
-from olc.define import MAX_CHANNELS, NB_UNIVERSES
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, MAX_FADER_PAGE
 from olc.dmx import Dmx, PatchDmx
 from olc.enttec_wing import WingPlayback
 from olc.group import GroupTab
@@ -100,11 +100,12 @@ class Application(Gtk.Application):
         # Create List of Groups
         self.groups = []
 
-        # Create 2 pages of 20 Masters
+        # Create pages of 10 Masters
         self.masters = []
-        for page in range(2):
-            for i in range(20):
+        for page in range(MAX_FADER_PAGE):
+            for i in range(10):
                 self.masters.append(Master(page + 1, i + 1, 0, 0))
+        self.fader_page = 1
 
         # Independents
         self.independents = Independents()
@@ -315,6 +316,7 @@ class Application(Gtk.Application):
 
     def _new(self, _action, _parameter):
         """New show"""
+        # TODO: Stop Chasers
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
@@ -330,8 +332,9 @@ class Application(Gtk.Application):
         del self.groups[:]
         del self.chasers[:]
         del self.masters[:]
-        for page in range(2):
-            for i in range(20):
+        self.fader_page = 1
+        for page in range(MAX_FADER_PAGE):
+            for i in range(10):
                 self.masters.append(Master(page + 1, i + 1, 0, 0))
         # Redraw Sequential Window
         self.window.playback.update_sequence_display()
@@ -373,15 +376,16 @@ class Application(Gtk.Application):
 
         # Redraw Masters in Virtual Console
         if self.virtual_console and self.virtual_console.props.visible:
-            for page in range(2):
-                for master in self.masters:
-                    if master.page == page + 1:
-                        self.virtual_console.flashes[
-                            master.number - 1 + (page * 20)
-                        ].label = master.text
-                        self.virtual_console.flashes[
-                            master.number - 1 + (page * 20)
-                        ].queue_draw()
+            self.virtual_console.page_number.set_label(str(self.fader_page))
+            for master in self.masters:
+                if master.page == self.fader_page:
+                    text = "master_" + str(master.number + ((self.fader_page - 1) * 10))
+                    self.virtual_console.masters[master.number - 1].text = text
+                    self.virtual_console.masters[master.number - 1].set_value(
+                        master.value
+                    )
+                    self.virtual_console.flashes[master.number - 1].label = master.text
+            self.virtual_console.masters_pad.queue_draw()
 
         # Redraw Sequences Tab
         if self.sequences_tab:
