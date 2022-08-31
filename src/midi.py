@@ -120,12 +120,13 @@ class Midi:
             "crossfade_out": [0, 8],
             "crossfade_in": [0, 9],
         }
-        for i in range(1, 100):
+        for i in range(1, 101):
             self.midi_cc["master_" + str(i)] = [0, -1]
         # Default MIDI pitchwheel values : "action": Channel
         self.midi_pw = {}
-        for i in range(1, 100):
-            self.midi_pw["master_" + str(i)] = i - 1
+        for i in range(10):
+            for j in range(10):
+                self.midi_pw["master_" + str(j + (i * 10) + 1)] = j
 
         # Create xfade Faders
         self.xfade_out = MidiFader()
@@ -231,15 +232,16 @@ class Midi:
         """
         if self.outports:
             for outport in self.outports:
-                outport.send(msg)
+                GLib.idle_add(outport.send, msg)
 
         for _key, value in self.midi_pw.items():
             if msg.channel == value:
                 val = ((msg.pitch + 8192) / 16383) * 255
                 if App().virtual_console:
-                    App().virtual_console.masters[value].set_value(val)
-                    App().virtual_console.master_moved(
-                        App().virtual_console.masters[value]
+                    GLib.idle_add(App().virtual_console.masters[value].set_value, val)
+                    GLib.idle_add(
+                        App().virtual_console.master_moved,
+                        App().virtual_console.masters[value],
                     )
                 else:
                     page = int((value) / 20) + 1
@@ -248,7 +250,7 @@ class Midi:
                     for master in App().masters:
                         if master.page == page and master.number == number:
                             break
-                    master.set_level(val)
+                    GLib.idle_add(master.set_level, val)
 
     def _function_wheel(self, msg):
         """Wheel for channels level
@@ -362,7 +364,7 @@ class Midi:
         """
         if self.outports:
             for outport in self.outports:
-                outport.send(msg)
+                GLib.idle_add(outport.send, msg)
 
         if self.midi_notes.get(self.midi_learn) and msg.type == "note_on":
             # MIDI notes:
@@ -509,7 +511,7 @@ def _function_inde_button(msg, independent):
                         msg = mido.Message(
                             "note_on", channel=item[0], note=item[1], velocity=0, time=0
                         )
-                        outport.send(msg)
+                        GLib.idle_add(outport.send, msg)
         elif independent == 8:
             if App().virtual_console:
                 App().virtual_console.independent8.set_active(False)
@@ -522,7 +524,7 @@ def _function_inde_button(msg, independent):
                         msg = mido.Message(
                             "note_on", channel=item[0], note=item[1], velocity=0, time=0
                         )
-                        outport.send(msg)
+                        GLib.idle_add(outport.send, msg)
         elif independent == 9:
             if App().virtual_console:
                 App().virtual_console.independent9.set_active(False)
@@ -535,7 +537,7 @@ def _function_inde_button(msg, independent):
                         msg = mido.Message(
                             "note_on", channel=item[0], note=item[1], velocity=0, time=0
                         )
-                        outport.send(msg)
+                        GLib.idle_add(outport.send, msg)
     elif msg.type == "note_on" and msg.velocity == 127 and inde.level == 0:
         if independent == 7:
             if App().virtual_console:
@@ -553,7 +555,7 @@ def _function_inde_button(msg, independent):
                             velocity=127,
                             time=0,
                         )
-                        outport.send(msg)
+                        GLib.idle_add(outport.send, msg)
         elif independent == 8:
             if App().virtual_console:
                 App().virtual_console.independent8.set_active(True)
@@ -570,7 +572,7 @@ def _function_inde_button(msg, independent):
                             velocity=127,
                             time=0,
                         )
-                        outport.send(msg)
+                        GLib.idle_add(outport.send, msg)
         elif independent == 9:
             if App().virtual_console:
                 App().virtual_console.independent9.set_active(True)
@@ -587,7 +589,7 @@ def _function_inde_button(msg, independent):
                             velocity=127,
                             time=0,
                         )
-                        outport.send(msg)
+                        GLib.idle_add(outport.send, msg)
 
 
 def _function_go(msg):
