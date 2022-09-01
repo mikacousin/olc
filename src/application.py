@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import select
 import sys
+import mido
 from gettext import gettext as _
 
 import gi
@@ -185,6 +186,11 @@ class Application(Gtk.Application):
         self.midi.open_input(ports)
         ports = self.settings.get_strv("midi-out")
         self.midi.open_output(ports)
+        # Reset Mackie Control Faders
+        for outport in self.midi.outports:
+            for i in range(16):
+                msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
+                outport.send(msg)
 
         # Init Enttec Wing Playback
         self.wing = WingPlayback()
