@@ -19,6 +19,7 @@ import locale
 import os
 import subprocess
 import sys
+import argparse
 import time
 import psutil
 
@@ -56,11 +57,33 @@ def is_running(name):
     return False
 
 
+def is_port_in_use(port: int) -> bool:
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("localhost", int(port))) == 0
+
+
 if __name__ == "__main__":
 
+    olad_port = 9090
+    parser = argparse.ArgumentParser(description="Control your lighting shows")
+    parser.add_argument(
+        "-p",
+        "--http-port",
+        type=int,
+        help="The port to run the Ola HTTP server on. Defaults to 9090",
+    )
+    args = parser.parse_args()
+    if args.http_port:
+        olad_port = int(args.http_port)
+
     if not is_running("olad"):
+        if is_port_in_use(olad_port):
+            print(f"Olad port {olad_port} already in use")
+            os._exit(1)
         # Launch olad if not running
-        olad_pid = subprocess.Popen("olad")
+        olad_pid = subprocess.Popen(["olad", "--http-port", str(olad_port)])
         # Wait olad starting
         timeout = 15
         timer = 0
@@ -87,7 +110,7 @@ if __name__ == "__main__":
 
     app = Application()
 
-    exit_status = app.run(sys.argv)
+    exit_status = app.run()
 
     if olad_pid:
         # Stop olad if we launched it
