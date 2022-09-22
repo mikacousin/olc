@@ -230,9 +230,6 @@ class Midi:
         Args:
             msg: MIDI message
         """
-        if self.outports:
-            for outport in self.outports:
-                outport.send(msg)
 
         for _key, value in self.midi_pw.items():
             if msg.channel == value:
