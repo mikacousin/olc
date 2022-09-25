@@ -198,6 +198,10 @@ class Midi:
         Args:
             msg: MIDI message
         """
+        if not App().virtual_console:
+            if self.outports:
+                for outport in self.outports:
+                    outport.send(msg)
         for key, value in self.midi_notes.items():
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
@@ -598,7 +602,6 @@ def _function_go(msg):
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.go_button.emit("button-release-event", event)
-
     elif msg.velocity == 127:
         # Go pressed
         if App().virtual_console:
