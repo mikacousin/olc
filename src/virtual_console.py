@@ -452,24 +452,33 @@ class VirtualConsoleWindow(Gtk.Window):
             App().virtual_console.queue_draw()
 
     def on_fader_page(self, widget):
-        if widget is self.fader_page_plus:
-            App().fader_page += 1
-            if App().fader_page > MAX_FADER_PAGE:
-                App().fader_page = 1
-        elif widget is self.fader_page_minus:
-            App().fader_page -= 1
-            if App().fader_page < 1:
-                App().fader_page = MAX_FADER_PAGE
-        self.page_number.set_label(str(App().fader_page))
-        # Redraw Masters and Flashes
-        for master in App().masters:
-            if master.page == App().fader_page:
-                text = "master_" + str(master.number + ((App().fader_page - 1) * 10))
-                self.masters[master.number - 1].text = text
-                val = master.value
-                self.masters[master.number - 1].set_value(val)
-                self.flashes[master.number - 1].label = master.text
-                self.flashes[master.number - 1].queue_draw()
+        if self.midi_learn:
+            if widget is self.fader_page_plus:
+                App().midi.midi_learn = "fader_page_plus"
+            elif widget is self.fader_page_minus:
+                App().midi.midi_learn = "fader_page_minus"
+            self.queue_draw()
+        else:
+            if widget is self.fader_page_plus:
+                App().fader_page += 1
+                if App().fader_page > MAX_FADER_PAGE:
+                    App().fader_page = 1
+            elif widget is self.fader_page_minus:
+                App().fader_page -= 1
+                if App().fader_page < 1:
+                    App().fader_page = MAX_FADER_PAGE
+            self.page_number.set_label(str(App().fader_page))
+            # Redraw Masters and Flashes
+            for master in App().masters:
+                if master.page == App().fader_page:
+                    text = "master_" + str(
+                        master.number + ((App().fader_page - 1) * 10)
+                    )
+                    self.masters[master.number - 1].text = text
+                    val = master.value
+                    self.masters[master.number - 1].set_value(val)
+                    self.flashes[master.number - 1].label = master.text
+                    self.flashes[master.number - 1].queue_draw()
 
     def on_time(self, _widget):
         """Time button"""

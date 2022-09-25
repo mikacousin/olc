@@ -100,8 +100,8 @@ class Midi:
             "inde_7": [0, -1],
             "inde_8": [0, -1],
             "inde_9": [0, -1],
-            "fader_page_plus": [0, -1],
-            "fader_page_minus": [0, -1],
+            "fader_page_plus": [0, 49],
+            "fader_page_minus": [0, 48],
         }
         for i in range(10):
             self.midi_notes["number_" + str(i)] = [0, i]
@@ -241,13 +241,17 @@ class Midi:
                         App().virtual_console.masters[value],
                     )
                 else:
-                    page = int((value) / 20) + 1
-                    number = value + 1 if page == 1 else int((value + 1) / 2)
+                    if self.outports:
+                        for outport in self.outports:
+                            outport.send(msg)
+                    page = App().fader_page
+                    number = value + 1
                     master = None
                     for master in App().masters:
                         if master.page == page and master.number == number:
                             break
                     GLib.idle_add(master.set_level, val)
+                break
 
     def _function_wheel(self, msg):
         """Wheel for channels level
@@ -1388,9 +1392,9 @@ def _function_fader_page_plus(msg):
         msg: MIDI message
     """
     if msg.velocity == 0:
-        if App().virtuel_console:
+        if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.fader_plage_plus.emit("button-release-event", event)
+            App().virtual_console.fader_page_plus.emit("button-release-event", event)
 
     elif msg.velocity == 127:
         if App().virtual_console:
@@ -1400,18 +1404,30 @@ def _function_fader_page_plus(msg):
             App().fader_page += 1
             if App().fader_page > MAX_FADER_PAGE:
                 App().fader_page = 1
-            App().virtual_console.page_number.set_label(str(App().fader_page))
-            for master in App().masters:
-                if master.page == App().fader_page:
-                    text = "master_" + str(
-                        master.number + ((App().fader_page - 1) * 10)
-                    )
-                    App().virtual_console.masters[master.number - 1].text = text
-                    App().virtual_console.masters[master.number - 1].set_value(
-                        master.value
-                    )
-                    App().virtual_console.flashes[master.number - 1].label = master.text
-                    App().virtual_console.flashes[master.number - 1].queue_draw()
+            if App().virtual_console:
+                App().virtual_console.page_number.set_label(str(App().fader_page))
+                for master in App().masters:
+                    if master.page == App().fader_page:
+                        text = "master_" + str(
+                            master.number + ((App().fader_page - 1) * 10)
+                        )
+                        App().virtual_console.masters[master.number - 1].text = text
+                        App().virtual_console.masters[master.number - 1].set_value(
+                            master.value
+                        )
+                        App().virtual_console.flashes[
+                            master.number - 1
+                        ].label = master.text
+                        App().virtual_console.flashes[master.number - 1].queue_draw()
+            else:
+                for master in App().masters:
+                    if master.page == App().fader_page:
+                        val = int(((master.value / 255) * 16383) - 8192)
+                        msg = mido.Message(
+                            "pitchwheel", channel=master.number - 1, pitch=val, time=0
+                        )
+                        for outport in App().midi.outports:
+                            outport.send(msg)
 
 
 def _function_fader_page_minus(msg):
@@ -1421,9 +1437,9 @@ def _function_fader_page_minus(msg):
         msg: MIDI message
     """
     if msg.velocity == 0:
-        if App().virtuel_console:
+        if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.fader_plage_minus.emit("button-release-event", event)
+            App().virtual_console.fader_page_minus.emit("button-release-event", event)
 
     elif msg.velocity == 127:
         if App().virtual_console:
@@ -1431,17 +1447,29 @@ def _function_fader_page_minus(msg):
             App().virtual_console.fader_page_minus.emit("button-press-event", event)
         else:
             App().fader_page -= 1
-            if App().fader_page > 1:
+            if App().fader_page < 1:
                 App().fader_page = MAX_FADER_PAGE
-            App().virtual_console.page_number.set_label(str(App().fader_page))
-            for master in App().masters:
-                if master.page == App().fader_page:
-                    text = "master_" + str(
-                        master.number + ((App().fader_page - 1) * 10)
-                    )
-                    App().virtual_console.masters[master.number - 1].text = text
-                    App().virtual_console.masters[master.number - 1].set_value(
-                        master.value
-                    )
-                    App().virtual_console.flashes[master.number - 1].label = master.text
-                    App().virtual_console.flashes[master.number - 1].queue_draw()
+            if App().virtual_console:
+                App().virtual_console.page_number.set_label(str(App().fader_page))
+                for master in App().masters:
+                    if master.page == App().fader_page:
+                        text = "master_" + str(
+                            master.number + ((App().fader_page - 1) * 10)
+                        )
+                        App().virtual_console.masters[master.number - 1].text = text
+                        App().virtual_console.masters[master.number - 1].set_value(
+                            master.value
+                        )
+                        App().virtual_console.flashes[
+                            master.number - 1
+                        ].label = master.text
+                        App().virtual_console.flashes[master.number - 1].queue_draw()
+            else:
+                for master in App().masters:
+                    if master.page == App().fader_page:
+                        val = int(((master.value / 255) * 16383) - 8192)
+                        msg = mido.Message(
+                            "pitchwheel", channel=master.number - 1, pitch=val, time=0
+                        )
+                        for outport in App().midi.outports:
+                            outport.send(msg)
