@@ -110,12 +110,12 @@ class Midi:
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
             "wheel": [0, 60],
-            "inde_1": [0, -1],
-            "inde_2": [0, -1],
-            "inde_3": [0, -1],
-            "inde_4": [0, -1],
-            "inde_5": [0, -1],
-            "inde_6": [0, -1],
+            "inde_1": [0, 16],
+            "inde_2": [0, 17],
+            "inde_3": [0, 18],
+            "inde_4": [0, 19],
+            "inde_5": [0, 20],
+            "inde_6": [0, 21],
             "gm": [3, 108],
             "crossfade_out": [0, -1],
             "crossfade_in": [0, -1],
@@ -454,7 +454,49 @@ def _function_inde(msg, independent):
         msg: MIDI message
         independent: Independent number
     """
+    # Mackie mode
+    if msg.value > 64:
+        step = -(msg.value - 64)
+    elif msg.value < 65:
+        step = msg.value
+    for inde in App().independents.independents:
+        if inde.number == independent:
+            val = inde.level + step
+            if val < 0:
+                val = 0
+            elif val > 255:
+                val = 255
+            break
     if App().virtual_console:
+        if independent == 1:
+            App().virtual_console.independent1.value = val
+            App().virtual_console.independent1.emit("changed")
+            App().virtual_console.independent1.queue_draw()
+        elif independent == 2:
+            App().virtual_console.independent2.value = val
+            App().virtual_console.independent2.emit("changed")
+            App().virtual_console.independent2.queue_draw()
+        elif independent == 3:
+            App().virtual_console.independent3.value = val
+            App().virtual_console.independent3.emit("changed")
+            App().virtual_console.independent3.queue_draw()
+        elif independent == 4:
+            App().virtual_console.independent4.value = val
+            App().virtual_console.independent4.emit("changed")
+            App().virtual_console.independent4.queue_draw()
+        elif independent == 5:
+            App().virtual_console.independent5.value = val
+            App().virtual_console.independent5.emit("changed")
+            App().virtual_console.independent5.queue_draw()
+        elif independent == 6:
+            App().virtual_console.independent6.value = val
+            App().virtual_console.independent6.emit("changed")
+            App().virtual_console.independent6.queue_draw()
+    else:
+        inde.level = val
+        inde.update_dmx()
+        """
+        # Absolute mode
         val = (msg.value / 127) * 255
         if independent == 1:
             App().virtual_console.independent1.value = val
@@ -480,6 +522,7 @@ def _function_inde(msg, independent):
             App().virtual_console.independent6.value = val
             App().virtual_console.independent6.emit("changed")
             App().virtual_console.independent6.queue_draw()
+        """
 
 
 def _function_inde_button(msg, independent):
