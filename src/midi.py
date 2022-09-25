@@ -104,12 +104,12 @@ class Midi:
             "fader_page_minus": [0, 48],
         }
         for i in range(10):
-            self.midi_notes["number_" + str(i)] = [0, i]
+            self.midi_notes["number_" + str(i)] = [0, -1]
         for i in range(1, 41):
             self.midi_notes["flash_" + str(i)] = [0, -1]
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
-            "wheel": [0, -1],
+            "wheel": [0, 60],
             "inde_1": [0, -1],
             "inde_2": [0, -1],
             "inde_3": [0, -1],
@@ -117,8 +117,8 @@ class Midi:
             "inde_5": [0, -1],
             "inde_6": [0, -1],
             "gm": [3, 108],
-            "crossfade_out": [0, 8],
-            "crossfade_in": [0, 9],
+            "crossfade_out": [0, -1],
+            "crossfade_in": [0, -1],
         }
         for i in range(1, 101):
             self.midi_cc["master_" + str(i)] = [0, -1]
