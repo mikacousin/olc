@@ -154,11 +154,9 @@ def _function_flash(pressed, master_index):
                 "button-press-event", event
             )
         else:
-            page = int((master_index - 1) / 20) + 1
-            number = master_index if page == 1 else int(master_index / 2)
             master = None
             for master in App().masters:
-                if master.page == page and master.number == number:
+                if master.page == App().fader_page and master.number == master_index:
                     break
             master.old_value = master.value
             master.set_level(255)
@@ -168,10 +166,8 @@ def _function_flash(pressed, master_index):
             "button-release-event", event
         )
     else:
-        page = int((master_index - 1) / 20) + 1
-        number = master_index if page == 1 else int(master_index / 2)
         master = None
         for master in App().masters:
-            if master.page == page and master.number == number:
+            if master.page == App().fader_page and master.number == master_index:
                 break
         master.set_level(master.old_value)

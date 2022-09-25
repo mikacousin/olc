@@ -512,11 +512,9 @@ class OscServer(liblo.ServerThread):
                 App().virtual_console.masters[master_index - 1],
             )
         else:
-            page = int((master_index - 1) / 20) + 1
-            number = master_index if page == 1 else int(master_index / 2)
             master = None
             for master in App().masters:
-                if master.page == page and master.number == number:
+                if master.page == App().fader_page and master.number == master_index:
                     break
             master.set_level(level)
         self.client.send("/subStick/level", ("i", master_index), ("i", level))
