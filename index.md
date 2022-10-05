@@ -70,9 +70,22 @@ On start-up, Open Lighting Console will launched olad if not already running.
 To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
 
 ### MIDI controllers
-Configure your controllers with MIDI notes for buttons and MIDI control changes for faders, knobs and controllers.
+Configure your controllers with:
+- MIDI Notes for buttons
+- MIDI Control Changes for knobs and controllers
+- MIDI Control Changes or MIDI Pitchwheel for faders
 
-- You need to activate your controllers in settings.
+Default MIDI mapping is Makie Control mode, controllers configured in this way are supported directly.
+
+Open olc MIDI settings, activate controller(s) in MIDI In and choose the rotatives mode used by controller.
+- Relative1: Infinite rotative. Values from 0 to 64 in one direction, from 127 to 65 in the other.
+- Relative2: Infinite rotative. Values from 65 to 127 in one direction, from 63 to 0 in the other.
+- Relative3 (Makie): Infinite rotative. Values from 0 to 64 in one direction, from 65 to 127 in the other.
+- Absolute: Non infinite rotative. Values from 0 to 127. Caution, doesn't work for virtual console wheel.
+
+Activate controller(s) in MIDI Out for MIDI feedback (motorized faders, LED, ...)
+
+Then:
 - Open Virtual Console, toggle MIDI button to be in learning mode.
 - In Learning mode, select an object (Go for example) and push a button on one of your controllers
 - You can learn as many object you want (buttons, faders)
