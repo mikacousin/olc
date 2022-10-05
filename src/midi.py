@@ -57,6 +57,46 @@ class MidiFader:
             self.value = value
 
 
+class MidiIn:
+    """A thin wrapper around mido input port"""
+
+    name: str  # The port name
+    port: mido.ports.BaseInput  # The port itself
+
+    def __init__(self, name=None) -> None:
+        self.name = name
+        self.port = mido.open_input(self.name)
+        self.port.callback = self.receive_callback
+
+    def __del__(self) -> None:
+        self.port.callback = None
+        self.port.close()
+
+    def close(self) -> None:
+        """Close open MIDI port and delete Callback"""
+        self.port.callback = None
+        self.port.close()
+
+    def receive_callback(self, msg: mido.Message) -> None:
+        """Scan MIDI messages.
+        Executed with mido callback, in another thread
+
+        Args:
+            msg: MIDI message
+        """
+        # print(self.name, msg)
+        if App().midi.midi_learn:
+            App().midi.learn(msg)
+        else:
+            # Find action actived
+            if msg.type in ("note_on", "note_off"):
+                App().midi.scan_notes(msg)
+            elif msg.type == "control_change":
+                App().midi.scan_cc(self.name, msg)
+            elif msg.type == "pitchwheel":
+                App().midi.scan_pw(msg)
+
+
 class Midi:
     """MIDI messages from controllers"""
 
@@ -141,12 +181,10 @@ class Midi:
         input_names = mido.get_input_names()
         for port in ports:
             if port in input_names:
-                inport = mido.open_input(port)
-                inport.callback = self.scan
+                inport = MidiIn(port)
                 self.inports.append(inport)
             else:
-                inport = mido.open_input()
-                inport.callback = self.scan
+                inport = MidiIn()
 
     def open_output(self, ports):
         """Open MIDI outputs
@@ -166,33 +204,15 @@ class Midi:
         """Close MIDI inputs"""
         for inport in self.inports:
             inport.close()
+            self.inports.remove(inport)
 
     def close_output(self):
         """Close MIDI outputs"""
         for outport in self.outports:
             outport.close()
+            self.outports.remove(outport)
 
-    def scan(self, msg):
-        """Scan MIDI messages.
-        Executed with mido callback, in another thread
-
-        Args:
-            msg: MIDI message
-        """
-        # print(msg)
-
-        if self.midi_learn:
-            self._learn(msg)
-        else:
-            # Find action actived
-            if msg.type in ("note_on", "note_off"):
-                self._scan_notes(msg)
-            elif msg.type == "control_change":
-                self._scan_cc(msg)
-            elif msg.type == "pitchwheel":
-                self._scan_pw(msg)
-
-    def _scan_notes(self, msg):
+    def scan_notes(self, msg):
         """Scan MIDI notes
 
         Args:
@@ -212,10 +232,11 @@ class Midi:
                 else:
                     GLib.idle_add(globals()["_function_" + key], msg)
 
-    def _scan_cc(self, msg):
+    def scan_cc(self, port, msg):
         """Scan MIDI control changes
 
         Args:
+            port: MIDI port name
             msg: MIDI message
         """
         for key, value in self.midi_cc.items():
@@ -224,11 +245,11 @@ class Midi:
                     # We need to pass master number to masters function
                     GLib.idle_add(_function_master, msg, int(key[7:]))
                 elif key[:5] == "inde_":
-                    GLib.idle_add(_function_inde, msg, int(key[5:]))
+                    GLib.idle_add(_function_inde, port, msg, int(key[5:]))
                 elif func := getattr(self, "_function_" + key, None):
-                    GLib.idle_add(func, msg)
+                    GLib.idle_add(func, port, msg)
 
-    def _scan_pw(self, msg):
+    def scan_pw(self, msg):
         """Scan MIDI pitchwheel messages
 
         Args:
@@ -257,29 +278,42 @@ class Midi:
                     GLib.idle_add(master.set_level, val)
                 break
 
-    def _function_wheel(self, msg):
+    def _function_wheel(self, port, msg):
         """Wheel for channels level
 
         Args:
+            port: MIDI port name
             msg: MIDI message
         """
-        val = msg.value
-        # Mackie mode
-        if val > 64:
-            direction = Gdk.ScrollDirection.DOWN
-            step = val - 64
-        elif val < 65:
+        relative1 = App().settings.get_strv("relative1")
+        relative2 = App().settings.get_strv("relative2")
+        makies = App().settings.get_strv("makie")
+        absolutes = App().settings.get_strv("absolute")
+        if port in relative1:
+            if msg.value > 64:
+                direction = Gdk.ScrollDirection.DOWN
+                step = -(msg.value - 128)
+            elif msg.value < 65:
+                direction = Gdk.ScrollDirection.UP
+                step = msg.value
+        elif port in relative2:
+            if msg.value > 64:
+                direction = Gdk.ScrollDirection.UP
+                step = msg.value - 64
+            elif msg.value < 64:
+                direction = Gdk.ScrollDirection.DOWN
+                step = 64 - msg.value
+        elif port in makies:
+            if msg.value > 64:
+                direction = Gdk.ScrollDirection.DOWN
+                step = msg.value - 64
+            elif msg.value < 65:
+                direction = Gdk.ScrollDirection.UP
+                step = msg.value
+        elif port in absolutes:
+            # You can't use absolute mode for wheel
             direction = Gdk.ScrollDirection.UP
-            step = val
-        """
-        # Relative mode
-        if val > 64:
-            direction = Gdk.ScrollDirection.UP
-            step = val - 64
-        elif val < 64:
-            direction = Gdk.ScrollDirection.DOWN
-            step = 64 - val
-        """
+            step = 0
         if App().virtual_console:
             App().virtual_console.wheel.emit("moved", direction, step)
         else:
@@ -297,7 +331,7 @@ class Midi:
                         elif direction == Gdk.ScrollDirection.DOWN:
                             App().dmx.user[channel] = max(level - step, 0)
 
-    def _function_gm(self, msg):
+    def _function_gm(self, _port, msg):
         """Grand Master
 
         Args:
@@ -313,7 +347,7 @@ class Midi:
             App().dmx.grand_master = val
             App().window.grand_master.queue_draw()
 
-    def _function_crossfade_out(self, msg):
+    def _function_crossfade_out(self, _port, msg):
         """Crossfade Out
 
         Args:
@@ -321,7 +355,7 @@ class Midi:
         """
         self._xfade(self.xfade_out, msg.value)
 
-    def _function_crossfade_in(self, msg):
+    def _function_crossfade_in(self, _port, msg):
         """Crossfade Out
 
         Args:
@@ -361,7 +395,7 @@ class Midi:
             self.xfade_out.set_value(0)
             self.xfade_in.set_value(0)
 
-    def _learn(self, msg):
+    def learn(self, msg):
         """Learn new MIDI control
 
         Args:
@@ -447,18 +481,50 @@ def _function_flash(msg, master_index):
             master.set_level(255)
 
 
-def _function_inde(msg, independent):
+def _function_inde(port, msg, independent):
     """Change independent knob level
 
     Args:
+        port: MIDI port name
         msg: MIDI message
         independent: Independent number
     """
-    # Mackie mode
-    if msg.value > 64:
-        step = -(msg.value - 64)
-    elif msg.value < 65:
-        step = msg.value
+    relative1 = App().settings.get_strv("relative1")
+    relative2 = App().settings.get_strv("relative2")
+    makies = App().settings.get_strv("makie")
+    absolutes = App().settings.get_strv("absolute")
+    if port in relative1:
+        # Relative1 mode (value: 1-64 positive, 127-65 negative)
+        if msg.value > 64:
+            step = msg.value - 128
+        elif msg.value < 65:
+            step = msg.value
+        inde, val = __new_inde_value(independent, step)
+        __update_inde(independent, inde, val)
+    elif port in relative2:
+        # Relative2 mode (value: 65-127 positive, 63-0 negative)
+        if msg.value > 64:
+            step = msg.value - 64
+        else:
+            step = -(64 - msg.value)
+        inde, val = __new_inde_value(independent, step)
+        __update_inde(independent, inde, val)
+    elif port in makies:
+        # Mackie mode (value: 0-64 positive, 65-127 negative)
+        if msg.value > 64:
+            step = -(msg.value - 64)
+        elif msg.value < 65:
+            step = msg.value
+        inde, val = __new_inde_value(independent, step)
+        __update_inde(independent, inde, val)
+    elif port in absolutes:
+        # Absolute mode (value: 0-127)
+        inde, val = __new_inde_value(independent, 0)
+        val = (msg.value / 127) * 255
+        __update_inde(independent, inde, val)
+
+
+def __new_inde_value(independent, step):
     for inde in App().independents.independents:
         if inde.number == independent:
             val = inde.level + step
@@ -467,6 +533,10 @@ def _function_inde(msg, independent):
             elif val > 255:
                 val = 255
             break
+    return inde, val
+
+
+def __update_inde(independent, inde, val):
     if App().virtual_console:
         if independent == 1:
             App().virtual_console.independent1.value = val
@@ -495,34 +565,6 @@ def _function_inde(msg, independent):
     else:
         inde.level = val
         inde.update_dmx()
-        """
-        # Absolute mode
-        val = (msg.value / 127) * 255
-        if independent == 1:
-            App().virtual_console.independent1.value = val
-            App().virtual_console.independent1.emit("changed")
-            App().virtual_console.independent1.queue_draw()
-        elif independent == 2:
-            App().virtual_console.independent2.value = val
-            App().virtual_console.independent2.emit("changed")
-            App().virtual_console.independent2.queue_draw()
-        elif independent == 3:
-            App().virtual_console.independent3.value = val
-            App().virtual_console.independent3.emit("changed")
-            App().virtual_console.independent3.queue_draw()
-        elif independent == 4:
-            App().virtual_console.independent4.value = val
-            App().virtual_console.independent4.emit("changed")
-            App().virtual_console.independent4.queue_draw()
-        elif independent == 5:
-            App().virtual_console.independent5.value = val
-            App().virtual_console.independent5.emit("changed")
-            App().virtual_console.independent5.queue_draw()
-        elif independent == 6:
-            App().virtual_console.independent6.value = val
-            App().virtual_console.independent6.emit("changed")
-            App().virtual_console.independent6.queue_draw()
-        """
 
 
 def _function_inde_button(msg, independent):

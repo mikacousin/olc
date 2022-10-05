@@ -271,3 +271,12 @@ msgstr "Enregistrer fichier ASCII"
 
 msgid "Save"
 msgstr "Enregistrer"
+
+msgid "MIDI Port"
+msgstr "Port MIDI"
+
+msgid "Active"
+msgstr "Actif"
+
+msgid "Rotatives Mode"
+msgstr "Mode des rotatifs"

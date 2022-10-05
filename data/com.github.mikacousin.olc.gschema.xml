@@ -46,5 +46,25 @@
       <summary>MIDI Out</summary>
       <description></description>
     </key>
+    <key name="relative1" type="as">
+      <default>[""]</default>
+      <summary>MIDI Controllers with rotatives in Relative1 mode</summary>
+      <description></description>
+    </key>
+    <key name="relative2" type="as">
+      <default>[""]</default>
+      <summary>MIDI Controllers with rotatives in Relative2 mode</summary>
+      <description></description>
+    </key>
+    <key name="makie" type="as">
+      <default>[""]</default>
+      <summary>MIDI Controllers with rotatives in Relative3 (Makie) mode</summary>
+      <description></description>
+    </key>
+    <key name="absolute" type="as">
+      <default>[""]</default>
+      <summary>MIDI Controllers with rotatives in Absolute mode</summary>
+      <description></description>
+    </key>
   </schema>
 </schemalist>
