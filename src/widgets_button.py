@@ -56,6 +56,7 @@ class ButtonWidget(Gtk.Widget):
                 GLib.idle_add(outport.send, msg)
         self.pressed = True
         self.queue_draw()
+        self.emit("clicked")
 
     def on_release(self, _tgt, _ev):
         """Button released"""
@@ -68,7 +69,6 @@ class ButtonWidget(Gtk.Widget):
                 GLib.idle_add(outport.send, msg)
         self.pressed = False
         self.queue_draw()
-        self.emit("clicked")
 
     def do_draw(self, cr):
         """Draw button

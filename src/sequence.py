@@ -180,9 +180,14 @@ class Sequence:
     def sequence_plus(self):
         """Sequence +"""
         if self.on_go and self.thread:
+            # Switch off Pause Led
+            if not self.thread.pause.is_set():
+                App().midi.led_pause_off()
             try:
                 # Stop actual Thread
+                self.thread.pause.set()
                 self.thread.stop()
+                self.thread.join()
                 self.on_go = False
                 # Stop at the end
                 if self.position > self.last - 3:
@@ -243,9 +248,14 @@ class Sequence:
     def sequence_minus(self):
         """Sequence -"""
         if self.on_go and self.thread:
+            # Switch off Pause Led
+            if not self.thread.pause.is_set():
+                App().midi.led_pause_off()
             try:
                 # Stop actual Thread
+                self.thread.pause.set()
                 self.thread.stop()
+                self.thread.join()
                 self.on_go = False
                 # Stop at the begining
                 self.position = max(self.position, 1)
@@ -359,8 +369,11 @@ class Sequence:
         Args:
             goto: True if Goto, False if Go
         """
-        # Si un Go est en cours, on bascule sur la mémoire suivante
+        # If Go is active, go to next memory
         if self.on_go and self.thread:
+            # Switch off Pause Led
+            if not self.thread.pause.is_set():
+                App().midi.led_pause_off()
             # Stop actual Thread
             try:
                 self.thread.pause.set()
@@ -430,10 +443,13 @@ class Sequence:
         """
         # Just return if we are at the beginning
         position = self.position
-        if position == 0:
+        if position <= 1:
             return False
 
         if self.on_go and self.thread:
+            # Switch off Pause Led
+            if not self.thread.pause.is_set():
+                App().midi.led_pause_off()
             try:
                 self.thread.pause.set()
                 self.thread.stop()

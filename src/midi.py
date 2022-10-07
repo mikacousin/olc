@@ -137,9 +137,9 @@ class Midi:
             "record": [0, -1],
             "time": [0, -1],
             "delay": [0, -1],
-            "inde_7": [0, -1],
-            "inde_8": [0, -1],
-            "inde_9": [0, -1],
+            "inde_7": [0, 32],
+            "inde_8": [0, 33],
+            "inde_9": [0, 34],
             "fader_page_plus": [0, 49],
             "fader_page_minus": [0, 48],
         }
@@ -433,6 +433,16 @@ class Midi:
                     self.midi_cc.update({key: [0, -1]})
             # Learn new values
             self.midi_cc.update({self.midi_learn: [msg.channel, msg.control]})
+
+    def led_pause_off(self):
+        """Toggle MIDI Led"""
+        item = self.midi_notes["pause"]
+        for output in self.outports:
+            if item[1] != -1:
+                msg = mido.Message(
+                    "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                )
+                output.send(msg)
 
 
 def _function_master(msg, master_index):
@@ -1249,13 +1259,26 @@ def _function_pause(msg):
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.pause.emit("button-release-event", event)
-
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.pause.emit("button-press-event", event)
         else:
-            App().sequence.pause(App(), None)
+            App().sequence.pause(None, None)
+
+    if App().sequence.on_go:
+        if App().sequence.thread and App().sequence.thread.pause.is_set():
+            for output in App().midi.outports:
+                message = mido.Message(
+                    "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
+                )
+                output.send(message)
+        elif App().sequence.thread:
+            for output in App().midi.outports:
+                message = mido.Message(
+                    "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
+                )
+                output.send(message)
 
 
 def _function_go_back(msg):
