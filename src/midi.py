@@ -145,8 +145,14 @@ class Midi:
         }
         for i in range(10):
             self.midi_notes["number_" + str(i)] = [0, -1]
-        for i in range(1, 41):
-            self.midi_notes["flash_" + str(i)] = [0, -1]
+        for i in range(10):
+            for j in range(10):
+                if j < 8:
+                    self.midi_notes["flash_" + str(j + (i * 10) + 1)] = [0, 24 + j]
+                elif j == 8:
+                    self.midi_notes["flash_" + str(j + (i * 10) + 1)] = [0, 84]
+                else:
+                    self.midi_notes["flash_" + str(j + (i * 10) + 1)] = [0, -1]
         # Default MIDI control change values : "action": Channel, CC
         self.midi_cc = {
             "wheel": [0, 60],
@@ -225,8 +231,12 @@ class Midi:
         for key, value in self.midi_notes.items():
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
-                    # We need to pass master number to flash function
-                    GLib.idle_add(_function_flash, msg, int(key[6:]))
+                    # We need to pass fader number to flash function
+                    master = int(key[6:])
+                    page = int(master / 10)
+                    fader = master - (page * 10)
+                    if page + 1 == App().fader_page:
+                        GLib.idle_add(_function_flash, msg, fader)
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde_button, msg, int(key[5:]))
                 else:
@@ -446,36 +456,36 @@ def _function_master(msg, master_index):
         master.set_level(val)
 
 
-def _function_flash(msg, master_index):
+def _function_flash(msg, fader_index):
     """Flash Master
 
     Args:
         msg: MIDI message
-        master_index: Master number
+        fader_index: Master number
     """
     if msg.velocity == 0:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.flashes[master_index - 1].emit(
+            App().virtual_console.flashes[fader_index - 1].emit(
                 "button-release-event", event
             )
         else:
             master = None
             for master in App().masters:
-                if master.page == App().fader_page and master.number == master_index:
+                if master.page == App().fader_page and master.number == fader_index:
                     break
             master.set_level(master.old_value)
 
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.flashes[master_index - 1].emit(
+            App().virtual_console.flashes[fader_index - 1].emit(
                 "button-press-event", event
             )
         else:
             master = None
             for master in App().masters:
-                if master.page == App().fader_page and master.number == master_index:
+                if master.page == App().fader_page and master.number == fader_index:
                     break
             master.old_value = master.value
             master.set_level(255)
