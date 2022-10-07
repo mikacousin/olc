@@ -453,6 +453,11 @@ class VirtualConsoleWindow(Gtk.Window):
             App().virtual_console.queue_draw()
 
     def on_fader_page(self, widget):
+        """Change fader page
+
+        Args:
+            widget: clicked button
+        """
         if self.midi_learn:
             if widget is self.fader_page_plus:
                 App().midi.midi_learn = "fader_page_plus"
