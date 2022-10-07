@@ -183,6 +183,9 @@ class Sequence:
             # Switch off Pause Led
             if not self.thread.pause.is_set():
                 App().midi.led_pause_off()
+                if App().virtual_console:
+                    App().virtual_console.pause.pressed = False
+                    App().virtual_console.pause.queue_draw()
             try:
                 # Stop actual Thread
                 self.thread.pause.set()
@@ -251,6 +254,9 @@ class Sequence:
             # Switch off Pause Led
             if not self.thread.pause.is_set():
                 App().midi.led_pause_off()
+                if App().virtual_console:
+                    App().virtual_console.pause.pressed = False
+                    App().virtual_console.pause.queue_draw()
             try:
                 # Stop actual Thread
                 self.thread.pause.set()
@@ -374,6 +380,9 @@ class Sequence:
             # Switch off Pause Led
             if not self.thread.pause.is_set():
                 App().midi.led_pause_off()
+                if App().virtual_console:
+                    App().virtual_console.pause.pressed = False
+                    App().virtual_console.pause.queue_draw()
             # Stop actual Thread
             try:
                 self.thread.pause.set()
@@ -443,7 +452,7 @@ class Sequence:
         """
         # Just return if we are at the beginning
         position = self.position
-        if position <= 1:
+        if position <= 0:
             return False
 
         if self.on_go and self.thread:

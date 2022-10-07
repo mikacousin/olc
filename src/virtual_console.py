@@ -20,6 +20,7 @@ from olc.widgets_fader import FaderWidget
 from olc.widgets_flash import FlashWidget
 from olc.widgets_go import GoWidget
 from olc.widgets_knob import KnobWidget
+from olc.widgets_pause import PauseWidget
 from olc.widgets_toggle import ToggleWidget
 
 
@@ -348,7 +349,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_minus.connect("clicked", self.on_seq_minus)
         self.goback = ButtonWidget("Go Back", "go_back")
         self.goback.connect("clicked", self.on_go_back)
-        self.pause = ButtonWidget("Pause", "pause")
+        self.pause = PauseWidget("Pause", "pause")
         self.pause.connect("clicked", self.on_pause)
         self.go_pad.attach(self.seq_minus, 0, 0, 1, 1)
         self.go_pad.attach(self.seq_plus, 1, 0, 1, 1)

@@ -57,6 +57,7 @@ olc_sources = [
   'widgets_knob.py',
   'widgets_patch_channels.py',
   'widgets_patch_outputs.py',
+  'widgets_pause.py',
   'widgets_sequential.py',
   'widgets_toggle.py',
   'widgets_track_channels.py',

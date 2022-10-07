@@ -1259,6 +1259,7 @@ def _function_pause(msg):
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.pause.emit("button-release-event", event)
+            App().virtual_console.pause.clicked()
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
