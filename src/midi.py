@@ -53,7 +53,7 @@ class MidiFader:
         Args:
             value: New value
         """
-        if 0 <= value < 128:
+        if 0 <= value < 16384:
             self.value = value
 
 
@@ -266,27 +266,32 @@ class Midi:
             msg: MIDI message
         """
 
-        for _key, value in self.midi_pw.items():
+        for key, value in self.midi_pw.items():
             if msg.channel == value:
-                val = ((msg.pitch + 8192) / 16383) * 255
-                if App().virtual_console:
-                    GLib.idle_add(App().virtual_console.masters[value].set_value, val)
-                    GLib.idle_add(
-                        App().virtual_console.master_moved,
-                        App().virtual_console.masters[value],
-                    )
-                else:
-                    if self.outports:
-                        for outport in self.outports:
-                            outport.send(msg)
-                    page = App().fader_page
-                    number = value + 1
-                    master = None
-                    for master in App().masters:
-                        if master.page == page and master.number == number:
-                            break
-                    GLib.idle_add(master.set_level, val)
-                break
+                if key[:7] == "master_":
+                    val = ((msg.pitch + 8192) / 16383) * 255
+                    if App().virtual_console:
+                        GLib.idle_add(
+                            App().virtual_console.masters[value].set_value, val
+                        )
+                        GLib.idle_add(
+                            App().virtual_console.master_moved,
+                            App().virtual_console.masters[value],
+                        )
+                    else:
+                        if self.outports:
+                            for outport in self.outports:
+                                outport.send(msg)
+                        page = App().fader_page
+                        number = value + 1
+                        master = None
+                        for master in App().masters:
+                            if master.page == page and master.number == number:
+                                break
+                        GLib.idle_add(master.set_level, val)
+                    break
+                elif func := getattr(self, "_function_" + key, None):
+                    GLib.idle_add(func, None, msg)
 
     def _function_wheel(self, port, msg):
         """Wheel for channels level
@@ -363,25 +368,37 @@ class Midi:
         Args:
             msg: MIDI message
         """
-        self._xfade(self.xfade_out, msg.value)
+        if msg.type == "pitchwheel":
+            self._xfade(self.xfade_out, msg.pitch + 8192)
+        elif msg.type == "control_change":
+            self._xfade(self.xfade_out, round((msg.value / 127) * 16383))
 
     def _function_crossfade_in(self, _port, msg):
-        """Crossfade Out
+        """Crossfade In
 
         Args:
             msg: MIDI message
         """
-        self._xfade(self.xfade_in, msg.value)
+        if msg.type == "pitchwheel":
+            self._xfade(self.xfade_in, msg.pitch + 8192)
+        elif msg.type == "control_change":
+            self._xfade(self.xfade_in, round((msg.value / 127) * 16383))
 
     def _xfade(self, fader, value):
+        """Crossfade
+
+        Args:
+            fader (MidiFader): In or Out
+            value : fader value (0 - 16383)
+        """
         App().crossfade.manual = True
 
         if fader.get_inverted():
-            val = (value / 127) * 255
+            val = (value / 16383) * 255
             fader.set_value(value)
         else:
-            val = abs(((value - 127) / 127) * 255)
-            fader.set_value(abs(value - 127))
+            val = abs(((value - 16383) / 16383) * 255)
+            fader.set_value(abs(value - 16383))
 
         if fader == self.xfade_out:
             if App().virtual_console:
@@ -395,7 +412,7 @@ class Midi:
             else:
                 App().crossfade.scale_b.set_value(val)
                 App().crossfade.scale_moved(App().crossfade.scale_b)
-        if self.xfade_out.get_value() == 127 and self.xfade_in.get_value() == 127:
+        if self.xfade_out.get_value() == 16383 and self.xfade_in.get_value() == 16383:
             if self.xfade_out.get_inverted():
                 self.xfade_out.set_inverted(False)
                 self.xfade_in.set_inverted(False)
