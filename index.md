@@ -83,6 +83,9 @@ Open olc MIDI settings, activate controller(s) in MIDI In and choose the rotativ
 - Relative3 (Makie): Infinite rotative. Values from 0 to 64 in one direction, from 65 to 127 in the other.
 - Absolute: Non infinite rotative. Values from 0 to 127. Caution, doesn't work for virtual console wheel.
 
+> Note:  
+> All rotative on a controller must be configured in the same mode
+
 Activate controller(s) in MIDI Out for MIDI feedback (motorized faders, LED, ...)
 
 Then:
@@ -91,6 +94,7 @@ Then:
 - You can learn as many object you want (buttons, faders)
 - Toggle MIDI button to quit learning mode
 - Play with buttons and faders on your controllers
+
 > Note:  
 > MIDI mapping is save in ASCII files.
 

@@ -83,6 +83,9 @@ Ouvrir les paramètres MIDI d'olc, activer le(s) contrôleur(s) dans MIDI In et 
 - Mode Relative3 (Makie) : Rotatifs infinis. Valeurs de 0 à 64 dans un sens, valeurs de 65 à 127 dans l'autre.
 - Mode Absolute : Pour les rotatifs classiques non infinis. Valeurs de 0 à 127. Attention, ce mode ne fonctionne pas pour la roue de le console virtuelle.
 
+> Note:  
+> Tous les rotatifs d'un contrôleur doivent être configurés dans le même mode.
+
 Activer également le(s) contrôleur(s) dans MIDI Out pour avoir le retour d'info sur le matériel le supportant (faders motorisés, LED, ...)
 
 Ensuite :
@@ -91,6 +94,7 @@ Ensuite :
 - Il est possible de configurer autant d'objets que voulu (boutons, faders, ...)
 - Appuyer sur le bouton MIDI pour quitter le mode apprentissage
 - Utiliser les boutons et les faders des contrôleurs MIDI
+
 > Note:  
 > Le mapping MIDI est enregistré par olc dans les fichiers ASCII.
 
