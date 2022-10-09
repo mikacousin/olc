@@ -87,14 +87,14 @@ class MidiIn:
         # print(self.name, msg)
         if App().midi.midi_learn:
             App().midi.learn(msg)
-        else:
-            # Find action actived
-            if msg.type in ("note_on", "note_off"):
-                App().midi.scan_notes(msg)
-            elif msg.type == "control_change":
-                App().midi.scan_cc(self.name, msg)
-            elif msg.type == "pitchwheel":
-                App().midi.scan_pw(msg)
+
+        # Find action actived
+        if msg.type in ("note_on", "note_off"):
+            App().midi.scan_notes(msg)
+        elif msg.type == "control_change":
+            App().midi.scan_cc(self.name, msg)
+        elif msg.type == "pitchwheel":
+            App().midi.scan_pw(msg)
 
 
 class Midi:
@@ -169,7 +169,10 @@ class Midi:
         for i in range(1, 101):
             self.midi_cc["master_" + str(i)] = [0, -1]
         # Default MIDI pitchwheel values : "action": Channel
-        self.midi_pw = {}
+        self.midi_pw = {
+            "crossfade_out": -1,
+            "crossfade_in": -1,
+        }
         for i in range(10):
             for j in range(10):
                 self.midi_pw["master_" + str(j + (i * 10) + 1)] = j
@@ -233,8 +236,8 @@ class Midi:
                 if key[:6] == "flash_":
                     # We need to pass fader number to flash function
                     master = int(key[6:])
-                    page = int(master / 10)
-                    fader = master - (page * 10)
+                    page = int((master - 1) / 10)
+                    fader = int(master - (page * 10))
                     if page + 1 == App().fader_page:
                         GLib.idle_add(_function_flash, msg, fader)
                 elif key[:5] == "inde_":
@@ -270,27 +273,28 @@ class Midi:
             if msg.channel == value:
                 if key[:7] == "master_":
                     val = ((msg.pitch + 8192) / 16383) * 255
+                    index = int(key[7:]) - 1
                     if App().virtual_console:
                         GLib.idle_add(
-                            App().virtual_console.masters[value].set_value, val
+                            App().virtual_console.masters[index].set_value, val
                         )
                         GLib.idle_add(
                             App().virtual_console.master_moved,
-                            App().virtual_console.masters[value],
+                            App().virtual_console.masters[index],
                         )
                     else:
                         if self.outports:
                             for outport in self.outports:
                                 outport.send(msg)
                         page = App().fader_page
-                        number = value + 1
+                        number = int(key[7:])
                         master = None
                         for master in App().masters:
                             if master.page == page and master.number == number:
                                 break
                         GLib.idle_add(master.set_level, val)
                     break
-                elif func := getattr(self, "_function_" + key, None):
+                if func := getattr(self, "_function_" + key, None):
                     GLib.idle_add(func, None, msg)
 
     def _function_wheel(self, port, msg):
@@ -437,8 +441,15 @@ class Midi:
             # Find if values are already used
             for key, value in self.midi_notes.items():
                 if value[0] == msg.channel and value[1] == msg.note:
-                    # Delete it
-                    self.midi_notes.update({key: [0, -1]})
+                    if self.midi_learn[:6] == "flash_":
+                        # Don't delete flash button from other pages
+                        index = int(key[6:])
+                        page = int(index / 11) + 1
+                        if page == App().fader_page:
+                            self.midi_notes.update({key: [0, -1]})
+                    else:
+                        # Delete it
+                        self.midi_notes.update({key: [0, -1]})
             # Learn new values
             self.midi_notes.update({self.midi_learn: [msg.channel, msg.note]})
         elif self.midi_cc.get(self.midi_learn) and msg.type == "control_change":
@@ -450,6 +461,11 @@ class Midi:
                     self.midi_cc.update({key: [0, -1]})
             # Learn new values
             self.midi_cc.update({self.midi_learn: [msg.channel, msg.control]})
+        elif self.midi_pw.get(self.midi_learn) and msg.type == "pitchwheel":
+            for key, value in self.midi_pw.items():
+                if value == msg.channel:
+                    self.midi_pw.update({key: -1})
+            self.midi_pw.update({self.midi_learn: msg.channel})
 
     def led_pause_off(self):
         """Toggle MIDI Led"""
@@ -502,7 +518,6 @@ def _function_flash(msg, fader_index):
                 if master.page == App().fader_page and master.number == fader_index:
                     break
             master.set_level(master.old_value)
-
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
@@ -562,6 +577,7 @@ def _function_inde(port, msg, independent):
 
 
 def __new_inde_value(independent, step):
+    inde = None
     for inde in App().independents.independents:
         if inde.number == independent:
             val = inde.level + step
