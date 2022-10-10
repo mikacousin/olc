@@ -16,6 +16,10 @@ Main Window :
 Virtual console :
 ![VirtualConsole](../assets/virtual_console.png?raw=true)
 
+## Usage
+
+You can find some useful informations here: [Documentation](http://mikacousin.github.io/olc/)
+
 ## Installation
 
 ### Packages:

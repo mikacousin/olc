@@ -16,6 +16,10 @@ Fenêtre principale :
 Console virtuelle :
 ![VirtualConsole](../assets/virtual_console.png?raw=true)
 
+## Usage
+
+Vous trouverez des informations utiles ici : [Documentation](http://mikacousin.github.io/olc/index.fr.html)
+
 ## Installation
 
 ### Paquets:
