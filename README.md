@@ -24,8 +24,12 @@ You can find some useful informations here: [Documentation](http://mikacousin.gi
 
 ### Packages:
 
-[![Flathub](https://img.shields.io/flathub/v/com.github.mikacousin.olc)](https://flathub.org/apps/details/com.github.mikacousin.olc)
-[![AUR](https://img.shields.io/aur/version/olc-git)](https://aur.archlinux.org/packages/olc-git)
+Distribution | Package
+------------ | -------
+Flatpak | [![Flathub](https://img.shields.io/flathub/v/com.github.mikacousin.olc)](https://flathub.org/apps/details/com.github.mikacousin.olc)
+Archlinux | [![AUR](https://img.shields.io/aur/version/olc-git)](https://aur.archlinux.org/packages/olc-git)
+
+Any help to create packages for different distributions is welcome.
 
 ### Manually:
 
