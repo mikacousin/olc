@@ -227,5 +227,6 @@ class Ascii:
             App().track_channels_tab.update_display()
 
         App().window.channels_view.flowbox.unselect_all()
+        App().window.channels_view.flowbox.invalidate_filter()
         App().window.channels_view.grab_focus()
         App().window.last_chan_selected = ""

@@ -335,7 +335,7 @@ class Application(Gtk.Application):
         # Reset Patch
         self.patch.patch_1on1()
         # Reset Main Playback
-        self.sequence.__init__(1, "Main Playback")
+        self.sequence = Sequence(1, "Main Playback")
         self.sequence.position = 0
         self.sequence.window = self.window
         # Delete memories, groups, chasers, masters
@@ -347,6 +347,7 @@ class Application(Gtk.Application):
         for page in range(MAX_FADER_PAGE):
             for i in range(10):
                 self.masters.append(Master(page + 1, i + 1, 0, 0))
+        self.independents = Independents()
         # Redraw Sequential Window
         self.window.playback.update_sequence_display()
         self.window.playback.update_xfade_display(self.sequence.position)
@@ -434,6 +435,16 @@ class Application(Gtk.Application):
             self.track_channels_tab.flowbox.invalidate_filter()
             self.track_channels_tab.show_all()
             self.track_channels_tab.update_display()
+
+        # Redraw Independents Tab
+        if self.inde_tab:
+            self.inde_tab.liststore.clear()
+            for inde in self.independents.independents:
+                self.inde_tab.liststore.append(
+                    [inde.number, inde.inde_type, inde.text]
+                )
+            path = Gtk.TreePath.new_first()
+            self.inde_tab.treeview.set_cursor(path, None, False)
 
         self.window.channels_view.grab_focus()
         self.window.last_chan_selected = ""

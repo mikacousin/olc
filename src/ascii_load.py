@@ -18,7 +18,7 @@ from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE
 from olc.group import Group
-from olc.independent import Independent
+from olc.independent import Independent, Independents
 from olc.master import Master
 from olc.sequence import Sequence
 from olc.step import Step
@@ -103,9 +103,9 @@ class AsciiParser:
                     for i in range(10):
                         App().masters.append(Master(page + 1, i + 1, 0, 0))
                 App().patch.patch_empty()
-                App().sequence.__init__(1, text="Main Playback")
+                App().sequence = Sequence(1, text="Main Playback")
                 del App().sequence.steps[1:]
-                App().independents.__init__()
+                App().independents = Independents()
             # Sequence
             if line[:9].upper() == "$SEQUENCE":
                 p = line[10:].split(" ")
