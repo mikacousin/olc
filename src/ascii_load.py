@@ -123,6 +123,23 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = False
+            # Cue List (same as Sequence)
+            if line[:8].upper() == "$CUELIST":
+                p = line[9:].split(" ")
+                if int(p[0]) < 2 and not playback:
+                    playback = True
+                    type_seq = "MainPlayback"
+                else:
+                    type_seq = "Chaser"
+                    index_seq = int(p[0])
+                    App().chasers.append(Sequence(index_seq, type_seq=type_seq))
+                    del App().chasers[-1].steps[1:]
+                flag_seq = True
+                flag_patch = False
+                flag_master = False
+                flag_group = False
+                flag_inde = False
+                flag_preset = False
             # Chasers
             if flag_seq and type_seq == "Chaser":
                 if line[:4].upper() == "TEXT":
@@ -190,13 +207,13 @@ class AsciiParser:
                 if line[:3].upper() == "CUE":
                     in_cue = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
-                    mem = float(line[4:])
-                if line[:4].upper() == "$CUE":
+                    mem = float(line[4:].split(" ")[0])
+                if line[:4].upper() == "$CUE" and line[:8].upper() != "$CUELIST":
                     in_cue = True
                     channels = array.array("B", [0] * MAX_CHANNELS)
-                    mem = float(line[5:])
-
+                    mem = float(line[5:].split(" ")[0])
                 if in_cue:
+                    line = line.lstrip()
                     if line[:4].upper() == "TEXT":
                         txt = line[5:]
                     if line[:6].upper() == "$$TEXT" and not txt:
@@ -245,14 +262,18 @@ class AsciiParser:
                     if line[:4].upper() == "CHAN":
                         p = line[5:].split(" ")
                         for q in p:
-                            r = q.split("/")
-                            if r[0] != "":
-                                channel = int(r[0])
-                                # Ignore channels greater than MAX_CHANNELS
-                                if channel < MAX_CHANNELS:
-                                    level = int(r[1][1:], 16)
-                                    channels[channel - 1] = level
-                    if line == "":
+                            if q:
+                                if "/" in q:
+                                    r = q.split("/")
+                                elif "@" in q:
+                                    r = q.split("@")
+                                if r[0] != "":
+                                    channel = int(r[0])
+                                    # Ignore channels greater than MAX_CHANNELS
+                                    if channel < MAX_CHANNELS:
+                                        level = int(r[1][1:], 16)
+                                        channels[channel - 1] = level
+                    if line.replace(" ", "") == "":
                         if not wait:
                             wait = 0.0
                         if not txt:
@@ -312,7 +333,7 @@ class AsciiParser:
                         output = int(r[0])
                         univ = int((output - 1) / 512)
                         if r[1][0].upper() == "H":
-                            level = int(r[1][1:].upper(), 16)
+                            level = int((int(r[1][1:].upper(), 16) / 255) * 100)
                         else:
                             level = int(r[1])
                         if univ < NB_UNIVERSES:
