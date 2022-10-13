@@ -18,21 +18,7 @@ from gettext import gettext as _
 from olc.define import App
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, GLib, Gtk  # noqa: E402
-
-
-class Settings(Gio.Settings):
-    """Open Lighting Console settings"""
-
-    def __init__(self):
-
-        Gio.Settings.__init__(self)
-
-    def new():
-
-        settings = Gio.Settings.new("com.github.mikacousin.olc")
-        settings.__class__ = Settings
-        return settings
+from gi.repository import GLib, Gtk  # noqa: E402
 
 
 class SettingsDialog:

@@ -37,7 +37,7 @@ from olc.patch_channels import PatchChannelsTab
 from olc.patch_outputs import PatchOutputsTab
 from olc.sequence import Sequence
 from olc.sequence_edition import SequenceTab
-from olc.settings import Settings, SettingsDialog
+from olc.settings import SettingsDialog
 from olc.track_channels import TrackChannelsTab
 from olc.virtual_console import VirtualConsoleWindow
 from olc.window import Window
@@ -74,7 +74,8 @@ class Application(Gtk.Application):
         settings.set_property("gtk-application-prefer-dark-theme", True)
 
         # To store settings
-        self.settings = Settings.new()
+        # self.settings = Settings.new()
+        self.settings = Gio.Settings.new("com.github.mikacousin.olc")
 
         # Universes
         self.universes = list(range(NB_UNIVERSES))
@@ -440,9 +441,7 @@ class Application(Gtk.Application):
         if self.inde_tab:
             self.inde_tab.liststore.clear()
             for inde in self.independents.independents:
-                self.inde_tab.liststore.append(
-                    [inde.number, inde.inde_type, inde.text]
-                )
+                self.inde_tab.liststore.append([inde.number, inde.inde_type, inde.text])
             path = Gtk.TreePath.new_first()
             self.inde_tab.treeview.set_cursor(path, None, False)
 
