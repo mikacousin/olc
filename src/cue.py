@@ -19,16 +19,14 @@ from olc.define import MAX_CHANNELS
 
 class Cue:
     """Cue/Preset object
-
     A Cue or a Preset is used to store intensities for playback in a Sequence.
     A Cue is attached to a sequence and a Preset is a global memory
-
-    Attributes:
-        sequence (int): sequence number (0 for Preset)
-        memory (float): cue's number
-        channels (array): channels's levels
-        text (str): cue's text
     """
+
+    sequence: int  # Sequence number (0 for Preset)
+    memory: float  # Cue number
+    channels: array.array  # Channels levels
+    text: str  # Cue text
 
     def __init__(
         self,
@@ -43,12 +41,12 @@ class Cue:
         self.channels = channels
         self.text = text
 
-    def set_level(self, channel, level):
+    def set_level(self, channel: int, level: int) -> None:
         """Set level of a channel.
 
         Args :
             channel: channel number
-            level: level
+            level: level (0 - 255)
         """
         if (
             isinstance(level, int)
@@ -58,7 +56,7 @@ class Cue:
         ):
             self.channels[channel] = level
 
-    def get_level(self, channel):
+    def get_level(self, channel: int) -> int:
         """Get channel's level
 
         Args:
