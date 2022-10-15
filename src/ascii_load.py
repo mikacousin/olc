@@ -528,7 +528,9 @@ class AsciiParser:
             # MIDI mapping
             if line[:10].upper() == "$$MIDINOTE":
                 item = line[11:].split(" ")
-                App().midi.midi_notes.update({item[0]: [int(item[1]), int(item[2])]})
+                App().midi.notes.notes.update({item[0]: [int(item[1]), int(item[2])]})
             if line[:8].upper() == "$$MIDICC":
                 item = line[9:].split(" ")
-                App().midi.midi_cc.update({item[0]: [int(item[1]), int(item[2])]})
+                App().midi.control_change.control_change.update(
+                    {item[0]: [int(item[1]), int(item[2])]}
+                )
