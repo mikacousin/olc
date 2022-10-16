@@ -44,7 +44,7 @@ class ToggleWidget(Gtk.ToggleButton):
             cr.set_source_rgb(0.3, 0.2, 0.2)
         elif self.get_active():
             cr.set_source_rgb(0.5, 0.3, 0.0)
-            for outport in App().midi.outports:
+            for outport in App().midi.ports.outports:
                 item = App().midi.notes.notes[self.text]
                 if item[1] != -1:
                     msg = mido.Message(
@@ -53,7 +53,7 @@ class ToggleWidget(Gtk.ToggleButton):
                     GLib.idle_add(outport.send, msg)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            for outport in App().midi.outports:
+            for outport in App().midi.ports.outports:
                 item = App().midi.notes.notes[self.text]
                 if item[1] != -1:
                     msg = mido.Message(

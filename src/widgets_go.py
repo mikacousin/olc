@@ -44,7 +44,7 @@ class GoWidget(Gtk.Widget):
 
     def on_press(self, _tgt, _ev):
         """Go pressed"""
-        for outport in App().midi.outports:
+        for outport in App().midi.ports.outports:
             item = App().midi.notes.notes["go"]
             msg = mido.Message(
                 "note_on", channel=item[0], note=item[1], velocity=127, time=0
@@ -55,7 +55,7 @@ class GoWidget(Gtk.Widget):
 
     def on_release(self, _tgt, _ev):
         """Go released"""
-        for outport in App().midi.outports:
+        for outport in App().midi.ports.outports:
             item = App().midi.notes.notes["go"]
             msg = mido.Message(
                 "note_on", channel=item[0], note=item[1], velocity=0, time=0

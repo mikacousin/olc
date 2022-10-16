@@ -82,8 +82,8 @@ class MidiNotes:
             msg: MIDI message
         """
         if not App().virtual_console:
-            if App().midi.outports:
-                for outport in App().midi.outports:
+            if App().midi.ports.outports:
+                for outport in App().midi.ports.outports:
                     outport.send(msg)
         for key, value in self.notes.items():
             if msg.channel == value[0] and msg.note == value[1]:
@@ -125,7 +125,7 @@ class MidiNotes:
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""
         item = self.notes["pause"]
-        for output in App().midi.outports:
+        for output in App().midi.ports.outports:
             if item[1] != -1:
                 msg = mido.Message(
                     "note_on", channel=item[0], note=item[1], velocity=0, time=0
@@ -146,7 +146,7 @@ class MidiNotes:
             velocity = 0
         else:
             velocity = 127
-        for outport in App().midi.outports:
+        for outport in App().midi.ports.outports:
             item = self.notes["inde_" + str(index)]
             msg = mido.Message(
                 "note_on", channel=item[0], note=item[1], velocity=velocity, time=0
@@ -720,13 +720,13 @@ def _function_pause(msg: mido.Message) -> None:
 
     if App().sequence.on_go:
         if App().sequence.thread and App().sequence.thread.pause.is_set():
-            for output in App().midi.outports:
+            for output in App().midi.ports.outports:
                 message = mido.Message(
                     "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
                 )
                 output.send(message)
         elif App().sequence.thread:
-            for output in App().midi.outports:
+            for output in App().midi.ports.outports:
                 message = mido.Message(
                     "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
                 )
@@ -965,7 +965,7 @@ def _function_fader_page_plus(msg: mido.Message) -> None:
                     msg = mido.Message(
                         "pitchwheel", channel=master.number - 1, pitch=val, time=0
                     )
-                    for outport in App().midi.outports:
+                    for outport in App().midi.ports.outports:
                         outport.send(msg)
 
 
@@ -993,5 +993,5 @@ def _function_fader_page_minus(msg: mido.Message) -> None:
                     msg = mido.Message(
                         "pitchwheel", channel=master.number - 1, pitch=val, time=0
                     )
-                    for outport in App().midi.outports:
+                    for outport in App().midi.ports.outports:
                         outport.send(msg)

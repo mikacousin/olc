@@ -45,7 +45,7 @@ class PauseWidget(Gtk.Button):
         """Button pressed"""
         self.pressed = True
         item = App().midi.notes.notes[self.text]
-        for outport in App().midi.outports:
+        for outport in App().midi.ports.outports:
             msg = mido.Message(
                 "note_on", channel=item[0], note=item[1], velocity=127, time=0
             )
@@ -57,21 +57,21 @@ class PauseWidget(Gtk.Button):
         if App().sequence.on_go:
             if App().sequence.thread and App().sequence.thread.pause.is_set():
                 self.pressed = True
-                for outport in App().midi.outports:
+                for outport in App().midi.ports.outports:
                     msg = mido.Message(
                         "note_on", channel=item[0], note=item[1], velocity=127, time=0
                     )
                     GLib.idle_add(outport.send, msg)
             elif App().sequence.thread:
                 self.pressed = False
-                for outport in App().midi.outports:
+                for outport in App().midi.ports.outports:
                     msg = mido.Message(
                         "note_on", channel=item[0], note=item[1], velocity=0, time=0
                     )
                     GLib.idle_add(outport.send, msg)
         else:
             self.pressed = False
-            for outport in App().midi.outports:
+            for outport in App().midi.ports.outports:
                 msg = mido.Message(
                     "note_on", channel=item[0], note=item[1], velocity=0, time=0
                 )

@@ -266,8 +266,8 @@ class SettingsDialog:
         App().settings.set_strv("relative2", relative2)
         App().settings.set_strv("makie", makies)
         App().settings.set_strv("absolute", absolutes)
-        GLib.idle_add(App().midi.close_input)
-        GLib.idle_add(App().midi.open_input, midi_ports)
+        GLib.idle_add(App().midi.ports.close_input)
+        GLib.idle_add(App().midi.ports.open_input, midi_ports)
 
     def on_midi_out_toggle(self, _widget, path):
         """Active / Unactive MIDI controllers (output)
@@ -284,8 +284,8 @@ class SettingsDialog:
             midi_ports.remove(self.liststore_midi_out[path][2])
         midi_ports = list(set(midi_ports))
         App().settings.set_strv("midi-out", midi_ports)
-        GLib.idle_add(App().midi.close_output)
-        GLib.idle_add(App().midi.open_output, midi_ports)
+        GLib.idle_add(App().midi.ports.close_output)
+        GLib.idle_add(App().midi.ports.open_output, midi_ports)
 
     def _on_change_percent(self, _widget):
         lvl = self.spin_percent_level.get_value_as_int()

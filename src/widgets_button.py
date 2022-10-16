@@ -47,7 +47,7 @@ class ButtonWidget(Gtk.Widget):
 
     def on_press(self, _tgt, _ev):
         """Button pressed"""
-        for outport in App().midi.outports:
+        for outport in App().midi.ports.outports:
             item = App().midi.notes.notes[self.text]
             if item[1] != -1:
                 msg = mido.Message(
@@ -60,7 +60,7 @@ class ButtonWidget(Gtk.Widget):
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        for outport in App().midi.outports:
+        for outport in App().midi.ports.outports:
             item = App().midi.notes.notes[self.text]
             if item[1] != -1:
                 msg = mido.Message(

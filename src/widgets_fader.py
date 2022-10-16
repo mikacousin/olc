@@ -80,7 +80,7 @@ class FaderWidget(Gtk.Scale):
 
         # Send MIDI message to faders
         if self not in (App().virtual_console.scale_a, App().virtual_console.scale_b):
-            for outport in App().midi.outports:
+            for outport in App().midi.ports.outports:
                 item = App().midi.control_change.control_change[self.text]
                 if item[1] != -1:
                     msg = mido.Message(

@@ -183,12 +183,8 @@ class Application(Gtk.Application):
 
         # Open MIDI Inputs and Outputs
         self.midi = Midi()
-        ports = self.settings.get_strv("midi-in")
-        self.midi.open_input(ports)
-        ports = self.settings.get_strv("midi-out")
-        self.midi.open_output(ports)
         # Reset Mackie Control Faders
-        for outport in self.midi.outports:
+        for outport in self.midi.ports.outports:
             for i in range(16):
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 outport.send(msg)

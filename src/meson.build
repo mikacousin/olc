@@ -37,6 +37,7 @@ olc_sources = [
   'midi.py',
   'midi_cc.py',
   'midi_notes.py',
+  'midi_ports.py',
   'midi_pw.py',
   'midi_xfade.py',
   'ola_thread.py',
