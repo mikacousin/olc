@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+from dataclasses import dataclass
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
@@ -21,6 +22,7 @@ from olc.widgets_group import GroupWidget
 from olc.zoom import zoom
 
 
+@dataclass
 class Group:
     """A Group is composed with channels at some levels
 
@@ -30,10 +32,9 @@ class Group:
         text: Group description
     """
 
-    def __init__(self, index, channels=array.array("B", [0] * MAX_CHANNELS), text=""):
-        self.index = index
-        self.channels = channels
-        self.text = str(text)
+    index: int
+    channels: array.array = ("B", [0] * MAX_CHANNELS)  # type: ignore
+    text: str = ""
 
 
 class GroupTab(Gtk.Paned):
@@ -48,8 +49,8 @@ class GroupTab(Gtk.Paned):
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
-        self.scrolled1 = Gtk.ScrolledWindow()
-        self.scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled1 = Gtk.ScrolledWindow()
+        scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         self.flowbox1 = Gtk.FlowBox()
         self.flowbox1.set_valign(Gtk.Align.START)
@@ -63,9 +64,9 @@ class GroupTab(Gtk.Paned):
             self.channels.append(ChannelWidget(i + 1, 0, 0))
             self.flowbox1.add(self.channels[i])
 
-        self.scrolled1.add(self.flowbox1)
+        scrolled1.add(self.flowbox1)
 
-        self.add1(self.scrolled1)
+        self.add1(scrolled1)
 
         self.scrolled2 = Gtk.ScrolledWindow()
         self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -98,7 +99,7 @@ class GroupTab(Gtk.Paned):
         self.scrolled2.add(self.flowbox2)
 
     def filter_channels(self, child, _user_data):
-        """Pour n'afficher que les channels du groupe
+        """Display only channels group
 
         Args:
             child: Child object
@@ -106,13 +107,13 @@ class GroupTab(Gtk.Paned):
         Returns:
             child or False
         """
-        i = child.get_index()  # Numéro du widget qu'on filtre (channel - 1)
-        # On cherche le groupe actuellement séléctionné
+        i = child.get_index()  # Widget number (channel - 1)
+        # Find selected group
         for j, _ in enumerate(self.grps):
             if self.grps[j].get_parent().is_selected():
-                # Si le channel est dans le groupe, on l'affiche
+                # Channel is in group, display it
                 if App().groups[j].channels[i] or self.channels[i].clicked:
-                    # On récupère le level (next_level à la même valeur)
+                    # Get level (next_level is the same)
                     self.channels[i].level = App().groups[j].channels[i]
                     self.channels[i].next_level = App().groups[j].channels[i]
                     return child
