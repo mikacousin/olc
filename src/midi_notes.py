@@ -162,13 +162,16 @@ class MidiNotes:
         """
         if independent == 7:
             inde = App().independents.independents[6]
-            widget = App().virtual_console.independent7
+            if App().virtual_console:
+                widget = App().virtual_console.independent7
         elif independent == 8:
             inde = App().independents.independents[7]
-            widget = App().virtual_console.independent8
+            if App().virtual_console:
+                widget = App().virtual_console.independent8
         elif independent == 9:
             inde = App().independents.independents[8]
-            widget = App().virtual_console.independent9
+            if App().virtual_console:
+                widget = App().virtual_console.independent9
         if msg.type == "note_off" or (
             msg.type == "note_on" and msg.velocity == 127 and inde.level == 255
         ):
