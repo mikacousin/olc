@@ -12,12 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import mido
+from __future__ import annotations
 from typing import Dict, List
+import typing
+import mido
 from gi.repository import Gdk, GLib
 from olc.define import App, MAX_FADER_PAGE
-from olc.independent import Independent
-from olc.widgets_button import ButtonWidget
+if typing.TYPE_CHECKING:
+    from olc.independent import Independent
+    from olc.widgets_button import ButtonWidget
 
 
 class MidiNotes:

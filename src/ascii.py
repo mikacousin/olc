@@ -14,7 +14,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from io import StringIO
 
-import gi
+from gi.repository import Gio, GObject, Gtk
+
 from olc.ascii_load import AsciiParser
 from olc.ascii_save import (
     save_chasers,
@@ -29,9 +30,6 @@ from olc.ascii_save import (
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
 from olc.step import Step
-
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gio, GObject, Gtk  # noqa: E402
 
 
 def get_time(string):

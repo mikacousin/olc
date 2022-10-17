@@ -12,8 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import mido
 from typing import Any, Dict, List, Tuple
+import mido
 from gi.repository import Gdk, GLib
 from olc.define import App
 import olc.midi_xfade

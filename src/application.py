@@ -14,36 +14,37 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import select
 import sys
-import mido
 from gettext import gettext as _
+import mido
 
 import gi
-from olc.ascii import Ascii
-from olc.channel_time import ChanneltimeTab
-from olc.crossfade import CrossFade
-from olc.cues_edition import CuesEditionTab
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, MAX_FADER_PAGE
-from olc.dmx import Dmx, PatchDmx
-from olc.enttec_wing import WingPlayback
-from olc.group import GroupTab
-from olc.independent import Independents
-from olc.independents_edition import IndependentsTab
-from olc.master import Master
-from olc.masters_edition import MastersTab
-from olc.midi import Midi
-from olc.ola_thread import OlaThread
-from olc.osc import OscServer
-from olc.patch_channels import PatchChannelsTab
-from olc.patch_outputs import PatchOutputsTab
-from olc.sequence import Sequence
-from olc.sequence_edition import SequenceTab
-from olc.settings import SettingsDialog
-from olc.track_channels import TrackChannelsTab
-from olc.virtual_console import VirtualConsoleWindow
-from olc.window import Window
-
+gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+
+from olc.ascii import Ascii  # noqa: E402
+from olc.channel_time import ChanneltimeTab  # noqa: E402
+from olc.crossfade import CrossFade  # noqa: E402
+from olc.cues_edition import CuesEditionTab  # noqa: E402
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, MAX_FADER_PAGE  # noqa: E402
+from olc.dmx import Dmx, PatchDmx  # noqa: E402
+from olc.enttec_wing import WingPlayback  # noqa: E402
+from olc.group import GroupTab  # noqa: E402
+from olc.independent import Independents  # noqa: E402
+from olc.independents_edition import IndependentsTab  # noqa: E402
+from olc.master import Master  # noqa: E402
+from olc.masters_edition import MastersTab  # noqa: E402
+from olc.midi import Midi  # noqa: E402
+from olc.ola_thread import OlaThread  # noqa: E402
+from olc.osc import OscServer  # noqa: E402
+from olc.patch_channels import PatchChannelsTab  # noqa: E402
+from olc.patch_outputs import PatchOutputsTab  # noqa: E402
+from olc.sequence import Sequence  # noqa: E402
+from olc.sequence_edition import SequenceTab  # noqa: E402
+from olc.settings import SettingsDialog  # noqa: E402
+from olc.track_channels import TrackChannelsTab  # noqa: E402
+from olc.virtual_console import VirtualConsoleWindow  # noqa: E402
+from olc.window import Window  # noqa: E402
 
 
 class Application(Gtk.Application):

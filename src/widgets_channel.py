@@ -13,12 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
-import gi
+from gi.repository import Gdk, Gtk
 from olc.define import App
-
-gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gdk, Gtk  # noqa: E402
 
 
 class ChannelWidget(Gtk.Widget):

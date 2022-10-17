@@ -12,13 +12,11 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import gi
+from gi.repository import Gdk, Gtk
+
 from olc.define import MAX_CHANNELS, App
 from olc.widgets_channel import ChannelWidget
 from olc.zoom import zoom
-
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gdk, Gtk  # noqa: E402
 
 
 class ChannelTime:
