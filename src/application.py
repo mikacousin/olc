@@ -86,7 +86,7 @@ class Application(Gtk.Application):
 
         # Create OlaClient
         try:
-            self.ola_thread = OlaThread(self.universes)
+            self.ola_thread = OlaThread()
         except Exception as e:
             print("Can't connect to Ola !", e)
             sys.exit()

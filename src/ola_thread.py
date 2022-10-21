@@ -22,28 +22,26 @@ from olc.define import NB_UNIVERSES, App
 
 
 class OlaThread(threading.Thread):
-    """Create OlaClient and receive universes updates
+    """Create OlaClient and receive universes updates"""
 
-    Args:
-        universes: list of universes
-    """
+    ola_client: OlaClient.OlaClient
+    sock: OlaClient.OlaClient.GetSocket
 
-    def __init__(self, universes):
+    def __init__(self) -> None:
         threading.Thread.__init__(self)
-        self.universes = universes
         self.ola_client = OlaClient.OlaClient()
         self.sock = self.ola_client.GetSocket()
 
         self.old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
 
-    def run(self):
+    def run(self) -> None:
         """Register universes"""
-        for univ in self.universes:
+        for univ in App().universes:
             self.ola_client.RegisterUniverse(
                 univ, self.ola_client.REGISTER, partial(self.on_dmx, univ)
             )
 
-    def on_dmx(self, univ, dmxframe):
+    def on_dmx(self, univ: int, dmxframe: array.array) -> None:
         """Universe updates.
 
         Args:
