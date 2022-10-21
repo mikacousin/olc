@@ -167,12 +167,15 @@ class PatchChannelWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
-        nb_outputs = len(self.patch.channels[self.channel - 1])
+        nb_outputs = 0
+        if self.channel in App().patch.channels:
+            nb_outputs = len(App().patch.channels[self.channel])
+        if not nb_outputs:
+            return
 
         if nb_outputs <= 8:
             self._draw_one_line(cr)
         else:
-            # If more than 8 outputs
             self._draw_two_lines(cr)
 
     def _draw_one_line(self, cr):
@@ -181,7 +184,7 @@ class PatchChannelWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
-        for i, item in enumerate(self.patch.channels[self.channel - 1]):
+        for i, item in enumerate(App().patch.channels[self.channel]):
             output = item[0]
             if output != 0:
                 area = (65 + (i * 65), 125 + (i * 65), 0, self.height)
@@ -214,7 +217,7 @@ class PatchChannelWidget(Gtk.Widget):
             cr: Cairo context
         """
         two_lines = False
-        for i, item in enumerate(self.patch.channels[self.channel - 1]):
+        for i, item in enumerate(App().patch.channels[self.channel]):
             if i > 15:
                 two_lines = True
             output = item[0]

@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
 
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS, App, is_non_nul_int
 from olc.widgets_channel import ChannelWidget
 from olc.zoom import zoom
 
@@ -446,25 +446,22 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _keypress_c(self):
         """Channel"""
-        # TODO: Bug on Empty Channel time
-
         self.flowbox.unselect_all()
-
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
 
-        if self.keystring not in ["", "0"]:
-            channel = int(self.keystring) - 1
-            if 0 <= channel < MAX_CHANNELS:
-                self.channels[channel].clicked = True
-                # self.flowbox.invalidate_filter()
-
-                child = self.flowbox.get_child_at_index(channel)
+        if is_non_nul_int(self.keystring):
+            channel = int(self.keystring)
+            if channel in App().patch.channels:
+                self.channels[channel - 1].clicked = True
+                child = self.flowbox.get_child_at_index(channel - 1)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
-
         self.flowbox.invalidate_filter()
+
+        if not App().window.get_focus():
+            self.scrolled1.grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

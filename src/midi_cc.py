@@ -138,15 +138,16 @@ class MidiControlChanges:
             for flowboxchild in sel:
                 children = flowboxchild.get_children()
                 for channelwidget in children:
-                    channel = int(channelwidget.channel) - 1
+                    channel = int(channelwidget.channel)
                     for output in App().patch.channels[channel]:
                         out = output[0]
                         univ = output[1]
-                        level = App().dmx.frame[univ][out - 1]
+                        index = App().universes.index(univ)
+                        level = App().dmx.frame[index][out - 1]
                         if direction == Gdk.ScrollDirection.UP:
-                            App().dmx.user[channel] = min(level + step, 255)
+                            App().dmx.user[channel - 1] = min(level + step, 255)
                         elif direction == Gdk.ScrollDirection.DOWN:
-                            App().dmx.user[channel] = max(level - step, 0)
+                            App().dmx.user[channel - 1] = max(level - step, 0)
 
     def _function_gm(self, _port: str, msg: mido.Message) -> None:
         """Grand Master

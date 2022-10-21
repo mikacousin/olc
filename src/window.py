@@ -16,7 +16,7 @@ import array
 
 from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
+from olc.define import MAX_CHANNELS, App
 from olc.step import Step
 from olc.widgets_grand_master import GMWidget
 from olc.window_channels import ChannelsView
@@ -163,7 +163,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
-                if App().patch.channels[i][0] != [0, 0]:
+                if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -173,7 +173,7 @@ class Window(Gtk.ApplicationWindow):
             # Find next patched channel
             next_chan = 0
             for i in range(int(self.last_chan_selected) + 1, MAX_CHANNELS):
-                if App().patch.channels[i][0] != [0, 0]:
+                if i + 1 in App().patch.channels:
                     next_chan = i
                     break
             if next_chan:
@@ -191,7 +191,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
-                if App().patch.channels[i][0] != [0, 0]:
+                if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -201,7 +201,7 @@ class Window(Gtk.ApplicationWindow):
             # Find previous patched channel
             chan = int(self.last_chan_selected)
             for i in range(int(self.last_chan_selected), 0, -1):
-                if App().patch.channels[i - 1][0] != [0, 0]:
+                if i in App().patch.channels:
                     chan = i - 1
                     break
             self.channels_view.flowbox.unselect_all()
@@ -218,7 +218,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
-                if App().patch.channels[i][0] != [0, 0]:
+                if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -246,7 +246,7 @@ class Window(Gtk.ApplicationWindow):
         if self.last_chan_selected == "":
             # Find first patched channel
             for i in range(MAX_CHANNELS):
-                if App().patch.channels[i][0] != [0, 0]:
+                if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
             self.set_focus(child)
@@ -273,12 +273,12 @@ class Window(Gtk.ApplicationWindow):
         """All Channels"""
         self.channels_view.flowbox.unselect_all()
 
-        for universe in range(NB_UNIVERSES):
-            for output in range(512):
-                level = App().dmx.frame[universe][output]
-                channel = App().patch.outputs[universe][output][0] - 1
+        for chan, outputs in App().patch.channels.items():
+            for output in outputs:
+                index = App().universes.index(output[1])
+                level = App().dmx.frame[index][output[0] - 1]
                 if level > 0:
-                    child = self.channels_view.flowbox.get_child_at_index(channel)
+                    child = self.channels_view.flowbox.get_child_at_index(chan - 1)
                     self.set_focus(child)
                     self.channels_view.flowbox.select_child(child)
 
@@ -289,7 +289,7 @@ class Window(Gtk.ApplicationWindow):
         """Channel"""
         self.channels_view.flowbox.unselect_all()
 
-        if self.keystring not in ["", "0"]:
+        if self.keystring not in ["", "0"] and "." not in self.keystring:
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.channels_view.flowbox.get_child_at_index(channel)
@@ -313,6 +313,8 @@ class Window(Gtk.ApplicationWindow):
 
     def thru(self):
         """Thru"""
+        if not self.keystring or "." in self.keystring:
+            return
         sel = self.channels_view.flowbox.get_selected_children()
         if len(sel) == 1:
             flowboxchild = sel[0]
@@ -331,6 +333,8 @@ class Window(Gtk.ApplicationWindow):
 
         if self.last_chan_selected:
             to_chan = int(self.keystring)
+            if not 0 < to_chan <= MAX_CHANNELS:
+                return
             if to_chan > int(self.last_chan_selected):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     child = self.channels_view.flowbox.get_child_at_index(channel)
@@ -356,15 +360,12 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_plus(self):
         """+"""
-        if self.keystring == "":
+        if self.keystring == "" or "." in self.keystring:
             return
 
-        channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            child = self.channels_view.flowbox.get_child_at_index(channel)
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            child = self.channels_view.flowbox.get_child_at_index(channel - 1)
             self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
@@ -384,12 +385,9 @@ class Window(Gtk.ApplicationWindow):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            child = self.channels_view.flowbox.get_child_at_index(channel)
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            child = self.channels_view.flowbox.get_child_at_index(channel - 1)
             self.set_focus(child)
             self.channels_view.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
@@ -412,12 +410,13 @@ class Window(Gtk.ApplicationWindow):
             children = flowboxchild.get_children()
 
             for channelwidget in children:
-                channel = int(channelwidget.channel) - 1
+                channel = int(channelwidget.channel)
                 for output in App().patch.channels[channel]:
                     out = output[0]
                     univ = output[1]
-                    level = App().dmx.frame[univ][out - 1]
-                    App().dmx.user[channel] = min(level + lvl, 255)
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][out - 1]
+                    App().dmx.user[channel - 1] = min(level + lvl, 255)
 
     def _keypress_colon(self):
         """Level - (% level) of selected channels"""
@@ -431,12 +430,13 @@ class Window(Gtk.ApplicationWindow):
             children = flowboxchild.get_children()
 
             for channelwidget in children:
-                channel = int(channelwidget.channel) - 1
+                channel = int(channelwidget.channel)
                 for output in App().patch.channels[channel]:
                     out = output[0]
                     univ = output[1]
-                    level = App().dmx.frame[univ][out - 1]
-                    App().dmx.user[channel] = max(level - lvl, 0)
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][out - 1]
+                    App().dmx.user[channel - 1] = max(level - lvl, 0)
 
     def _keypress_KP_Enter(self):  # pylint: disable=C0103
         """@ Level"""
@@ -513,11 +513,13 @@ class Window(Gtk.ApplicationWindow):
         if not found:
             # Create Preset
             channels = array.array("B", [0] * MAX_CHANNELS)
-            for univ in range(NB_UNIVERSES):
-                for output in range(512):
-                    if channel := App().patch.outputs[univ][output][0]:
-                        level = App().dmx.frame[univ][output]
-                        channels[channel - 1] = level
+            for channel, outputs in App().patch.channels.items():
+                for values in outputs:
+                    output = values[0]
+                    univ = values[1]
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][output - 1]
+                    channels[channel - 1] = level
             cue = Cue(1, mem, channels)
             App().memories.insert(step - 1, cue)
 
@@ -546,10 +548,11 @@ class Window(Gtk.ApplicationWindow):
                     break
             i -= 1
 
-            for univ in range(NB_UNIVERSES):
+            for univ in App().universes:
                 for output in range(512):
-                    channel = App().patch.outputs[univ][output][0]
-                    level = App().dmx.frame[univ][output]
+                    channel = App().patch.outputs[univ][output + 1][0]
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][output]
 
                     App().memories[i].channels[channel - 1] = level
 
@@ -593,14 +596,13 @@ class Window(Gtk.ApplicationWindow):
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
-
-            for univ in range(NB_UNIVERSES):
-                for output in range(512):
-                    channel = App().patch.outputs[univ][output][0] - 1
-                    if channel not in App().independents.channels:
-                        level = App().dmx.frame[univ][output]
-
-                    App().sequence.steps[position].cue.channels[channel] = level
+            for channel, outputs in App().patch.channels.items():
+                if channel not in App().independents.channels:
+                    output = outputs[0][0] - 1
+                    univ = outputs[0][1]
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][output]
+                    App().sequence.steps[position].cue.channels[channel - 1] = level
 
             # Tag filename as modified
             App().ascii.modified = True

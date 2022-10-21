@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from olc.define import NB_UNIVERSES, App
+from olc.define import App
 
 
 def save_main_playback(stream):
@@ -267,21 +267,23 @@ def save_patch(stream):
     stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
     patch = ""
     i = 1
-    for universe in range(NB_UNIVERSES):
-        for output in range(512):
-            if App().patch.outputs[universe][output][0]:
-                patch += (
-                    " "
-                    + str(App().patch.outputs[universe][output][0])
-                    + "<"
-                    + str(output + 1 + (512 * universe))
-                    + "@"
-                    + str(App().patch.outputs[universe][output][1])
-                )
-                if not i % 4 and patch != "":
-                    stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
-                    patch = ""
-                i += 1
+    for channel, outputs in App().patch.channels.items():
+        for values in outputs:
+            output = values[0]
+            univ = values[1]
+            index = App().universes.index(univ)
+            patch += (
+                " "
+                + str(channel)
+                + "<"
+                + str(output + (512 * index))
+                + "@"
+                + str(App().patch.outputs[univ][output][1])
+            )
+            if not i % 4 and patch != "":
+                stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
+                patch = ""
+            i += 1
     if patch != "":
         stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
     stream.write(bytes("\n", "utf8"))

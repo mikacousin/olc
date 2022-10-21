@@ -331,20 +331,24 @@ class AsciiParser:
                         r = q[1].split("@")
                         channel = int(q[0])
                         output = int(r[0])
-                        univ = int((output - 1) / 512)
-                        if r[1][0].upper() == "H":
-                            level = int((int(r[1][1:].upper(), 16) / 255) * 100)
-                        else:
-                            level = int(r[1])
-                        if univ < NB_UNIVERSES:
-                            if channel < MAX_CHANNELS:
-                                out = output - (512 * univ)
-                                App().patch.add_output(channel, out, univ, level)
-                                App().window.channels_view.flowbox.invalidate_filter()
+                        index = int((output - 1) / 512)
+                        if index < NB_UNIVERSES:
+                            univ = App().universes[index]
+                            if r[1][0].upper() == "H":
+                                level = int((int(r[1][1:].upper(), 16) / 255) * 100)
                             else:
-                                print("More than", MAX_CHANNELS, "channels")
+                                level = int(r[1])
+                            if univ in App().universes:
+                                if channel < MAX_CHANNELS:
+                                    out = output - (512 * index)
+                                    App().patch.add_output(channel, out, univ, level)
+                                else:
+                                    print("More than", MAX_CHANNELS, "channels")
+                            else:
+                                print(univ, ": Not a configured universe")
                         else:
                             print("More than", NB_UNIVERSES, "universes")
+                App().window.channels_view.flowbox.invalidate_filter()
             # Presets not in sequence
             if line[:5].upper() == "GROUP" and console == "CONGO":
                 # On Congo, Preset not in sequence

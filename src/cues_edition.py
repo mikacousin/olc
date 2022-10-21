@@ -16,7 +16,7 @@ import array
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS, App, is_float, is_int, is_non_nul_int
 from olc.widgets_channel import ChannelWidget
 from olc.zoom import zoom
 
@@ -198,26 +198,23 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_c(self):
         """Channel"""
-
         self.flowbox.unselect_all()
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
 
-        if self.keystring not in ["", "0"]:
-            channel = int(self.keystring) - 1
+        if is_non_nul_int(self.keystring):
+            channel = int(self.keystring)
             # Only patched channels
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                0,
-                0,
-            ]:
-                self.channels[channel].clicked = True
-
-                child = self.flowbox.get_child_at_index(channel)
+            if channel in App().patch.channels:
+                self.channels[channel - 1].clicked = True
+                child = self.flowbox.get_child_at_index(channel - 1)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
-
         self.flowbox.invalidate_filter()
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -227,6 +224,10 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_greater(self):
         """Channel Thru"""
+        if not is_non_nul_int(self.keystring):
+            self.keystring = ""
+            App().window.statusbar.push(App().window.context_id, self.keystring)
+            return
 
         selected_children = self.flowbox.get_selected_children()
         if len(selected_children) == 1:
@@ -236,23 +237,24 @@ class CuesEditionTab(Gtk.Paned):
 
         if self.last_chan_selected:
             to_chan = int(self.keystring)
-            if 0 < to_chan < MAX_CHANNELS:
+            if 0 < to_chan <= MAX_CHANNELS:
                 if to_chan > int(self.last_chan_selected):
-                    for channel in range(int(self.last_chan_selected) - 1, to_chan):
+                    for channel in range(int(self.last_chan_selected), to_chan + 1):
                         # Only patched channels
-                        if App().patch.channels[channel][0] != [0, 0]:
-                            self.channels[channel].clicked = True
-                            child = self.flowbox.get_child_at_index(channel)
+                        if channel in App().patch.channels:
+                            self.channels[channel - 1].clicked = True
+                            child = self.flowbox.get_child_at_index(channel - 1)
                             App().window.set_focus(child)
                             self.flowbox.select_child(child)
                 else:
-                    for channel in range(to_chan - 1, int(self.last_chan_selected)):
+                    for channel in range(to_chan, int(self.last_chan_selected)):
                         # Only patched channels
-                        if App().patch.channels[channel][0] != [0, 0]:
-                            self.channels[channel].clicked = True
-                            child = self.flowbox.get_child_at_index(channel)
+                        if channel in App().patch.channels:
+                            self.channels[channel - 1].clicked = True
+                            child = self.flowbox.get_child_at_index(channel - 1)
                             App().window.set_focus(child)
                             self.flowbox.select_child(child)
+                self.last_chan_selected = str(to_chan)
                 self.flowbox.invalidate_filter()
 
         self.keystring = ""
@@ -260,21 +262,17 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_plus(self):
         """Channel +"""
-
-        if self.keystring == "":
-
+        if not is_non_nul_int(self.keystring):
+            self.keystring = ""
+            App().window.statusbar.push(App().window.context_id, self.keystring)
             return
 
-        channel = int(self.keystring) - 1
-
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            self.channels[channel].clicked = True
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            self.channels[channel - 1].clicked = True
             self.flowbox.invalidate_filter()
 
-            child = self.flowbox.get_child_at_index(channel)
+            child = self.flowbox.get_child_at_index(channel - 1)
             App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
@@ -284,21 +282,17 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_minus(self):
         """Channel -"""
-
-        if self.keystring == "":
-
+        if not is_non_nul_int(self.keystring):
+            self.keystring = ""
+            App().window.statusbar.push(App().window.context_id, self.keystring)
             return
 
-        channel = int(self.keystring) - 1
-
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            self.channels[channel].clicked = False
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            self.channels[channel - 1].clicked = False
             self.flowbox.invalidate_filter()
 
-            child = self.flowbox.get_child_at_index(channel)
+            child = self.flowbox.get_child_at_index(channel - 1)
             App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
@@ -308,17 +302,14 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_a(self):
         """All Channels"""
-
         self.flowbox.unselect_all()
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-
             # Memory's channels
             channels = App().memories[row].channels
-
             # Select channels with a level
             for chan in range(MAX_CHANNELS):
                 if (
@@ -332,23 +323,27 @@ class CuesEditionTab(Gtk.Paned):
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
 
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
     def _keypress_equal(self):
         """@ level"""
+        if not is_int(self.keystring):
+            self.keystring = ""
+            App().window.statusbar.push(App().window.context_id, self.keystring)
+            return
 
         level = int(self.keystring)
 
         if App().settings.get_boolean("percent"):
             level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
+
         if 0 <= level < 256:
-
             selected_children = self.flowbox.get_selected_children()
-
             for flowboxchild in selected_children:
                 child = flowboxchild.get_children()
-
                 for channelwidget in child:
                     channel = int(channelwidget.channel) - 1
-
                     self.channels[channel].level = level
                     self.channels[channel].next_level = level
                     self.channels[channel].queue_draw()
@@ -359,21 +354,16 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_colon(self):
         """Level - %"""
-
         lvl = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
-
         for flowboxchild in selected_children:
             child = flowboxchild.get_children()
-
             for channelwidget in child:
                 channel = int(channelwidget.channel) - 1
-
                 level = self.channels[channel].level
-
                 level = max(level - lvl, 0)
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
@@ -382,21 +372,16 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_exclam(self):
         """Level + %"""
-
         lvl = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
             lvl = round((lvl / 100) * 255)
 
         selected_children = self.flowbox.get_selected_children()
-
         for flowboxchild in selected_children:
             child = flowboxchild.get_children()
-
             for channelwidget in child:
                 channel = int(channelwidget.channel) - 1
-
                 level = self.channels[channel].level
-
                 level = min(level + lvl, 255)
                 self.channels[channel].level = level
                 self.channels[channel].next_level = level
@@ -405,17 +390,14 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_U(self):  # pylint: disable=C0103
         """Update Memory"""
-
         self.flowbox.unselect_all()
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-
             # Memory's channels
             channels = App().memories[row].channels
-
             # Update levels and count channels
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
@@ -423,57 +405,45 @@ class CuesEditionTab(Gtk.Paned):
                 if channels[chan] != 0:
                     App().sequence.channels[chan] = 1
                     nb_chan += 1
-
             # Update Display
             treeiter = self.liststore.get_iter(row)
             self.liststore.set_value(treeiter, 2, nb_chan)
-
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
 
     def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
-
         # TODO: Ask confirmation
-
         self.flowbox.unselect_all()
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-
             # Find Steps using selected memory
             steps = [
                 i
                 for i, _ in enumerate(App().sequence.steps)
                 if App().sequence.steps[i].cue.memory == App().memories[row].memory
             ]
-
             # Delete Steps
             for step in steps:
                 App().sequence.steps.pop(step)
                 App().sequence.last -= 1
-
             # Delete memory from the Memories List
             App().memories.pop(row)
-
             # Remove it from the ListStore
             treeiter = self.liststore.get_iter(path)
             self.liststore.remove(treeiter)
-
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
-
             # Update Main Playback
             App().window.playback.update_sequence_display()
-
             # Update Sequence Edition Tab if exist
             if App().sequences_tab:
                 App().sequences_tab.liststore1.clear()
-
                 App().sequences_tab.liststore1.append(
                     [
                         App().sequence.index,
@@ -481,12 +451,10 @@ class CuesEditionTab(Gtk.Paned):
                         App().sequence.text,
                     ]
                 )
-
                 for chaser in App().chasers:
                     App().sequences_tab.liststore1.append(
                         [chaser.index, chaser.type_seq, chaser.text]
                     )
-
                 App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
@@ -497,10 +465,11 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             True or False
         """
+        if not is_float(self.keystring):
+            return False
 
-        if self.keystring != "":
-            mem = float(self.keystring)
-        else:
+        mem = float(self.keystring)
+        if not mem:
             return False
 
         # Memory already exist ?
@@ -518,7 +487,6 @@ class CuesEditionTab(Gtk.Paned):
                         for chan in range(MAX_CHANNELS)
                         if App().memories[i].channels[chan]
                     )
-
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
@@ -528,44 +496,37 @@ class CuesEditionTab(Gtk.Paned):
                                 App().memories[i].channels[channel]
                             )
                             App().window.channels_view.channels[channel].queue_draw()
-
                     # Tag filename as modified
                     App().ascii.modified = True
                     App().window.header.set_title(App().ascii.basename + "*")
-
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
-
                 return True
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-
             sequence = App().memories[row].sequence
-            # memory = App().memories[row].memory
             channels = App().memories[row].channels
-            # text = App().memories[row].text
-
             cue = Cue(sequence, mem, channels)
-
             # Insert Memory
+            found = False
             for i, _ in enumerate(App().memories):
                 if App().memories[i].memory > mem:
+                    found = True
                     break
-            if i:
-                App().memories.insert(i, cue)
-                nb_chan = sum(bool(channels[chan]) for chan in range(MAX_CHANNELS))
-                self.liststore.insert(i, [str(mem), "", nb_chan])
-
-                # Tag filename as modified
-                App().ascii.modified = True
-                App().window.header.set_title(App().ascii.basename + "*")
+            if not found:
+                i += 1
+            App().memories.insert(i, cue)
+            nb_chan = sum(bool(channels[chan]) for chan in range(MAX_CHANNELS))
+            self.liststore.insert(i, [str(mem), "", nb_chan])
+            # Tag filename as modified
+            App().ascii.modified = True
+            App().window.header.set_title(App().ascii.basename + "*")
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-
         return True
 
     def _keypress_Insert(self):  # pylint: disable=C0103
@@ -574,7 +535,6 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             True or False
         """
-
         if self.keystring == "":
             # Insert memory with the next free number
             mem = False

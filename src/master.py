@@ -16,7 +16,7 @@ import array
 import threading
 import time
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
+from olc.define import MAX_CHANNELS, App
 
 
 class Master:
@@ -222,58 +222,49 @@ class ThreadChaser(threading.Thread):
             i: Time spent
             position: Step
         """
-        for universe in range(NB_UNIVERSES):
-            for output in range(512):
-                channel = App().patch.outputs[universe][output][0]
-                # Change only channels in chaser
-                if App().chasers[self.chaser].channels[channel - 1] != 0:
-                    # Start level
-                    old_level = (
+        for channel in App().patch.channels:
+            # Change only channels in chaser
+            if App().chasers[self.chaser].channels[channel - 1] != 0:
+                # Start level
+                old_level = (
+                    App().chasers[self.chaser].steps[position].cue.channels[channel - 1]
+                )
+                # Level in the sequence
+                seq_level = (
+                    App()
+                    .sequence.steps[App().sequence.position]
+                    .cue.channels[channel - 1]
+                )
+                old_level = max(old_level, seq_level)
+                # Loop on cues and come back at first step
+                if position < App().chasers[self.chaser].last - 1:
+                    next_level = (
                         App()
                         .chasers[self.chaser]
-                        .steps[position]
+                        .steps[position + 1]
                         .cue.channels[channel - 1]
                     )
-                    # Level in the sequence
-                    seq_level = (
-                        App()
-                        .sequence.steps[App().sequence.position]
-                        .cue.channels[channel - 1]
+                    next_level = max(next_level, seq_level)
+                else:
+                    next_level = (
+                        App().chasers[self.chaser].steps[1].cue.channels[channel - 1]
                     )
-                    old_level = max(old_level, seq_level)
-                    # Loop on cues and come back at first step
-                    if position < App().chasers[self.chaser].last - 1:
-                        next_level = (
-                            App()
-                            .chasers[self.chaser]
-                            .steps[position + 1]
-                            .cue.channels[channel - 1]
-                        )
-                        next_level = max(next_level, seq_level)
-                    else:
-                        next_level = (
-                            App()
-                            .chasers[self.chaser]
-                            .steps[1]
-                            .cue.channels[channel - 1]
-                        )
-                        next_level = max(next_level, seq_level)
-                        App().chasers[self.chaser].position = 1
-                    # If level increases, use time In
-                    if next_level > old_level and i < delay_in:
-                        level = (
-                            int(((next_level - old_level + 1) / delay_in) * i)
-                            + old_level
-                        )
-                    # If level decreases, use time Out
-                    elif next_level < old_level and i < delay_out:
-                        level = old_level - abs(
-                            int(((next_level - old_level - 1) / delay_out) * i)
-                        )
-                    # Else, level is already good
-                    else:
-                        level = next_level
-                    # Apply Grand Master to level
-                    level = int(round(level / (255 / self.level_scale)))
-                    # Update master level
-                    self.master.dmx[channel - 1] = level
+                    next_level = max(next_level, seq_level)
+                    App().chasers[self.chaser].position = 1
+                # If level increases, use time In
+                if next_level > old_level and i < delay_in:
+                    level = (
+                        int(((next_level - old_level + 1) / delay_in) * i) + old_level
+                    )
+                # If level decreases, use time Out
+                elif next_level < old_level and i < delay_out:
+                    level = old_level - abs(
+                        int(((next_level - old_level - 1) / delay_out) * i)
+                    )
+                # Else, level is already good
+                else:
+                    level = next_level
+                # Apply Grand Master to level
+                level = int(round(level / (255 / self.level_scale)))
+                # Update master level
+                self.master.dmx[channel - 1] = level

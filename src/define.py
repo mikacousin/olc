@@ -13,13 +13,80 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Some defines for olc project."""
-
+from typing import Any
 from gi.repository import Gio
 
-NB_UNIVERSES = 4
+UNIVERSES = [1, 2, 3, 4]
+NB_UNIVERSES = len(UNIVERSES)
 
 MAX_CHANNELS = 1024
 
 MAX_FADER_PAGE = 10
 
 App = Gio.Application.get_default
+
+
+def is_float(element: Any) -> bool:
+    """Test if argument is a float
+
+    Args:
+        element: argument to test
+
+    Returns:
+        True or False
+    """
+    try:
+        float(element)
+        return True
+    except ValueError:
+        return False
+
+
+def is_non_nul_float(element: Any) -> bool:
+    """Test if argument is a float and non nul
+
+    Args:
+        element: argument to test
+
+    Returns:
+        True or False
+    """
+    if is_float(element):
+        number = float(element)
+        if number:
+            return True
+        return False
+    return False
+
+
+def is_int(element: Any) -> bool:
+    """Test if argument is an integer
+
+    Args:
+        element: argument to test
+
+    Returns:
+        True or False
+    """
+    try:
+        int(element)
+        return True
+    except ValueError:
+        return False
+
+
+def is_non_nul_int(element: Any) -> bool:
+    """Test if argument is an integer and non nul
+
+    Args:
+        element: argument to test
+
+    Returns:
+        True or False
+    """
+    if is_int(element):
+        number = int(element)
+        if number:
+            return True
+        return False
+    return False

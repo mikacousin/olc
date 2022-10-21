@@ -861,20 +861,18 @@ class SequenceTab(Gtk.Grid):
             self.channels[channel].clicked = False
 
         if self.keystring not in ["", "0"]:
-            channel = int(self.keystring) - 1
+            channel = int(self.keystring)
             # Only patched channels
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                0,
-                0,
-            ]:
-                self.channels[channel].clicked = True
-
-                child = self.flowbox.get_child_at_index(channel)
+            if channel in App().patch.channels:
+                self.channels[channel - 1].clicked = True
+                child = self.flowbox.get_child_at_index(channel - 1)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
-
         self.flowbox.invalidate_filter()
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -896,7 +894,7 @@ class SequenceTab(Gtk.Grid):
             if to_chan > int(self.last_chan_selected):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     # Only patched channels
-                    if App().patch.channels[channel][0] != [0, 0]:
+                    if channel + 1 in App().patch.channels:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
                         App().window.set_focus(child)
@@ -904,7 +902,7 @@ class SequenceTab(Gtk.Grid):
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     # Only patched channels
-                    if App().patch.channels[channel][0] != [0, 0]:
+                    if channel + 1 in App().patch.channels:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
                         App().window.set_focus(child)
@@ -918,15 +916,11 @@ class SequenceTab(Gtk.Grid):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            self.channels[channel].clicked = True
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            self.channels[channel - 1].clicked = True
             self.flowbox.invalidate_filter()
-
-            child = self.flowbox.get_child_at_index(channel)
+            child = self.flowbox.get_child_at_index(channel - 1)
             App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
@@ -939,15 +933,11 @@ class SequenceTab(Gtk.Grid):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            self.channels[channel].clicked = False
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            self.channels[channel - 1].clicked = False
             self.flowbox.invalidate_filter()
-
-            child = self.flowbox.get_child_at_index(channel)
+            child = self.flowbox.get_child_at_index(channel - 1)
             App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
@@ -1091,6 +1081,8 @@ class SequenceTab(Gtk.Grid):
             self.seq.last -= 1
             self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
             self.populate_liststore(step)
+            # Update Main Playback
+            App().window.playback.update_sequence_display()
 
     def _keypress_N(self):  # pylint: disable=C0103
         """New Chaser"""

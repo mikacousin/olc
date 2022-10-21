@@ -41,33 +41,31 @@ class PatchWidget(Gtk.Widget):
         Args:
             event: Gdk.Event
         """
+        index = App().universes.index(self.universe)
+        widget_index = self.output - 1 + (512 * index)
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            # Thru
-            App().patch_outputs_tab.keystring = str(self.output)
+            # Shift pressed: Thru
+            App().patch_outputs_tab.keystring = f"{self.output}.{self.universe}"
             App().patch_outputs_tab.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
-            # Toggle selected status
-            child = App().patch_outputs_tab.flowbox.get_child_at_index(
-                self.output - 1 + (512 * self.universe)
-            )
+            # Control pressed: Toggle selected status
+            child = App().patch_outputs_tab.flowbox.get_child_at_index(widget_index)
             App().window.set_focus(child)
             if self.get_parent().is_selected():
                 App().patch_outputs_tab.flowbox.unselect_child(child)
             else:
                 App().patch_outputs_tab.flowbox.select_child(child)
-            App().patch_outputs_tab.last_out_selected = str(self.output - 1)
+            App().patch_outputs_tab.last_out_selected = str(widget_index)
         else:
             # Deselect selected widgets
             App().window.channels_view.flowbox.unselect_all()
             App().patch_outputs_tab.flowbox.unselect_all()
             # Select clicked widget
-            child = App().patch_outputs_tab.flowbox.get_child_at_index(
-                self.output - 1 + (512 * self.universe)
-            )
+            child = App().patch_outputs_tab.flowbox.get_child_at_index(widget_index)
             App().window.set_focus(child)
             App().patch_outputs_tab.flowbox.select_child(child)
-            App().patch_outputs_tab.last_out_selected = str(self.output - 1)
+            App().patch_outputs_tab.last_out_selected = str(widget_index)
 
     def do_draw(self, cr):
         """Draw widget
@@ -99,22 +97,26 @@ class PatchWidget(Gtk.Widget):
         area = (1, allocation.width - 2, 1, allocation.height - 2)
         # Dimmer
         if (
-            App().patch.outputs[self.universe][self.output - 1][1] == 0
-            and App().patch.outputs[self.universe][self.output - 1][0] != 0
+            self.universe in App().patch.outputs
+            and self.output in App().patch.outputs[self.universe]
         ):
-            # Level's output at 0
-            if self.get_parent().is_selected():
-                cr.set_source_rgb(0.8, 0.1, 0.1)
-            else:
-                cr.set_source_rgb(0.5, 0.1, 0.1)
-            rounded_rectangle_fill(cr, area, 10)
-        elif App().patch.outputs[self.universe][self.output - 1][0] != 0:
-            # Patch output
-            if self.get_parent().is_selected():
-                cr.set_source_rgb(0.6, 0.4, 0.1)
-            else:
-                cr.set_source_rgb(0.3, 0.3, 0.3)
-            rounded_rectangle_fill(cr, area, 10)
+            if (
+                App().patch.outputs[self.universe][self.output][1] == 0
+                and App().patch.outputs[self.universe][self.output][0] != 0
+            ):
+                # Level's output at 0
+                if self.get_parent().is_selected():
+                    cr.set_source_rgb(0.8, 0.1, 0.1)
+                else:
+                    cr.set_source_rgb(0.5, 0.1, 0.1)
+                rounded_rectangle_fill(cr, area, 10)
+            elif App().patch.outputs[self.universe][self.output][0] != 0:
+                # Patch output
+                if self.get_parent().is_selected():
+                    cr.set_source_rgb(0.6, 0.4, 0.1)
+                else:
+                    cr.set_source_rgb(0.3, 0.3, 0.3)
+                rounded_rectangle_fill(cr, area, 10)
         elif self.get_parent().is_selected():
             # Unpatched output
             cr.set_source_rgb(0.6, 0.4, 0.1)
@@ -148,14 +150,18 @@ class PatchWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
         # Dimmer
-        text = str(App().patch.outputs[self.universe][self.output - 1][0])
-        (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-        if App().patch.outputs[self.universe][self.output - 1][0] > 0:
-            cr.move_to(
-                allocation.width / 2 - width / 2,
-                3 * (allocation.height / 4 - (height - 20) / 4),
-            )
-            cr.show_text(text)
+        if (
+            self.universe in App().patch.outputs
+            and self.output in App().patch.outputs[self.universe]
+        ):
+            text = str(App().patch.outputs[self.universe][self.output][0])
+            (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
+            if App().patch.outputs[self.universe][self.output][0] > 0:
+                cr.move_to(
+                    allocation.width / 2 - width / 2,
+                    3 * (allocation.height / 4 - (height - 20) / 4),
+                )
+                cr.show_text(text)
 
     def _draw_output_level(self, cr, allocation):
         """Draw Output level
@@ -164,11 +170,12 @@ class PatchWidget(Gtk.Widget):
             cr: Cairo context
             allocation: Widget allocation
         """
-        if App().dmx.frame[self.universe][self.output - 1]:
+        index = App().universes.index(self.universe)
+        if App().dmx.frame[index][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10 * self.scale)
-            text = str(App().dmx.frame[self.universe][self.output - 1])
+            text = str(App().dmx.frame[index][self.output - 1])
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
             cr.move_to(
                 allocation.width / 2 - width / 2,
@@ -184,29 +191,33 @@ class PatchWidget(Gtk.Widget):
             allocation: Widget allocation
         """
         if (
-            App().patch.outputs[self.universe][self.output - 1][1] == 100
-            or App().patch.outputs[self.universe][self.output - 1][0] == 0
+            self.universe in App().patch.outputs
+            and self.output in App().patch.outputs[self.universe]
         ):
-            return
+            if (
+                App().patch.outputs[self.universe][self.output][1] == 100
+                or App().patch.outputs[self.universe][self.output][0] == 0
+            ):
+                return
 
-        cr.rectangle(
-            allocation.width - 9,
-            allocation.height - 2,
-            6 * self.scale,
-            -((50 / 100) * self.scale)
-            * App().patch.outputs[self.universe][self.output - 1][1],
-        )
-        if self.get_parent().is_selected():
-            cr.set_source_rgb(0.8, 0.1, 0.1)
-        else:
-            cr.set_source_rgb(0.5, 0.1, 0.1)
-        cr.fill()
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-        cr.set_source_rgb(0.7, 0.7, 0.7)
-        cr.set_font_size(8 * self.scale)
-        text = str(App().patch.outputs[self.universe][self.output - 1][1]) + "%"
-        cr.move_to(allocation.width - 20, allocation.height - 2)
-        cr.show_text(text)
+            cr.rectangle(
+                allocation.width - 9,
+                allocation.height - 2,
+                6 * self.scale,
+                -((50 / 100) * self.scale)
+                * App().patch.outputs[self.universe][self.output][1],
+            )
+            if self.get_parent().is_selected():
+                cr.set_source_rgb(0.8, 0.1, 0.1)
+            else:
+                cr.set_source_rgb(0.5, 0.1, 0.1)
+            cr.fill()
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+            cr.set_source_rgb(0.7, 0.7, 0.7)
+            cr.set_font_size(8 * self.scale)
+            text = str(App().patch.outputs[self.universe][self.output][1]) + "%"
+            cr.move_to(allocation.width - 20, allocation.height - 2)
+            cr.show_text(text)
 
     def do_realize(self):
         """Realize widget"""

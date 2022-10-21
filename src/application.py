@@ -18,6 +18,7 @@ from gettext import gettext as _
 import mido
 
 import gi
+
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
@@ -26,7 +27,7 @@ from olc.ascii import Ascii  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, MAX_FADER_PAGE  # noqa: E402
+from olc.define import MAX_CHANNELS, MAX_FADER_PAGE, UNIVERSES  # noqa: E402
 from olc.dmx import Dmx, PatchDmx  # noqa: E402
 from olc.enttec_wing import WingPlayback  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
@@ -79,9 +80,9 @@ class Application(Gtk.Application):
         self.settings = Gio.Settings.new("com.github.mikacousin.olc")
 
         # Universes
-        self.universes = list(range(NB_UNIVERSES))
+        self.universes = UNIVERSES
         # Create patch (1:1)
-        self.patch = PatchDmx()
+        self.patch = PatchDmx(self.universes)
 
         # Create OlaClient
         try:
@@ -297,10 +298,12 @@ class Application(Gtk.Application):
         """
         if not dmxframe:
             return
-        self.ola_thread.old_frame[univ] = dmxframe
+        index = self.universes.index(univ)
+        self.ola_thread.old_frame[index] = dmxframe
         for output, level in enumerate(dmxframe):
-            if channel := self.patch.outputs[univ][output][0]:
-                self.dmx.frame[univ][output] = level
+            if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
+                channel = self.patch.outputs.get(univ).get(output + 1)[0]
+                self.dmx.frame[index][output] = level
                 self.window.channels_view.channels[channel - 1].level = level
                 if (
                     self.sequence.last > 1
@@ -316,7 +319,7 @@ class Application(Gtk.Application):
                 self.window.channels_view.channels[channel - 1].next_level = next_level
                 self.window.channels_view.channels[channel - 1].queue_draw()
                 if self.patch_outputs_tab:
-                    self.patch_outputs_tab.outputs[output + (512 * univ)].queue_draw()
+                    self.patch_outputs_tab.outputs[output + (512 * index)].queue_draw()
 
     def _new(self, _action, _parameter):
         """New show"""

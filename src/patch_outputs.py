@@ -12,8 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from typing import Optional
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, is_int, is_non_nul_int
 from olc.widgets_patch_outputs import PatchWidget
 from olc.zoom import zoom
 
@@ -51,7 +52,7 @@ class PatchOutputsTab(Gtk.Box):
         self.outputs = []
         self.channels = []
 
-        for universe in range(NB_UNIVERSES):
+        for universe in App().universes:
             for i in range(512):
                 self.outputs.append(PatchWidget(universe, i + 1))
         for output in self.outputs:
@@ -164,7 +165,7 @@ class PatchOutputsTab(Gtk.Box):
             App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
-        elif int(self.last_out_selected) < 511:
+        elif int(self.last_out_selected) < (len(App().universes) * 512) - 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) + 1)
             App().window.set_focus(child)
@@ -228,30 +229,16 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_o(self):
         """Select Output"""
-
         self.flowbox.unselect_all()
 
-        if self.keystring != "":
-            if "." in self.keystring:
-                if self.keystring[0] != ".":
-                    split = self.keystring.split(".")
-                    output = int(split[0]) - 1
-                    univ = int(split[1])
-            else:
-                output = int(self.keystring) - 1
-                univ = 0
+        output = self.__get_output_index()
 
-            if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
-                index = output + (univ * 512)
-                child = self.flowbox.get_child_at_index(index)
-                App().window.set_focus(child)
-                self.flowbox.select_child(child)
-                self.last_out_selected = str(output)
-        else:
-            # Verify focus is on Output Widget
-            widget = App().window.get_focus()
-            if widget.get_path().is_type(Gtk.FlowBoxChild):
-                self.flowbox.select_child(widget)
+        if output:
+            output -= 1
+            child = self.flowbox.get_child_at_index(output)
+            App().window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = str(output)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -266,30 +253,23 @@ class PatchOutputsTab(Gtk.Box):
 
     def thru(self):
         """Output Thru"""
-        # If just one output is selected, start from it
-        selected = self.flowbox.get_selected_children()
-        if len(selected) == 1:
-            patchwidget = selected[0].get_children()
-            output = patchwidget[0].output - 1
-            self.last_out_selected = str(output)
+        to_out = self.__get_output_index()
 
-        if not self.last_out_selected:
+        if not self.last_out_selected or not to_out:
             return
-
-        to_out = int(self.keystring)
 
         if to_out > int(self.last_out_selected):
             for out in range(int(self.last_out_selected), to_out):
                 child = self.flowbox.get_child_at_index(out)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_out_selected = self.keystring
+                self.last_out_selected = str(to_out)
         else:
             for out in range(to_out - 1, int(self.last_out_selected)):
                 child = self.flowbox.get_child_at_index(out)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
-                self.last_out_selected = self.keystring
+                self.last_out_selected = str(to_out)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -300,27 +280,14 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_plus(self):
         """+"""
-        if self.keystring != "":
-            if "." in self.keystring:
-                if self.keystring[0] != ".":
-                    split = self.keystring.split(".")
-                    output = int(split[0]) - 1
-                    univ = int(split[1])
-            else:
-                output = int(self.keystring) - 1
-                univ = 0
+        output = self.__get_output_index()
 
-            if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
-                index = output + (univ * 512)
-                child = self.flowbox.get_child_at_index(index)
-                App().window.set_focus(child)
-                self.flowbox.select_child(child)
-                self.last_out_selected = str(output)
-        else:
-            # Verify focus is on Output Widget
-            widget = App().window.get_focus()
-            if widget.get_path().is_type(Gtk.FlowBoxChild):
-                self.flowbox.select_child(widget)
+        if output:
+            output -= 1
+            child = self.flowbox.get_child_at_index(output)
+            App().window.set_focus(child)
+            self.flowbox.select_child(child)
+            self.last_out_selected = str(output)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -331,27 +298,14 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_minus(self):
         """-"""
-        if self.keystring != "":
-            if "." in self.keystring:
-                if self.keystring[0] != ".":
-                    split = self.keystring.split(".")
-                    output = int(split[0]) - 1
-                    univ = int(split[1])
-            else:
-                output = int(self.keystring) - 1
-                univ = 0
+        output = self.__get_output_index()
 
-            if 0 <= output < 512 and 0 <= univ < NB_UNIVERSES:
-                index = output + (univ * 512)
-                child = self.flowbox.get_child_at_index(index)
-                App().window.set_focus(child)
-                self.flowbox.unselect_child(child)
-                self.last_out_selected = str(output)
-        else:
-            # Verify focus is on Output Widget
-            widget = App().window.get_focus()
-            if widget.get_path().is_type(Gtk.FlowBoxChild):
-                self.flowbox.unselect_child(widget)
+        if output:
+            output -= 1
+            child = self.flowbox.get_child_at_index(output)
+            App().window.set_focus(child)
+            self.flowbox.unselect_child(child)
+            self.last_out_selected = str(output)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -361,64 +315,89 @@ class PatchOutputsTab(Gtk.Box):
         several = False
         # Find Selected Outputs
         sel = self.flowbox.get_selected_children()
+        if self.keystring and (not sel or not is_int(self.keystring)):
+            self.keystring = ""
+            App().window.statusbar.push(App().window.context_id, self.keystring)
+            return
         # If several outputs: choose how to patch
-        if len(sel) > 1 and self.keystring not in ["", "0"]:
+        if len(sel) > 1 and is_non_nul_int(self.keystring):
             dialog = SeveralOutputsDialog(App().window, int(self.keystring), len(sel))
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 several = True
             dialog.destroy()
-        for i, flowboxchild in enumerate(sel):
-            children = flowboxchild.get_children()
-            for patchwidget in children:
-                output = patchwidget.output - 1
-                univ = patchwidget.universe
-                # Unpatch if no entry
-                if self.keystring in ["", "0"]:
-                    channel = App().patch.outputs[univ][output][0]
-                    if channel != 0:
-                        channel -= 1
-                        App().patch.outputs[univ][output][0] = 0
-                        App().patch.channels[channel].remove([output + 1, univ])
-                        if len(App().patch.channels[channel]) == 0:
-                            App().patch.channels[channel] = [[0, 0]]
-                        App().dmx.frame[univ][output] = 0
-                # Patch
-                else:
-                    channel = int(self.keystring) - 1
-                    if 0 <= channel < MAX_CHANNELS:
-                        # Unpatch old value if exist
-                        old_channel = App().patch.outputs[univ][output][0]
-                        if old_channel != 0:
-                            App().patch.channels[old_channel - 1].remove(
-                                [output + 1, univ]
-                            )
-                            if len(App().patch.channels[old_channel - 1]) == 0:
-                                App().patch.channels[old_channel - 1] = [[0, 0]]
-                        if several:
-                            # Patch Channel : increment channels for each output
-                            App().patch.add_output(channel + 1 + i, output + 1, univ)
-                        else:
-                            # Patch Channel : same channel for every outputs
-                            App().patch.add_output(channel + 1, output + 1, univ)
-                # Update outputs view
-                self.outputs[output + (512 * univ)].queue_draw()
-                # Update channels view
-                if 0 <= channel < MAX_CHANNELS:
-                    level = App().dmx.frame[univ][output]
-                    App().window.channels_view.channels[channel].level = level
-                    App().window.channels_view.channels[channel].queue_draw()
-                    App().window.channels_view.flowbox.invalidate_filter()
+
+        output, index = self._patch(sel, several)
+
         # Select next output
-        if output < 511:
+        if output + (512 * index) < (len(App().universes) * 512):
             self.flowbox.unselect_all()
-            child = self.flowbox.get_child_at_index(output + 1 + (512 * univ))
+            child = self.flowbox.get_child_at_index(output + (512 * index))
             App().window.set_focus(child)
             self.flowbox.select_child(child)
-            self.last_out_selected = str(output + 1 + (512 * univ))
+            self.last_out_selected = str(output + (512 * index))
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _patch(self, sel, several):
+        """Patch Channel
+
+        Args:
+            sel: Widgets selected
+            several: Patch Multi-selection on 1 or several channel(s)
+
+        Returns:
+            Output (1-512) and Widget index (1-NB_UNIVERSES*512)
+        """
+        for i, flowboxchild in enumerate(sel):
+            children = flowboxchild.get_children()
+            for patchwidget in children:
+                output = patchwidget.output
+                univ = patchwidget.universe
+                index = App().universes.index(univ)
+                # Unpatch if no entry
+                if self.keystring in ["", "0"]:
+                    if (
+                        univ in App().patch.outputs
+                        and output in App().patch.outputs[univ]
+                    ):
+                        channel = App().patch.outputs[univ][output][0]
+                        App().patch.unpatch(channel, output, univ)
+                    else:
+                        channel = 0
+                # Patch
+                else:
+                    channel = int(self.keystring)
+                    if 0 < channel <= MAX_CHANNELS:
+                        self.__patch(channel, patchwidget, several, i)
+                # Update outputs view
+                self.outputs[output - 1 + (512 * index)].queue_draw()
+                # Update channels view
+                if 0 < channel <= MAX_CHANNELS:
+                    level = App().dmx.frame[index][output - 1]
+                    App().window.channels_view.channels[channel].level = level
+                    App().window.channels_view.channels[channel].queue_draw()
+                    App().window.channels_view.flowbox.invalidate_filter()
+        return output, index
+
+    def __patch(self, channel, patchwidget, several, i):
+        # Unpatch old value if exist
+        output = patchwidget.output
+        univ = patchwidget.universe
+        old_channel = None
+        if univ in App().patch.outputs and output in App().patch.outputs[univ]:
+            old_channel = App().patch.outputs[univ][output][0]
+        if old_channel:
+            App().patch.channels[old_channel].remove([output, univ])
+            if len(App().patch.channels[old_channel]) == 0:
+                del App().patch.channels[old_channel]
+        if several:
+            # Patch Channel : increment channels for each output
+            App().patch.add_output(channel + i, output, univ)
+        else:
+            # Patch Channel : same channel for every outputs
+            App().patch.add_output(channel, output, univ)
 
     def _keypress_exclam(self):
         """Proportional level +"""
@@ -429,7 +408,7 @@ class PatchOutputsTab(Gtk.Box):
             children = flowboxchild.get_children()
 
             for patchwidget in children:
-                output = patchwidget.output - 1
+                output = patchwidget.output
                 univ = patchwidget.universe
 
                 App().patch.outputs[univ][output][1] += 1
@@ -438,7 +417,8 @@ class PatchOutputsTab(Gtk.Box):
                     App().patch.outputs[univ][output][1], 100
                 )
 
-                self.outputs[output + (512 * univ)].queue_draw()
+                index = App().universes.index(univ)
+                self.outputs[output - 1 + (512 * index)].queue_draw()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -452,7 +432,7 @@ class PatchOutputsTab(Gtk.Box):
             children = flowboxchild.get_children()
 
             for patchwidget in children:
-                output = patchwidget.output - 1
+                output = patchwidget.output
                 univ = patchwidget.universe
 
                 App().patch.outputs[univ][output][1] -= 1
@@ -461,10 +441,36 @@ class PatchOutputsTab(Gtk.Box):
                     App().patch.outputs[univ][output][1], 0
                 )
 
-                self.outputs[output + (512 * univ)].queue_draw()
+                index = App().universes.index(univ)
+                self.outputs[output - 1 + (512 * index)].queue_draw()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def __get_output_index(self) -> Optional[int]:
+        """Get Output number
+
+        Returns:
+            Integer from 1 to (NB_UNIVERSES * 512).
+            Fox example, Output 1 of first universe is 1 and Output 1 of second
+            universe is 513.
+        """
+        output = None
+        if self.keystring:
+            if "." in self.keystring:
+                if self.keystring.index("."):
+                    split = self.keystring.split(".")
+                    out = int(split[0])
+                    if 0 < out <= 512:
+                        univ = int(split[1])
+                        if univ in App().universes:
+                            index = App().universes.index(univ)
+                            output = out + (index * 512)
+            else:
+                output = int(self.keystring)
+                if output < 1 or output > 512:
+                    output = None
+        return output
 
 
 class SeveralOutputsDialog(Gtk.Dialog):

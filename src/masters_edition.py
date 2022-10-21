@@ -443,37 +443,30 @@ class MastersTab(Gtk.Paned):
         Returns:
             True or False
         """
-
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-
             if App().masters[row].content_type in [0, 3]:
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return False
-
             self.flowbox.unselect_all()
             for channel in range(MAX_CHANNELS):
                 self.channels[channel].clicked = False
-
             if self.keystring not in ["", "0"]:
-                channel = int(self.keystring) - 1
+                channel = int(self.keystring)
                 # Only patched channels
-                if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                    0,
-                    0,
-                ]:
-                    self.channels[channel].clicked = True
-                    self.flowbox.invalidate_filter()
-
-                    child = self.flowbox.get_child_at_index(channel)
+                if channel in App().patch.channels:
+                    self.channels[channel - 1].clicked = True
+                    child = self.flowbox.get_child_at_index(channel - 1)
                     App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
-
             self.flowbox.invalidate_filter()
+
+            if not App().window.get_focus():
+                self.scrolled.grab_focus()
 
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -512,7 +505,7 @@ class MastersTab(Gtk.Paned):
                     if to_chan > int(self.last_chan_selected):
                         for channel in range(int(self.last_chan_selected) - 1, to_chan):
                             # Only patched channels
-                            if App().patch.channels[channel][0] != [0, 0]:
+                            if channel + 1 in App().patch.channels:
                                 self.channels[channel].clicked = True
                                 child = self.flowbox.get_child_at_index(channel)
                                 App().window.set_focus(child)
@@ -520,7 +513,7 @@ class MastersTab(Gtk.Paned):
                     else:
                         for channel in range(to_chan - 1, int(self.last_chan_selected)):
                             # Only patched channels
-                            if App().patch.channels[channel][0] != [0, 0]:
+                            if channel + 1 in App().patch.channels:
                                 self.channels[channel].clicked = True
                                 child = self.flowbox.get_child_at_index(channel)
                                 App().window.set_focus(child)
@@ -538,7 +531,6 @@ class MastersTab(Gtk.Paned):
         Returns:
             True or False
         """
-
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -550,21 +542,14 @@ class MastersTab(Gtk.Paned):
                 return False
 
             if self.keystring != "":
-
-                channel = int(self.keystring) - 1
-
-                if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                    0,
-                    0,
-                ]:
-                    self.channels[channel].clicked = True
+                channel = int(self.keystring)
+                if channel in App().patch.channels:
+                    self.channels[channel - 1].clicked = True
                     self.flowbox.invalidate_filter()
-
-                    child = self.flowbox.get_child_at_index(channel)
+                    child = self.flowbox.get_child_at_index(channel - 1)
                     App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
-
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -577,7 +562,6 @@ class MastersTab(Gtk.Paned):
         Returns:
             True or False
         """
-
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -589,21 +573,14 @@ class MastersTab(Gtk.Paned):
                 return False
 
             if self.keystring != "":
-
-                channel = int(self.keystring) - 1
-
-                if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                    0,
-                    0,
-                ]:
-                    self.channels[channel].clicked = False
+                channel = int(self.keystring)
+                if channel in App().patch.channels:
+                    self.channels[channel - 1].clicked = False
                     self.flowbox.invalidate_filter()
-
-                    child = self.flowbox.get_child_at_index(channel)
+                    child = self.flowbox.get_child_at_index(channel - 1)
                     App().window.set_focus(child)
                     self.flowbox.unselect_child(child)
                     self.last_chan_selected = self.keystring
-
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True

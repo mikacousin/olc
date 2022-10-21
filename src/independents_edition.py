@@ -15,7 +15,7 @@
 import array
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS, App, is_non_nul_int
 from olc.widgets_channel import ChannelWidget
 from olc.zoom import zoom
 
@@ -33,8 +33,8 @@ class IndependentsTab(Gtk.Paned):
         self.set_position(300)
 
         # To display channels used in selected independent
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled = Gtk.ScrolledWindow()
+        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
@@ -44,8 +44,8 @@ class IndependentsTab(Gtk.Paned):
         for i in range(MAX_CHANNELS):
             self.channels.append(ChannelWidget(i + 1, 0, 0))
             self.flowbox.add(self.channels[i])
-        scrolled.add(self.flowbox)
-        self.add(scrolled)
+        self.scrolled.add(self.flowbox)
+        self.add(self.scrolled)
 
         # List of independents
         self.liststore = Gtk.ListStore(int, str, str)
@@ -197,20 +197,20 @@ class IndependentsTab(Gtk.Paned):
         self.flowbox.unselect_all()
         for channel in range(MAX_CHANNELS):
             self.channels[channel].clicked = False
-        if self.keystring not in ["", "0"]:
-            channel = int(self.keystring) - 1
+        if is_non_nul_int(self.keystring):
+            channel = int(self.keystring)
             # Only patched channels
-            if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-                0,
-                0,
-            ]:
-                self.channels[channel].clicked = True
-
-                child = self.flowbox.get_child_at_index(channel)
+            if channel in App().patch.channels:
+                self.channels[channel - 1].clicked = True
+                child = self.flowbox.get_child_at_index(channel - 1)
                 App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_selected_channel = self.keystring
         self.flowbox.invalidate_filter()
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -231,7 +231,7 @@ class IndependentsTab(Gtk.Paned):
                 if to_chan > int(self.last_selected_channel):
                     for channel in range(int(self.last_selected_channel) - 1, to_chan):
                         # Only patched channels
-                        if App().patch.channels[channel][0] != [0, 0]:
+                        if channel - 1 in App().patch.channels:
                             self.channels[channel].clicked = True
                             child = self.flowbox.get_child_at_index(channel)
                             App().window.set_focus(child)
@@ -239,7 +239,7 @@ class IndependentsTab(Gtk.Paned):
                 else:
                     for channel in range(to_chan - 1, int(self.last_selected_channel)):
                         # Only patched channels
-                        if App().patch.channels[channel][0] != [0, 0]:
+                        if channel - 1 in App().patch.channels:
                             self.channels[channel].clicked = True
                             child = self.flowbox.get_child_at_index(channel)
                             App().window.set_focus(child)
@@ -253,14 +253,11 @@ class IndependentsTab(Gtk.Paned):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            self.channels[channel].clicked = True
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            self.channels[channel - 1].clicked = True
             self.flowbox.invalidate_filter()
-            child = self.flowbox.get_child_at_index(channel)
+            child = self.flowbox.get_child_at_index(channel - 1)
             App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_selected_channel = self.keystring
@@ -272,14 +269,11 @@ class IndependentsTab(Gtk.Paned):
         if self.keystring == "":
             return
 
-        channel = int(self.keystring) - 1
-        if 0 <= channel < MAX_CHANNELS and App().patch.channels[channel][0] != [
-            0,
-            0,
-        ]:
-            self.channels[channel].clicked = False
+        channel = int(self.keystring)
+        if channel in App().patch.channels:
+            self.channels[channel - 1].clicked = False
             self.flowbox.invalidate_filter()
-            child = self.flowbox.get_child_at_index(channel)
+            child = self.flowbox.get_child_at_index(channel - 1)
             App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_selected_channel = self.keystring

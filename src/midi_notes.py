@@ -18,6 +18,7 @@ import typing
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App, MAX_FADER_PAGE
+
 if typing.TYPE_CHECKING:
     from olc.independent import Independent
     from olc.widgets_button import ButtonWidget
