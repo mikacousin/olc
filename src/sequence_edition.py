@@ -854,6 +854,9 @@ class SequenceTab(Gtk.Grid):
                     self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
+
     def _keypress_c(self):
         """Channel"""
         self.flowbox.unselect_all()
@@ -908,6 +911,10 @@ class SequenceTab(Gtk.Grid):
                         App().window.set_focus(child)
                         self.flowbox.select_child(child)
             self.flowbox.invalidate_filter()
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -925,6 +932,9 @@ class SequenceTab(Gtk.Grid):
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
 
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -941,6 +951,9 @@ class SequenceTab(Gtk.Grid):
             App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

@@ -257,6 +257,9 @@ class CuesEditionTab(Gtk.Paned):
                 self.last_chan_selected = str(to_chan)
                 self.flowbox.invalidate_filter()
 
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -277,6 +280,9 @@ class CuesEditionTab(Gtk.Paned):
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
 
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -296,6 +302,9 @@ class CuesEditionTab(Gtk.Paned):
             App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -322,6 +331,9 @@ class CuesEditionTab(Gtk.Paned):
                 else:
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
+
+        if not App().window.get_focus():
+            self.scrolled.grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

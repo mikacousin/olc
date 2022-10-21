@@ -520,6 +520,9 @@ class MastersTab(Gtk.Paned):
                                 self.flowbox.select_child(child)
                     self.flowbox.invalidate_filter()
 
+            if not App().window.get_focus():
+                self.scrolled.grab_focus()
+
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
@@ -550,6 +553,8 @@ class MastersTab(Gtk.Paned):
                     App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
+                if not App().window.get_focus():
+                    self.scrolled.grab_focus()
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -581,6 +586,8 @@ class MastersTab(Gtk.Paned):
                     App().window.set_focus(child)
                     self.flowbox.unselect_child(child)
                     self.last_chan_selected = self.keystring
+                if not App().window.get_focus():
+                    self.scrolled.grab_focus()
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -593,7 +600,6 @@ class MastersTab(Gtk.Paned):
         Returns:
             True or False
         """
-
         # Find Selected Master
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -634,6 +640,8 @@ class MastersTab(Gtk.Paned):
                 else:
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
+            if not App().window.get_focus():
+                self.scrolled.grab_focus()
             return True
         return False
 

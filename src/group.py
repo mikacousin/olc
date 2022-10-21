@@ -395,6 +395,9 @@ class GroupTab(Gtk.Paned):
             self.flowbox1.invalidate_filter()
             self.last_chan_selected = self.keystring
 
+        if not App().window.get_focus():
+            self.scrolled1.grab_focus()
+
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -415,8 +418,11 @@ class GroupTab(Gtk.Paned):
             self.flowbox1.select_child(child)
             self.last_chan_selected = self.keystring
 
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+        if not App().window.get_focus():
+            self.scrolled1.grab_focus()
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
         """Channel -"""
@@ -436,8 +442,11 @@ class GroupTab(Gtk.Paned):
 
             self.last_chan_selected = self.keystring
 
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+        if not App().window.get_focus():
+            self.scrolled1.grab_focus()
+
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_equal(self):
         """@ Level"""
