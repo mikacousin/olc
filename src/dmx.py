@@ -52,11 +52,10 @@ class Dmx(threading.Thread):
                     univ.append(universe)
                 # Level in Sequence
                 level = self.sequence[channel - 1]
-                App().window.channels_view.channels[channel - 1].color_level = {
-                    "red": 0.9,
-                    "green": 0.9,
-                    "blue": 0.9,
-                }
+                widget = App().window.channels_view.flowbox.get_child_at_index(
+                    channel - 1
+                ).get_children()[0]
+                widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
                 if not App().sequence.on_go and self.user[channel - 1] != -1:
                     # If not on Go, use user level
                     level = self.user[channel - 1]
@@ -64,11 +63,7 @@ class Dmx(threading.Thread):
                     # If master level is bigger, use it
                     if master.dmx[channel - 1] > level:
                         level = master.dmx[channel - 1]
-                        App().window.channels_view.channels[channel - 1].color_level = {
-                            "red": 0.4,
-                            "green": 0.7,
-                            "blue": 0.4,
-                        }
+                        widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
                 # Independents
                 level_inde = -1
                 for inde in App().independents.independents:
@@ -79,11 +74,7 @@ class Dmx(threading.Thread):
                         level_inde = inde.dmx[channel - 1]
                 if level_inde != -1:
                     level = level_inde
-                    App().window.channels_view.channels[channel - 1].color_level = {
-                        "red": 0.4,
-                        "green": 0.4,
-                        "blue": 0.7,
-                    }
+                    widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
                 # Proportional patch level
                 level = level * (App().patch.outputs[universe][output][1] / 100)
                 # Grand Master

@@ -50,8 +50,7 @@ class ChannelsView(Gtk.Notebook):
         self.channels = []
 
         for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i + 1, 0, 0))
-            self.flowbox.add(self.channels[i])
+            self.flowbox.add(ChannelWidget(i + 1, 0, 0))
 
         scrolled.add(self.flowbox)
 
@@ -64,6 +63,20 @@ class ChannelsView(Gtk.Notebook):
         self.connect("page-removed", on_page_added)
         self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
         self.flowbox.connect("scroll-event", zoom)
+
+    def update_channel_widget(self, channel: int, level: int, next_level: int) -> None:
+        """Update display of channel widget
+
+        Args:
+            channel: Index of channel (from 0 to MAX_CHANNELS - 1)
+            level: Channel level (from 0 to 255)
+            next_level: Channel next level (from 0 to 255)
+        """
+        # Get ChannelWidget (child of FlowBoxChild in a FlowBox)
+        widget = self.flowbox.get_child_at_index(channel).get_children()[0]
+        widget.level = level
+        widget.next_level = next_level
+        widget.queue_draw()
 
     def filter_func(self, child, _user_data):
         """Filter for channels window

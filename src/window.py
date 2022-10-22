@@ -116,9 +116,14 @@ class Window(Gtk.ApplicationWindow):
         for channel in range(MAX_CHANNELS):
             level = App().sequence.steps[step].cue.channels[channel]
             next_level = App().sequence.steps[step + 1].cue.channels[channel]
-            self.channels_view.channels[channel].level = level
-            self.channels_view.channels[channel].next_level = next_level
-            self.channels_view.channels[channel].queue_draw()
+            widget = (
+                App()
+                .window.channels_view.flowbox.get_child_at_index(channel)
+                .get_children()[0]
+            )
+            widget.level = level
+            widget.next_level = next_level
+            widget.queue_draw()
 
     def on_key_press_event(self, _widget, event):
         """Executed on key press event

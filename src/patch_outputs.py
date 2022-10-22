@@ -93,8 +93,13 @@ class PatchOutputsTab(Gtk.Box):
             for univ in range(NB_UNIVERSES):
                 for channel in range(512):
                     level = App().dmx.frame[univ][channel]
-                    App().window.channels_view.channels[channel].level = level
-                    App().window.channels_view.channels[channel].queue_draw()
+                    widget = (
+                        App()
+                        .window.channels_view.flowbox.get_child_at_index(channel)
+                        .get_children()[0]
+                    )
+                    widget.level = level
+                    widget.queue_draw()
             App().window.channels_view.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
@@ -376,8 +381,13 @@ class PatchOutputsTab(Gtk.Box):
                 # Update channels view
                 if 0 < channel <= MAX_CHANNELS:
                     level = App().dmx.frame[index][output - 1]
-                    App().window.channels_view.channels[channel].level = level
-                    App().window.channels_view.channels[channel].queue_draw()
+                    widget = (
+                        App()
+                        .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                        .get_children()[0]
+                    )
+                    widget.level = level
+                    widget.queue_draw()
                     App().window.channels_view.flowbox.invalidate_filter()
         return output, index
 

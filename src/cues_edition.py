@@ -504,10 +504,13 @@ class CuesEditionTab(Gtk.Paned):
                     self.liststore.set_value(treeiter, 2, nb_chan)
                     if i == App().sequence.position:
                         for channel in range(MAX_CHANNELS):
-                            App().window.channels_view.channels[channel].next_level = (
-                                App().memories[i].channels[channel]
-                            )
-                            App().window.channels_view.channels[channel].queue_draw()
+                            widget = (
+                                App().window.channels_view.flowbox.get_child_at_index(
+                                    channel
+                                )
+                            ).get_children()[0]
+                            widget.next_level = App().memories[i].channels[channel]
+                            widget.queue_draw()
                     # Tag filename as modified
                     App().ascii.modified = True
                     App().window.header.set_title(App().ascii.basename + "*")

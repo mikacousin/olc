@@ -262,8 +262,13 @@ class PatchChannelsTab(Gtk.Box):
                 # Update list of channels
                 index = App().universes.index(universe)
                 level = App().dmx.frame[index][output]
-                App().window.channels_view.channels[channel - 1].level = level
-                App().window.channels_view.channels[channel - 1].queue_draw()
+                widget = (
+                    App()
+                    .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                    .get_children()[0]
+                )
+                widget.level = level
+                widget.queue_draw()
                 App().window.channels_view.flowbox.invalidate_filter()
 
         # Select next channel
@@ -320,7 +325,12 @@ class PatchChannelsTab(Gtk.Box):
                     self.channels[channel - 1].queue_draw()
 
                     # Update list of channels
-                    App().window.channels_view.channels[channel - 1].queue_draw()
+                    widget = (
+                        App()
+                        .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                        .get_children()[0]
+                    )
+                    widget.queue_draw()
                     App().window.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
@@ -358,7 +368,12 @@ class PatchChannelsTab(Gtk.Box):
                     self.channels[channel - 1].queue_draw()
 
                 # Update list of channels
-                App().window.channels_view.channels[channel - 1].queue_draw()
+                widget = (
+                    App()
+                    .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                    .get_children()[0]
+                )
+                widget.queue_draw()
                 App().window.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""

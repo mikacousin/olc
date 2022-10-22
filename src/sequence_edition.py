@@ -1061,10 +1061,13 @@ class SequenceTab(Gtk.Grid):
                 # Update Main playback display
                 if self.seq == App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
-                        App().window.channels_view.channels[
-                            channel
-                        ].next_level = self.seq.steps[step].cue.channels[channel]
-                        App().window.channels_view.channels[channel].queue_draw()
+                        widget = (
+                            App()
+                            .window.channels_view.flowbox.get_child_at_index(channel)
+                            .get_children()[0]
+                        )
+                        widget.next_level = self.seq.steps[step].cue.channels[channel]
+                        widget.queue_draw()
 
             dialog.destroy()
 
@@ -1208,10 +1211,13 @@ class SequenceTab(Gtk.Grid):
                 # Update Channels tab
                 if self.seq is App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
-                        App().window.channels_view.channels[
-                            channel
-                        ].next_level = self.channels[channel].level
-                        App().window.channels_view.channels[channel].queue_draw()
+                        widget = (
+                            App()
+                            .window.channels_view.flowbox.get_child_at_index(channel)
+                            .get_children()[0]
+                        )
+                        widget.next_level = self.channels[channel].level
+                        widget.queue_draw()
 
             dialog.destroy()
 

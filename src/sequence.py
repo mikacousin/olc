@@ -66,8 +66,13 @@ def update_channels(position):
             next_level = App().sequence.steps[0].cue.channels[channel]
         else:
             next_level = level
-        App().window.channels_view.channels[channel].next_level = next_level
-        App().window.channels_view.channels[channel].queue_draw()
+        widget = (
+            App()
+            .window.channels_view.flowbox.get_child_at_index(channel)
+            .get_children()[0]
+        )
+        widget.next_level = next_level
+        widget.queue_draw()
 
 
 class Sequence:

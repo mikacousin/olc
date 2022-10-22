@@ -58,8 +58,6 @@ class OlaThread(threading.Thread):
         # Loop on outputs with different level
         for output, level in diff:
             channel = App().patch.outputs[univ][output + 1][0] - 1
-            # New level
-            App().window.channels_view.channels[channel].level = level
             # Find next level
             if (
                 App().sequence.last > 1
@@ -74,12 +72,17 @@ class OlaThread(threading.Thread):
                 next_level = App().sequence.steps[0].cue.channels[channel]
             else:
                 next_level = level
-            App().window.channels_view.channels[channel].next_level = next_level
             # Display new levels
-            GLib.idle_add(App().window.channels_view.channels[channel].queue_draw)
+            GLib.idle_add(
+                App().window.channels_view.update_channel_widget,
+                channel,
+                level,
+                next_level,
+            )
             if App().patch_outputs_tab:
                 GLib.idle_add(
                     App().patch_outputs_tab.outputs[output + (idx * 512)].queue_draw
                 )
+        GLib.idle_add(App().window.channels_view.flowbox.invalidate_filter)
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe

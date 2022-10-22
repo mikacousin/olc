@@ -302,22 +302,22 @@ class Application(Gtk.Application):
         self.ola_thread.old_frame[index] = dmxframe
         for output, level in enumerate(dmxframe):
             if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
-                channel = self.patch.outputs.get(univ).get(output + 1)[0]
+                channel = self.patch.outputs.get(univ).get(output + 1)[0] - 1
                 self.dmx.frame[index][output] = level
-                self.window.channels_view.channels[channel - 1].level = level
                 if (
                     self.sequence.last > 1
                     and self.sequence.position < self.sequence.last
                 ):
                     next_level = self.sequence.steps[
                         self.sequence.position + 1
-                    ].cue.channels[channel - 1]
+                    ].cue.channels[channel]
                 elif self.sequence.last:
-                    next_level = self.sequence.steps[0].cue.channels[channel - 1]
+                    next_level = self.sequence.steps[0].cue.channels[channel]
                 else:
                     next_level = level
-                self.window.channels_view.channels[channel - 1].next_level = next_level
-                self.window.channels_view.channels[channel - 1].queue_draw()
+                self.window.channels_view.update_channel_widget(
+                    channel, level, next_level
+                )
                 if self.patch_outputs_tab:
                     self.patch_outputs_tab.outputs[output + (512 * index)].queue_draw()
 
