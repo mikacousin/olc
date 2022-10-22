@@ -58,11 +58,8 @@ class GroupTab(Gtk.Paned):
         self.flowbox1.set_homogeneous(True)
         self.flowbox1.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
 
-        self.channels = []
-
         for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i + 1, 0, 0))
-            self.flowbox1.add(self.channels[i])
+            self.flowbox1.add(ChannelWidget(i + 1, 0, 0))
 
         self.scrolled1.add(self.flowbox1)
 
@@ -108,14 +105,15 @@ class GroupTab(Gtk.Paned):
             child or False
         """
         i = child.get_index()  # Widget number (channel - 1)
+        widget = child.get_children()[0]
         # Find selected group
         for j, _ in enumerate(self.grps):
             if self.grps[j].get_parent().is_selected():
                 # Channel is in group, display it
-                if App().groups[j].channels[i] or self.channels[i].clicked:
+                if App().groups[j].channels[i] or widget.clicked:
                     # Get level (next_level is the same)
-                    self.channels[i].level = App().groups[j].channels[i]
-                    self.channels[i].next_level = App().groups[j].channels[i]
+                    widget.level = App().groups[j].channels[i]
+                    widget.next_level = App().groups[j].channels[i]
                     return child
                 return False
         return False
@@ -188,8 +186,9 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = "0"
             # Deselect all channels
             for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
+                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                widget.clicked = False
+                widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.flowbox2.invalidate_filter()
         elif int(self.last_group_selected) + 1 < len(self.grps):
@@ -198,8 +197,9 @@ class GroupTab(Gtk.Paned):
             self.flowbox2.select_child(child)
             # Deselect all channels
             for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
+                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                widget.clicked = False
+                widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) + 1)
 
@@ -213,8 +213,9 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = "0"
             # Deselect all channels
             for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
+                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                widget.clicked = False
+                widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.flowbox2.invalidate_filter()
         elif int(self.last_group_selected) > 0:
@@ -223,8 +224,9 @@ class GroupTab(Gtk.Paned):
             self.flowbox2.select_child(child)
             # Deselect all channels
             for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
+                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                widget.clicked = False
+                widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
 
@@ -238,8 +240,9 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = "0"
             # Deselect all channels
             for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
+                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                widget.clicked = False
+                widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.flowbox2.invalidate_filter()
         else:
@@ -254,8 +257,9 @@ class GroupTab(Gtk.Paned):
                 self.flowbox2.select_child(child)
                 # Deselect all channels
                 for channel in range(MAX_CHANNELS):
-                    self.channels[channel].clicked = False
-                    self.channels[channel].queue_draw()
+                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                    widget.clicked = False
+                    widget.queue_draw()
                 self.flowbox1.invalidate_filter()
                 self.last_group_selected = str(index)
 
@@ -269,8 +273,9 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = "0"
             # Deselect all channels
             for channel in range(MAX_CHANNELS):
-                self.channels[channel].clicked = False
-                self.channels[channel].queue_draw()
+                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                widget.clicked = False
+                widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.flowbox2.invalidate_filter()
         else:
@@ -285,8 +290,9 @@ class GroupTab(Gtk.Paned):
                 self.flowbox2.select_child(child)
                 # Deselect all channels
                 for channel in range(MAX_CHANNELS):
-                    self.channels[channel].clicked = False
-                    self.channels[channel].queue_draw()
+                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                    widget.clicked = False
+                    widget.queue_draw()
                 self.flowbox1.invalidate_filter()
                 self.last_group_selected = str(index)
 
@@ -307,8 +313,9 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = str(index)
         # Deselect all channels
         for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
+            widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+            widget.clicked = False
+            widget.queue_draw()
         # Update display
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
@@ -331,7 +338,10 @@ class GroupTab(Gtk.Paned):
                 for channel in range(MAX_CHANNELS):
                     level = App().groups[index].channels[channel]
                     if level > 0:
-                        self.channels[channel].clicked = True
+                        widget = self.flowbox1.get_child_at_index(
+                            channel
+                        ).get_children()[0]
+                        widget.clicked = True
                         child = self.flowbox1.get_child_at_index(channel)
                         App().window.set_focus(child)
                         self.flowbox1.select_child(child)
@@ -340,13 +350,15 @@ class GroupTab(Gtk.Paned):
         """Channel"""
         self.flowbox1.unselect_all()
         for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
+            widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+            widget.clicked = False
 
         if is_non_nul_int(self.keystring):
             channel = int(self.keystring)
             # Only patched channels
             if channel in App().patch.channels:
-                self.channels[channel - 1].clicked = True
+                widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
+                widget.clicked = True
                 child = self.flowbox1.get_child_at_index(channel - 1)
                 App().window.set_focus(child)
                 self.flowbox1.select_child(child)
@@ -380,7 +392,10 @@ class GroupTab(Gtk.Paned):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     # Only patched channels
                     if channel in App().patch.channels:
-                        self.channels[channel].clicked = True
+                        widget = self.flowbox1.get_child_at_index(
+                            channel
+                        ).get_children()[0]
+                        widget.clicked = True
                         child = self.flowbox1.get_child_at_index(channel)
                         App().window.set_focus(child)
                         self.flowbox1.select_child(child)
@@ -388,7 +403,10 @@ class GroupTab(Gtk.Paned):
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     # Only patched channels
                     if channel in App().patch.channels:
-                        self.channels[channel].clicked = True
+                        widget = self.flowbox1.get_child_at_index(
+                            channel
+                        ).get_children()[0]
+                        widget.clicked = True
                         child = self.flowbox1.get_child_at_index(channel)
                         App().window.set_focus(child)
                         self.flowbox1.select_child(child)
@@ -410,7 +428,8 @@ class GroupTab(Gtk.Paned):
 
         channel = int(self.keystring)
         if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = True
+            widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
+            widget.clicked = True
             self.flowbox1.invalidate_filter()
 
             child = self.flowbox1.get_child_at_index(channel - 1)
@@ -433,7 +452,8 @@ class GroupTab(Gtk.Paned):
 
         channel = int(self.keystring)
         if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = False
+            widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
+            widget.clicked = False
             self.flowbox1.invalidate_filter()
 
             child = self.flowbox1.get_child_at_index(channel - 1)
@@ -546,7 +566,8 @@ class GroupTab(Gtk.Paned):
         # Deselect all channels
         self.flowbox1.unselect_all()
         for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
+            widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
+            widget.clicked = False
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
         App().window.show_all()
