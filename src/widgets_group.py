@@ -23,12 +23,10 @@ class GroupWidget(Gtk.Widget):
 
     __gtype_name__ = "GroupWidget"
 
-    def __init__(self, index, number, name, grps):
+    def __init__(self, number, name):
 
-        self.index = index
         self.number = number
         self.name = name
-        self.grps = grps
 
         Gtk.Widget.__init__(self)
         self.set_size_request(80, 80)
@@ -38,10 +36,10 @@ class GroupWidget(Gtk.Widget):
     def on_click(self, _tgt, _ev):
         """Group clicked"""
         App().group_tab.flowbox2.unselect_all()
-        child = App().group_tab.flowbox2.get_child_at_index(self.index)
+        child = self.get_parent()
         App().window.set_focus(child)
         App().group_tab.flowbox2.select_child(child)
-        App().group_tab.last_group_selected = str(self.index)
+        App().group_tab.last_group_selected = str(child.get_index())
         App().group_tab.flowbox1.invalidate_filter()
 
     def do_draw(self, cr):

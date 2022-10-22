@@ -365,7 +365,6 @@ class Application(Gtk.Application):
         # Redraw Group Tab
         if self.group_tab:
             # Remove old groups
-            del self.group_tab.grps[:]
             self.group_tab.scrolled2.remove(self.group_tab.flowbox2)
             self.group_tab.flowbox2.destroy()
             # Update Group Tab

@@ -16,7 +16,7 @@ import array
 from dataclasses import dataclass
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App, is_non_nul_int, is_int
+from olc.define import MAX_CHANNELS, App, is_non_nul_int, is_int, is_non_nul_float
 from olc.widgets_channel import ChannelWidget
 from olc.widgets_group import GroupWidget
 from olc.zoom import zoom
@@ -32,7 +32,7 @@ class Group:
         text: Group description
     """
 
-    index: int
+    index: float
     channels: array.array = ("B", [0] * MAX_CHANNELS)  # type: ignore
     text: str = ""
 
@@ -68,8 +68,6 @@ class GroupTab(Gtk.Paned):
         self.scrolled2 = Gtk.ScrolledWindow()
         self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
-        self.grps = []
-
         self.populate_tab()
 
         self.add2(self.scrolled2)
@@ -89,10 +87,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add groups to FlowBox
         for i, _ in enumerate(App().groups):
-            self.grps.append(
-                GroupWidget(i, App().groups[i].index, App().groups[i].text, self.grps)
-            )
-            self.flowbox2.add(self.grps[i])
+            self.flowbox2.add(GroupWidget(App().groups[i].index, App().groups[i].text))
         self.scrolled2.add(self.flowbox2)
 
     def filter_channels(self, child, _user_data):
@@ -104,18 +99,19 @@ class GroupTab(Gtk.Paned):
         Returns:
             child or False
         """
-        i = child.get_index()  # Widget number (channel - 1)
-        widget = child.get_children()[0]
+        channel_index = child.get_index()  # Widget number (channel - 1)
+        channel_widget = child.get_children()[0]
         # Find selected group
-        for j, _ in enumerate(self.grps):
-            if self.grps[j].get_parent().is_selected():
-                # Channel is in group, display it
-                if App().groups[j].channels[i] or widget.clicked:
-                    # Get level (next_level is the same)
-                    widget.level = App().groups[j].channels[i]
-                    widget.next_level = App().groups[j].channels[i]
-                    return child
-                return False
+        group_selected = self.flowbox2.get_selected_children()
+        if group_selected:
+            group_number = group_selected[0].get_children()[0].number
+            for group in App().groups:
+                if group.index == group_number:
+                    if group.channels[channel_index] or child.is_selected():
+                        channel_widget.level = group.channels[channel_index]
+                        channel_widget.next_level = channel_widget.level
+                        return child
+                    return False
         return False
 
     def on_close_icon(self, _widget):
@@ -191,17 +187,18 @@ class GroupTab(Gtk.Paned):
                 widget.queue_draw()
             self.flowbox1.invalidate_filter()
             self.flowbox2.invalidate_filter()
-        elif int(self.last_group_selected) + 1 < len(self.grps):
+        else:
             child = self.flowbox2.get_child_at_index(int(self.last_group_selected) + 1)
-            App().window.set_focus(child)
-            self.flowbox2.select_child(child)
-            # Deselect all channels
-            for channel in range(MAX_CHANNELS):
-                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                widget.clicked = False
-                widget.queue_draw()
-            self.flowbox1.invalidate_filter()
-            self.last_group_selected = str(int(self.last_group_selected) + 1)
+            if child:
+                App().window.set_focus(child)
+                self.flowbox2.select_child(child)
+                # Deselect all channels
+                for channel in range(MAX_CHANNELS):
+                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
+                    widget.clicked = False
+                    widget.queue_draw()
+                self.flowbox1.invalidate_filter()
+                self.last_group_selected = str(int(self.last_group_selected) + 1)
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Group"""
@@ -303,14 +300,16 @@ class GroupTab(Gtk.Paned):
 
         if self.keystring != "":
             group = float(self.keystring)
-            for grp in self.grps:
-                if group == float(grp.number):
-                    index = grp.index
+            flowbox_children = self.flowbox2.get_children()
+            for flowbox_child in flowbox_children:
+                channel_widget = flowbox_child.get_child()
+                if channel_widget.number == group:
+                    index = flowbox_child.get_index()
                     child = self.flowbox2.get_child_at_index(index)
                     App().window.set_focus(child)
                     self.flowbox2.select_child(child)
+                    self.last_group_selected = str(index)
                     break
-            self.last_group_selected = str(index)
         # Deselect all channels
         for channel in range(MAX_CHANNELS):
             widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
@@ -333,7 +332,7 @@ class GroupTab(Gtk.Paned):
             children2 = flowboxchild2.get_children()
 
             for groupwidget in children2:
-                index = groupwidget.index
+                index = groupwidget.get_parent().get_index()
 
                 for channel in range(MAX_CHANNELS):
                     level = App().groups[index].channels[channel]
@@ -486,7 +485,7 @@ class GroupTab(Gtk.Paned):
             children = flowboxchild.get_children()
 
             for groupwidget in children:
-                index = groupwidget.index
+                index = groupwidget.get_parent().get_index()
 
                 sel1 = self.flowbox1.get_selected_children()
 
@@ -512,7 +511,7 @@ class GroupTab(Gtk.Paned):
         for flowboxchild2 in sel2:
             children2 = flowboxchild2.get_children()
             for groupwidget in children2:
-                index = groupwidget.index
+                index = groupwidget.get_parent().get_index()
                 sel = self.flowbox1.get_selected_children()
                 for flowboxchild in sel:
                     children = flowboxchild.get_children()
@@ -532,7 +531,7 @@ class GroupTab(Gtk.Paned):
         for flowboxchild2 in sel2:
             children2 = flowboxchild2.get_children()
             for groupwidget in children2:
-                index = groupwidget.index
+                index = groupwidget.get_parent().get_index()
                 sel = self.flowbox1.get_selected_children()
                 for flowboxchild in sel:
                     children = flowboxchild.get_children()
@@ -547,26 +546,38 @@ class GroupTab(Gtk.Paned):
         """New Group"""
         # If no group number, use the next one
         if self.keystring == "":
-            group_nb = 1 if len(App().groups) == 0 else App().groups[-1].index + 1
-        elif is_non_nul_int(self.keystring):
-            group_nb = int(self.keystring)
+            group_nb = 1.0 if len(App().groups) == 0 else App().groups[-1].index + 1.0
+        elif is_non_nul_float(self.keystring):
+            group_nb = float(self.keystring)
         else:
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
             return
 
+        for group in App().groups:
+            if group.index == group_nb:
+                self.keystring = ""
+                App().window.statusbar.push(App().window.context_id, self.keystring)
+                return
+
         channels = array.array("B", [0] * MAX_CHANNELS)
-        txt = str(float(group_nb))
-        App().groups.append(Group(float(group_nb), channels, txt))
-        i = self.grps[-1].index + 1 if len(self.grps) > 0 else 0
-        self.grps.append(
-            GroupWidget(i, App().groups[-1].index, App().groups[-1].text, self.grps)
+        txt = str(group_nb)
+        App().groups.append(Group(group_nb, channels, txt))
+        # Insert group widget
+        flowbox_children = self.flowbox2.get_children()
+        i = len(flowbox_children)
+        for child in flowbox_children:
+            channel_widget = child.get_child()
+            if group_nb < channel_widget.number:
+                i = child.get_index()
+                break
+        self.flowbox2.insert(
+            GroupWidget(App().groups[-1].index, App().groups[-1].text), i
         )
-        self.flowbox2.add(self.grps[-1])
         # Deselect all channels
         self.flowbox1.unselect_all()
         for channel in range(MAX_CHANNELS):
-            widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
+            widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
             widget.clicked = False
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()

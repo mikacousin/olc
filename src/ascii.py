@@ -139,7 +139,6 @@ class Ascii:
         # Redraw Group Tab if exist
         if App().group_tab:
             # Remove Old Groups
-            del App().group_tab.grps[:]
             App().group_tab.scrolled2.remove(App().group_tab.flowbox2)
             App().group_tab.flowbox2.destroy()
             # Update Group tab
