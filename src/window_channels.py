@@ -47,8 +47,6 @@ class ChannelsView(Gtk.Notebook):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.flowbox.set_filter_func(self.filter_func, None)
 
-        self.channels = []
-
         for i in range(MAX_CHANNELS):
             self.flowbox.add(ChannelWidget(i + 1, 0, 0))
 
