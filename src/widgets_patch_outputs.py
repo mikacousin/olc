@@ -51,7 +51,6 @@ class PatchWidget(Gtk.Widget):
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
             child = App().patch_outputs_tab.flowbox.get_child_at_index(widget_index)
-            App().window.set_focus(child)
             if self.get_parent().is_selected():
                 App().patch_outputs_tab.flowbox.unselect_child(child)
             else:
@@ -63,7 +62,6 @@ class PatchWidget(Gtk.Widget):
             App().patch_outputs_tab.flowbox.unselect_all()
             # Select clicked widget
             child = App().patch_outputs_tab.flowbox.get_child_at_index(widget_index)
-            App().window.set_focus(child)
             App().patch_outputs_tab.flowbox.select_child(child)
             App().patch_outputs_tab.last_out_selected = str(widget_index)
 

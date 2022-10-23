@@ -150,7 +150,6 @@ class TrackChannelsWidget(Gtk.Widget):
         """
         App().track_channels_tab.flowbox.unselect_all()
         child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
-        App().window.set_focus(child)
         App().track_channels_tab.flowbox.select_child(child)
         App().track_channels_tab.last_step_selected = str(self.step)
         chan = int((event.x - 535) / 65)

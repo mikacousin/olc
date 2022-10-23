@@ -37,7 +37,6 @@ class GroupWidget(Gtk.Widget):
         """Group clicked"""
         App().group_tab.flowbox2.unselect_all()
         child = self.get_parent()
-        App().window.set_focus(child)
         App().group_tab.flowbox2.select_child(child)
         App().group_tab.last_group_selected = str(child.get_index())
         App().group_tab.flowbox1.invalidate_filter()

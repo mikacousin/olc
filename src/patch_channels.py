@@ -118,13 +118,11 @@ class PatchChannelsTab(Gtk.Box):
 
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = "0"
         elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected) + 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
@@ -135,13 +133,11 @@ class PatchChannelsTab(Gtk.Box):
         """Select Previous Channel"""
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = "0"
         elif int(self.last_chan_selected) > 0:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected) - 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
@@ -156,7 +152,6 @@ class PatchChannelsTab(Gtk.Box):
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(channel)
 
@@ -188,12 +183,10 @@ class PatchChannelsTab(Gtk.Box):
         if to_chan > int(self.last_chan_selected):
             for chan in range(int(self.last_chan_selected), to_chan):
                 child = self.flowbox.get_child_at_index(chan)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
         else:
             for chan in range(to_chan - 1, int(self.last_chan_selected)):
                 child = self.flowbox.get_child_at_index(chan)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
         self.last_chan_selected = str(to_chan - 1)
 
@@ -275,7 +268,6 @@ class PatchChannelsTab(Gtk.Box):
         if sel and channel < MAX_CHANNELS:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(channel)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = str(channel)
 

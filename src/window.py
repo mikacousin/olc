@@ -171,7 +171,6 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
-            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
@@ -184,12 +183,13 @@ class Window(Gtk.ApplicationWindow):
             if next_chan:
                 self.channels_view.flowbox.unselect_all()
                 child = self.channels_view.flowbox.get_child_at_index(next_chan)
-                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(next_chan)
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Channel"""
@@ -199,7 +199,6 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
-            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         elif int(self.last_chan_selected) > 0:
@@ -211,12 +210,13 @@ class Window(Gtk.ApplicationWindow):
                     break
             self.channels_view.flowbox.unselect_all()
             child = self.channels_view.flowbox.get_child_at_index(chan)
-            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(chan)
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Next Line"""
@@ -226,7 +226,6 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
-            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         else:
@@ -239,12 +238,13 @@ class Window(Gtk.ApplicationWindow):
             ):
                 self.channels_view.flowbox.unselect_all()
                 index = child.get_index()
-                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(index)
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
     def _keypress_Up(self):  # pylint: disable=C0103
         """Previous Line"""
@@ -254,7 +254,6 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
-            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         else:
@@ -267,12 +266,13 @@ class Window(Gtk.ApplicationWindow):
             ):
                 self.channels_view.flowbox.unselect_all()
                 index = child.get_index()
-                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(index)
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
     def _keypress_a(self):
         """All Channels"""
@@ -284,11 +284,12 @@ class Window(Gtk.ApplicationWindow):
                 level = App().dmx.frame[index][output[0] - 1]
                 if level > 0:
                     child = self.channels_view.flowbox.get_child_at_index(chan - 1)
-                    self.set_focus(child)
                     self.channels_view.flowbox.select_child(child)
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
     def _keypress_c(self):
         """Channel"""
@@ -298,12 +299,13 @@ class Window(Gtk.ApplicationWindow):
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.channels_view.flowbox.get_child_at_index(channel)
-                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(channel)
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -343,18 +345,18 @@ class Window(Gtk.ApplicationWindow):
             if to_chan > int(self.last_chan_selected):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     child = self.channels_view.flowbox.get_child_at_index(channel)
-                    self.set_focus(child)
                     self.channels_view.flowbox.select_child(child)
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     child = self.channels_view.flowbox.get_child_at_index(channel)
-                    self.set_focus(child)
                     self.channels_view.flowbox.select_child(child)
 
             self.last_chan_selected = self.keystring
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -371,12 +373,13 @@ class Window(Gtk.ApplicationWindow):
         channel = int(self.keystring)
         if channel in App().patch.channels:
             child = self.channels_view.flowbox.get_child_at_index(channel - 1)
-            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -393,12 +396,13 @@ class Window(Gtk.ApplicationWindow):
         channel = int(self.keystring)
         if channel in App().patch.channels:
             child = self.channels_view.flowbox.get_child_at_index(channel - 1)
-            self.set_focus(child)
             self.channels_view.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
 
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
+
+        self.channels_view.grab_focus()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)

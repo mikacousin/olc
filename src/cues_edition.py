@@ -67,6 +67,7 @@ class CuesEditionTab(Gtk.Paned):
         self.treeview = Gtk.TreeView(model=self.filter)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_cue_changed)
+        self.treeview.connect("focus-in-event", self.on_focus)
 
         for i, column_title in enumerate(["Memory", "Text", "Channels"]):
             renderer = Gtk.CellRendererText()
@@ -128,6 +129,17 @@ class CuesEditionTab(Gtk.Paned):
             self.channels[i].level = self.user_channels[i]
             self.channels[i].next_level = self.user_channels[i]
             return child
+        return False
+
+    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
+        """Give focus to notebook
+
+        Returns:
+            False
+        """
+        notebook = self.get_parent()
+        if notebook:
+            notebook.grab_focus()
         return False
 
     def on_cue_changed(self, _treeview):
@@ -208,14 +220,11 @@ class CuesEditionTab(Gtk.Paned):
             if channel in App().patch.channels:
                 self.channels[channel - 1].clicked = True
                 child = self.flowbox.get_child_at_index(channel - 1)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
         self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -244,7 +253,6 @@ class CuesEditionTab(Gtk.Paned):
                         if channel in App().patch.channels:
                             self.channels[channel - 1].clicked = True
                             child = self.flowbox.get_child_at_index(channel - 1)
-                            App().window.set_focus(child)
                             self.flowbox.select_child(child)
                 else:
                     for channel in range(to_chan, int(self.last_chan_selected)):
@@ -252,14 +260,11 @@ class CuesEditionTab(Gtk.Paned):
                         if channel in App().patch.channels:
                             self.channels[channel - 1].clicked = True
                             child = self.flowbox.get_child_at_index(channel - 1)
-                            App().window.set_focus(child)
                             self.flowbox.select_child(child)
                 self.last_chan_selected = str(to_chan)
                 self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -276,13 +281,10 @@ class CuesEditionTab(Gtk.Paned):
             self.flowbox.invalidate_filter()
 
             child = self.flowbox.get_child_at_index(channel - 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -299,13 +301,10 @@ class CuesEditionTab(Gtk.Paned):
             self.flowbox.invalidate_filter()
 
             child = self.flowbox.get_child_at_index(channel - 1)
-            App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -326,15 +325,12 @@ class CuesEditionTab(Gtk.Paned):
                 ) or self.user_channels[chan] > 0:
                     self.channels[chan].clicked = True
                     child = self.flowbox.get_child_at_index(chan)
-                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                 else:
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 

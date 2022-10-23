@@ -686,7 +686,6 @@ class Application(Gtk.Application):
             self.window.playback.set_tab_detachable(self.sequences_tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
-            self.window.playback.grab_focus()
         else:
             page = self.window.playback.page_num(self.sequences_tab)
             self.window.playback.set_current_page(page)

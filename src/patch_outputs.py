@@ -119,7 +119,6 @@ class PatchOutputsTab(Gtk.Box):
             function() or False
         """
         keyname = Gdk.keyval_name(event.keyval)
-        # print(keyname)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
@@ -167,13 +166,11 @@ class PatchOutputsTab(Gtk.Box):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         elif int(self.last_out_selected) < (len(App().universes) * 512) - 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) + 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) + 1)
 
@@ -182,13 +179,11 @@ class PatchOutputsTab(Gtk.Box):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         elif int(self.last_out_selected) > 0:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) - 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) - 1)
 
@@ -197,7 +192,6 @@ class PatchOutputsTab(Gtk.Box):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         else:
@@ -208,7 +202,6 @@ class PatchOutputsTab(Gtk.Box):
             ):
                 self.flowbox.unselect_all()
                 index = child.get_index()
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
@@ -217,7 +210,6 @@ class PatchOutputsTab(Gtk.Box):
 
         if self.last_out_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = "0"
         else:
@@ -228,7 +220,6 @@ class PatchOutputsTab(Gtk.Box):
             ):
                 self.flowbox.unselect_all()
                 index = child.get_index()
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(index)
 
@@ -241,7 +232,6 @@ class PatchOutputsTab(Gtk.Box):
         if output:
             output -= 1
             child = self.flowbox.get_child_at_index(output)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(output)
 
@@ -266,13 +256,11 @@ class PatchOutputsTab(Gtk.Box):
         if to_out > int(self.last_out_selected):
             for out in range(int(self.last_out_selected), to_out):
                 child = self.flowbox.get_child_at_index(out)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(to_out)
         else:
             for out in range(to_out - 1, int(self.last_out_selected)):
                 child = self.flowbox.get_child_at_index(out)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(to_out)
 
@@ -290,7 +278,6 @@ class PatchOutputsTab(Gtk.Box):
         if output:
             output -= 1
             child = self.flowbox.get_child_at_index(output)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(output)
 
@@ -308,7 +295,6 @@ class PatchOutputsTab(Gtk.Box):
         if output:
             output -= 1
             child = self.flowbox.get_child_at_index(output)
-            App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_out_selected = str(output)
 
@@ -338,7 +324,6 @@ class PatchOutputsTab(Gtk.Box):
         if output + (512 * index) < (len(App().universes) * 512):
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(output + (512 * index))
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_out_selected = str(output + (512 * index))
 

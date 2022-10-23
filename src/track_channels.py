@@ -134,7 +134,6 @@ class TrackChannelsTab(Gtk.Grid):
             function() or False
         """
         keyname = Gdk.keyval_name(event.keyval)
-        # print(keyname)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.keystring += keyname
@@ -177,7 +176,6 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         else:
@@ -194,7 +192,6 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         else:
@@ -211,13 +208,11 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         elif int(self.last_step_selected) < App().sequence.last - 2:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) + 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             index = child.get_index()
             self.last_step_selected = str(index)
@@ -227,13 +222,11 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
         elif int(self.last_step_selected) > 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) - 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             index = child.get_index()
             self.last_step_selected = str(index)
@@ -269,7 +262,6 @@ class TrackChannelsTab(Gtk.Grid):
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = App().window.channels_view.flowbox.get_child_at_index(channel)
-                App().window.set_focus(child)
                 App().window.channels_view.flowbox.select_child(child)
                 App().window.last_chan_selected = str(channel)
 
@@ -308,14 +300,12 @@ class TrackChannelsTab(Gtk.Grid):
                     child = App().window.channels_view.flowbox.get_child_at_index(
                         channel
                     )
-                    App().window.set_focus(child)
                     App().window.channels_view.flowbox.select_child(child)
             else:
                 for channel in range(to_chan - 1, int(App().window.last_chan_selected)):
                     child = App().window.channels_view.flowbox.get_child_at_index(
                         channel
                     )
-                    App().window.set_focus(child)
                     App().window.channels_view.flowbox.select_child(child)
 
             App().window.last_chan_selected = self.keystring
@@ -338,7 +328,6 @@ class TrackChannelsTab(Gtk.Grid):
         channel = int(self.keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
             child = App().window.channels_view.flowbox.get_child_at_index(channel)
-            App().window.set_focus(child)
             App().window.channels_view.flowbox.select_child(child)
             App().window.last_chan_selected = self.keystring
 
@@ -360,7 +349,6 @@ class TrackChannelsTab(Gtk.Grid):
         channel = int(self.keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
             child = App().window.channels_view.flowbox.get_child_at_index(channel)
-            App().window.set_focus(child)
             App().window.channels_view.flowbox.unselect_child(child)
             App().window.last_chan_selected = self.keystring
 

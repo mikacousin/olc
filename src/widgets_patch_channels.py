@@ -116,7 +116,6 @@ class PatchChannelWidget(Gtk.Widget):
             child = App().patch_channels_tab.flowbox.get_child_at_index(
                 self.channel - 1
             )
-            App().window.set_focus(child)
             App().patch_channels_tab.flowbox.select_child(child)
             App().patch_channels_tab.last_chan_selected = str(self.channel - 1)
 

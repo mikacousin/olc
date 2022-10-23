@@ -48,7 +48,6 @@ class ChannelWidget(Gtk.Widget):
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
 
-        App().window.set_focus(flowboxchild)
         if (
             flowbox is App().window.channels_view.flowbox
             and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK

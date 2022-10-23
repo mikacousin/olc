@@ -1,4 +1,5 @@
 @define-color seq_selected_bg #997004;
+@define-color focus_color #795004;
 @define-color grey #666666;
 @define-color myred #880000;
 
@@ -14,6 +15,11 @@
 flowboxchild:selected {
   outline-width: 0px;
   background-color: alpha(@theme_bg_color, 0);
+}
+
+*:focus {
+  border-width: 1px;
+  border-color: @focus_color;
 }
 
 * {

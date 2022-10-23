@@ -114,6 +114,7 @@ class MainPlaybackView(Gtk.Notebook):
         self.step_filter2.set_visible_func(step_filter_func2)
         # Lists
         self.treeview1 = Gtk.TreeView(model=self.step_filter1)
+        self.treeview1.connect("focus-in-event", self.on_focus)
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
@@ -142,6 +143,7 @@ class MainPlaybackView(Gtk.Notebook):
                 column.set_resizable(True)
             self.treeview1.append_column(column)
         self.treeview2 = Gtk.TreeView(model=self.step_filter2)
+        self.treeview2.connect("focus-in-event", self.on_focus)
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
@@ -198,6 +200,15 @@ class MainPlaybackView(Gtk.Notebook):
         self.connect("key_press_event", self.on_key_press_event)
         self.connect("page-added", on_page_added)
         self.connect("page-removed", on_page_added)
+
+    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
+        """Give focus to notebook
+
+        Returns:
+            False
+        """
+        self.grab_focus()
+        return False
 
     def update_sequence_display(self):
         """Update Sequence display"""

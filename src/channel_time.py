@@ -129,6 +129,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_channeltime_changed)
+        self.treeview.connect("focus-in-event", self.on_focus)
 
         for i, column_title in enumerate(["Channel", "Delay", "Time"]):
             renderer = Gtk.CellRendererText()
@@ -152,7 +153,17 @@ class ChanneltimeTab(Gtk.Paned):
         # Select first Channel Time
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path)
-        App().window.set_focus(self.treeview)
+
+    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
+        """Give focus to notebook
+
+        Returns:
+            False
+        """
+        notebook = self.get_parent()
+        if notebook:
+            notebook.grab_focus()
+        return False
 
     def delay_edited(self, _widget, path, text):
         """Delay changed
@@ -455,14 +466,11 @@ class ChanneltimeTab(Gtk.Paned):
             if channel in App().patch.channels:
                 self.channels[channel - 1].clicked = True
                 child = self.flowbox.get_child_at_index(channel - 1)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
         self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled1.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -475,11 +483,10 @@ class ChanneltimeTab(Gtk.Paned):
         if path:
             if path.prev():
                 self.treeview.set_cursor(path)
-                App().window.set_focus(self.treeview)
         else:
             path = Gtk.TreePath.new_first()
             self.treeview.set_cursor(path)
-            App().window.set_focus(self.treeview)
+        self.get_parent().grab_focus()
 
     def _keypress_w(self):
         """Next Channel Time"""
@@ -493,7 +500,7 @@ class ChanneltimeTab(Gtk.Paned):
             path = Gtk.TreePath.new_first()
 
         self.treeview.set_cursor(path)
-        App().window.set_focus(self.treeview)
+        self.get_parent().grab_focus()
 
     def _keypress_Insert(self):  # pylint: disable=C0103
         """Add Channel Time"""
@@ -518,4 +525,4 @@ class ChanneltimeTab(Gtk.Paned):
                     self.liststore.append([channel, "", ""])
                     path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
                     self.treeview.set_cursor(path)
-                    App().window.set_focus(self.treeview)
+        self.get_parent().grab_focus()

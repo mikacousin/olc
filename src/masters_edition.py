@@ -73,6 +73,7 @@ class MastersTab(Gtk.Paned):
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_master_changed)
+        self.treeview.connect("focus-in-event", self.on_focus)
 
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Master", renderer, text=0)
@@ -117,6 +118,17 @@ class MastersTab(Gtk.Paned):
         # Select First Master
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
+
+    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
+        """Give focus to notebook
+
+        Returns:
+            False
+        """
+        notebook = self.get_parent()
+        if notebook:
+            notebook.grab_focus()
+        return False
 
     def populate_tab(self):
         """Add Masters to tab"""
@@ -460,14 +472,11 @@ class MastersTab(Gtk.Paned):
                 if channel in App().patch.channels:
                     self.channels[channel - 1].clicked = True
                     child = self.flowbox.get_child_at_index(channel - 1)
-                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
             self.flowbox.invalidate_filter()
 
-            if not App().window.get_focus():
-                self.scrolled.grab_focus()
-
+            self.get_parent().grab_focus()
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
@@ -508,7 +517,6 @@ class MastersTab(Gtk.Paned):
                             if channel + 1 in App().patch.channels:
                                 self.channels[channel].clicked = True
                                 child = self.flowbox.get_child_at_index(channel)
-                                App().window.set_focus(child)
                                 self.flowbox.select_child(child)
                     else:
                         for channel in range(to_chan - 1, int(self.last_chan_selected)):
@@ -516,13 +524,10 @@ class MastersTab(Gtk.Paned):
                             if channel + 1 in App().patch.channels:
                                 self.channels[channel].clicked = True
                                 child = self.flowbox.get_child_at_index(channel)
-                                App().window.set_focus(child)
                                 self.flowbox.select_child(child)
                     self.flowbox.invalidate_filter()
 
-            if not App().window.get_focus():
-                self.scrolled.grab_focus()
-
+            self.get_parent().grab_focus()
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
@@ -550,11 +555,9 @@ class MastersTab(Gtk.Paned):
                     self.channels[channel - 1].clicked = True
                     self.flowbox.invalidate_filter()
                     child = self.flowbox.get_child_at_index(channel - 1)
-                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                     self.last_chan_selected = self.keystring
-                if not App().window.get_focus():
-                    self.scrolled.grab_focus()
+                self.get_parent().grab_focus()
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -583,11 +586,9 @@ class MastersTab(Gtk.Paned):
                     self.channels[channel - 1].clicked = False
                     self.flowbox.invalidate_filter()
                     child = self.flowbox.get_child_at_index(channel - 1)
-                    App().window.set_focus(child)
                     self.flowbox.unselect_child(child)
                     self.last_chan_selected = self.keystring
-                if not App().window.get_focus():
-                    self.scrolled.grab_focus()
+                self.get_parent().grab_focus()
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -635,13 +636,11 @@ class MastersTab(Gtk.Paned):
                 ) or self.user_channels[chan] > 0:
                     self.channels[chan].clicked = True
                     child = self.flowbox.get_child_at_index(chan)
-                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                 else:
                     self.channels[chan].clicked = False
             self.flowbox.invalidate_filter()
-            if not App().window.get_focus():
-                self.scrolled.grab_focus()
+            self.get_parent().grab_focus()
             return True
         return False
 

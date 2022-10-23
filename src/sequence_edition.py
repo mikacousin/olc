@@ -49,6 +49,7 @@ class SequenceTab(Gtk.Grid):
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
+        self.treeview1.connect("focus-in-event", self.on_focus)
         selection = self.treeview1.get_selection()
         selection.connect("changed", self.on_sequence_changed)
 
@@ -105,6 +106,7 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.set_enable_search(False)
         self.treeview2.connect("cursor-changed", self.on_memory_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
+        self.treeview2.connect("focus-in-event", self.on_focus)
 
         # Display selected sequence
         for i, column_title in enumerate(
@@ -168,6 +170,17 @@ class SequenceTab(Gtk.Grid):
         # Select Main Playback
         path = Gtk.TreePath.new_first()
         self.treeview1.set_cursor(path, None, False)
+
+    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
+        """Give focus to notebook
+
+        Returns:
+            False
+        """
+        notebook = self.get_parent()
+        if notebook:
+            notebook.grab_focus()
+        return False
 
     def on_row_activated(self, _treeview, path, column):
         """Open Channel Time Edition if double clicked
@@ -795,6 +808,7 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.set_cursor(path)
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.get_parent().grab_focus()
 
     def _keypress_q(self):
         """Prev Cue"""
@@ -808,6 +822,7 @@ class SequenceTab(Gtk.Grid):
         else:
             path = Gtk.TreePath.new_first()
             self.treeview2.set_cursor(path)
+        self.get_parent().grab_focus()
 
     def _keypress_w(self):
         """Next Cue"""
@@ -821,6 +836,7 @@ class SequenceTab(Gtk.Grid):
             path = Gtk.TreePath.new_first()
 
         self.treeview2.set_cursor(path)
+        self.get_parent().grab_focus()
 
     def _keypress_a(self):
         """All Channels"""
@@ -848,14 +864,12 @@ class SequenceTab(Gtk.Grid):
                 if channels[channel] != 0:
                     self.channels[channel].clicked = True
                     child = self.flowbox.get_child_at_index(channel)
-                    App().window.set_focus(child)
                     self.flowbox.select_child(child)
                 else:
                     self.channels[channel].clicked = False
             self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
+        self.get_parent().grab_focus()
 
     def _keypress_c(self):
         """Channel"""
@@ -869,14 +883,11 @@ class SequenceTab(Gtk.Grid):
             if channel in App().patch.channels:
                 self.channels[channel - 1].clicked = True
                 child = self.flowbox.get_child_at_index(channel - 1)
-                App().window.set_focus(child)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = self.keystring
         self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -900,7 +911,6 @@ class SequenceTab(Gtk.Grid):
                     if channel + 1 in App().patch.channels:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
-                        App().window.set_focus(child)
                         self.flowbox.select_child(child)
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
@@ -908,13 +918,10 @@ class SequenceTab(Gtk.Grid):
                     if channel + 1 in App().patch.channels:
                         self.channels[channel].clicked = True
                         child = self.flowbox.get_child_at_index(channel)
-                        App().window.set_focus(child)
                         self.flowbox.select_child(child)
             self.flowbox.invalidate_filter()
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -928,13 +935,10 @@ class SequenceTab(Gtk.Grid):
             self.channels[channel - 1].clicked = True
             self.flowbox.invalidate_filter()
             child = self.flowbox.get_child_at_index(channel - 1)
-            App().window.set_focus(child)
             self.flowbox.select_child(child)
             self.last_chan_selected = self.keystring
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -948,13 +952,10 @@ class SequenceTab(Gtk.Grid):
             self.channels[channel - 1].clicked = False
             self.flowbox.invalidate_filter()
             child = self.flowbox.get_child_at_index(channel - 1)
-            App().window.set_focus(child)
             self.flowbox.unselect_child(child)
             self.last_chan_selected = self.keystring
 
-        if not App().window.get_focus():
-            self.scrolled.grab_focus()
-
+        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
