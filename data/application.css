@@ -9,6 +9,7 @@
   unbind "Up";
   unbind "Down";
   unbind "Tab";
+  unbind "ISO_Left_Tab";
   unbind "space";
 }
 
