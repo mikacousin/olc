@@ -396,22 +396,20 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_exclam(self):
         """Proportional level +"""
-
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:
             children = flowboxchild.get_children()
-
             for patchwidget in children:
                 output = patchwidget.output
                 univ = patchwidget.universe
-
-                App().patch.outputs[univ][output][1] += 1
-
-                App().patch.outputs[univ][output][1] = min(
-                    App().patch.outputs[univ][output][1], 100
-                )
-
+                if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
+                    output
+                ):
+                    App().patch.outputs[univ][output][1] += 1
+                    App().patch.outputs[univ][output][1] = min(
+                        App().patch.outputs[univ][output][1], 100
+                    )
                 index = App().universes.index(univ)
                 self.outputs[output - 1 + (512 * index)].queue_draw()
 
@@ -420,22 +418,20 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_colon(self):
         """Proportional level -"""
-
         sel = self.flowbox.get_selected_children()
         children = []
         for flowboxchild in sel:
             children = flowboxchild.get_children()
-
             for patchwidget in children:
                 output = patchwidget.output
                 univ = patchwidget.universe
-
-                App().patch.outputs[univ][output][1] -= 1
-
-                App().patch.outputs[univ][output][1] = max(
-                    App().patch.outputs[univ][output][1], 0
-                )
-
+                if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
+                    output
+                ):
+                    App().patch.outputs[univ][output][1] -= 1
+                    App().patch.outputs[univ][output][1] = max(
+                        App().patch.outputs[univ][output][1], 0
+                    )
                 index = App().universes.index(univ)
                 self.outputs[output - 1 + (512 * index)].queue_draw()
 
