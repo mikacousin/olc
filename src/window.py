@@ -19,7 +19,7 @@ from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
 from olc.step import Step
 from olc.widgets_grand_master import GMWidget
-from olc.window_channels import ChannelsView
+from olc.window_channels import LiveView
 from olc.window_playback import MainPlaybackView
 
 
@@ -71,7 +71,7 @@ class Window(Gtk.ApplicationWindow):
         paned.set_position(800)
 
         # Channels
-        self.channels_view = ChannelsView()
+        self.channels_view = LiveView()
         paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         paned_chan.set_position(1100)
         paned_chan.pack1(self.channels_view, resize=True, shrink=False)

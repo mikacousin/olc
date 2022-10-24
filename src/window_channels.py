@@ -27,8 +27,8 @@ def on_page_added(notebook, _child, _page_num):
     notebook.grab_focus()
 
 
-class ChannelsView(Gtk.Notebook):
-    """Channels View"""
+class LiveView(Gtk.Notebook):
+    """Live Channels View"""
 
     def __init__(self):
         Gtk.Notebook.__init__(self)
