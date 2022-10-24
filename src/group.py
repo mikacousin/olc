@@ -94,7 +94,7 @@ class GroupTab(Gtk.Paned):
         """Display only channels group
 
         Args:
-            child: Child object
+            child (Gtk.FlowBoxChild): Parent of Channel Widget
 
         Returns:
             child or False
@@ -173,72 +173,49 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_Right(self):  # pylint: disable=C0103
         """Next Group"""
-
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
             if child:
                 self.flowbox2.select_child(child)
                 self.last_group_selected = "0"
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.flowbox2.invalidate_filter()
         else:
             child = self.flowbox2.get_child_at_index(int(self.last_group_selected) + 1)
             if child:
                 self.flowbox2.select_child(child)
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.last_group_selected = str(int(self.last_group_selected) + 1)
         self.get_parent().grab_focus()
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Group"""
-
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
             if child:
                 self.flowbox2.select_child(child)
                 self.last_group_selected = "0"
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.flowbox2.invalidate_filter()
         elif int(self.last_group_selected) > 0:
             child = self.flowbox2.get_child_at_index(int(self.last_group_selected) - 1)
             self.flowbox2.select_child(child)
-            # Deselect all channels
-            for channel in range(MAX_CHANNELS):
-                widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                widget.clicked = False
-                widget.queue_draw()
+            self.flowbox1.unselect_all()
             self.flowbox1.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
         self.get_parent().grab_focus()
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Group on Next Line"""
-
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
             if child:
                 self.flowbox2.select_child(child)
                 self.last_group_selected = "0"
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.flowbox2.invalidate_filter()
         else:
@@ -250,28 +227,19 @@ class GroupTab(Gtk.Paned):
                 self.flowbox2.unselect_all()
                 index = child.get_index()
                 self.flowbox2.select_child(child)
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
 
     def _keypress_Up(self):  # pylint: disable=C0103
         """Group on Previous Line"""
-
         if self.last_group_selected == "":
             child = self.flowbox2.get_child_at_index(0)
             if child:
                 self.flowbox2.select_child(child)
                 self.last_group_selected = "0"
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.flowbox2.invalidate_filter()
         else:
@@ -283,18 +251,13 @@ class GroupTab(Gtk.Paned):
                 self.flowbox2.unselect_all()
                 index = child.get_index()
                 self.flowbox2.select_child(child)
-                # Deselect all channels
-                for channel in range(MAX_CHANNELS):
-                    widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-                    widget.clicked = False
-                    widget.queue_draw()
+                self.flowbox1.unselect_all()
                 self.flowbox1.invalidate_filter()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
 
     def _keypress_g(self):
         """Select Group"""
-
         self.flowbox2.unselect_all()
 
         if self.keystring != "":
@@ -309,10 +272,7 @@ class GroupTab(Gtk.Paned):
                     self.last_group_selected = str(index)
                     break
         # Deselect all channels
-        for channel in range(MAX_CHANNELS):
-            widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-            widget.clicked = False
-            widget.queue_draw()
+        self.flowbox1.unselect_all()
         # Update display
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
@@ -336,10 +296,6 @@ class GroupTab(Gtk.Paned):
                 for channel in range(MAX_CHANNELS):
                     level = App().groups[index].channels[channel]
                     if level > 0:
-                        widget = self.flowbox1.get_child_at_index(
-                            channel
-                        ).get_children()[0]
-                        widget.clicked = True
                         child = self.flowbox1.get_child_at_index(channel)
                         self.flowbox1.select_child(child)
         self.get_parent().grab_focus()
@@ -347,16 +303,11 @@ class GroupTab(Gtk.Paned):
     def _keypress_c(self):
         """Channel"""
         self.flowbox1.unselect_all()
-        for channel in range(MAX_CHANNELS):
-            widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-            widget.clicked = False
 
         if is_non_nul_int(self.keystring):
             channel = int(self.keystring)
             # Only patched channels
             if channel in App().patch.channels:
-                widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
-                widget.clicked = True
                 child = self.flowbox1.get_child_at_index(channel - 1)
                 self.flowbox1.select_child(child)
                 self.last_chan_selected = self.keystring
@@ -386,21 +337,13 @@ class GroupTab(Gtk.Paned):
             if to_chan > int(self.last_chan_selected):
                 for channel in range(int(self.last_chan_selected) - 1, to_chan):
                     # Only patched channels
-                    if channel in App().patch.channels:
-                        widget = self.flowbox1.get_child_at_index(
-                            channel
-                        ).get_children()[0]
-                        widget.clicked = True
+                    if channel + 1 in App().patch.channels:
                         child = self.flowbox1.get_child_at_index(channel)
                         self.flowbox1.select_child(child)
             else:
                 for channel in range(to_chan - 1, int(self.last_chan_selected)):
                     # Only patched channels
-                    if channel in App().patch.channels:
-                        widget = self.flowbox1.get_child_at_index(
-                            channel
-                        ).get_children()[0]
-                        widget.clicked = True
+                    if channel + 1 in App().patch.channels:
                         child = self.flowbox1.get_child_at_index(channel)
                         self.flowbox1.select_child(child)
             self.flowbox1.invalidate_filter()
@@ -419,13 +362,10 @@ class GroupTab(Gtk.Paned):
 
         channel = int(self.keystring)
         if channel in App().patch.channels:
-            widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
-            widget.clicked = True
-            self.flowbox1.invalidate_filter()
-
             child = self.flowbox1.get_child_at_index(channel - 1)
             self.flowbox1.select_child(child)
             self.last_chan_selected = self.keystring
+            self.flowbox1.invalidate_filter()
 
         self.get_parent().grab_focus()
         self.keystring = ""
@@ -440,14 +380,10 @@ class GroupTab(Gtk.Paned):
 
         channel = int(self.keystring)
         if channel in App().patch.channels:
-            widget = self.flowbox1.get_child_at_index(channel - 1).get_children()[0]
-            widget.clicked = False
-            self.flowbox1.invalidate_filter()
-
             child = self.flowbox1.get_child_at_index(channel - 1)
             self.flowbox1.unselect_child(child)
-
             self.last_chan_selected = self.keystring
+            self.flowbox1.invalidate_filter()
 
         self.get_parent().grab_focus()
         self.keystring = ""
@@ -560,11 +496,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox2.insert(
             GroupWidget(App().groups[-1].index, App().groups[-1].text), i
         )
-        # Deselect all channels
         self.flowbox1.unselect_all()
-        for channel in range(MAX_CHANNELS):
-            widget = self.flowbox1.get_child_at_index(channel).get_children()[0]
-            widget.clicked = False
         self.flowbox1.invalidate_filter()
         self.flowbox2.invalidate_filter()
         App().window.show_all()
