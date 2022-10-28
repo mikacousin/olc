@@ -233,12 +233,11 @@ class GroupTab(Gtk.Paned):
             group = float(self.keystring)
             flowbox_children = self.flowbox.get_children()
             for flowbox_child in flowbox_children:
-                channel_widget = flowbox_child.get_child()
-                if channel_widget.number == group:
+                group_widget = flowbox_child.get_child()
+                if group_widget.number == group:
                     index = flowbox_child.get_index()
-                    child = self.flowbox.get_child_at_index(index)
-                    self.flowbox.select_child(child)
-                    App().window.set_focus(child)
+                    self.flowbox.select_child(flowbox_child)
+                    App().window.set_focus(flowbox_child)
                     self.last_group_selected = str(index)
                     break
         # Deselect all channels
@@ -390,13 +389,13 @@ class GroupTab(Gtk.Paned):
         self.flowbox.insert(
             GroupWidget(App().groups[-1].index, App().groups[-1].text), i
         )
-        self.channels_view.flowbox.unselect_all()
-        self.channels_view.flowbox.invalidate_filter()
         flowboxchild = self.flowbox.get_child_at_index(i)
         flowboxchild.show_all()
         self.flowbox.select_child(flowboxchild)
         App().window.set_focus(flowboxchild)
         self.last_group_selected = str(i)
+        self.channels_view.flowbox.unselect_all()
+        self.channels_view.flowbox.invalidate_filter()
         self.get_parent().grab_focus()
 
         self.keystring = ""
@@ -423,7 +422,7 @@ class GroupChannelsView(ChannelsView):
         if App().group_tab:
             selected_group = App().group_tab.flowbox.get_selected_children()
         if selected_group:
-            group_number = selected_group[0].get_children()[0].number
+            group_number = selected_group[0].get_child().number
             group = None
             for group in App().groups:
                 if group.index == group_number:
@@ -453,7 +452,7 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_children()[0]
+        channel_widget = child.get_child()
         if group.channels[channel_index] or child.is_selected():
             channel_widget.level = group.channels[channel_index]
             channel_widget.next_level = channel_widget.level
@@ -474,7 +473,7 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_children()[0]
+        channel_widget = child.get_child()
         if group.channels[channel_index] or child.is_selected():
             channel_widget.level = group.channels[channel_index]
             channel_widget.next_level = channel_widget.level
@@ -494,7 +493,7 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_children()[0]
+        channel_widget = child.get_child()
         if channel_index + 1 in App().patch.channels:
             if group.channels[channel_index] or child.is_selected():
                 channel_widget.level = group.channels[channel_index]
