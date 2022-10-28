@@ -16,10 +16,9 @@ import array
 from dataclasses import dataclass
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App, is_non_nul_int, is_int, is_non_nul_float
-from olc.widgets_channel import ChannelWidget
+from olc.define import MAX_CHANNELS, App, is_non_nul_float
+from olc.widgets_channels_view import ChannelsView, VIEW_MODES
 from olc.widgets_group import GroupWidget
-from olc.zoom import zoom
 
 
 @dataclass
@@ -47,72 +46,30 @@ class GroupTab(Gtk.Paned):
         self.last_group_selected = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
-        self.set_position(300)
+        self.set_position(600)
 
-        self.scrolled1 = Gtk.ScrolledWindow()
-        self.scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.channels_view = GroupChannelsView()
+        self.add1(self.channels_view)
 
-        self.flowbox1 = Gtk.FlowBox()
-        self.flowbox1.set_valign(Gtk.Align.START)
-        self.flowbox1.set_max_children_per_line(20)
-        self.flowbox1.set_homogeneous(True)
-        self.flowbox1.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-
-        for i in range(MAX_CHANNELS):
-            self.flowbox1.add(ChannelWidget(i + 1, 0, 0))
-
-        self.scrolled1.add(self.flowbox1)
-
-        self.add1(self.scrolled1)
-
-        self.scrolled2 = Gtk.ScrolledWindow()
-        self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-
+        self.scrolled = Gtk.ScrolledWindow()
+        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.flowbox = Gtk.FlowBox()
         self.populate_tab()
-
-        self.add2(self.scrolled2)
-
-        self.flowbox1.set_filter_func(self.filter_channels, None)
-        self.flowbox1.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox1.connect("scroll-event", zoom)
+        self.add2(self.scrolled)
 
     def populate_tab(self):
         """Add groups to tab"""
         # New FlowBox
-        self.flowbox2 = Gtk.FlowBox()
-        self.flowbox2.set_valign(Gtk.Align.START)
-        self.flowbox2.set_max_children_per_line(20)
-        self.flowbox2.set_homogeneous(True)
-        self.flowbox2.set_activate_on_single_click(True)
-        self.flowbox2.set_selection_mode(Gtk.SelectionMode.SINGLE)
+        self.flowbox = Gtk.FlowBox()
+        self.flowbox.set_valign(Gtk.Align.START)
+        self.flowbox.set_max_children_per_line(20)
+        self.flowbox.set_homogeneous(True)
+        self.flowbox.set_activate_on_single_click(True)
+        self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add groups to FlowBox
         for i, _ in enumerate(App().groups):
-            self.flowbox2.add(GroupWidget(App().groups[i].index, App().groups[i].text))
-        self.scrolled2.add(self.flowbox2)
-
-    def filter_channels(self, child, _user_data):
-        """Display only channels group
-
-        Args:
-            child (Gtk.FlowBoxChild): Parent of Channel Widget
-
-        Returns:
-            child or False
-        """
-        channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_children()[0]
-        # Find selected group
-        group_selected = self.flowbox2.get_selected_children()
-        if group_selected:
-            group_number = group_selected[0].get_children()[0].number
-            for group in App().groups:
-                if group.index == group_number:
-                    if group.channels[channel_index] or child.is_selected():
-                        channel_widget.level = group.channels[channel_index]
-                        channel_widget.next_level = channel_widget.level
-                        return child
-                    return False
-        return False
+            self.flowbox.add(GroupWidget(App().groups[i].index, App().groups[i].text))
+        self.scrolled.add(self.flowbox)
 
     def on_close_icon(self, _widget):
         """Close Tab with the icon clicked"""
@@ -174,145 +131,149 @@ class GroupTab(Gtk.Paned):
     def _keypress_Right(self):  # pylint: disable=C0103
         """Next Group"""
         if self.last_group_selected == "":
-            child = self.flowbox2.get_child_at_index(0)
+            child = self.flowbox.get_child_at_index(0)
             if child:
-                self.flowbox2.select_child(child)
+                self.flowbox.select_child(child)
                 self.last_group_selected = "0"
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
-                self.flowbox2.invalidate_filter()
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
+                self.flowbox.invalidate_filter()
         else:
-            child = self.flowbox2.get_child_at_index(int(self.last_group_selected) + 1)
+            child = self.flowbox.get_child_at_index(int(self.last_group_selected) + 1)
             if child:
-                self.flowbox2.select_child(child)
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
+                self.flowbox.select_child(child)
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
                 self.last_group_selected = str(int(self.last_group_selected) + 1)
         self.get_parent().grab_focus()
+        self.last_chan_selected = ""
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Group"""
         if self.last_group_selected == "":
-            child = self.flowbox2.get_child_at_index(0)
+            child = self.flowbox.get_child_at_index(0)
             if child:
-                self.flowbox2.select_child(child)
+                self.flowbox.select_child(child)
                 self.last_group_selected = "0"
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
-                self.flowbox2.invalidate_filter()
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
+                self.flowbox.invalidate_filter()
         elif int(self.last_group_selected) > 0:
-            child = self.flowbox2.get_child_at_index(int(self.last_group_selected) - 1)
-            self.flowbox2.select_child(child)
-            self.flowbox1.unselect_all()
-            self.flowbox1.invalidate_filter()
+            child = self.flowbox.get_child_at_index(int(self.last_group_selected) - 1)
+            self.flowbox.select_child(child)
+            self.channels_view.flowbox.unselect_all()
+            self.channels_view.flowbox.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
         self.get_parent().grab_focus()
+        self.last_chan_selected = ""
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Group on Next Line"""
         if self.last_group_selected == "":
-            child = self.flowbox2.get_child_at_index(0)
+            child = self.flowbox.get_child_at_index(0)
             if child:
-                self.flowbox2.select_child(child)
+                self.flowbox.select_child(child)
                 self.last_group_selected = "0"
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
-                self.flowbox2.invalidate_filter()
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
+                self.flowbox.invalidate_filter()
         else:
-            child = self.flowbox2.get_child_at_index(int(self.last_group_selected))
+            child = self.flowbox.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
-            if child := self.flowbox2.get_child_at_pos(
+            if child := self.flowbox.get_child_at_pos(
                 allocation.x, allocation.y + allocation.height
             ):
-                self.flowbox2.unselect_all()
+                self.flowbox.unselect_all()
                 index = child.get_index()
-                self.flowbox2.select_child(child)
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
+                self.flowbox.select_child(child)
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
+        self.last_chan_selected = ""
 
     def _keypress_Up(self):  # pylint: disable=C0103
         """Group on Previous Line"""
         if self.last_group_selected == "":
-            child = self.flowbox2.get_child_at_index(0)
+            child = self.flowbox.get_child_at_index(0)
             if child:
-                self.flowbox2.select_child(child)
+                self.flowbox.select_child(child)
                 self.last_group_selected = "0"
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
-                self.flowbox2.invalidate_filter()
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
+                self.flowbox.invalidate_filter()
         else:
-            child = self.flowbox2.get_child_at_index(int(self.last_group_selected))
+            child = self.flowbox.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
-            if child := self.flowbox2.get_child_at_pos(
+            if child := self.flowbox.get_child_at_pos(
                 allocation.x, allocation.y - allocation.height / 2
             ):
-                self.flowbox2.unselect_all()
+                self.flowbox.unselect_all()
                 index = child.get_index()
-                self.flowbox2.select_child(child)
-                self.flowbox1.unselect_all()
-                self.flowbox1.invalidate_filter()
+                self.flowbox.select_child(child)
+                self.channels_view.flowbox.unselect_all()
+                self.channels_view.flowbox.invalidate_filter()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
+        self.last_chan_selected = ""
 
     def _keypress_g(self):
         """Select Group"""
-        self.flowbox2.unselect_all()
+        self.flowbox.unselect_all()
 
         if self.keystring != "":
             group = float(self.keystring)
-            flowbox_children = self.flowbox2.get_children()
+            flowbox_children = self.flowbox.get_children()
             for flowbox_child in flowbox_children:
                 channel_widget = flowbox_child.get_child()
                 if channel_widget.number == group:
                     index = flowbox_child.get_index()
-                    child = self.flowbox2.get_child_at_index(index)
-                    self.flowbox2.select_child(child)
+                    child = self.flowbox.get_child_at_index(index)
+                    self.flowbox.select_child(child)
                     self.last_group_selected = str(index)
                     break
         # Deselect all channels
-        self.flowbox1.unselect_all()
+        self.channels_view.flowbox.unselect_all()
         # Update display
-        self.flowbox1.invalidate_filter()
-        self.flowbox2.invalidate_filter()
+        self.channels_view.flowbox.invalidate_filter()
+        self.flowbox.invalidate_filter()
+        self.last_chan_selected = ""
 
+        self.get_parent().grab_focus()
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _keypress_f(self):
+        """Change display mode"""
+        self.channels_view.toggle_view_mode()
+        self.get_parent().grab_focus()
+
+    def _keypress_Page_Up(self):  # pylint: disable=C0103
+        """Next Channel"""
+        self.last_chan_selected = self.channels_view.select_next(
+            self.last_chan_selected
+        )
+        self.get_parent().grab_focus()
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _keypress_Page_Down(self):  # pylint: disable=C0103
+        """Previous Channel"""
+        self.last_chan_selected = self.channels_view.select_previous(
+            self.last_chan_selected
+        )
         self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_a(self):
         """All Channels"""
-        self.flowbox1.unselect_all()
-
-        sel2 = self.flowbox2.get_selected_children()
-        children2 = []
-        for flowboxchild2 in sel2:
-            children2 = flowboxchild2.get_children()
-
-            for groupwidget in children2:
-                index = groupwidget.get_parent().get_index()
-
-                for channel in range(MAX_CHANNELS):
-                    level = App().groups[index].channels[channel]
-                    if level > 0:
-                        child = self.flowbox1.get_child_at_index(channel)
-                        self.flowbox1.select_child(child)
+        self.channels_view.select_all()
         self.get_parent().grab_focus()
 
     def _keypress_c(self):
         """Channel"""
-        self.flowbox1.unselect_all()
-
-        if is_non_nul_int(self.keystring):
-            channel = int(self.keystring)
-            # Only patched channels
-            if channel in App().patch.channels:
-                child = self.flowbox1.get_child_at_index(channel - 1)
-                self.flowbox1.select_child(child)
-                self.last_chan_selected = self.keystring
-        self.flowbox1.invalidate_filter()
-
+        self.last_chan_selected = self.channels_view.select_channel(self.keystring)
         self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -322,147 +283,71 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_greater(self):
         """Channel Thru"""
-        if not is_non_nul_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-        sel = self.flowbox1.get_selected_children()
-        if len(sel) == 1:
-            flowboxchild = sel[0]
-            channelwidget = flowboxchild.get_children()[0]
-            self.last_chan_selected = channelwidget.channel
-
-        if self.last_chan_selected:
-            to_chan = int(self.keystring)
-            if to_chan > int(self.last_chan_selected):
-                for channel in range(int(self.last_chan_selected) - 1, to_chan):
-                    # Only patched channels
-                    if channel + 1 in App().patch.channels:
-                        child = self.flowbox1.get_child_at_index(channel)
-                        self.flowbox1.select_child(child)
-            else:
-                for channel in range(to_chan - 1, int(self.last_chan_selected)):
-                    # Only patched channels
-                    if channel + 1 in App().patch.channels:
-                        child = self.flowbox1.get_child_at_index(channel)
-                        self.flowbox1.select_child(child)
-            self.flowbox1.invalidate_filter()
-            self.last_chan_selected = self.keystring
-
+        self.last_chan_selected = self.channels_view.select_thru(
+            self.keystring, self.last_chan_selected
+        )
         self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_plus(self):
         """Channel +"""
-        if not is_non_nul_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            child = self.flowbox1.get_child_at_index(channel - 1)
-            self.flowbox1.select_child(child)
-            self.last_chan_selected = self.keystring
-            self.flowbox1.invalidate_filter()
-
+        self.last_chan_selected = self.channels_view.select_plus(self.keystring)
         self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_minus(self):
         """Channel -"""
-        if not is_non_nul_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            child = self.flowbox1.get_child_at_index(channel - 1)
-            self.flowbox1.unselect_child(child)
-            self.last_chan_selected = self.keystring
-            self.flowbox1.invalidate_filter()
-
+        self.last_chan_selected = self.channels_view.select_minus(self.keystring)
         self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_equal(self):
         """@ Level"""
-        if not is_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        level = int(self.keystring)
-        if App().settings.get_boolean("percent"):
-            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
-        else:
-            level = min(level, 255)
-        sel = self.flowbox2.get_selected_children()
-        children = []
-        for flowboxchild in sel:
-            children = flowboxchild.get_children()
-
-            for groupwidget in children:
-                index = groupwidget.get_parent().get_index()
-
-                sel1 = self.flowbox1.get_selected_children()
-
-                for flowboxchild1 in sel1:
-                    children1 = flowboxchild1.get_children()
-
-                    for channelwidget in children1:
-                        channel = int(channelwidget.channel) - 1
-
-                        if level != -1:
-                            App().groups[index].channels[channel] = level
-        self.flowbox1.invalidate_filter()
+        channels, level = self.channels_view.at_level(self.keystring)
+        if channels and level != -1:
+            selected_group = self.flowbox.get_selected_children()[0]
+            index = selected_group.get_index()
+            for channel in channels:
+                App().groups[index].channels[channel - 1] = level
+        self.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """Level - %"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
+        if channels and step_level:
+            selected_group = self.flowbox.get_selected_children()[0]
+            index = selected_group.get_index()
+            for channel in channels:
+                level = App().groups[index].channels[channel - 1]
+                level = max(level - step_level, 0)
+                App().groups[index].channels[channel - 1] = level
+        self.channels_view.flowbox.invalidate_filter()
 
-        sel2 = self.flowbox2.get_selected_children()
-        children2 = []
-        for flowboxchild2 in sel2:
-            children2 = flowboxchild2.get_children()
-            for groupwidget in children2:
-                index = groupwidget.get_parent().get_index()
-                sel = self.flowbox1.get_selected_children()
-                for flowboxchild in sel:
-                    children = flowboxchild.get_children()
-                    for channelwidget in children:
-                        channel = int(channelwidget.channel) - 1
-                        level = App().groups[index].channels[channel]
-                        level = max(level - lvl, 0)
-                        App().groups[index].channels[channel] = level
-        self.flowbox1.invalidate_filter()
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_exclam(self):
         """Level + %"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
+        if channels and step_level:
+            selected_group = self.flowbox.get_selected_children()[0]
+            index = selected_group.get_index()
+            for channel in channels:
+                level = App().groups[index].channels[channel - 1]
+                level = min(level + step_level, 255)
+                App().groups[index].channels[channel - 1] = level
+        self.channels_view.flowbox.invalidate_filter()
 
-        sel2 = self.flowbox2.get_selected_children()
-        children2 = []
-        for flowboxchild2 in sel2:
-            children2 = flowboxchild2.get_children()
-            for groupwidget in children2:
-                index = groupwidget.get_parent().get_index()
-                sel = self.flowbox1.get_selected_children()
-                for flowboxchild in sel:
-                    children = flowboxchild.get_children()
-                    for channelwidget in children:
-                        channel = int(channelwidget.channel) - 1
-                        level = App().groups[index].channels[channel]
-                        level = min(level + lvl, 255)
-                        App().groups[index].channels[channel] = level
-        self.flowbox1.invalidate_filter()
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_N(self):  # pylint: disable=C0103
         """New Group"""
@@ -486,20 +371,89 @@ class GroupTab(Gtk.Paned):
         txt = str(group_nb)
         App().groups.append(Group(group_nb, channels, txt))
         # Insert group widget
-        flowbox_children = self.flowbox2.get_children()
+        flowbox_children = self.flowbox.get_children()
         i = len(flowbox_children)
         for child in flowbox_children:
             channel_widget = child.get_child()
             if group_nb < channel_widget.number:
                 i = child.get_index()
                 break
-        self.flowbox2.insert(
+        self.flowbox.insert(
             GroupWidget(App().groups[-1].index, App().groups[-1].text), i
         )
-        self.flowbox1.unselect_all()
-        self.flowbox1.invalidate_filter()
-        self.flowbox2.invalidate_filter()
+        self.channels_view.flowbox.unselect_all()
+        self.channels_view.flowbox.invalidate_filter()
+        self.flowbox.invalidate_filter()
         App().window.show_all()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+
+class GroupChannelsView(ChannelsView):
+    """Channels View"""
+    def __init__(self):
+        super().__init__()
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Display only channels group
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        channel_index = child.get_index()  # Widget number (channel - 1)
+        channel_widget = child.get_children()[0]
+        # Find selected group
+        group_selected = None
+        if App().group_tab:
+            group_selected = App().group_tab.flowbox.get_selected_children()
+        # Display active channels
+        if self.view_mode == VIEW_MODES["Active"]:
+            if group_selected:
+                group_number = group_selected[0].get_children()[0].number
+                for group in App().groups:
+                    if group.index == group_number:
+                        if group.channels[channel_index] or child.is_selected():
+                            channel_widget.level = group.channels[channel_index]
+                            channel_widget.next_level = channel_widget.level
+                            child.set_visible(True)
+                            return True
+                        child.set_visible(False)
+                        return False
+            return False
+        # Display patched channels
+        if self.view_mode == VIEW_MODES["Patched"]:
+            if group_selected:
+                group_number = group_selected[0].get_children()[0].number
+                for group in App().groups:
+                    if group.index == group_number:
+                        if channel_index + 1 in App().patch.channels:
+                            if group.channels[channel_index] or child.is_selected():
+                                channel_widget.level = group.channels[channel_index]
+                                channel_widget.next_level = channel_widget.level
+                            else:
+                                channel_widget.level = 0
+                                channel_widget.next_level = channel_widget.level
+                            child.set_visible(True)
+                            return True
+                        child.set_visible(False)
+                        return False
+            return False
+        # Display all channels by default
+        if group_selected:
+            group_number = group_selected[0].get_children()[0].number
+            for group in App().groups:
+                if group.index == group_number:
+                    if group.channels[channel_index] or child.is_selected():
+                        channel_widget.level = group.channels[channel_index]
+                        channel_widget.next_level = channel_widget.level
+                    else:
+                        channel_widget.level = 0
+                        channel_widget.next_level = channel_widget.level
+            child.set_visible(True)
+            return True
+        child.set_visible(False)
+        return False

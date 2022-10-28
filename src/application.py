@@ -365,12 +365,12 @@ class Application(Gtk.Application):
         # Redraw Group Tab
         if self.group_tab:
             # Remove old groups
-            self.group_tab.scrolled2.remove(self.group_tab.flowbox2)
-            self.group_tab.flowbox2.destroy()
+            self.group_tab.scrolled.remove(self.group_tab.flowbox)
+            self.group_tab.flowbox.destroy()
             # Update Group Tab
             self.group_tab.populate_tab()
-            self.group_tab.flowbox1.invalidate_filter()
-            self.group_tab.flowbox2.invalidate_filter()
+            self.group_tab.channels_view.flowbox.invalidate_filter()
+            self.group_tab.flowbox.invalidate_filter()
             self.window.show_all()
 
         # Redraw Memories Tab

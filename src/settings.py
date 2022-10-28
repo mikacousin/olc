@@ -313,7 +313,7 @@ class SettingsDialog:
 
         # Redraw Groups Tab if exist
         if App().group_tab:
-            App().group_tab.flowbox1.invalidate_filter()
+            App().group_tab.channels_view.flowbox.invalidate_filter()
 
         # Redraw Memories Tab if exist
         if App().memories_tab:

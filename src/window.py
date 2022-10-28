@@ -171,6 +171,7 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
+            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
@@ -183,6 +184,7 @@ class Window(Gtk.ApplicationWindow):
             if next_chan:
                 self.channels_view.flowbox.unselect_all()
                 child = self.channels_view.flowbox.get_child_at_index(next_chan)
+                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(next_chan)
 
@@ -199,6 +201,7 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
+            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         elif int(self.last_chan_selected) > 0:
@@ -210,6 +213,7 @@ class Window(Gtk.ApplicationWindow):
                     break
             self.channels_view.flowbox.unselect_all()
             child = self.channels_view.flowbox.get_child_at_index(chan)
+            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(chan)
 
@@ -226,6 +230,7 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
+            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         else:
@@ -238,6 +243,7 @@ class Window(Gtk.ApplicationWindow):
             ):
                 self.channels_view.flowbox.unselect_all()
                 index = child.get_index()
+                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(index)
 
@@ -254,6 +260,7 @@ class Window(Gtk.ApplicationWindow):
                 if i + 1 in App().patch.channels:
                     break
             child = self.channels_view.flowbox.get_child_at_index(i)
+            self.set_focus(child)
             self.channels_view.flowbox.select_child(child)
             self.last_chan_selected = str(i)
         else:
@@ -266,6 +273,7 @@ class Window(Gtk.ApplicationWindow):
             ):
                 self.channels_view.flowbox.unselect_all()
                 index = child.get_index()
+                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(index)
 
@@ -299,6 +307,7 @@ class Window(Gtk.ApplicationWindow):
             channel = int(self.keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.channels_view.flowbox.get_child_at_index(channel)
+                self.set_focus(child)
                 self.channels_view.flowbox.select_child(child)
                 self.last_chan_selected = str(channel)
 

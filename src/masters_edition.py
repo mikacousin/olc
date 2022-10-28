@@ -788,7 +788,7 @@ class MastersTab(Gtk.Paned):
                         grp.channels[chan] = self.channels[chan].level
                     # Update Group Tab if open
                     if App().group_tab:
-                        App().group_tab.flowbox1.invalidate_filter()
+                        App().group_tab.channels_view.flowbox.invalidate_filter()
 
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)

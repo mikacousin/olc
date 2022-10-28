@@ -139,12 +139,12 @@ class Ascii:
         # Redraw Group Tab if exist
         if App().group_tab:
             # Remove Old Groups
-            App().group_tab.scrolled2.remove(App().group_tab.flowbox2)
-            App().group_tab.flowbox2.destroy()
+            App().group_tab.scrolled.remove(App().group_tab.flowbox)
+            App().group_tab.flowbox.destroy()
             # Update Group tab
             App().group_tab.populate_tab()
-            App().group_tab.flowbox1.invalidate_filter()
-            App().group_tab.flowbox2.invalidate_filter()
+            App().group_tab.channels_view.flowbox.invalidate_filter()
+            App().group_tab.flowbox.invalidate_filter()
             App().window.show_all()
 
         # Redraw Sequences Tab if exist
@@ -225,5 +225,4 @@ class Ascii:
 
         App().window.channels_view.flowbox.unselect_all()
         App().window.channels_view.flowbox.invalidate_filter()
-        App().window.channels_view.grab_focus()
         App().window.last_chan_selected = ""

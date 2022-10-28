@@ -178,3 +178,25 @@ class PatchDmx:
             del self.channels[channel]
         index = self.universes.index(univ)
         App().dmx.frame[index][output - 1] = 0
+
+    def get_first_patched_channel(self) -> int:
+        """Return first patched channel
+
+        Returns:
+            Channel number (1-MAX_CHANNELS)
+        """
+        for channel in range(MAX_CHANNELS):
+            if channel + 1 in self.channels:
+                break
+        return channel + 1
+
+    def get_last_patched_channel(self) -> int:
+        """Return last patched channel
+
+        Returns:
+            Channel number (1-MAX_CHANNELS)
+        """
+        for channel in range(MAX_CHANNELS, 0, -1):
+            if channel in self.channels:
+                break
+        return channel
