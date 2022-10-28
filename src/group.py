@@ -134,6 +134,7 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(0)
             if child:
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
@@ -142,6 +143,7 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(int(self.last_group_selected) + 1)
             if child:
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
                 self.last_group_selected = str(int(self.last_group_selected) + 1)
@@ -154,6 +156,7 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(0)
             if child:
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
@@ -161,6 +164,7 @@ class GroupTab(Gtk.Paned):
         elif int(self.last_group_selected) > 0:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected) - 1)
             self.flowbox.select_child(child)
+            App().window.set_focus(child)
             self.channels_view.flowbox.unselect_all()
             self.channels_view.flowbox.invalidate_filter()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
@@ -173,6 +177,7 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(0)
             if child:
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
@@ -186,6 +191,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
                 self.last_group_selected = str(index)
@@ -198,6 +204,7 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(0)
             if child:
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
@@ -211,6 +218,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
+                App().window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.flowbox.invalidate_filter()
                 self.last_group_selected = str(index)
@@ -230,6 +238,7 @@ class GroupTab(Gtk.Paned):
                     index = flowbox_child.get_index()
                     child = self.flowbox.get_child_at_index(index)
                     self.flowbox.select_child(child)
+                    App().window.set_focus(child)
                     self.last_group_selected = str(index)
                     break
         # Deselect all channels
@@ -383,8 +392,12 @@ class GroupTab(Gtk.Paned):
         )
         self.channels_view.flowbox.unselect_all()
         self.channels_view.flowbox.invalidate_filter()
-        self.flowbox.invalidate_filter()
-        App().window.show_all()
+        flowboxchild = self.flowbox.get_child_at_index(i)
+        flowboxchild.show_all()
+        self.flowbox.select_child(flowboxchild)
+        App().window.set_focus(flowboxchild)
+        self.last_group_selected = str(i)
+        self.get_parent().grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -392,11 +405,12 @@ class GroupTab(Gtk.Paned):
 
 class GroupChannelsView(ChannelsView):
     """Channels View"""
+
     def __init__(self):
         super().__init__()
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
-        """Display only channels group
+        """Select channels to display
 
         Args:
             child: Parent of Channel Widget
@@ -404,55 +418,90 @@ class GroupChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_children()[0]
         # Find selected group
-        group_selected = None
+        selected_group = None
         if App().group_tab:
-            group_selected = App().group_tab.flowbox.get_selected_children()
-        # Display active channels
-        if self.view_mode == VIEW_MODES["Active"]:
-            if group_selected:
-                group_number = group_selected[0].get_children()[0].number
-                for group in App().groups:
-                    if group.index == group_number:
-                        if group.channels[channel_index] or child.is_selected():
-                            channel_widget.level = group.channels[channel_index]
-                            channel_widget.next_level = channel_widget.level
-                            child.set_visible(True)
-                            return True
-                        child.set_visible(False)
-                        return False
-            return False
-        # Display patched channels
-        if self.view_mode == VIEW_MODES["Patched"]:
-            if group_selected:
-                group_number = group_selected[0].get_children()[0].number
-                for group in App().groups:
-                    if group.index == group_number:
-                        if channel_index + 1 in App().patch.channels:
-                            if group.channels[channel_index] or child.is_selected():
-                                channel_widget.level = group.channels[channel_index]
-                                channel_widget.next_level = channel_widget.level
-                            else:
-                                channel_widget.level = 0
-                                channel_widget.next_level = channel_widget.level
-                            child.set_visible(True)
-                            return True
-                        child.set_visible(False)
-                        return False
-            return False
-        # Display all channels by default
-        if group_selected:
-            group_number = group_selected[0].get_children()[0].number
+            selected_group = App().group_tab.flowbox.get_selected_children()
+        if selected_group:
+            group_number = selected_group[0].get_children()[0].number
+            group = None
             for group in App().groups:
                 if group.index == group_number:
-                    if group.channels[channel_index] or child.is_selected():
-                        channel_widget.level = group.channels[channel_index]
-                        channel_widget.next_level = channel_widget.level
-                    else:
-                        channel_widget.level = 0
-                        channel_widget.next_level = channel_widget.level
+                    break
+            if not group:
+                child.set_visible(False)
+                return False
+            # Display active channels
+            if self.view_mode == VIEW_MODES["Active"]:
+                return self.__filter_active(group, child)
+            # Display patched channels
+            if self.view_mode == VIEW_MODES["Patched"]:
+                return self.__filter_patched(group, child)
+            # Display all channels by default
+            return self.__filter_all(group, child)
+        child.set_visible(False)
+        return False
+
+    def __filter_all(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display all channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel_index = child.get_index()  # Widget number (channel - 1)
+        channel_widget = child.get_children()[0]
+        if group.channels[channel_index] or child.is_selected():
+            channel_widget.level = group.channels[channel_index]
+            channel_widget.next_level = channel_widget.level
+        else:
+            channel_widget.level = 0
+            channel_widget.next_level = channel_widget.level
+        child.set_visible(True)
+        return True
+
+    def __filter_active(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display only active channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel_index = child.get_index()  # Widget number (channel - 1)
+        channel_widget = child.get_children()[0]
+        if group.channels[channel_index] or child.is_selected():
+            channel_widget.level = group.channels[channel_index]
+            channel_widget.next_level = channel_widget.level
+            child.set_visible(True)
+            return True
+        child.set_visible(False)
+        return False
+
+    def __filter_patched(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display only patched channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel_index = child.get_index()  # Widget number (channel - 1)
+        channel_widget = child.get_children()[0]
+        if channel_index + 1 in App().patch.channels:
+            if group.channels[channel_index] or child.is_selected():
+                channel_widget.level = group.channels[channel_index]
+                channel_widget.next_level = channel_widget.level
+            else:
+                channel_widget.level = 0
+                channel_widget.next_level = channel_widget.level
             child.set_visible(True)
             return True
         child.set_visible(False)
