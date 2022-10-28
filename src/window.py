@@ -119,7 +119,7 @@ class Window(Gtk.ApplicationWindow):
             widget = (
                 App()
                 .window.channels_view.flowbox.get_child_at_index(channel)
-                .get_children()[0]
+                .get_child()
             )
             widget.level = level
             widget.next_level = next_level
@@ -334,17 +334,15 @@ class Window(Gtk.ApplicationWindow):
         sel = self.channels_view.flowbox.get_selected_children()
         if len(sel) == 1:
             flowboxchild = sel[0]
-            channelwidget = flowboxchild.get_children()[0]
+            channelwidget = flowboxchild.get_child()
             self.last_chan_selected = channelwidget.channel
 
         if not self.last_chan_selected:
             sel = self.channels_view.flowbox.get_selected_children()
             if len(sel) > 0:
                 for flowboxchild in sel:
-                    children = flowboxchild.get_children()
-
-                    for channelwidget in children:
-                        channel = int(channelwidget.channel)
+                    channelwidget = flowboxchild.get_child()
+                    channel = int(channelwidget.channel)
                 self.last_chan_selected = str(channel)
 
         if self.last_chan_selected:
@@ -425,16 +423,14 @@ class Window(Gtk.ApplicationWindow):
         sel = self.channels_view.flowbox.get_selected_children()
 
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-
-            for channelwidget in children:
-                channel = int(channelwidget.channel)
-                for output in App().patch.channels[channel]:
-                    out = output[0]
-                    univ = output[1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][out - 1]
-                    App().dmx.user[channel - 1] = min(level + lvl, 255)
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel)
+            for output in App().patch.channels[channel]:
+                out = output[0]
+                univ = output[1]
+                index = App().universes.index(univ)
+                level = App().dmx.frame[index][out - 1]
+                App().dmx.user[channel - 1] = min(level + lvl, 255)
 
     def _keypress_colon(self):
         """Level - (% level) of selected channels"""
@@ -445,16 +441,14 @@ class Window(Gtk.ApplicationWindow):
         sel = self.channels_view.flowbox.get_selected_children()
 
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-
-            for channelwidget in children:
-                channel = int(channelwidget.channel)
-                for output in App().patch.channels[channel]:
-                    out = output[0]
-                    univ = output[1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][out - 1]
-                    App().dmx.user[channel - 1] = max(level - lvl, 0)
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel)
+            for output in App().patch.channels[channel]:
+                out = output[0]
+                univ = output[1]
+                index = App().universes.index(univ)
+                level = App().dmx.frame[index][out - 1]
+                App().dmx.user[channel - 1] = max(level - lvl, 0)
 
     def _keypress_KP_Enter(self):  # pylint: disable=C0103
         """@ Level"""
@@ -470,16 +464,13 @@ class Window(Gtk.ApplicationWindow):
         sel = self.channels_view.flowbox.get_selected_children()
 
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-
-            for channelwidget in children:
-                channel = int(channelwidget.channel) - 1
-
-                if App().settings.get_boolean("percent"):
-                    if 0 <= level <= 100:
-                        App().dmx.user[channel] = int(round((level / 100) * 255))
-                elif 0 <= level <= 255:
-                    App().dmx.user[channel] = level
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel) - 1
+            if App().settings.get_boolean("percent"):
+                if 0 <= level <= 100:
+                    App().dmx.user[channel] = int(round((level / 100) * 255))
+            elif 0 <= level <= 255:
+                App().dmx.user[channel] = level
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)

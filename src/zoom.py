@@ -33,12 +33,12 @@ def zoom(widget, event):
         (scroll, direction) = event.get_scroll_direction()
         if scroll and direction == Gdk.ScrollDirection.UP:
             for flowboxchild in widget.get_children():
-                for child in flowboxchild.get_children():
-                    if child.scale < 2:
-                        child.scale += 0.01
+                child = flowboxchild.get_child()
+                if child.scale < 2:
+                    child.scale += 0.01
         if scroll and direction == Gdk.ScrollDirection.DOWN:
             for flowboxchild in widget.get_children():
-                for child in flowboxchild.get_children():
-                    if child.scale >= 1.01:
-                        child.scale -= 0.01
+                child = flowboxchild.get_child()
+                if child.scale >= 1.01:
+                    child.scale -= 0.01
         widget.queue_draw()

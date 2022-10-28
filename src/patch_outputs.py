@@ -58,6 +58,7 @@ class PatchOutputsTab(Gtk.Box):
         for output in self.outputs:
             self.flowbox.add(output)
 
+        # Set name for CSS style
         for child in self.flowbox.get_children():
             child.set_name("flowbox_outputs")
 
@@ -96,7 +97,7 @@ class PatchOutputsTab(Gtk.Box):
                     widget = (
                         App()
                         .window.channels_view.flowbox.get_child_at_index(channel)
-                        .get_children()[0]
+                        .get_child()
                     )
                     widget.level = level
                     widget.queue_draw()
@@ -341,39 +342,38 @@ class PatchOutputsTab(Gtk.Box):
             Output (1-512) and Widget index (1-NB_UNIVERSES*512)
         """
         for i, flowboxchild in enumerate(sel):
-            children = flowboxchild.get_children()
-            for patchwidget in children:
-                output = patchwidget.output
-                univ = patchwidget.universe
-                index = App().universes.index(univ)
-                # Unpatch if no entry
-                if self.keystring in ["", "0"]:
-                    if (
-                        univ in App().patch.outputs
-                        and output in App().patch.outputs[univ]
-                    ):
-                        channel = App().patch.outputs[univ][output][0]
-                        App().patch.unpatch(channel, output, univ)
-                    else:
-                        channel = 0
-                # Patch
+            patchwidget = flowboxchild.get_child()
+            output = patchwidget.output
+            univ = patchwidget.universe
+            index = App().universes.index(univ)
+            # Unpatch if no entry
+            if self.keystring in ["", "0"]:
+                if (
+                    univ in App().patch.outputs
+                    and output in App().patch.outputs[univ]
+                ):
+                    channel = App().patch.outputs[univ][output][0]
+                    App().patch.unpatch(channel, output, univ)
                 else:
-                    channel = int(self.keystring)
-                    if 0 < channel <= MAX_CHANNELS:
-                        self.__patch(channel, patchwidget, several, i)
-                # Update outputs view
-                self.outputs[output - 1 + (512 * index)].queue_draw()
-                # Update channels view
+                    channel = 0
+            # Patch
+            else:
+                channel = int(self.keystring)
                 if 0 < channel <= MAX_CHANNELS:
-                    level = App().dmx.frame[index][output - 1]
-                    widget = (
-                        App()
-                        .window.channels_view.flowbox.get_child_at_index(channel - 1)
-                        .get_children()[0]
-                    )
-                    widget.level = level
-                    widget.queue_draw()
-                    App().window.channels_view.flowbox.invalidate_filter()
+                    self.__patch(channel, patchwidget, several, i)
+            # Update outputs view
+            self.outputs[output - 1 + (512 * index)].queue_draw()
+            # Update channels view
+            if 0 < channel <= MAX_CHANNELS:
+                level = App().dmx.frame[index][output - 1]
+                widget = (
+                    App()
+                    .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                    .get_child()
+                )
+                widget.level = level
+                widget.queue_draw()
+                App().window.channels_view.flowbox.invalidate_filter()
         return output, index
 
     def __patch(self, channel, patchwidget, several, i):
@@ -397,21 +397,19 @@ class PatchOutputsTab(Gtk.Box):
     def _keypress_exclam(self):
         """Proportional level +"""
         sel = self.flowbox.get_selected_children()
-        children = []
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-            for patchwidget in children:
-                output = patchwidget.output
-                univ = patchwidget.universe
-                if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
-                    output
-                ):
-                    App().patch.outputs[univ][output][1] += 1
-                    App().patch.outputs[univ][output][1] = min(
-                        App().patch.outputs[univ][output][1], 100
-                    )
-                index = App().universes.index(univ)
-                self.outputs[output - 1 + (512 * index)].queue_draw()
+            patchwidget = flowboxchild.get_child()
+            output = patchwidget.output
+            univ = patchwidget.universe
+            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
+                output
+            ):
+                App().patch.outputs[univ][output][1] += 1
+                App().patch.outputs[univ][output][1] = min(
+                    App().patch.outputs[univ][output][1], 100
+                )
+            index = App().universes.index(univ)
+            self.outputs[output - 1 + (512 * index)].queue_draw()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -419,21 +417,19 @@ class PatchOutputsTab(Gtk.Box):
     def _keypress_colon(self):
         """Proportional level -"""
         sel = self.flowbox.get_selected_children()
-        children = []
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-            for patchwidget in children:
-                output = patchwidget.output
-                univ = patchwidget.universe
-                if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
-                    output
-                ):
-                    App().patch.outputs[univ][output][1] -= 1
-                    App().patch.outputs[univ][output][1] = max(
-                        App().patch.outputs[univ][output][1], 0
-                    )
-                index = App().universes.index(univ)
-                self.outputs[output - 1 + (512 * index)].queue_draw()
+            patchwidget = flowboxchild.get_child()
+            output = patchwidget.output
+            univ = patchwidget.universe
+            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
+                output
+            ):
+                App().patch.outputs[univ][output][1] -= 1
+                App().patch.outputs[univ][output][1] = max(
+                    App().patch.outputs[univ][output][1], 0
+                )
+            index = App().universes.index(univ)
+            self.outputs[output - 1 + (512 * index)].queue_draw()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

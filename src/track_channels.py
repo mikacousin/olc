@@ -42,11 +42,10 @@ class TrackChannelsTab(Gtk.Grid):
         self.channels = []
         sel = App().window.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-            for channelwidget in children:
-                channel = int(channelwidget.channel)
-                if channel in App().patch.channels:
-                    self.channels.append(channel - 1)
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel)
+            if channel in App().patch.channels:
+                self.channels.append(channel - 1)
 
         self.populate_steps()
 
@@ -100,11 +99,10 @@ class TrackChannelsTab(Gtk.Grid):
         self.channels = []
         sel = App().window.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-            for channelwidget in children:
-                channel = int(channelwidget.channel)
-                if channel in App().patch.channels:
-                    self.channels.append(channel - 1)
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel)
+            if channel in App().patch.channels:
+                self.channels.append(channel - 1)
         self.channel_selected = 0
         # Update Track Channels Tab
         self.steps[0].channels = self.channels
@@ -181,11 +179,10 @@ class TrackChannelsTab(Gtk.Grid):
         else:
             sel = self.flowbox.get_selected_children()
             for flowboxchild in sel:
-                children = flowboxchild.get_children()
-                for widget in children:
-                    if self.channel_selected + 1 < len(widget.levels):
-                        self.channel_selected += 1
-                        widget.queue_draw()
+                widget = flowboxchild.get_child()
+                if self.channel_selected + 1 < len(widget.levels):
+                    self.channel_selected += 1
+                    widget.queue_draw()
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Channel"""
@@ -197,11 +194,10 @@ class TrackChannelsTab(Gtk.Grid):
         else:
             sel = self.flowbox.get_selected_children()
             for flowboxchild in sel:
-                children = flowboxchild.get_children()
-                for widget in children:
-                    if self.channel_selected > 0:
-                        self.channel_selected -= 1
-                        widget.queue_draw()
+                widget = flowboxchild.get_child()
+                if self.channel_selected > 0:
+                    self.channel_selected -= 1
+                    widget.queue_draw()
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Next Step"""
@@ -237,18 +233,17 @@ class TrackChannelsTab(Gtk.Grid):
         # Find selected Channel
         sel = self.flowbox.get_selected_children()
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-            for widget in children:
-                step = widget.step
-                channel = self.channels[self.channel_selected]
-                level = int(self.keystring)
+            widget = flowboxchild.get_child()
+            step = widget.step
+            channel = self.channels[self.channel_selected]
+            level = int(self.keystring)
 
-                if App().settings.get_boolean("percent"):
-                    level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
-                if 0 <= level <= 255:
-                    App().sequence.steps[step].cue.channels[channel] = level
-                    widget.levels[self.channel_selected] = level
-                    widget.queue_draw()
+            if App().settings.get_boolean("percent"):
+                level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
+            if 0 <= level <= 255:
+                App().sequence.steps[step].cue.channels[channel] = level
+                widget.levels[self.channel_selected] = level
+                widget.queue_draw()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -281,16 +276,15 @@ class TrackChannelsTab(Gtk.Grid):
 
         if len(sel) == 1:
             flowboxchild = sel[0]
-            channelwidget = flowboxchild.get_children()[0]
+            channelwidget = flowboxchild.get_child()
             App().window.last_chan_selected = channelwidget.channel
 
         if not App().window.last_chan_selected:
             sel = App().window.channels_view.flowbox.get_selected_children()
             if len(sel) > 0:
                 for flowboxchild in sel:
-                    children = flowboxchild.get_children()
-                    for channelwidget in children:
-                        channel = int(channelwidget.channel)
+                    channelwidget = flowboxchild.get_child()
+                    channel = int(channelwidget.channel)
                 App().window.last_chan_selected = str(channel)
 
         if App().window.last_chan_selected:

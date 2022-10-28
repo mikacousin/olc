@@ -69,7 +69,7 @@ def update_channels(position):
         widget = (
             App()
             .window.channels_view.flowbox.get_child_at_index(channel)
-            .get_children()[0]
+            .get_child()
         )
         widget.next_level = next_level
         widget.queue_draw()

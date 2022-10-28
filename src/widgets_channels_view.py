@@ -333,7 +333,7 @@ class ChannelsView(Gtk.Box):
         self.flowbox.unselect_all()
         for channel_index in range(MAX_CHANNELS):
             flowboxchild = self.flowbox.get_child_at_index(channel_index)
-            channel_widget = flowboxchild.get_children()[0]
+            channel_widget = flowboxchild.get_child()
             level = channel_widget.level
             if level:
                 self.flowbox.select_child(flowboxchild)
@@ -396,7 +396,7 @@ class ChannelsView(Gtk.Box):
         channels = []
         selected = self.flowbox.get_selected_children()
         for flowboxchild in selected:
-            channel = int(flowboxchild.get_children()[0].channel)
+            channel = int(flowboxchild.get_child().channel)
             channels.append(channel)
         return channels
 

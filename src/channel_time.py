@@ -504,25 +504,19 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _keypress_Insert(self):  # pylint: disable=C0103
         """Add Channel Time"""
-
         # Find selected channels
         sel = self.flowbox.get_selected_children()
-
         for flowboxchild in sel:
-            children = flowboxchild.get_children()
-
-            for channelwidget in children:
-                channel = int(channelwidget.channel)
-
-                # If not already exist
-                if channel not in self.step.channel_time:
-                    # Add Channel Time
-                    delay = 0.0
-                    time = 0.0
-                    self.step.channel_time[channel] = ChannelTime(delay, time)
-
-                    # Update ui
-                    self.liststore.append([channel, "", ""])
-                    path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
-                    self.treeview.set_cursor(path)
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel)
+            # If not already exist
+            if channel not in self.step.channel_time:
+                # Add Channel Time
+                delay = 0.0
+                time = 0.0
+                self.step.channel_time[channel] = ChannelTime(delay, time)
+                # Update ui
+                self.liststore.append([channel, "", ""])
+                path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
+                self.treeview.set_cursor(path)
         self.get_parent().grab_focus()

@@ -505,7 +505,7 @@ class MastersTab(Gtk.Paned):
             selected_children = self.flowbox.get_selected_children()
             if len(selected_children) == 1:
                 flowboxchild = selected_children[0]
-                channelwidget = flowboxchild.get_children()[0]
+                channelwidget = flowboxchild.get_child()
                 self.last_chan_selected = channelwidget.channel
 
             if self.last_chan_selected:
@@ -656,15 +656,12 @@ class MastersTab(Gtk.Paned):
             selected_children = self.flowbox.get_selected_children()
 
             for flowboxchild in selected_children:
-                child = flowboxchild.get_children()
-
-                for channelwidget in child:
-                    channel = int(channelwidget.channel) - 1
-
-                    self.channels[channel].level = level
-                    self.channels[channel].next_level = level
-                    self.channels[channel].queue_draw()
-                    self.user_channels[channel] = level
+                channelwidget = flowboxchild.get_child()
+                channel = int(channelwidget.channel) - 1
+                self.channels[channel].level = level
+                self.channels[channel].next_level = level
+                self.channels[channel].queue_draw()
+                self.user_channels[channel] = level
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -679,18 +676,14 @@ class MastersTab(Gtk.Paned):
         selected_children = self.flowbox.get_selected_children()
 
         for flowboxchild in selected_children:
-            child = flowboxchild.get_children()
-
-            for channelwidget in child:
-                channel = int(channelwidget.channel) - 1
-
-                level = self.channels[channel].level
-
-                level = max(level - lvl, 0)
-                self.channels[channel].level = level
-                self.channels[channel].next_level = level
-                self.channels[channel].queue_draw()
-                self.user_channels[channel] = level
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel) - 1
+            level = self.channels[channel].level
+            level = max(level - lvl, 0)
+            self.channels[channel].level = level
+            self.channels[channel].next_level = level
+            self.channels[channel].queue_draw()
+            self.user_channels[channel] = level
 
     def _keypress_exclam(self):
         """Level + %"""
@@ -702,18 +695,14 @@ class MastersTab(Gtk.Paned):
         selected_children = self.flowbox.get_selected_children()
 
         for flowboxchild in selected_children:
-            child = flowboxchild.get_children()
-
-            for channelwidget in child:
-                channel = int(channelwidget.channel) - 1
-
-                level = self.channels[channel].level
-
-                level = min(level + lvl, 255)
-                self.channels[channel].level = level
-                self.channels[channel].next_level = level
-                self.channels[channel].queue_draw()
-                self.user_channels[channel] = level
+            channelwidget = flowboxchild.get_child()
+            channel = int(channelwidget.channel) - 1
+            level = self.channels[channel].level
+            level = min(level + lvl, 255)
+            self.channels[channel].level = level
+            self.channels[channel].next_level = level
+            self.channels[channel].queue_draw()
+            self.user_channels[channel] = level
 
     def _keypress_U(self):  # pylint: disable=C0103
         self._keypress_R()

@@ -55,7 +55,7 @@ class Dmx(threading.Thread):
                 widget = (
                     App()
                     .window.channels_view.flowbox.get_child_at_index(channel - 1)
-                    .get_children()[0]
+                    .get_child()
                 )
                 widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
                 if not App().sequence.on_go and self.user[channel - 1] != -1:

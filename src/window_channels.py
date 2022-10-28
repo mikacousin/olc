@@ -71,7 +71,7 @@ class LiveView(Gtk.Notebook):
             next_level: Channel next level (from 0 to 255)
         """
         # Get ChannelWidget (child of FlowBoxChild in a FlowBox)
-        widget = self.flowbox.get_child_at_index(channel).get_children()[0]
+        widget = self.flowbox.get_child_at_index(channel).get_child()
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()
