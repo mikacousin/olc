@@ -49,7 +49,7 @@ class ChannelWidget(Gtk.Widget):
         flowbox = flowboxchild.get_parent()
 
         if (
-            flowbox is App().window.channels_view.flowbox
+            flowbox is App().window.live_view.channels_view.flowbox
             and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
         ):
             App().window.keystring = self.channel
@@ -60,7 +60,10 @@ class ChannelWidget(Gtk.Widget):
             flowbox.select_child(flowboxchild)
             App().window.last_chan_selected = self.channel
         # If Main channels view, update Track Channels if opened
-        if flowbox is App().window.channels_view.flowbox and App().track_channels_tab:
+        if (
+            flowbox is App().window.live_view.channels_view.flowbox
+            and App().track_channels_tab
+        ):
             App().track_channels_tab.update_display()
 
     def do_draw(self, cr):

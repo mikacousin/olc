@@ -426,7 +426,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.add(self.grid)
 
         # Send keyboard events to a dispatch function
-        self.connect("key_press_event", App().window.channels_view.on_key_press_event)
+        self.connect("key_press_event", App().window.live_view.on_key_press_event)
 
     def close(self, _widget, _param):
         """Mark Window as closed
@@ -1006,7 +1006,7 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.midi_learn:
             return
         # For each selected channels
-        sel = App().window.channels_view.flowbox.get_selected_children()
+        sel = App().window.live_view.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
             channelwidget = flowboxchild.get_child()
             channel = int(channelwidget.channel)

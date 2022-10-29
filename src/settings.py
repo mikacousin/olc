@@ -305,7 +305,7 @@ class SettingsDialog:
         App().settings.set_value("percent", GLib.Variant("b", state))
 
         # Force redraw of main window
-        App().window.channels_view.flowbox.invalidate_filter()
+        App().window.live_view.channels_view.flowbox.invalidate_filter()
 
         # Redraw Sequences Tab if open
         if App().sequences_tab:

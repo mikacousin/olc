@@ -1053,7 +1053,9 @@ class SequenceTab(Gtk.Grid):
                     for channel in range(MAX_CHANNELS):
                         widget = (
                             App()
-                            .window.channels_view.flowbox.get_child_at_index(channel)
+                            .window.live_view.channels_view.flowbox.get_child_at_index(
+                                channel
+                            )
                             .get_child()
                         )
                         widget.next_level = self.seq.steps[step].cue.channels[channel]
@@ -1203,7 +1205,9 @@ class SequenceTab(Gtk.Grid):
                     for channel in range(MAX_CHANNELS):
                         widget = (
                             App()
-                            .window.channels_view.flowbox.get_child_at_index(channel)
+                            .window.live_view.channels_view.flowbox.get_child_at_index(
+                                channel
+                            )
                             .get_child()
                         )
                         widget.next_level = self.channels[channel].level

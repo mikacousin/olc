@@ -74,7 +74,7 @@ class OlaThread(threading.Thread):
                 next_level = level
             # Display new levels
             GLib.idle_add(
-                App().window.channels_view.update_channel_widget,
+                App().window.live_view.update_channel_widget,
                 channel,
                 level,
                 next_level,
@@ -83,6 +83,6 @@ class OlaThread(threading.Thread):
                 GLib.idle_add(
                     App().patch_outputs_tab.outputs[output + (idx * 512)].queue_draw
                 )
-        GLib.idle_add(App().window.channels_view.flowbox.invalidate_filter)
+        GLib.idle_add(App().window.live_view.channels_view.flowbox.invalidate_filter)
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe

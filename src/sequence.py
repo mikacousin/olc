@@ -68,7 +68,7 @@ def update_channels(position):
             next_level = level
         widget = (
             App()
-            .window.channels_view.flowbox.get_child_at_index(channel)
+            .window.live_view.channels_view.flowbox.get_child_at_index(channel)
             .get_child()
         )
         widget.next_level = next_level

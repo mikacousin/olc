@@ -255,12 +255,12 @@ class PatchChannelsTab(Gtk.Box):
             level = App().dmx.frame[index][output]
             widget = (
                 App()
-                .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                .window.live_view.channels_view.flowbox.get_child_at_index(channel - 1)
                 .get_child()
             )
             widget.level = level
             widget.queue_draw()
-            App().window.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.flowbox.invalidate_filter()
 
         # Select next channel
         if sel and channel < MAX_CHANNELS:
@@ -314,11 +314,13 @@ class PatchChannelsTab(Gtk.Box):
                 # Update list of channels
                 widget = (
                     App()
-                    .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                    .window.live_view.channels_view.flowbox.get_child_at_index(
+                        channel - 1
+                    )
                     .get_child()
                 )
                 widget.queue_draw()
-                App().window.channels_view.flowbox.invalidate_filter()
+                App().window.live_view.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -354,11 +356,11 @@ class PatchChannelsTab(Gtk.Box):
             # Update list of channels
             widget = (
                 App()
-                .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                .window.live_view.channels_view.flowbox.get_child_at_index(channel - 1)
                 .get_child()
             )
             widget.queue_draw()
-            App().window.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.flowbox.invalidate_filter()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

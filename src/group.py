@@ -112,6 +112,11 @@ class GroupTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
+        # Channels View
+        self.last_chan_selected, self.keystring = self.channels_view.on_key_press(
+            keyname, self.last_chan_selected, self.keystring
+        )
+
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
@@ -247,67 +252,6 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.last_chan_selected = ""
 
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_f(self):
-        """Change display mode"""
-        self.channels_view.toggle_view_mode()
-        self.get_parent().grab_focus()
-
-    def _keypress_Page_Up(self):  # pylint: disable=C0103
-        """Next Channel"""
-        self.last_chan_selected = self.channels_view.select_next(
-            self.last_chan_selected
-        )
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_Page_Down(self):  # pylint: disable=C0103
-        """Previous Channel"""
-        self.last_chan_selected = self.channels_view.select_previous(
-            self.last_chan_selected
-        )
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_a(self):
-        """All Channels"""
-        self.channels_view.select_all()
-        self.get_parent().grab_focus()
-
-    def _keypress_c(self):
-        """Channel"""
-        self.last_chan_selected = self.channels_view.select_channel(self.keystring)
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_KP_Divide(self):  # pylint: disable=C0103
-        self._keypress_greater()
-
-    def _keypress_greater(self):
-        """Channel Thru"""
-        self.last_chan_selected = self.channels_view.select_thru(
-            self.keystring, self.last_chan_selected
-        )
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_plus(self):
-        """Channel +"""
-        self.last_chan_selected = self.channels_view.select_plus(self.keystring)
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_minus(self):
-        """Channel -"""
-        self.last_chan_selected = self.channels_view.select_minus(self.keystring)
         self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

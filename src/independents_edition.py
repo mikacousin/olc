@@ -384,7 +384,7 @@ class IndependentsTab(Gtk.Paned):
             App().independents.independents[number - 1].set_levels(channels)
             App().independents.update_channels()
             App().independents.independents[number - 1].update_dmx()
-            App().window.channels_view.flowbox.queue_draw()
+            App().window.live_view.channels_view.flowbox.queue_draw()
             self.queue_draw()
 
             # Reset user modifications

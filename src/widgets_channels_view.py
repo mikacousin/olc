@@ -88,7 +88,9 @@ class ChannelsView(Gtk.Box):
             self.view_mode = index
             self.flowbox.invalidate_filter()
         parent = self.get_parent()
-        if parent:
+        if App().window and parent in (App().window.live_view, App().window.playback):
+            parent.grab_focus()
+        elif parent:
             parent.get_parent().grab_focus()
 
     def toggle_view_mode(self) -> None:
@@ -355,12 +357,12 @@ class ChannelsView(Gtk.Box):
                 to_chan = int(keystring)
                 if to_chan > from_chan:
                     for channel in range(from_chan - 1, to_chan):
-                        if 0 < channel <= MAX_CHANNELS:
+                        if 0 <= channel < MAX_CHANNELS:
                             flowboxchild = self.flowbox.get_child_at_index(channel)
                             self.flowbox.select_child(flowboxchild)
                 else:
                     for channel in range(to_chan - 1, from_chan):
-                        if 0 < channel <= MAX_CHANNELS:
+                        if 0 <= channel < MAX_CHANNELS:
                             flowboxchild = self.flowbox.get_child_at_index(channel)
                             self.flowbox.select_child(flowboxchild)
                 if flowboxchild:
@@ -426,3 +428,175 @@ class ChannelsView(Gtk.Box):
             if child.get_visible():
                 break
         return child.get_index()
+
+    def __grab_focus(self) -> None:
+        parent = self.get_parent()
+        if App().window and parent in (App().window.live_view, App().window.playback):
+            parent.grab_focus()
+        elif parent:
+            parent.get_parent().grab_focus()
+
+    def on_key_press(self, keyname: str, last_chan: str, keystring: str) -> Any:
+        """Processes common keyboard methods of Channels View
+
+        Args:
+            keyname: Gdk Name of the pressed key
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            method or Last channel and Keystring
+        """
+        if keyname in (
+            "f",
+            "Page_Up",
+            "Page_Down",
+            "a",
+            "c",
+            "KP_Divide",
+            "greater",
+            "KP_Add",
+            "plus",
+            "KP_Subtract",
+            "minus",
+        ):
+            if func := getattr(self, "_keypress_" + keyname, None):
+                return func(last_chan, keystring)
+        return last_chan, keystring
+
+    def _keypress_f(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+        """Toggle display mode
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        self.toggle_view_mode()
+        self.__grab_focus()
+        return last_chan, keystring
+
+    def _keypress_a(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+        """All Channels
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        self.channels_view.select_all()
+        self.__grab_focus()
+        return last_chan, keystring
+
+    def _keypress_Page_Up(
+        self, last_chan: str, keystring: str
+    ) -> Tuple[str, str]:  # pylint: disable=C0103
+        """Next Channel
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        last_chan = self.select_next(last_chan)
+        self.__grab_focus()
+        keystring = ""
+        App().window.statusbar.push(App().window.context_id, keystring)
+        return last_chan, keystring
+
+    def _keypress_Page_Down(
+        self, last_chan: str, keystring: str
+    ) -> Tuple[str, str]:  # pylint: disable=C0103
+        """Previous Channel
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        last_chan = self.select_previous(last_chan)
+        self.__grab_focus()
+        keystring = ""
+        App().window.statusbar.push(App().window.context_id, keystring)
+        return last_chan, keystring
+
+    def _keypress_c(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+        """Channel
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        last_chan = self.select_channel(keystring)
+        self.__grab_focus()
+        keystring = ""
+        App().window.statusbar.push(App().window.context_id, keystring)
+        return last_chan, keystring
+
+    def _keypress_KP_Divide(self, last_chan, keystring):  # pylint: disable=C0103
+        self._keypress_greater(last_chan, keystring)
+
+    def _keypress_greater(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+        """Channel Thru
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        last_chan = self.select_thru(keystring, last_chan)
+        self.__grab_focus()
+        keystring = ""
+        App().window.statusbar.push(App().window.context_id, keystring)
+        return last_chan, keystring
+
+    def _keypress_KP_Add(self, last_chan, keystring):  # pylint: disable=C0103
+        self._keypress_plus(last_chan, keystring)
+
+    def _keypress_plus(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+        """Channel +
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        last_chan = self.select_plus(keystring)
+        self.__grab_focus()
+        keystring = ""
+        App().window.statusbar.push(App().window.context_id, keystring)
+        return last_chan, keystring
+
+    def _keypress_KP_Subtract(self, last_chan, keystring):  # pylint: disable=C0103
+        self._keypress_minus(last_chan, keystring)
+
+    def _keypress_minus(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+        """Channel -
+
+        Args:
+            last_chan: Last selected channel
+            keystring: Keys buffer
+
+        Returns:
+            Last selected channel
+        """
+        last_chan = self.select_minus(keystring)
+        self.__grab_focus()
+        keystring = ""
+        App().window.statusbar.push(App().window.context_id, keystring)
+        return last_chan, keystring

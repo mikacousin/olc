@@ -498,7 +498,7 @@ class CuesEditionTab(Gtk.Paned):
                     if i == App().sequence.position:
                         for channel in range(MAX_CHANNELS):
                             widget = (
-                                App().window.channels_view.flowbox.get_child_at_index(
+                                App().window.live_view.channels_view.flowbox.get_child_at_index(
                                     channel
                                 )
                             ).get_child()

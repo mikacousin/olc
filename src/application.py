@@ -146,7 +146,7 @@ class Application(Gtk.Application):
         self.window = Window()
         self.window.show_all()
         # No selected channel on startup
-        self.window.channels_view.flowbox.unselect_all()
+        self.window.live_view.channels_view.flowbox.unselect_all()
 
         # Maximize window on startup
         self.window.maximize()
@@ -315,9 +315,7 @@ class Application(Gtk.Application):
                     next_level = self.sequence.steps[0].cue.channels[channel]
                 else:
                     next_level = level
-                self.window.channels_view.update_channel_widget(
-                    channel, level, next_level
-                )
+                self.window.live_view.update_channel_widget(channel, level, next_level)
                 if self.patch_outputs_tab:
                     self.patch_outputs_tab.outputs[output + (512 * index)].queue_draw()
 
@@ -332,7 +330,7 @@ class Application(Gtk.Application):
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
-        self.window.channels_view.flowbox.unselect_all()
+        self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
         self.patch.patch_1on1()
         # Reset Main Playback
@@ -444,7 +442,7 @@ class Application(Gtk.Application):
             path = Gtk.TreePath.new_first()
             self.inde_tab.treeview.set_cursor(path, None, False)
 
-        self.window.channels_view.grab_focus()
+        self.window.live_view.grab_focus()
         self.window.last_chan_selected = ""
 
     def _open(self, _action, _parameter):

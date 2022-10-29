@@ -58,7 +58,7 @@ class PatchWidget(Gtk.Widget):
             App().patch_outputs_tab.last_out_selected = str(widget_index)
         else:
             # Deselect selected widgets
-            App().window.channels_view.flowbox.unselect_all()
+            App().window.live_view.channels_view.flowbox.unselect_all()
             App().patch_outputs_tab.flowbox.unselect_all()
             # Select clicked widget
             child = App().patch_outputs_tab.flowbox.get_child_at_index(widget_index)

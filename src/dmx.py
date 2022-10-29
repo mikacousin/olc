@@ -54,7 +54,9 @@ class Dmx(threading.Thread):
                 level = self.sequence[channel - 1]
                 widget = (
                     App()
-                    .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                    .window.live_view.channels_view.flowbox.get_child_at_index(
+                        channel - 1
+                    )
                     .get_child()
                 )
                 widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}

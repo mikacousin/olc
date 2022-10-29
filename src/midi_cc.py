@@ -134,7 +134,7 @@ class MidiControlChanges:
         if App().virtual_console:
             App().virtual_console.wheel.emit("moved", direction, step)
         else:
-            sel = App().window.channels_view.flowbox.get_selected_children()
+            sel = App().window.live_view.channels_view.flowbox.get_selected_children()
             for flowboxchild in sel:
                 channelwidget = flowboxchild.get_child()
                 channel = int(channelwidget.channel)

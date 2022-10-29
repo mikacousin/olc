@@ -12,10 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App
-from olc.widgets_channel import ChannelWidget
-from olc.zoom import zoom
+from gi.repository import Gtk
+from olc.define import App
+from olc.widgets_channels_view import ChannelsView, VIEW_MODES
 
 
 def on_page_added(notebook, _child, _page_num):
@@ -38,29 +37,15 @@ class LiveView(Gtk.Notebook):
         # 1 : all channels
         self.view_type = 0
 
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.channels_view = LiveChannelsView()
 
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-        self.flowbox.set_filter_func(self.filter_func, None)
-
-        for i in range(MAX_CHANNELS):
-            self.flowbox.add(ChannelWidget(i + 1, 0, 0))
-
-        scrolled.add(self.flowbox)
-
-        self.append_page(scrolled, Gtk.Label("Channels"))
-        self.set_tab_reorderable(scrolled, True)
-        self.set_tab_detachable(scrolled, True)
+        self.append_page(self.channels_view, Gtk.Label("Channels"))
+        self.set_tab_reorderable(self.channels_view, True)
+        self.set_tab_detachable(self.channels_view, True)
 
         self.connect("key_press_event", self.on_key_press_event)
         self.connect("page-added", on_page_added)
         self.connect("page-removed", on_page_added)
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
 
     def update_channel_widget(self, channel: int, level: int, next_level: int) -> None:
         """Update display of channel widget
@@ -71,7 +56,7 @@ class LiveView(Gtk.Notebook):
             next_level: Channel next level (from 0 to 255)
         """
         # Get ChannelWidget (child of FlowBoxChild in a FlowBox)
-        widget = self.flowbox.get_child_at_index(channel).get_child()
+        widget = self.channels_view.flowbox.get_child_at_index(channel).get_child()
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()
@@ -125,3 +110,29 @@ class LiveView(Gtk.Notebook):
             return App().inde_tab.on_key_press_event(widget, event)
 
         return App().window.on_key_press_event(widget, event)
+
+
+class LiveChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(self):
+        super().__init__()
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Filter channels to display
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        if self.view_mode == VIEW_MODES["Active"]:
+            channel_widget = child.get_child()
+            if channel_widget.level or child.is_selected():
+                return True
+            return False
+        if self.view_mode == VIEW_MODES["Patched"]:
+            channel = child.get_index() + 1
+            return True if channel in App().patch.channels else False
+        return True

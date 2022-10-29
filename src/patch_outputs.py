@@ -81,7 +81,7 @@ class PatchOutputsTab(Gtk.Box):
         if button_label == "Unpatch all":
             App().patch.patch_empty()
             self.flowbox.queue_draw()
-            App().window.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.flowbox.invalidate_filter()
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
@@ -96,12 +96,14 @@ class PatchOutputsTab(Gtk.Box):
                     level = App().dmx.frame[univ][channel]
                     widget = (
                         App()
-                        .window.channels_view.flowbox.get_child_at_index(channel)
+                        .window.live_view.channels_view.flowbox.get_child_at_index(
+                            channel
+                        )
                         .get_child()
                     )
                     widget.level = level
                     widget.queue_draw()
-            App().window.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.flowbox.invalidate_filter()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
@@ -348,10 +350,7 @@ class PatchOutputsTab(Gtk.Box):
             index = App().universes.index(univ)
             # Unpatch if no entry
             if self.keystring in ["", "0"]:
-                if (
-                    univ in App().patch.outputs
-                    and output in App().patch.outputs[univ]
-                ):
+                if univ in App().patch.outputs and output in App().patch.outputs[univ]:
                     channel = App().patch.outputs[univ][output][0]
                     App().patch.unpatch(channel, output, univ)
                 else:
@@ -368,12 +367,14 @@ class PatchOutputsTab(Gtk.Box):
                 level = App().dmx.frame[index][output - 1]
                 widget = (
                     App()
-                    .window.channels_view.flowbox.get_child_at_index(channel - 1)
+                    .window.live_view.channels_view.flowbox.get_child_at_index(
+                        channel - 1
+                    )
                     .get_child()
                 )
                 widget.level = level
                 widget.queue_draw()
-                App().window.channels_view.flowbox.invalidate_filter()
+                App().window.live_view.channels_view.flowbox.invalidate_filter()
         return output, index
 
     def __patch(self, channel, patchwidget, several, i):
@@ -401,9 +402,7 @@ class PatchOutputsTab(Gtk.Box):
             patchwidget = flowboxchild.get_child()
             output = patchwidget.output
             univ = patchwidget.universe
-            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
-                output
-            ):
+            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(output):
                 App().patch.outputs[univ][output][1] += 1
                 App().patch.outputs[univ][output][1] = min(
                     App().patch.outputs[univ][output][1], 100
@@ -421,9 +420,7 @@ class PatchOutputsTab(Gtk.Box):
             patchwidget = flowboxchild.get_child()
             output = patchwidget.output
             univ = patchwidget.universe
-            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
-                output
-            ):
+            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(output):
                 App().patch.outputs[univ][output][1] -= 1
                 App().patch.outputs[univ][output][1] = max(
                     App().patch.outputs[univ][output][1], 0

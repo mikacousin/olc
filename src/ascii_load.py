@@ -321,7 +321,7 @@ class AsciiParser:
                 flag_inde = False
                 flag_preset = False
                 App().patch.patch_empty()  # Empty patch
-                App().window.channels_view.flowbox.invalidate_filter()
+                App().window.live_view.channels_view.flowbox.invalidate_filter()
             if flag_patch and line[:0] == "!":
                 flag_patch = False
             if line[:7].upper() == "PATCH 1":
@@ -348,7 +348,7 @@ class AsciiParser:
                                 print(univ, ": Not a configured universe")
                         else:
                             print("More than", NB_UNIVERSES, "universes")
-                App().window.channels_view.flowbox.invalidate_filter()
+                App().window.live_view.channels_view.flowbox.invalidate_filter()
             # Presets not in sequence
             if line[:5].upper() == "GROUP" and console == "CONGO":
                 # On Congo, Preset not in sequence
