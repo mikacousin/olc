@@ -33,10 +33,6 @@ class LiveView(Gtk.Notebook):
         Gtk.Notebook.__init__(self)
         self.set_group_name("olc")
 
-        # 0 : patched channels
-        # 1 : all channels
-        self.view_type = 0
-
         self.channels_view = LiveChannelsView()
 
         self.append_page(self.channels_view, Gtk.Label("Channels"))
@@ -60,22 +56,6 @@ class LiveView(Gtk.Notebook):
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()
-
-    def filter_func(self, child, _user_data):
-        """Filter for channels window
-
-        Args:
-            child: Child object
-
-        Returns:
-            child or False
-        """
-        if self.view_type:
-            # Display all channels
-            return child
-        # Display only patched channels
-        i = child.get_index() + 1
-        return child if i in App().patch.channels else False
 
     def on_key_press_event(self, widget, event):
         """On key press event
@@ -134,5 +114,5 @@ class LiveChannelsView(ChannelsView):
             return False
         if self.view_mode == VIEW_MODES["Patched"]:
             channel = child.get_index() + 1
-            return True if channel in App().patch.channels else False
+            return channel in App().patch.channels
         return True

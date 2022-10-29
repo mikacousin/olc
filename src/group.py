@@ -273,6 +273,8 @@ class GroupTab(Gtk.Paned):
         """Level - %"""
         channels = self.channels_view.get_selected_channels()
         step_level = App().settings.get_int("percent-level")
+        if App().settings.get_boolean("percent"):
+            step_level = round((step_level / 100) * 255)
         if channels and step_level:
             selected_group = self.flowbox.get_selected_children()[0]
             index = selected_group.get_index()
@@ -289,6 +291,8 @@ class GroupTab(Gtk.Paned):
         """Level + %"""
         channels = self.channels_view.get_selected_channels()
         step_level = App().settings.get_int("percent-level")
+        if App().settings.get_boolean("percent"):
+            step_level = round((step_level / 100) * 255)
         if channels and step_level:
             selected_group = self.flowbox.get_selected_children()[0]
             index = selected_group.get_index()

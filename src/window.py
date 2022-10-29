@@ -48,13 +48,6 @@ class Window(Gtk.ApplicationWindow):
         # Grand Master viewer
         self.grand_master = GMWidget()
         box.add(self.grand_master)
-        # All/Patched channels button
-        button = Gtk.Button()
-        icon = Gio.ThemedIcon(name="view-grid-symbolic")
-        image = Gtk.Image.new_from_gicon(icon, Gtk.IconSize.BUTTON)
-        button.connect("clicked", self.button_clicked_cb)
-        button.add(image)
-        box.add(button)
         # Menu button
         button = Gtk.MenuButton()
         icon = Gio.ThemedIcon(name="open-menu-symbolic")
@@ -101,11 +94,6 @@ class Window(Gtk.ApplicationWindow):
         else:
             self.fullscreen()
             self.full = True
-
-    def button_clicked_cb(self, _button):
-        """Toggle type of view : patched channels or all channels"""
-        self.live_view.view_type = 1 if self.live_view.view_type == 0 else 0
-        self.live_view.channels_view.flowbox.invalidate_filter()
 
     def update_channels_display(self, step):
         """Update Channels levels display
@@ -171,39 +159,33 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_exclam(self):
         """Level + (% level) of selected channels"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.live_view.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
-            lvl = round((lvl / 100) * 255)
-
-        sel = self.live_view.channels_view.flowbox.get_selected_children()
-
-        for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel)
-            for output in App().patch.channels[channel]:
-                out = output[0]
-                univ = output[1]
-                index = App().universes.index(univ)
-                level = App().dmx.frame[index][out - 1]
-                App().dmx.user[channel - 1] = min(level + lvl, 255)
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                for output in App().patch.channels[channel]:
+                    out = output[0]
+                    univ = output[1]
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][out - 1]
+                    App().dmx.user[channel - 1] = min(level + step_level, 255)
 
     def _keypress_colon(self):
         """Level - (% level) of selected channels"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.live_view.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
-            lvl = round((lvl / 100) * 255)
-
-        sel = self.live_view.channels_view.flowbox.get_selected_children()
-
-        for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel)
-            for output in App().patch.channels[channel]:
-                out = output[0]
-                univ = output[1]
-                index = App().universes.index(univ)
-                level = App().dmx.frame[index][out - 1]
-                App().dmx.user[channel - 1] = max(level - lvl, 0)
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                for output in App().patch.channels[channel]:
+                    out = output[0]
+                    univ = output[1]
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][out - 1]
+                    App().dmx.user[channel - 1] = max(level - step_level, 0)
 
     def _keypress_KP_Enter(self):  # pylint: disable=C0103
         """@ Level"""
@@ -211,22 +193,10 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_equal(self):
         """@ Level"""
-        if self.keystring == "":
-            return
-
-        level = int(self.keystring)
-
-        sel = self.live_view.channels_view.flowbox.get_selected_children()
-
-        for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            if App().settings.get_boolean("percent"):
-                if 0 <= level <= 100:
-                    App().dmx.user[channel] = int(round((level / 100) * 255))
-            elif 0 <= level <= 255:
-                App().dmx.user[channel] = level
-
+        channels, level = self.live_view.channels_view.at_level(self.keystring)
+        if channels and level != -1:
+            for channel in channels:
+                App().dmx.user[channel - 1] = level
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
