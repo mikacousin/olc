@@ -366,9 +366,9 @@ class ChannelsView(Gtk.Box):
             last_chan: Last channel selected
 
         Returns:
-            Channel number or empty string
+            Channel number
         """
-        string = ""
+        string = last_chan
         if is_non_nul_int(keystring):
             if last_chan:
                 from_chan = int(last_chan)
