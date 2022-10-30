@@ -457,7 +457,6 @@ class CueChannelsView(ChannelsView):
             if self.view_mode == VIEW_MODES["Patched"]:
                 return self.__filter_patched(row, child)
             return self.__filter_all(row, child)
-        child.set_visible(False)
         return False
 
     def __filter_active(self, row, child: Gtk.FlowBoxChild) -> bool:
