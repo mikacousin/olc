@@ -253,14 +253,10 @@ class PatchChannelsTab(Gtk.Box):
             # Update list of channels
             index = App().universes.index(universe)
             level = App().dmx.frame[index][output]
-            widget = (
-                App()
-                .window.live_view.channels_view.flowbox.get_child_at_index(channel - 1)
-                .get_child()
-            )
+            widget = App().window.live_view.channels_view.get_channel_widget(channel)
             widget.level = level
             widget.queue_draw()
-            App().window.live_view.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.update()
 
         # Select next channel
         if sel and channel < MAX_CHANNELS:
@@ -312,15 +308,11 @@ class PatchChannelsTab(Gtk.Box):
                 self.channels[channel - 1].queue_draw()
 
                 # Update list of channels
-                widget = (
-                    App()
-                    .window.live_view.channels_view.flowbox.get_child_at_index(
-                        channel - 1
-                    )
-                    .get_child()
+                widget = App().window.live_view.channels_view.get_channel_widget(
+                    channel
                 )
                 widget.queue_draw()
-                App().window.live_view.channels_view.flowbox.invalidate_filter()
+                App().window.live_view.channels_view.update()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -354,13 +346,9 @@ class PatchChannelsTab(Gtk.Box):
                 self.channels[channel - 1].queue_draw()
 
             # Update list of channels
-            widget = (
-                App()
-                .window.live_view.channels_view.flowbox.get_child_at_index(channel - 1)
-                .get_child()
-            )
+            widget = App().window.live_view.channels_view.get_channel_widget(channel)
             widget.queue_draw()
-            App().window.live_view.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.update()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

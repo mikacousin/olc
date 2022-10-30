@@ -305,7 +305,7 @@ class SettingsDialog:
         App().settings.set_value("percent", GLib.Variant("b", state))
 
         # Force redraw of main window
-        App().window.live_view.channels_view.flowbox.invalidate_filter()
+        App().window.live_view.channels_view.update()
 
         # Redraw Sequences Tab if open
         if App().sequences_tab:
@@ -313,11 +313,11 @@ class SettingsDialog:
 
         # Redraw Groups Tab if exist
         if App().group_tab:
-            App().group_tab.channels_view.flowbox.invalidate_filter()
+            App().group_tab.channels_view.update()
 
         # Redraw Memories Tab if exist
         if App().memories_tab:
-            App().memories_tab.flowbox.invalidate_filter()
+            App().memories_tab.channels_view.update()
 
     def _on_btn_clicked(self, _button):
         address_ip = self.entry_client_ip.get_text()

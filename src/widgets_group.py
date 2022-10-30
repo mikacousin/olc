@@ -39,7 +39,7 @@ class GroupWidget(Gtk.Widget):
         child = self.get_parent()
         App().group_tab.flowbox.select_child(child)
         App().group_tab.last_group_selected = str(child.get_index())
-        App().group_tab.channels_view.flowbox.invalidate_filter()
+        App().group_tab.channels_view.update()
 
     def do_draw(self, cr):
         """Draw Group widget

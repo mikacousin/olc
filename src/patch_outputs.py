@@ -81,7 +81,7 @@ class PatchOutputsTab(Gtk.Box):
         if button_label == "Unpatch all":
             App().patch.patch_empty()
             self.flowbox.queue_draw()
-            App().window.live_view.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.update()
 
             for univ in range(NB_UNIVERSES):
                 for output in range(512):
@@ -94,16 +94,12 @@ class PatchOutputsTab(Gtk.Box):
             for univ in range(NB_UNIVERSES):
                 for channel in range(512):
                     level = App().dmx.frame[univ][channel]
-                    widget = (
-                        App()
-                        .window.live_view.channels_view.flowbox.get_child_at_index(
-                            channel
-                        )
-                        .get_child()
+                    widget = App().window.live_view.channels_view.get_channel_widget(
+                        channel + 1
                     )
                     widget.level = level
                     widget.queue_draw()
-            App().window.live_view.channels_view.flowbox.invalidate_filter()
+            App().window.live_view.channels_view.update()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
@@ -365,16 +361,12 @@ class PatchOutputsTab(Gtk.Box):
             # Update channels view
             if 0 < channel <= MAX_CHANNELS:
                 level = App().dmx.frame[index][output - 1]
-                widget = (
-                    App()
-                    .window.live_view.channels_view.flowbox.get_child_at_index(
-                        channel - 1
-                    )
-                    .get_child()
+                widget = App().window.live_view.channels_view.get_channel_widget(
+                    channel
                 )
                 widget.level = level
                 widget.queue_draw()
-                App().window.live_view.channels_view.flowbox.invalidate_filter()
+                App().window.live_view.channels_view.update()
         return output, index
 
     def __patch(self, channel, patchwidget, several, i):

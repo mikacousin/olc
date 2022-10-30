@@ -143,7 +143,7 @@ class Ascii:
             App().group_tab.flowbox.destroy()
             # Update Group tab
             App().group_tab.populate_tab()
-            App().group_tab.channels_view.flowbox.invalidate_filter()
+            App().group_tab.channels_view.update()
             App().group_tab.flowbox.invalidate_filter()
             App().window.show_all()
 
@@ -182,7 +182,7 @@ class Ascii:
                 App().memories_tab.liststore.append(
                     [str(mem.memory), mem.text, channels]
                 )
-            App().memories_tab.flowbox.invalidate_filter()
+            App().memories_tab.channels_view.update()
 
         # Redraw Masters if Virtual Console is open
         if App().virtual_console and App().virtual_console.props.visible:
@@ -224,5 +224,5 @@ class Ascii:
             App().track_channels_tab.update_display()
 
         App().window.live_view.channels_view.flowbox.unselect_all()
-        App().window.live_view.channels_view.flowbox.invalidate_filter()
+        App().window.live_view.channels_view.update()
         App().window.last_chan_selected = ""

@@ -1052,11 +1052,9 @@ class SequenceTab(Gtk.Grid):
                 if self.seq == App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
                         widget = (
-                            App()
-                            .window.live_view.channels_view.flowbox.get_child_at_index(
-                                channel
+                            App().window.live_view.channels_view.get_channel_widget(
+                                channel + 1
                             )
-                            .get_child()
                         )
                         widget.next_level = self.seq.steps[step].cue.channels[channel]
                         widget.queue_draw()
@@ -1198,17 +1196,15 @@ class SequenceTab(Gtk.Grid):
 
                     treeiter = App().memories_tab.liststore.get_iter(step - 1)
                     App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
-                    App().memories_tab.flowbox.invalidate_filter()
+                    App().memories_tab.channels_view.update()
 
                 # Update Channels tab
                 if self.seq is App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
                         widget = (
-                            App()
-                            .window.live_view.channels_view.flowbox.get_child_at_index(
-                                channel
+                            App().window.live_view.channels_view.get_channel_widget(
+                                channel + 1
                             )
-                            .get_child()
                         )
                         widget.next_level = self.channels[channel].level
                         widget.queue_draw()

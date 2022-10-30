@@ -367,7 +367,7 @@ class Application(Gtk.Application):
             self.group_tab.flowbox.destroy()
             # Update Group Tab
             self.group_tab.populate_tab()
-            self.group_tab.channels_view.flowbox.invalidate_filter()
+            self.group_tab.channels_view.update()
             self.group_tab.flowbox.invalidate_filter()
             self.window.show_all()
 
@@ -382,7 +382,7 @@ class Application(Gtk.Application):
                 self.memories_tab.liststore.append(
                     [str(mem.memory), mem.text, channels]
                 )
-            self.memories_tab.flowbox.invalidate_filter()
+            self.memories_tab.channels_view.update()
 
         # Redraw Masters in Virtual Console
         if self.virtual_console and self.virtual_console.props.visible:

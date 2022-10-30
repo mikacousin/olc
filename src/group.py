@@ -142,7 +142,7 @@ class GroupTab(Gtk.Paned):
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.flowbox.invalidate_filter()
         else:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected) + 1)
@@ -150,7 +150,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.last_group_selected = str(int(self.last_group_selected) + 1)
         self.get_parent().grab_focus()
         self.last_chan_selected = ""
@@ -164,14 +164,14 @@ class GroupTab(Gtk.Paned):
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.flowbox.invalidate_filter()
         elif int(self.last_group_selected) > 0:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected) - 1)
             self.flowbox.select_child(child)
             App().window.set_focus(child)
             self.channels_view.flowbox.unselect_all()
-            self.channels_view.flowbox.invalidate_filter()
+            self.channels_view.update()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
         self.get_parent().grab_focus()
         self.last_chan_selected = ""
@@ -185,7 +185,7 @@ class GroupTab(Gtk.Paned):
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.flowbox.invalidate_filter()
         else:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected))
@@ -198,7 +198,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
         self.last_chan_selected = ""
@@ -212,7 +212,7 @@ class GroupTab(Gtk.Paned):
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.flowbox.invalidate_filter()
         else:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected))
@@ -225,7 +225,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
-                self.channels_view.flowbox.invalidate_filter()
+                self.channels_view.update()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
         self.last_chan_selected = ""
@@ -248,7 +248,7 @@ class GroupTab(Gtk.Paned):
         # Deselect all channels
         self.channels_view.flowbox.unselect_all()
         # Update display
-        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.update()
         self.flowbox.invalidate_filter()
         self.last_chan_selected = ""
 
@@ -264,7 +264,7 @@ class GroupTab(Gtk.Paned):
             index = selected_group.get_index()
             for channel in channels:
                 App().groups[index].channels[channel - 1] = level
-        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.update()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -282,7 +282,7 @@ class GroupTab(Gtk.Paned):
                 level = App().groups[index].channels[channel - 1]
                 level = max(level - step_level, 0)
                 App().groups[index].channels[channel - 1] = level
-        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.update()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -300,7 +300,7 @@ class GroupTab(Gtk.Paned):
                 level = App().groups[index].channels[channel - 1]
                 level = min(level + step_level, 255)
                 App().groups[index].channels[channel - 1] = level
-        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.update()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -343,7 +343,7 @@ class GroupTab(Gtk.Paned):
         App().window.set_focus(flowboxchild)
         self.last_group_selected = str(i)
         self.channels_view.flowbox.unselect_all()
-        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.update()
         self.get_parent().grab_focus()
 
         self.keystring = ""

@@ -739,7 +739,7 @@ class MastersTab(Gtk.Paned):
                         channels[chan] = self.channels[chan].level
                     # Update Preset Tab if open
                     if App().memories_tab:
-                        App().memories_tab.flowbox.invalidate_filter()
+                        App().memories_tab.channels_view.update()
 
             # Type : Channels
             if App().masters[row].content_type == 2:
@@ -777,7 +777,7 @@ class MastersTab(Gtk.Paned):
                         grp.channels[chan] = self.channels[chan].level
                     # Update Group Tab if open
                     if App().group_tab:
-                        App().group_tab.channels_view.flowbox.invalidate_filter()
+                        App().group_tab.channels_view.update()
 
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)

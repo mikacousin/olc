@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_CHANNELS, is_non_nul_int, is_int
 from olc.widgets_channel import ChannelWidget
@@ -75,6 +75,24 @@ class ChannelsView(Gtk.Box):
             NotImplementedError: Must be implemented in subclass
         """
         raise NotImplementedError
+
+    def update(self) -> None:
+        """Update channels display"""
+        self.flowbox.invalidate_filter()
+
+    def get_channel_widget(self, channel: int) -> Optional[ChannelWidget]:
+        """Get ChannelWidget of channel number
+
+        Args:
+            channel: Channel (1-MAX_CHANNELS)
+
+        Returns:
+            Channel widget
+        """
+        if 0 < channel <= MAX_CHANNELS:
+            flowboxchild = self.flowbox.get_child_at_index(channel - 1)
+            return flowboxchild.get_child()
+        return None
 
     def on_view_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
         """Change View Mode
@@ -460,7 +478,7 @@ class ChannelsView(Gtk.Box):
             "KP_Subtract",
             "minus",
         ):
-            if func := getattr(self, "_keypress_" + keyname, None):
+            if func := getattr(self, "_keypress_" + keyname.lower(), None):
                 return func(last_chan, keystring)
         return last_chan, keystring
 
@@ -492,9 +510,7 @@ class ChannelsView(Gtk.Box):
         self.__grab_focus()
         return last_chan, keystring
 
-    def _keypress_Page_Up(
-        self, last_chan: str, keystring: str
-    ) -> Tuple[str, str]:  # pylint: disable=C0103
+    def _keypress_page_up(self, last_chan: str, keystring: str) -> Tuple[str, str]:
         """Next Channel
 
         Args:
@@ -510,9 +526,7 @@ class ChannelsView(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, keystring)
         return last_chan, keystring
 
-    def _keypress_Page_Down(
-        self, last_chan: str, keystring: str
-    ) -> Tuple[str, str]:  # pylint: disable=C0103
+    def _keypress_page_down(self, last_chan: str, keystring: str) -> Tuple[str, str]:
         """Previous Channel
 
         Args:
@@ -544,7 +558,7 @@ class ChannelsView(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, keystring)
         return last_chan, keystring
 
-    def _keypress_KP_Divide(self, last_chan, keystring):  # pylint: disable=C0103
+    def _keypress_kp_divide(self, last_chan, keystring):
         self._keypress_greater(last_chan, keystring)
 
     def _keypress_greater(self, last_chan: str, keystring: str) -> Tuple[str, str]:
@@ -563,7 +577,7 @@ class ChannelsView(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, keystring)
         return last_chan, keystring
 
-    def _keypress_KP_Add(self, last_chan, keystring):  # pylint: disable=C0103
+    def _keypress_kp_add(self, last_chan, keystring):
         self._keypress_plus(last_chan, keystring)
 
     def _keypress_plus(self, last_chan: str, keystring: str) -> Tuple[str, str]:
@@ -582,7 +596,7 @@ class ChannelsView(Gtk.Box):
         App().window.statusbar.push(App().window.context_id, keystring)
         return last_chan, keystring
 
-    def _keypress_KP_Subtract(self, last_chan, keystring):  # pylint: disable=C0103
+    def _keypress_kp_subtract(self, last_chan, keystring):
         self._keypress_minus(last_chan, keystring)
 
     def _keypress_minus(self, last_chan: str, keystring: str) -> Tuple[str, str]:

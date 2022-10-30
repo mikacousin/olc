@@ -104,9 +104,7 @@ class Window(Gtk.ApplicationWindow):
         for channel in range(MAX_CHANNELS):
             level = App().sequence.steps[step].cue.channels[channel]
             next_level = App().sequence.steps[step + 1].cue.channels[channel]
-            widget = self.live_view.channels_view.flowbox.get_child_at_index(
-                channel
-            ).get_child()
+            widget = self.live_view.channels_view.get_channel_widget(channel + 1)
             widget.level = level
             widget.next_level = next_level
             widget.queue_draw()
@@ -299,7 +297,7 @@ class Window(Gtk.ApplicationWindow):
 
                 treeiter = App().memories_tab.liststore.get_iter(i)
                 App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
-                App().memories_tab.flowbox.invalidate_filter()
+                App().memories_tab.channels_view.update()
 
         # Update Sequential edition Tabs
         if App().sequences_tab:

@@ -16,9 +16,8 @@ import array
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App, is_float, is_int, is_non_nul_int
-from olc.widgets_channel import ChannelWidget
-from olc.zoom import zoom
+from olc.define import MAX_CHANNELS, App, is_float
+from olc.widgets_channels_view import ChannelsView, VIEW_MODES
 
 
 class CuesEditionTab(Gtk.Paned):
@@ -33,27 +32,10 @@ class CuesEditionTab(Gtk.Paned):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
-        self.set_position(300)
+        self.set_position(500)
 
-        # Channels used in selected Cue
-        self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-
-        self.channels = []
-
-        for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i + 1, 0, 0))
-            self.flowbox.add(self.channels[i])
-
-        self.scrolled.add(self.flowbox)
-
-        self.add(self.scrolled)
+        self.channels_view = CueChannelsView()
+        self.add(self.channels_view)
 
         # List of Cues
         self.liststore = Gtk.ListStore(str, str, int)
@@ -83,54 +65,6 @@ class CuesEditionTab(Gtk.Paned):
 
         self.add(self.scrollable)
 
-        self.flowbox.set_filter_func(self.filter_channel_func, None)
-
-        # Select first Memory
-        path = Gtk.TreePath.new_first()
-        self.treeview.set_cursor(path, None, False)
-
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
-
-    def filter_channel_func(self, child, _user_data):
-        """Filter channels
-
-        Args:
-            child: Child object
-
-        Returns:
-            child or False
-        """
-        # If no Presets, just return
-        if not App().memories:
-            return False
-        # Find selected row
-        path, _focus_column = self.treeview.get_cursor()
-        if path:
-            row = path.get_indices()[0]
-            # Index of Channel
-            i = child.get_index()
-
-            # Cue's channels
-            channels = App().memories[row].channels
-
-            if channels[i] or self.channels[i].clicked:
-                if self.user_channels[i] == -1:
-                    self.channels[i].level = channels[i]
-                    self.channels[i].next_level = channels[i]
-                else:
-                    self.channels[i].level = self.user_channels[i]
-                    self.channels[i].next_level = self.user_channels[i]
-                return child
-            if self.user_channels[i] == -1:
-                self.channels[i].level = 0
-                self.channels[i].next_level = 0
-                return False
-            self.channels[i].level = self.user_channels[i]
-            self.channels[i].next_level = self.user_channels[i]
-            return child
-        return False
-
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
 
@@ -144,12 +78,9 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_cue_changed(self, _treeview):
         """Selected Cue"""
-        self.flowbox.unselect_all()
+        self.channels_view.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
-        self.flowbox.invalidate_filter()
+        self.channels_view.update()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
@@ -192,6 +123,11 @@ class CuesEditionTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
+        # Channels View
+        self.last_chan_selected, self.keystring = self.channels_view.on_key_press(
+            keyname, self.last_chan_selected, self.keystring
+        )
+
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
@@ -208,194 +144,51 @@ class CuesEditionTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_c(self):
-        """Channel"""
-        self.flowbox.unselect_all()
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-
-        if is_non_nul_int(self.keystring):
-            channel = int(self.keystring)
-            # Only patched channels
-            if channel in App().patch.channels:
-                self.channels[channel - 1].clicked = True
-                child = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
-        self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_KP_Divide(self):  # pylint: disable=C0103
-        self._keypress_greater()
-
-    def _keypress_greater(self):
-        """Channel Thru"""
-        if not is_non_nul_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        selected_children = self.flowbox.get_selected_children()
-        if len(selected_children) == 1:
-            flowboxchild = selected_children[0]
-            channelwidget = flowboxchild.get_child()
-            self.last_chan_selected = channelwidget.channel
-
-        if self.last_chan_selected:
-            to_chan = int(self.keystring)
-            if 0 < to_chan <= MAX_CHANNELS:
-                if to_chan > int(self.last_chan_selected):
-                    for channel in range(int(self.last_chan_selected), to_chan + 1):
-                        # Only patched channels
-                        if channel in App().patch.channels:
-                            self.channels[channel - 1].clicked = True
-                            child = self.flowbox.get_child_at_index(channel - 1)
-                            self.flowbox.select_child(child)
-                else:
-                    for channel in range(to_chan, int(self.last_chan_selected)):
-                        # Only patched channels
-                        if channel in App().patch.channels:
-                            self.channels[channel - 1].clicked = True
-                            child = self.flowbox.get_child_at_index(channel - 1)
-                            self.flowbox.select_child(child)
-                self.last_chan_selected = str(to_chan)
-                self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_plus(self):
-        """Channel +"""
-        if not is_non_nul_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = True
-            self.flowbox.invalidate_filter()
-
-            child = self.flowbox.get_child_at_index(channel - 1)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = self.keystring
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_minus(self):
-        """Channel -"""
-        if not is_non_nul_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = False
-            self.flowbox.invalidate_filter()
-
-            child = self.flowbox.get_child_at_index(channel - 1)
-            self.flowbox.unselect_child(child)
-            self.last_chan_selected = self.keystring
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_a(self):
-        """All Channels"""
-        self.flowbox.unselect_all()
-
-        # Find selected memory
-        path, _focus_column = self.treeview.get_cursor()
-        if path:
-            row = path.get_indices()[0]
-            # Memory's channels
-            channels = App().memories[row].channels
-            # Select channels with a level
-            for chan in range(MAX_CHANNELS):
-                if (
-                    channels[chan] and self.user_channels[chan] != 0
-                ) or self.user_channels[chan] > 0:
-                    self.channels[chan].clicked = True
-                    child = self.flowbox.get_child_at_index(chan)
-                    self.flowbox.select_child(child)
-                else:
-                    self.channels[chan].clicked = False
-            self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
     def _keypress_equal(self):
         """@ level"""
-        if not is_int(self.keystring):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
-            return
-
-        level = int(self.keystring)
-
-        if App().settings.get_boolean("percent"):
-            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
-
-        if 0 <= level < 256:
-            selected_children = self.flowbox.get_selected_children()
-            for flowboxchild in selected_children:
-                channelwidget = flowboxchild.get_child()
-                channel = int(channelwidget.channel) - 1
-                self.channels[channel].level = level
-                self.channels[channel].next_level = level
-                self.channels[channel].queue_draw()
-                self.user_channels[channel] = level
-
+        channels, level = self.channels_view.at_level(self.keystring)
+        if channels and level != -1:
+            for channel in channels:
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """Level - %"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
-            lvl = round((lvl / 100) * 255)
-
-        selected_children = self.flowbox.get_selected_children()
-        for flowboxchild in selected_children:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            level = self.channels[channel].level
-            level = max(level - lvl, 0)
-            self.channels[channel].level = level
-            self.channels[channel].next_level = level
-            self.channels[channel].queue_draw()
-            self.user_channels[channel] = level
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                channel_widget = self.channels_view.get_channel_widget(channel)
+                level = channel_widget.level
+                level = max(level - step_level, 0)
+                channel_widget.level = level
+                channel_widget.next_level = level
+                channel_widget.queue_draw()
+                self.user_channels[channel] = level
 
     def _keypress_exclam(self):
         """Level + %"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
-            lvl = round((lvl / 100) * 255)
-
-        selected_children = self.flowbox.get_selected_children()
-        for flowboxchild in selected_children:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            level = self.channels[channel].level
-            level = min(level + lvl, 255)
-            self.channels[channel].level = level
-            self.channels[channel].next_level = level
-            self.channels[channel].queue_draw()
-            self.user_channels[channel] = level
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                channel_widget = self.channels_view.get_channel_widget(channel)
+                level = channel_widget.level
+                level = min(level + step_level, 255)
+                channel_widget.level = level
+                channel_widget.next_level = level
+                channel_widget.queue_draw()
+                self.user_channels[channel] = level
 
     def _keypress_U(self):  # pylint: disable=C0103
         """Update Memory"""
-        self.flowbox.unselect_all()
+        self.channels_view.flowbox.unselect_all()
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
@@ -406,7 +199,8 @@ class CuesEditionTab(Gtk.Paned):
             # Update levels and count channels
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
-                channels[chan] = self.channels[chan].level
+                channel_widget = self.channels_view.get_channel_widget(chan + 1)
+                channels[chan] = channel_widget.level
                 if channels[chan] != 0:
                     App().sequence.channels[chan] = 1
                     nb_chan += 1
@@ -420,7 +214,7 @@ class CuesEditionTab(Gtk.Paned):
     def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
         # TODO: Ask confirmation
-        self.flowbox.unselect_all()
+        self.channels_view.flowbox.unselect_all()
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
@@ -497,11 +291,8 @@ class CuesEditionTab(Gtk.Paned):
                     self.liststore.set_value(treeiter, 2, nb_chan)
                     if i == App().sequence.position:
                         for channel in range(MAX_CHANNELS):
-                            widget = (
-                                App().window.live_view.channels_view.flowbox.get_child_at_index(
-                                    channel
-                                )
-                            ).get_child()
+                            flowbox = App().window.live_view.channels_view.flowbox
+                            widget = flowbox.get_child_at_index(channel).get_child()
                             widget.next_level = App().memories[i].channels[channel]
                             widget.queue_draw()
                     # Tag filename as modified
@@ -637,4 +428,102 @@ class CuesEditionTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
+        return True
+
+
+class CueChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(self):
+        super().__init__()
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Filter channels to display
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        if not App().memories or not App().memories_tab:
+            return False
+        # Find selected row
+        path, _focus_column = App().memories_tab.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            if self.view_mode == VIEW_MODES["Active"]:
+                return self.__filter_active(row, child)
+            if self.view_mode == VIEW_MODES["Patched"]:
+                return self.__filter_patched(row, child)
+            return self.__filter_all(row, child)
+        child.set_visible(False)
+        return False
+
+    def __filter_active(self, row, child: Gtk.FlowBoxChild) -> bool:
+        user_channels = App().memories_tab.user_channels
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        # Channels in Cue
+        channels = App().memories[row].channels
+        if channels[channel_index] or child.is_selected():
+            if user_channels[channel_index] == -1:
+                channel_widget.level = channels[channel_index]
+                channel_widget.next_level = channels[channel_index]
+            else:
+                channel_widget.level = user_channels[channel_index]
+                channel_widget.next_level = user_channels[channel_index]
+            return True
+        if user_channels[channel_index] == -1:
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            return False
+        channel_widget.level = user_channels[channel_index]
+        channel_widget.next_level = user_channels[channel_index]
+        return True
+
+    def __filter_patched(self, row, child: Gtk.FlowBoxChild) -> bool:
+        user_channels = App().memories_tab.user_channels
+        channel_index = child.get_index()
+        if channel_index + 1 in App().patch.channels:
+            channel_widget = child.get_child()
+            # Channels in Cue
+            channels = App().memories[row].channels
+            if channels[channel_index] or child.is_selected():
+                if user_channels[channel_index] == -1:
+                    channel_widget.level = channels[channel_index]
+                    channel_widget.next_level = channels[channel_index]
+                else:
+                    channel_widget.level = user_channels[channel_index]
+                    channel_widget.next_level = user_channels[channel_index]
+                return True
+            if user_channels[channel_index] == -1:
+                channel_widget.level = 0
+                channel_widget.next_level = 0
+                return True
+            channel_widget.level = user_channels[channel_index]
+            channel_widget.next_level = user_channels[channel_index]
+            return True
+        return False
+
+    def __filter_all(self, row, child: Gtk.FlowBoxChild) -> bool:
+        user_channels = App().memories_tab.user_channels
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        # Channels in Cue
+        channels = App().memories[row].channels
+        if channels[channel_index] or child.is_selected():
+            if user_channels[channel_index] == -1:
+                channel_widget.level = channels[channel_index]
+                channel_widget.next_level = channels[channel_index]
+            else:
+                channel_widget.level = user_channels[channel_index]
+                channel_widget.next_level = user_channels[channel_index]
+            return True
+        if user_channels[channel_index] == -1:
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            return True
+        channel_widget.level = user_channels[channel_index]
+        channel_widget.next_level = user_channels[channel_index]
         return True
