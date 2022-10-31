@@ -420,7 +420,7 @@ class Application(Gtk.Application):
         if self.masters_tab:
             self.masters_tab.liststore.clear()
             self.masters_tab.populate_tab()
-            self.masters_tab.flowbox.invalidate_filter()
+            self.masters_tab.channels_view.update()
 
         # Redraw Channel Time Tab
         if self.channeltime_tab:

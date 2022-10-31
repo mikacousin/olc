@@ -204,7 +204,7 @@ class Ascii:
             App().masters_tab.liststore.clear()
             # Redraw
             App().masters_tab.populate_tab()
-            App().masters_tab.flowbox.invalidate_filter()
+            App().masters_tab.channels_view.update()
 
         # Redraw Independents Tab
         if App().inde_tab:
