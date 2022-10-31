@@ -518,7 +518,7 @@ class ChannelsView(Gtk.Box):
         Returns:
             Last selected channel
         """
-        self.channels_view.select_all()
+        self.select_all()
         self.__grab_focus()
         return last_chan, keystring
 
