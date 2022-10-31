@@ -66,6 +66,9 @@ class LiveView(Gtk.Notebook):
         Returns:
             function() to handle keys pressed
         """
+        keyname = Gdk.keyval_name(event.keyval)
+        if keyname == "Tab":
+            return App().window.toggle_focus()
         # Find open page in notebook to send keyboard events
         page = self.get_current_page()
         child = self.get_nth_page(page)

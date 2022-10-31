@@ -86,6 +86,14 @@ class Window(Gtk.ApplicationWindow):
 
         self.set_icon_name("olc")
 
+    def toggle_focus(self) -> None:
+        """Toggle focus Left/Right"""
+        focus = self.get_focus()
+        if focus == self.live_view:
+            self.playback.grab_focus()
+        else:
+            self.live_view.grab_focus()
+
     def fullscreen_toggle(self, _action, _param):
         """Toggle fullscreen"""
         if self.full:
