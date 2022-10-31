@@ -165,10 +165,8 @@ class CuesEditionTab(Gtk.Paned):
                 channel_widget = self.channels_view.get_channel_widget(channel)
                 level = channel_widget.level
                 level = max(level - step_level, 0)
-                channel_widget.level = level
-                channel_widget.next_level = level
-                channel_widget.queue_draw()
-                self.user_channels[channel] = level
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
 
     def _keypress_exclam(self):
         """Level + %"""
@@ -181,10 +179,8 @@ class CuesEditionTab(Gtk.Paned):
                 channel_widget = self.channels_view.get_channel_widget(channel)
                 level = channel_widget.level
                 level = min(level + step_level, 255)
-                channel_widget.level = level
-                channel_widget.next_level = level
-                channel_widget.queue_draw()
-                self.user_channels[channel] = level
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
 
     def _keypress_U(self):  # pylint: disable=C0103
         """Update Memory"""
