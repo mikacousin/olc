@@ -69,7 +69,19 @@ class ChannelsView(Gtk.Box):
         """Display channels
 
         Args:
-            child (Gtk.FlowBoxChild): Parent of Channel Widget
+            child: Parent of Channel Widget
+
+        Raises:
+            NotImplementedError: Must be implemented in subclass
+        """
+        raise NotImplementedError
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
 
         Raises:
             NotImplementedError: Must be implemented in subclass

@@ -356,6 +356,25 @@ class GroupChannelsView(ChannelsView):
     def __init__(self):
         super().__init__()
 
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+        channels = self.get_selected_channels()
+        selected_group = App().group_tab.flowbox.get_selected_children()[0]
+        index = selected_group.get_index()
+        for channel in channels:
+            level = App().groups[index].channels[channel - 1]
+            if direction == Gdk.ScrollDirection.UP:
+                level = min(level + step, 255)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                level = max(level - step, 0)
+            App().groups[index].channels[channel - 1] = level
+        self.update()
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Select channels to display
 

@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from gi.repository import Gtk
+from gi.repository import Gdk, Gtk
 from olc.define import App
 from olc.widgets_channels_view import ChannelsView, VIEW_MODES
 
@@ -115,3 +115,22 @@ class LiveChannelsView(ChannelsView):
             channel = child.get_index() + 1
             return channel in App().patch.channels
         return True
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+        channels = self.get_selected_channels()
+        for channel in channels:
+            for output in App().patch.channels[channel]:
+                out = output[0]
+                univ = output[1]
+                index = App().universes.index(univ)
+                level = App().dmx.frame[index][out - 1]
+                if direction == Gdk.ScrollDirection.UP:
+                    App().dmx.user[channel - 1] = min(level + step, 255)
+                elif direction == Gdk.ScrollDirection.DOWN:
+                    App().dmx.user[channel - 1] = max(level - step, 0)

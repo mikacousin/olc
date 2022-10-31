@@ -134,19 +134,16 @@ class MidiControlChanges:
         if App().virtual_console:
             App().virtual_console.wheel.emit("moved", direction, step)
         else:
-            sel = App().window.live_view.channels_view.flowbox.get_selected_children()
-            for flowboxchild in sel:
-                channelwidget = flowboxchild.get_child()
-                channel = int(channelwidget.channel)
-                for output in App().patch.channels[channel]:
-                    out = output[0]
-                    univ = output[1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][out - 1]
-                    if direction == Gdk.ScrollDirection.UP:
-                        App().dmx.user[channel - 1] = min(level + step, 255)
-                    elif direction == Gdk.ScrollDirection.DOWN:
-                        App().dmx.user[channel - 1] = max(level - step, 0)
+            focus = App().window.get_focus()
+            page = focus.get_current_page()
+            child = focus.get_nth_page(page)
+            channels_view = None
+            if child == App().window.live_view.channels_view:
+                channels_view = child
+            elif child in (App().group_tab, App().memories_tab):
+                channels_view = child.channels_view
+            if channels_view:
+                channels_view.wheel_level(step, direction)
 
     def _function_gm(self, _port: str, msg: mido.Message) -> None:
         """Grand Master

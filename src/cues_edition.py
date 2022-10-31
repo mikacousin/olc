@@ -437,6 +437,26 @@ class CueChannelsView(ChannelsView):
     def __init__(self):
         super().__init__()
 
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+        channels = self.get_selected_channels()
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            level = channel_widget.level
+            if direction == Gdk.ScrollDirection.UP:
+                level = min(level + step, 255)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                level = max(level - step, 0)
+            channel_widget.level = level
+            channel_widget.next_level = level
+            channel_widget.queue_draw()
+            App().memories_tab.user_channels[channel - 1] = level
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display
 
