@@ -15,9 +15,8 @@
 import array
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App, is_non_nul_int
-from olc.widgets_channel import ChannelWidget
-from olc.zoom import zoom
+from olc.define import MAX_CHANNELS, App
+from olc.widgets_channels_view import ChannelsView, VIEW_MODES
 
 
 class IndependentsTab(Gtk.Paned):
@@ -30,22 +29,10 @@ class IndependentsTab(Gtk.Paned):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
-        self.set_position(300)
+        self.set_position(600)
 
-        # To display channels used in selected independent
-        self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-        self.channels = []
-        for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i + 1, 0, 0))
-            self.flowbox.add(self.channels[i])
-        self.scrolled.add(self.flowbox)
-        self.add(self.scrolled)
+        self.channels_view = IndeChannelsView()
+        self.add(self.channels_view)
 
         # List of independents
         self.liststore = Gtk.ListStore(int, str, str)
@@ -68,14 +55,6 @@ class IndependentsTab(Gtk.Paned):
         scrollable.add(self.treeview)
         self.add(scrollable)
 
-        self.flowbox.set_filter_func(self.filter_channel_func, None)
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
-
-        # Select first independent
-        path = Gtk.TreePath.new_first()
-        self.treeview.set_cursor(path, None, False)
-
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
 
@@ -87,52 +66,11 @@ class IndependentsTab(Gtk.Paned):
             notebook.grab_focus()
         return False
 
-    def filter_channel_func(self, child, _user_data):
-        """Filter channels
-
-        Args:
-            child: Child object
-
-        Returns:
-            child or False
-        """
-        # If independent, just return
-        if not App().independents.independents:
-            return False
-        # Find selected row
-        path, _focus_column = self.treeview.get_cursor()
-        if path:
-            row = path.get_indices()[0]
-            # Index of Channel
-            i = child.get_index()
-            # Independent's channels
-            channels = App().independents.independents[row].levels
-
-            if channels[i] or self.channels[i].clicked:
-                if self.user_channels[i] == -1:
-                    self.channels[i].level = channels[i]
-                    self.channels[i].next_level = channels[i]
-                else:
-                    self.channels[i].level = self.user_channels[i]
-                    self.channels[i].next_level = self.user_channels[i]
-                return child
-            if self.user_channels[i] == -1:
-                self.channels[i].level = 0
-                self.channels[i].next_level = 0
-                return False
-            self.channels[i].level = self.user_channels[i]
-            self.channels[i].next_level = self.user_channels[i]
-            return child
-        return False
-
     def on_changed(self, _treeview):
         """Select independent"""
-        self.flowbox.unselect_all()
+        self.channels_view.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
-        self.flowbox.invalidate_filter()
+        self.channels_view.update()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
@@ -188,6 +126,10 @@ class IndependentsTab(Gtk.Paned):
         if keyname == "period":
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
+        # Channels View
+        self.last_selected_channel, self.keystring = self.channels_view.on_key_press(
+            keyname, self.last_selected_channel, self.keystring
+        )
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
@@ -204,183 +146,56 @@ class IndependentsTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_c(self):
-        """Channel"""
-        self.flowbox.unselect_all()
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-        if is_non_nul_int(self.keystring):
-            channel = int(self.keystring)
-            # Only patched channels
-            if channel in App().patch.channels:
-                self.channels[channel - 1].clicked = True
-                child = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.select_child(child)
-                self.last_selected_channel = self.keystring
-        self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_KP_Divide(self):  # pylint: disable=C0103
-        """Channel Thru"""
-        self._keypress_greater()
-
-    def _keypress_greater(self):
-        """Channel Thru"""
-        selected_children = self.flowbox.get_selected_children()
-        if len(selected_children) == 1:
-            flowboxchild = selected_children[0]
-            channelwidget = flowboxchild.get_child()
-            self.last_selected_channel = channelwidget.channel
-        if self.last_selected_channel:
-            to_chan = int(self.keystring)
-            if 0 < to_chan < MAX_CHANNELS:
-                if to_chan > int(self.last_selected_channel):
-                    for channel in range(int(self.last_selected_channel) - 1, to_chan):
-                        # Only patched channels
-                        if channel - 1 in App().patch.channels:
-                            self.channels[channel].clicked = True
-                            child = self.flowbox.get_child_at_index(channel)
-                            self.flowbox.select_child(child)
-                else:
-                    for channel in range(to_chan - 1, int(self.last_selected_channel)):
-                        # Only patched channels
-                        if channel - 1 in App().patch.channels:
-                            self.channels[channel].clicked = True
-                            child = self.flowbox.get_child_at_index(channel)
-                            self.flowbox.select_child(child)
-                self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_plus(self):
-        """Channel +"""
-        if self.keystring == "":
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = True
-            self.flowbox.invalidate_filter()
-            child = self.flowbox.get_child_at_index(channel - 1)
-            self.flowbox.select_child(child)
-            self.last_selected_channel = self.keystring
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_minus(self):
-        """Channel -"""
-        if self.keystring == "":
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = False
-            self.flowbox.invalidate_filter()
-            child = self.flowbox.get_child_at_index(channel - 1)
-            self.flowbox.unselect_child(child)
-            self.last_selected_channel = self.keystring
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_a(self):
-        """All channels"""
-        self.flowbox.unselect_all()
-        # Find selected memory
-        path, _focus_column = self.treeview.get_cursor()
-        if path:
-            row = path.get_indices()[0]
-            # Independent's channels
-            channels = App().independents.independents[row].levels
-            # Select channels with a level
-            for chan in range(MAX_CHANNELS):
-                if (
-                    channels[chan] and self.user_channels[chan] != 0
-                ) or self.user_channels[chan] > 0:
-                    self.channels[chan].clicked = True
-                    child = self.flowbox.get_child_at_index(chan)
-                    self.flowbox.select_child(child)
-                else:
-                    self.channels[chan].clicked = False
-            self.flowbox.invalidate_filter()
-        self.get_parent().grab_focus()
-
     def _keypress_equal(self):
         """@ level"""
-        level = int(self.keystring)
-
-        if App().settings.get_boolean("percent"):
-            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
-        if 0 <= level < 256:
-
-            selected_children = self.flowbox.get_selected_children()
-
-            for flowboxchild in selected_children:
-                channelwidget = flowboxchild.get_child()
-                channel = int(channelwidget.channel) - 1
-                self.channels[channel].level = level
-                self.channels[channel].next_level = level
-                self.channels[channel].queue_draw()
-                self.user_channels[channel] = level
-
+        channels, level = self.channels_view.at_level(self.keystring)
+        if channels and level != -1:
+            for channel in channels:
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """Level - %"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
-            lvl = round((lvl / 100) * 255)
-
-        selected_children = self.flowbox.get_selected_children()
-
-        for flowboxchild in selected_children:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            level = self.channels[channel].level
-            level = max(level - lvl, 0)
-            self.channels[channel].level = level
-            self.channels[channel].next_level = level
-            self.channels[channel].queue_draw()
-            self.user_channels[channel] = level
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                channel_widget = self.channels_view.get_channel_widget(channel)
+                level = channel_widget.level
+                level = max(level - step_level, 0)
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
 
     def _keypress_exclam(self):
         """Level + %"""
-        lvl = App().settings.get_int("percent-level")
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
         if App().settings.get_boolean("percent"):
-            lvl = round((lvl / 100) * 255)
-
-        selected_children = self.flowbox.get_selected_children()
-
-        for flowboxchild in selected_children:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            level = self.channels[channel].level
-            level = min(level + lvl, 255)
-            self.channels[channel].level = level
-            self.channels[channel].next_level = level
-            self.channels[channel].queue_draw()
-            self.user_channels[channel] = level
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                channel_widget = self.channels_view.get_channel_widget(channel)
+                level = channel_widget.level
+                level = min(level + step_level, 255)
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
 
     def _keypress_U(self):  # pylint: disable=C0103
         """Update independent channels"""
         # Find independent
         path, _focus_column = self.treeview.get_cursor()
         if path:
-            selected = path.get_indices()[0]
-            number = self.liststore[selected][0]
+            row = path.get_indices()[0]
+            number = self.liststore[row][0]
             # Update channels level
             channels = array.array("B", [0] * MAX_CHANNELS)
             for channel in range(MAX_CHANNELS):
-                channels[channel] = self.channels[channel].level
+                channel_widget = self.channels_view.get_channel_widget(channel + 1)
+                channels[channel] = channel_widget.level
             App().independents.independents[number - 1].set_levels(channels)
             App().independents.update_channels()
             App().independents.independents[number - 1].update_dmx()
@@ -389,3 +204,128 @@ class IndependentsTab(Gtk.Paned):
 
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+
+
+class IndeChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(self):
+        super().__init__()
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+        channels = self.get_selected_channels()
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            level = channel_widget.level
+            if direction == Gdk.ScrollDirection.UP:
+                level = min(level + step, 255)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                level = max(level - step, 0)
+            channel_widget.level = level
+            channel_widget.next_level = level
+            channel_widget.queue_draw()
+            App().inde_tab.user_channels[channel - 1] = level
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Filter channels to display
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        if not App().independents.independents or not App().inde_tab:
+            return False
+        # Find selected independent
+        path, _focus_column = App().inde_tab.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            if self.view_mode == VIEW_MODES["Active"]:
+                return self._filter_active(row, child)
+            if self.view_mode == VIEW_MODES["Patched"]:
+                return self._filter_patched(row, child)
+            return self._filter_all(row, child)
+        return False
+
+    def _filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        """Filter in Active mode
+
+        Args:
+            row: Row number
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        user_channels = App().inde_tab.user_channels
+        channels = App().independents.independents[row].levels
+        if channels[channel_index] or child.is_selected():
+            if user_channels[channel_index] == -1:
+                channel_widget.level = channels[channel_index]
+                channel_widget.next_level = channels[channel_index]
+            else:
+                channel_widget.level = user_channels[channel_index]
+                channel_widget.next_level = user_channels[channel_index]
+            return True
+        if user_channels[channel_index] != -1:
+            channel_widget.level = user_channels[channel_index]
+            channel_widget.next_level = user_channels[channel_index]
+            return True
+        channel_widget.level = 0
+        channel_widget.next_level = 0
+        return False
+
+    def _filter_patched(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        """Filter in Patched mode
+
+        Args:
+            row: Row number
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        # Return all patched channels
+        channel_index = child.get_index()
+        if channel_index + 1 not in App().patch.channels:
+            return False
+        return self._filter_all(row, child)
+
+    def _filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        """Filter in All channels mode
+
+        Args:
+            row: Row number
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        user_channels = App().inde_tab.user_channels
+        channels = App().independents.independents[row].levels
+        if channels[channel_index] or child.is_selected():
+            if user_channels[channel_index] == -1:
+                channel_widget.level = channels[channel_index]
+                channel_widget.next_level = channels[channel_index]
+            else:
+                channel_widget.level = user_channels[channel_index]
+                channel_widget.next_level = user_channels[channel_index]
+            return True
+        if user_channels[channel_index] != -1:
+            channel_widget.level = user_channels[channel_index]
+            channel_widget.next_level = user_channels[channel_index]
+            return True
+        channel_widget.level = 0
+        channel_widget.next_level = 0
+        return True

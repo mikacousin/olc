@@ -540,9 +540,6 @@ class MasterChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
         found = False
         mem = None
         preset = App().masters[row].content_value
@@ -552,20 +549,7 @@ class MasterChannelsView(ChannelsView):
                 break
         if found:
             channels = mem.channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] != -1:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-                return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
+            return self.__active_channels(channels, child)
         return False
 
     def __filter_active_channels(self, row: int, child: Gtk.FlowBoxChild) -> bool:
@@ -578,10 +562,44 @@ class MasterChannelsView(ChannelsView):
         Returns:
             True or False
         """
+        channels = App().masters[row].content_value
+        return self.__active_channels(channels, child)
+
+    def __filter_active_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        """Filter Group channels in Active mode
+
+        Args:
+            row: Row number
+            child: Parent of Channel widget
+
+        Returns:
+            True or False
+        """
+        found = False
+        grp = None
+        group = App().masters[row].content_value
+        for grp in App().groups:
+            if grp.index == group:
+                found = True
+                break
+        if found:
+            channels = grp.channels
+            return self.__active_channels(channels, child)
+        return False
+
+    def __active_channels(self, channels: array.array, child: Gtk.FlowBoxChild) -> bool:
+        """Set Channel Widget level in Active mode
+
+        Args:
+            channels: Channels levels
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
         channel_index = child.get_index()
         channel_widget = child.get_child()
         user_channels = App().masters_tab.user_channels
-        channels = App().masters[row].content_value
         if channels[channel_index] or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels[channel_index]
@@ -594,44 +612,6 @@ class MasterChannelsView(ChannelsView):
             channel_widget.level = user_channels[channel_index]
             channel_widget.next_level = user_channels[channel_index]
             return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
-        return False
-
-    def __filter_active_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        """Filter Group channels in Active mode
-
-        Args:
-            row: Row number
-            child: Parent of Channel widget
-
-        Returns:
-            True or False
-        """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
-        found = False
-        grp = None
-        group = App().masters[row].content_value
-        for grp in App().groups:
-            if grp.index == group:
-                found = True
-                break
-        if found:
-            channels = grp.channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] != -1:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-                return True
         channel_widget.level = 0
         channel_widget.next_level = 0
         return False
@@ -646,124 +626,17 @@ class MasterChannelsView(ChannelsView):
         Returns:
             True or False
         """
+        # Return False if not patched
         channel_index = child.get_index()
         if channel_index + 1 not in App().patch.channels:
             return False
-        # Master type is Preset
+        # Return all other channels
         if App().masters[row].content_type == 1:
-            return self.__filter_patched_preset(row, child)
-        # Master type is Channels
+            return self.__filter_all_preset(row, child)
         if App().masters[row].content_type == 2:
-            return self.__filter_patched_channels(row, child)
-        # Master type is Group
+            return self.__filter_all_channels(row, child)
         if App().masters[row].content_type == 13:
-            return self.__filter_patched_group(row, child)
-        return True
-
-    def __filter_patched_preset(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        """Filter Preset channels in Patched mode
-
-        Args:
-            row: Row number
-            child: Parent of Channel widget
-
-        Returns:
-            True or False
-        """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
-        found = False
-        mem = None
-        preset = App().masters[row].content_value
-        for mem in App().memories:
-            if mem.memory == preset:
-                found = True
-                break
-        if found:
-            channels = mem.channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] != -1:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-                return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
-        return True
-
-    def __filter_patched_channels(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        """Filter recorded channels in Patched mode
-
-        Args:
-            row: Row number
-            child: Parent of Channel widget
-
-        Returns:
-            True or False
-        """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
-        channels = App().masters[row].content_value
-        if channels[channel_index] or child.is_selected():
-            if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
-            else:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-            return True
-        if user_channels[channel_index] != -1:
-            channel_widget.level = user_channels[channel_index]
-            channel_widget.next_level = user_channels[channel_index]
-            return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
-        return True
-
-    def __filter_patched_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        """Filter Group channels in Patched mode
-
-        Args:
-            row: Row number
-            child: Parent of Channel widget
-
-        Returns:
-            True or False
-        """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
-        found = False
-        grp = None
-        group = App().masters[row].content_value
-        for grp in App().groups:
-            if grp.index == group:
-                found = True
-                break
-        if found:
-            channels = grp.channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] != -1:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-                return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
+            return self.__filter_all_group(row, child)
         return True
 
     def _filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
@@ -774,7 +647,7 @@ class MasterChannelsView(ChannelsView):
             child: Parent of Channel widget
 
         Returns:
-            True or False
+            True
         """
         # Master type is Preset
         if App().masters[row].content_type == 1:
@@ -795,11 +668,8 @@ class MasterChannelsView(ChannelsView):
             child: Parent of Channel widget
 
         Returns:
-            True or False
+            True
         """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
         found = False
         mem = None
         preset = App().masters[row].content_value
@@ -809,20 +679,7 @@ class MasterChannelsView(ChannelsView):
                 break
         if found:
             channels = mem.channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] != -1:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-                return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
+            return self.__all_channels(channels, child)
         return True
 
     def __filter_all_channels(self, row: int, child: Gtk.FlowBoxChild) -> bool:
@@ -833,12 +690,46 @@ class MasterChannelsView(ChannelsView):
             child: Parent of Channel widget
 
         Returns:
-            True or False
+            True
+        """
+        channels = App().masters[row].content_value
+        return self.__all_channels(channels, child)
+
+    def __filter_all_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        """Filter Preset channels in All channels mode
+
+        Args:
+            row: Row number
+            child: Parent of Channel widget
+
+        Returns:
+            True
+        """
+        found = False
+        grp = None
+        group = App().masters[row].content_value
+        for grp in App().groups:
+            if grp.index == group:
+                found = True
+                break
+        if found:
+            channels = grp.channels
+            return self.__all_channels(channels, child)
+        return True
+
+    def __all_channels(self, channels: array.array, child: Gtk.FlowBoxChild) -> bool:
+        """Set Channel Widget level
+
+        Args:
+            channels: Channels levels
+            child: Parent of Channel Widget
+
+        Returns:
+            True
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
         user_channels = App().masters_tab.user_channels
-        channels = App().masters[row].content_value
         if channels[channel_index] or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels[channel_index]
@@ -851,44 +742,6 @@ class MasterChannelsView(ChannelsView):
             channel_widget.level = user_channels[channel_index]
             channel_widget.next_level = user_channels[channel_index]
             return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
-        return True
-
-    def __filter_all_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        """Filter Preset channels in All channels mode
-
-        Args:
-            row: Row number
-            child: Parent of Channel widget
-
-        Returns:
-            True or False
-        """
-        channel_index = child.get_index()
-        channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
-        found = False
-        grp = None
-        group = App().masters[row].content_value
-        for grp in App().groups:
-            if grp.index == group:
-                found = True
-                break
-        if found:
-            channels = grp.channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] != -1:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
-                return True
         channel_widget.level = 0
         channel_widget.next_level = 0
         return True

@@ -420,11 +420,26 @@ class GroupChannelsView(ChannelsView):
         channel_widget = child.get_child()
         if group.channels[channel_index] or child.is_selected():
             channel_widget.level = group.channels[channel_index]
-            channel_widget.next_level = channel_widget.level
+            channel_widget.next_level = group.channels[channel_index]
         else:
             channel_widget.level = 0
-            channel_widget.next_level = channel_widget.level
+            channel_widget.next_level = 0
         return True
+
+    def __filter_patched(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display only patched channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel_index = child.get_index()  # Widget number (channel - 1)
+        if channel_index + 1 not in App().patch.channels:
+            return False
+        return self.__filter_all(group, child)
 
     def __filter_active(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
         """Display only active channels
@@ -441,27 +456,5 @@ class GroupChannelsView(ChannelsView):
         if group.channels[channel_index] or child.is_selected():
             channel_widget.level = group.channels[channel_index]
             channel_widget.next_level = channel_widget.level
-            return True
-        return False
-
-    def __filter_patched(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
-        """Display only patched channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_child()
-        if channel_index + 1 in App().patch.channels:
-            if group.channels[channel_index] or child.is_selected():
-                channel_widget.level = group.channels[channel_index]
-                channel_widget.next_level = channel_widget.level
-            else:
-                channel_widget.level = 0
-                channel_widget.next_level = channel_widget.level
             return True
         return False

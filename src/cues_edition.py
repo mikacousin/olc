@@ -498,28 +498,11 @@ class CueChannelsView(ChannelsView):
         return True
 
     def __filter_patched(self, row, child: Gtk.FlowBoxChild) -> bool:
-        user_channels = App().memories_tab.user_channels
+        # Return all patched channels
         channel_index = child.get_index()
-        if channel_index + 1 in App().patch.channels:
-            channel_widget = child.get_child()
-            # Channels in Cue
-            channels = App().memories[row].channels
-            if channels[channel_index] or child.is_selected():
-                if user_channels[channel_index] == -1:
-                    channel_widget.level = channels[channel_index]
-                    channel_widget.next_level = channels[channel_index]
-                else:
-                    channel_widget.level = user_channels[channel_index]
-                    channel_widget.next_level = user_channels[channel_index]
-                return True
-            if user_channels[channel_index] == -1:
-                channel_widget.level = 0
-                channel_widget.next_level = 0
-                return True
-            channel_widget.level = user_channels[channel_index]
-            channel_widget.next_level = user_channels[channel_index]
-            return True
-        return False
+        if channel_index + 1 not in App().patch.channels:
+            return False
+        return self.__filter_all(row, child)
 
     def __filter_all(self, row, child: Gtk.FlowBoxChild) -> bool:
         user_channels = App().memories_tab.user_channels

@@ -140,7 +140,14 @@ class MidiControlChanges:
             channels_view = None
             if child == App().window.live_view.channels_view:
                 channels_view = child
-            elif child in (App().group_tab, App().memories_tab, App().masters_tab):
+            elif child in (
+                App().channeltime_tab,
+                App().group_tab,
+                App().inde_tab,
+                App().masters_tab,
+                App().memories_tab,
+                App().sequences_tab,
+            ):
                 channels_view = child.channels_view
             if channels_view:
                 channels_view.wheel_level(step, direction)
