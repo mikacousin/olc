@@ -141,7 +141,6 @@ class MidiControlChanges:
             if child == App().window.live_view.channels_view:
                 channels_view = child
             elif child in (
-                App().channeltime_tab,
                 App().group_tab,
                 App().inde_tab,
                 App().masters_tab,

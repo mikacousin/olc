@@ -424,7 +424,7 @@ class Application(Gtk.Application):
         # Redraw Channel Time Tab
         if self.channeltime_tab:
             self.channeltime_tab.liststore.clear()
-            self.channeltime_tab.flowbox.invalidate_filter()
+            self.channeltime_tab.channels_view.update()
 
         # Redraw Track Channels
         if self.track_channels_tab:

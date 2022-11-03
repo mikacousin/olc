@@ -14,9 +14,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
 
-from olc.define import MAX_CHANNELS, App, is_non_nul_int
-from olc.widgets_channel import ChannelWidget
-from olc.zoom import zoom
+from olc.define import App
+from olc.widgets_channels_view import ChannelsView
 
 
 class ChannelTime:
@@ -75,29 +74,13 @@ class ChanneltimeTab(Gtk.Paned):
         self.position = position
 
         self.keystring = ""
-        self.last_chan_selected = ""
+        self.last_selected_channel = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
-        self.scrolled1 = Gtk.ScrolledWindow()
-        self.scrolled1.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-
-        self.channels = []
-
-        for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i + 1, 0, 0))
-            self.flowbox.add(self.channels[i])
-
-        self.scrolled1.add(self.flowbox)
-
-        self.add1(self.scrolled1)
+        self.channels_view = CTChannelsView()
+        self.add1(self.channels_view)
 
         self.scrolled2 = Gtk.ScrolledWindow()
         self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
@@ -145,14 +128,6 @@ class ChanneltimeTab(Gtk.Paned):
         self.scrolled2.add(self.treeview)
 
         self.add2(self.scrolled2)
-
-        self.flowbox.set_filter_func(self.filter_channels, None)
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
-
-        # Select first Channel Time
-        path = Gtk.TreePath.new_first()
-        self.treeview.set_cursor(path)
 
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
@@ -337,50 +312,9 @@ class ChanneltimeTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def filter_channels(self, child, _user_data):
-        """Filter Channels
-
-        Args:
-            child: Gtk.Widget
-
-        Returns:
-            Gtk.Widget or False
-        """
-
-        # Find selected Channel Time
-        path, _focus_column = self.treeview.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            channel = self.liststore[selected][0]
-
-            i = child.get_index()
-            channels = self.step.cue.channels
-
-            if channel - 1 == i or self.channels[i].clicked:
-                self.channels[i].level = channels[i]
-                self.channels[i].next_level = channels[i]
-                return child
-            self.channels[i].level = 0
-            self.channels[i].next_level = 0
-            return False
-        # If no selected Channel Time, display selected channels
-        i = child.get_index()
-        channels = self.step.cue.channels
-
-        if self.channels[i].clicked:
-            self.channels[i].level = channels[i]
-            self.channels[i].next_level = channels[i]
-            return child
-        self.channels[i].level = 0
-        self.channels[i].next_level = 0
-        return False
-
     def on_channeltime_changed(self, _treeview):
         """Select a Channel Time"""
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-            # self.channels[channel].queue_draw()
-        self.flowbox.invalidate_filter()
+        self.channels_view.update()
 
     def on_close_icon(self, _widget):
         """Close Tab with the icon clicked"""
@@ -431,6 +365,11 @@ class ChanneltimeTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
+        # Channels View
+        self.last_selected_channel, self.keystring = self.channels_view.on_key_press(
+            keyname, self.last_selected_channel, self.keystring
+        )
+
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False
@@ -455,29 +394,10 @@ class ChanneltimeTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_c(self):
-        """Channel"""
-        self.flowbox.unselect_all()
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-
-        if is_non_nul_int(self.keystring):
-            channel = int(self.keystring)
-            if channel in App().patch.channels:
-                self.channels[channel - 1].clicked = True
-                child = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
-        self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
     def _keypress_q(self):
         """Prev Channel Time"""
 
-        self.flowbox.unselect_all()
+        self.channels_view.flowbox.unselect_all()
 
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -491,7 +411,7 @@ class ChanneltimeTab(Gtk.Paned):
     def _keypress_w(self):
         """Next Channel Time"""
 
-        self.flowbox.unselect_all()
+        self.channels_view.flowbox.unselect_all()
 
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -505,7 +425,7 @@ class ChanneltimeTab(Gtk.Paned):
     def _keypress_Insert(self):  # pylint: disable=C0103
         """Add Channel Time"""
         # Find selected channels
-        sel = self.flowbox.get_selected_children()
+        sel = self.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
             channelwidget = flowboxchild.get_child()
             channel = int(channelwidget.channel)
@@ -520,3 +440,52 @@ class ChanneltimeTab(Gtk.Paned):
                 path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
                 self.treeview.set_cursor(path)
         self.get_parent().grab_focus()
+
+
+class CTChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(self):
+        super().__init__()
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Filter channels to display
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        if not App().channeltime_tab:
+            return False
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        step = App().channeltime_tab.step
+        channels = step.cue.channels
+        path, _focus_column = App().channeltime_tab.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            channel = App().channeltime_tab.liststore[row][0]
+            if channel - 1 == channel_index or child.is_selected():
+                channel_widget.level = channels[channel_index]
+                channel_widget.next_level = channels[channel_index]
+                return True
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            return False
+        if child.is_selected():
+            channel_widget.level = channels[channel_index]
+            channel_widget.next_level = channels[channel_index]
+            return True
+        channel_widget.level = 0
+        channel_widget.next_level = 0
+        return False
