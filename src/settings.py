@@ -309,7 +309,7 @@ class SettingsDialog:
 
         # Redraw Sequences Tab if open
         if App().sequences_tab:
-            App().sequences_tab.flowbox.invalidate_filter()
+            App().sequences_tab.channels_view.update()
 
         # Redraw Groups Tab if exist
         if App().group_tab:

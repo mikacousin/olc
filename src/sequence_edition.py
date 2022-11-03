@@ -13,14 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+from typing import Optional
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
 from olc.sequence import Sequence
 from olc.step import Step
-from olc.widgets_channel import ChannelWidget
-from olc.zoom import zoom
+from olc.widgets_channels_view import ChannelsView, VIEW_MODES
 
 
 class SequenceTab(Gtk.Grid):
@@ -29,7 +29,7 @@ class SequenceTab(Gtk.Grid):
     def __init__(self):
 
         self.keystring = ""
-        self.last_chan_selected = ""
+        self.last_selected_channel = ""
 
         # To stock user modification on channels
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -68,40 +68,10 @@ class SequenceTab(Gtk.Grid):
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
         # Channels in the selected cue
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
-
-        self.channels = []
-        for i in range(MAX_CHANNELS):
-            self.channels.append(ChannelWidget(i + 1, 0, 0))
-            self.flowbox.add(self.channels[i])
-
-        self.scrolled.add(self.flowbox)
-        self.paned.add1(self.scrolled)
+        self.channels_view = SeqChannelsView()
+        self.paned.add1(self.channels_view)
 
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
-
-        # Selected Sequence
-        path, _focus_column = self.treeview1.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-
-            # Find it
-            for i, item in enumerate(self.liststore1):
-                if i == selected:
-                    if item[0] == App().sequence.index:
-                        self.seq = App().sequence
-                    else:
-                        for chaser in App().chasers:
-                            if item[0] == chaser.index:
-                                self.seq = chaser
-            # Liststore with infos from the sequence
-            for i in range(self.seq.last)[1:-1]:
-                self.add_step_to_liststore(i)
-
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
         self.treeview2.connect("cursor-changed", self.on_memory_changed)
@@ -129,7 +99,6 @@ class SequenceTab(Gtk.Grid):
             if i == 2:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.text_edited)
-
             elif i == 3:
                 renderer.set_property("editable", True)
                 renderer.connect("edited", self.wait_edited)
@@ -163,13 +132,37 @@ class SequenceTab(Gtk.Grid):
 
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
-        self.flowbox.set_filter_func(self.filter_func, None)
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
+    def get_selected_sequence(self) -> Optional[Sequence]:
+        """Get selected sequence
 
-        # Select Main Playback
-        path = Gtk.TreePath.new_first()
-        self.treeview1.set_cursor(path, None, False)
+        Returns:
+            Selected sequence or None
+        """
+        sequence = None
+        path, _focus_column = self.treeview1.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            sequence_number = self.liststore1[row][0]
+            if sequence_number == App().sequence.index:
+                sequence = App().sequence
+            else:
+                for chaser in App().chasers:
+                    if sequence_number == chaser.index:
+                        sequence = chaser
+        return sequence
+
+    def get_selected_step(self) -> Optional[int]:
+        """Get selected step
+
+        Returns:
+            Selected step or None
+        """
+        step = None
+        tree_selection = self.treeview2.get_selection()
+        model, treeiter = tree_selection.get_selected()
+        if treeiter:
+            step = int(model[treeiter][0])
+        return step
 
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
@@ -197,21 +190,10 @@ class SequenceTab(Gtk.Grid):
                 break
         # Double click on Channel Time
         if col_nb == 8:
-
-            # Find selected sequence
-            seq_path, _focus_column = self.treeview1.get_cursor()
-            selected = seq_path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        seq = chaser
-
-            # Edit Channel Time
+            sequence = self.get_selected_sequence()
             step = self.liststore2[path][0]
-            App().channeltime(seq, step)
+            if sequence and step:
+                App().channeltime(sequence, step)
 
     def wait_edited(self, _widget, path, text):
         """Edit Wait
@@ -229,51 +211,42 @@ class SequenceTab(Gtk.Grid):
                 text = "0" + text
 
             self.liststore2[path][3] = "" if text == "0" else text
-            # Find selected sequence
-            seq_path, _focus_column = self.treeview1.get_cursor()
-            selected = seq_path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
+            sequence = self.get_selected_sequence()
             # Find Cue
             step = int(self.liststore2[path][0])
 
             # Update Wait value
-            self.seq.steps[step].wait = float(text)
+            sequence.steps[step].wait = float(text)
             # Update Total Time
-            if (self.seq.steps[step].time_in + self.seq.steps[step].delay_in) > (
-                self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            if (sequence.steps[step].time_in + sequence.steps[step].delay_in) > (
+                sequence.steps[step].time_out + sequence.steps[step].delay_out
             ):
-                self.seq.steps[step].total_time = (
-                    self.seq.steps[step].time_in
-                    + self.seq.steps[step].wait
-                    + self.seq.steps[step].delay_in
+                sequence.steps[step].total_time = (
+                    sequence.steps[step].time_in
+                    + sequence.steps[step].wait
+                    + sequence.steps[step].delay_in
                 )
             else:
-                self.seq.steps[step].total_time = (
-                    self.seq.steps[step].time_out
-                    + self.seq.steps[step].wait
-                    + self.seq.steps[step].delay_out
+                sequence.steps[step].total_time = (
+                    sequence.steps[step].time_out
+                    + sequence.steps[step].wait
+                    + sequence.steps[step].delay_out
                 )
-            for channel in self.seq.steps[step].channel_time.keys():
+            for channel in sequence.steps[step].channel_time.keys():
                 t = (
-                    self.seq.steps[step].channel_time[channel].delay
-                    + self.seq.steps[step].channel_time[channel].time
-                    + self.seq.steps[step].wait
+                    sequence.steps[step].channel_time[channel].delay
+                    + sequence.steps[step].channel_time[channel].time
+                    + sequence.steps[step].wait
                 )
-                if t > self.seq.steps[step].total_time:
-                    self.seq.steps[step].total_time = t
+                if t > sequence.steps[step].total_time:
+                    sequence.steps[step].total_time = t
 
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == App().sequence:
+            if sequence == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
                     App().window.playback.cues_liststore1[path][3] = ""
@@ -283,7 +256,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.playback.cues_liststore2[path][3] = text
                 if App().sequence.position + 1 == step:
                     App().window.playback.sequential.wait = float(text)
-                    App().window.playback.sequential.total_time = self.seq.steps[
+                    App().window.playback.sequential.total_time = sequence.steps[
                         step
                     ].total_time
                     App().window.playback.sequential.queue_draw()
@@ -296,7 +269,6 @@ class SequenceTab(Gtk.Grid):
             text: string
         """
         if not text.replace(".", "", 1).isdigit():
-
             return
         if text[0] == ".":
             text = "0" + text
@@ -304,57 +276,49 @@ class SequenceTab(Gtk.Grid):
         self.liststore2[path][5] = text
 
         # Find selected sequence
-        seq_path, _focus_column = self.treeview1.get_cursor()
-        selected = seq_path.get_indices()[0]
-        sequence = self.liststore1[selected][0]
-        if sequence == App().sequence.index:
-            self.seq = App().sequence
-        else:
-            for chaser in App().chasers:
-                if sequence == chaser.index:
-                    self.seq = chaser
+        sequence = self.get_selected_sequence()
         # Find Cue
         step = int(self.liststore2[path][0])
 
         # Update Time Out value
-        self.seq.steps[step].time_out = float(text)
+        sequence.steps[step].time_out = float(text)
         # Update Total Time
         if (
-            self.seq.steps[step].time_in + self.seq.steps[step].delay_in
-            > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            sequence.steps[step].time_in + sequence.steps[step].delay_in
+            > sequence.steps[step].time_out + sequence.steps[step].delay_out
         ):
-            self.seq.steps[step].total_time = (
-                self.seq.steps[step].time_in
-                + self.seq.steps[step].wait
-                + self.seq.steps[step].delay_in
+            sequence.steps[step].total_time = (
+                sequence.steps[step].time_in
+                + sequence.steps[step].wait
+                + sequence.steps[step].delay_in
             )
         else:
-            self.seq.steps[step].total_time = (
-                self.seq.steps[step].time_out
-                + self.seq.steps[step].wait
-                + self.seq.steps[step].delay_out
+            sequence.steps[step].total_time = (
+                sequence.steps[step].time_out
+                + sequence.steps[step].wait
+                + sequence.steps[step].delay_out
             )
-        for channel in self.seq.steps[step].channel_time.keys():
+        for channel in sequence.steps[step].channel_time.keys():
             t = (
-                self.seq.steps[step].channel_time[channel].delay
-                + self.seq.steps[step].channel_time[channel].time
-                + self.seq.steps[step].wait
+                sequence.steps[step].channel_time[channel].delay
+                + sequence.steps[step].channel_time[channel].time
+                + sequence.steps[step].wait
             )
-            if t > self.seq.steps[step].total_time:
-                self.seq.steps[step].total_time = t
+            if t > sequence.steps[step].total_time:
+                sequence.steps[step].total_time = t
 
         # Tag filename as modified
         App().ascii.modified = True
         App().window.header.set_title(App().ascii.basename + "*")
 
         # Update Sequential Tab
-        if self.seq == App().sequence:
+        if sequence == App().sequence:
             path = str(int(path) + 1)
             App().window.playback.cues_liststore1[path][5] = text
             App().window.playback.cues_liststore2[path][5] = text
             if App().sequence.position + 1 == step:
                 App().window.playback.sequential.time_out = float(text)
-                App().window.playback.sequential.total_time = self.seq.steps[
+                App().window.playback.sequential.total_time = sequence.steps[
                     step
                 ].total_time
                 App().window.playback.sequential.queue_draw()
@@ -375,57 +339,49 @@ class SequenceTab(Gtk.Grid):
         self.liststore2[path][7] = text
 
         # Find selected sequence
-        seq_path, _focus_column = self.treeview1.get_cursor()
-        selected = seq_path.get_indices()[0]
-        sequence = self.liststore1[selected][0]
-        if sequence == App().sequence.index:
-            self.seq = App().sequence
-        else:
-            for chaser in App().chasers:
-                if sequence == chaser.index:
-                    self.seq = chaser
+        sequence = self.get_selected_sequence()
         # Find Cue
         step = int(self.liststore2[path][0])
 
         # Update Time In value
-        self.seq.steps[step].time_in = float(text)
+        sequence.steps[step].time_in = float(text)
         # Update Total Time
         if (
-            self.seq.steps[step].time_in + self.seq.steps[step].delay_in
-            > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+            sequence.steps[step].time_in + sequence.steps[step].delay_in
+            > sequence.steps[step].time_out + sequence.steps[step].delay_out
         ):
-            self.seq.steps[step].total_time = (
-                self.seq.steps[step].time_in
-                + self.seq.steps[step].wait
-                + self.seq.steps[step].delay_in
+            sequence.steps[step].total_time = (
+                sequence.steps[step].time_in
+                + sequence.steps[step].wait
+                + sequence.steps[step].delay_in
             )
         else:
-            self.seq.steps[step].total_time = (
-                self.seq.steps[step].time_out
-                + self.seq.steps[step].wait
-                + self.seq.steps[step].delay_out
+            sequence.steps[step].total_time = (
+                sequence.steps[step].time_out
+                + sequence.steps[step].wait
+                + sequence.steps[step].delay_out
             )
-        for channel in self.seq.steps[step].channel_time.keys():
+        for channel in sequence.steps[step].channel_time.keys():
             t = (
-                self.seq.steps[step].channel_time[channel].delay
-                + self.seq.steps[step].channel_time[channel].time
-                + self.seq.steps[step].wait
+                sequence.steps[step].channel_time[channel].delay
+                + sequence.steps[step].channel_time[channel].time
+                + sequence.steps[step].wait
             )
-            if t > self.seq.steps[step].total_time:
-                self.seq.steps[step].total_time = t
+            if t > sequence.steps[step].total_time:
+                sequence.steps[step].total_time = t
 
         # Tag filename as modified
         App().ascii.modified = True
         App().window.header.set_title(App().ascii.basename + "*")
 
         # Update Sequential Tab
-        if self.seq == App().sequence:
+        if sequence == App().sequence:
             path = str(int(path) + 1)
             App().window.playback.cues_liststore1[path][7] = text
             App().window.playback.cues_liststore2[path][7] = text
             if App().sequence.position + 1 == step:
                 App().window.playback.sequential.time_in = float(text)
-                App().window.playback.sequential.total_time = self.seq.steps[
+                App().window.playback.sequential.total_time = sequence.steps[
                     step
                 ].total_time
                 App().window.playback.sequential.queue_draw()
@@ -447,51 +403,43 @@ class SequenceTab(Gtk.Grid):
 
             self.liststore2[path][4] = "" if text == "0" else text
             # Find selected sequence
-            seq_path, _focus_column = self.treeview1.get_cursor()
-            selected = seq_path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
-            # Find Cue
+            sequence = self.get_selected_sequence()
+            # Find Step
             step = int(self.liststore2[path][0])
 
             # Update Delay Out value
-            self.seq.steps[step].delay_out = float(text)
+            sequence.steps[step].delay_out = float(text)
             # Update Total Time
             if (
-                self.seq.steps[step].time_in + self.seq.steps[step].delay_in
-                > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+                sequence.steps[step].time_in + sequence.steps[step].delay_in
+                > sequence.steps[step].time_out + sequence.steps[step].delay_out
             ):
-                self.seq.steps[step].total_time = (
-                    self.seq.steps[step].time_in
-                    + self.seq.steps[step].wait
-                    + self.seq.steps[step].delay_in
+                sequence.steps[step].total_time = (
+                    sequence.steps[step].time_in
+                    + sequence.steps[step].wait
+                    + sequence.steps[step].delay_in
                 )
             else:
-                self.seq.steps[step].total_time = (
-                    self.seq.steps[step].time_out
-                    + self.seq.steps[step].wait
-                    + self.seq.steps[step].delay_out
+                sequence.steps[step].total_time = (
+                    sequence.steps[step].time_out
+                    + sequence.steps[step].wait
+                    + sequence.steps[step].delay_out
                 )
-            for channel in self.seq.steps[step].channel_time.keys():
+            for channel in sequence.steps[step].channel_time.keys():
                 t = (
-                    self.seq.steps[step].channel_time[channel].delay
-                    + self.seq.steps[step].channel_time[channel].time
-                    + self.seq.steps[step].wait
+                    sequence.steps[step].channel_time[channel].delay
+                    + sequence.steps[step].channel_time[channel].time
+                    + sequence.steps[step].wait
                 )
-                if t > self.seq.steps[step].total_time:
-                    self.seq.steps[step].total_time = t
+                if t > sequence.steps[step].total_time:
+                    sequence.steps[step].total_time = t
 
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == App().sequence:
+            if sequence == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
                     App().window.playback.cues_liststore1[path][4] = ""
@@ -501,7 +449,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.playback.cues_liststore2[path][4] = text
                 if App().sequence.position + 1 == step:
                     App().window.playback.sequential.delay_out = float(text)
-                    App().window.playback.sequential.total_time = self.seq.steps[
+                    App().window.playback.sequential.total_time = sequence.steps[
                         step
                     ].total_time
                     App().window.playback.sequential.queue_draw()
@@ -523,51 +471,43 @@ class SequenceTab(Gtk.Grid):
 
             self.liststore2[path][6] = "" if text == "0" else text
             # Find selected sequence
-            seq_path, _focus_column = self.treeview1.get_cursor()
-            selected = seq_path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
-            # Find Cue
+            sequence = self.get_selected_sequence()
+            # Find Step
             step = int(self.liststore2[path][0])
 
             # Update Delay Out value
-            self.seq.steps[step].delay_in = float(text)
+            sequence.steps[step].delay_in = float(text)
             # Update Total Time
             if (
-                self.seq.steps[step].time_in + self.seq.steps[step].delay_in
-                > self.seq.steps[step].time_out + self.seq.steps[step].delay_out
+                sequence.steps[step].time_in + sequence.steps[step].delay_in
+                > sequence.steps[step].time_out + sequence.steps[step].delay_out
             ):
-                self.seq.steps[step].total_time = (
-                    self.seq.steps[step].time_in
-                    + self.seq.steps[step].wait
-                    + self.seq.steps[step].delay_in
+                sequence.steps[step].total_time = (
+                    sequence.steps[step].time_in
+                    + sequence.steps[step].wait
+                    + sequence.steps[step].delay_in
                 )
             else:
-                self.seq.steps[step].total_time = (
-                    self.seq.steps[step].time_out
-                    + self.seq.steps[step].wait
-                    + self.seq.steps[step].delay_out
+                sequence.steps[step].total_time = (
+                    sequence.steps[step].time_out
+                    + sequence.steps[step].wait
+                    + sequence.steps[step].delay_out
                 )
-            for channel in self.seq.steps[step].channel_time.keys():
+            for channel in sequence.steps[step].channel_time.keys():
                 t = (
-                    self.seq.steps[step].channel_time[channel].delay
-                    + self.seq.steps[step].channel_time[channel].time
-                    + self.seq.steps[step].wait
+                    sequence.steps[step].channel_time[channel].delay
+                    + sequence.steps[step].channel_time[channel].time
+                    + sequence.steps[step].wait
                 )
-                if t > self.seq.steps[step].total_time:
-                    self.seq.steps[step].total_time = t
+                if t > sequence.steps[step].total_time:
+                    sequence.steps[step].total_time = t
 
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")
 
             # Update Sequential Tab
-            if self.seq == App().sequence:
+            if sequence == App().sequence:
                 path = str(int(path) + 1)
                 if text == "0":
                     App().window.playback.cues_liststore1[path][6] = ""
@@ -577,7 +517,7 @@ class SequenceTab(Gtk.Grid):
                     App().window.playback.cues_liststore2[path][6] = text
                 if App().sequence.position + 1 == step:
                     App().window.playback.sequential.delay_in = float(text)
-                    App().window.playback.sequential.total_time = self.seq.steps[
+                    App().window.playback.sequential.total_time = sequence.steps[
                         step
                     ].total_time
                     App().window.playback.sequential.queue_draw()
@@ -592,27 +532,19 @@ class SequenceTab(Gtk.Grid):
         self.liststore2[path][2] = text
 
         # Find selected sequence
-        seq_path, _focus_column = self.treeview1.get_cursor()
-        selected = seq_path.get_indices()[0]
-        sequence = self.liststore1[selected][0]
-        if sequence == App().sequence.index:
-            self.seq = App().sequence
-        else:
-            for chaser in App().chasers:
-                if sequence == chaser.index:
-                    self.seq = chaser
-        # Find Cue
+        sequence = self.get_selected_sequence()
+        # Find Step
         step = int(self.liststore2[path][0])
 
         # Update text value
-        self.seq.steps[step].text = text
+        sequence.steps[step].text = text
 
         # Tag filename as modified
         App().ascii.modified = True
         App().window.header.set_title(App().ascii.basename + "*")
 
         # Update Main Playback
-        if self.seq == App().sequence:
+        if sequence == App().sequence:
             path = str(int(path) + 1)
             App().window.playback.cues_liststore1[path][2] = text
             App().window.playback.cues_liststore2[path][2] = text
@@ -621,117 +553,39 @@ class SequenceTab(Gtk.Grid):
             if App().sequence.position == step:
                 subtitle = (
                     "Mem. : "
-                    + str(self.seq.steps[step].cue.memory)
+                    + str(sequence.steps[step].cue.memory)
                     + " "
-                    + self.seq.steps[step].text
+                    + sequence.steps[step].text
                     + " - Next Mem. : "
-                    + str(self.seq.steps[step + 1].cue.memory)
+                    + str(sequence.steps[step + 1].cue.memory)
                     + " "
-                    + self.seq.steps[step + 1].text
+                    + sequence.steps[step + 1].text
                 )
                 App().window.header.set_subtitle(subtitle)
 
             if App().sequence.position + 1 == step:
                 subtitle = (
                     "Mem. : "
-                    + str(self.seq.steps[step - 1].cue.memory)
+                    + str(sequence.steps[step - 1].cue.memory)
                     + " "
-                    + self.seq.steps[step - 1].text
+                    + sequence.steps[step - 1].text
                     + " - Next Mem. : "
-                    + str(self.seq.steps[step].cue.memory)
+                    + str(sequence.steps[step].cue.memory)
                     + " "
-                    + self.seq.steps[step].text
+                    + sequence.steps[step].text
                 )
                 App().window.header.set_subtitle(subtitle)
 
     def on_memory_changed(self, _treeview):
         """Select cue"""
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-            self.channels[channel].queue_draw()
-        self.flowbox.invalidate_filter()
+        self.channels_view.update()
 
-    def filter_func(self, child, _user_data):
-        """Filter channels
-
-        Args:
-            child: Child object
-
-
-        Returns:
-            child or False
-        """
-        # Find selected sequence
-        path, _focus_column = self.treeview1.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
-        # Find Step
-        i = child.get_index()
-        selection = self.treeview2.get_selection()
-        model, treeiter = selection.get_selected()
-        if treeiter:
-            step = int(model[treeiter][0])
-            # Display channels in step
-            channels = self.seq.steps[step].cue.channels
-
-            if channels[i] != 0 or self.channels[i].clicked:
-                if self.user_channels[i] == -1:
-                    self.channels[i].level = channels[i]
-                    self.channels[i].next_level = channels[i]
-                else:
-                    self.channels[i].level = self.user_channels[i]
-                    self.channels[i].next_level = self.user_channels[i]
-                return child
-            if self.user_channels[i] == -1:
-                self.channels[i].level = 0
-                self.channels[i].next_level = 0
-                return False
-            self.channels[i].level = self.user_channels[i]
-            self.channels[i].next_level = self.user_channels[i]
-            return child
-
-        if self.user_channels[i] != -1 or self.channels[i].clicked:
-            if self.user_channels[i] == -1:
-                self.channels[i].level = 0
-                self.channels[i].next_level = 0
-            else:
-                self.channels[i].level = self.user_channels[i]
-                self.channels[i].next_level = self.user_channels[i]
-            return child
-
-        return False
-
-    def on_sequence_changed(self, selection):
-        """Select Sequence
-
-        Args:
-            selection: Object selected
-        """
+    def on_sequence_changed(self, _selection=None):
+        """Select Sequence"""
         # Empty ListStore
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
-
-        # Find Sequence selected
-        model, treeiter = selection.get_selected()
-        if treeiter:
-            selected = model[treeiter][0]
-            # Find it
-            for i, item in enumerate(self.liststore1):
-                if i + 1 == selected:
-                    if item[0] == App().sequence.index:
-                        self.seq = App().sequence
-                    else:
-                        for chaser in App().chasers:
-                            if item[0] == chaser.index:
-                                self.seq = chaser
-            # Display Sequence
-            self.populate_liststore(1)
+        # Display Sequence
+        self.populate_liststore(1)
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
@@ -778,6 +632,11 @@ class SequenceTab(Gtk.Grid):
         if keyname == "period":
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
+
+        # Channels View
+        self.last_selected_channel, self.keystring = self.channels_view.on_key_press(
+            keyname, self.last_selected_channel, self.keystring
+        )
 
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
@@ -838,253 +697,88 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.set_cursor(path)
         self.get_parent().grab_focus()
 
-    def _keypress_a(self):
-        """All Channels"""
-        self.flowbox.unselect_all()
-
-        # Find selected sequence
-        path, _focus_column = self.treeview1.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
-            # Find Step
-            path, _focus_column = self.treeview2.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            step = int(self.liststore2[selected][0])
-            channels = self.seq.steps[step].cue.channels
-
-            for channel in range(MAX_CHANNELS):
-                if channels[channel] != 0:
-                    self.channels[channel].clicked = True
-                    child = self.flowbox.get_child_at_index(channel)
-                    self.flowbox.select_child(child)
-                else:
-                    self.channels[channel].clicked = False
-            self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-
-    def _keypress_c(self):
-        """Channel"""
-        self.flowbox.unselect_all()
-        for channel in range(MAX_CHANNELS):
-            self.channels[channel].clicked = False
-
-        if self.keystring not in ["", "0"]:
-            channel = int(self.keystring)
-            # Only patched channels
-            if channel in App().patch.channels:
-                self.channels[channel - 1].clicked = True
-                child = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.select_child(child)
-                self.last_chan_selected = self.keystring
-        self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_KP_Divide(self):  # pylint: disable=C0103
-        """Channel Thru"""
-        self._keypress_greater()
-
-    def _keypress_greater(self):
-        """Channel Thru"""
-        sel = self.flowbox.get_selected_children()
-        if len(sel) == 1:
-            flowboxchild = sel[0]
-            channelwidget = flowboxchild.get_child()
-            self.last_chan_selected = channelwidget.channel
-
-        if self.last_chan_selected:
-            to_chan = int(self.keystring)
-            if to_chan > int(self.last_chan_selected):
-                for channel in range(int(self.last_chan_selected) - 1, to_chan):
-                    # Only patched channels
-                    if channel + 1 in App().patch.channels:
-                        self.channels[channel].clicked = True
-                        child = self.flowbox.get_child_at_index(channel)
-                        self.flowbox.select_child(child)
-            else:
-                for channel in range(to_chan - 1, int(self.last_chan_selected)):
-                    # Only patched channels
-                    if channel + 1 in App().patch.channels:
-                        self.channels[channel].clicked = True
-                        child = self.flowbox.get_child_at_index(channel)
-                        self.flowbox.select_child(child)
-            self.flowbox.invalidate_filter()
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_plus(self):
-        """Channel +"""
-        if self.keystring == "":
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = True
-            self.flowbox.invalidate_filter()
-            child = self.flowbox.get_child_at_index(channel - 1)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = self.keystring
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_minus(self):
-        """Channel -"""
-        if self.keystring == "":
-            return
-
-        channel = int(self.keystring)
-        if channel in App().patch.channels:
-            self.channels[channel - 1].clicked = False
-            self.flowbox.invalidate_filter()
-            child = self.flowbox.get_child_at_index(channel - 1)
-            self.flowbox.unselect_child(child)
-            self.last_chan_selected = self.keystring
-
-        self.get_parent().grab_focus()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
     def _keypress_equal(self):
         """@ Level"""
-        level = int(self.keystring)
-        if App().settings.get_boolean("percent"):
-            level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
-        if 0 <= level <= 255:
-            sel = self.flowbox.get_selected_children()
-
-            for flowboxchild in sel:
-                channelwidget = flowboxchild.get_child()
-                channel = int(channelwidget.channel) - 1
-                if level != -1:
-                    self.channels[channel].level = level
-                    self.channels[channel].next_level = level
-                    self.channels[channel].queue_draw()
-                    self.user_channels[channel] = level
-
+        channels, level = self.channels_view.at_level(self.keystring)
+        if channels and level != -1:
+            for channel in channels:
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """Level - %"""
-        lvl = App().settings.get_int("percent-level")
-
-        sel = self.flowbox.get_selected_children()
-
-        for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            level = self.channels[channel].level
-            level = max(level - lvl, 0)
-            self.channels[channel].level = level
-            self.channels[channel].next_level = level
-            self.channels[channel].queue_draw()
-            self.user_channels[channel] = level
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
+        if App().settings.get_boolean("percent"):
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                channel_widget = self.channels_view.get_channel_widget(channel)
+                level = channel_widget.level
+                level = max(level - step_level, 0)
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
 
     def _keypress_exclam(self):
         """Level + %"""
-        lvl = App().settings.get_int("percent-level")
-
-        sel = self.flowbox.get_selected_children()
-
-        for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel) - 1
-            level = self.channels[channel].level
-            level = min(level + lvl, 255)
-            self.channels[channel].level = level
-            self.channels[channel].next_level = level
-            self.channels[channel].queue_draw()
-            self.user_channels[channel] = level
+        channels = self.channels_view.get_selected_channels()
+        step_level = App().settings.get_int("percent-level")
+        if App().settings.get_boolean("percent"):
+            step_level = round((step_level / 100) * 255)
+        if channels and step_level:
+            for channel in channels:
+                channel_widget = self.channels_view.get_channel_widget(channel)
+                level = channel_widget.level
+                level = min(level + step_level, 255)
+                self.user_channels[channel - 1] = level
+        self.channels_view.update()
 
     def _keypress_U(self):  # pylint: disable=C0103
         """Update Cue"""
         # Find selected sequence
-        path, _focus_column = self.treeview1.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
-            # Find Step
-            path, _focus_column = self.treeview2.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            step = int(self.liststore2[selected][0])
-            channels = self.seq.steps[step].cue.channels
-
-            memory = self.seq.steps[step].cue.memory
-
+        sequence = self.get_selected_sequence()
+        # Find Step
+        step = self.get_selected_step()
+        if sequence and step:
+            channels = sequence.steps[step].cue.channels
+            memory = sequence.steps[step].cue.memory
             # Dialog to confirm Update
             dialog = Dialog(App().window, memory)
             response = dialog.run()
-
             if response == Gtk.ResponseType.OK:
                 # Update levels in the cue
                 for channel in range(MAX_CHANNELS):
-                    channels[channel] = self.channels[channel].level
+                    channel_widget = self.channels_view.get_channel_widget(channel + 1)
+                    channels[channel] = channel_widget.level
                     if channels[channel] != 0:
-                        self.seq.channels[channel] = 1
-
+                        sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
                 App().window.header.set_title(App().ascii.basename + "*")
-
                 # Update Main playback display
-                if self.seq == App().sequence and step == App().sequence.position + 1:
+                if sequence == App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
                         widget = (
                             App().window.live_view.channels_view.get_channel_widget(
                                 channel + 1
                             )
                         )
-                        widget.next_level = self.seq.steps[step].cue.channels[channel]
+                        widget.next_level = sequence.steps[step].cue.channels[channel]
                         widget.queue_draw()
-
             dialog.destroy()
-
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
     def _keypress_Delete(self):  # pylint: disable=C0103
         """Delete selected Step"""
         # Find selected sequence
-        path, _focus_column = self.treeview1.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            sequence = self.liststore1[selected][0]
-            if sequence == App().sequence.index:
-                self.seq = App().sequence
-            else:
-                for chaser in App().chasers:
-                    if sequence == chaser.index:
-                        self.seq = chaser
-            # Find Step
-            path, _focus_column = self.treeview2.get_cursor()
-        if path:
-            selected = path.get_indices()[0]
-            step = int(self.liststore2[selected][0])
-            # cue = self.seq.steps[step].cue.memory
-            self.seq.steps.pop(step)
-            self.seq.last -= 1
+        sequence = self.get_selected_sequence()
+        step = self.get_selected_step()
+        if sequence and step:
+            sequence.steps.pop(step)
+            sequence.last -= 1
             self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
             self.populate_liststore(step)
             # Update Main Playback
@@ -1116,15 +810,15 @@ class SequenceTab(Gtk.Grid):
     def _keypress_R(self):  # pylint: disable=C0103
         """New Step and new Cue"""
         found = False
-
+        # Find selected Step
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = self.get_selected_step()
         if self.keystring == "":
-            # Find selected Step
-            path, _focus_column = self.treeview2.get_cursor()
-            if path:
-                selected = path.get_indices()[0]
-                step = int(self.liststore2[selected][0])
+            if step:
                 # New Cue number
-                mem = self.seq.get_next_cue(step=step)
+                mem = sequence.get_next_cue(step=step)
                 # New Step
                 step += 1
             else:
@@ -1133,21 +827,21 @@ class SequenceTab(Gtk.Grid):
         else:
             # Cue number given by user
             mem = float(self.keystring)
-            found, step = self.seq.get_step(cue=mem)
+            found, step = sequence.get_step(cue=mem)
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
-
         if not found:  # New Cue
             # Create Cue
             channels = array.array("B", [0] * MAX_CHANNELS)
             for channel in range(MAX_CHANNELS):
-                channels[channel] = self.channels[channel].level
-            cue = Cue(self.seq.index, mem, channels)
+                channel_widget = self.channels_view.get_channel_widget(channel + 1)
+                channels[channel] = channel_widget.level
+            cue = Cue(sequence.index, mem, channels)
             # Create Step
-            step_object = Step(self.seq.index, cue=cue)
-            self.seq.insert_step(step, step_object)
+            step_object = Step(sequence.index, cue=cue)
+            sequence.insert_step(step, step_object)
             # If we modify Main Sequence
-            if self.seq is App().sequence:
+            if sequence is App().sequence:
                 App().memories.insert(step, cue)
                 # Update Preset Tab if exist
                 if App().memories_tab:
@@ -1165,29 +859,24 @@ class SequenceTab(Gtk.Grid):
         else:  # Update Cue
             dialog = Dialog(App().window, str(mem))
             response = dialog.run()
-
             if response == Gtk.ResponseType.OK:
                 # Find Preset's position
-                found, step = self.seq.get_step(cue=mem)
+                found, step = sequence.get_step(cue=mem)
                 # Update Cue
                 channels = array.array("B", [0] * MAX_CHANNELS)
                 for channel in range(MAX_CHANNELS):
-                    self.seq.steps[step].cue.channels[channel] = self.channels[
-                        channel
-                    ].level
-                    if self.channels[channel].level:
-                        self.seq.channels[channel] = 1
-
+                    channel_widget = self.channels_view.get_channel_widget(channel + 1)
+                    sequence.steps[step].cue.channels[channel] = channel_widget.level
+                    if channel_widget.level:
+                        sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
                 App().window.header.set_title(App().ascii.basename + "*")
-
                 # Select memory modified
                 path = Gtk.TreePath.new_from_indices([step - 1])
                 self.treeview2.set_cursor(path, None, False)
-
                 # Update Presets Tab if exist
-                if self.seq is App().sequence and App().memories_tab:
+                if sequence is App().sequence and App().memories_tab:
                     nb_chan = sum(
                         1
                         for chan in range(MAX_CHANNELS)
@@ -1197,18 +886,19 @@ class SequenceTab(Gtk.Grid):
                     treeiter = App().memories_tab.liststore.get_iter(step - 1)
                     App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
                     App().memories_tab.channels_view.update()
-
                 # Update Channels tab
-                if self.seq is App().sequence and step == App().sequence.position + 1:
+                if sequence is App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
                         widget = (
                             App().window.live_view.channels_view.get_channel_widget(
                                 channel + 1
                             )
                         )
-                        widget.next_level = self.channels[channel].level
+                        channel_widget = self.channels_view.get_channel_widget(
+                            channel + 1
+                        )
+                        widget.next_level = channel_widget.level
                         widget.queue_draw()
-
             dialog.destroy()
 
     def add_step_to_liststore(self, step):
@@ -1217,46 +907,47 @@ class SequenceTab(Gtk.Grid):
         Args:
             step: Step
         """
+        sequence = self.get_selected_sequence()
         wait = (
-            str(int(self.seq.steps[step].wait))
-            if self.seq.steps[step].wait.is_integer()
-            else str(self.seq.steps[step].wait)
+            str(int(sequence.steps[step].wait))
+            if sequence.steps[step].wait.is_integer()
+            else str(sequence.steps[step].wait)
         )
         if wait == "0":
             wait = ""
         t_out = (
-            str(int(self.seq.steps[step].time_out))
-            if self.seq.steps[step].time_out.is_integer()
-            else str(self.seq.steps[step].time_out)
+            str(int(sequence.steps[step].time_out))
+            if sequence.steps[step].time_out.is_integer()
+            else str(sequence.steps[step].time_out)
         )
         d_out = (
-            str(int(self.seq.steps[step].delay_out))
-            if self.seq.steps[step].delay_out.is_integer()
-            else str(self.seq.steps[step].delay_out)
+            str(int(sequence.steps[step].delay_out))
+            if sequence.steps[step].delay_out.is_integer()
+            else str(sequence.steps[step].delay_out)
         )
         if d_out == "0":
             d_out = ""
         t_in = (
-            str(int(self.seq.steps[step].time_in))
-            if self.seq.steps[step].time_in.is_integer()
-            else str(self.seq.steps[step].time_in)
+            str(int(sequence.steps[step].time_in))
+            if sequence.steps[step].time_in.is_integer()
+            else str(sequence.steps[step].time_in)
         )
         d_in = (
-            str(int(self.seq.steps[step].delay_in))
-            if self.seq.steps[step].delay_in.is_integer()
-            else str(self.seq.steps[step].delay_in)
+            str(int(sequence.steps[step].delay_in))
+            if sequence.steps[step].delay_in.is_integer()
+            else str(sequence.steps[step].delay_in)
         )
         if d_in == "0":
             d_in = ""
-        channel_time = str(len(self.seq.steps[step].channel_time))
+        channel_time = str(len(sequence.steps[step].channel_time))
         if channel_time == "0":
             channel_time = ""
         self.liststore2.insert(
             step - 1,
             [
                 str(step),
-                str(self.seq.steps[step].cue.memory),
-                self.seq.steps[step].text,
+                str(sequence.steps[step].cue.memory),
+                sequence.steps[step].text,
                 wait,
                 d_out,
                 t_out,
@@ -1272,18 +963,20 @@ class SequenceTab(Gtk.Grid):
         Args:
             step: Step
         """
+        sequence = self.get_selected_sequence()
         # Liststore with infos from the sequence
-        if self.seq == App().sequence:
-            for i in range(self.seq.last)[1:-1]:
-                self.add_step_to_liststore(i)
-        else:
-            for i in range(self.seq.last)[1:]:
-                self.add_step_to_liststore(i)
+        if sequence:
+            if sequence == App().sequence:
+                for i in range(sequence.last)[1:-1]:
+                    self.add_step_to_liststore(i)
+            else:
+                for i in range(sequence.last)[1:]:
+                    self.add_step_to_liststore(i)
 
-        self.treeview2.set_model(self.liststore2)
-        # Select new step
-        path = Gtk.TreePath.new_from_indices([step - 1])
-        self.treeview2.set_cursor(path, None, False)
+            self.treeview2.set_model(self.liststore2)
+            # Select new step
+            path = Gtk.TreePath.new_from_indices([step - 1])
+            self.treeview2.set_cursor(path, None, False)
 
     def update_sequence_display(self, step):
         """Update Sequence display
@@ -1292,10 +985,11 @@ class SequenceTab(Gtk.Grid):
             step: Step
         """
         self.add_step_to_liststore(step)
+        sequence = self.get_selected_sequence()
         # Update Main Playback
-        if self.seq is App().sequence:
+        if sequence is App().sequence:
             # Update indexes of cues in listsore
-            for i in range(step, self.seq.last - 2):
+            for i in range(step, sequence.last - 2):
                 self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
             # Update Main Tab
             App().window.playback.update_sequence_display()
@@ -1307,7 +1001,7 @@ class SequenceTab(Gtk.Grid):
         # Update Chasers
         else:
             # Update indexes of cues in listsore
-            for i in range(step, self.seq.last - 1):
+            for i in range(step, sequence.last - 1):
                 self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
         # Select new step
         path = Gtk.TreePath.new_from_indices([step - 1])
@@ -1338,3 +1032,126 @@ class Dialog(Gtk.Dialog):
         box = self.get_content_area()
         box.add(label)
         self.show_all()
+
+
+class SeqChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(self):
+        super().__init__()
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+        channels = self.get_selected_channels()
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            level = channel_widget.level
+            if direction == Gdk.ScrollDirection.UP:
+                level = min(level + step, 255)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                level = max(level - step, 0)
+            channel_widget.level = level
+            channel_widget.next_level = level
+            channel_widget.queue_draw()
+            App().sequences_tab.user_channels[channel - 1] = level
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Filter channels to display
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        if not App().sequences_tab:
+            return False
+        sequence = App().sequences_tab.get_selected_sequence()
+        step = App().sequences_tab.get_selected_step()
+        if not sequence or not step:
+            return False
+        channel_index = child.get_index()
+        channel_level = sequence.steps[step].cue.channels[channel_index]
+        if self.view_mode == VIEW_MODES["Active"]:
+            return self._filter_active(child, channel_level)
+        if self.view_mode == VIEW_MODES["Patched"]:
+            return self._filter_patched(child, channel_level)
+        return self._filter_all(child, channel_level)
+
+    def _filter_active(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
+        """Filter in Active mode
+
+        Args:
+            child: Parent of Channel Widget
+            channel_level: Channel level of selected step of selected sequence
+
+        Returns:
+            True or False
+        """
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        user_channel = App().sequences_tab.user_channels[channel_index]
+        if channel_level or child.is_selected():
+            if user_channel == -1:
+                channel_widget.level = channel_level
+                channel_widget.next_level = channel_level
+            else:
+                channel_widget.level = user_channel
+                channel_widget.next_level = user_channel
+            return True
+        if user_channel != -1:
+            channel_widget.level = user_channel
+            channel_widget.next_level = user_channel
+            return True
+        channel_widget.level = 0
+        channel_widget.next_level = 0
+        return False
+
+    def _filter_patched(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
+        """Filter in Patched mode
+
+        Args:
+            child: Parent of Channel Widget
+            channel_level: Channel level of selected step of selected sequence
+
+        Returns:
+            True or False
+        """
+        channel_index = child.get_index()
+        if channel_index + 1 not in App().patch.channels:
+            return False
+        return self._filter_all(child, channel_level)
+
+    def _filter_all(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
+        """Filter in All channels mode
+
+        Args:
+            child: Parent of Channel Widget
+            channel_level: Channel level of selected step of selected sequence
+
+        Returns:
+            True or False
+        """
+        channel_index = child.get_index()
+        channel_widget = child.get_child()
+        user_channel = App().sequences_tab.user_channels[channel_index]
+        if channel_level or child.is_selected():
+            if user_channel == -1:
+                channel_widget.level = channel_level
+                channel_widget.next_level = channel_level
+            else:
+                channel_widget.level = user_channel
+                channel_widget.next_level = user_channel
+            return True
+        if user_channel != -1:
+            channel_widget.level = user_channel
+            channel_widget.next_level = user_channel
+            return True
+        channel_widget.level = 0
+        channel_widget.next_level = 0
+        return True

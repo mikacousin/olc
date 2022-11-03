@@ -316,8 +316,7 @@ class Window(Gtk.ApplicationWindow):
                 sequence = App().sequences_tab.liststore1[selected][0]
                 if sequence == App().sequence.index:
                     # Yes, update it
-                    selection = App().sequences_tab.treeview1.get_selection()
-                    App().sequences_tab.on_sequence_changed(selection)
+                    App().sequences_tab.on_sequence_changed()
 
         # Tag filename as modified
         App().ascii.modified = True

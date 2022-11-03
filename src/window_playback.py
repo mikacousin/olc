@@ -321,13 +321,16 @@ class MainPlaybackView(Gtk.Notebook):
     def update_active_cues_display(self):
         """Update First part of sequential"""
         self.cues_liststore1[App().sequence.position][9] = "#232729"
-        self.cues_liststore1[App().sequence.position + 1][9] = "#232729"
-        self.cues_liststore1[App().sequence.position + 2][9] = "#997004"
-        self.cues_liststore1[App().sequence.position + 3][9] = "#555555"
         self.cues_liststore1[App().sequence.position][10] = Pango.Weight.NORMAL
-        self.cues_liststore1[App().sequence.position + 1][10] = Pango.Weight.NORMAL
-        self.cues_liststore1[App().sequence.position + 2][10] = Pango.Weight.HEAVY
-        self.cues_liststore1[App().sequence.position + 3][10] = Pango.Weight.HEAVY
+        if App().sequence.position + 1 <= App().sequence.last:
+            self.cues_liststore1[App().sequence.position + 1][9] = "#232729"
+            self.cues_liststore1[App().sequence.position + 1][10] = Pango.Weight.NORMAL
+        if App().sequence.position + 2 <= App().sequence.last:
+            self.cues_liststore1[App().sequence.position + 2][9] = "#997004"
+            self.cues_liststore1[App().sequence.position + 2][10] = Pango.Weight.HEAVY
+        if App().sequence.position + 3 <= App().sequence.last:
+            self.cues_liststore1[App().sequence.position + 3][9] = "#555555"
+            self.cues_liststore1[App().sequence.position + 3][10] = Pango.Weight.HEAVY
         self.step_filter1.refilter()
         self.step_filter2.refilter()
         path1 = Gtk.TreePath.new_from_indices([App().sequence.position + 2])

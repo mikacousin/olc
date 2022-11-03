@@ -413,8 +413,7 @@ class Application(Gtk.Application):
             self.sequences_tab.treeview1.set_model(self.sequences_tab.liststore1)
             path = Gtk.TreePath.new_first()
             self.sequences_tab.treeview1.set_cursor(path, None, False)
-            selection = self.sequences_tab.treeview1.get_selection()
-            self.sequences_tab.on_sequence_changed(selection)
+            self.sequences_tab.on_sequence_changed()
 
         # Redraw Masters Tab
         if self.masters_tab:
