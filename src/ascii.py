@@ -223,4 +223,4 @@ class Ascii:
 
         App().window.live_view.channels_view.flowbox.unselect_all()
         App().window.live_view.channels_view.update()
-        App().window.last_chan_selected = ""
+        App().window.live_view.channels_view.last_selected_channel = ""

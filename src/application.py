@@ -443,7 +443,7 @@ class Application(Gtk.Application):
             self.inde_tab.treeview.set_cursor(path, None, False)
 
         self.window.live_view.grab_focus()
-        self.window.last_chan_selected = ""
+        self.window.live_view.channels_view.last_selected_channel = ""
 
     def _open(self, _action, _parameter):
         """create a filechooserdialog to open:

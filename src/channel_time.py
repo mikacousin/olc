@@ -74,7 +74,6 @@ class ChanneltimeTab(Gtk.Paned):
         self.position = position
 
         self.keystring = ""
-        self.last_selected_channel = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
@@ -366,9 +365,7 @@ class ChanneltimeTab(Gtk.Paned):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
         # Channels View
-        self.last_selected_channel, self.keystring = self.channels_view.on_key_press(
-            keyname, self.last_selected_channel, self.keystring
-        )
+        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()

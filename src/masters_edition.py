@@ -25,7 +25,6 @@ class MastersTab(Gtk.Paned):
     def __init__(self):
 
         self.keystring = ""
-        self.last_chan_selected = ""
 
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -327,16 +326,11 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
             if App().masters[row].content_type not in (0, 3) or keyname in "f":
-                (
-                    self.last_chan_selected,
-                    self.keystring,
-                ) = self.channels_view.on_key_press(
-                    keyname, self.last_chan_selected, self.keystring
+                self.keystring = self.channels_view.on_key_press(
+                    keyname, self.keystring
                 )
         elif keyname in "f":
-            self.last_chan_selected, self.keystring = self.channels_view.on_key_press(
-                keyname, self.last_chan_selected, self.keystring
-            )
+            self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()

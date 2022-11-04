@@ -26,7 +26,6 @@ class CuesEditionTab(Gtk.Paned):
     def __init__(self):
 
         self.keystring = ""
-        self.last_chan_selected = ""
 
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -124,9 +123,7 @@ class CuesEditionTab(Gtk.Paned):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
         # Channels View
-        self.last_chan_selected, self.keystring = self.channels_view.on_key_press(
-            keyname, self.last_chan_selected, self.keystring
-        )
+        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()

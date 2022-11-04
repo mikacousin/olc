@@ -47,24 +47,22 @@ class ChannelWidget(Gtk.Widget):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         flowboxchild = tgt.get_parent()
         flowbox = flowboxchild.get_parent()
+        channels_view = flowbox.get_parent().get_parent().get_parent()
 
-        if (
-            flowbox is App().window.live_view.channels_view.flowbox
-            and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
-        ):
-            App().window.keystring = self.channel
-            App().window.thru()
+        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+            channels_view.select_thru(self.channel)
         elif flowboxchild.is_selected():
             flowbox.unselect_child(flowboxchild)
         else:
             flowbox.select_child(flowboxchild)
-            App().window.last_chan_selected = self.channel
+            channels_view.last_selected_channel = self.channel
         # If Main channels view, update Track Channels if opened
         if (
-            flowbox is App().window.live_view.channels_view.flowbox
+            channels_view is App().window.live_view.channels_view
             and App().track_channels_tab
         ):
             App().track_channels_tab.update_display()
+        channels_view.grab_focus()
 
     def do_draw(self, cr):
         """Draw widget

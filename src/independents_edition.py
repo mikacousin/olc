@@ -24,7 +24,6 @@ class IndependentsTab(Gtk.Paned):
 
     def __init__(self):
         self.keystring = ""
-        self.last_selected_channel = ""
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -127,9 +126,8 @@ class IndependentsTab(Gtk.Paned):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
         # Channels View
-        self.last_selected_channel, self.keystring = self.channels_view.on_key_press(
-            keyname, self.last_selected_channel, self.keystring
-        )
+        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
         return False

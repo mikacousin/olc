@@ -28,7 +28,7 @@ class ChannelsView(Gtk.Box):
     """
 
     view_mode: int
-    last_chan_selected: str
+    last_selected_channel: str
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
@@ -36,7 +36,7 @@ class ChannelsView(Gtk.Box):
         super().__init__(*args, orientation=Gtk.Orientation.VERTICAL, **kwargs)
 
         self.view_mode = VIEW_MODES.get("All")
-        self.last_chan_selected = ""
+        self.last_selected_channel = ""
 
         header = Gtk.HeaderBar()
         self.combo = Gtk.ComboBoxText()
@@ -130,14 +130,11 @@ class ChannelsView(Gtk.Box):
             index = 0
         self.combo.set_active(index)
 
-    def select_channel(self, keystring: str) -> str:
+    def select_channel(self, keystring: str) -> None:
         """Select one channel
 
         Args:
             keystring: Channel number (1-MAX_CHANNELS)
-
-        Returns:
-            Channel number or empty string
         """
         string = ""
         self.flowbox.unselect_all()
@@ -149,16 +146,13 @@ class ChannelsView(Gtk.Box):
                 App().window.set_focus(flowboxchild)
                 string = keystring
         self.flowbox.invalidate_filter()
-        return string
+        self.last_selected_channel = string
 
-    def select_plus(self, keystring: str) -> str:
+    def select_plus(self, keystring: str) -> None:
         """Add channel to selection
 
         Args:
             keystring: Channel number (1-MAX_CHANNELS)
-
-        Returns:
-            Channel number or empty string
         """
         string = ""
         if is_non_nul_int(keystring):
@@ -169,16 +163,13 @@ class ChannelsView(Gtk.Box):
                 App().window.set_focus(flowboxchild)
                 string = keystring
         self.flowbox.invalidate_filter()
-        return string
+        self.last_selected_channel = string
 
-    def select_minus(self, keystring: str) -> str:
+    def select_minus(self, keystring: str) -> None:
         """Remove channel from selection
 
         Args:
             keystring: Channel number (1-MAX_CHANNELS)
-
-        Returns:
-            Channel number or empty string
         """
         string = ""
         if is_non_nul_int(keystring):
@@ -189,30 +180,25 @@ class ChannelsView(Gtk.Box):
                 App().window.set_focus(flowboxchild)
                 string = keystring
         self.flowbox.invalidate_filter()
-        return string
+        self.last_selected_channel = string
 
-    def select_next(self, last_chan: str) -> str:
-        """Select next channel
-
-        Args:
-            last_chan: Last selected channel (from 1 to MAX_CHANNELS)
-
-        Returns:
-            Channel number (from 1 to MAX_CHANNELS) or empty string
-        """
+    def select_next(self) -> None:
+        """Select next channel"""
         self.flowbox.unselect_all()
-        if last_chan and not is_non_nul_int(last_chan):
-            return ""
+        if self.last_selected_channel and not is_non_nul_int(
+            self.last_selected_channel
+        ):
+            return
         if self.view_mode == VIEW_MODES["Patched"]:
-            return self._next_patched(last_chan)
+            self._next_patched()
         if self.view_mode == VIEW_MODES["Active"]:
-            return self._next_active(last_chan)
+            self._next_active()
         # Default mode: All channels
         selected_channel = ""
-        if not last_chan:
+        if not self.last_selected_channel:
             channel_index = 0
         else:
-            channel_index = int(last_chan)
+            channel_index = int(self.last_selected_channel)
         if channel_index > MAX_CHANNELS - 1:
             channel_index = 0
         flowboxchild = self.flowbox.get_child_at_index(channel_index)
@@ -220,23 +206,16 @@ class ChannelsView(Gtk.Box):
         App().window.set_focus(flowboxchild)
         selected_channel = str(channel_index + 1)
         self.flowbox.invalidate_filter()
-        return selected_channel
+        self.last_selected_channel = selected_channel
 
-    def _next_active(self, last_chan: str) -> str:
-        """Select next channel in Active mode view
-
-        Args:
-            last_chan: Last selected channel (from 1 to MAX_CHANNELS)
-
-        Returns:
-            Channel number (from 1 to MAX_CHANNELS) or empty string
-        """
+    def _next_active(self) -> None:
+        """Select next channel in Active mode view"""
         selected_channel = ""
         children = self.flowbox.get_children()
-        if not last_chan:
+        if not self.last_selected_channel:
             start = self.__get_first_active_channel()
         else:
-            start = int(last_chan)
+            start = int(self.last_selected_channel)
         for child in children:
             channel_index = child.get_index()
             if child.get_visible() and channel_index >= start:
@@ -248,21 +227,14 @@ class ChannelsView(Gtk.Box):
         self.flowbox.select_child(flowboxchild)
         App().window.set_focus(flowboxchild)
         self.flowbox.invalidate_filter()
-        return selected_channel
+        self.last_selected_channel = selected_channel
 
-    def _next_patched(self, last_chan: str) -> str:
-        """Select next channel in Patched mode view
-
-        Args:
-            last_chan: Last selected channel (from 1 to MAX_CHANNELS)
-
-        Returns:
-            Channel number (from 1 to MAX_CHANNELS) or empty string
-        """
-        if not last_chan:
+    def _next_patched(self) -> None:
+        """Select next channel in Patched mode view"""
+        if not self.last_selected_channel:
             start = App().patch.get_first_patched_channel() - 1
         else:
-            start = int(last_chan)
+            start = int(self.last_selected_channel)
         for channel_index in range(start, MAX_CHANNELS):
             if channel_index + 1 in App().patch.channels:
                 break
@@ -273,30 +245,25 @@ class ChannelsView(Gtk.Box):
         App().window.set_focus(flowboxchild)
         selected_channel = str(channel_index + 1)
         self.flowbox.invalidate_filter()
-        return selected_channel
+        self.last_selected_channel = selected_channel
 
-    def select_previous(self, last_chan: str) -> str:
-        """Select previous channel
-
-        Args:
-            last_chan: Last selected channel (from 1 to MAX_CHANNELS)
-
-        Returns:
-            Channel number (from 1 to MAX_CHANNELS) or empty string
-        """
+    def select_previous(self) -> None:
+        """Select previous channel"""
         self.flowbox.unselect_all()
-        if last_chan and not is_non_nul_int(last_chan):
-            return ""
+        if self.last_selected_channel and not is_non_nul_int(
+            self.last_selected_channel
+        ):
+            return
         if self.view_mode == VIEW_MODES["Patched"]:
-            return self._previous_patched(last_chan)
+            self._previous_patched()
         if self.view_mode == VIEW_MODES["Active"]:
-            return self._previous_active(last_chan)
+            self._previous_active()
         # Default mode: All channels
         selected_channel = ""
-        if not last_chan:
+        if not self.last_selected_channel:
             channel_index = 0
         else:
-            channel_index = int(last_chan) - 2
+            channel_index = int(self.last_selected_channel) - 2
         if channel_index < 0:
             channel_index = MAX_CHANNELS - 1
         flowboxchild = self.flowbox.get_child_at_index(channel_index)
@@ -304,22 +271,15 @@ class ChannelsView(Gtk.Box):
         App().window.set_focus(flowboxchild)
         selected_channel = str(channel_index + 1)
         self.flowbox.invalidate_filter()
-        return selected_channel
+        self.last_selected_channel = selected_channel
 
-    def _previous_active(self, last_chan: str) -> str:
-        """Select previous channel in Active mode view
-
-        Args:
-            last_chan: Last selected channel (from 1 to MAX_CHANNELS)
-
-        Returns:
-            Channel number (from 1 to MAX_CHANNELS) or empty string
-        """
+    def _previous_active(self) -> None:
+        """Select previous channel in Active mode view"""
         selected_channel = ""
-        if not last_chan:
+        if not self.last_selected_channel:
             start = self.__get_last_active_channel() + 1
         else:
-            start = int(last_chan) - 2
+            start = int(self.last_selected_channel) - 2
         children = self.flowbox.get_children()
         children.reverse()
         for child in children:
@@ -333,21 +293,14 @@ class ChannelsView(Gtk.Box):
         self.flowbox.select_child(flowboxchild)
         App().window.set_focus(flowboxchild)
         self.flowbox.invalidate_filter()
-        return selected_channel
+        self.last_selected_channel = selected_channel
 
-    def _previous_patched(self, last_chan: str) -> str:
-        """Select previous channel in Patched mode view
-
-        Args:
-            last_chan: Last selected channel (from 1 to MAX_CHANNELS)
-
-        Returns:
-            Channel number (from 1 to MAX_CHANNELS) or empty string
-        """
-        if not last_chan:
+    def _previous_patched(self) -> None:
+        """Select previous channel in Patched mode view"""
+        if not self.last_selected_channel:
             start = App().patch.get_last_patched_channel()
         else:
-            start = int(last_chan) - 2
+            start = int(self.last_selected_channel) - 2
         for channel_index in range(start, 0, -1):
             if channel_index + 1 in App().patch.channels:
                 break
@@ -358,7 +311,7 @@ class ChannelsView(Gtk.Box):
         App().window.set_focus(flowboxchild)
         selected_channel = str(channel_index + 1)
         self.flowbox.invalidate_filter()
-        return selected_channel
+        self.last_selected_channel = selected_channel
 
     def select_all(self) -> None:
         """Select all channel with a level > 0"""
@@ -370,16 +323,13 @@ class ChannelsView(Gtk.Box):
             if level:
                 self.flowbox.select_child(flowboxchild)
 
-    def select_thru(self, keystring: str, last_chan: str) -> str:
+    def select_thru(self, keystring: str) -> None:
         """Select Channel Thru
 
         Args:
             keystring: Channel number
-            last_chan: Last channel selected
-
-        Returns:
-            Channel number
         """
+        last_chan = self.last_selected_channel
         string = last_chan
         if is_non_nul_int(keystring):
             if last_chan:
@@ -399,7 +349,7 @@ class ChannelsView(Gtk.Box):
                     App().window.set_focus(flowboxchild)
                 self.flowbox.invalidate_filter()
                 string = keystring
-        return string
+        self.last_selected_channel = string
 
     def at_level(self, keystring: str) -> Tuple[List[int], int]:
         """Channels at level
@@ -459,23 +409,22 @@ class ChannelsView(Gtk.Box):
                 break
         return child.get_index()
 
-    def __grab_focus(self) -> None:
+    def grab_focus(self) -> None:
         parent = self.get_parent()
         if App().window and parent in (App().window.live_view, App().window.playback):
             parent.grab_focus()
         elif parent:
             parent.get_parent().grab_focus()
 
-    def on_key_press(self, keyname: str, last_chan: str, keystring: str) -> Any:
+    def on_key_press(self, keyname: str, keystring: str) -> Any:
         """Processes common keyboard methods of Channels View
 
         Args:
             keyname: Gdk Name of the pressed key
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            method or Last channel and Keystring
+            method or Keys buffer
         """
         if keyname in (
             "f",
@@ -491,138 +440,130 @@ class ChannelsView(Gtk.Box):
             "minus",
         ):
             if func := getattr(self, "_keypress_" + keyname.lower(), None):
-                return func(last_chan, keystring)
-        return last_chan, keystring
+                return func(keystring)
+        return keystring
 
-    def _keypress_f(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_f(self, keystring: str) -> str:
         """Toggle display mode
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Keys buffer
         """
         self.toggle_view_mode()
-        self.__grab_focus()
-        return last_chan, keystring
+        self.grab_focus()
+        return keystring
 
-    def _keypress_a(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_a(self, keystring: str) -> str:
         """All Channels
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Keys buffer
         """
         self.select_all()
-        self.__grab_focus()
-        return last_chan, keystring
+        self.grab_focus()
+        return keystring
 
-    def _keypress_page_up(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_page_up(self, keystring: str) -> str:
         """Next Channel
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Empty string
         """
-        last_chan = self.select_next(last_chan)
-        self.__grab_focus()
+        self.select_next()
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
-        return last_chan, keystring
+        return keystring
 
-    def _keypress_page_down(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_page_down(self, keystring: str) -> str:
         """Previous Channel
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Empty string
         """
-        last_chan = self.select_previous(last_chan)
-        self.__grab_focus()
+        self.select_previous()
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
-        return last_chan, keystring
+        return keystring
 
-    def _keypress_c(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_c(self, keystring: str) -> str:
         """Channel
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Empty string
         """
-        last_chan = self.select_channel(keystring)
-        self.__grab_focus()
+        self.select_channel(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
-        return last_chan, keystring
+        return keystring
 
-    def _keypress_kp_divide(self, last_chan, keystring):
-        self._keypress_greater(last_chan, keystring)
+    def _keypress_kp_divide(self, keystring):
+        self._keypress_greater(keystring)
 
-    def _keypress_greater(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_greater(self, keystring: str) -> str:
         """Channel Thru
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Empty string
         """
-        last_chan = self.select_thru(keystring, last_chan)
-        self.__grab_focus()
+        self.select_thru(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
-        return last_chan, keystring
+        return keystring
 
-    def _keypress_kp_add(self, last_chan, keystring):
-        self._keypress_plus(last_chan, keystring)
+    def _keypress_kp_add(self, keystring):
+        self._keypress_plus(keystring)
 
-    def _keypress_plus(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_plus(self, keystring: str) -> str:
         """Channel +
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Empty string
         """
-        last_chan = self.select_plus(keystring)
-        self.__grab_focus()
+        self.select_plus(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
-        return last_chan, keystring
+        return keystring
 
-    def _keypress_kp_subtract(self, last_chan, keystring):
-        self._keypress_minus(last_chan, keystring)
+    def _keypress_kp_subtract(self, keystring):
+        self._keypress_minus(keystring)
 
-    def _keypress_minus(self, last_chan: str, keystring: str) -> Tuple[str, str]:
+    def _keypress_minus(self, keystring: str) -> str:
         """Channel -
 
         Args:
-            last_chan: Last selected channel
             keystring: Keys buffer
 
         Returns:
-            Last selected channel
+            Empty string
         """
-        last_chan = self.select_minus(keystring)
-        self.__grab_focus()
+        self.select_minus(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
-        return last_chan, keystring
+        return keystring

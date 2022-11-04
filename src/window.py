@@ -32,7 +32,6 @@ class Window(Gtk.ApplicationWindow):
         self.full = False
 
         self.keystring = ""
-        self.last_chan_selected = ""
 
         Gtk.ApplicationWindow.__init__(
             self, title="Open Lighting Console", application=App()
@@ -152,11 +151,8 @@ class Window(Gtk.ApplicationWindow):
             self.statusbar.push(self.context_id, self.keystring)
 
         # Channels View
-        (
-            self.last_chan_selected,
-            self.keystring,
-        ) = self.live_view.channels_view.on_key_press(
-            keyname, self.last_chan_selected, self.keystring
+        self.keystring = self.live_view.channels_view.on_key_press(
+            keyname, self.keystring
         )
 
         if func := getattr(self, "_keypress_" + keyname, None):
@@ -214,7 +210,7 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Unselect all channels"""
         self.live_view.channels_view.flowbox.unselect_all()
-        self.last_chan_selected = ""
+        self.live_view.channels_view.last_selected_channel = ""
         if App().track_channels_tab:
             App().track_channels_tab.update_display()
 

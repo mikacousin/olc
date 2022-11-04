@@ -42,7 +42,6 @@ class GroupTab(Gtk.Paned):
     def __init__(self):
 
         self.keystring = ""
-        self.last_chan_selected = ""
         self.last_group_selected = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -113,9 +112,7 @@ class GroupTab(Gtk.Paned):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
         # Channels View
-        self.last_chan_selected, self.keystring = self.channels_view.on_key_press(
-            keyname, self.last_chan_selected, self.keystring
-        )
+        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
         if func := getattr(self, "_keypress_" + keyname, None):
             return func()
@@ -153,7 +150,7 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.update()
                 self.last_group_selected = str(int(self.last_group_selected) + 1)
         self.get_parent().grab_focus()
-        self.last_chan_selected = ""
+        self.channels_view.last_selected_channel = ""
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Group"""
@@ -174,7 +171,7 @@ class GroupTab(Gtk.Paned):
             self.channels_view.update()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
         self.get_parent().grab_focus()
-        self.last_chan_selected = ""
+        self.channels_view.last_selected_channel = ""
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Group on Next Line"""
@@ -201,7 +198,7 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.update()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
-        self.last_chan_selected = ""
+        self.channels_view.last_selected_channel = ""
 
     def _keypress_Up(self):  # pylint: disable=C0103
         """Group on Previous Line"""
@@ -228,7 +225,7 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.update()
                 self.last_group_selected = str(index)
         self.get_parent().grab_focus()
-        self.last_chan_selected = ""
+        self.channels_view.last_selected_channel = ""
 
     def _keypress_g(self):
         """Select Group"""
@@ -250,7 +247,7 @@ class GroupTab(Gtk.Paned):
         # Update display
         self.channels_view.update()
         self.flowbox.invalidate_filter()
-        self.last_chan_selected = ""
+        self.channels_view.last_selected_channel = ""
 
         self.get_parent().grab_focus()
         self.keystring = ""
