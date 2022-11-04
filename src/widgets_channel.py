@@ -134,7 +134,7 @@ class ChannelWidget(Gtk.Widget):
                     cr.show_text("F")
                 else:
                     # Level in %
-                    cr.show_text(str(int(round((self.level / 255) * 100))))
+                    cr.show_text(str(round((self.level / 256) * 100)))
             else:
                 cr.show_text(str(self.level))  # Level in 0 to 255 value
         # Draw level bar
