@@ -417,8 +417,9 @@ class Application(Gtk.Application):
 
         # Redraw Masters Tab
         if self.masters_tab:
-            self.masters_tab.liststore.clear()
-            self.masters_tab.populate_tab()
+            for page in range(10):
+                self.masters_tab.liststores[page].clear()
+                self.masters_tab.populate_tab(page)
             self.masters_tab.channels_view.update()
 
         # Redraw Channel Time Tab

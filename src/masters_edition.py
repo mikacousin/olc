@@ -30,7 +30,7 @@ class MastersTab(Gtk.Paned):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
-        self.set_position(300)
+        self.set_position(500)
 
         self.channels_view = MasterChannelsView()
         self.add(self.channels_view)
@@ -40,27 +40,48 @@ class MastersTab(Gtk.Paned):
         types = ["", "Preset", "Channels", "Sequence", "Group"]
         for item in types:
             content_type.append([item])
-
         # Mode
         self.mode = Gtk.ListStore(str)
         modes = ["Inclusif", "Exclusif"]
         for item in modes:
             self.mode.append([item])
 
-        self.liststore = Gtk.ListStore(int, str, str, str)
+        self.liststores = []
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.stack = Gtk.Stack()
+        self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        for page in range(10):
+            # Liststore
+            self.liststores.append(Gtk.ListStore(int, str, str, str))
+            self.populate_tab(page)
+            # Treeview
+            self.new_treeview(page, content_type)
+        stack_switcher = Gtk.StackSwitcher()
+        stack_switcher.set_stack(self.stack)
+        vbox.pack_start(stack_switcher, False, True, 0)
+        vbox.pack_start(self.stack, True, True, 0)
 
-        # Populate with masters
-        self.populate_tab()
+        scrollable = Gtk.ScrolledWindow()
+        scrollable.set_vexpand(True)
+        scrollable.set_hexpand(True)
+        scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrollable.add(vbox)
+        self.add(scrollable)
 
-        self.treeview = Gtk.TreeView(model=self.liststore)
-        self.treeview.set_enable_search(False)
-        self.treeview.connect("cursor-changed", self.on_master_changed)
-        self.treeview.connect("focus-in-event", self.on_focus)
+    def new_treeview(self, page: int, content_type: Gtk.ListStore) -> None:
+        """Create treeview
 
+        Args:
+            page: Page number (0-9)
+            content_type: Available master types
+        """
+        child = Gtk.TreeView(model=self.liststores[page])
+        child.set_enable_search(False)
+        child.connect("cursor-changed", self.on_master_changed)
+        child.connect("focus-in-event", self.on_focus)
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Master", renderer, text=0)
-        self.treeview.append_column(column)
-
+        child.append_column(column)
         renderer = Gtk.CellRendererCombo()
         renderer.set_property("editable", True)
         renderer.set_property("model", content_type)
@@ -68,14 +89,12 @@ class MastersTab(Gtk.Paned):
         renderer.set_property("has-entry", False)
         renderer.connect("edited", self.on_content_type_changed)
         column = Gtk.TreeViewColumn("Content type", renderer, text=1)
-        self.treeview.append_column(column)
-
+        child.append_column(column)
         renderer = Gtk.CellRendererText()
         renderer.set_property("editable", True)
         renderer.connect("edited", self.on_content_value_edited)
         column = Gtk.TreeViewColumn("Content", renderer, text=2)
-        self.treeview.append_column(column)
-
+        child.append_column(column)
         renderer = Gtk.CellRendererCombo()
         renderer.set_property("editable", True)
         renderer.set_property("model", self.mode)
@@ -83,15 +102,8 @@ class MastersTab(Gtk.Paned):
         renderer.set_property("has-entry", False)
         renderer.connect("edited", self.on_mode_changed)
         column = Gtk.TreeViewColumn("Mode", renderer, text=3)
-        self.treeview.append_column(column)
-
-        scrollable = Gtk.ScrolledWindow()
-        scrollable.set_vexpand(True)
-        scrollable.set_hexpand(True)
-        scrollable.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        scrollable.add(self.treeview)
-
-        self.add(scrollable)
+        child.append_column(column)
+        self.stack.add_titled(child, str(page), "Page " + str(page + 1))
 
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
@@ -104,48 +116,51 @@ class MastersTab(Gtk.Paned):
             notebook.grab_focus()
         return False
 
-    def populate_tab(self):
-        """Add Masters to tab"""
-        # Masters (10 pages of 10 Masters)
-        for page in range(10):
-            for i in range(10):
-                index = i + (page * 10)
-                # Type: None
-                if App().masters[index].content_type == 0:
-                    self.liststore.append([index + 1, "", "", ""])
-                # Type: Preset
-                elif App().masters[index].content_type == 1:
-                    content_value = str(App().masters[index].content_value)
-                    self.liststore.append([index + 1, "Preset", content_value, ""])
-                # Type: Group
-                elif App().masters[index].content_type == 13:
-                    content_value = (
-                        str(int(App().masters[index].content_value))
-                        if App().masters[index].content_value.is_integer()
-                        else str(App().masters[index].content_value)
-                    )
-                    self.liststore.append(
-                        [index + 1, "Group", content_value, "Exclusif"]
-                    )
-                # Type: Channels
-                elif App().masters[index].content_type == 2:
-                    nb_chan = sum(
-                        1
-                        for chan in range(MAX_CHANNELS)
-                        if App().masters[index].content_value[chan]
-                    )
+    def populate_tab(self, page: int) -> None:
+        """Add Masters to tab
 
-                    self.liststore.append([index + 1, "Channels", str(nb_chan), ""])
-                # Type: Sequence
-                elif App().masters[index].content_type == 3:
-                    content_value = (
-                        str(int(App().masters[index].content_value))
-                        if App().masters[index].content_value.is_integer()
-                        else str(App().masters[index].content_value)
-                    )
-                    self.liststore.append([index + 1, "Sequence", content_value, ""])
-                else:
-                    self.liststore.append([index + 1, "Unknown", "", ""])
+        Args:
+            page: Page to populate (0-9)
+        """
+        # Masters (10 Masters per page)
+        for i in range(10):
+            index = i + (page * 10)
+            # Type: None
+            if App().masters[index].content_type == 0:
+                self.liststores[page].append([index + 1, "", "", ""])
+            # Type: Preset
+            elif App().masters[index].content_type == 1:
+                content_value = str(App().masters[index].content_value)
+                self.liststores[page].append([index + 1, "Preset", content_value, ""])
+            # Type: Group
+            elif App().masters[index].content_type == 13:
+                content_value = (
+                    str(int(App().masters[index].content_value))
+                    if App().masters[index].content_value.is_integer()
+                    else str(App().masters[index].content_value)
+                )
+                self.liststores[page].append(
+                    [index + 1, "Group", content_value, "Exclusif"]
+                )
+            # Type: Channels
+            elif App().masters[index].content_type == 2:
+                nb_chan = sum(
+                    1
+                    for chan in range(MAX_CHANNELS)
+                    if App().masters[index].content_value[chan]
+                )
+
+                self.liststores[page].append([index + 1, "Channels", str(nb_chan), ""])
+            # Type: Sequence
+            elif App().masters[index].content_type == 3:
+                content_value = (
+                    str(int(App().masters[index].content_value))
+                    if App().masters[index].content_value.is_integer()
+                    else str(App().masters[index].content_value)
+                )
+                self.liststores[page].append([index + 1, "Sequence", content_value, ""])
+            else:
+                self.liststores[page].append([index + 1, "Unknown", "", ""])
 
     def on_master_changed(self, _treeview):
         """New master is selected"""
@@ -160,8 +175,9 @@ class MastersTab(Gtk.Paned):
             path (int): Row (starting at 0)
             text (str): Master type
         """
+        page = int(self.stack.get_visible_child_name())
         # Update display
-        self.liststore[path][1] = text
+        self.liststores[page][path][1] = text
         # Find content type
         content_type = 0
         if text == "":
@@ -175,7 +191,7 @@ class MastersTab(Gtk.Paned):
         elif text == "Sequence":
             content_type = 3
         # Update content type
-        index = int(path)
+        index = int(path) + (page * 10)
         if App().masters[index].content_type != content_type:
             App().masters[index].content_type = content_type
             # Update content value
@@ -188,8 +204,8 @@ class MastersTab(Gtk.Paned):
             App().masters[index].text = ""
             # Update ui
             self.channels_view.update()
-            self.liststore[path][2] = ""
-            self.liststore[path][3] = ""
+            self.liststores[page][path][2] = ""
+            self.liststores[page][path][3] = ""
             # Update Virtual Console
             if App().virtual_console and App().virtual_console.props.visible:
                 App().virtual_console.flashes[index].label = ""
@@ -204,7 +220,8 @@ class MastersTab(Gtk.Paned):
             path (int): Row number (starting at 0)
             text (str): Mode
         """
-        self.liststore[path][3] = text
+        page = int(self.stack.get_visible_child_name())
+        self.liststores[page][path][3] = text
         self.get_parent().grab_focus()
 
     def on_content_value_edited(self, _widget, path, text):
@@ -222,38 +239,36 @@ class MastersTab(Gtk.Paned):
             if text[0] == ".":
                 text = "0" + text
 
-            self.liststore[path][2] = "" if text == "0" else text
+            page = int(self.stack.get_visible_child_name())
+            self.liststores[page][path][2] = "" if text == "0" else text
             # Update content value
-            index = int(path)
+            index = int(path) + (page * 10)
             content_value = float(text)
 
             App().masters[index].content_value = content_value
 
             if App().masters[index].content_type in [0, 2]:
                 App().masters[index].text = ""
-
             elif App().masters[index].content_type == 1:
-                if self.liststore[path][2] != "":
-                    self.liststore[path][2] = str(float(self.liststore[path][2]))
+                if self.liststores[page][path][2] != "":
+                    self.liststores[page][path][2] = str(
+                        float(self.liststores[page][path][2])
+                    )
                 App().masters[index].text = ""
                 for mem in App().memories:
                     if mem.memory == content_value:
                         App().masters[index].text = mem.text
-
             elif App().masters[index].content_type == 13:
                 App().masters[index].text = ""
                 for grp in App().groups:
                     if grp.index == content_value:
                         App().masters[index].text = grp.text
-
             elif App().masters[index].content_type == 3:
                 App().masters[index].text = ""
                 for chaser in App().chasers:
                     if chaser.index == content_value:
                         App().masters[index].text = chaser.text
-
             self.channels_view.update()
-
             # Update Virtual Console
             if App().virtual_console:
                 App().virtual_console.flashes[index].label = App().masters[index].text
@@ -307,7 +322,8 @@ class MastersTab(Gtk.Paned):
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
         # Channels View
-        path, _focus_column = self.treeview.get_cursor()
+        treeview = self.stack.get_visible_child()
+        path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if App().masters[row].content_type not in (0, 3) or keyname in "f":
@@ -428,7 +444,8 @@ class MastersTab(Gtk.Paned):
                 App().masters[row].text = text
 
                 # Update Display
-                self.liststore[path][2] = str(nb_chan)
+                page = int(self.stack.get_visible_child_name())
+                self.liststores[page][path][2] = str(nb_chan)
                 self.channels_view.update()
 
                 # Update Virtual Console
@@ -496,45 +513,48 @@ class MasterChannelsView(ChannelsView):
         """
         if not App().masters_tab:
             return False
-        path, _focus_column = App().masters_tab.treeview.get_cursor()
+        treeview = App().masters_tab.stack.get_visible_child()
+        path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
+            page = int(App().masters_tab.stack.get_visible_child_name())
+            index = row + (page * 10)
             # Master type is None or Sequence: No channels to display
-            if App().masters[row].content_type in (0, 3):
+            if App().masters[index].content_type in (0, 3):
                 return False
             if self.view_mode == VIEW_MODES["Active"]:
-                return self._filter_active(row, child)
+                return self._filter_active(index, child)
             if self.view_mode == VIEW_MODES["Patched"]:
-                return self._filter_patched(row, child)
-            return self._filter_all(row, child)
+                return self._filter_patched(index, child)
+            return self._filter_all(index, child)
         return False
 
-    def _filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def _filter_active(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter in Active mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
             True or False
         """
         # Master type is Preset
-        if App().masters[row].content_type == 1:
-            return self.__filter_active_preset(row, child)
+        if App().masters[index].content_type == 1:
+            return self.__filter_active_preset(index, child)
         # Master type is Channels
-        if App().masters[row].content_type == 2:
-            return self.__filter_active_channels(row, child)
+        if App().masters[index].content_type == 2:
+            return self.__filter_active_channels(index, child)
         # Master type is Group
-        if App().masters[row].content_type == 13:
-            return self.__filter_active_group(row, child)
+        if App().masters[index].content_type == 13:
+            return self.__filter_active_group(index, child)
         return False
 
-    def __filter_active_preset(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_active_preset(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter Preset channels in Active mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
@@ -542,7 +562,7 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         mem = None
-        preset = App().masters[row].content_value
+        preset = App().masters[index].content_value
         for mem in App().memories:
             if mem.memory == preset:
                 found = True
@@ -552,24 +572,24 @@ class MasterChannelsView(ChannelsView):
             return self.__active_channels(channels, child)
         return False
 
-    def __filter_active_channels(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_active_channels(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter recorded channels in Active mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
             True or False
         """
-        channels = App().masters[row].content_value
+        channels = App().masters[index].content_value
         return self.__active_channels(channels, child)
 
-    def __filter_active_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_active_group(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter Group channels in Active mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
@@ -577,7 +597,7 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         grp = None
-        group = App().masters[row].content_value
+        group = App().masters[index].content_value
         for grp in App().groups:
             if grp.index == group:
                 found = True
@@ -616,11 +636,11 @@ class MasterChannelsView(ChannelsView):
         channel_widget.next_level = 0
         return False
 
-    def _filter_patched(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def _filter_patched(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter in Patched mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
@@ -631,40 +651,46 @@ class MasterChannelsView(ChannelsView):
         if channel_index + 1 not in App().patch.channels:
             return False
         # Return all other channels
-        if App().masters[row].content_type == 1:
-            return self.__filter_all_preset(row, child)
-        if App().masters[row].content_type == 2:
-            return self.__filter_all_channels(row, child)
-        if App().masters[row].content_type == 13:
-            return self.__filter_all_group(row, child)
+        if App().masters[index].content_type == 1:
+            return self.__filter_all_preset(index, child)
+        if App().masters[index].content_type == 2:
+            return self.__filter_all_channels(index, child)
+        if App().masters[index].content_type == 13:
+            return self.__filter_all_group(index, child)
+        channel_widget = child.get_child()
+        channel_widget.level = 0
+        channel_widget.next_level = 0
         return True
 
-    def _filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def _filter_all(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter in All channels mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
             True
         """
         # Master type is Preset
-        if App().masters[row].content_type == 1:
-            return self.__filter_all_preset(row, child)
+        if App().masters[index].content_type == 1:
+            return self.__filter_all_preset(index, child)
         # Master type is Channels
-        if App().masters[row].content_type == 2:
-            return self.__filter_all_channels(row, child)
+        if App().masters[index].content_type == 2:
+            return self.__filter_all_channels(index, child)
         # Master type is Group
-        if App().masters[row].content_type == 13:
-            return self.__filter_all_group(row, child)
+        if App().masters[index].content_type == 13:
+            return self.__filter_all_group(index, child)
+        channel_widget = child.get_child()
+        channel_widget.level = 0
+        channel_widget.next_level = 0
         return True
 
-    def __filter_all_preset(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_all_preset(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter Preset channels in All channels mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
@@ -672,7 +698,7 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         mem = None
-        preset = App().masters[row].content_value
+        preset = App().masters[index].content_value
         for mem in App().memories:
             if mem.memory == preset:
                 found = True
@@ -680,26 +706,29 @@ class MasterChannelsView(ChannelsView):
         if found:
             channels = mem.channels
             return self.__all_channels(channels, child)
+        channel_widget = child.get_child()
+        channel_widget.level = 0
+        channel_widget.next_level = 0
         return True
 
-    def __filter_all_channels(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_all_channels(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter Preset channels in All channels mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
             True
         """
-        channels = App().masters[row].content_value
+        channels = App().masters[index].content_value
         return self.__all_channels(channels, child)
 
-    def __filter_all_group(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_all_group(self, index: int, child: Gtk.FlowBoxChild) -> bool:
         """Filter Preset channels in All channels mode
 
         Args:
-            row: Row number
+            index: Master number
             child: Parent of Channel widget
 
         Returns:
@@ -707,7 +736,7 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         grp = None
-        group = App().masters[row].content_value
+        group = App().masters[index].content_value
         for grp in App().groups:
             if grp.index == group:
                 found = True
@@ -715,6 +744,9 @@ class MasterChannelsView(ChannelsView):
         if found:
             channels = grp.channels
             return self.__all_channels(channels, child)
+        channel_widget = child.get_child()
+        channel_widget.level = 0
+        channel_widget.next_level = 0
         return True
 
     def __all_channels(self, channels: array.array, child: Gtk.FlowBoxChild) -> bool:

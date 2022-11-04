@@ -199,10 +199,9 @@ class Ascii:
 
         # Redraw Edit Masters Tab if exist
         if App().masters_tab:
-            # Delete
-            App().masters_tab.liststore.clear()
-            # Redraw
-            App().masters_tab.populate_tab()
+            for page in range(10):
+                App().masters_tab.liststores[page].clear()
+                App().masters_tab.populate_tab(page)
             App().masters_tab.channels_view.update()
 
         # Redraw Independents Tab
