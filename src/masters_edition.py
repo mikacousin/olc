@@ -106,10 +106,10 @@ class MastersTab(Gtk.Paned):
 
     def populate_tab(self):
         """Add Masters to tab"""
-        # Masters (2 pages of 20 Masters)
-        for page in range(2):
-            for i in range(20):
-                index = i + (page * 20)
+        # Masters (10 pages of 10 Masters)
+        for page in range(10):
+            for i in range(10):
+                index = i + (page * 10)
                 # Type: None
                 if App().masters[index].content_type == 0:
                     self.liststore.append([index + 1, "", "", ""])
