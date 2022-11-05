@@ -15,6 +15,7 @@
 import array
 import threading
 import time
+import mido
 
 from olc.define import MAX_CHANNELS, App
 
@@ -83,6 +84,24 @@ class Master:
         Args:
             value: New level
         """
+        # Send MIDI message to faders
+        midi_name = "master_" + str(self.number)
+        for outport in App().midi.ports.outports:
+            item = App().midi.control_change.control_change[midi_name]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "control_change",
+                    channel=item[0],
+                    control=item[1],
+                    value=int(value / 2),
+                    time=0,
+                )
+                outport.send(msg)
+            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if item != -1:
+                val = int(((value / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                outport.send(msg)
         self.value = value
         self.level_changed()
 

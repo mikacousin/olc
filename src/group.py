@@ -355,6 +355,52 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
+    def _keypress_Delete(self) -> None:  # pylint: disable=C0103
+        """Delete selected group"""
+        selected = self.flowbox.get_selected_children()
+        if selected:
+            # Update groups
+            flowboxchild = selected[0]
+            index = flowboxchild.get_index()
+            flowboxchild.destroy()
+            if index + 1 == len(App().groups):
+                flowboxchild = self.flowbox.get_child_at_index(index - 1)
+                self.last_group_selected = str(index - 1)
+            else:
+                flowboxchild = self.flowbox.get_child_at_index(index)
+            if flowboxchild:
+                self.flowbox.select_child(flowboxchild)
+            self.channels_view.update()
+            # Update masters
+            for master in App().masters:
+                if (
+                    master.content_type == 13
+                    and master.content_value == App().groups[index].index
+                ):
+                    master.set_level(0)
+                    master.content_type = 0
+                    master.content_value = None
+                    master.text = ""
+                    if App().masters_tab:
+                        App().masters_tab.channels_view.update()
+                        liststore = App().masters_tab.liststores[master.page - 1]
+                        treeiter = liststore.get_iter(master.number - 1)
+                        liststore.set_value(treeiter, 1, "")
+                        liststore.set_value(treeiter, 2, "")
+                        liststore.set_value(treeiter, 3, "")
+                    if App().virtual_console and master.page == App().fader_page:
+                        index = master.number - 1
+                        fader = App().virtual_console.masters[index]
+                        fader.set_value(0)
+                        App().virtual_console.master_moved(fader)
+                        App().virtual_console.flashes[index].label = ""
+                        App().virtual_console.flashes[index].queue_draw()
+                    break
+            # Remove group
+            App().groups.pop(index)
+            if not App().groups:
+                self.last_group_selected = ""
+
 
 class GroupChannelsView(ChannelsView):
     """Channels View"""

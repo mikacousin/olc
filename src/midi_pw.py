@@ -75,9 +75,6 @@ def _update_master(msg: mido.Message, index: int) -> None:
             App().virtual_console.master_moved, App().virtual_console.masters[index]
         )
     else:
-        if App().midi.ports.outports:
-            for outport in App().midi.ports.outports:
-                outport.send(msg)
         page = App().fader_page
         number = index + 1
         master = None
