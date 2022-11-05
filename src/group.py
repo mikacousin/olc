@@ -130,6 +130,15 @@ class GroupTab(Gtk.Paned):
         App().window.playback.remove_page(page)
         App().group_tab = None
 
+    def _keypress_m(self):
+        """Open Popover"""
+        selected = self.flowbox.get_selected_children()
+        if selected:
+            flowboxchild = selected[0]
+            flowboxchild.get_child().popover.popup()
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
     def _keypress_Right(self):  # pylint: disable=C0103
         """Next Group"""
         if self.last_group_selected == "":

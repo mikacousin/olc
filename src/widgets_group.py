@@ -33,13 +33,55 @@ class GroupWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
+        self.popover = Gtk.Popover()
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        entry = Gtk.Entry()
+        entry.set_has_frame(False)
+        entry.set_text(name)
+        entry.connect("activate", self.on_edit)
+        vbox.pack_start(entry, False, True, 10)
+        vbox.show_all()
+        self.popover.add(vbox)
+        self.popover.set_relative_to(self)
+        self.popover.set_position(Gtk.PositionType.BOTTOM)
+
+    def on_edit(self, widget: Gtk.Entry) -> None:
+        """Edit Group text
+
+        Args:
+            widget: Entry used
+        """
+        # Update widget text
+        text = widget.get_text()
+        self.name = text
+        self.queue_draw()
+        # Update group text
+        flowboxchild = self.get_parent()
+        index = flowboxchild.get_index()
+        App().groups[index].text = text
+        # Update Master text
+        for master in App().masters:
+            if (
+                master.content_type == 13
+                and master.content_value == App().groups[index].index
+            ):
+                master.text = text
+                # Update Virtual Console
+                if App().virtual_console and master.page == App().fader_page:
+                    App().virtual_console.flashes[master.number - 1].label = text
+                break
+        self.popover.popdown()
+
     def on_click(self, _tgt, _ev):
         """Group clicked"""
-        App().group_tab.flowbox.unselect_all()
         child = self.get_parent()
-        App().group_tab.flowbox.select_child(child)
-        App().group_tab.last_group_selected = str(child.get_index())
-        App().group_tab.channels_view.update()
+        if not child.is_selected():
+            App().group_tab.flowbox.unselect_all()
+            App().group_tab.flowbox.select_child(child)
+            App().group_tab.last_group_selected = str(child.get_index())
+            App().group_tab.channels_view.update()
+        else:
+            self.popover.popup()
 
     def do_draw(self, cr):
         """Draw Group widget
