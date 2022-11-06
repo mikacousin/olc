@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Tuple
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App
-import olc.midi_xfade
+import olc.midi.xfade
 
 
 class MidiControlChanges:

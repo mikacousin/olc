@@ -14,11 +14,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
 from gi.repository import GLib
-from olc.midi_cc import MidiControlChanges
-from olc.midi_notes import MidiNotes
-from olc.midi_ports import MidiPorts
-from olc.midi_pw import MidiPitchWheel
-from olc.midi_xfade import MidiFader
+from .control_change import MidiControlChanges
+from .notes import MidiNotes
+from .ports import MidiPorts
+from .pitchwheel import MidiPitchWheel
+from .xfade import MidiFader
 
 
 class Midi:

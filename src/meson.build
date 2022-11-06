@@ -34,12 +34,6 @@ olc_sources = [
   'independents_edition.py',
   'master.py',
   'masters_edition.py',
-  'midi.py',
-  'midi_cc.py',
-  'midi_notes.py',
-  'midi_ports.py',
-  'midi_pw.py',
-  'midi_xfade.py',
   'ola_thread.py',
   'osc.py',
   'patch_channels.py',
@@ -58,6 +52,11 @@ olc_sources = [
 
 install_data(
   olc_sources,
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
+  'midi',
   install_dir: join_paths(python_dir, 'olc')
 )
 

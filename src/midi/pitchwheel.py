@@ -16,7 +16,7 @@ from typing import Dict
 import mido
 from gi.repository import GLib
 from olc.define import App
-import olc.midi_xfade
+import olc.midi.xfade
 
 
 class MidiPitchWheel:
