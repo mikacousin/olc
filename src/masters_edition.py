@@ -144,12 +144,7 @@ class MastersTab(Gtk.Paned):
                 )
             # Type: Channels
             elif App().masters[index].content_type == 2:
-                nb_chan = sum(
-                    1
-                    for chan in range(MAX_CHANNELS)
-                    if App().masters[index].content_value[chan]
-                )
-
+                nb_chan = len(App().masters[index].content_value)
                 self.liststores[page].append([index + 1, "Channels", str(nb_chan), ""])
             # Type: Sequence
             elif App().masters[index].content_type == 3:
@@ -196,9 +191,7 @@ class MastersTab(Gtk.Paned):
             App().masters[index].content_type = content_type
             # Update content value
             if content_type == 2:
-                App().masters[index].content_value = array.array(
-                    "B", [0] * MAX_CHANNELS
-                )
+                App().masters[index].content_value = {}
             else:
                 App().masters[index].content_value = -1
             App().masters[index].text = ""
@@ -398,7 +391,8 @@ class MastersTab(Gtk.Paned):
         """
         self.channels_view.flowbox.unselect_all()
         # Find selected Master
-        path, _focus_column = self.treeview.get_cursor()
+        treeview = self.stack.get_visible_child()
+        path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
 
@@ -422,32 +416,27 @@ class MastersTab(Gtk.Paned):
                     # Update Preset Tab if open
                     if App().memories_tab:
                         App().memories_tab.channels_view.update()
-
             # Type : Channels
             if App().masters[row].content_type == 2:
                 channels = App().masters[row].content_value
-
                 nb_chan = 0
                 text = "Ch"
                 for chan in range(MAX_CHANNELS):
                     channel_widget = self.channels_view.get_channel_widget(chan + 1)
-                    channels[chan] = channel_widget.level
-                    if channels[chan]:
+                    if channel_widget.level:
+                        channels[chan + 1] = channel_widget.level
                         nb_chan += 1
                         text += " " + str(chan + 1)
-
                 App().masters[row].text = text
-
+                App().masters[row].set_level(App().masters[row].value)
                 # Update Display
                 page = int(self.stack.get_visible_child_name())
                 self.liststores[page][path][2] = str(nb_chan)
                 self.channels_view.update()
-
                 # Update Virtual Console
                 if App().virtual_console:
                     App().virtual_console.flashes[row].label = App().masters[row].text
                     App().virtual_console.flashes[row].queue_draw()
-
             # Type = Group
             elif App().masters[row].content_type == 13:
                 found = False

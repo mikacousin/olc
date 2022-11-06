@@ -58,9 +58,8 @@ class Master:
         elif self.content_type == 2:
             self.text += "Ch"
             self.content_value = content_value
-            for channel, level in enumerate(content_value):
-                if level:
-                    self.text += " " + str(channel + 1)
+            for channel in content_value:
+                self.text += " " + str(channel)
         # Type 3: Chaser
         elif self.content_type == 3:
             self.content_value = float(content_value)
@@ -140,9 +139,9 @@ class Master:
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
-        for channel, lvl in enumerate(self.content_value):
+        for channel, lvl in self.content_value.items():
             level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
-            self.dmx[channel] = level
+            self.dmx[channel - 1] = level
 
     def _level_changed_group(self):
         """New level and type is Group"""
