@@ -18,7 +18,7 @@ from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
 from olc.step import Step
-from olc.widgets_grand_master import GMWidget
+from olc.widgets.grand_master import GMWidget
 from olc.window_channels import LiveView
 from olc.window_playback import MainPlaybackView
 

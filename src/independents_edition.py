@@ -16,7 +16,7 @@ import array
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
-from olc.widgets_channels_view import ChannelsView, VIEW_MODES
+from olc.widgets.channels_view import ChannelsView, VIEW_MODES
 
 
 class IndependentsTab(Gtk.Paned):

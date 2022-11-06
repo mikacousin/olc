@@ -15,7 +15,7 @@
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from olc.widgets import rounded_rectangle
+from .common import rounded_rectangle
 
 
 class GMWidget(Gtk.Widget):

@@ -15,7 +15,7 @@
 from gi.repository import Gdk, Gtk
 
 from olc.define import App
-from olc.widgets_channels_view import ChannelsView
+from olc.widgets.channels_view import ChannelsView
 
 
 class ChannelTime:

@@ -15,7 +15,7 @@
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from olc.widgets import rounded_rectangle_fill
+from .common import rounded_rectangle_fill
 
 
 class GroupWidget(Gtk.Widget):

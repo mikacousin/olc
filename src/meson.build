@@ -50,30 +50,38 @@ olc_sources = [
   'step.py',
   'track_channels.py',
   'virtual_console.py',
-  'widgets.py',
-  'widgets_button.py',
-  'widgets_channel.py',
-  'widgets_channels_view.py',
-  'widgets_controller.py',
-  'widgets_fader.py',
-  'widgets_flash.py',
-  'widgets_go.py',
-  'widgets_grand_master.py',
-  'widgets_group.py',
-  'widgets_knob.py',
-  'widgets_patch_channels.py',
-  'widgets_patch_outputs.py',
-  'widgets_pause.py',
-  'widgets_sequential.py',
-  'widgets_toggle.py',
-  'widgets_track_channels.py',
   'window.py',
   'window_channels.py',
   'window_playback.py',
   'zoom.py',
 ]
 
+olc_widgets_source = [
+  'widgets/button.py',
+  'widgets/channel.py',
+  'widgets/channels_view.py',
+  'widgets/common.py',
+  'widgets/controller.py',
+  'widgets/fader.py',
+  'widgets/flash.py',
+  'widgets/go.py',
+  'widgets/grand_master.py',
+  'widgets/group.py',
+  'widgets/knob.py',
+  'widgets/patch_channels.py',
+  'widgets/patch_outputs.py',
+  'widgets/pause.py',
+  'widgets/sequential.py',
+  'widgets/toggle.py',
+  'widgets/track_channels.py',
+]
+
 install_data(
   olc_sources,
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
+  'widgets',
   install_dir: join_paths(python_dir, 'olc')
 )

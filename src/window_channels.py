@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from olc.widgets_channels_view import ChannelsView, VIEW_MODES
+from olc.widgets.channels_view import ChannelsView, VIEW_MODES
 
 
 def on_page_added(notebook, _child, _page_num):

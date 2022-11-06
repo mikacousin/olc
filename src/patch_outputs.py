@@ -15,7 +15,7 @@
 from typing import Optional
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, is_int, is_non_nul_int
-from olc.widgets_patch_outputs import PatchWidget
+from olc.widgets.patch_outputs import PatchWidget
 from olc.zoom import zoom
 
 

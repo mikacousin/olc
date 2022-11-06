@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
-from olc.widgets_track_channels import TrackChannelsHeader, TrackChannelsWidget
+from olc.widgets.track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 
 class TrackChannelsTab(Gtk.Grid):

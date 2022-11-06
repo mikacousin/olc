@@ -21,7 +21,7 @@ from olc.define import App, MAX_FADER_PAGE
 
 if typing.TYPE_CHECKING:
     from olc.independent import Independent
-    from olc.widgets_button import ButtonWidget
+    from olc.widgets.button import ButtonWidget
 
 
 class MidiNotes:

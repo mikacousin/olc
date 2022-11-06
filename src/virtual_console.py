@@ -14,14 +14,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_FADER_PAGE
-from olc.widgets_button import ButtonWidget
-from olc.widgets_controller import ControllerWidget
-from olc.widgets_fader import FaderWidget
-from olc.widgets_flash import FlashWidget
-from olc.widgets_go import GoWidget
-from olc.widgets_knob import KnobWidget
-from olc.widgets_pause import PauseWidget
-from olc.widgets_toggle import ToggleWidget
+from olc.widgets.button import ButtonWidget
+from olc.widgets.controller import ControllerWidget
+from olc.widgets.fader import FaderWidget
+from olc.widgets.flash import FlashWidget
+from olc.widgets.go import GoWidget
+from olc.widgets.knob import KnobWidget
+from olc.widgets.pause import PauseWidget
+from olc.widgets.toggle import ToggleWidget
 
 
 class VirtualConsoleWindow(Gtk.Window):

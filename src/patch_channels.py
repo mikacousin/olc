@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
-from olc.widgets_patch_channels import PatchChannelHeader, PatchChannelWidget
+from olc.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
 
 
 class PatchChannelsTab(Gtk.Box):

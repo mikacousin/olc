@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk, Pango
 from olc.define import App
-from olc.widgets_sequential import SequentialWidget
+from olc.widgets.sequential import SequentialWidget
 
 
 def on_page_added(notebook, _child, _page_num):

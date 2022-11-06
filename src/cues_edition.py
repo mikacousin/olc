@@ -17,7 +17,7 @@ import array
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App, is_float
-from olc.widgets_channels_view import ChannelsView, VIEW_MODES
+from olc.widgets.channels_view import ChannelsView, VIEW_MODES
 
 
 class CuesEditionTab(Gtk.Paned):
