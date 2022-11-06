@@ -56,26 +56,6 @@ olc_sources = [
   'zoom.py',
 ]
 
-olc_widgets_source = [
-  'widgets/button.py',
-  'widgets/channel.py',
-  'widgets/channels_view.py',
-  'widgets/common.py',
-  'widgets/controller.py',
-  'widgets/fader.py',
-  'widgets/flash.py',
-  'widgets/go.py',
-  'widgets/grand_master.py',
-  'widgets/group.py',
-  'widgets/knob.py',
-  'widgets/patch_channels.py',
-  'widgets/patch_outputs.py',
-  'widgets/pause.py',
-  'widgets/sequential.py',
-  'widgets/toggle.py',
-  'widgets/track_channels.py',
-]
-
 install_data(
   olc_sources,
   install_dir: join_paths(python_dir, 'olc')
