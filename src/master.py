@@ -151,14 +151,11 @@ class Master:
             grp for grp in App().groups if grp.index == self.content_value
         ):
             # Get Channels and Levels in group
-            for channel, lvl in enumerate(group.channels):
-                if lvl:
-                    # Calculate level
-                    level = (
-                        0 if self.value == 0 else int(round(lvl / (255 / self.value)))
-                    )
-                    # Update level in master array
-                    self.dmx[channel] = level
+            for channel, lvl in group.channels.items():
+                # Calculate level
+                level = 0 if self.value == 0 else round(lvl / (255 / self.value))
+                # Update level in master array
+                self.dmx[channel - 1] = level
 
     def _level_changed_chaser(self):
         """New level and type is Chaser"""

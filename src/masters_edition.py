@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+from typing import Dict
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
@@ -601,7 +602,9 @@ class MasterChannelsView(ChannelsView):
             return self.__active_channels(channels, child)
         return False
 
-    def __active_channels(self, channels: array.array, child: Gtk.FlowBoxChild) -> bool:
+    def __active_channels(
+        self, channels: Dict[int, int], child: Gtk.FlowBoxChild
+    ) -> bool:
         """Set Channel Widget level in Active mode
 
         Args:
@@ -614,10 +617,10 @@ class MasterChannelsView(ChannelsView):
         channel_index = child.get_index()
         channel_widget = child.get_child()
         user_channels = App().masters_tab.user_channels
-        if channels[channel_index] or child.is_selected():
+        if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index + 1, 0)
+                channel_widget.next_level = channels.get(channel_index + 1, 0)
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
@@ -743,7 +746,7 @@ class MasterChannelsView(ChannelsView):
         channel_widget.next_level = 0
         return True
 
-    def __all_channels(self, channels: array.array, child: Gtk.FlowBoxChild) -> bool:
+    def __all_channels(self, channels: Dict[int, int], child: Gtk.FlowBoxChild) -> bool:
         """Set Channel Widget level
 
         Args:
@@ -756,10 +759,10 @@ class MasterChannelsView(ChannelsView):
         channel_index = child.get_index()
         channel_widget = child.get_child()
         user_channels = App().masters_tab.user_channels
-        if channels[channel_index] or child.is_selected():
+        if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index + 1, 0)
+                channel_widget.next_level = channels.get(channel_index + 1, 0)
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]

@@ -12,11 +12,11 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import array
+from typing import Any, Dict
 from dataclasses import dataclass
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App, is_non_nul_float
+from olc.define import App, is_non_nul_float
 from olc.widgets.channels_view import ChannelsView, VIEW_MODES
 from olc.widgets.group import GroupWidget
 
@@ -27,17 +27,133 @@ class Group:
 
     Attributes:
         index: Group number
-        channels: Array of channels with levels
+        channels: Dictionary of channels with level
         text: Group description
     """
 
     index: float
-    channels: array.array = ("B", [0] * MAX_CHANNELS)  # type: ignore
+    channels: Dict[int, int]
     text: str = ""
+
+
+class GroupChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(self):
+        super().__init__()
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+        channels = self.get_selected_channels()
+        selected_group = App().group_tab.flowbox.get_selected_children()[0]
+        index = selected_group.get_index()
+        for channel in channels:
+            level = App().groups[index].channels[channel - 1]
+            if direction == Gdk.ScrollDirection.UP:
+                level = min(level + step, 255)
+            elif direction == Gdk.ScrollDirection.DOWN:
+                level = max(level - step, 0)
+            App().groups[index].channels[channel - 1] = level
+        self.update()
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+        """Select channels to display
+
+        Args:
+            child: Parent of Channel Widget
+
+        Returns:
+            True or False
+        """
+        # Find selected group
+        selected_group = None
+        if App().group_tab:
+            selected_group = App().group_tab.flowbox.get_selected_children()
+        if selected_group:
+            group_number = selected_group[0].get_child().number
+            group = None
+            for group in App().groups:
+                if group.index == group_number:
+                    break
+            if not group:
+                return False
+            # Display active channels
+            if self.view_mode == VIEW_MODES["Active"]:
+                return self.__filter_active(group, child)
+            # Display patched channels
+            if self.view_mode == VIEW_MODES["Patched"]:
+                return self.__filter_patched(group, child)
+            # Display all channels by default
+            return self.__filter_all(group, child)
+        return False
+
+    def __filter_all(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display all channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel = child.get_index() + 1  # Channel number
+        channel_widget = child.get_child()
+        if group.channels.get(channel) or child.is_selected():
+            channel_widget.level = group.channels.get(channel, 0)
+            channel_widget.next_level = group.channels.get(channel, 0)
+        else:
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+        return True
+
+    def __filter_patched(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display only patched channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel = child.get_index() + 1
+        if channel not in App().patch.channels:
+            return False
+        return self.__filter_all(group, child)
+
+    def __filter_active(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
+        """Display only active channels
+
+        Args:
+            group: Group widget
+            child: Parent of Channel Widget
+
+        Returns:
+            True (visible) or False (not visible)
+        """
+        channel = child.get_index() + 1
+        channel_widget = child.get_child()
+        if group.channels.get(channel) or child.is_selected():
+            channel_widget.level = group.channels.get(channel, 0)
+            channel_widget.next_level = channel_widget.level
+            return True
+        return False
 
 
 class GroupTab(Gtk.Paned):
     """Groups edition"""
+
+    keystring: str
+    last_group_selected: str
+    channels_view: GroupChannelsView
+    scrolled: Gtk.ScrolledWindow
+    flowbox: Gtk.FlowBox
 
     def __init__(self):
 
@@ -56,7 +172,7 @@ class GroupTab(Gtk.Paned):
         self.populate_tab()
         self.add2(self.scrolled)
 
-    def populate_tab(self):
+    def populate_tab(self) -> None:
         """Add groups to tab"""
         # New FlowBox
         self.flowbox = Gtk.FlowBox()
@@ -70,14 +186,14 @@ class GroupTab(Gtk.Paned):
             self.flowbox.add(GroupWidget(App().groups[i].index, App().groups[i].text))
         self.scrolled.add(self.flowbox)
 
-    def on_close_icon(self, _widget):
+    def on_close_icon(self, _widget) -> None:
         """Close Tab with the icon clicked"""
         notebook = self.get_parent()
         page = notebook.page_num(self)
         notebook.remove_page(page)
         App().group_tab = None
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
         """Key has been presed
 
         Args:
@@ -118,11 +234,11 @@ class GroupTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_BackSpace(self):  # pylint: disable=C0103
+    def _keypress_BackSpace(self) -> None:  # pylint: disable=C0103
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Escape(self):  # pylint: disable=C0103
+    def _keypress_Escape(self) -> None:  # pylint: disable=C0103
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -130,7 +246,7 @@ class GroupTab(Gtk.Paned):
         App().window.playback.remove_page(page)
         App().group_tab = None
 
-    def _keypress_m(self):
+    def _keypress_m(self) -> None:
         """Open Popover"""
         selected = self.flowbox.get_selected_children()
         if selected:
@@ -139,7 +255,7 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Right(self):  # pylint: disable=C0103
+    def _keypress_Right(self) -> None:  # pylint: disable=C0103
         """Next Group"""
         if self.last_group_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -161,7 +277,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Left(self):  # pylint: disable=C0103
+    def _keypress_Left(self) -> None:  # pylint: disable=C0103
         """Previous Group"""
         if self.last_group_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -182,7 +298,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Down(self):  # pylint: disable=C0103
+    def _keypress_Down(self) -> None:  # pylint: disable=C0103
         """Group on Next Line"""
         if self.last_group_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -209,7 +325,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Up(self):  # pylint: disable=C0103
+    def _keypress_Up(self) -> None:  # pylint: disable=C0103
         """Group on Previous Line"""
         if self.last_group_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -236,7 +352,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_g(self):
+    def _keypress_g(self) -> None:
         """Select Group"""
         self.flowbox.unselect_all()
 
@@ -262,20 +378,34 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_equal(self):
+    def _update_master_level(self) -> None:
+        """Update selected master channels levels"""
+        selected = self.flowbox.get_selected_children()
+        if selected:
+            flowboxchild = selected[0]
+            index = flowboxchild.get_index()
+            for master in App().masters:
+                if (
+                    master.content_type == 13
+                    and master.content_value == App().groups[index].index
+                ):
+                    master.set_level(master.value)
+
+    def _keypress_equal(self) -> None:
         """@ Level"""
         channels, level = self.channels_view.at_level(self.keystring)
         if channels and level != -1:
             selected_group = self.flowbox.get_selected_children()[0]
             index = selected_group.get_index()
             for channel in channels:
-                App().groups[index].channels[channel - 1] = level
+                App().groups[index].channels[channel] = level
         self.channels_view.update()
+        self._update_master_level()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_colon(self):
+    def _keypress_colon(self) -> None:
         """Level - %"""
         channels = self.channels_view.get_selected_channels()
         step_level = App().settings.get_int("percent-level")
@@ -285,15 +415,16 @@ class GroupTab(Gtk.Paned):
             selected_group = self.flowbox.get_selected_children()[0]
             index = selected_group.get_index()
             for channel in channels:
-                level = App().groups[index].channels[channel - 1]
+                level = App().groups[index].channels.get(channel, 0)
                 level = max(level - step_level, 0)
-                App().groups[index].channels[channel - 1] = level
+                App().groups[index].channels[channel] = level
         self.channels_view.update()
+        self._update_master_level()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_exclam(self):
+    def _keypress_exclam(self) -> None:
         """Level + %"""
         channels = self.channels_view.get_selected_channels()
         step_level = App().settings.get_int("percent-level")
@@ -303,15 +434,16 @@ class GroupTab(Gtk.Paned):
             selected_group = self.flowbox.get_selected_children()[0]
             index = selected_group.get_index()
             for channel in channels:
-                level = App().groups[index].channels[channel - 1]
+                level = App().groups[index].channels.get(channel, 0)
                 level = min(level + step_level, 255)
-                App().groups[index].channels[channel - 1] = level
+                App().groups[index].channels[channel] = level
         self.channels_view.update()
+        self._update_master_level()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_N(self):  # pylint: disable=C0103
+    def _keypress_N(self) -> None:  # pylint: disable=C0103
         """New Group"""
         # If no group number, use the next one
         if self.keystring == "":
@@ -329,7 +461,7 @@ class GroupTab(Gtk.Paned):
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return
 
-        channels = array.array("B", [0] * MAX_CHANNELS)
+        channels: Dict[int, int] = {}
         txt = str(group_nb)
         App().groups.append(Group(group_nb, channels, txt))
         # Insert group widget
@@ -400,113 +532,3 @@ class GroupTab(Gtk.Paned):
             App().groups.pop(index)
             if not App().groups:
                 self.last_group_selected = ""
-
-
-class GroupChannelsView(ChannelsView):
-    """Channels View"""
-
-    def __init__(self):
-        super().__init__()
-
-    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change channels level with a wheel
-
-        Args:
-            step: Step level
-            direction: Up or Down
-        """
-        channels = self.get_selected_channels()
-        selected_group = App().group_tab.flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        for channel in channels:
-            level = App().groups[index].channels[channel - 1]
-            if direction == Gdk.ScrollDirection.UP:
-                level = min(level + step, 255)
-            elif direction == Gdk.ScrollDirection.DOWN:
-                level = max(level - step, 0)
-            App().groups[index].channels[channel - 1] = level
-        self.update()
-
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
-        """Select channels to display
-
-        Args:
-            child: Parent of Channel Widget
-
-        Returns:
-            True or False
-        """
-        # Find selected group
-        selected_group = None
-        if App().group_tab:
-            selected_group = App().group_tab.flowbox.get_selected_children()
-        if selected_group:
-            group_number = selected_group[0].get_child().number
-            group = None
-            for group in App().groups:
-                if group.index == group_number:
-                    break
-            if not group:
-                return False
-            # Display active channels
-            if self.view_mode == VIEW_MODES["Active"]:
-                return self.__filter_active(group, child)
-            # Display patched channels
-            if self.view_mode == VIEW_MODES["Patched"]:
-                return self.__filter_patched(group, child)
-            # Display all channels by default
-            return self.__filter_all(group, child)
-        return False
-
-    def __filter_all(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
-        """Display all channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_child()
-        if group.channels[channel_index] or child.is_selected():
-            channel_widget.level = group.channels[channel_index]
-            channel_widget.next_level = group.channels[channel_index]
-        else:
-            channel_widget.level = 0
-            channel_widget.next_level = 0
-        return True
-
-    def __filter_patched(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
-        """Display only patched channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel_index = child.get_index()  # Widget number (channel - 1)
-        if channel_index + 1 not in App().patch.channels:
-            return False
-        return self.__filter_all(group, child)
-
-    def __filter_active(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
-        """Display only active channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel_index = child.get_index()  # Widget number (channel - 1)
-        channel_widget = child.get_child()
-        if group.channels[channel_index] or child.is_selected():
-            channel_widget.level = group.channels[channel_index]
-            channel_widget.next_level = channel_widget.level
-            return True
-        return False
