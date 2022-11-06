@@ -418,7 +418,10 @@ class MastersTab(Gtk.Paned):
                         App().memories_tab.channels_view.update()
             # Type : Channels
             if App().masters[row].content_type == 2:
+                master_level = App().masters[row].value
+                App().masters[row].set_level(0)
                 channels = App().masters[row].content_value
+                channels.clear()
                 nb_chan = 0
                 text = "Ch"
                 for chan in range(MAX_CHANNELS):
@@ -428,7 +431,7 @@ class MastersTab(Gtk.Paned):
                         nb_chan += 1
                         text += " " + str(chan + 1)
                 App().masters[row].text = text
-                App().masters[row].set_level(App().masters[row].value)
+                App().masters[row].set_level(master_level)
                 # Update Display
                 page = int(self.stack.get_visible_child_name())
                 self.liststores[page][path][2] = str(nb_chan)
