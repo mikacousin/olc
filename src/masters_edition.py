@@ -407,13 +407,16 @@ class MastersTab(Gtk.Paned):
                         found = True
                         break
                 if found:
+                    master_level = App().masters[row].value
+                    App().masters[row].set_level(0)
                     channels = mem.channels
-                    for chan in range(MAX_CHANNELS):
-                        channel_widget = self.channels_view.get_channel_widget(chan + 1)
+                    for chan in range(1, MAX_CHANNELS + 1):
+                        channel_widget = self.channels_view.get_channel_widget(chan)
                         channels[chan] = channel_widget.level
                     # Update Preset Tab if open
                     if App().memories_tab:
                         App().memories_tab.channels_view.update()
+                    App().masters[row].set_level(master_level)
             # Type : Channels
             if App().masters[row].content_type == 2:
                 master_level = App().masters[row].value

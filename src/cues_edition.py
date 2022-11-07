@@ -188,7 +188,8 @@ class CuesEditionTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
             # Memory's channels
-            channels = App().memories[row].channels
+            cue = App().memories[row]
+            channels = cue.channels
             # Update levels and count channels
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
@@ -200,6 +201,14 @@ class CuesEditionTab(Gtk.Paned):
             # Update Display
             treeiter = self.liststore.get_iter(row)
             self.liststore.set_value(treeiter, 2, nb_chan)
+            # Update Live View
+            if App().sequence.steps[App().sequence.position + 1].cue == cue:
+                for channel in channels:
+                    widget = App().window.live_view.channels_view.get_channel_widget(
+                        channel
+                    )
+                    widget.next_level = channels.get(channel)
+                    widget.queue_draw()
             # Tag filename as modified
             App().ascii.modified = True
             App().window.header.set_title(App().ascii.basename + "*")

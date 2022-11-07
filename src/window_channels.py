@@ -120,7 +120,7 @@ class LiveChannelsView(ChannelsView):
         return True
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change channels level with a wheel
+        """Change patched channels level with a wheel
 
         Args:
             step: Step level
@@ -128,12 +128,13 @@ class LiveChannelsView(ChannelsView):
         """
         channels = self.get_selected_channels()
         for channel in channels:
-            for output in App().patch.channels[channel]:
-                out = output[0]
-                univ = output[1]
-                index = App().universes.index(univ)
-                level = App().dmx.frame[index][out - 1]
-                if direction == Gdk.ScrollDirection.UP:
-                    App().dmx.user[channel - 1] = min(level + step, 255)
-                elif direction == Gdk.ScrollDirection.DOWN:
-                    App().dmx.user[channel - 1] = max(level - step, 0)
+            if App().patch.channels.get(channel):
+                for output in App().patch.channels[channel]:
+                    out = output[0]
+                    univ = output[1]
+                    index = App().universes.index(univ)
+                    level = App().dmx.frame[index][out - 1]
+                    if direction == Gdk.ScrollDirection.UP:
+                        App().dmx.user[channel - 1] = min(level + step, 255)
+                    elif direction == Gdk.ScrollDirection.DOWN:
+                        App().dmx.user[channel - 1] = max(level - step, 0)

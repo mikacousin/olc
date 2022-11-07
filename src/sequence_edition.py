@@ -749,7 +749,7 @@ class SequenceTab(Gtk.Grid):
                 for channel in range(MAX_CHANNELS):
                     channel_widget = self.channels_view.get_channel_widget(channel + 1)
                     if channel_widget.level:
-                        channels[channel] = channel_widget.level
+                        channels[channel + 1] = channel_widget.level
                         sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
@@ -1072,8 +1072,8 @@ class SeqChannelsView(ChannelsView):
         step = App().sequences_tab.get_selected_step()
         if not sequence or not step:
             return False
-        channel_index = child.get_index()
-        channel_level = sequence.steps[step].cue.channels.get(channel_index, 0)
+        channel = child.get_index() + 1
+        channel_level = sequence.steps[step].cue.channels.get(channel, 0)
         if self.view_mode == VIEW_MODES["Active"]:
             return self._filter_active(child, channel_level)
         if self.view_mode == VIEW_MODES["Patched"]:
