@@ -138,7 +138,7 @@ class PatchWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
-        text = str(self.output) + "." + str(self.universe)
+        text = f"{str(self.output)}.{str(self.universe)}"
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
         cr.move_to(
             allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4
@@ -221,7 +221,7 @@ class PatchWidget(Gtk.Widget):
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.set_font_size(8 * self.scale)
-            text = str(App().patch.outputs[self.universe][self.output][1]) + "%"
+            text = f"{str(App().patch.outputs[self.universe][self.output][1])}%"
             cr.move_to(allocation.width - 20, allocation.height - 2)
             cr.show_text(text)
 

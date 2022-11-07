@@ -37,16 +37,16 @@ def step_filter_func1(model, treeiter, _data):
         True, False or step
     """
     if App().sequence.position <= 0:
-        if int(model[treeiter][11]) in [0, 1]:
+        if int(model[treeiter][11]) in {0, 1}:
             return True
-        return int(model[treeiter][0]) in [0, 1]
+        return int(model[treeiter][0]) in {0, 1}
     if App().sequence.position == 1:
         if int(model[treeiter][11]) == 1:
             return True
         if int(model[treeiter][11]) == 0:
             return False
-        return int(model[treeiter][0]) in [0, 1, 2]
-    if int(model[treeiter][11]) in [0, 1]:
+        return int(model[treeiter][0]) in {0, 1, 2}
+    if int(model[treeiter][11]) in {0, 1}:
         return False
 
     return int(model[treeiter][0]) in [

@@ -201,13 +201,11 @@ class PatchChannelWidget(Gtk.Widget):
                 )
                 cr.set_font_size(12)
                 univ = item[1]
-                (_x, _y, w, h, _dx, _dy) = cr.text_extents(
-                    str(output) + "." + str(univ)
-                )
+                (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{str(output)}.{str(univ)}")
                 cr.move_to(
                     65 + (i * 65) + (60 / 2) - w / 2, self.height / 2 - (h - 20) / 2
                 )
-                cr.show_text(str(output) + "." + str(univ))
+                cr.show_text(f"{str(output)}.{str(univ)}")
 
     def _draw_two_lines(self, cr):
         """Draw Outputs on two lines
@@ -255,15 +253,13 @@ class PatchChannelWidget(Gtk.Widget):
                         )
                         cr.show_text("...")
                         break
-                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(
-                        str(output) + "." + str(univ)
-                    )
+                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{str(output)}.{str(univ)}")
                     cr.move_to(
                         65 + (j * 32) + (30 / 2) - w / 2,
                         ((self.height / 2) / 2 - (h - 20) / 2) + self.height / 2,
                     )
 
-                cr.show_text(str(output) + "." + str(univ))
+                cr.show_text(f"{str(output)}.{str(univ)}")
 
     def _draw_first_line(self, cr, i, output, univ):
         """Draw First line of outputs
@@ -282,7 +278,7 @@ class PatchChannelWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(output) + "." + str(univ))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{str(output)}.{str(univ)}")
         cr.move_to(
             65 + (i * 32) + (30 / 2) - w / 2, (self.height / 2) / 2 - (h - 20) / 2
         )

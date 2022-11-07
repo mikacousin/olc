@@ -86,7 +86,7 @@ class Ascii:
             # Update display informations
             self._update_ui()
         except GObject.GError as e:
-            print("Error: " + str(e))
+            print(f"Error: {str(e)}")
         self.modified = False
 
     def save(self):
@@ -187,9 +187,7 @@ class Ascii:
         if App().virtual_console and App().virtual_console.props.visible:
             for master in App().masters:
                 if master.page == App().fader_page:
-                    text = "master_" + str(
-                        master.number + ((App().fader_page - 1) * 10)
-                    )
+                    text = f"master_{str(master.number + (App().fader_page - 1) * 10)}"
                     App().virtual_console.masters[master.number - 1].text = text
                     App().virtual_console.masters[master.number - 1].set_value(
                         master.value

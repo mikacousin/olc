@@ -53,10 +53,10 @@ def save_main_playback(stream):
                 else str(step.delay_in)
             )
             wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
-            stream.write(bytes("CUE " + str(step.cue.memory) + "\n", "utf8"))
-            stream.write(bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8"))
-            stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8"))
-            stream.write(bytes("$$WAIT " + wait + "\n", "utf8"))
+            stream.write(bytes(f"CUE {str(step.cue.memory)}" + "\n", "utf8"))
+            stream.write(bytes(f"DOWN {time_out} {delay_out}" + "\n", "utf8"))
+            stream.write(bytes(f"UP {time_in} {delay_in}" + "\n", "utf8"))
+            stream.write(bytes(f"$$WAIT {wait}" + "\n", "utf8"))
             #  Chanel Time if any
             for chan in step.channel_time.keys():
                 delay = (
@@ -69,10 +69,10 @@ def save_main_playback(stream):
                     if step.channel_time[chan].time.is_integer()
                     else str(step.channel_time[chan].time)
                 )
-                stream.write(bytes("$$PARTTIME " + delay + " " + time + "\n", "utf8"))
-                stream.write(bytes("$$PARTTIMECHAN " + str(chan) + "\n", "utf8"))
-            stream.write(bytes("TEXT " + step.text + "\n", "iso-8859-1"))
-            stream.write(bytes("$$TEXT " + ascii(step.text)[1:-1] + "\n", "ascii"))
+                stream.write(bytes(f"$$PARTTIME {delay} {time}" + "\n", "utf8"))
+                stream.write(bytes(f"$$PARTTIMECHAN {str(chan)}" + "\n", "utf8"))
+            stream.write(bytes(f"TEXT {step.text}" + "\n", "iso-8859-1"))
+            stream.write(bytes(f"$$TEXT {ascii(step.text)[1:-1]}" + "\n", "ascii"))
             _save_channels(stream, step.cue.channels)
             stream.write(bytes("\n", "utf8"))
 
@@ -86,8 +86,8 @@ def save_chasers(stream):
     stream.write(bytes("! Additional Sequences\n\n", "utf8"))
 
     for chaser in App().chasers:
-        stream.write(bytes("$SEQUENCE " + str(chaser.index) + "\n", "utf8"))
-        stream.write(bytes("TEXT " + chaser.text + "\n\n", "utf8"))
+        stream.write(bytes(f"$SEQUENCE {str(chaser.index)}" + "\n", "utf8"))
+        stream.write(bytes(f"TEXT {chaser.text}" + "\n\n", "utf8"))
         for step in chaser.steps:
             if int(step.cue.memory) != 0:
                 # Save integers as integers
@@ -114,13 +114,15 @@ def save_chasers(stream):
                 wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
                 stream.write(
                     bytes(
-                        "$CUE " + str(chaser.index) + " " + str(step.cue.memory) + "\n",
+                        f"$CUE {str(chaser.index)} {str(step.cue.memory)}"
+                        + "\n",
                         "utf8",
                     )
                 )
-                stream.write(bytes("DOWN " + time_out + " " + delay_out + "\n", "utf8"))
-                stream.write(bytes("UP " + time_in + " " + delay_in + "\n", "utf8"))
-                stream.write(bytes("$$WAIT " + wait + "\n", "utf8"))
+
+                stream.write(bytes(f"DOWN {time_out} {delay_out}" + "\n", "utf8"))
+                stream.write(bytes(f"UP {time_in} {delay_in}" + "\n", "utf8"))
+                stream.write(bytes(f"$$WAIT {wait}" + "\n", "utf8"))
                 _save_channels(stream, step.cue.channels)
                 stream.write(bytes("\n", "utf8"))
 
@@ -144,13 +146,14 @@ def save_groups(stream):
     stream.write(bytes("! $$TEXT  Unicode encoded version of the same text\n", "utf8"))
 
     for group in App().groups:
-        stream.write(bytes("GROUP " + str(group.index) + "\n", "utf8"))
+        stream.write(bytes(f"GROUP {str(group.index)}" + "\n", "utf8"))
         stream.write(
-            bytes("TEXT " + ascii(group.text)[1:-1] + "\n", "utf8")
+            bytes(f"TEXT {ascii(group.text)[1:-1]}" + "\n", "utf8")
             .decode("utf8")
             .encode("ascii")
         )
-        stream.write(bytes("$$TEXT " + group.text + "\n", "utf8"))
+
+        stream.write(bytes(f"$$TEXT {group.text}" + "\n", "utf8"))
         _save_channels(stream, group.channels)
         stream.write(bytes("\n", "utf8"))
 
@@ -175,13 +178,14 @@ def save_congo_groups(stream):
     stream.write(bytes("CLEAR $GROUP\n\n", "utf8"))
 
     for group in App().groups:
-        stream.write(bytes("$GROUP " + str(group.index) + "\n", "utf8"))
+        stream.write(bytes(f"$GROUP {str(group.index)}" + "\n", "utf8"))
         stream.write(
-            bytes("TEXT " + ascii(group.text)[1:-1] + "\n", "utf8")
+            bytes(f"TEXT {ascii(group.text)[1:-1]}" + "\n", "utf8")
             .decode("utf8")
             .encode("ascii")
         )
-        stream.write(bytes("$$TEXT " + group.text + "\n", "utf8"))
+
+        stream.write(bytes(f"$$TEXT {group.text}" + "\n", "utf8"))
         _save_channels(stream, group.channels)
         stream.write(bytes("\n", "utf8"))
 
@@ -265,27 +269,21 @@ def save_patch(stream):
     )
     stream.write(bytes("! Patch\n", "utf8"))
     stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
-    patch = ""
     i = 1
+    patch = ""
     for channel, outputs in App().patch.channels.items():
         for values in outputs:
             output = values[0]
             univ = values[1]
             index = App().universes.index(univ)
-            patch += (
-                " "
-                + str(channel)
-                + "<"
-                + str(output + (512 * index))
-                + "@"
-                + str(App().patch.outputs[univ][output][1])
-            )
+            patch += f" {str(channel)}<{str(output + 512 * index)}@{str(App().patch.outputs[univ][output][1])}"
+
             if not i % 4 and patch != "":
-                stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
+                stream.write(bytes(f"PATCH 1{patch}" + "\n", "utf8"))
                 patch = ""
             i += 1
     if patch != "":
-        stream.write(bytes("PATCH 1" + patch + "\n", "utf8"))
+        stream.write(bytes(f"PATCH 1{patch}" + "\n", "utf8"))
     stream.write(bytes("\n", "utf8"))
 
 
@@ -343,11 +341,11 @@ def _save_channels(stream, channels_array):
     for chan, level in enumerate(channels_array):
         if level != 0:
             level = "H" + format(level, "02X")
-            channels += " " + str(chan + 1) + "/" + level
+            channels += f" {str(chan + 1)}/{level}"
             # 6 Channels per line
             if not i % 6 and channels != "":
-                stream.write(bytes("CHAN" + channels + "\n", "utf8"))
+                stream.write(bytes(f"CHAN{channels}" + "\n", "utf8"))
                 channels = ""
             i += 1
     if channels != "":
-        stream.write(bytes("CHAN" + channels + "\n", "utf8"))
+        stream.write(bytes(f"CHAN{channels}" + "\n", "utf8"))

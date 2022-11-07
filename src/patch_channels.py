@@ -97,7 +97,7 @@ class PatchChannelsTab(Gtk.Box):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 

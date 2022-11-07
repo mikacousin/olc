@@ -197,7 +197,7 @@ class Sequence:
                 if self.position > self.last - 3:
                     self.position = self.last - 3
             except Exception as e:
-                print("Error :", str(e))
+                print("Error :", e)
 
         # Jump to next Step
         position = self.position
@@ -265,7 +265,7 @@ class Sequence:
                 # Stop at the begining
                 self.position = max(self.position, 1)
             except Exception as e:
-                print("Error :", str(e))
+                print("Error :", e)
 
         # Jump to previous Step
         position = self.position
@@ -385,8 +385,7 @@ class Sequence:
                 self.thread.stop()
                 self.thread.join()
             except Exception as e:
-                print("Error :", str(e))
-            self.on_go = False
+                print("Error :", e)
             # Launch another Go
             position = self.position
             position += 1
@@ -395,6 +394,7 @@ class Sequence:
             else:
                 self.position = 0
                 position = 0
+            self.on_go = False
             App().window.playback.sequential.total_time = self.steps[
                 position + 1
             ].total_time
@@ -416,16 +416,8 @@ class Sequence:
             App().window.playback.sequential.position_b = 0
 
             # Set main window's subtitle
-            subtitle = (
-                "Mem. : "
-                + str(self.steps[position].cue.memory)
-                + " "
-                + self.steps[position].text
-                + " - Next Mem. : "
-                + str(self.steps[position + 1].cue.memory)
-                + " "
-                + self.steps[position + 1].text
-            )
+            subtitle = f"Mem. : {str(self.steps[position].cue.memory)} {self.steps[position].text} - Next Mem. : {str(self.steps[position + 1].cue.memory)} {self.steps[position + 1].text}"
+
             # Update Sequential Tab
             App().window.playback.update_active_cues_display()
             App().window.playback.grid.queue_draw()
@@ -460,7 +452,7 @@ class Sequence:
                 self.thread.stop()
                 self.thread.join()
             except Exception as e:
-                print("Error :", str(e))
+                print("Error :", e)
             self.on_go = False
 
         App().window.playback.sequential.total_time = self.steps[
@@ -498,10 +490,11 @@ class Sequence:
 
     def pause(self, _action, _param):
         """Toggle pause"""
-        if self.thread and self.thread.pause.is_set():
-            self.thread.pause.clear()
-        elif self.thread:
-            self.thread.pause.set()
+        if self.thread:
+            if self.thread.pause.is_set():
+                self.thread.pause.clear()
+            else:
+                self.thread.pause.set()
 
 
 class ThreadGo(threading.Thread):
@@ -837,12 +830,11 @@ class ThreadGoBack(threading.Thread):
                 self.dmxlevels[univ][output] = App().dmx.frame[univ][output]
         # Go Back's default time
         go_back_time = App().settings.get_double("go-back-time") * 1000
-        # Pause initialisation
-        start_pause = None
         pause_time = 0
         # Actual time in ms
         start_time = time.time() * 1000
         i = (time.time() * 1000) - start_time
+        start_pause = None
         while i < go_back_time and not self._stopevent.is_set():
             if not self.pause.is_set():
                 if not start_pause:
@@ -892,16 +884,8 @@ class ThreadGoBack(threading.Thread):
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
         # Main window's subtitle
-        subtitle = (
-            "Mem. : "
-            + str(App().sequence.steps[prev_step].cue.memory)
-            + " "
-            + App().sequence.steps[prev_step].text
-            + " - Next Mem. : "
-            + str(App().sequence.steps[prev_step + 1].cue.memory)
-            + " "
-            + App().sequence.steps[prev_step + 1].text
-        )
+        subtitle = f"Mem. : {str(App().sequence.steps[prev_step].cue.memory)} {App().sequence.steps[prev_step].text} - Next Mem. : {str(App().sequence.steps[prev_step + 1].cue.memory)} {App().sequence.steps[prev_step + 1].text}"
+
         # Update Gtk in the main thread
         GLib.idle_add(update_ui, prev_step, subtitle)
         # Wait

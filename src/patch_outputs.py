@@ -53,8 +53,7 @@ class PatchOutputsTab(Gtk.Box):
         self.channels = []
 
         for universe in App().universes:
-            for i in range(512):
-                self.outputs.append(PatchWidget(universe, i + 1))
+            self.outputs.extend(PatchWidget(universe, i + 1) for i in range(512))
         for output in self.outputs:
             self.flowbox.add(output)
 
@@ -142,7 +141,7 @@ class PatchOutputsTab(Gtk.Box):
             self.keystring += "."
             App().window.statusbar.push(App().window.context_id, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
@@ -226,9 +225,7 @@ class PatchOutputsTab(Gtk.Box):
         """Select Output"""
         self.flowbox.unselect_all()
 
-        output = self.__get_output_index()
-
-        if output:
+        if output := self.__get_output_index():
             output -= 1
             child = self.flowbox.get_child_at_index(output)
             self.flowbox.select_child(child)
@@ -272,9 +269,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_plus(self):
         """+"""
-        output = self.__get_output_index()
-
-        if output:
+        if output := self.__get_output_index():
             output -= 1
             child = self.flowbox.get_child_at_index(output)
             self.flowbox.select_child(child)
@@ -289,9 +284,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_minus(self):
         """-"""
-        output = self.__get_output_index()
-
-        if output:
+        if output := self.__get_output_index():
             output -= 1
             child = self.flowbox.get_child_at_index(output)
             self.flowbox.unselect_child(child)

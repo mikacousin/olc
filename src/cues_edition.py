@@ -70,8 +70,7 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             False
         """
-        notebook = self.get_parent()
-        if notebook:
+        if notebook := self.get_parent():
             notebook.grab_focus()
         return False
 
@@ -125,7 +124,7 @@ class CuesEditionTab(Gtk.Paned):
         # Channels View
         self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
@@ -179,7 +178,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.user_channels[channel - 1] = level
         self.channels_view.update()
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_U(self):    # pylint: disable=C0103
         """Update Memory"""
         self.channels_view.flowbox.unselect_all()
 
@@ -211,9 +210,9 @@ class CuesEditionTab(Gtk.Paned):
                     widget.queue_draw()
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
 
-    def _keypress_Delete(self):  # pylint: disable=C0103
+    def _keypress_Delete(self):    # pylint: disable=C0103
         """Deletes selected Memory"""
         # TODO: Ask confirmation
         self.channels_view.flowbox.unselect_all()
@@ -239,7 +238,7 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.remove(treeiter)
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
             # Update Main Playback
             App().window.playback.update_sequence_display()
             # Update Sequence Edition Tab if exist
@@ -260,7 +259,7 @@ class CuesEditionTab(Gtk.Paned):
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_R(self):    # pylint: disable=C0103
         """Records a copy of the current Memory with a new number
 
         Returns:
@@ -295,7 +294,7 @@ class CuesEditionTab(Gtk.Paned):
                             widget.queue_draw()
                     # Tag filename as modified
                     App().ascii.modified = True
-                    App().window.header.set_title(App().ascii.basename + "*")
+                    App().window.header.set_title(f"{App().ascii.basename}*")
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -320,13 +319,13 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.insert(i, [str(mem), "", nb_chan])
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
         return True
 
-    def _keypress_Insert(self):  # pylint: disable=C0103
+    def _keypress_Insert(self):    # pylint: disable=C0103
         """Insert a new Memory
 
         Returns:
@@ -375,7 +374,7 @@ class CuesEditionTab(Gtk.Paned):
 
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
 
             return True
 
@@ -419,7 +418,7 @@ class CuesEditionTab(Gtk.Paned):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        App().window.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

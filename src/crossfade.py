@@ -102,9 +102,9 @@ class CrossFade:
         """Slider A and B at Full"""
         if not App().sequence.on_go:
             return
-        self.scale_a.moved = False
         self.scale_b.moved = False
         self.manual = False
+        self.scale_a.moved = False
         App().sequence.on_go = False
         # Empty array of levels enter by user
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
@@ -140,16 +140,8 @@ class CrossFade:
         )
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
-        subtitle = (
-            "Mem. :"
-            + str(App().sequence.steps[App().sequence.position].cue.memory)
-            + " "
-            + App().sequence.steps[App().sequence.position].text
-            + " - Next Mem. : "
-            + str(App().sequence.steps[next_step].cue.memory)
-            + " "
-            + App().sequence.steps[next_step].text
-        )
+        subtitle = f"Mem. :{str(App().sequence.steps[App().sequence.position].cue.memory)} {App().sequence.steps[App().sequence.position].text} - Next Mem. : {str(App().sequence.steps[next_step].cue.memory)} {App().sequence.steps[next_step].text}"
+
         update_ui(App().sequence.position, subtitle)
         # If Wait
         if App().sequence.steps[next_step].wait:

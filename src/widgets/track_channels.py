@@ -48,9 +48,9 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str("Step"))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Step")
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
-        cr.show_text(str("Step"))
+        cr.show_text("Step")
 
         # Draw Memory box
         cr.move_to(65, 0)
@@ -62,9 +62,9 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str("Memory"))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Memory")
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-        cr.show_text(str("Memory"))
+        cr.show_text("Memory")
 
         # Draw Text box
         cr.move_to(130, 0)
@@ -76,9 +76,9 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str("Text"))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Text")
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
-        cr.show_text(str("Text"))
+        cr.show_text("Text")
 
         for i, channel in enumerate(self.channels):
             # Draw Level boxes
