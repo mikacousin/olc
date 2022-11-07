@@ -15,7 +15,7 @@
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from .common import rounded_rectangle_fill
+from .common import rounded_rectangle_fill, rounded_rectangle
 
 
 class PatchWidget(Gtk.Widget):
@@ -93,7 +93,6 @@ class PatchWidget(Gtk.Widget):
             allocation: Widget's allocation
         """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
-        # Dimmer
         if (
             self.universe in App().patch.outputs
             and self.output in App().patch.outputs[self.universe]
@@ -110,14 +109,23 @@ class PatchWidget(Gtk.Widget):
                 rounded_rectangle_fill(cr, area, 10)
             elif App().patch.outputs[self.universe][self.output][0] != 0:
                 # Patch output
+                cr.set_source_rgb(0.3, 0.3, 0.3)
+                rounded_rectangle_fill(cr, area, 10)
                 if self.get_parent().is_selected():
                     cr.set_source_rgb(0.6, 0.4, 0.1)
-                else:
-                    cr.set_source_rgb(0.3, 0.3, 0.3)
-                rounded_rectangle_fill(cr, area, 10)
+                    rounded_rectangle(cr, area, 10)
         elif self.get_parent().is_selected():
             # Unpatched output
             cr.set_source_rgb(0.6, 0.4, 0.1)
+            rounded_rectangle(cr, area, 10)
+        index = App().universes.index(self.universe)
+        if App().dmx.frame[index][self.output - 1]:
+            level = App().dmx.frame[index][self.output - 1]
+            # cr.move_to(0, 0)
+            cr.set_source_rgba(
+                0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
+            )
+            area = (1, allocation.width - 2, 1, allocation.height - 2)
             rounded_rectangle_fill(cr, area, 10)
 
     def _draw_output_number(self, cr, allocation):
@@ -147,7 +155,6 @@ class PatchWidget(Gtk.Widget):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
-        # Dimmer
         if (
             self.universe in App().patch.outputs
             and self.output in App().patch.outputs[self.universe]
@@ -173,7 +180,8 @@ class PatchWidget(Gtk.Widget):
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10 * self.scale)
-            text = str(App().dmx.frame[index][self.output - 1])
+            level = App().dmx.frame[index][self.output - 1]
+            text = str(level)
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
             cr.move_to(
                 allocation.width / 2 - width / 2,
