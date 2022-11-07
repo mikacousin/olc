@@ -230,7 +230,7 @@ class GroupTab(Gtk.Paned):
         # Channels View
         self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
@@ -248,40 +248,37 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_m(self) -> None:
         """Open Popover"""
-        selected = self.flowbox.get_selected_children()
-        if selected:
+        if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             flowboxchild.get_child().popover.popup()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Right(self) -> None:  # pylint: disable=C0103
+    def _keypress_Right(self) -> None:    # pylint: disable=C0103
         """Next Group"""
         if self.last_group_selected == "":
-            child = self.flowbox.get_child_at_index(0)
-            if child:
+            if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
                 self.flowbox.invalidate_filter()
-        else:
-            child = self.flowbox.get_child_at_index(int(self.last_group_selected) + 1)
-            if child:
-                self.flowbox.select_child(child)
-                App().window.set_focus(child)
-                self.channels_view.flowbox.unselect_all()
-                self.channels_view.update()
-                self.last_group_selected = str(int(self.last_group_selected) + 1)
+        elif child := self.flowbox.get_child_at_index(
+            int(self.last_group_selected) + 1
+        ):
+            self.flowbox.select_child(child)
+            App().window.set_focus(child)
+            self.channels_view.flowbox.unselect_all()
+            self.channels_view.update()
+            self.last_group_selected = str(int(self.last_group_selected) + 1)
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Left(self) -> None:  # pylint: disable=C0103
+    def _keypress_Left(self) -> None:    # pylint: disable=C0103
         """Previous Group"""
         if self.last_group_selected == "":
-            child = self.flowbox.get_child_at_index(0)
-            if child:
+            if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
@@ -298,11 +295,10 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Down(self) -> None:  # pylint: disable=C0103
+    def _keypress_Down(self) -> None:    # pylint: disable=C0103
         """Group on Next Line"""
         if self.last_group_selected == "":
-            child = self.flowbox.get_child_at_index(0)
-            if child:
+            if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
@@ -325,11 +321,10 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Up(self) -> None:  # pylint: disable=C0103
+    def _keypress_Up(self) -> None:    # pylint: disable=C0103
         """Group on Previous Line"""
         if self.last_group_selected == "":
-            child = self.flowbox.get_child_at_index(0)
-            if child:
+            if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
                 App().window.set_focus(child)
                 self.last_group_selected = "0"
@@ -380,8 +375,7 @@ class GroupTab(Gtk.Paned):
 
     def _update_master_level(self) -> None:
         """Update selected master channels levels"""
-        selected = self.flowbox.get_selected_children()
-        if selected:
+        if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             index = flowboxchild.get_index()
             for master in App().masters:
@@ -487,48 +481,48 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Delete(self) -> None:  # pylint: disable=C0103
+    def _keypress_Delete(self) -> None:    # pylint: disable=C0103
         """Delete selected group"""
-        selected = self.flowbox.get_selected_children()
-        if selected:
-            # Update groups
-            flowboxchild = selected[0]
-            index = flowboxchild.get_index()
-            flowboxchild.destroy()
-            if index + 1 == len(App().groups):
-                flowboxchild = self.flowbox.get_child_at_index(index - 1)
-                self.last_group_selected = str(index - 1)
-            else:
-                flowboxchild = self.flowbox.get_child_at_index(index)
-            if flowboxchild:
-                self.flowbox.select_child(flowboxchild)
-            self.channels_view.update()
-            # Update masters
-            for master in App().masters:
-                if (
-                    master.content_type == 13
-                    and master.content_value == App().groups[index].index
-                ):
-                    master.set_level(0)
-                    master.content_type = 0
-                    master.content_value = None
-                    master.text = ""
-                    if App().masters_tab:
-                        App().masters_tab.channels_view.update()
-                        liststore = App().masters_tab.liststores[master.page - 1]
-                        treeiter = liststore.get_iter(master.number - 1)
-                        liststore.set_value(treeiter, 1, "")
-                        liststore.set_value(treeiter, 2, "")
-                        liststore.set_value(treeiter, 3, "")
-                    if App().virtual_console and master.page == App().fader_page:
-                        index = master.number - 1
-                        fader = App().virtual_console.masters[index]
-                        fader.set_value(0)
-                        App().virtual_console.master_moved(fader)
-                        App().virtual_console.flashes[index].label = ""
-                        App().virtual_console.flashes[index].queue_draw()
-                    break
-            # Remove group
-            App().groups.pop(index)
-            if not App().groups:
-                self.last_group_selected = ""
+        if not (selected := self.flowbox.get_selected_children()):
+            return
+        # Update groups
+        flowboxchild = selected[0]
+        index = flowboxchild.get_index()
+        flowboxchild.destroy()
+        if index + 1 == len(App().groups):
+            flowboxchild = self.flowbox.get_child_at_index(index - 1)
+            self.last_group_selected = str(index - 1)
+        else:
+            flowboxchild = self.flowbox.get_child_at_index(index)
+        if flowboxchild:
+            self.flowbox.select_child(flowboxchild)
+        self.channels_view.update()
+        # Update masters
+        for master in App().masters:
+            if (
+                master.content_type == 13
+                and master.content_value == App().groups[index].index
+            ):
+                master.set_level(0)
+                master.content_type = 0
+                master.content_value = None
+                master.text = ""
+                if App().masters_tab:
+                    App().masters_tab.channels_view.update()
+                    liststore = App().masters_tab.liststores[master.page - 1]
+                    treeiter = liststore.get_iter(master.number - 1)
+                    liststore.set_value(treeiter, 1, "")
+                    liststore.set_value(treeiter, 2, "")
+                    liststore.set_value(treeiter, 3, "")
+                if App().virtual_console and master.page == App().fader_page:
+                    index = master.number - 1
+                    fader = App().virtual_console.masters[index]
+                    fader.set_value(0)
+                    App().virtual_console.master_moved(fader)
+                    App().virtual_console.flashes[index].label = ""
+                    App().virtual_console.flashes[index].queue_draw()
+                break
+        # Remove group
+        App().groups.pop(index)
+        if not App().groups:
+            self.last_group_selected = ""

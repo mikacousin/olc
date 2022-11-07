@@ -47,27 +47,23 @@ class Master:
         # Type 0: None
         if self.content_type == 0:
             pass
-        # Type 1: Preset
         elif self.content_type == 1:
             self.content_value = float(content_value)
             if cue := next(
                 mem for mem in App().memories if mem.memory == self.content_value
             ):
                 self.text = cue.text
-        # Type 2: Channels
         elif self.content_type == 2:
             self.text += "Ch"
             self.content_value = content_value
             for channel in content_value:
-                self.text += " " + str(channel)
-        # Type 3: Chaser
+                self.text += f" {str(channel)}"
         elif self.content_type == 3:
             self.content_value = float(content_value)
             if chaser := next(
                 chsr for chsr in App().chasers if chsr.index == self.content_value
             ):
                 self.text = chaser.text
-        # Type 13: Group
         elif self.content_type == 13:
             self.content_value = float(content_value)
             if group := next(
@@ -84,7 +80,7 @@ class Master:
             value: New level
         """
         # Send MIDI message to faders
-        midi_name = "master_" + str(self.number)
+        midi_name = f"master_{str(self.number)}"
         for outport in App().midi.ports.outports:
             item = App().midi.control_change.control_change[midi_name]
             if item[1] != -1:

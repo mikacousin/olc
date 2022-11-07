@@ -156,12 +156,9 @@ class SequenceTab(Gtk.Grid):
         Returns:
             Selected step or None
         """
-        step = None
         tree_selection = self.treeview2.get_selection()
         model, treeiter = tree_selection.get_selected()
-        if treeiter:
-            step = int(model[treeiter][0])
-        return step
+        return int(model[treeiter][0]) if treeiter else None
 
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
@@ -169,8 +166,7 @@ class SequenceTab(Gtk.Grid):
         Returns:
             False
         """
-        notebook = self.get_parent()
-        if notebook:
+        if notebook := self.get_parent():
             notebook.grab_focus()
         return False
 
@@ -207,7 +203,7 @@ class SequenceTab(Gtk.Grid):
         if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = "0" + text
+                text = f"0{text}"
 
             self.liststore2[path][3] = "" if text == "0" else text
             sequence = self.get_selected_sequence()
@@ -242,7 +238,7 @@ class SequenceTab(Gtk.Grid):
 
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
 
             # Update Sequential Tab
             if sequence == App().sequence:
@@ -270,7 +266,7 @@ class SequenceTab(Gtk.Grid):
         if not text.replace(".", "", 1).isdigit():
             return
         if text[0] == ".":
-            text = "0" + text
+            text = f"0{text}"
 
         self.liststore2[path][5] = text
 
@@ -308,7 +304,7 @@ class SequenceTab(Gtk.Grid):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        App().window.header.set_title(f"{App().ascii.basename}*")
 
         # Update Sequential Tab
         if sequence == App().sequence:
@@ -333,7 +329,7 @@ class SequenceTab(Gtk.Grid):
 
             return
         if text[0] == ".":
-            text = "0" + text
+            text = f"0{text}"
 
         self.liststore2[path][7] = text
 
@@ -371,7 +367,7 @@ class SequenceTab(Gtk.Grid):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        App().window.header.set_title(f"{App().ascii.basename}*")
 
         # Update Sequential Tab
         if sequence == App().sequence:
@@ -398,7 +394,7 @@ class SequenceTab(Gtk.Grid):
         if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = "0" + text
+                text = f"0{text}"
 
             self.liststore2[path][4] = "" if text == "0" else text
             # Find selected sequence
@@ -435,7 +431,7 @@ class SequenceTab(Gtk.Grid):
 
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
 
             # Update Sequential Tab
             if sequence == App().sequence:
@@ -466,7 +462,7 @@ class SequenceTab(Gtk.Grid):
         if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = "0" + text
+                text = f"0{text}"
 
             self.liststore2[path][6] = "" if text == "0" else text
             # Find selected sequence
@@ -503,7 +499,7 @@ class SequenceTab(Gtk.Grid):
 
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
 
             # Update Sequential Tab
             if sequence == App().sequence:
@@ -540,7 +536,7 @@ class SequenceTab(Gtk.Grid):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        App().window.header.set_title(f"{App().ascii.basename}*")
 
         # Update Main Playback
         if sequence == App().sequence:
@@ -635,7 +631,7 @@ class SequenceTab(Gtk.Grid):
         # Channels View
         self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
@@ -732,7 +728,7 @@ class SequenceTab(Gtk.Grid):
                 self.user_channels[channel - 1] = level
         self.channels_view.update()
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_U(self):    # pylint: disable=C0103
         """Update Cue"""
         # Find selected sequence
         sequence = self.get_selected_sequence()
@@ -753,7 +749,7 @@ class SequenceTab(Gtk.Grid):
                         sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
-                App().window.header.set_title(App().ascii.basename + "*")
+                App().window.header.set_title(f"{App().ascii.basename}*")
                 # Update Main playback display
                 if sequence == App().sequence and step == App().sequence.position + 1:
                     for channel in range(1, MAX_CHANNELS + 1):
@@ -783,7 +779,7 @@ class SequenceTab(Gtk.Grid):
             # Update Main Playback
             App().window.playback.update_sequence_display()
 
-    def _keypress_N(self):  # pylint: disable=C0103
+    def _keypress_N(self):    # pylint: disable=C0103
         """New Chaser"""
         # Use the next free index
         # 1 is for Main Playback, Chasers start at 2
@@ -804,9 +800,9 @@ class SequenceTab(Gtk.Grid):
 
         # Tag filename as modified
         App().ascii.modified = True
-        App().window.header.set_title(App().ascii.basename + "*")
+        App().window.header.set_title(f"{App().ascii.basename}*")
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_R(self):    # pylint: disable=C0103
         """New Step and new Cue"""
         found = False
         # Find selected Step
@@ -853,7 +849,7 @@ class SequenceTab(Gtk.Grid):
             self.update_sequence_display(step)
             # Tag filename as modified
             App().ascii.modified = True
-            App().window.header.set_title(App().ascii.basename + "*")
+            App().window.header.set_title(f"{App().ascii.basename}*")
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         else:  # Update Cue
@@ -873,7 +869,7 @@ class SequenceTab(Gtk.Grid):
                         sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
-                App().window.header.set_title(App().ascii.basename + "*")
+                App().window.header.set_title(f"{App().ascii.basename}*")
                 # Select memory modified
                 path = Gtk.TreePath.new_from_indices([step - 1])
                 self.treeview2.set_cursor(path, None, False)
@@ -960,9 +956,7 @@ class SequenceTab(Gtk.Grid):
         Args:
             step: Step
         """
-        sequence = self.get_selected_sequence()
-        # Liststore with infos from the sequence
-        if sequence:
+        if sequence := self.get_selected_sequence():
             if sequence == App().sequence:
                 for i in range(sequence.last)[1:-1]:
                     self.add_step_to_liststore(i)
@@ -1024,7 +1018,7 @@ class Dialog(Gtk.Dialog):
 
         self.set_default_size(150, 100)
 
-        label = Gtk.Label("Update memory " + str(memory) + " ?")
+        label = Gtk.Label(f"Update memory {str(memory)} ?")
 
         box = self.get_content_area()
         box.add(label)

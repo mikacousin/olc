@@ -33,7 +33,7 @@ class MidiPitchWheel:
         }
         for i in range(10):
             for j in range(10):
-                self.pitchwheel["master_" + str(j + (i * 10) + 1)] = j
+                self.pitchwheel[f"master_{str(j + i * 10 + 1)}"] = j
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI pitchwheel messages
@@ -50,7 +50,7 @@ class MidiPitchWheel:
                     GLib.idle_add(olc.midi_xfade.xfade_out, msg)
                 elif key[:12] == "crossfade_in":
                     GLib.idle_add(olc.midi_xfade.xfade_in, msg)
-                elif func := getattr(self, "_function_" + key, None):
+                elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, None, msg)
 
     def learn(self, msg: mido.Message, midi_learn: str) -> None:

@@ -69,15 +69,15 @@ class MidiNotes:
             "fader_page_minus": [0, 48],
         }
         for i in range(10):
-            self.notes["number_" + str(i)] = [0, -1]
+            self.notes[f"number_{str(i)}"] = [0, -1]
         for i in range(10):
             for j in range(10):
                 if j < 8:
-                    self.notes["flash_" + str(j + (i * 10) + 1)] = [0, 24 + j]
+                    self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, 24 + j]
                 elif j == 8:
-                    self.notes["flash_" + str(j + (i * 10) + 1)] = [0, 84]
+                    self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, 84]
                 else:
-                    self.notes["flash_" + str(j + (i * 10) + 1)] = [0, -1]
+                    self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, -1]
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
@@ -85,10 +85,9 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if not App().virtual_console:
-            if App().midi.ports.outports:
-                for outport in App().midi.ports.outports:
-                    outport.send(msg)
+        if not App().virtual_console and App().midi.ports.outports:
+            for outport in App().midi.ports.outports:
+                outport.send(msg)
         for key, value in self.notes.items():
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
@@ -101,7 +100,7 @@ class MidiNotes:
                 elif key[:5] == "inde_":
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
                 else:
-                    GLib.idle_add(globals()["_function_" + key], msg)
+                    GLib.idle_add(globals()[f"_function_{key}"], msg)
 
     def learn(self, msg: mido.Message, midi_learn: str) -> None:
         """Learn new MIDI Note control
@@ -110,21 +109,22 @@ class MidiNotes:
             msg: MIDI message
             midi_learn: action to update
         """
-        if self.notes.get(midi_learn):
+        if not self.notes.get(midi_learn):
+            return
             # Find if values are already used
-            for key, value in self.notes.items():
-                if value[0] == msg.channel and value[1] == msg.note:
-                    if midi_learn[:6] == "flash_":
-                        # Don't delete flash button from other pages
-                        index = int(key[6:])
-                        page = int(index / 11) + 1
-                        if page == App().fader_page:
-                            self.notes.update({key: [0, -1]})
-                    else:
-                        # Delete it
+        for key, value in self.notes.items():
+            if value[0] == msg.channel and value[1] == msg.note:
+                if midi_learn.startswith("flash_"):
+                    # Don't delete flash button from other pages
+                    index = int(key[6:])
+                    page = index // 11 + 1
+                    if page == App().fader_page:
                         self.notes.update({key: [0, -1]})
-            # Learn new values
-            self.notes.update({midi_learn: [msg.channel, msg.note]})
+                else:
+                    # Delete it
+                    self.notes.update({key: [0, -1]})
+        # Learn new values
+        self.notes.update({midi_learn: [msg.channel, msg.note]})
 
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""
@@ -146,12 +146,9 @@ class MidiNotes:
         """
         inde.level = level
         inde.update_dmx()
-        if level == 0:
-            velocity = 0
-        else:
-            velocity = 127
+        velocity = 0 if level == 0 else 127
         for outport in App().midi.ports.outports:
-            item = self.notes["inde_" + str(index)]
+            item = self.notes[f"inde_{index}"]
             msg = mido.Message(
                 "note_on", channel=item[0], note=item[1], velocity=velocity, time=0
             )
@@ -722,14 +719,14 @@ def _function_pause(msg: mido.Message) -> None:
         else:
             App().sequence.pause(None, None)
 
-    if App().sequence.on_go:
-        if App().sequence.thread and App().sequence.thread.pause.is_set():
+    if App().sequence.on_go and App().sequence.thread:
+        if App().sequence.thread.pause.is_set():
             for output in App().midi.ports.outports:
                 message = mido.Message(
                     "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
                 )
                 output.send(message)
-        elif App().sequence.thread:
+        else:
             for output in App().midi.ports.outports:
                 message = mido.Message(
                     "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0

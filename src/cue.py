@@ -38,10 +38,7 @@ class Cue:
 
         self.sequence = sequence
         self.memory = memory
-        if channels:
-            self.channels = channels
-        else:
-            self.channels = {}
+        self.channels = channels or {}
         self.text = text
 
     def set_level(self, channel: int, level: int) -> None:

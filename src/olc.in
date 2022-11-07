@@ -61,12 +61,11 @@ def is_port_in_use(port: int) -> bool:
     import socket
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("localhost", int(port))) == 0
+        return s.connect_ex(("localhost", port)) == 0
 
 
 if __name__ == "__main__":
 
-    olad_port = 9090
     parser = argparse.ArgumentParser(description="Control your lighting shows")
     parser.add_argument(
         "-p",
@@ -75,9 +74,7 @@ if __name__ == "__main__":
         help="The port to run the Ola HTTP server on. Defaults to 9090",
     )
     args = parser.parse_args()
-    if args.http_port:
-        olad_port = int(args.http_port)
-
+    olad_port = int(args.http_port) if args.http_port else 9090
     if not is_running("olad"):
         if is_port_in_use(olad_port):
             print(f"Olad port {olad_port} already in use")

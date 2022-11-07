@@ -40,7 +40,7 @@ class MidiControlChanges:
             "crossfade_in": [0, 9],
         }
         for i in range(1, 101):
-            self.control_change["master_" + str(i)] = [0, -1]
+            self.control_change[f"master_{str(i)}"] = [0, -1]
 
     def scan(self, port: str, msg: mido.Message) -> None:
         """Scan MIDI control changes
@@ -60,7 +60,7 @@ class MidiControlChanges:
                     GLib.idle_add(olc.midi_xfade.xfade_out, msg)
                 elif key[:12] == "crossfade_in":
                     GLib.idle_add(olc.midi_xfade.xfade_in, msg)
-                elif func := getattr(self, "_function_" + key, None):
+                elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
 
     def learn(self, msg: mido.Message, midi_learn: str) -> None:
@@ -211,10 +211,7 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
         __update_inde(independent, inde, val)
     elif port in relative2:
         # Relative2 mode (value: 65-127 positive, 63-0 negative)
-        if msg.value > 64:
-            step = msg.value - 64
-        else:
-            step = -(64 - msg.value)
+        step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
         inde, val = __new_inde_value(independent, step)
         __update_inde(independent, inde, val)
     elif port in makies:

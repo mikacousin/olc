@@ -39,8 +39,7 @@ class MidiFader:
         Args:
             inv: True or False
         """
-        if inv is False or inv is True:
-            self.inverted = inv
+        self.inverted = inv
 
     def get_value(self) -> int:
         """

@@ -153,7 +153,7 @@ class Window(Gtk.ApplicationWindow):
             keyname, self.keystring
         )
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
@@ -230,7 +230,7 @@ class Window(Gtk.ApplicationWindow):
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_R(self):    # pylint: disable=C0103
         """Record new Step and new Preset"""
         found = False
 
@@ -252,8 +252,7 @@ class Window(Gtk.ApplicationWindow):
                     output = values[0]
                     univ = values[1]
                     index = App().universes.index(univ)
-                    level = App().dmx.frame[index][output - 1]
-                    if level:
+                    if level := App().dmx.frame[index][output - 1]:
                         channels[channel] = level
             cue = Cue(1, mem, channels)
             App().memories.insert(step - 1, cue)
@@ -315,12 +314,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_U(self):    # pylint: disable=C0103
         """Update Cue"""
         position = App().sequence.position
         memory = App().sequence.steps[position].cue.memory
@@ -340,11 +339,11 @@ class Window(Gtk.ApplicationWindow):
 
             # Tag filename as modified
             App().ascii.modified = True
-            self.header.set_title(App().ascii.basename + "*")
+            self.header.set_title(f"{App().ascii.basename}*")
 
         dialog.destroy()
 
-    def _keypress_T(self):  # pylint: disable=C0103
+    def _keypress_T(self):    # pylint: disable=C0103
         """Change Time In and Time Out of next step"""
         if self.keystring == "":
             return
@@ -367,12 +366,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_I(self):  # pylint: disable=C0103
+    def _keypress_I(self):    # pylint: disable=C0103
         """Change Time In of next step"""
         if self.keystring == "":
             return
@@ -393,12 +392,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_O(self):  # pylint: disable=C0103
+    def _keypress_O(self):    # pylint: disable=C0103
         """Change Time Out of next step"""
         if self.keystring == "":
             return
@@ -419,12 +418,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_W(self):  # pylint: disable=C0103
+    def _keypress_W(self):    # pylint: disable=C0103
         """Change Wait Time of next step"""
         if self.keystring == "":
             return
@@ -446,12 +445,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_D(self):  # pylint: disable=C0103
+    def _keypress_D(self):    # pylint: disable=C0103
         """Change Delay In and Out of next step"""
         if self.keystring == "":
             return
@@ -477,12 +476,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_K(self):  # pylint: disable=C0103
+    def _keypress_K(self):    # pylint: disable=C0103
         """Change Delay In of next step"""
         if self.keystring == "":
             return
@@ -504,12 +503,12 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 
-    def _keypress_L(self):  # pylint: disable=C0103
+    def _keypress_L(self):    # pylint: disable=C0103
         """Change Delay Out of next step"""
         if self.keystring == "":
             return
@@ -533,7 +532,7 @@ class Window(Gtk.ApplicationWindow):
 
         # Tag filename as modified
         App().ascii.modified = True
-        self.header.set_title(App().ascii.basename + "*")
+        self.header.set_title(f"{App().ascii.basename}*")
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -558,7 +557,7 @@ class Dialog(Gtk.Dialog):
 
         self.set_default_size(150, 100)
 
-        label = Gtk.Label("Update memory " + str(memory) + " ?")
+        label = Gtk.Label(f"Update memory {str(memory)} ?")
 
         box = self.get_content_area()
         box.add(label)

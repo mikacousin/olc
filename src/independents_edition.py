@@ -60,8 +60,7 @@ class IndependentsTab(Gtk.Paned):
         Returns:
             False
         """
-        notebook = self.get_parent()
-        if notebook:
+        if notebook := self.get_parent():
             notebook.grab_focus()
         return False
 
@@ -128,7 +127,7 @@ class IndependentsTab(Gtk.Paned):
         # Channels View
         self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 

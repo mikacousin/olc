@@ -195,10 +195,10 @@ class ChannelsView(Gtk.Box):
             self._next_active()
         # Default mode: All channels
         selected_channel = ""
-        if not self.last_selected_channel:
-            channel_index = 0
-        else:
-            channel_index = int(self.last_selected_channel)
+        channel_index = (
+            int(self.last_selected_channel) if self.last_selected_channel else 0
+        )
+
         if channel_index > MAX_CHANNELS - 1:
             channel_index = 0
         flowboxchild = self.flowbox.get_child_at_index(channel_index)
@@ -212,10 +212,12 @@ class ChannelsView(Gtk.Box):
         """Select next channel in Active mode view"""
         selected_channel = ""
         children = self.flowbox.get_children()
-        if not self.last_selected_channel:
-            start = self.__get_first_active_channel()
-        else:
-            start = int(self.last_selected_channel)
+        start = (
+            int(self.last_selected_channel)
+            if self.last_selected_channel
+            else self.__get_first_active_channel()
+        )
+
         for child in children:
             channel_index = child.get_index()
             if child.get_visible() and channel_index >= start:
@@ -231,10 +233,12 @@ class ChannelsView(Gtk.Box):
 
     def _next_patched(self) -> None:
         """Select next channel in Patched mode view"""
-        if not self.last_selected_channel:
-            start = App().patch.get_first_patched_channel() - 1
-        else:
-            start = int(self.last_selected_channel)
+        start = (
+            int(self.last_selected_channel)
+            if self.last_selected_channel
+            else App().patch.get_first_patched_channel() - 1
+        )
+
         for channel_index in range(start, MAX_CHANNELS):
             if channel_index + 1 in App().patch.channels:
                 break
@@ -260,10 +264,12 @@ class ChannelsView(Gtk.Box):
             self._previous_active()
         # Default mode: All channels
         selected_channel = ""
-        if not self.last_selected_channel:
-            channel_index = 0
-        else:
-            channel_index = int(self.last_selected_channel) - 2
+        channel_index = (
+            int(self.last_selected_channel) - 2
+            if self.last_selected_channel
+            else 0
+        )
+
         if channel_index < 0:
             channel_index = MAX_CHANNELS - 1
         flowboxchild = self.flowbox.get_child_at_index(channel_index)
@@ -276,10 +282,12 @@ class ChannelsView(Gtk.Box):
     def _previous_active(self) -> None:
         """Select previous channel in Active mode view"""
         selected_channel = ""
-        if not self.last_selected_channel:
-            start = self.__get_last_active_channel() + 1
-        else:
-            start = int(self.last_selected_channel) - 2
+        start = (
+            int(self.last_selected_channel) - 2
+            if self.last_selected_channel
+            else self.__get_last_active_channel() + 1
+        )
+
         children = self.flowbox.get_children()
         children.reverse()
         for child in children:
@@ -297,10 +305,12 @@ class ChannelsView(Gtk.Box):
 
     def _previous_patched(self) -> None:
         """Select previous channel in Patched mode view"""
-        if not self.last_selected_channel:
-            start = App().patch.get_last_patched_channel()
-        else:
-            start = int(self.last_selected_channel) - 2
+        start = (
+            int(self.last_selected_channel) - 2
+            if self.last_selected_channel
+            else App().patch.get_last_patched_channel()
+        )
+
         for channel_index in range(start, 0, -1):
             if channel_index + 1 in App().patch.channels:
                 break
@@ -331,24 +341,23 @@ class ChannelsView(Gtk.Box):
         """
         last_chan = self.last_selected_channel
         string = last_chan
-        if is_non_nul_int(keystring):
-            if last_chan:
-                from_chan = int(last_chan)
-                to_chan = int(keystring)
-                if to_chan > from_chan:
-                    for channel in range(from_chan - 1, to_chan):
-                        if 0 <= channel < MAX_CHANNELS:
-                            flowboxchild = self.flowbox.get_child_at_index(channel)
-                            self.flowbox.select_child(flowboxchild)
-                else:
-                    for channel in range(to_chan - 1, from_chan):
-                        if 0 <= channel < MAX_CHANNELS:
-                            flowboxchild = self.flowbox.get_child_at_index(channel)
-                            self.flowbox.select_child(flowboxchild)
-                if flowboxchild:
-                    App().window.set_focus(flowboxchild)
-                self.flowbox.invalidate_filter()
-                string = keystring
+        if is_non_nul_int(keystring) and last_chan:
+            from_chan = int(last_chan)
+            to_chan = int(keystring)
+            if to_chan > from_chan:
+                for channel in range(from_chan - 1, to_chan):
+                    if 0 <= channel < MAX_CHANNELS:
+                        flowboxchild = self.flowbox.get_child_at_index(channel)
+                        self.flowbox.select_child(flowboxchild)
+            else:
+                for channel in range(to_chan - 1, from_chan):
+                    if 0 <= channel < MAX_CHANNELS:
+                        flowboxchild = self.flowbox.get_child_at_index(channel)
+                        self.flowbox.select_child(flowboxchild)
+            if flowboxchild:
+                App().window.set_focus(flowboxchild)
+            self.flowbox.invalidate_filter()
+            string = keystring
         self.last_selected_channel = string
 
     def at_level(self, keystring: str) -> Tuple[List[int], int]:
@@ -426,7 +435,7 @@ class ChannelsView(Gtk.Box):
         Returns:
             method or Keys buffer
         """
-        if keyname in (
+        if keyname in {
             "f",
             "Page_Up",
             "Page_Down",
@@ -438,8 +447,8 @@ class ChannelsView(Gtk.Box):
             "plus",
             "KP_Subtract",
             "minus",
-        ):
-            if func := getattr(self, "_keypress_" + keyname.lower(), None):
+        }:
+            if func := getattr(self, f"_keypress_{keyname.lower()}", None):
                 return func(keystring)
         return keystring
 

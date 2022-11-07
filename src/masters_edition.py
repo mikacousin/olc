@@ -103,7 +103,7 @@ class MastersTab(Gtk.Paned):
         renderer.connect("edited", self.on_mode_changed)
         column = Gtk.TreeViewColumn("Mode", renderer, text=3)
         child.append_column(column)
-        self.stack.add_titled(child, str(page), "Page " + str(page + 1))
+        self.stack.add_titled(child, str(page), f"Page {str(page + 1)}")
 
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
@@ -111,8 +111,7 @@ class MastersTab(Gtk.Paned):
         Returns:
             False
         """
-        notebook = self.get_parent()
-        if notebook:
+        if notebook := self.get_parent():
             notebook.grab_focus()
         return False
 
@@ -190,10 +189,7 @@ class MastersTab(Gtk.Paned):
         if App().masters[index].content_type != content_type:
             App().masters[index].content_type = content_type
             # Update content value
-            if content_type == 2:
-                App().masters[index].content_value = {}
-            else:
-                App().masters[index].content_value = -1
+            App().masters[index].content_value = {} if content_type == 2 else -1
             App().masters[index].text = ""
             # Update ui
             self.channels_view.update()
@@ -230,7 +226,7 @@ class MastersTab(Gtk.Paned):
         if text.replace(".", "", 1).isdigit():
 
             if text[0] == ".":
-                text = "0" + text
+                text = f"0{text}"
 
             page = int(self.stack.get_visible_child_name())
             self.liststores[page][path][2] = "" if text == "0" else text
@@ -326,7 +322,7 @@ class MastersTab(Gtk.Paned):
         elif keyname in "f":
             self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
 
-        if func := getattr(self, "_keypress_" + keyname, None):
+        if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
@@ -383,7 +379,7 @@ class MastersTab(Gtk.Paned):
     def _keypress_U(self):  # pylint: disable=C0103
         self._keypress_R()
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_R(self):    # pylint: disable=C0103
         """Record Master
 
         Returns:
@@ -430,7 +426,7 @@ class MastersTab(Gtk.Paned):
                     if channel_widget.level:
                         channels[chan + 1] = channel_widget.level
                         nb_chan += 1
-                        text += " " + str(chan + 1)
+                        text += f" {str(chan + 1)}"
                 App().masters[row].text = text
                 App().masters[row].set_level(master_level)
                 # Update Display
@@ -441,7 +437,6 @@ class MastersTab(Gtk.Paned):
                 if App().virtual_console:
                     App().virtual_console.flashes[row].label = App().masters[row].text
                     App().virtual_console.flashes[row].queue_draw()
-            # Type = Group
             elif App().masters[row].content_type == 13:
                 found = False
                 grp = None

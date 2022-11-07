@@ -51,12 +51,7 @@ def is_non_nul_float(element: Any) -> bool:
     Returns:
         True or False
     """
-    if is_float(element):
-        number = float(element)
-        if number:
-            return True
-        return False
-    return False
+    return bool(float(element)) if is_float(element) else False
 
 
 def is_int(element: Any) -> bool:
@@ -84,9 +79,4 @@ def is_non_nul_int(element: Any) -> bool:
     Returns:
         True or False
     """
-    if is_int(element):
-        number = int(element)
-        if number:
-            return True
-        return False
-    return False
+    return bool(int(element)) if is_int(element) else False

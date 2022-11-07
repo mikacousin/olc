@@ -107,8 +107,7 @@ class Application(Gtk.Application):
         # Create pages of 10 Masters
         self.masters = []
         for page in range(MAX_FADER_PAGE):
-            for i in range(10):
-                self.masters.append(Master(page + 1, i + 1, 0, 0))
+            self.masters.extend(Master(page + 1, i + 1, 0, 0) for i in range(10))
         self.fader_page = 1
 
         # Independents
@@ -389,7 +388,7 @@ class Application(Gtk.Application):
             self.virtual_console.page_number.set_label(str(self.fader_page))
             for master in self.masters:
                 if master.page == self.fader_page:
-                    text = "master_" + str(master.number + ((self.fader_page - 1) * 10))
+                    text = f"master_{str(master.number + (self.fader_page - 1) * 10)}"
                     self.virtual_console.masters[master.number - 1].text = text
                     self.virtual_console.masters[master.number - 1].set_value(
                         master.value
@@ -515,7 +514,7 @@ class Application(Gtk.Application):
                 # set self.file as the current filename for the file chooser
                 save_dialog.set_file(self.file)
             except GObject.GError as e:
-                print("Error: " + str(e))
+                print(f"Error: {str(e)}")
         # show the dialog
         response = save_dialog.run()
 
