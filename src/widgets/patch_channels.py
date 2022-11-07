@@ -253,7 +253,9 @@ class PatchChannelWidget(Gtk.Widget):
                         )
                         cr.show_text("...")
                         break
-                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{str(output)}.{str(univ)}")
+                    (_x, _y, w, h, _dx, _dy) = cr.text_extents(
+                        f"{str(output)}.{str(univ)}"
+                    )
                     cr.move_to(
                         65 + (j * 32) + (30 / 2) - w / 2,
                         ((self.height / 2) / 2 - (h - 20) / 2) + self.height / 2,

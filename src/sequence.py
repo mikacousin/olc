@@ -416,7 +416,12 @@ class Sequence:
             App().window.playback.sequential.position_b = 0
 
             # Set main window's subtitle
-            subtitle = f"Mem. : {str(self.steps[position].cue.memory)} {self.steps[position].text} - Next Mem. : {str(self.steps[position + 1].cue.memory)} {self.steps[position + 1].text}"
+            subtitle = (
+                f"Mem. : {str(self.steps[position].cue.memory)} "
+                f"{self.steps[position].text} - Next Mem. : "
+                f"{str(self.steps[position + 1].cue.memory)} "
+                f"{self.steps[position + 1].text}"
+            )
 
             # Update Sequential Tab
             App().window.playback.update_active_cues_display()
@@ -884,8 +889,12 @@ class ThreadGoBack(threading.Thread):
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
         # Main window's subtitle
-        subtitle = f"Mem. : {str(App().sequence.steps[prev_step].cue.memory)} {App().sequence.steps[prev_step].text} - Next Mem. : {str(App().sequence.steps[prev_step + 1].cue.memory)} {App().sequence.steps[prev_step + 1].text}"
-
+        subtitle = (
+            f"Mem. : {str(App().sequence.steps[prev_step].cue.memory)} "
+            f"{App().sequence.steps[prev_step].text} - Next Mem. : "
+            f"{str(App().sequence.steps[prev_step + 1].cue.memory)} "
+            f"{App().sequence.steps[prev_step + 1].text}"
+        )
         # Update Gtk in the main thread
         GLib.idle_add(update_ui, prev_step, subtitle)
         # Wait

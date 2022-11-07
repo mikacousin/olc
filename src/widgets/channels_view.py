@@ -265,9 +265,7 @@ class ChannelsView(Gtk.Box):
         # Default mode: All channels
         selected_channel = ""
         channel_index = (
-            int(self.last_selected_channel) - 2
-            if self.last_selected_channel
-            else 0
+            int(self.last_selected_channel) - 2 if self.last_selected_channel else 0
         )
 
         if channel_index < 0:

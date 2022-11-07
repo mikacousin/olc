@@ -254,7 +254,7 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Right(self) -> None:    # pylint: disable=C0103
+    def _keypress_Right(self) -> None:  # pylint: disable=C0103
         """Next Group"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -275,7 +275,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Left(self) -> None:    # pylint: disable=C0103
+    def _keypress_Left(self) -> None:  # pylint: disable=C0103
         """Previous Group"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -295,7 +295,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Down(self) -> None:    # pylint: disable=C0103
+    def _keypress_Down(self) -> None:  # pylint: disable=C0103
         """Group on Next Line"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -321,7 +321,7 @@ class GroupTab(Gtk.Paned):
         self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Up(self) -> None:    # pylint: disable=C0103
+    def _keypress_Up(self) -> None:  # pylint: disable=C0103
         """Group on Previous Line"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -481,7 +481,7 @@ class GroupTab(Gtk.Paned):
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
-    def _keypress_Delete(self) -> None:    # pylint: disable=C0103
+    def _keypress_Delete(self) -> None:  # pylint: disable=C0103
         """Delete selected group"""
         if not (selected := self.flowbox.get_selected_children()):
             return

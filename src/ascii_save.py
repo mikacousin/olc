@@ -114,8 +114,7 @@ def save_chasers(stream):
                 wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
                 stream.write(
                     bytes(
-                        f"$CUE {str(chaser.index)} {str(step.cue.memory)}"
-                        + "\n",
+                        f"$CUE {str(chaser.index)} {str(step.cue.memory)}" + "\n",
                         "utf8",
                     )
                 )
@@ -276,8 +275,10 @@ def save_patch(stream):
             output = values[0]
             univ = values[1]
             index = App().universes.index(univ)
-            patch += f" {str(channel)}<{str(output + 512 * index)}@{str(App().patch.outputs[univ][output][1])}"
-
+            patch += (
+                f" {str(channel)}<{str(output + 512 * index)}@"
+                f"{str(App().patch.outputs[univ][output][1])}"
+            )
             if not i % 4 and patch != "":
                 stream.write(bytes(f"PATCH 1{patch}" + "\n", "utf8"))
                 patch = ""

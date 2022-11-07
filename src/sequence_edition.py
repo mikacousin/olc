@@ -728,7 +728,7 @@ class SequenceTab(Gtk.Grid):
                 self.user_channels[channel - 1] = level
         self.channels_view.update()
 
-    def _keypress_U(self):    # pylint: disable=C0103
+    def _keypress_U(self):  # pylint: disable=C0103
         """Update Cue"""
         # Find selected sequence
         sequence = self.get_selected_sequence()
@@ -779,7 +779,7 @@ class SequenceTab(Gtk.Grid):
             # Update Main Playback
             App().window.playback.update_sequence_display()
 
-    def _keypress_N(self):    # pylint: disable=C0103
+    def _keypress_N(self):  # pylint: disable=C0103
         """New Chaser"""
         # Use the next free index
         # 1 is for Main Playback, Chasers start at 2
@@ -802,7 +802,7 @@ class SequenceTab(Gtk.Grid):
         App().ascii.modified = True
         App().window.header.set_title(f"{App().ascii.basename}*")
 
-    def _keypress_R(self):    # pylint: disable=C0103
+    def _keypress_R(self):  # pylint: disable=C0103
         """New Step and new Cue"""
         found = False
         # Find selected Step

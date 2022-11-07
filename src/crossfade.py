@@ -140,8 +140,12 @@ class CrossFade:
         )
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
-        subtitle = f"Mem. :{str(App().sequence.steps[App().sequence.position].cue.memory)} {App().sequence.steps[App().sequence.position].text} - Next Mem. : {str(App().sequence.steps[next_step].cue.memory)} {App().sequence.steps[next_step].text}"
-
+        subtitle = (
+            f"Mem. :{str(App().sequence.steps[App().sequence.position].cue.memory)} "
+            f"{App().sequence.steps[App().sequence.position].text} "
+            f"- Next Mem. : {str(App().sequence.steps[next_step].cue.memory)} "
+            f"{App().sequence.steps[next_step].text}"
+        )
         update_ui(App().sequence.position, subtitle)
         # If Wait
         if App().sequence.steps[next_step].wait:

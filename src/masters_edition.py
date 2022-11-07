@@ -379,7 +379,7 @@ class MastersTab(Gtk.Paned):
     def _keypress_U(self):  # pylint: disable=C0103
         self._keypress_R()
 
-    def _keypress_R(self):    # pylint: disable=C0103
+    def _keypress_R(self):  # pylint: disable=C0103
         """Record Master
 
         Returns:

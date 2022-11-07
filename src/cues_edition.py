@@ -178,7 +178,7 @@ class CuesEditionTab(Gtk.Paned):
                 self.user_channels[channel - 1] = level
         self.channels_view.update()
 
-    def _keypress_U(self):    # pylint: disable=C0103
+    def _keypress_U(self):  # pylint: disable=C0103
         """Update Memory"""
         self.channels_view.flowbox.unselect_all()
 
@@ -212,7 +212,7 @@ class CuesEditionTab(Gtk.Paned):
             App().ascii.modified = True
             App().window.header.set_title(f"{App().ascii.basename}*")
 
-    def _keypress_Delete(self):    # pylint: disable=C0103
+    def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
         # TODO: Ask confirmation
         self.channels_view.flowbox.unselect_all()
@@ -259,7 +259,7 @@ class CuesEditionTab(Gtk.Paned):
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
-    def _keypress_R(self):    # pylint: disable=C0103
+    def _keypress_R(self):  # pylint: disable=C0103
         """Records a copy of the current Memory with a new number
 
         Returns:
@@ -325,7 +325,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.statusbar.push(App().window.context_id, self.keystring)
         return True
 
-    def _keypress_Insert(self):    # pylint: disable=C0103
+    def _keypress_Insert(self):  # pylint: disable=C0103
         """Insert a new Memory
 
         Returns:

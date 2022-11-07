@@ -112,9 +112,7 @@ class LiveChannelsView(ChannelsView):
         if self.view_mode == VIEW_MODES["Active"]:
             channel_widget = child.get_child()
             return bool(
-                channel_widget.level
-                or channel_widget.next_level
-                or child.is_selected()
+                channel_widget.level or channel_widget.next_level or child.is_selected()
             )
 
         if self.view_mode == VIEW_MODES["Patched"]:
