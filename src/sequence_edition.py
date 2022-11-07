@@ -748,21 +748,23 @@ class SequenceTab(Gtk.Grid):
                 # Update levels in the cue
                 for channel in range(MAX_CHANNELS):
                     channel_widget = self.channels_view.get_channel_widget(channel + 1)
-                    channels[channel] = channel_widget.level
-                    if channels[channel] != 0:
+                    if channel_widget.level:
+                        channels[channel] = channel_widget.level
                         sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
                 App().window.header.set_title(App().ascii.basename + "*")
                 # Update Main playback display
                 if sequence == App().sequence and step == App().sequence.position + 1:
-                    for channel in range(MAX_CHANNELS):
+                    for channel in range(1, MAX_CHANNELS + 1):
                         widget = (
                             App().window.live_view.channels_view.get_channel_widget(
-                                channel + 1
+                                channel
                             )
                         )
-                        widget.next_level = sequence.steps[step].cue.channels[channel]
+                        widget.next_level = sequence.steps[step].cue.channels.get(
+                            channel, 0
+                        )
                         widget.queue_draw()
             dialog.destroy()
             # Reset user modifications
@@ -829,10 +831,11 @@ class SequenceTab(Gtk.Grid):
             App().window.statusbar.push(App().window.context_id, self.keystring)
         if not found:  # New Cue
             # Create Cue
-            channels = array.array("B", [0] * MAX_CHANNELS)
+            channels = {}
             for channel in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(channel + 1)
-                channels[channel] = channel_widget.level
+                if channel_widget.level:
+                    channels[channel] = channel_widget.level
             cue = Cue(sequence.index, mem, channels)
             # Create Step
             step_object = Step(sequence.index, cue=cue)
@@ -842,7 +845,7 @@ class SequenceTab(Gtk.Grid):
                 App().memories.insert(step, cue)
                 # Update Preset Tab if exist
                 if App().memories_tab:
-                    nb_chan = sum(1 for chan in range(MAX_CHANNELS) if channels[chan])
+                    nb_chan = len(channels)
                     App().memories_tab.liststore.insert(
                         step - 1, [str(mem), "", nb_chan]
                     )
@@ -860,11 +863,13 @@ class SequenceTab(Gtk.Grid):
                 # Find Preset's position
                 found, step = sequence.get_step(cue=mem)
                 # Update Cue
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
                 for channel in range(MAX_CHANNELS):
                     channel_widget = self.channels_view.get_channel_widget(channel + 1)
-                    sequence.steps[step].cue.channels[channel] = channel_widget.level
                     if channel_widget.level:
+                        sequence.steps[step].cue.channels[
+                            channel
+                        ] = channel_widget.level
                         sequence.channels[channel] = 1
                 # Tag filename as modified
                 App().ascii.modified = True
@@ -874,12 +879,7 @@ class SequenceTab(Gtk.Grid):
                 self.treeview2.set_cursor(path, None, False)
                 # Update Presets Tab if exist
                 if sequence is App().sequence and App().memories_tab:
-                    nb_chan = sum(
-                        1
-                        for chan in range(MAX_CHANNELS)
-                        if App().memories[step - 1].channels[chan]
-                    )
-
+                    nb_chan = len(App().memories[step - 1].channels)
                     treeiter = App().memories_tab.liststore.get_iter(step - 1)
                     App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
                     App().memories_tab.channels_view.update()
@@ -1073,7 +1073,7 @@ class SeqChannelsView(ChannelsView):
         if not sequence or not step:
             return False
         channel_index = child.get_index()
-        channel_level = sequence.steps[step].cue.channels[channel_index]
+        channel_level = sequence.steps[step].cue.channels.get(channel_index, 0)
         if self.view_mode == VIEW_MODES["Active"]:
             return self._filter_active(child, channel_level)
         if self.view_mode == VIEW_MODES["Patched"]:

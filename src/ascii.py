@@ -28,7 +28,7 @@ from olc.ascii_save import (
     save_midi_mapping,
 )
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App
+from olc.define import App
 from olc.step import Step
 
 
@@ -177,7 +177,7 @@ class Ascii:
         if App().memories_tab:
             App().memories_tab.liststore.clear()
             for mem in App().memories:
-                channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
+                channels = len(mem.channels)
                 App().memories_tab.liststore.append(
                     [str(mem.memory), mem.text, channels]
                 )

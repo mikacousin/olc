@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import array
+from typing import Dict
 
 from olc.define import MAX_CHANNELS
 
@@ -25,34 +25,37 @@ class Cue:
 
     sequence: int  # Sequence number (0 for Preset)
     memory: float  # Cue number
-    channels: array.array  # Channels levels
+    channels: Dict[int, int]  # Channels levels
     text: str  # Cue text
 
     def __init__(
         self,
         sequence,
         memory,
-        channels=array.array("B", [0] * MAX_CHANNELS),
+        channels=None,
         text="",
     ):
 
         self.sequence = sequence
         self.memory = memory
-        self.channels = channels
+        if channels:
+            self.channels = channels
+        else:
+            self.channels = {}
         self.text = text
 
     def set_level(self, channel: int, level: int) -> None:
         """Set level of a channel.
 
         Args :
-            channel: channel number
+            channel: channel number (1-MAX_CHANNELS)
             level: level (0 - 255)
         """
         if (
             isinstance(level, int)
             and 0 <= level < 256
             and isinstance(channel, int)
-            and 0 <= channel < MAX_CHANNELS
+            and 0 < channel <= MAX_CHANNELS
         ):
             self.channels[channel] = level
 
@@ -60,9 +63,9 @@ class Cue:
         """Get channel's level
 
         Args:
-            channel: channel number
+            channel: channel number (1-MAX_CHANNELS)
 
         Returns:
             channel's level (0-255)
         """
-        return self.channels[channel]
+        return self.channels.get(channel, 0)

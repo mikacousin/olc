@@ -145,7 +145,7 @@ class AsciiParser:
                     App().chasers[-1].text = line[5:]
                 if line[:4].upper() == "$CUE":
                     in_cue = True
-                    channels = array.array("B", [0] * MAX_CHANNELS)
+                    channels = {}
                     p = line[5:].split(" ")
                     seq = p[0]
                     mem = float(p[1])
@@ -173,7 +173,8 @@ class AsciiParser:
                             if r[0] != "":
                                 channel = int(r[0])
                                 level = int(r[1][1:].upper(), 16)
-                                channels[channel - 1] = level
+                                if level:
+                                    channels[channel] = level
                     if line == "":
                         if not wait:
                             wait = 0.0
@@ -205,11 +206,11 @@ class AsciiParser:
                     flag_seq = False
                 if line[:3].upper() == "CUE":
                     in_cue = True
-                    channels = array.array("B", [0] * MAX_CHANNELS)
+                    channels = {}
                     mem = float(line[4:].split(" ")[0])
                 if line[:4].upper() == "$CUE" and line[:8].upper() != "$CUELIST":
                     in_cue = True
-                    channels = array.array("B", [0] * MAX_CHANNELS)
+                    channels = {}
                     mem = float(line[5:].split(" ")[0])
                 if in_cue:
                     line = line.lstrip()
@@ -271,7 +272,8 @@ class AsciiParser:
                                     # Ignore channels greater than MAX_CHANNELS
                                     if channel < MAX_CHANNELS:
                                         level = int(r[1][1:], 16)
-                                        channels[channel - 1] = level
+                                        if level:
+                                            channels[channel] = level
                     if line.replace(" ", "") == "":
                         if not wait:
                             wait = 0.0
@@ -357,7 +359,7 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = True
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
                 preset_nb = float(line[6:])
             if line[:7].upper() == "$PRESET" and (console in ("DLIGHT", "VLC")):
                 # On DLight, Preset not in sequence
@@ -367,7 +369,7 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = True
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
                 preset_nb = float(line[8:])
             if flag_preset:
                 if line[:1] == "!":
@@ -383,8 +385,8 @@ class AsciiParser:
                         if r[0] != "":
                             channel = int(r[0])
                             level = int(r[1][1:], 16)
-                            if channel <= MAX_CHANNELS:
-                                channels[channel - 1] = level
+                            if level and channel <= MAX_CHANNELS:
+                                channels[channel] = level
                 if line == "":
                     # Find Preset's position
                     found = False
@@ -414,7 +416,7 @@ class AsciiParser:
                 flag_preset = False
                 flag_inde = False
                 flag_group = True
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
                 group_nb = float(line[6:])
             if line[:6].upper() == "$GROUP":
                 flag_seq = False
@@ -423,7 +425,7 @@ class AsciiParser:
                 flag_preset = False
                 flag_inde = False
                 flag_group = True
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
                 group_nb = float(line[7:])
             if flag_group:
                 if line[:1] == "!":
@@ -439,8 +441,8 @@ class AsciiParser:
                         if r[0] != "":
                             channel = int(r[0])
                             level = int(r[1][1:], 16)
-                            if channel <= MAX_CHANNELS:
-                                channels[channel - 1] = level
+                            if level and channel <= MAX_CHANNELS:
+                                channels[channel] = level
                 if line == "":
                     if not txt:
                         txt = ""
@@ -464,8 +466,8 @@ class AsciiParser:
                         if r[0] != "":
                             channel = int(r[0])
                             level = int(r[1][1:], 16)
-                            if channel <= MAX_CHANNELS:
-                                channels[channel - 1] = level
+                            if level and channel <= MAX_CHANNELS:
+                                channels[channel] = level
                 if (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
                     item[1]
                 ) <= 10:
@@ -486,7 +488,7 @@ class AsciiParser:
                     flag_preset = False
                     flag_inde = False
                     flag_master = True
-                    channels = array.array("B", [0] * MAX_CHANNELS)
+                    channels = {}
                 # Only 10 Masters per pages
                 elif int(item[1]) <= 10:
                     index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)

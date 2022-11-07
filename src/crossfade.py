@@ -181,16 +181,18 @@ class CrossFade:
         if position >= wait:
             for channel in range(MAX_CHANNELS):
                 old_level = (
-                    App().sequence.steps[App().sequence.position].cue.channels[channel]
+                    App()
+                    .sequence.steps[App().sequence.position]
+                    .cue.channels.get(channel, 0)
                 )
                 if App().sequence.position < App().sequence.last - 1:
                     next_level = (
                         App()
                         .sequence.steps[App().sequence.position + 1]
-                        .cue.channels[channel]
+                        .cue.channels.get(channel, 0)
                     )
                 else:
-                    next_level = App().sequence.steps[0].cue.channels[channel]
+                    next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
                 if scale == self.scale_a:
                     update_a(channel + 1, old_level, next_level, wait, position)
                 elif scale == self.scale_b:

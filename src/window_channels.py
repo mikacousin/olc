@@ -47,11 +47,11 @@ class LiveView(Gtk.Notebook):
         """Update display of channel widget
 
         Args:
-            channel: Index of channel (from 0 to MAX_CHANNELS - 1)
+            channel: Index of channel (from 1 to MAX_CHANNELS)
             level: Channel level (from 0 to 255)
             next_level: Channel next level (from 0 to 255)
         """
-        widget = self.channels_view.get_channel_widget(channel + 1)
+        widget = self.channels_view.get_channel_widget(channel)
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()

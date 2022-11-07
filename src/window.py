@@ -12,8 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import array
-
 from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App
@@ -108,10 +106,10 @@ class Window(Gtk.ApplicationWindow):
         Args:
             step: Step
         """
-        for channel in range(MAX_CHANNELS):
-            level = App().sequence.steps[step].cue.channels[channel]
-            next_level = App().sequence.steps[step + 1].cue.channels[channel]
-            widget = self.live_view.channels_view.get_channel_widget(channel + 1)
+        for channel in range(1, MAX_CHANNELS + 1):
+            level = App().sequence.steps[step].cue.channels.get(channel, 0)
+            next_level = App().sequence.steps[step + 1].cue.channels.get(channel, 0)
+            widget = self.live_view.channels_view.get_channel_widget(channel)
             widget.level = level
             widget.next_level = next_level
             widget.queue_draw()
@@ -248,20 +246,21 @@ class Window(Gtk.ApplicationWindow):
 
         if not found:
             # Create Preset
-            channels = array.array("B", [0] * MAX_CHANNELS)
+            channels = {}
             for channel, outputs in App().patch.channels.items():
                 for values in outputs:
                     output = values[0]
                     univ = values[1]
                     index = App().universes.index(univ)
                     level = App().dmx.frame[index][output - 1]
-                    channels[channel - 1] = level
+                    if level:
+                        channels[channel] = level
             cue = Cue(1, mem, channels)
             App().memories.insert(step - 1, cue)
 
             # Update Presets Tab if exist
             if App().memories_tab:
-                nb_chan = sum(1 for chan in range(MAX_CHANNELS) if channels[chan])
+                nb_chan = len(channels)
                 App().memories_tab.liststore.insert(step - 1, [str(mem), "", nb_chan])
 
             App().sequence.position = step
@@ -337,7 +336,7 @@ class Window(Gtk.ApplicationWindow):
                     univ = outputs[0][1]
                     index = App().universes.index(univ)
                     level = App().dmx.frame[index][output]
-                    App().sequence.steps[position].cue.channels[channel - 1] = level
+                    App().sequence.steps[position].cue.channels[channel] = level
 
             # Tag filename as modified
             App().ascii.modified = True

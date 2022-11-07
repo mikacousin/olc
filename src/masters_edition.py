@@ -395,11 +395,9 @@ class MastersTab(Gtk.Paned):
         path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-
             # Type : None
             if App().masters[row].content_type == 0:
                 return False
-
             # Type : Preset
             if App().masters[row].content_type == 1:
                 found = False
@@ -455,11 +453,9 @@ class MastersTab(Gtk.Paned):
                     # Update Group Tab if open
                     if App().group_tab:
                         App().group_tab.channels_view.update()
-
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
-
         return False
 
 

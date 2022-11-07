@@ -40,7 +40,7 @@ class CuesEditionTab(Gtk.Paned):
         self.liststore = Gtk.ListStore(str, str, int)
 
         for mem in App().memories:
-            channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
+            channels = len(mem.channels)
             self.liststore.append([str(mem.memory), mem.text, channels])
 
         self.filter = self.liststore.filter_new()
@@ -193,8 +193,8 @@ class CuesEditionTab(Gtk.Paned):
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(chan + 1)
-                channels[chan] = channel_widget.level
-                if channels[chan] != 0:
+                if channel_widget.level:
+                    channels[chan + 1] = channel_widget.level
                     App().sequence.channels[chan] = 1
                     nb_chan += 1
             # Update Display
@@ -272,13 +272,9 @@ class CuesEditionTab(Gtk.Paned):
                 if path:
                     row = path.get_indices()[0]
                     # Copy channels
-                    App().memories[i].channels = App().memories[row].channels
+                    App().memories[i].channels = App().memories[row].channels.copy()
                     # Count channels
-                    nb_chan = sum(
-                        1
-                        for chan in range(MAX_CHANNELS)
-                        if App().memories[i].channels[chan]
-                    )
+                    nb_chan = len(App().memories[i].channels)
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
@@ -300,7 +296,7 @@ class CuesEditionTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
             sequence = App().memories[row].sequence
-            channels = App().memories[row].channels
+            channels = App().memories[row].channels.copy()
             cue = Cue(sequence, mem, channels)
             # Insert Memory
             found = False
@@ -311,7 +307,7 @@ class CuesEditionTab(Gtk.Paned):
             if not found:
                 i += 1
             App().memories.insert(i, cue)
-            nb_chan = sum(bool(channels[chan]) for chan in range(MAX_CHANNELS))
+            nb_chan = len(channels)
             self.liststore.insert(i, [str(mem), "", nb_chan])
             # Tag filename as modified
             App().ascii.modified = True
@@ -358,14 +354,14 @@ class CuesEditionTab(Gtk.Paned):
             path, _focus_column = self.treeview.get_cursor()
             if path:
                 row = path.get_indices()[0]
-                channels = App().memories[row].channels
+                channels = App().memories[row].channels.copy()
             else:
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
 
             # Create new memory
             cue = Cue(0, mem, channels)
             App().memories.insert(i + 1, cue)
-            nb_chan = sum(1 for chan in range(MAX_CHANNELS) if channels[chan])
+            nb_chan = len(channels)
             self.liststore.insert(i + 1, [str(mem), "", nb_chan])
 
             # Tag filename as modified
@@ -388,12 +384,10 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
 
             sequence = App().memories[row].sequence
-            # memory = App().memories[row].memory
-            channels = App().memories[row].channels
-            # text = App().memories[row].text
+            channels = App().memories[row].channels.copy()
         else:
             sequence = 0
-            channels = array.array("B", [0] * MAX_CHANNELS)
+            channels = {}
 
         # Find Memory's position
         found = False
@@ -411,7 +405,7 @@ class CuesEditionTab(Gtk.Paned):
         App().memories.insert(i, cue)
 
         # Update display
-        nb_chan = sum(bool(channels[chan]) for chan in range(MAX_CHANNELS))
+        nb_chan = len(channels)
         self.liststore.insert(i, [str(mem), "", nb_chan])
 
         # Tag filename as modified
@@ -478,10 +472,10 @@ class CueChannelsView(ChannelsView):
         channel_widget = child.get_child()
         # Channels in Cue
         channels = App().memories[row].channels
-        if channels[channel_index] or child.is_selected():
+        if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index + 1, 0)
+                channel_widget.next_level = channels.get(channel_index + 1, 0)
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
@@ -507,10 +501,10 @@ class CueChannelsView(ChannelsView):
         channel_widget = child.get_child()
         # Channels in Cue
         channels = App().memories[row].channels
-        if channels[channel_index] or child.is_selected():
+        if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index + 1, 0)
+                channel_widget.next_level = channels.get(channel_index + 1, 0)
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]

@@ -57,7 +57,7 @@ class OlaThread(threading.Thread):
         ]
         # Loop on outputs with different level
         for output, level in diff:
-            channel = App().patch.outputs[univ][output + 1][0] - 1
+            channel = App().patch.outputs[univ][output + 1][0]
             # Find next level
             if (
                 App().sequence.last > 1
@@ -66,10 +66,10 @@ class OlaThread(threading.Thread):
                 next_level = (
                     App()
                     .sequence.steps[App().sequence.position + 1]
-                    .cue.channels[channel]
+                    .cue.channels.get(channel, 0)
                 )
             elif App().sequence.last:
-                next_level = App().sequence.steps[0].cue.channels[channel]
+                next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
             else:
                 next_level = level
             # Display new levels

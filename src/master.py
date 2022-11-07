@@ -127,15 +127,9 @@ class Master:
         if mem := next(
             cue for cue in App().memories if cue.memory == self.content_value
         ):
-            for channel in range(MAX_CHANNELS):
-                if mem.channels[channel]:
-                    # Preset level
-                    level = mem.channels[channel]
-                    # Level in master
-                    level = (
-                        0 if self.value == 0 else int(round(level / (255 / self.value)))
-                    )
-                    self.dmx[channel] = level
+            for channel, level in mem.channels.items():
+                level = 0 if self.value == 0 else round(level / (255 / self.value))
+                self.dmx[channel - 1] = level
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
@@ -242,13 +236,16 @@ class ThreadChaser(threading.Thread):
             if App().chasers[self.chaser].channels[channel - 1] != 0:
                 # Start level
                 old_level = (
-                    App().chasers[self.chaser].steps[position].cue.channels[channel - 1]
+                    App()
+                    .chasers[self.chaser]
+                    .steps[position]
+                    .cue.channels.get(channel, 0)
                 )
                 # Level in the sequence
                 seq_level = (
                     App()
                     .sequence.steps[App().sequence.position]
-                    .cue.channels[channel - 1]
+                    .cue.channels.get(channel, 0)
                 )
                 old_level = max(old_level, seq_level)
                 # Loop on cues and come back at first step
@@ -257,12 +254,12 @@ class ThreadChaser(threading.Thread):
                         App()
                         .chasers[self.chaser]
                         .steps[position + 1]
-                        .cue.channels[channel - 1]
+                        .cue.channels.get(channel, 0)
                     )
                     next_level = max(next_level, seq_level)
                 else:
                     next_level = (
-                        App().chasers[self.chaser].steps[1].cue.channels[channel - 1]
+                        App().chasers[self.chaser].steps[1].cue.channels.get(channel, 0)
                     )
                     next_level = max(next_level, seq_level)
                     App().chasers[self.chaser].position = 1

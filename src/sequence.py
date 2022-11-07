@@ -53,20 +53,22 @@ def update_channels(position):
     Args:
         position: Step
     """
-    for channel in range(MAX_CHANNELS):
-        level = App().sequence.steps[position].cue.channels[channel]
+    for channel in range(1, MAX_CHANNELS + 1):
+        level = App().sequence.steps[position].cue.channels.get(channel, 0)
         if (
             App().sequence.last > 1
             and App().sequence.position < App().sequence.last - 1
         ):
             next_level = (
-                App().sequence.steps[App().sequence.position + 1].cue.channels[channel]
+                App()
+                .sequence.steps[App().sequence.position + 1]
+                .cue.channels.get(channel, 0)
             )
         elif App().sequence.last:
-            next_level = App().sequence.steps[0].cue.channels[channel]
+            next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
         else:
             next_level = level
-        widget = App().window.live_view.channels_view.get_channel_widget(channel + 1)
+        widget = App().window.live_view.channels_view.get_channel_widget(channel)
         widget.next_level = next_level
         widget.queue_draw()
 
@@ -108,9 +110,8 @@ class Sequence:
         self.steps.append(step)
         self.last = len(self.steps)
         # Channels used in sequential
-        for channel in range(MAX_CHANNELS):
-            if step.cue.channels[channel] != 0:
-                self.channels[channel] = 1
+        for channel in step.cue.channels:
+            self.channels[channel - 1] = 1
 
     def insert_step(self, index, step):
         """Insert step at index
@@ -122,9 +123,8 @@ class Sequence:
         self.steps.insert(index, step)
         self.last = len(self.steps)
         # Channels used in sequential
-        for channel in range(MAX_CHANNELS):
-            if step.cue.channels[channel] != 0:
-                self.channels[channel] = 1
+        for channel in step.cue.channels:
+            self.channels[channel - 1] = 1
 
     def get_step(self, cue=None):
         """Get Cues's Step
@@ -243,7 +243,7 @@ class Sequence:
 
             # Send DMX values
             for channel in App().patch.channels:
-                level = self.steps[position].cue.channels[channel - 1]
+                level = self.steps[position].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
             update_channels(position)
 
@@ -311,7 +311,7 @@ class Sequence:
             App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
 
             for channel in App().patch.channels:
-                level = self.steps[position].cue.channels[channel - 1]
+                level = self.steps[position].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
             update_channels(position)
 
@@ -561,10 +561,10 @@ class ThreadGo(threading.Thread):
                     level = (
                         App()
                         .sequence.steps[App().sequence.position + 1]
-                        .cue.channels[channel - 1]
+                        .cue.channels.get(channel, 0)
                     )
                 else:
-                    level = App().sequence.steps[0].cue.channels[channel - 1]
+                    level = App().sequence.steps[0].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
                 App().dmx.frame[index][output - 1] = level
         # Go is completed
@@ -625,10 +625,12 @@ class ThreadGo(threading.Thread):
                         next_level = (
                             App()
                             .sequence.steps[App().sequence.position + 1]
-                            .cue.channels[channel - 1]
+                            .cue.channels.get(channel, 0)
                         )
                     else:
-                        next_level = App().sequence.steps[0].cue.channels[channel - 1]
+                        next_level = (
+                            App().sequence.steps[0].cue.channels.get(channel, 0)
+                        )
                         App().sequence.position = 0
 
                     self._set_level(channel, i, old_level, next_level)
@@ -650,10 +652,12 @@ class ThreadGo(threading.Thread):
                         next_level = (
                             App()
                             .sequence.steps[App().sequence.position + 1]
-                            .cue.channels[channel - 1]
+                            .cue.channels.get(channel, 0)
                         )
                     else:
-                        next_level = App().sequence.steps[0].cue.channels[channel - 1]
+                        next_level = (
+                            App().sequence.steps[0].cue.channels.get(channel, 0)
+                        )
                         App().sequence.position = 0
 
                     self._set_level(channel, i, old_level, next_level)
@@ -858,7 +862,7 @@ class ThreadGoBack(threading.Thread):
                 output = values[0]
                 univ = values[1]
                 index = App().universes.index(univ)
-                level = App().sequence.steps[prev_step].cue.channels[channel - 1]
+                level = App().sequence.steps[prev_step].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
                 App().dmx.frame[index][output - 1] = level
         App().sequence.on_go = False
@@ -937,7 +941,7 @@ class ThreadGoBack(threading.Thread):
                 index = App().universes.index(univ)
                 old_level = self.dmxlevels[index][output - 1]
                 next_level = (
-                    App().sequence.steps[position - 1].cue.channels[channel - 1]
+                    App().sequence.steps[position - 1].cue.channels.get(channel, 0)
                 )
                 level = self._channel_level(i, old_level, next_level, go_back_time)
                 App().dmx.sequence[channel - 1] = level
