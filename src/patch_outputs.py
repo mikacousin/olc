@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional
+from typing import List, Optional, Tuple
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
@@ -81,10 +81,8 @@ class PatchOutputsTab(Gtk.Box):
             App().patch.patch_empty()
             self.flowbox.queue_draw()
             App().window.live_view.channels_view.update()
-
-            for univ in range(NB_UNIVERSES):
-                for output in range(512):
-                    App().dmx.frame[univ][output] = 0
+            App().dmx.user_outputs.clear()
+            App().dmx.all_outputs_at_zero()
 
         elif button_label == "Patch 1:1":
             App().patch.patch_1on1()
@@ -99,6 +97,7 @@ class PatchOutputsTab(Gtk.Box):
                     widget.level = level
                     widget.queue_draw()
             App().window.live_view.channels_view.update()
+        self.get_parent().grab_focus()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
@@ -233,6 +232,40 @@ class PatchOutputsTab(Gtk.Box):
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _keypress_equal(self) -> None:
+        """Output @ level"""
+        if not is_int(self.keystring):
+            return
+        level = int(self.keystring)
+        if App().settings.get_boolean("percent"):
+            level = int(round((level / 100) * 255))
+        level = min(level, 255)
+        outputs = self.get_selected_outputs()
+        for output in outputs:
+            out = output[0]
+            univ = output[1]
+            App().dmx.user_outputs[output] = level
+            index = App().universes.index(univ)
+            App().dmx.send_user_output(out, univ, level)
+            self.outputs[out - 1 + (512 * index)].queue_draw()
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def get_selected_outputs(self) -> List[Tuple[int, int]]:
+        """Return selected outputs
+
+        Returns:
+            Selected outputs/universe numbers
+        """
+        outputs = []
+        selected = self.flowbox.get_selected_children()
+        for flowboxchild in selected:
+            output_widget = flowboxchild.get_child()
+            output = output_widget.output
+            universe = output_widget.universe
+            outputs.append((output, universe))
+        return outputs
 
     def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Output Thru"""

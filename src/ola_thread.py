@@ -57,32 +57,35 @@ class OlaThread(threading.Thread):
         ]
         # Loop on outputs with different level
         for output, level in diff:
-            channel = App().patch.outputs[univ][output + 1][0]
-            # Find next level
-            if (
-                App().sequence.last > 1
-                and App().sequence.position < App().sequence.last - 1
+            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
+                output + 1
             ):
-                next_level = (
-                    App()
-                    .sequence.steps[App().sequence.position + 1]
-                    .cue.channels.get(channel, 0)
-                )
-            elif App().sequence.last:
-                next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
-            else:
-                next_level = level
-            # Display new levels
-            GLib.idle_add(
-                App().window.live_view.update_channel_widget,
-                channel,
-                level,
-                next_level,
-            )
-            if App().patch_outputs_tab:
+                channel = App().patch.outputs[univ][output + 1][0]
+                # Find next level
+                if (
+                    App().sequence.last > 1
+                    and App().sequence.position < App().sequence.last - 1
+                ):
+                    next_level = (
+                        App()
+                        .sequence.steps[App().sequence.position + 1]
+                        .cue.channels.get(channel, 0)
+                    )
+                elif App().sequence.last:
+                    next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
+                else:
+                    next_level = level
+                # Display new levels
                 GLib.idle_add(
-                    App().patch_outputs_tab.outputs[output + (idx * 512)].queue_draw
+                    App().window.live_view.update_channel_widget,
+                    channel,
+                    level,
+                    next_level,
                 )
+                if App().patch_outputs_tab:
+                    GLib.idle_add(
+                        App().patch_outputs_tab.outputs[output + (idx * 512)].queue_draw
+                    )
         GLib.idle_add(App().window.live_view.channels_view.update)
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe

@@ -118,6 +118,10 @@ class LiveChannelsView(ChannelsView):
         if self.view_mode == VIEW_MODES["Patched"]:
             channel = child.get_index() + 1
             return channel in App().patch.channels
+        channel = child.get_index() + 1
+        if channel not in App().patch.channels:
+            channel_widget = child.get_child()
+            channel_widget.level = 0
         return True
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
