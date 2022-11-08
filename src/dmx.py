@@ -129,6 +129,7 @@ class Dmx(threading.Thread):
             universe: Universe number (one in UNIVERSES)
             level: Output level (0-255)
         """
+        self.user_outputs[(output, universe)] = level
         index = App().universes.index(universe)
         self.frame[index][output - 1] = level
         if not level:

@@ -26,6 +26,7 @@ class PatchOutputsTab(Gtk.Box):
 
         self.keystring = ""
         self.last_out_selected = ""
+        self.test = False
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
@@ -146,6 +147,8 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
+        if self.test:
+            self._stop_test()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
         notebook = self.get_parent()
@@ -157,6 +160,26 @@ class PatchOutputsTab(Gtk.Box):
         """Empty keys buffer"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _change_test_output(self, old: int, new: int) -> None:
+        """Test a new output
+
+        Args:
+            old: Old Output
+            new: New Output
+        """
+        # Get old output level
+        child = self.flowbox.get_child_at_index(old)
+        output = child.get_child().output
+        universe = child.get_child().universe
+        level = App().dmx.user_outputs.get((output, universe))
+        # Old output at 0
+        App().dmx.send_user_output(output, universe, 0)
+        # New output at old output level
+        child = self.flowbox.get_child_at_index(new)
+        output = child.get_child().output
+        universe = child.get_child().universe
+        App().dmx.send_user_output(output, universe, level)
 
     def _keypress_Right(self):  # pylint: disable=C0103
         """Next Output"""
@@ -170,6 +193,10 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) + 1)
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) + 1)
+            if self.test:
+                old = int(self.last_out_selected) - 1
+                new = int(self.last_out_selected)
+                self._change_test_output(old, new)
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Output"""
@@ -183,6 +210,10 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) - 1)
             self.flowbox.select_child(child)
             self.last_out_selected = str(int(self.last_out_selected) - 1)
+            if self.test:
+                old = int(self.last_out_selected) + 1
+                new = int(self.last_out_selected)
+                self._change_test_output(old, new)
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Next Line"""
@@ -245,12 +276,39 @@ class PatchOutputsTab(Gtk.Box):
         for output in outputs:
             out = output[0]
             univ = output[1]
-            App().dmx.user_outputs[output] = level
-            index = App().universes.index(univ)
             App().dmx.send_user_output(out, univ, level)
+            index = App().universes.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _keypress_t(self) -> None:
+        """Test Output @ level"""
+        if self.test:
+            self._stop_test()
+            return
+        if not is_int(self.keystring):
+            return
+        level = int(self.keystring)
+        if App().settings.get_boolean("percent"):
+            level = int(round((level / 100) * 255))
+        level = min(level, 255)
+        selected_outputs = self.get_selected_outputs()
+        if selected_outputs:
+            output = selected_outputs[0]
+            out = output[0]
+            univ = output[1]
+            App().dmx.send_user_output(out, univ, level)
+            index = App().universes.index(univ)
+            self.outputs[out - 1 + (512 * index)].queue_draw()
+        self.test = True
+        self.keystring = ""
+        App().window.statusbar.push(App().window.context_id, self.keystring)
+
+    def _stop_test(self) -> None:
+        """Stop test mode"""
+        App().dmx.user_outputs.clear()
+        self.test = False
 
     def get_selected_outputs(self) -> List[Tuple[int, int]]:
         """Return selected outputs
