@@ -3,12 +3,12 @@
 ## Outputs:  
 ![Patch Outputs](pictures/patch_outputs.png)
 
-Ouvrir l'onglet : [Ctrl + P] ou 'Patch' dans le menu principale  
+Ouvrir l'onglet : [Ctrl + P] ou 'Patch' dans le menu principal.
 
 ### Sélectionner un output :  
 
 - Clique souris : sélectionne un output
-- Clique souris + Shift : sélectionne la série entre les deux
+- Clique souris + Maj : sélectionne la série entre les deux
 - Clique souris + Ctrl : Ajoute / Retire l'output de la sélection
 - Numéro puis [O] : sélectionne l'output
 - Numéro puis [>] : Thru

@@ -7,7 +7,7 @@ Les groupes doivent avoir un numéro. Celui-ci peut être de la forme '1.5'.
 
 ## Édition des groupes
 
-Ouvrir l'onglet : [Shift + Ctrl + G] ou 'Groupes' dans le menu principale.
+Ouvrir l'onglet : [Maj + Ctrl + G] ou 'Groupes' dans le menu principal.
 
 ### Créer un nouveau groupe :
 [N] : Créer un nouveau groupe à la suite des autres.

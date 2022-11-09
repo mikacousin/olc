@@ -62,13 +62,13 @@ Une mémoire stocke les niveaux des circuits
 
 Un pas contient une mémoire et des temps
 
-- Définir un temps de montée de 3s : [3], [Shift + I]
-- Définir un temps de descente de 2s : [2], [Shift + O]
-- Définir un temps de montée et de descente de 10s : [10], [Shift + T]
-- Définir un délai sur la montée de 1s : [1], [Shift + K]
-- Définir un délai sur la descente de 2s : [2], [Shift + L]
-- Définir un délai sur la montée et la descente de 3s : [3], [Shift + D]
-- Définir un wait de 0.5s : [0.5], [Shift + W]
+- Définir un temps de montée de 3s : [3], [Maj + I]
+- Définir un temps de descente de 2s : [2], [Maj + O]
+- Définir un temps de montée et de descente de 10s : [10], [Maj + T]
+- Définir un délai sur la montée de 1s : [1], [Maj + K]
+- Définir un délai sur la descente de 2s : [2], [Maj + L]
+- Définir un délai sur la montée et la descente de 3s : [3], [Maj + D]
+- Définir un wait de 0.5s : [0.5], [Maj + W]
 
 #### Se déplacer dans la séquence principale
 - Go: `Go`
