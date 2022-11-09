@@ -1,8 +1,9 @@
 # Patch
 
 ## Outputs:  
+![Patch Outputs](pictures/patch_outputs.png)
 
-Pour ouvrir : [Ctrl + P] ou 'Patch' dans le menu principale  
+Ouvrir l'onglet : [Ctrl + P] ou 'Patch' dans le menu principale  
 
 ### Sélectionner un output :  
 
