@@ -79,6 +79,6 @@ Un pas contient une mémoire et des temps
 > Le temps du Go Back Time peut être modifié dans les Paramêtres
 
 ## Divers
-- La partie active est entourée d'un cadre doré.
-- Pour effacer le buffer clavier : 'Backspace'
-- Pour fermer un onglet : clique avec la souris sur la croix de l'onglet ou 'Esc'
+- La partie active est entourée d'un cadre doré. La touche [Tab] permet de la changer.
+- Pour effacer le buffer clavier : [Backspace]
+- Pour fermer un onglet : cliquer avec la souris sur la croix de l'onglet ou [Esc]
