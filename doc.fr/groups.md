@@ -1,6 +1,7 @@
 # Groupes
 Un groupe est une sélection de circuits ayants un niveau supérieur à 0.
-Ils ont tous un numéro. Celui-ci peut être de la forme '1.5'.
+
+Les groupes doivent avoir un numéro. Celui-ci peut être de la forme '1.5'.
 
 ![Groups Edition](pictures/groups.png)
 
