@@ -1,6 +1,7 @@
 # Documentation d'Open Lighting Console
 
 ## Table des matières
+- [Introduction](intro.md)
 - [Bases du système](general.md)
 - [Fichiers](files.md)
 - [Patch](patch.md)
@@ -12,5 +13,5 @@
 - [Indépendants](independents.md)
 - [Console virtuelle](virtual_console.md)
 - [Préférences](settings.md)
-- [MIDI](midi.md)
+- [Contrôleurs MIDI](midi.md)
 - [OSC](osc.md)
