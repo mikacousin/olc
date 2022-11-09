@@ -1,5 +1,14 @@
 # Bases du système
 
+## Open Lighting Architecture
+[OLA](https://www.openlighting.org/ola/) est nécessaire au fonctionnement d'olc. Pour simplifier, c'est le lien entre olc et le DMX, sACN, artnet, et d'autres protocoles moins courants.  
+Au démarrage, Open Lighting Console lancera automatiquement olad, s'il ne tourne pas déjà.  
+Pour configurer OLA, utiliser l'interface web en suivant le lien [http://localhost:9090](http://localhost:9090) une fois olad lancé.  
+Il est possible de préciser un autre port pour l'interface web d'OLA en lançant olc en ligne de commande, par exemple :
+```bash
+$ olc --http-port 6000
+```
+
 ## Fenêtre principale
 ![Fenêtre principale](pictures/main_window.png)
 ### Channels
