@@ -192,11 +192,11 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) + 1)
             self.flowbox.select_child(child)
-            self.last_out_selected = str(int(self.last_out_selected) + 1)
+            old_output = int(self.last_out_selected)
+            new_output = old_output + 1
+            self.last_out_selected = str(new_output)
             if self.test:
-                old = int(self.last_out_selected) - 1
-                new = int(self.last_out_selected)
-                self._change_test_output(old, new)
+                self._change_test_output(old_output, new_output)
 
     def _keypress_Left(self):  # pylint: disable=C0103
         """Previous Output"""
@@ -209,11 +209,11 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_out_selected) - 1)
             self.flowbox.select_child(child)
-            self.last_out_selected = str(int(self.last_out_selected) - 1)
+            old_output = int(self.last_out_selected)
+            new_output = old_output - 1
+            self.last_out_selected = str(new_output)
             if self.test:
-                old = int(self.last_out_selected) + 1
-                new = int(self.last_out_selected)
-                self._change_test_output(old, new)
+                self._change_test_output(old_output, new_output)
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Next Line"""
@@ -231,7 +231,11 @@ class PatchOutputsTab(Gtk.Box):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
-                self.last_out_selected = str(index)
+                old_output = int(self.last_out_selected)
+                new_output = index
+                self.last_out_selected = str(new_output)
+                if self.test:
+                    self._change_test_output(old_output, new_output)
 
     def _keypress_Up(self):  # pylint: disable=C0103
         """Previous Line"""
@@ -249,7 +253,11 @@ class PatchOutputsTab(Gtk.Box):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
-                self.last_out_selected = str(index)
+                old_output = int(self.last_out_selected)
+                new_output = index
+                self.last_out_selected = str(new_output)
+                if self.test:
+                    self._change_test_output(old_output, new_output)
 
     def _keypress_o(self):
         """Select Output"""
