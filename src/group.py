@@ -246,8 +246,8 @@ class GroupTab(Gtk.Paned):
         App().window.playback.remove_page(page)
         App().group_tab = None
 
-    def _keypress_m(self) -> None:
-        """Open Popover"""
+    def _keypress_l(self) -> None:
+        """Open Popover to change label group"""
         if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             flowboxchild.get_child().popover.popup()
