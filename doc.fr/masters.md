@@ -13,7 +13,7 @@ Un master peut contenir :
 
 Cet onglet est divisé en 2 parties :
 - En haut : les circuits présents dans le master (groupe, circuits, mémoire)
-- En bas : les 10 pages de masters
+- En bas : les 10 pages de masters.
 	- Master : numéro de master
 	- Content type, le type de master :
 		- Vide : master inutilisé
@@ -27,6 +27,8 @@ Cet onglet est divisé en 2 parties :
 ## Édition des masters
 
 Ouvrir l'onglet : [Ctrl + M] ou 'Masters' dans le menu principal.
+
+Cliquer sur la page à modifier.
 
 ### Changer le type de master :
 Sélectionner le master.
