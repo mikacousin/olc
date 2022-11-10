@@ -1,4 +1,4 @@
-# Documentation d'Open Lighting Console
+# Open Lighting Console - Manuel de l'utilisateur
 
 ## Table des matières
 - [Introduction](intro.md)

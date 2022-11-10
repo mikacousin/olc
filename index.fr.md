@@ -16,6 +16,6 @@
 - [Open Sound Control](https://fr.wikipedia.org/wiki/Open_Sound_Control)
 
 ## Documentation 
-Vous pouvez consulter la [documentation](doc.fr/index.md).
+Vous pouvez consulter le [manuel de l'utilisateur](doc.fr/index.md).
 
-Celle-ci est actuellement en cours de rédaction.
+Celui-ci est actuellement en cours de rédaction.
