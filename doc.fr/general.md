@@ -11,6 +11,7 @@ $ olc --http-port 6000
 
 ## Fenêtre principale
 ![Fenêtre principale](pictures/main_window.png)
+
 ### Channels
 Affiche les niveaux des circuits envoyés.
 > Les circuits non patchés auront un niveau à 0
@@ -73,7 +74,8 @@ Un pas contient une mémoire et des temps
 - Définir un wait de 0.5s : [0] [.] [5] [Maj + W]
 
 #### Se déplacer dans la séquence principale :
-- Go: `Go` ou [Ctrl + G]
+- Go : `Go` ou [Ctrl + G]
+- Pause : `Pause` ou [Ctrl + Z]
 - Sauter au prochain pas : `Seq+` ou [W]
 - Sauter au pas précédent : `Seq-` ou [Q]
 - Aller à la mémoire 2.0 (la mémoire doit exister) : `2 Goto` ou [2] [Maj + G]
@@ -84,3 +86,4 @@ Un pas contient une mémoire et des temps
 - La partie active est entourée d'un cadre doré. La touche [Tab] permet de la changer.
 - Pour effacer le buffer clavier : [Backspace]
 - Pour fermer un onglet : cliquer avec la souris sur la croix de l'onglet ou [Esc]
+- Pour passer l'application en plein écran [F11]
