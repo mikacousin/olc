@@ -48,9 +48,9 @@ Enfin, les mémoires suivantes.
 - Cue : numéro de la mémoire
 - Text : texte du pas de séquence
 - Wait : temps avant de lancer automatiquement le pas suivant
-- Delay Out : délais d'attente avant de baisser les niveaux de circuits
+- Delay Out : délai d'attente avant de baisser les niveaux de circuits
 - Out : temps de la baisse des niveaux de circuits
-- Delay In : délais d'attente avant de monter les niveaux de circuits
+- Delay In : délai d'attente avant de monter les niveaux de circuits
 - In : temps de monté des niveaux de circuits
 - Channel Time : Nombre de circuits avec un channel time
 > Tous les temps sont exprimés en secondes.
