@@ -4,7 +4,7 @@
 Open Lighting Console est un logiciel libre tournant sous Linux qui permet de contrôler les lumières de spectacle.
 
 Tout le monde est invité à participer à son développement.
-Vous pouvez contribuer au code, aider aux traductions, faire des rapports de bugs, créer des paquets pour les différentes distributions ...  
+Vous pouvez contribuer au code, aider aux traductions, faire des rapports de bugs, écrire de la documentation, créer des paquets pour les différentes distributions ...  
 Toute aide est bienvenue.  
 La [page github](https://github.com/mikacousin/olc) centralise les informations.
 
