@@ -447,7 +447,7 @@ class MastersTab(Gtk.Paned):
                 if found:
                     for chan in range(MAX_CHANNELS):
                         channel_widget = self.channels_view.get_channel_widget(chan + 1)
-                        grp.channels[chan] = channel_widget.level
+                        grp.channels[chan + 1] = channel_widget.level
                     # Update Group Tab if open
                     if App().group_tab:
                         App().group_tab.channels_view.update()
