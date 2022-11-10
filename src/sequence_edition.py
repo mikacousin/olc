@@ -541,8 +541,9 @@ class SequenceTab(Gtk.Grid):
         # Update Main Playback
         if sequence == App().sequence:
             path = str(int(path) + 1)
-            App().window.playback.cues_liststore1[path][2] = text
             App().window.playback.cues_liststore2[path][2] = text
+            path = str(int(path) + 2)
+            App().window.playback.cues_liststore1[path][2] = text
 
             # Update window's subtitle if needed
             if App().sequence.position == step:
