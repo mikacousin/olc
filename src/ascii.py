@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from io import StringIO
 
-from gi.repository import Gio, GObject, Gtk
+from gi.repository import Gio, GLib, GObject, Gtk
 
 from olc.ascii_load import AsciiParser
 from olc.ascii_save import (
@@ -63,6 +63,7 @@ class Ascii:
         self.file = filename
         self.basename = self.file.get_basename() if filename else ""
         self.modified = False
+        self.recent_manager = Gtk.RecentManager.get_default()
 
     def load(self):
         """Load ASCII file"""
@@ -85,13 +86,13 @@ class Ascii:
             App().sequence.position = 0
             # Update display informations
             self._update_ui()
+            self.add_recent_file()
         except GObject.GError as e:
             print(f"Error: {str(e)}")
         self.modified = False
 
     def save(self):
-        """Save ASCII File"""
-
+        """Save ASCII file"""
         stream = self.file.replace("", False, Gio.FileCreateFlags.NONE, None)
 
         # TODO: to import Fx and Masters in dlight :
@@ -118,6 +119,25 @@ class Ascii:
 
         self.modified = False
         App().window.header.set_title(self.basename)
+        self.add_recent_file()
+
+    def add_recent_file(self):
+        """Add to Recent files
+
+        Raises:
+            e: not documented
+        """
+        uri = self.file.get_uri()
+        if uri:
+            # We remove the project from recent projects list
+            # and then re-add it to this list to make sure it
+            # gets positioned at the top of the recent projects list.
+            try:
+                self.recent_manager.remove_item(uri)
+            except GLib.Error as e:
+                if e.domain != "gtk-recent-manager-error-quark":
+                    raise e
+            self.recent_manager.add_item(uri)
 
     def _update_ui(self):
         """Update display after file loading"""
