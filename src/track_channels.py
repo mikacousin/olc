@@ -51,11 +51,11 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.flowbox.set_filter_func(self.filter_func, None)
 
-        self.scrollable = Gtk.ScrolledWindow()
-        self.scrollable.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-        self.scrollable.add(self.flowbox)
+        scrollable = Gtk.ScrolledWindow()
+        scrollable.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        scrollable.add(self.flowbox)
 
-        self.attach(self.scrollable, 0, 0, 1, 1)
+        self.attach(scrollable, 0, 0, 1, 1)
 
     def populate_steps(self):
         """Main Playback's Steps"""
