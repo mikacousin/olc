@@ -115,10 +115,9 @@ class LiveChannelsView(ChannelsView):
                 channel_widget.level or channel_widget.next_level or child.is_selected()
             )
 
-        if self.view_mode == VIEW_MODES["Patched"]:
-            channel = child.get_index() + 1
-            return channel in App().patch.channels
         channel = child.get_index() + 1
+        if self.view_mode == VIEW_MODES["Patched"]:
+            return channel in App().patch.channels
         if channel not in App().patch.channels:
             channel_widget = child.get_child()
             channel_widget.level = 0
