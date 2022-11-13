@@ -46,11 +46,11 @@ Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 - mido (python-mido on archlinux)
 - liblo (python-pyliblo on archlinux)
 
-#### Ubuntu 20.04.1 LTS
+#### Ubuntu
 
 Installez ola avec le support de python 3:
 ```bash
-$ sudo apt install git libcppunit-dev libcppunit-1.15-0 uuid-dev pkg-config libncurses5-dev libtool autoconf automake g++ libmicrohttpd-dev libmicrohttpd12 protobuf-compiler libprotobuf-lite17 python-protobuf libprotobuf-dev libprotoc-dev zlib1g-dev bison flex make libftdi-dev libftdi1 libusb-1.0-0-dev liblo-dev libavahi-client-dev python-numpy
+$ sudo apt install git libcppunit-dev libcppunit-1.15-0 uuid-dev pkg-config libncurses5-dev libtool autoconf automake g++ libmicrohttpd-dev libmicrohttpd12 protobuf-compiler libprotobuf-lite23 python3-protobuf libprotobuf-dev libprotoc-dev zlib1g-dev bison flex make libftdi-dev libftdi1 libusb-1.0-0-dev liblo-dev libavahi-client-dev python3-numpy
 $ git clone https://github.com/OpenLightingProject/ola
 $ cd ola
 $ autoreconf -i
@@ -61,7 +61,7 @@ $ sudo ldconfig
 ```
 Installez les dépendances pour olc:
 ```bash
-$ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-psutil python3-liblo python3-mido python3-rtmidi
+$ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-psutil python3-liblo python3-mido python3-rtmidi gettext
 ```
 
 #### Construction à partir de git
@@ -91,7 +91,7 @@ Et avec `sudo apt install` :
 - libgtk-3-dev
 - python3-cairo
 - python3-gi-cairo
-- python3-liblo`
+- python3-liblo
 - python3-mido
 - python3-rtmidi
 - libasound2-dev
