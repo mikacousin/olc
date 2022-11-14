@@ -16,6 +16,11 @@ Un nouveau projet vide sera créé. Tout est effacé, le patch est remis droit.
 
 **Attention, le travail en cours est définitivement perdu !**
 
+> Il est également possible d'ouvrir directement un fichier à l'ouverture en le passant en paramètre de la ligne de commande, par exemple :
+> ```bash
+> $ olc fichier.asc
+> ```
+
 ## Enregistrer
 [Ctrl + S] ou 'Enregistrer' dans le menu principal.
 
