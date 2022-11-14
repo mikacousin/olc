@@ -71,15 +71,6 @@ class Application(Gtk.Application):
             None,
         )
 
-        self.add_main_option(
-            "open-file",
-            ord("o"),
-            GLib.OptionFlags.NONE,
-            GLib.OptionArg.FILENAME,
-            "ASCII file to open on startup.",
-            None,
-        )
-
         css_provider_file = Gio.File.new_for_uri(
             "resource://com/github/mikacousin/olc/application.css"
         )
@@ -148,7 +139,6 @@ class Application(Gtk.Application):
         self.midi = None
         self.osc_server = None
         self.ascii = None
-        self.file = None
         self.wing = None
 
     def do_activate(self):
@@ -254,17 +244,23 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.fullscreen", ["F11"])
 
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
+        Gtk.Application.do_command_line(self, command_line)
+        # Options (olad http port)
         olad_port = 9090
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
         if "http-port" in options:
             olad_port = options["http-port"]
-        if "open-file" in options:
-            print("Open file:", options["open-file"])
+        # Start Ola and activate olc
         self.ola = Ola(olad_port)
         self.ola.start()
         self.activate()
+        # Arguments (one ASCII file to open)
+        arguments = command_line.get_arguments()
+        if len(arguments) > 1:
+            self.ascii.file = command_line.create_file_for_arg(arguments[1])
+            self.ascii.load()
         return False
 
     def setup_app_menu(self):
@@ -498,11 +494,8 @@ class Application(Gtk.Application):
 
         # if response is "ACCEPT" (the button "Open" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
-            # self.file is the file that we get from the FileChooserNative
-            self.file = open_dialog.get_file()
-
+            self.ascii.file = open_dialog.get_file()
             # Load the ASCII file
-            self.ascii.file = self.file
             self.ascii.load()
 
             for univ in self.universes:
@@ -516,7 +509,7 @@ class Application(Gtk.Application):
 
     def _save(self, _action, _parameter):
         """Save"""
-        if self.file is not None:
+        if self.ascii.file is not None:
             self.ascii.save()
         else:
             self._saveas(_action, _parameter)
@@ -535,11 +528,11 @@ class Application(Gtk.Application):
         save_dialog.set_do_overwrite_confirmation(True)
         # dialog always on top of the main window
         save_dialog.set_modal(True)
-        # if self.file has already been saved
-        if self.file is not None:
+        # if file has already been saved
+        if self.ascii.file is not None:
             try:
-                # set self.file as the current filename for the file chooser
-                save_dialog.set_file(self.file)
+                # set self.ascii.file as the current filename for the file chooser
+                save_dialog.set_file(self.ascii.file)
             except GObject.GError as e:
                 print(f"Error: {str(e)}")
         # show the dialog
@@ -547,13 +540,12 @@ class Application(Gtk.Application):
 
         # if response is "ACCEPT" (the button "Save" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
-            # self.file is the currently selected file
-            self.file = save_dialog.get_file()
-            self.ascii.file = self.file
+            # self.ascii.file is the currently selected file
+            self.ascii.file = save_dialog.get_file()
             # save to file
             self.ascii.save()
             # Set Main Window's title with file name
-            basename = self.file.get_basename()
+            basename = self.ascii.file.get_basename()
             self.window.header.set_title(basename)
         # if response is "CANCEL" (the button "Cancel" has been clicked)
         elif response == Gtk.ResponseType.CANCEL:
