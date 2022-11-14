@@ -87,7 +87,6 @@ class Application(Gtk.Application):
         settings.set_property("gtk-application-prefer-dark-theme", True)
 
         # To store settings
-        # self.settings = Settings.new()
         self.settings = Gio.Settings.new("com.github.mikacousin.olc")
 
         # Universes
