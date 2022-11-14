@@ -13,11 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+import socket
+import subprocess
 import threading
+import time
+from typing import Optional
 from functools import partial
+import psutil
 
 from gi.repository import GLib
 from ola import OlaClient
+from ola.ClientWrapper import ClientWrapper
 from olc.define import NB_UNIVERSES, App
 
 
@@ -89,3 +95,78 @@ class OlaThread(threading.Thread):
         GLib.idle_add(App().window.live_view.channels_view.update)
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe
+
+
+class Ola:
+    """To manage ola daemon"""
+
+    olad_pid: Optional[subprocess.Popen]
+    olad_port: int
+    ola_thread: OlaThread
+
+    def __init__(self, olad_port=9090):
+        self.olad_port = olad_port
+
+    def start(self):
+        """Start ola daemon"""
+        if not _is_running("olad"):
+            if _is_port_in_use(self.olad_port):
+                print(f"Olad port {self.olad_port} already in use")
+                App().quit()
+            # Launch olad if not running
+            self.olad_pid = subprocess.Popen(
+                ["olad", "--http-port", str(self.olad_port)]
+            )
+            # Wait olad starting
+            timeout = 15
+            timer = 0.0
+            wrapper = None
+            while not wrapper:
+                try:
+                    wrapper = ClientWrapper()
+                except (OlaClient.OLADNotRunningException, ConnectionError):
+                    time.sleep(0.1)
+                    timer += 0.1
+                    if timer >= timeout:
+                        print("Can't start olad")
+                        break
+        else:
+            self.olad_pid = None
+        # Create OlaClient
+        try:
+            self.ola_thread = OlaThread()
+        except Exception as e:
+            print("Can't connect to Ola !", e)
+            App().quit()
+        self.ola_thread.start()
+
+    def stop(self) -> None:
+        """Stop olad if we launched it"""
+        if self.olad_pid:
+            self.olad_pid.terminate()
+
+
+def _is_running(name: str) -> bool:
+    """Check if there is any running process that contains the given name processName.
+
+    Args:
+        name: process name
+
+    Returns:
+        True if running, False otherwise
+    """
+
+    # Iterate over the all the running process
+    for proc in psutil.process_iter():
+        try:
+            # Check if process names contains the given name string
+            if name.lower() in proc.name().lower():
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    return False
+
+
+def _is_port_in_use(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
+        return serversocket.connect_ex(("localhost", port)) == 0

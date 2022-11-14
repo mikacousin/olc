@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import select
-import sys
 from gettext import gettext as _
 import mido
 
@@ -36,7 +35,7 @@ from olc.independents_edition import IndependentsTab  # noqa: E402
 from olc.master import Master  # noqa: E402
 from olc.masters_edition import MastersTab  # noqa: E402
 from olc.midi import Midi  # noqa: E402
-from olc.ola_thread import OlaThread  # noqa: E402
+from olc.ola_module import Ola  # noqa: E402
 from olc.osc import OscServer  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
@@ -51,14 +50,35 @@ from olc.window import Window  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
-    def __init__(self):
-        Gtk.Application.__init__(
-            self,
+    ola: Ola
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(
+            *args,
             application_id="com.github.mikacousin.olc",
-            flags=Gio.ApplicationFlags.FLAGS_NONE,
+            flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
+            **kwargs,
         )
         GLib.set_application_name("OpenLightingConsole")
         GLib.set_prgname("olc")
+
+        self.add_main_option(
+            "http-port",
+            ord("p"),
+            GLib.OptionFlags.NONE,
+            GLib.OptionArg.INT,
+            "The port to run the Ola HTTP server on. Defaults to 9090",
+            None,
+        )
+
+        self.add_main_option(
+            "open-file",
+            ord("o"),
+            GLib.OptionFlags.NONE,
+            GLib.OptionArg.FILENAME,
+            "ASCII file to open on startup.",
+            None,
+        )
 
         css_provider_file = Gio.File.new_for_uri(
             "resource://com/github/mikacousin/olc/application.css"
@@ -83,14 +103,6 @@ class Application(Gtk.Application):
         self.universes = UNIVERSES
         # Create patch (1:1)
         self.patch = PatchDmx(self.universes)
-
-        # Create OlaClient
-        try:
-            self.ola_thread = OlaThread()
-        except Exception as e:
-            print("Can't connect to Ola !", e)
-            sys.exit()
-        self.ola_thread.start()
 
         # Create Main Playback
         self.sequence = Sequence(1, text="Main Playback")
@@ -140,7 +152,6 @@ class Application(Gtk.Application):
         self.wing = None
 
     def do_activate(self):
-
         # Create Main Window
         self.window = Window()
         self.window.show_all()
@@ -177,7 +188,7 @@ class Application(Gtk.Application):
 
         # Fetch dmx values on startup
         for univ in self.universes:
-            self.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
+            self.ola.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
 
         # For Manual crossfade
         self.crossfade = CrossFade()
@@ -200,12 +211,12 @@ class Application(Gtk.Application):
         self.ascii = Ascii(None)
 
         # Send DMX every 50ms
-        GObject.timeout_add(50, self._on_timeout, None)
+        GLib.timeout_add(50, self._on_timeout, None)
 
         # Scan Ola messages - 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
         GLib.unix_fd_add_full(
             0,
-            self.ola_thread.sock.fileno(),
+            self.ola.ola_thread.sock.fileno(),
             GLib.IOCondition(27),
             self.on_fd_read,
             None,
@@ -219,6 +230,8 @@ class Application(Gtk.Application):
         """
         # Send DMX
         self.dmx.send()
+        if self.dmx.stop:
+            return False
         return True
 
     def do_startup(self):
@@ -239,6 +252,20 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.about", ["F3"])
         self.set_accels_for_action("app.fullscreen", ["F11"])
+
+    def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
+        olad_port = 9090
+        options = command_line.get_options_dict()
+        # convert GVariantDict -> GVariant -> dict
+        options = options.end().unpack()
+        if "http-port" in options:
+            olad_port = options["http-port"]
+        if "open-file" in options:
+            print("Open file:", options["open-file"])
+        self.ola = Ola(olad_port)
+        self.ola.start()
+        self.activate()
+        return False
 
     def setup_app_menu(self):
         """Setup application menu
@@ -282,10 +309,10 @@ class Application(Gtk.Application):
             True
         """
         readable, _writable, _exceptional = select.select(
-            [self.ola_thread.sock], [], [], 0
+            [self.ola.ola_thread.sock], [], [], 0
         )
         if readable:
-            self.ola_thread.ola_client.SocketReady()
+            self.ola.ola_thread.ola_client.SocketReady()
         return True
 
     def fetch_dmx(self, _request, univ, dmxframe):
@@ -298,7 +325,7 @@ class Application(Gtk.Application):
         if not dmxframe:
             return
         index = self.universes.index(univ)
-        self.ola_thread.old_frame[index] = dmxframe
+        self.ola.ola_thread.old_frame[index] = dmxframe
         for output, level in enumerate(dmxframe):
             if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
                 channel = self.patch.outputs.get(univ).get(output + 1)[0]
@@ -479,7 +506,7 @@ class Application(Gtk.Application):
             self.ascii.load()
 
             for univ in self.universes:
-                self.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
+                self.ola.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
 
         elif response == Gtk.ResponseType.CANCEL:
             print("cancelled: FileChooserAction.OPEN")
@@ -824,4 +851,7 @@ class Application(Gtk.Application):
                 chaser.run = False
                 chaser.thread.stop()
                 chaser.thread.join()
+        # Stop send DMX
+        self.dmx.stop = True
+        self.ola.stop()
         self.quit()

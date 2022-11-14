@@ -26,6 +26,7 @@ class Dmx(threading.Thread):
     frame: List[array.array]
     sequence: array.array
     user: array.array
+    stop: bool = False
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -89,7 +90,7 @@ class Dmx(threading.Thread):
         # Send DMX frames to Ola
         for universe in univ:
             index = App().universes.index(universe)
-            App().ola_thread.ola_client.SendDmx(universe, self.frame[index])
+            App().ola.ola_thread.ola_client.SendDmx(universe, self.frame[index])
 
     def _send_user_outputs(self, univ) -> List[int]:
         """Outputs at level on user demand
@@ -119,7 +120,7 @@ class Dmx(threading.Thread):
         for universe in UNIVERSES:
             index = App().universes.index(universe)
             self.frame[index] = array.array("B", [0] * 512)
-            App().ola_thread.ola_client.SendDmx(universe, self.frame[index])
+            App().ola.ola_thread.ola_client.SendDmx(universe, self.frame[index])
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -134,7 +135,7 @@ class Dmx(threading.Thread):
         self.frame[index][output - 1] = level
         if not level:
             self.user_outputs.pop((output, universe))
-        App().ola_thread.ola_client.SendDmx(universe, self.frame[index])
+        App().ola.ola_thread.ola_client.SendDmx(universe, self.frame[index])
 
 
 class PatchDmx:
