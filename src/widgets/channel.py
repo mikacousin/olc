@@ -59,9 +59,9 @@ class ChannelWidget(Gtk.Widget):
         # If Main channels view, update Track Channels if opened
         if (
             channels_view is App().window.live_view.channels_view
-            and App().track_channels_tab
+            and App().tabs.tabs["track_channels"]
         ):
-            App().track_channels_tab.update_display()
+            App().tabs.tabs["track_channels"].update_display()
         channels_view.grab_focus()
 
     def do_draw(self, cr):

@@ -109,15 +109,17 @@ class PatchChannelWidget(Gtk.Widget):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Thru
-            App().patch_channels_tab.keystring = str(self.channel)
-            App().patch_channels_tab.thru()
+            App().tabs.tabs["patch_channels"].keystring = str(self.channel)
+            App().tabs.tabs["patch_channels"].thru()
         else:
-            App().patch_channels_tab.flowbox.unselect_all()
-            child = App().patch_channels_tab.flowbox.get_child_at_index(
-                self.channel - 1
+            App().tabs.tabs["patch_channels"].flowbox.unselect_all()
+            child = (
+                App()
+                .tabs.tabs["patch_channels"]
+                .flowbox.get_child_at_index(self.channel - 1)
             )
-            App().patch_channels_tab.flowbox.select_child(child)
-            App().patch_channels_tab.last_chan_selected = str(self.channel - 1)
+            App().tabs.tabs["patch_channels"].flowbox.select_child(child)
+            App().tabs.tabs["patch_channels"].last_chan_selected = str(self.channel - 1)
 
     def do_draw(self, cr):
         """Draw widget

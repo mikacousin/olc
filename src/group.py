@@ -50,7 +50,7 @@ class GroupChannelsView(ChannelsView):
             direction: Up or Down
         """
         channels = self.get_selected_channels()
-        selected_group = App().group_tab.flowbox.get_selected_children()[0]
+        selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
         index = selected_group.get_index()
         for channel in channels:
             level = App().groups[index].channels[channel - 1]
@@ -72,8 +72,8 @@ class GroupChannelsView(ChannelsView):
         """
         # Find selected group
         selected_group = None
-        if App().group_tab:
-            selected_group = App().group_tab.flowbox.get_selected_children()
+        if App().tabs.tabs["groups"]:
+            selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()
         if selected_group:
             group_number = selected_group[0].get_child().number
             group = None
@@ -188,10 +188,7 @@ class GroupTab(Gtk.Paned):
 
     def on_close_icon(self, _widget) -> None:
         """Close Tab with the icon clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().group_tab = None
+        App().tabs.close("groups")
 
     def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
         """Key has been presed
@@ -242,9 +239,7 @@ class GroupTab(Gtk.Paned):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().group_tab = None
+        App().tabs.close("groups")
 
     def _keypress_l(self) -> None:
         """Open Popover to change label group"""
@@ -507,9 +502,9 @@ class GroupTab(Gtk.Paned):
                 master.content_type = 0
                 master.content_value = None
                 master.text = ""
-                if App().masters_tab:
-                    App().masters_tab.channels_view.update()
-                    liststore = App().masters_tab.liststores[master.page - 1]
+                if App().tabs.tabs["masters"]:
+                    App().tabs.tabs["masters"].channels_view.update()
+                    liststore = App().tabs.tabs["masters"].liststores[master.page - 1]
                     treeiter = liststore.get_iter(master.number - 1)
                     liststore.set_value(treeiter, 1, "")
                     liststore.set_value(treeiter, 2, "")

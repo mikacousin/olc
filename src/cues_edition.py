@@ -82,10 +82,7 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().memories_tab = None
+        App().tabs.close("memories")
 
     def on_key_press_event(self, _widget, event):
         """Key has been pressed
@@ -132,9 +129,7 @@ class CuesEditionTab(Gtk.Paned):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().memories_tab = None
+        App().tabs.close("memories")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
@@ -242,9 +237,9 @@ class CuesEditionTab(Gtk.Paned):
             # Update Main Playback
             App().window.playback.update_sequence_display()
             # Update Sequence Edition Tab if exist
-            if App().sequences_tab:
-                App().sequences_tab.liststore1.clear()
-                App().sequences_tab.liststore1.append(
+            if App().tabs.tabs["sequences"]:
+                App().tabs.tabs["sequences"].liststore1.clear()
+                App().tabs.tabs["sequences"].liststore1.append(
                     [
                         App().sequence.index,
                         App().sequence.type_seq,
@@ -252,10 +247,12 @@ class CuesEditionTab(Gtk.Paned):
                     ]
                 )
                 for chaser in App().chasers:
-                    App().sequences_tab.liststore1.append(
+                    App().tabs.tabs["sequences"].liststore1.append(
                         [chaser.index, chaser.type_seq, chaser.text]
                     )
-                App().sequences_tab.treeview1.set_model(App().sequences_tab.liststore1)
+                App().tabs.tabs["sequences"].treeview1.set_model(
+                    App().tabs.tabs["sequences"].liststore1
+                )
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
@@ -450,7 +447,7 @@ class CueChannelsView(ChannelsView):
             channel_widget.level = level
             channel_widget.next_level = level
             channel_widget.queue_draw()
-            App().memories_tab.user_channels[channel - 1] = level
+            App().tabs.tabs["memories"].user_channels[channel - 1] = level
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display
@@ -461,10 +458,10 @@ class CueChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().memories or not App().memories_tab:
+        if not App().memories or not App().tabs.tabs["memories"]:
             return False
         # Find selected row
-        path, _focus_column = App().memories_tab.treeview.get_cursor()
+        path, _focus_column = App().tabs.tabs["memories"].treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if self.view_mode == VIEW_MODES["Active"]:
@@ -475,7 +472,7 @@ class CueChannelsView(ChannelsView):
         return False
 
     def __filter_active(self, row, child: Gtk.FlowBoxChild) -> bool:
-        user_channels = App().memories_tab.user_channels
+        user_channels = App().tabs.tabs["memories"].user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
         # Channels in Cue
@@ -504,7 +501,7 @@ class CueChannelsView(ChannelsView):
         return self.__filter_all(row, child)
 
     def __filter_all(self, row, child: Gtk.FlowBoxChild) -> bool:
-        user_channels = App().memories_tab.user_channels
+        user_channels = App().tabs.tabs["memories"].user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
         # Channels in Cue

@@ -72,24 +72,24 @@ class LiveView(Gtk.Notebook):
         # Find open page in notebook to send keyboard events
         page = self.get_current_page()
         child = self.get_nth_page(page)
-        if child == App().patch_outputs_tab:
-            return App().patch_outputs_tab.on_key_press_event(widget, event)
-        if child == App().patch_channels_tab:
-            return App().patch_channels_tab.on_key_press_event(widget, event)
-        if child == App().group_tab:
-            return App().group_tab.on_key_press_event(widget, event)
-        if child == App().sequences_tab:
-            return App().sequences_tab.on_key_press_event(widget, event)
-        if child == App().channeltime_tab:
-            return App().channeltime_tab.on_key_press_event(widget, event)
-        if child == App().track_channels_tab:
-            return App().track_channels_tab.on_key_press_event(widget, event)
-        if child == App().memories_tab:
-            return App().memories_tab.on_key_press_event(widget, event)
-        if child == App().masters_tab:
-            return App().masters_tab.on_key_press_event(widget, event)
-        if child == App().inde_tab:
-            return App().inde_tab.on_key_press_event(widget, event)
+        if child is App().tabs.tabs["patch_outputs"]:
+            return App().tabs.tabs["patch_outputs"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["patch_channels"]:
+            return App().tabs.tabs["patch_channels"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["groups"]:
+            return App().tabs.tabs["groups"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["sequences"]:
+            return App().tabs.tabs["sequences"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["channel_time"]:
+            return App().tabs.tabs["channel_time"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["track_channels"]:
+            return App().tabs.tabs["track_channels"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["memories"]:
+            return App().tabs.tabs["memories"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["masters"]:
+            return App().tabs.tabs["masters"].on_key_press_event(widget, event)
+        if child is App().tabs.tabs["indes"]:
+            return App().tabs.tabs["indes"].on_key_press_event(widget, event)
 
         return App().window.on_key_press_event(widget, event)
 

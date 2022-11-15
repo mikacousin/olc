@@ -42,6 +42,7 @@ olc_sources = [
   'sequence_edition.py',
   'settings.py',
   'step.py',
+  'tabs_manager.py',
   'track_channels.py',
   'virtual_console.py',
   'window.py',

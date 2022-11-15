@@ -148,13 +148,13 @@ class TrackChannelsWidget(Gtk.Widget):
         Args:
             event: Gdk.Event
         """
-        App().track_channels_tab.flowbox.unselect_all()
-        child = App().track_channels_tab.flowbox.get_child_at_index(self.step)
-        App().track_channels_tab.flowbox.select_child(child)
-        App().track_channels_tab.last_step_selected = str(self.step)
+        App().tabs.tabs["track_channels"].flowbox.unselect_all()
+        child = App().tabs.tabs["track_channels"].flowbox.get_child_at_index(self.step)
+        App().tabs.tabs["track_channels"].flowbox.select_child(child)
+        App().tabs.tabs["track_channels"].last_step_selected = str(self.step)
         chan = int((event.x - 535) / 65)
         if 0 <= chan < len(self.levels):
-            App().track_channels_tab.channel_selected = chan
+            App().tabs.tabs["track_channels"].channel_selected = chan
 
     def do_draw(self, cr):
         """Draw widget
@@ -256,7 +256,7 @@ class TrackChannelsWidget(Gtk.Widget):
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
             if (
                 self.get_parent().is_selected()
-                and i == App().track_channels_tab.channel_selected
+                and i == App().tabs.tabs["track_channels"].channel_selected
             ):
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:

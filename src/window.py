@@ -209,8 +209,8 @@ class Window(Gtk.ApplicationWindow):
         """Unselect all channels"""
         self.live_view.channels_view.flowbox.unselect_all()
         self.live_view.channels_view.last_selected_channel = ""
-        if App().track_channels_tab:
-            App().track_channels_tab.update_display()
+        if App().tabs.tabs["track_channels"]:
+            App().tabs.tabs["track_channels"].update_display()
 
     def _keypress_q(self):
         """Seq -"""
@@ -258,9 +258,11 @@ class Window(Gtk.ApplicationWindow):
             App().memories.insert(step - 1, cue)
 
             # Update Presets Tab if exist
-            if App().memories_tab:
+            if App().tabs.tabs["memories"]:
                 nb_chan = len(channels)
-                App().memories_tab.liststore.insert(step - 1, [str(mem), "", nb_chan])
+                App().tabs.tabs["memories"].liststore.insert(
+                    step - 1, [str(mem), "", nb_chan]
+                )
 
             App().sequence.position = step
 
@@ -291,26 +293,26 @@ class Window(Gtk.ApplicationWindow):
                     App().memories[i].channels[channel - 1] = level
 
             # Update Presets Tab if exist
-            if App().memories_tab:
+            if App().tabs.tabs["memories"]:
                 nb_chan = sum(
                     bool(App().memories[i].channels[chan])
                     for chan in range(MAX_CHANNELS)
                 )
 
-                treeiter = App().memories_tab.liststore.get_iter(i)
-                App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
-                App().memories_tab.channels_view.update()
+                treeiter = App().tabs.tabs["memories"].liststore.get_iter(i)
+                App().tabs.tabs["memories"].liststore.set_value(treeiter, 2, nb_chan)
+                App().tabs.tabs["memories"].channels_view.update()
 
         # Update Sequential edition Tabs
-        if App().sequences_tab:
+        if App().tabs.tabs["sequences"]:
             # Main Playback selected ?
-            path, _focus_column = App().sequences_tab.treeview1.get_cursor()
+            path, _focus_column = App().tabs.tabs["sequences"].treeview1.get_cursor()
             if path:
                 selected = path.get_indices()[0]
-                sequence = App().sequences_tab.liststore1[selected][0]
+                sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
                 if sequence == App().sequence.index:
                     # Yes, update it
-                    App().sequences_tab.on_sequence_changed()
+                    App().tabs.tabs["sequences"].on_sequence_changed()
 
         # Tag filename as modified
         App().ascii.modified = True

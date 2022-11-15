@@ -180,16 +180,18 @@ class ChanneltimeTab(Gtk.Paned):
                 # Update Delay value
                 self.step.channel_time[channel].delay = float(text)
             # Update Sequence Tab if Open on the good sequence
-            if App().sequences_tab:
+            if App().tabs.tabs["sequences"]:
                 # Start to find the selected sequence
-                seq_path, _focus_column = App().sequences_tab.treeview1.get_cursor()
+                seq_path, _focus_column = (
+                    App().tabs.tabs["sequences"].treeview1.get_cursor()
+                )
                 selected = seq_path.get_indices()
-                sequence = App().sequences_tab.liststore1[selected][0]
+                sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    App().sequences_tab.liststore2[path][8] = (
+                    App().tabs.tabs["sequences"].liststore2[path][8] = (
                         "" if ct_nb == 0 else str(ct_nb)
                     )
             # Update Total Time
@@ -266,16 +268,18 @@ class ChanneltimeTab(Gtk.Paned):
                 # Update Time value
                 self.step.channel_time[channel].time = float(text)
             # Update Sequence Tab if Open on the good sequence
-            if App().sequences_tab:
+            if App().tabs.tabs["sequences"]:
                 # Start to find the selected sequence
-                seq_path, _focus_column = App().sequences_tab.treeview1.get_cursor()
+                seq_path, _focus_column = (
+                    App().tabs.tabs["sequences"].treeview1.get_cursor()
+                )
                 selected = seq_path.get_indices()
-                sequence = App().sequences_tab.liststore1[selected][0]
+                sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    App().sequences_tab.liststore2[path][8] = (
+                    App().tabs.tabs["sequences"].liststore2[path][8] = (
                         "" if ct_nb == 0 else str(ct_nb)
                     )
             # Update Total Time
@@ -323,11 +327,7 @@ class ChanneltimeTab(Gtk.Paned):
             time = self.step.channel_time[channel].time
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
-
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().channeltime_tab = None
+        App().tabs.close("channel_time")
 
     def on_key_press_event(self, _widget, event):
         """Key has been pressed
@@ -381,10 +381,7 @@ class ChanneltimeTab(Gtk.Paned):
             time = self.step.channel_time[channel].time
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
-
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().channeltime_tab = None
+        App().tabs.close("channel_time")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
@@ -461,16 +458,16 @@ class CTChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().channeltime_tab:
+        if not App().tabs.tabs["channel_time"]:
             return False
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        step = App().channeltime_tab.step
+        step = App().tabs.tabs["channel_time"].step
         channels = step.cue.channels
-        path, _focus_column = App().channeltime_tab.treeview.get_cursor()
+        path, _focus_column = App().tabs.tabs["channel_time"].treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-            channel = App().channeltime_tab.liststore[row][0]
+            channel = App().tabs.tabs["channel_time"].liststore[row][0]
             if channel - 1 == channel_index or child.is_selected():
                 channel_widget.level = channels[channel_index]
                 channel_widget.next_level = channels[channel_index]

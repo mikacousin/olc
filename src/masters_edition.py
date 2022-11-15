@@ -266,10 +266,7 @@ class MastersTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().masters_tab = None
+        App().tabs.close("masters")
 
     def on_key_press_event(self, _widget, event):
         """Key has been pressed
@@ -330,9 +327,7 @@ class MastersTab(Gtk.Paned):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().masters_tab = None
+        App().tabs.close("masters")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
@@ -410,8 +405,8 @@ class MastersTab(Gtk.Paned):
                         channel_widget = self.channels_view.get_channel_widget(chan)
                         channels[chan] = channel_widget.level
                     # Update Preset Tab if open
-                    if App().memories_tab:
-                        App().memories_tab.channels_view.update()
+                    if App().tabs.tabs["memories"]:
+                        App().tabs.tabs["memories"].channels_view.update()
                     App().masters[row].set_level(master_level)
             # Type : Channels
             if App().masters[row].content_type == 2:
@@ -449,8 +444,8 @@ class MastersTab(Gtk.Paned):
                         channel_widget = self.channels_view.get_channel_widget(chan + 1)
                         grp.channels[chan + 1] = channel_widget.level
                     # Update Group Tab if open
-                    if App().group_tab:
-                        App().group_tab.channels_view.update()
+                    if App().tabs.tabs["groups"]:
+                        App().tabs.tabs["groups"].channels_view.update()
             self.keystring = ""
             App().window.statusbar.push(App().window.context_id, self.keystring)
             return True
@@ -481,7 +476,7 @@ class MasterChannelsView(ChannelsView):
             channel_widget.level = level
             channel_widget.next_level = level
             channel_widget.queue_draw()
-            App().masters_tab.user_channels[channel - 1] = level
+            App().tabs.tabs["masters"].user_channels[channel - 1] = level
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display
@@ -492,13 +487,13 @@ class MasterChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().masters_tab:
+        if not App().tabs.tabs["masters"]:
             return False
-        treeview = App().masters_tab.stack.get_visible_child()
+        treeview = App().tabs.tabs["masters"].stack.get_visible_child()
         path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-            page = int(App().masters_tab.stack.get_visible_child_name())
+            page = int(App().tabs.tabs["masters"].stack.get_visible_child_name())
             index = row + (page * 10)
             # Master type is None or Sequence: No channels to display
             if App().masters[index].content_type in (0, 3):
@@ -602,7 +597,7 @@ class MasterChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
+        user_channels = App().tabs.tabs["masters"].user_channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)
@@ -744,7 +739,7 @@ class MasterChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = App().masters_tab.user_channels
+        user_channels = App().tabs.tabs["masters"].user_channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)

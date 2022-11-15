@@ -117,10 +117,7 @@ class TrackChannelsTab(Gtk.Grid):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().track_channels_tab = None
+        App().tabs.close("track_channels")
 
     def on_key_press_event(self, _widget, event):
         """Keyboard events
@@ -160,9 +157,7 @@ class TrackChannelsTab(Gtk.Grid):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().track_channels_tab = None
+        App().tabs.close("track_channels")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""

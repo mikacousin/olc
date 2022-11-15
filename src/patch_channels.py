@@ -54,9 +54,7 @@ class PatchChannelsTab(Gtk.Box):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        page = App().window.playback.page_num(self)
-        App().window.playback.remove_page(page)
-        App().patch_channels_tab = None
+        App().tabs.close("patch_channels")
 
     def on_key_press_event(self, _widget, event):
         """Key press events
@@ -105,9 +103,7 @@ class PatchChannelsTab(Gtk.Box):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().patch_channels_tab = None
+        App().tabs.close("patch_channels")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""

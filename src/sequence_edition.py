@@ -585,10 +585,7 @@ class SequenceTab(Gtk.Grid):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().sequences_tab = None
+        App().tabs.close("sequences")
 
     def on_key_press_event(self, _widget, event):
         """Receive keyboard event
@@ -640,9 +637,7 @@ class SequenceTab(Gtk.Grid):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().sequences_tab = None
+        App().tabs.close("sequences")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
@@ -841,9 +836,9 @@ class SequenceTab(Gtk.Grid):
             if sequence is App().sequence:
                 App().memories.insert(step, cue)
                 # Update Preset Tab if exist
-                if App().memories_tab:
+                if App().tabs.tabs["memories"]:
                     nb_chan = len(channels)
-                    App().memories_tab.liststore.insert(
+                    App().tabs.tabs["memories"].liststore.insert(
                         step - 1, [str(mem), "", nb_chan]
                     )
             # Update Display
@@ -875,11 +870,13 @@ class SequenceTab(Gtk.Grid):
                 path = Gtk.TreePath.new_from_indices([step - 1])
                 self.treeview2.set_cursor(path, None, False)
                 # Update Presets Tab if exist
-                if sequence is App().sequence and App().memories_tab:
+                if sequence is App().sequence and App().tabs.tabs["memories"]:
                     nb_chan = len(App().memories[step - 1].channels)
-                    treeiter = App().memories_tab.liststore.get_iter(step - 1)
-                    App().memories_tab.liststore.set_value(treeiter, 2, nb_chan)
-                    App().memories_tab.channels_view.update()
+                    treeiter = App().tabs.tabs["memories"].liststore.get_iter(step - 1)
+                    App().tabs.tabs["memories"].liststore.set_value(
+                        treeiter, 2, nb_chan
+                    )
+                    App().tabs.tabs["memories"].channels_view.update()
                 # Update Channels tab
                 if sequence is App().sequence and step == App().sequence.position + 1:
                     for channel in range(MAX_CHANNELS):
@@ -1050,7 +1047,7 @@ class SeqChannelsView(ChannelsView):
             channel_widget.level = level
             channel_widget.next_level = level
             channel_widget.queue_draw()
-            App().sequences_tab.user_channels[channel - 1] = level
+            App().tabs.tabs["sequences"].user_channels[channel - 1] = level
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display
@@ -1061,10 +1058,10 @@ class SeqChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().sequences_tab:
+        if not App().tabs.tabs["sequences"]:
             return False
-        sequence = App().sequences_tab.get_selected_sequence()
-        step = App().sequences_tab.get_selected_step()
+        sequence = App().tabs.tabs["sequences"].get_selected_sequence()
+        step = App().tabs.tabs["sequences"].get_selected_step()
         if not sequence or not step:
             return False
         channel = child.get_index() + 1
@@ -1087,7 +1084,7 @@ class SeqChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channel = App().sequences_tab.user_channels[channel_index]
+        user_channel = App().tabs.tabs["sequences"].user_channels[channel_index]
         if channel_level or child.is_selected():
             if user_channel == -1:
                 channel_widget.level = channel_level
@@ -1131,7 +1128,7 @@ class SeqChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channel = App().sequences_tab.user_channels[channel_index]
+        user_channel = App().tabs.tabs["sequences"].user_channels[channel_index]
         if channel_level or child.is_selected():
             if user_channel == -1:
                 channel_widget.level = channel_level

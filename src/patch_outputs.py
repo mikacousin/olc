@@ -102,10 +102,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().patch_outputs_tab = None
+        App().tabs.close("patch_outputs")
 
     def on_key_press_event(self, _widget, event):
         """On key press event
@@ -151,10 +148,7 @@ class PatchOutputsTab(Gtk.Box):
             self._stop_test()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        notebook = self.get_parent()
-        page = notebook.get_current_page()
-        notebook.remove_page(page)
-        App().patch_outputs_tab = None
+        App().tabs.close("patch_outputs")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""

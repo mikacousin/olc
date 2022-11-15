@@ -42,6 +42,7 @@ from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
 from olc.sequence_edition import SequenceTab  # noqa: E402
 from olc.settings import SettingsDialog  # noqa: E402
+from olc.tabs_manager import Tabs  # noqa: E402
 from olc.track_channels import TrackChannelsTab  # noqa: E402
 from olc.virtual_console import VirtualConsoleWindow  # noqa: E402
 from olc.window import Window  # noqa: E402
@@ -123,15 +124,7 @@ class Application(Gtk.Application):
         self.shortcuts = None
 
         # For Tabs
-        self.patch_outputs_tab = None
-        self.patch_channels_tab = None
-        self.masters_tab = None
-        self.memories_tab = None
-        self.group_tab = None
-        self.sequences_tab = None
-        self.channeltime_tab = None
-        self.track_channels_tab = None
-        self.inde_tab = None
+        self.tabs = Tabs()
 
         self.dmx = None
         self.crossfade = None
@@ -337,8 +330,10 @@ class Application(Gtk.Application):
                 else:
                     next_level = level
                 self.window.live_view.update_channel_widget(channel, level, next_level)
-                if self.patch_outputs_tab:
-                    self.patch_outputs_tab.outputs[output + (512 * index)].queue_draw()
+                if self.tabs.tabs["patch_outputs"]:
+                    self.tabs.tabs["patch_outputs"].outputs[
+                        output + (512 * index)
+                    ].queue_draw()
 
     def _new(self, _action, _parameter):
         """New show"""
@@ -376,34 +371,34 @@ class Application(Gtk.Application):
         self.window.update_channels_display(self.sequence.position)
 
         # Redraw Patch Tabs
-        if self.patch_outputs_tab:
-            self.patch_outputs_tab.flowbox.queue_draw()
-        if self.patch_channels_tab:
-            self.patch_channels_tab.flowbox.queue_draw()
+        if self.tabs.tabs["patch_outputs"]:
+            self.tabs.tabs["patch_outputs"].flowbox.queue_draw()
+        if self.tabs.tabs["patch_channels"]:
+            self.tabs.tabs["patch_channels"].flowbox.queue_draw()
 
         # Redraw Group Tab
-        if self.group_tab:
+        if self.tabs.tabs["groups"]:
             # Remove old groups
-            self.group_tab.scrolled.remove(self.group_tab.flowbox)
-            self.group_tab.flowbox.destroy()
+            self.tabs.tabs["groups"].scrolled.remove(self.tabs.tabs["groups"].flowbox)
+            self.tabs.tabs["groups"].flowbox.destroy()
             # Update Group Tab
-            self.group_tab.populate_tab()
-            self.group_tab.channels_view.update()
-            self.group_tab.flowbox.invalidate_filter()
+            self.tabs.tabs["groups"].populate_tab()
+            self.tabs.tabs["groups"].channels_view.update()
+            self.tabs.tabs["groups"].flowbox.invalidate_filter()
             self.window.show_all()
 
         # Redraw Memories Tab
-        if self.memories_tab:
-            self.memories_tab.liststore.clear()
+        if self.tabs.tabs["memories"]:
+            self.tabs.tabs["memories"].liststore.clear()
             # Select first Memory
             path = Gtk.TreePath.new_first()
-            self.memories_tab.treeview.set_cursor(path, None, False)
+            self.tabs.tabs["memories"].treeview.set_cursor(path, None, False)
             for mem in self.memories:
                 channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
-                self.memories_tab.liststore.append(
+                self.tabs.tabs["memories"].liststore.append(
                     [str(mem.memory), mem.text, channels]
                 )
-            self.memories_tab.channels_view.update()
+            self.tabs.tabs["memories"].channels_view.update()
 
         # Redraw Masters in Virtual Console
         if self.virtual_console and self.virtual_console.props.visible:
@@ -419,49 +414,53 @@ class Application(Gtk.Application):
             self.virtual_console.masters_pad.queue_draw()
 
         # Redraw Sequences Tab
-        if self.sequences_tab:
-            self.sequences_tab.liststore1.clear()
+        if self.tabs.tabs["sequences"]:
+            self.tabs.tabs["sequences"].liststore1.clear()
 
-            self.sequences_tab.liststore1.append(
+            self.tabs.tabs["sequences"].liststore1.append(
                 [self.sequence.index, self.sequence.type_seq, self.sequence.text]
             )
 
             for chaser in self.chasers:
-                self.sequences_tab.liststore1.append(
+                self.tabs.tabs["sequences"].liststore1.append(
                     [chaser.index, chaser.type_seq, chaser.text]
                 )
 
-            self.sequences_tab.treeview1.set_model(self.sequences_tab.liststore1)
+            self.tabs.tabs["sequences"].treeview1.set_model(
+                self.tabs.tabs["sequences"].liststore1
+            )
             path = Gtk.TreePath.new_first()
-            self.sequences_tab.treeview1.set_cursor(path, None, False)
-            self.sequences_tab.on_sequence_changed()
+            self.tabs.tabs["sequences"].treeview1.set_cursor(path, None, False)
+            self.tabs.tabs["sequences"].on_sequence_changed()
 
         # Redraw Masters Tab
-        if self.masters_tab:
+        if self.tabs.tabs["masters"]:
             for page in range(10):
-                self.masters_tab.liststores[page].clear()
-                self.masters_tab.populate_tab(page)
-            self.masters_tab.channels_view.update()
+                self.tabs.tabs["masters"].liststores[page].clear()
+                self.tabs.tabs["masters"].populate_tab(page)
+            self.tabs.tabs["masters"].channels_view.update()
 
         # Redraw Channel Time Tab
-        if self.channeltime_tab:
-            self.channeltime_tab.liststore.clear()
-            self.channeltime_tab.channels_view.update()
+        if self.tabs.tabs["channel_time"]:
+            self.tabs.tabs["channel_time"].liststore.clear()
+            self.tabs.tabs["channel_time"].channels_view.update()
 
         # Redraw Track Channels
-        if self.track_channels_tab:
-            self.track_channels_tab.populate_steps()
-            self.track_channels_tab.flowbox.invalidate_filter()
-            self.track_channels_tab.show_all()
-            self.track_channels_tab.update_display()
+        if self.tabs.tabs["track_channels"]:
+            self.tabs.tabs["track_channels"].populate_steps()
+            self.tabs.tabs["track_channels"].flowbox.invalidate_filter()
+            self.tabs.tabs["track_channels"].show_all()
+            self.tabs.tabs["track_channels"].update_display()
 
         # Redraw Independents Tab
-        if self.inde_tab:
-            self.inde_tab.liststore.clear()
+        if self.tabs.tabs["indes"]:
+            self.tabs.tabs["indes"].liststore.clear()
             for inde in self.independents.independents:
-                self.inde_tab.liststore.append([inde.number, inde.inde_type, inde.text])
+                self.tabs.tabs["indes"].liststore.append(
+                    [inde.number, inde.inde_type, inde.text]
+                )
             path = Gtk.TreePath.new_first()
-            self.inde_tab.treeview.set_cursor(path, None, False)
+            self.tabs.tabs["indes"].treeview.set_cursor(path, None, False)
 
         self.window.live_view.grab_focus()
         self.window.live_view.channels_view.last_selected_channel = ""
@@ -554,158 +553,27 @@ class Application(Gtk.Application):
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
-        if self.patch_outputs_tab is None:
-            self.patch_outputs_tab = PatchOutputsTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.patch_outputs_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Patch Outputs"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.patch_outputs_tab, label)
-            self.window.playback.set_tab_reorderable(self.patch_outputs_tab, True)
-            self.window.playback.set_tab_detachable(self.patch_outputs_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.patch_outputs_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs")
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
-        if self.patch_channels_tab is None:
-            self.patch_channels_tab = PatchChannelsTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.patch_channels_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Patch Channels"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.patch_channels_tab, label)
-            self.window.playback.set_tab_reorderable(self.patch_channels_tab, True)
-            self.window.playback.set_tab_detachable(self.patch_channels_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.patch_channels_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels")
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""
-        if self.track_channels_tab is None:
-            self.track_channels_tab = TrackChannelsTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.track_channels_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Track Channels"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.track_channels_tab, label)
-            self.window.playback.set_tab_reorderable(self.track_channels_tab, True)
-            self.window.playback.set_tab_detachable(self.track_channels_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.track_channels_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("track_channels", TrackChannelsTab, "Track Channels")
 
     def memories_cb(self, _action, _parameter):
         """Create Memories Tab"""
-        if self.memories_tab is None:
-            self.memories_tab = CuesEditionTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.memories_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Memories"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.memories_tab, label)
-            self.window.playback.set_tab_reorderable(self.memories_tab, True)
-            self.window.playback.set_tab_detachable(self.memories_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.memories_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("memories", CuesEditionTab, "Memories")
 
     def groups_cb(self, _action, _parameter):
         """Create Groups Tab"""
-        if self.group_tab is None:
-            self.group_tab = GroupTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.group_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Groups"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.group_tab, label)
-            self.window.playback.set_tab_reorderable(self.group_tab, True)
-            self.window.playback.set_tab_detachable(self.group_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.group_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("groups", GroupTab, "Groups")
 
     def sequences(self, _action, _parameter):
         """Create Sequences Tab"""
-        if self.sequences_tab is None:
-            self.sequences_tab = SequenceTab()
-
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.sequences_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Sequences"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.sequences_tab, label)
-            self.window.playback.set_tab_reorderable(self.sequences_tab, True)
-            self.window.playback.set_tab_detachable(self.sequences_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.sequences_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("sequences", SequenceTab, "Sequences")
 
     def channeltime(self, sequence, step):
         """Create Channel Time Tab
@@ -714,79 +582,15 @@ class Application(Gtk.Application):
             sequence: Sequence number
             step: Position in sequence
         """
-        if self.channeltime_tab is None:
-            self.channeltime_tab = ChanneltimeTab(sequence, step)
-
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.channeltime_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Channel Time"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.channeltime_tab, label)
-            self.window.playback.set_tab_reorderable(self.channeltime_tab, True)
-            self.window.playback.set_tab_detachable(self.channeltime_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.channeltime_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("channel_time", ChanneltimeTab, "Sequences", sequence, step)
 
     def _masters(self, _action, _parameter):
         """Create Masters Tab"""
-        if self.masters_tab is None:
-            self.masters_tab = MastersTab()
-
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.masters_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Master List"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.masters_tab, label)
-            self.window.playback.set_tab_reorderable(self.masters_tab, True)
-            self.window.playback.set_tab_detachable(self.masters_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.masters_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("masters", MastersTab, "Masters")
 
     def _independents(self, _action, _parameter):
         """Create Independents Tab"""
-        if self.inde_tab is None:
-            self.inde_tab = IndependentsTab()
-            # Label with a close icon
-            button = Gtk.Button()
-            button.set_relief(Gtk.ReliefStyle.NONE)
-            button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
-            button.connect("clicked", self.inde_tab.on_close_icon)
-            label = Gtk.Box()
-            label.pack_start(Gtk.Label("Independents"), False, False, 0)
-            label.pack_start(button, False, False, 0)
-            label.show_all()
-
-            self.window.playback.append_page(self.inde_tab, label)
-            self.window.playback.set_tab_reorderable(self.inde_tab, True)
-            self.window.playback.set_tab_detachable(self.inde_tab, True)
-            self.window.show_all()
-            self.window.playback.set_current_page(-1)
-        else:
-            page = self.window.playback.page_num(self.inde_tab)
-            self.window.playback.set_current_page(page)
-
-        self.window.playback.grab_focus()
+        self.tabs.open("indes", IndependentsTab, "Independents")
 
     def _virtual_console(self, _action, _parameter):
         """Virtual Console Window"""

@@ -72,10 +72,7 @@ class IndependentsTab(Gtk.Paned):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        notebook = self.get_parent()
-        page = notebook.page_num(self)
-        notebook.remove_page(page)
-        App().inde_tab = None
+        App().tabs.close("indes")
 
     def text_edited(self, _widget, path, text):
         """Independent text edited
@@ -135,9 +132,7 @@ class IndependentsTab(Gtk.Paned):
         """Close Tab"""
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
-        page = App().window.playback.get_current_page()
-        App().window.playback.remove_page(page)
-        App().inde_tab = None
+        App().tabs.close("indes")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         self.keystring = ""
@@ -227,7 +222,7 @@ class IndeChannelsView(ChannelsView):
             channel_widget.level = level
             channel_widget.next_level = level
             channel_widget.queue_draw()
-            App().inde_tab.user_channels[channel - 1] = level
+            App().tabs.tabs["indes"].user_channels[channel - 1] = level
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display
@@ -238,10 +233,10 @@ class IndeChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().independents.independents or not App().inde_tab:
+        if not App().independents.independents or not App().tabs.tabs["indes"]:
             return False
         # Find selected independent
-        path, _focus_column = App().inde_tab.treeview.get_cursor()
+        path, _focus_column = App().tabs.tabs["indes"].treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if self.view_mode == VIEW_MODES["Active"]:
@@ -263,7 +258,7 @@ class IndeChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = App().inde_tab.user_channels
+        user_channels = App().tabs.tabs["indes"].user_channels
         channels = App().independents.independents[row].levels
         if channels[channel_index] or child.is_selected():
             if user_channels[channel_index] == -1:
@@ -309,7 +304,7 @@ class IndeChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = App().inde_tab.user_channels
+        user_channels = App().tabs.tabs["indes"].user_channels
         channels = App().independents.independents[row].levels
         if channels[channel_index] or child.is_selected():
             if user_channels[channel_index] == -1:

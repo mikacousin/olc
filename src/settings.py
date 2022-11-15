@@ -308,16 +308,16 @@ class SettingsDialog:
         App().window.live_view.channels_view.update()
 
         # Redraw Sequences Tab if open
-        if App().sequences_tab:
-            App().sequences_tab.channels_view.update()
+        if App().tabs.tabs["sequences"]:
+            App().tabs.tabs["sequences"].channels_view.update()
 
         # Redraw Groups Tab if exist
-        if App().group_tab:
-            App().group_tab.channels_view.update()
+        if App().tabs.tabs["groups"]:
+            App().tabs.tabs["groups"].channels_view.update()
 
         # Redraw Memories Tab if exist
-        if App().memories_tab:
-            App().memories_tab.channels_view.update()
+        if App().tabs.tabs["memories"]:
+            App().tabs.tabs["memories"].channels_view.update()
 
     def _on_btn_clicked(self, _button):
         address_ip = self.entry_client_ip.get_text()

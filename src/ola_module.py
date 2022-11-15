@@ -88,9 +88,12 @@ class OlaThread(threading.Thread):
                     level,
                     next_level,
                 )
-                if App().patch_outputs_tab:
+                if App().tabs.tabs["patch_outputs"]:
                     GLib.idle_add(
-                        App().patch_outputs_tab.outputs[output + (idx * 512)].queue_draw
+                        App()
+                        .tabs.tabs["patch_outputs"]
+                        .outputs[output + (idx * 512)]
+                        .queue_draw
                     )
         GLib.idle_add(App().window.live_view.channels_view.update)
         # Save DMX frame for next call

@@ -76,10 +76,10 @@ class GroupWidget(Gtk.Widget):
         """Group clicked"""
         child = self.get_parent()
         if not child.is_selected():
-            App().group_tab.flowbox.unselect_all()
-            App().group_tab.flowbox.select_child(child)
-            App().group_tab.last_group_selected = str(child.get_index())
-            App().group_tab.channels_view.update()
+            App().tabs.tabs["groups"].flowbox.unselect_all()
+            App().tabs.tabs["groups"].flowbox.select_child(child)
+            App().tabs.tabs["groups"].last_group_selected = str(child.get_index())
+            App().tabs.tabs["groups"].channels_view.update()
         else:
             self.popover.popup()
 

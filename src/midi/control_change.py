@@ -141,11 +141,11 @@ class MidiControlChanges:
             if child == App().window.live_view.channels_view:
                 channels_view = child
             elif child in (
-                App().group_tab,
-                App().inde_tab,
-                App().masters_tab,
-                App().memories_tab,
-                App().sequences_tab,
+                App().tabs.tabs["groups"],
+                App().tabs.tabs["indes"],
+                App().tabs.tabs["masters"],
+                App().tabs.tabs["memories"],
+                App().tabs.tabs["sequences"],
             ):
                 channels_view = child.channels_view
             if channels_view:
