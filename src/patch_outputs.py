@@ -146,8 +146,6 @@ class PatchOutputsTab(Gtk.Box):
         """Close Tab"""
         if self.test:
             self._stop_test()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
         App().tabs.close("patch_outputs")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103

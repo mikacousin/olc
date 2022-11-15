@@ -635,8 +635,6 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
         App().tabs.close("sequences")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103

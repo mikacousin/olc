@@ -237,8 +237,6 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_Escape(self) -> None:  # pylint: disable=C0103
         """Close Tab"""
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
         App().tabs.close("groups")
 
     def _keypress_l(self) -> None:
