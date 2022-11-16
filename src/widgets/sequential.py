@@ -214,8 +214,8 @@ class SequentialWidget(Gtk.Widget):
             cr.set_dash([])
             # draw Time Cursor
             position = App().sequence.position
-            old_level = App().sequence.steps[position].cue.channels[channel - 1]
-            next_level = App().sequence.steps[position + 1].cue.channels[channel - 1]
+            old_level = App().sequence.steps[position].cue.channels.get(channel, 0)
+            next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
             # Time Cursor follow In or Out Crossfade
             if next_level < old_level:
                 # Out Crossfade
