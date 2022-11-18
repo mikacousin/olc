@@ -52,6 +52,10 @@ class PatchChannelsTab(Gtk.Box):
         self.flowbox.select_child(child)
         self.last_chan_selected = "0"
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.flowbox.queue_draw()
+
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
         App().tabs.close("patch_channels")

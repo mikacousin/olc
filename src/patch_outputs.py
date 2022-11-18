@@ -100,6 +100,10 @@ class PatchOutputsTab(Gtk.Box):
             App().window.live_view.channels_view.update()
         self.get_parent().grab_focus()
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.flowbox.queue_draw()
+
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
         App().tabs.close("patch_outputs")

@@ -131,6 +131,19 @@ class SequenceTab(Gtk.Grid):
 
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.liststore1.clear()
+        self.liststore1.append(
+            [App().sequence.index, App().sequence.type_seq, App().sequence.text]
+        )
+        for chaser in App().chasers:
+            self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
+        self.treeview1.set_model(self.liststore1)
+        path = Gtk.TreePath.new_first()
+        self.treeview1.set_cursor(path, None, False)
+        self.on_sequence_changed()
+
     def get_selected_sequence(self) -> Optional[Sequence]:
         """Get selected sequence
 

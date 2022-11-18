@@ -84,3 +84,9 @@ class Tabs:
             page = notebook.page_num(self.tabs[tab_name])
             notebook.remove_page(page)
             self.tabs[tab_name] = None
+
+    def refresh_all(self) -> None:
+        """Refresh all open tabs"""
+        for tab in self.tabs.values():
+            if tab:
+                tab.refresh()

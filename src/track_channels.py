@@ -115,6 +115,13 @@ class TrackChannelsTab(Gtk.Grid):
             self.steps[step].levels = levels[step]
         self.flowbox.queue_draw()
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.populate_steps()
+        self.flowbox.invalidate_filter()
+        self.show_all()
+        self.update_display()
+
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
         App().tabs.close("track_channels")

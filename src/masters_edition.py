@@ -115,6 +115,13 @@ class MastersTab(Gtk.Paned):
             notebook.grab_focus()
         return False
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        for page in range(10):
+            self.liststores[page].clear()
+            self.populate_tab(page)
+        self.channels_view.update()
+
     def populate_tab(self, page: int) -> None:
         """Add Masters to tab
 

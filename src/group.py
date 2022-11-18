@@ -186,6 +186,17 @@ class GroupTab(Gtk.Paned):
             self.flowbox.add(GroupWidget(App().groups[i].index, App().groups[i].text))
         self.scrolled.add(self.flowbox)
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        # Remove Old Groups
+        self.scrolled.remove(self.flowbox)
+        self.flowbox.destroy()
+        # Update Group tab
+        self.populate_tab()
+        self.channels_view.update()
+        self.flowbox.invalidate_filter()
+        App().window.show_all()
+
     def on_close_icon(self, _widget) -> None:
         """Close Tab with the icon clicked"""
         App().tabs.close("groups")

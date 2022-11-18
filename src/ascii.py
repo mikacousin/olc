@@ -156,54 +156,8 @@ class Ascii:
         # Redraw Main Playback
         App().window.playback.update_sequence_display()
 
-        # Redraw Group Tab if exist
-        if App().tabs.tabs["groups"]:
-            # Remove Old Groups
-            App().tabs.tabs["groups"].scrolled.remove(App().tabs.tabs["groups"].flowbox)
-            App().tabs.tabs["groups"].flowbox.destroy()
-            # Update Group tab
-            App().tabs.tabs["groups"].populate_tab()
-            App().tabs.tabs["groups"].channels_view.update()
-            App().tabs.tabs["groups"].flowbox.invalidate_filter()
-            App().window.show_all()
-
-        # Redraw Sequences Tab if exist
-        if App().tabs.tabs["sequences"]:
-            App().tabs.tabs["sequences"].liststore1.clear()
-
-            App().tabs.tabs["sequences"].liststore1.append(
-                [App().sequence.index, App().sequence.type_seq, App().sequence.text]
-            )
-
-            for chaser in App().chasers:
-                App().tabs.tabs["sequences"].liststore1.append(
-                    [chaser.index, chaser.type_seq, chaser.text]
-                )
-
-            App().tabs.tabs["sequences"].treeview1.set_model(
-                App().tabs.tabs["sequences"].liststore1
-            )
-            path = Gtk.TreePath.new_first()
-            App().tabs.tabs["sequences"].treeview1.set_cursor(path, None, False)
-            App().tabs.tabs["sequences"].on_sequence_changed()
-
-        # Redraw Patch Outputs Tab if exist
-        if App().tabs.tabs["patch_outputs"]:
-            App().tabs.tabs["patch_outputs"].flowbox.queue_draw()
-
-        # Redraw Patch Channels Tab if exist
-        if App().tabs.tabs["patch_channels"]:
-            App().tabs.tabs["patch_channels"].flowbox.queue_draw()
-
-        # Redraw List of Memories Tab if exist
-        if App().tabs.tabs["memories"]:
-            App().tabs.tabs["memories"].liststore.clear()
-            for mem in App().memories:
-                channels = len(mem.channels)
-                App().tabs.tabs["memories"].liststore.append(
-                    [str(mem.memory), mem.text, channels]
-                )
-            App().tabs.tabs["memories"].channels_view.update()
+        # Redraw all open tabs
+        App().tabs.refresh_all()
 
         # Redraw Masters if Virtual Console is open
         if App().virtual_console and App().virtual_console.props.visible:
@@ -216,30 +170,6 @@ class Ascii:
                     )
                     App().virtual_console.flashes[master.number - 1].label = master.text
             App().virtual_console.masters_pad.queue_draw()
-
-        # Redraw Edit Masters Tab if exist
-        if App().tabs.tabs["masters"]:
-            for page in range(10):
-                App().tabs.tabs["masters"].liststores[page].clear()
-                App().tabs.tabs["masters"].populate_tab(page)
-            App().tabs.tabs["masters"].channels_view.update()
-
-        # Redraw Independents Tab
-        if App().tabs.tabs["indes"]:
-            App().tabs.tabs["indes"].liststore.clear()
-            for inde in App().independents.independents:
-                App().tabs.tabs["indes"].liststore.append(
-                    [inde.number, inde.inde_type, inde.text]
-                )
-            path = Gtk.TreePath.new_first()
-            App().tabs.tabs["indes"].treeview.set_cursor(path, None, False)
-
-        # Redraw Track Channels Tab
-        if App().tabs.tabs["track_channels"]:
-            App().tabs.tabs["track_channels"].populate_steps()
-            App().tabs.tabs["track_channels"].flowbox.invalidate_filter()
-            App().tabs.tabs["track_channels"].show_all()
-            App().tabs.tabs["track_channels"].update_display()
 
         App().window.live_view.channels_view.flowbox.unselect_all()
         App().window.live_view.channels_view.update()

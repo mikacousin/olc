@@ -128,6 +128,11 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.add2(self.scrolled2)
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.liststore.clear()
+        self.channels_view.update()
+
     def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
         """Give focus to notebook
 

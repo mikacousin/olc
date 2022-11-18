@@ -370,35 +370,8 @@ class Application(Gtk.Application):
         self.dmx.send()
         self.window.update_channels_display(self.sequence.position)
 
-        # Redraw Patch Tabs
-        if self.tabs.tabs["patch_outputs"]:
-            self.tabs.tabs["patch_outputs"].flowbox.queue_draw()
-        if self.tabs.tabs["patch_channels"]:
-            self.tabs.tabs["patch_channels"].flowbox.queue_draw()
-
-        # Redraw Group Tab
-        if self.tabs.tabs["groups"]:
-            # Remove old groups
-            self.tabs.tabs["groups"].scrolled.remove(self.tabs.tabs["groups"].flowbox)
-            self.tabs.tabs["groups"].flowbox.destroy()
-            # Update Group Tab
-            self.tabs.tabs["groups"].populate_tab()
-            self.tabs.tabs["groups"].channels_view.update()
-            self.tabs.tabs["groups"].flowbox.invalidate_filter()
-            self.window.show_all()
-
-        # Redraw Memories Tab
-        if self.tabs.tabs["memories"]:
-            self.tabs.tabs["memories"].liststore.clear()
-            # Select first Memory
-            path = Gtk.TreePath.new_first()
-            self.tabs.tabs["memories"].treeview.set_cursor(path, None, False)
-            for mem in self.memories:
-                channels = sum(1 for chan in range(MAX_CHANNELS) if mem.channels[chan])
-                self.tabs.tabs["memories"].liststore.append(
-                    [str(mem.memory), mem.text, channels]
-                )
-            self.tabs.tabs["memories"].channels_view.update()
+        # Redraw all open tabs
+        self.tabs.refresh_all()
 
         # Redraw Masters in Virtual Console
         if self.virtual_console and self.virtual_console.props.visible:
@@ -412,55 +385,6 @@ class Application(Gtk.Application):
                     )
                     self.virtual_console.flashes[master.number - 1].label = master.text
             self.virtual_console.masters_pad.queue_draw()
-
-        # Redraw Sequences Tab
-        if self.tabs.tabs["sequences"]:
-            self.tabs.tabs["sequences"].liststore1.clear()
-
-            self.tabs.tabs["sequences"].liststore1.append(
-                [self.sequence.index, self.sequence.type_seq, self.sequence.text]
-            )
-
-            for chaser in self.chasers:
-                self.tabs.tabs["sequences"].liststore1.append(
-                    [chaser.index, chaser.type_seq, chaser.text]
-                )
-
-            self.tabs.tabs["sequences"].treeview1.set_model(
-                self.tabs.tabs["sequences"].liststore1
-            )
-            path = Gtk.TreePath.new_first()
-            self.tabs.tabs["sequences"].treeview1.set_cursor(path, None, False)
-            self.tabs.tabs["sequences"].on_sequence_changed()
-
-        # Redraw Masters Tab
-        if self.tabs.tabs["masters"]:
-            for page in range(10):
-                self.tabs.tabs["masters"].liststores[page].clear()
-                self.tabs.tabs["masters"].populate_tab(page)
-            self.tabs.tabs["masters"].channels_view.update()
-
-        # Redraw Channel Time Tab
-        if self.tabs.tabs["channel_time"]:
-            self.tabs.tabs["channel_time"].liststore.clear()
-            self.tabs.tabs["channel_time"].channels_view.update()
-
-        # Redraw Track Channels
-        if self.tabs.tabs["track_channels"]:
-            self.tabs.tabs["track_channels"].populate_steps()
-            self.tabs.tabs["track_channels"].flowbox.invalidate_filter()
-            self.tabs.tabs["track_channels"].show_all()
-            self.tabs.tabs["track_channels"].update_display()
-
-        # Redraw Independents Tab
-        if self.tabs.tabs["indes"]:
-            self.tabs.tabs["indes"].liststore.clear()
-            for inde in self.independents.independents:
-                self.tabs.tabs["indes"].liststore.append(
-                    [inde.number, inde.inde_type, inde.text]
-                )
-            path = Gtk.TreePath.new_first()
-            self.tabs.tabs["indes"].treeview.set_cursor(path, None, False)
 
         self.window.live_view.grab_focus()
         self.window.live_view.channels_view.last_selected_channel = ""

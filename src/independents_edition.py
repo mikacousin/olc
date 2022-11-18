@@ -70,6 +70,14 @@ class IndependentsTab(Gtk.Paned):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         self.channels_view.update()
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.liststore.clear()
+        for inde in App().independents.independents:
+            self.liststore.append([inde.number, inde.inde_type, inde.text])
+        path = Gtk.TreePath.new_first()
+        self.treeview.set_cursor(path, None, False)
+
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
         App().tabs.close("indes")

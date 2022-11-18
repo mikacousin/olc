@@ -80,6 +80,14 @@ class CuesEditionTab(Gtk.Paned):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         self.channels_view.update()
 
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.liststore.clear()
+        for mem in App().memories:
+            channels = len(mem.channels)
+            self.liststore.append([str(mem.memory), mem.text, channels])
+        self.channels_view.update()
+
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
         App().tabs.close("memories")
