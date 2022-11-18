@@ -525,7 +525,6 @@ class GroupTab(Gtk.Paned):
                     App().virtual_console.master_moved(fader)
                     App().virtual_console.flashes[index].label = ""
                     App().virtual_console.flashes[index].queue_draw()
-                break
         # Remove group
         App().groups.pop(index)
         if not App().groups:
