@@ -94,19 +94,38 @@ class LiveChannelsView(ChannelsView):
         Returns:
             True or False
         """
+        channel_widget = child.get_child()
+        channel = child.get_index() + 1
+        channel_widget.next_level = self.get_next_level(channel, channel_widget)
         if self.view_mode == VIEW_MODES["Active"]:
-            channel_widget = child.get_child()
             return bool(
                 channel_widget.level or channel_widget.next_level or child.is_selected()
             )
 
-        channel = child.get_index() + 1
         if self.view_mode == VIEW_MODES["Patched"]:
             return channel in App().patch.channels
         if channel not in App().patch.channels:
-            channel_widget = child.get_child()
             channel_widget.level = 0
         return True
+
+    def get_next_level(self, channel: int, channel_widget) -> int:
+        """Get Channel next level
+
+        Args:
+            channel: Channel number (1 - MAX_CHANNELS)
+            channel_widget: Channel widget
+
+        Returns:
+            Channel next level (0 - 255)
+        """
+        position = App().sequence.position
+        if App().sequence.last > 1 and position < App().sequence.last - 1:
+            next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
+        elif App.sequence.last:
+            next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
+        else:
+            next_level = channel_widget.level
+        return next_level
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change patched channels level with a wheel
