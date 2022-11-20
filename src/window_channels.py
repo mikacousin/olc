@@ -69,28 +69,13 @@ class LiveView(Gtk.Notebook):
         keyname = Gdk.keyval_name(event.keyval)
         if keyname == "Tab":
             return App().window.toggle_focus()
+        if keyname == "ISO_Left_Tab":
+            return App().window.move_tab()
         # Find open page in notebook to send keyboard events
         page = self.get_current_page()
         child = self.get_nth_page(page)
-        if child is App().tabs.tabs["patch_outputs"]:
-            return App().tabs.tabs["patch_outputs"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["patch_channels"]:
-            return App().tabs.tabs["patch_channels"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["groups"]:
-            return App().tabs.tabs["groups"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["sequences"]:
-            return App().tabs.tabs["sequences"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["channel_time"]:
-            return App().tabs.tabs["channel_time"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["track_channels"]:
-            return App().tabs.tabs["track_channels"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["memories"]:
-            return App().tabs.tabs["memories"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["masters"]:
-            return App().tabs.tabs["masters"].on_key_press_event(widget, event)
-        if child is App().tabs.tabs["indes"]:
-            return App().tabs.tabs["indes"].on_key_press_event(widget, event)
-
+        if child in App().tabs.tabs.values():
+            return child.on_key_press_event(widget, event)
         return App().window.on_key_press_event(widget, event)
 
 

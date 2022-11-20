@@ -86,7 +86,7 @@ class Window(Gtk.ApplicationWindow):
     def toggle_focus(self) -> None:
         """Toggle focus Left/Right"""
         focus = self.get_focus()
-        if focus == self.live_view:
+        if focus is self.live_view:
             self.playback.grab_focus()
         else:
             self.live_view.grab_focus()
@@ -99,6 +99,23 @@ class Window(Gtk.ApplicationWindow):
         else:
             self.fullscreen()
             self.full = True
+
+    def move_tab(self) -> None:
+        """Move focused tab on next notebook"""
+        focus = self.get_focus()
+        page = focus.get_current_page()
+        child = focus.get_nth_page(page)
+        label = focus.get_tab_label(child)
+        if focus is self.live_view:
+            self.live_view.detach_tab(child)
+            self.playback.append_page(child, label)
+            self.playback.set_current_page(-1)
+            self.playback.grab_focus()
+        else:
+            self.playback.detach_tab(child)
+            self.live_view.append_page(child, label)
+            self.live_view.set_current_page(-1)
+            self.live_view.grab_focus()
 
     def update_channels_display(self, step):
         """Update Channels levels display
