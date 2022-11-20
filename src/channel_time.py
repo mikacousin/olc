@@ -216,14 +216,11 @@ class ChanneltimeTab(Gtk.Paned):
             # Redraw Main Playback
             if self.sequence == App().sequence:
                 path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
-                path2 = Gtk.TreePath.new_from_indices([int(self.position)])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
                     App().window.playback.cues_liststore1[path1][8] = ""
-                    App().window.playback.cues_liststore2[path2][8] = ""
                 else:
                     App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
-                    App().window.playback.cues_liststore2[path2][8] = str(ct_nb)
                 if App().sequence.position + 1 == int(self.position):
                     App().window.playback.sequential.total_time = self.step.total_time
                     App().window.playback.sequential.queue_draw()
@@ -304,14 +301,11 @@ class ChanneltimeTab(Gtk.Paned):
             # Redraw Main Playback
             if self.sequence == App().sequence:
                 path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
-                path2 = Gtk.TreePath.new_from_indices([int(self.position)])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
                     App().window.playback.cues_liststore1[path1][8] = ""
-                    App().window.playback.cues_liststore2[path2][8] = ""
                 else:
                     App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
-                    App().window.playback.cues_liststore2[path2][8] = str(ct_nb)
                 if App().sequence.position + 1 == int(self.position):
                     App().window.playback.sequential.total_time = self.step.total_time
                     App().window.playback.sequential.queue_draw()
@@ -472,15 +466,15 @@ class CTChannelsView(ChannelsView):
             row = path.get_indices()[0]
             channel = App().tabs.tabs["channel_time"].liststore[row][0]
             if channel - 1 == channel_index or child.is_selected():
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index, 0)
+                channel_widget.next_level = channels.get(channel_index, 0)
                 return True
             channel_widget.level = 0
             channel_widget.next_level = 0
             return False
         if child.is_selected():
-            channel_widget.level = channels[channel_index]
-            channel_widget.next_level = channels[channel_index]
+            channel_widget.level = channels.get(channel_index, 0)
+            channel_widget.next_level = channels.get(channel_index, 0)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0

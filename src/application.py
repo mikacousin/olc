@@ -506,7 +506,7 @@ class Application(Gtk.Application):
             sequence: Sequence number
             step: Position in sequence
         """
-        self.tabs.open("channel_time", ChanneltimeTab, "Sequences", sequence, step)
+        self.tabs.open("channel_time", ChanneltimeTab, "Channel Time", sequence, step)
 
     def _masters(self, _action, _parameter):
         """Create Masters Tab"""

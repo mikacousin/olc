@@ -258,10 +258,8 @@ class SequenceTab(Gtk.Grid):
                 path = str(int(path) + 1)
                 if text == "0":
                     App().window.playback.cues_liststore1[path][3] = ""
-                    App().window.playback.cues_liststore2[path][3] = ""
                 else:
                     App().window.playback.cues_liststore1[path][3] = text
-                    App().window.playback.cues_liststore2[path][3] = text
                 if App().sequence.position + 1 == step:
                     App().window.playback.sequential.wait = float(text)
                     App().window.playback.sequential.total_time = sequence.steps[
@@ -323,7 +321,6 @@ class SequenceTab(Gtk.Grid):
         if sequence == App().sequence:
             path = str(int(path) + 1)
             App().window.playback.cues_liststore1[path][5] = text
-            App().window.playback.cues_liststore2[path][5] = text
             if App().sequence.position + 1 == step:
                 App().window.playback.sequential.time_out = float(text)
                 App().window.playback.sequential.total_time = sequence.steps[
@@ -386,7 +383,6 @@ class SequenceTab(Gtk.Grid):
         if sequence == App().sequence:
             path = str(int(path) + 1)
             App().window.playback.cues_liststore1[path][7] = text
-            App().window.playback.cues_liststore2[path][7] = text
             if App().sequence.position + 1 == step:
                 App().window.playback.sequential.time_in = float(text)
                 App().window.playback.sequential.total_time = sequence.steps[
@@ -451,10 +447,8 @@ class SequenceTab(Gtk.Grid):
                 path = str(int(path) + 1)
                 if text == "0":
                     App().window.playback.cues_liststore1[path][4] = ""
-                    App().window.playback.cues_liststore2[path][4] = ""
                 else:
                     App().window.playback.cues_liststore1[path][4] = text
-                    App().window.playback.cues_liststore2[path][4] = text
                 if App().sequence.position + 1 == step:
                     App().window.playback.sequential.delay_out = float(text)
                     App().window.playback.sequential.total_time = sequence.steps[
@@ -519,10 +513,8 @@ class SequenceTab(Gtk.Grid):
                 path = str(int(path) + 1)
                 if text == "0":
                     App().window.playback.cues_liststore1[path][6] = ""
-                    App().window.playback.cues_liststore2[path][6] = ""
                 else:
                     App().window.playback.cues_liststore1[path][6] = text
-                    App().window.playback.cues_liststore2[path][6] = text
                 if App().sequence.position + 1 == step:
                     App().window.playback.sequential.delay_in = float(text)
                     App().window.playback.sequential.total_time = sequence.steps[
@@ -553,8 +545,6 @@ class SequenceTab(Gtk.Grid):
 
         # Update Main Playback
         if sequence == App().sequence:
-            path = str(int(path) + 1)
-            App().window.playback.cues_liststore2[path][2] = text
             path = str(int(path) + 2)
             App().window.playback.cues_liststore1[path][2] = text
 

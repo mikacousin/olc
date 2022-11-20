@@ -37,9 +37,8 @@ def step_filter_func1(model, treeiter, _data):
         True, False or step
     """
     if App().sequence.position <= 0:
-        if int(model[treeiter][11]) in {0, 1}:
+        if int(model[treeiter][11]) in {0, 1} or int(model[treeiter][0]) in {0, 1}:
             return True
-        return int(model[treeiter][0]) in {0, 1}
     if App().sequence.position == 1:
         if int(model[treeiter][11]) == 1:
             return True
@@ -67,6 +66,8 @@ def step_filter_func2(model, treeiter, _data):
     Returns:
         True or False
     """
+    if not model[treeiter][0]:
+        return False
     return int(model[treeiter][0]) > App().sequence.position + 1
 
 
@@ -104,13 +105,10 @@ class MainPlaybackView(Gtk.Notebook):
         self.cues_liststore1 = Gtk.ListStore(
             str, str, str, str, str, str, str, str, str, str, int, int
         )
-        self.cues_liststore2 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str
-        )
         # Filters
         self.step_filter1 = self.cues_liststore1.filter_new()
         self.step_filter1.set_visible_func(step_filter_func1)
-        self.step_filter2 = self.cues_liststore2.filter_new()
+        self.step_filter2 = self.cues_liststore1.filter_new()
         self.step_filter2.set_visible_func(step_filter_func2)
         # Lists
         self.treeview1 = Gtk.TreeView(model=self.step_filter1)
@@ -213,7 +211,6 @@ class MainPlaybackView(Gtk.Notebook):
     def update_sequence_display(self):
         """Update Sequence display"""
         self.cues_liststore1.clear()
-        self.cues_liststore2.clear()
         self.populate_sequence()
 
     def populate_sequence(self):
@@ -284,7 +281,6 @@ class MainPlaybackView(Gtk.Notebook):
                         99,
                     ]
                 )
-                self.cues_liststore2.append([str(i), "", "", "", "", "", "", "", ""])
             else:
                 self.cues_liststore1.append(
                     [
@@ -300,19 +296,6 @@ class MainPlaybackView(Gtk.Notebook):
                         background,
                         weight,
                         99,
-                    ]
-                )
-                self.cues_liststore2.append(
-                    [
-                        str(i),
-                        str(App().sequence.steps[i].cue.memory),
-                        str(App().sequence.steps[i].text),
-                        wait,
-                        d_out,
-                        str(t_out),
-                        d_in,
-                        str(t_in),
-                        channel_time,
                     ]
                 )
         self.update_active_cues_display()
