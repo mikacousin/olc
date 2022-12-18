@@ -42,6 +42,17 @@ class GroupChannelsView(ChannelsView):
     def __init__(self):
         super().__init__()
 
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Set channel level
+
+        Args:
+            channel: Channel number (1 - MAX_CHANNELS)
+            level: DMX level (0 - 255)
+        """
+        selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
+        index = selected_group.get_index()
+        App().groups[index].channels[channel] = level
+
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
 
@@ -391,53 +402,25 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_equal(self) -> None:
         """@ Level"""
-        channels, level = self.channels_view.at_level(self.keystring)
-        if channels and level != -1:
-            selected_group = self.flowbox.get_selected_children()[0]
-            index = selected_group.get_index()
-            for channel in channels:
-                App().groups[index].channels[channel] = level
+        self.channels_view.at_level(self.keystring)
         self.channels_view.update()
         self._update_master_level()
-
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self) -> None:
         """Level - %"""
-        channels = self.channels_view.get_selected_channels()
-        step_level = App().settings.get_int("percent-level")
-        if App().settings.get_boolean("percent"):
-            step_level = round((step_level / 100) * 255)
-        if channels and step_level:
-            selected_group = self.flowbox.get_selected_children()[0]
-            index = selected_group.get_index()
-            for channel in channels:
-                level = App().groups[index].channels.get(channel, 0)
-                level = max(level - step_level, 0)
-                App().groups[index].channels[channel] = level
+        self.channels_view.level_minus()
         self.channels_view.update()
         self._update_master_level()
-
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_exclam(self) -> None:
         """Level + %"""
-        channels = self.channels_view.get_selected_channels()
-        step_level = App().settings.get_int("percent-level")
-        if App().settings.get_boolean("percent"):
-            step_level = round((step_level / 100) * 255)
-        if channels and step_level:
-            selected_group = self.flowbox.get_selected_children()[0]
-            index = selected_group.get_index()
-            for channel in channels:
-                level = App().groups[index].channels.get(channel, 0)
-                level = min(level + step_level, 255)
-                App().groups[index].channels[channel] = level
+        self.channels_view.level_plus()
         self.channels_view.update()
         self._update_master_level()
-
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 

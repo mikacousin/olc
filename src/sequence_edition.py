@@ -689,40 +689,19 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_equal(self):
         """@ Level"""
-        channels, level = self.channels_view.at_level(self.keystring)
-        if channels and level != -1:
-            for channel in channels:
-                self.user_channels[channel - 1] = level
+        self.channels_view.at_level(self.keystring)
         self.channels_view.update()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
     def _keypress_colon(self):
         """Level - %"""
-        channels = self.channels_view.get_selected_channels()
-        step_level = App().settings.get_int("percent-level")
-        if App().settings.get_boolean("percent"):
-            step_level = round((step_level / 100) * 255)
-        if channels and step_level:
-            for channel in channels:
-                channel_widget = self.channels_view.get_channel_widget(channel)
-                level = channel_widget.level
-                level = max(level - step_level, 0)
-                self.user_channels[channel - 1] = level
+        self.channels_view.level_minus()
         self.channels_view.update()
 
     def _keypress_exclam(self):
         """Level + %"""
-        channels = self.channels_view.get_selected_channels()
-        step_level = App().settings.get_int("percent-level")
-        if App().settings.get_boolean("percent"):
-            step_level = round((step_level / 100) * 255)
-        if channels and step_level:
-            for channel in channels:
-                channel_widget = self.channels_view.get_channel_widget(channel)
-                level = channel_widget.level
-                level = min(level + step_level, 255)
-                self.user_channels[channel - 1] = level
+        self.channels_view.level_plus()
         self.channels_view.update()
 
     def _keypress_U(self):  # pylint: disable=C0103
@@ -1030,6 +1009,15 @@ class SeqChannelsView(ChannelsView):
     def __init__(self):
         super().__init__()
 
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Set channel level
+
+        Args:
+            channel: Channel number (1 - MAX_CHANNELS)
+            level: DMX level (0 - 255)
+        """
+        App().tabs.tabs["sequences"].user_channels[channel - 1] = level
+
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
 
@@ -1048,7 +1036,7 @@ class SeqChannelsView(ChannelsView):
             channel_widget.level = level
             channel_widget.next_level = level
             channel_widget.queue_draw()
-            App().tabs.tabs["sequences"].user_channels[channel - 1] = level
+            self.set_channel_level(channel, level)
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display

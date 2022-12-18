@@ -176,33 +176,11 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_exclam(self):
         """Level + (% level) of selected channels"""
-        channels = self.live_view.channels_view.get_selected_channels()
-        step_level = App().settings.get_int("percent-level")
-        if App().settings.get_boolean("percent"):
-            step_level = round((step_level / 100) * 255)
-        if channels and step_level:
-            for channel in channels:
-                for output in App().patch.channels[channel]:
-                    out = output[0]
-                    univ = output[1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][out - 1]
-                    App().dmx.user[channel - 1] = min(level + step_level, 255)
+        self.live_view.channels_view.level_plus()
 
     def _keypress_colon(self):
         """Level - (% level) of selected channels"""
-        channels = self.live_view.channels_view.get_selected_channels()
-        step_level = App().settings.get_int("percent-level")
-        if App().settings.get_boolean("percent"):
-            step_level = round((step_level / 100) * 255)
-        if channels and step_level:
-            for channel in channels:
-                for output in App().patch.channels[channel]:
-                    out = output[0]
-                    univ = output[1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][out - 1]
-                    App().dmx.user[channel - 1] = max(level - step_level, 0)
+        self.live_view.channels_view.level_minus()
 
     def _keypress_KP_Enter(self):  # pylint: disable=C0103
         """@ Level"""
@@ -210,10 +188,7 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_equal(self):
         """@ Level"""
-        channels, level = self.live_view.channels_view.at_level(self.keystring)
-        if channels and level != -1:
-            for channel in channels:
-                App().dmx.user[channel - 1] = level
+        self.live_view.channels_view.at_level(self.keystring)
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
 

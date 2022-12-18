@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_CHANNELS, is_non_nul_int, is_int
 from olc.zoom import zoom
@@ -82,6 +82,18 @@ class ChannelsView(Gtk.Box):
         Args:
             step: Step level
             direction: Up or Down
+
+        Raises:
+            NotImplementedError: Must be implemented in subclass
+        """
+        raise NotImplementedError
+
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Channel at level
+
+        Args:
+            channel: Channel number (1 - MAX_CHANNELS)
+            level: DMX level (0 - 255)
 
         Raises:
             NotImplementedError: Must be implemented in subclass
@@ -358,23 +370,51 @@ class ChannelsView(Gtk.Box):
             string = keystring
         self.last_selected_channel = string
 
-    def at_level(self, keystring: str) -> Tuple[List[int], int]:
+    def at_level(self, keystring: str) -> None:
         """Channels at level
 
         Args:
             keystring: Level (positive integer)
-
-        Returns:
-            Selected Channels and level (0-255 or -1 on error)
         """
         if not is_int(keystring):
-            return ([]), -1
+            return
         level = int(keystring)
         if App().settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
         channels = self.get_selected_channels()
-        return channels, level
+        for channel in channels:
+            self.set_channel_level(channel, level)
+
+    def level_plus(self) -> None:
+        """Channels +%"""
+        step_level = App().settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            if channel_widget:
+                level = channel_widget.level
+                if App().settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) + step_level
+                    new_level = min(round((percent_level / 100) * 256), 255)
+                else:
+                    new_level = min(level + step_level, 255)
+                self.set_channel_level(channel, new_level)
+
+    def level_minus(self) -> None:
+        """Channels -%"""
+        step_level = App().settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            if channel_widget:
+                level = channel_widget.level
+                if App().settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) - step_level
+                    new_level = max(round((percent_level / 100) * 256), 0)
+                else:
+                    new_level = max(level - step_level, 0)
+                self.set_channel_level(channel, new_level)
 
     def get_selected_channels(self) -> List[int]:
         """Return selected channels

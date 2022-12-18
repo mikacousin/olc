@@ -127,6 +127,15 @@ class LiveChannelsView(ChannelsView):
             next_level = channel_widget.level
         return next_level
 
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Set channel level
+
+        Args:
+            channel: channel number (1 - MAX_CHANNELS)
+            level: DMX level (0 - 255)
+        """
+        App().dmx.user[channel - 1] = level
+
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change patched channels level with a wheel
 
