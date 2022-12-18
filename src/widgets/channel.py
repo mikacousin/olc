@@ -107,9 +107,14 @@ class ChannelWidget(Gtk.Widget):
         cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
         cr.fill()
         # Draw channel number
+        # Default color
         cr.set_source_rgb(0.9, 0.6, 0.2)
+        # Independent color
         if int(self.channel) - 1 in App().independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
+        # Not patched color
+        if int(self.channel) not in App().patch.channels:
+            cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
         cr.move_to(50 * self.scale, 15 * self.scale)
