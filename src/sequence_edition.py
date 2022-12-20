@@ -17,7 +17,7 @@ from typing import Optional
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS, App, time_to_string
 from olc.sequence import Sequence
 from olc.step import Step
 from olc.widgets.channels_view import ChannelsView, VIEW_MODES
@@ -879,37 +879,11 @@ class SequenceTab(Gtk.Grid):
             step: Step
         """
         sequence = self.get_selected_sequence()
-        wait = (
-            str(int(sequence.steps[step].wait))
-            if sequence.steps[step].wait.is_integer()
-            else str(sequence.steps[step].wait)
-        )
-        if wait == "0":
-            wait = ""
-        t_out = (
-            str(int(sequence.steps[step].time_out))
-            if sequence.steps[step].time_out.is_integer()
-            else str(sequence.steps[step].time_out)
-        )
-        d_out = (
-            str(int(sequence.steps[step].delay_out))
-            if sequence.steps[step].delay_out.is_integer()
-            else str(sequence.steps[step].delay_out)
-        )
-        if d_out == "0":
-            d_out = ""
-        t_in = (
-            str(int(sequence.steps[step].time_in))
-            if sequence.steps[step].time_in.is_integer()
-            else str(sequence.steps[step].time_in)
-        )
-        d_in = (
-            str(int(sequence.steps[step].delay_in))
-            if sequence.steps[step].delay_in.is_integer()
-            else str(sequence.steps[step].delay_in)
-        )
-        if d_in == "0":
-            d_in = ""
+        wait = time_to_string(sequence.steps[step].wait)
+        t_out = time_to_string(sequence.steps[step].time_out)
+        d_out = time_to_string(sequence.steps[step].delay_out)
+        t_in = time_to_string(sequence.steps[step].time_in)
+        d_in = time_to_string(sequence.steps[step].delay_in)
         channel_time = str(len(sequence.steps[step].channel_time))
         if channel_time == "0":
             channel_time = ""

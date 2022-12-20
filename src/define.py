@@ -80,3 +80,28 @@ def is_non_nul_int(element: Any) -> bool:
         True or False
     """
     return bool(int(element)) if is_int(element) else False
+
+
+def time_to_string(time: float) -> str:
+    """A number of seconds to human readable text
+
+    Args:
+        time: seconds
+
+    Returns:
+        Human readable time
+    """
+    minutes, seconds = divmod(time, 60)
+    hours, minutes = divmod(minutes, 60)
+    string = ""
+    if hours:
+        string += str(int(hours)) + ":"
+    if minutes:
+        string += str(int(minutes)) + ":"
+    if seconds.is_integer():
+        string += str(int(seconds))
+    else:
+        string += str(seconds)
+    if string == "0":
+        string = ""
+    return string

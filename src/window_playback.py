@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk, Pango
-from olc.define import App
+from olc.define import App, time_to_string
 from olc.widgets.sequential import SequentialWidget
 
 
@@ -222,37 +222,11 @@ class MainPlaybackView(Gtk.Notebook):
             ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
         )
         for i in range(App().sequence.last):
-            wait = (
-                str(int(App().sequence.steps[i].wait))
-                if App().sequence.steps[i].wait.is_integer()
-                else str(App().sequence.steps[i].wait)
-            )
-            if wait == "0":
-                wait = ""
-            t_out = (
-                int(App().sequence.steps[i].time_out)
-                if App().sequence.steps[i].time_out.is_integer()
-                else App().sequence.steps[i].time_out
-            )
-            d_out = (
-                str(int(App().sequence.steps[i].delay_out))
-                if App().sequence.steps[i].delay_out.is_integer()
-                else str(App().sequence.steps[i].delay_out)
-            )
-            if d_out == "0":
-                d_out = ""
-            t_in = (
-                int(App().sequence.steps[i].time_in)
-                if App().sequence.steps[i].time_in.is_integer()
-                else App().sequence.steps[i].time_in
-            )
-            d_in = (
-                str(int(App().sequence.steps[i].delay_in))
-                if App().sequence.steps[i].delay_in.is_integer()
-                else str(App().sequence.steps[i].delay_in)
-            )
-            if d_in == "0":
-                d_in = ""
+            wait = time_to_string(App().sequence.steps[i].wait)
+            t_out = time_to_string(App().sequence.steps[i].time_out)
+            d_out = time_to_string(App().sequence.steps[i].delay_out)
+            t_in = time_to_string(App().sequence.steps[i].time_in)
+            d_in = time_to_string(App().sequence.steps[i].delay_in)
             channel_time = str(len(App().sequence.steps[i].channel_time))
             if channel_time == "0":
                 channel_time = ""
