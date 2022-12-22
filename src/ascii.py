@@ -32,30 +32,6 @@ from olc.define import App
 from olc.step import Step
 
 
-def get_time(string):
-    """Convert a string time to float
-
-    Args:
-        string (str): format [[hours:]minutes:]seconds[.tenths]
-
-    Returns:
-        time in seconds
-    """
-    if ":" in string:
-        tsplit = string.split(":")
-        if len(tsplit) == 2:
-            time = int(tsplit[0]) * 60 + float(tsplit[1])
-        elif len(tsplit) == 3:
-            time = int(tsplit[0]) * 3600 + int(tsplit[1]) * 60 + float(tsplit[2])
-        else:
-            print("Time format Error")
-            time = 0
-    else:
-        time = float(string)
-
-    return time
-
-
 class Ascii:
     """ASCII file"""
 

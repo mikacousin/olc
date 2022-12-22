@@ -89,7 +89,7 @@ def time_to_string(time: float) -> str:
         time: seconds
 
     Returns:
-        Human readable time
+        Human readable time ([[hours:]minutes:]seconds[.tenths])
     """
     minutes, seconds = divmod(time, 60)
     hours, minutes = divmod(minutes, 60)
@@ -105,3 +105,27 @@ def time_to_string(time: float) -> str:
     if string == "0":
         string = ""
     return string
+
+
+def string_to_time(string: str) -> float:
+    """Convert a string time to float
+
+    Args:
+        string: format = [[hours:]minutes:]seconds[.tenths]
+
+    Returns:
+        time in seconds
+    """
+    if string == "":
+        string = "0"
+    if ":" in string:
+        tsplit = string.split(":")
+        if len(tsplit) == 2:
+            time = int(tsplit[0]) * 60 + float(tsplit[1])
+        elif len(tsplit) == 3:
+            time = int(tsplit[0]) * 3600 + int(tsplit[1]) * 60 + float(tsplit[2])
+        else:
+            time = 0
+    else:
+        time = float(string)
+    return time

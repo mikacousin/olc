@@ -16,36 +16,12 @@ import array
 
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE, string_to_time
 from olc.group import Group
 from olc.independent import Independent, Independents
 from olc.master import Master
 from olc.sequence import Sequence
 from olc.step import Step
-
-
-def get_time(string):
-    """Convert a string time to float
-
-    Args:
-        string: format = [[hours:]minutes:]seconds[.tenths]
-
-    Returns:
-        time in seconds
-    """
-    if ":" in string:
-        tsplit = string.split(":")
-        if len(tsplit) == 2:
-            time = int(tsplit[0]) * 60 + float(tsplit[1])
-        elif len(tsplit) == 3:
-            time = int(tsplit[0]) * 3600 + int(tsplit[1]) * 60 + float(tsplit[2])
-        else:
-            print("Time format Error")
-            time = 0
-    else:
-        time = float(string)
-
-    return time
 
 
 class AsciiParser:
@@ -154,18 +130,18 @@ class AsciiParser:
                         p = line[5:]
                         time = p.split(" ")[0]
                         delay = p.split(" ")[1]
-                        t_out = get_time(time)
+                        t_out = string_to_time(time)
                         if t_out == 0:
                             t_out = self.default_time
-                        d_out = get_time(delay)
+                        d_out = string_to_time(delay)
                     if line[:2].upper() == "UP":
                         p = line[3:]
                         time = p.split(" ")[0]
                         delay = p.split(" ")[1]
-                        t_in = get_time(time)
+                        t_in = string_to_time(time)
                         if t_in == 0:
                             t_in = self.default_time
-                        d_in = get_time(delay)
+                        d_in = string_to_time(delay)
                     if line[:4].upper() == "CHAN":
                         p = line[5:].split(" ")
                         for q in p:
@@ -224,25 +200,25 @@ class AsciiParser:
                         p = line[5:]
                         time = p.split(" ")[0]
                         delay = p.split(" ")[1] if len(p.split(" ")) == 2 else "0"
-                        t_out = get_time(time)
+                        t_out = string_to_time(time)
                         if t_out == 0:
                             t_out = self.default_time
 
-                        d_out = get_time(delay)
+                        d_out = string_to_time(delay)
 
                     if line[:2].upper() == "UP":
                         p = line[3:]
                         time = p.split(" ")[0]
                         delay = p.split(" ")[1] if len(p.split(" ")) == 2 else "0"
-                        t_in = get_time(time)
+                        t_in = string_to_time(time)
                         if t_in == 0:
                             t_in = self.default_time
 
-                        d_in = get_time(delay)
+                        d_in = string_to_time(delay)
 
                     if line[:6].upper() == "$$WAIT":
                         time = line[7:].split(" ")[0]
-                        wait = get_time(time)
+                        wait = string_to_time(time)
 
                     if line[:11].upper() == "$$PARTTIME ":
                         p = line[11:]
@@ -251,7 +227,7 @@ class AsciiParser:
                             d = 0
                         delay = float(d)
                         time_str = p.split(" ")[1]
-                        time = get_time(time_str)
+                        time = string_to_time(time_str)
 
                     if line[:14].upper() == "$$PARTTIMECHAN":
                         p = line[15:].split(" ")

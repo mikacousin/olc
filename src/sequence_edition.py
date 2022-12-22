@@ -17,7 +17,7 @@ from typing import Optional
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App, time_to_string
+from olc.define import MAX_CHANNELS, App, time_to_string, string_to_time
 from olc.sequence import Sequence
 from olc.step import Step
 from olc.widgets.channels_view import ChannelsView, VIEW_MODES
@@ -203,324 +203,205 @@ class SequenceTab(Gtk.Grid):
             if sequence and step:
                 App().channeltime(sequence, step)
 
-    def wait_edited(self, _widget, path, text):
-        """Edit Wait
+    def path_from_step(self, step: int) -> str:
+        """Return row number of Main Playback Window  of the given step
 
         Args:
-            path: Gtk.TreePath
-            text: string
+            step: Step number
+
+        Returns:
+            Row number
         """
-        if text == "":
-            text = "0"
+        for path in range(len(self.liststore2)):
+            if App().window.playback.cues_liststore1[str(path)][0] == str(step):
+                break
+        return str(path)
 
-        if text.replace(".", "", 1).isdigit():
+    def update_total_time(self, sequence: Sequence, step_number: int) -> None:
+        """Update Step total time
 
-            if text[0] == ".":
-                text = f"0{text}"
+        Args:
+            sequence: Modified sequence
+            step_number: Step number
+        """
+        step = sequence.steps[step_number]
+        if step.time_in + step.delay_in > step.time_out + step.delay_out:
+            step.total_time = step.time_in + step.wait + step.delay_in
+        else:
+            step.total_time = step.time_out + step.wait + step.delay_out
+        for channel in step.channel_time.keys():
+            t = (
+                step.channel_time[channel].delay
+                + step.channel_time[channel].time
+                + step.wait
+            )
+            if t > step.total_time:
+                step.total_time = t
 
-            self.liststore2[path][3] = "" if text == "0" else text
-            sequence = self.get_selected_sequence()
-            # Find Cue
-            step = int(self.liststore2[path][0])
+    def wait_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
+        """Wait edited
 
-            # Update Wait value
-            sequence.steps[step].wait = float(text)
-            # Update Total Time
-            if (sequence.steps[step].time_in + sequence.steps[step].delay_in) > (
-                sequence.steps[step].time_out + sequence.steps[step].delay_out
-            ):
-                sequence.steps[step].total_time = (
-                    sequence.steps[step].time_in
-                    + sequence.steps[step].wait
-                    + sequence.steps[step].delay_in
-                )
-            else:
-                sequence.steps[step].total_time = (
-                    sequence.steps[step].time_out
-                    + sequence.steps[step].wait
-                    + sequence.steps[step].delay_out
-                )
-            for channel in sequence.steps[step].channel_time.keys():
-                t = (
-                    sequence.steps[step].channel_time[channel].delay
-                    + sequence.steps[step].channel_time[channel].time
-                    + sequence.steps[step].wait
-                )
-                if t > sequence.steps[step].total_time:
-                    sequence.steps[step].total_time = t
+        Args:
+            path: Row number
+            text: New string
+        """
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = int(self.liststore2[path][0])
+        time = string_to_time(text)
+        string = time_to_string(time)
+        # Update display
+        self.liststore2[path][3] = string
+        # Update Wait value
+        sequence.steps[step].wait = time
+        # Update Total Time
+        self.update_total_time(sequence, step)
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(f"{App().ascii.basename}*")
+        # Update Sequential Tab
+        if sequence == App().sequence:
+            path = self.path_from_step(step)
+            App().window.playback.cues_liststore1[path][3] = string
+            if App().sequence.position + 1 == step:
+                App().window.playback.sequential.wait = time
+                App().window.playback.sequential.total_time = sequence.steps[
+                    step
+                ].total_time
+                App().window.playback.sequential.queue_draw()
 
-            # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
-
-            # Update Sequential Tab
-            if sequence == App().sequence:
-                path = str(int(path) + 1)
-                if text == "0":
-                    App().window.playback.cues_liststore1[path][3] = ""
-                else:
-                    App().window.playback.cues_liststore1[path][3] = text
-                if App().sequence.position + 1 == step:
-                    App().window.playback.sequential.wait = float(text)
-                    App().window.playback.sequential.total_time = sequence.steps[
-                        step
-                    ].total_time
-                    App().window.playback.sequential.queue_draw()
-
-    def out_edited(self, _widget, path, text):
+    def out_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
         """Time Out edited
 
         Args:
-            path: Gtk.TreePath
-            text: string
+            path: Row number
+            text: New string
         """
-        if not text.replace(".", "", 1).isdigit():
-            return
-        if text[0] == ".":
-            text = f"0{text}"
-
-        self.liststore2[path][5] = text
-
-        # Find selected sequence
         sequence = self.get_selected_sequence()
-        # Find Cue
+        if not sequence:
+            return
         step = int(self.liststore2[path][0])
-
+        time = string_to_time(text)
+        string = time_to_string(time)
+        # Update display
+        self.liststore2[path][5] = string
         # Update Time Out value
-        sequence.steps[step].time_out = float(text)
+        sequence.steps[step].time_out = time
         # Update Total Time
-        if (
-            sequence.steps[step].time_in + sequence.steps[step].delay_in
-            > sequence.steps[step].time_out + sequence.steps[step].delay_out
-        ):
-            sequence.steps[step].total_time = (
-                sequence.steps[step].time_in
-                + sequence.steps[step].wait
-                + sequence.steps[step].delay_in
-            )
-        else:
-            sequence.steps[step].total_time = (
-                sequence.steps[step].time_out
-                + sequence.steps[step].wait
-                + sequence.steps[step].delay_out
-            )
-        for channel in sequence.steps[step].channel_time.keys():
-            t = (
-                sequence.steps[step].channel_time[channel].delay
-                + sequence.steps[step].channel_time[channel].time
-                + sequence.steps[step].wait
-            )
-            if t > sequence.steps[step].total_time:
-                sequence.steps[step].total_time = t
-
+        self.update_total_time(sequence, step)
         # Tag filename as modified
         App().ascii.modified = True
         App().window.header.set_title(f"{App().ascii.basename}*")
-
         # Update Sequential Tab
         if sequence == App().sequence:
-            path = str(int(path) + 1)
-            App().window.playback.cues_liststore1[path][5] = text
+            path = self.path_from_step(step)
+            App().window.playback.cues_liststore1[path][5] = string
             if App().sequence.position + 1 == step:
-                App().window.playback.sequential.time_out = float(text)
+                App().window.playback.sequential.time_out = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def in_edited(self, _widget, path, text):
+    def in_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
         """Time in edited
 
         Args:
-            path: Gtk.TreePath
-            text: string
+            path: Row number
+            text: New string
         """
-        if not text.replace(".", "", 1).isdigit():
-
-            return
-        if text[0] == ".":
-            text = f"0{text}"
-
-        self.liststore2[path][7] = text
-
-        # Find selected sequence
         sequence = self.get_selected_sequence()
-        # Find Cue
+        if not sequence:
+            return
         step = int(self.liststore2[path][0])
-
+        time = string_to_time(text)
+        string = time_to_string(time)
+        # Update display
+        self.liststore2[path][7] = string
         # Update Time In value
-        sequence.steps[step].time_in = float(text)
+        sequence.steps[step].time_in = time
         # Update Total Time
-        if (
-            sequence.steps[step].time_in + sequence.steps[step].delay_in
-            > sequence.steps[step].time_out + sequence.steps[step].delay_out
-        ):
-            sequence.steps[step].total_time = (
-                sequence.steps[step].time_in
-                + sequence.steps[step].wait
-                + sequence.steps[step].delay_in
-            )
-        else:
-            sequence.steps[step].total_time = (
-                sequence.steps[step].time_out
-                + sequence.steps[step].wait
-                + sequence.steps[step].delay_out
-            )
-        for channel in sequence.steps[step].channel_time.keys():
-            t = (
-                sequence.steps[step].channel_time[channel].delay
-                + sequence.steps[step].channel_time[channel].time
-                + sequence.steps[step].wait
-            )
-            if t > sequence.steps[step].total_time:
-                sequence.steps[step].total_time = t
-
+        self.update_total_time(sequence, step)
         # Tag filename as modified
         App().ascii.modified = True
         App().window.header.set_title(f"{App().ascii.basename}*")
-
         # Update Sequential Tab
         if sequence == App().sequence:
-            path = str(int(path) + 1)
-            App().window.playback.cues_liststore1[path][7] = text
+            path = self.path_from_step(step)
+            App().window.playback.cues_liststore1[path][7] = string
             if App().sequence.position + 1 == step:
-                App().window.playback.sequential.time_in = float(text)
+                App().window.playback.sequential.time_in = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def delay_out_edited(self, _widget, path, text):
+    def delay_out_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
         """Delay Out edited
 
         Args:
-            path: Gtk.TreePath
-            text: string
+            path: Row number
+            text: New string
         """
-        if text == "":
-            text = "0"
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = int(self.liststore2[path][0])
+        time = string_to_time(text)
+        string = time_to_string(time)
+        # Update display
+        self.liststore2[path][4] = string
+        # Update Delay Out value
+        sequence.steps[step].delay_out = time
+        # Update Total Time
+        self.update_total_time(sequence, step)
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(f"{App().ascii.basename}*")
+        # Update Sequential Tab
+        if sequence == App().sequence:
+            path = self.path_from_step(step)
+            App().window.playback.cues_liststore1[path][4] = string
+            if App().sequence.position + 1 == step:
+                App().window.playback.sequential.delay_out = time
+                App().window.playback.sequential.total_time = sequence.steps[
+                    step
+                ].total_time
+                App().window.playback.sequential.queue_draw()
 
-        if text.replace(".", "", 1).isdigit():
-
-            if text[0] == ".":
-                text = f"0{text}"
-
-            self.liststore2[path][4] = "" if text == "0" else text
-            # Find selected sequence
-            sequence = self.get_selected_sequence()
-            # Find Step
-            step = int(self.liststore2[path][0])
-
-            # Update Delay Out value
-            sequence.steps[step].delay_out = float(text)
-            # Update Total Time
-            if (
-                sequence.steps[step].time_in + sequence.steps[step].delay_in
-                > sequence.steps[step].time_out + sequence.steps[step].delay_out
-            ):
-                sequence.steps[step].total_time = (
-                    sequence.steps[step].time_in
-                    + sequence.steps[step].wait
-                    + sequence.steps[step].delay_in
-                )
-            else:
-                sequence.steps[step].total_time = (
-                    sequence.steps[step].time_out
-                    + sequence.steps[step].wait
-                    + sequence.steps[step].delay_out
-                )
-            for channel in sequence.steps[step].channel_time.keys():
-                t = (
-                    sequence.steps[step].channel_time[channel].delay
-                    + sequence.steps[step].channel_time[channel].time
-                    + sequence.steps[step].wait
-                )
-                if t > sequence.steps[step].total_time:
-                    sequence.steps[step].total_time = t
-
-            # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
-
-            # Update Sequential Tab
-            if sequence == App().sequence:
-                path = str(int(path) + 1)
-                if text == "0":
-                    App().window.playback.cues_liststore1[path][4] = ""
-                else:
-                    App().window.playback.cues_liststore1[path][4] = text
-                if App().sequence.position + 1 == step:
-                    App().window.playback.sequential.delay_out = float(text)
-                    App().window.playback.sequential.total_time = sequence.steps[
-                        step
-                    ].total_time
-                    App().window.playback.sequential.queue_draw()
-
-    def delay_in_edited(self, _widget, path, text):
+    def delay_in_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
         """Delay In edited
 
         Args:
-            path: Gtk.TreePath
-            text: string
+            path: Row number
+            text: New string
         """
-        if text == "":
-            text = "0"
-
-        if text.replace(".", "", 1).isdigit():
-
-            if text[0] == ".":
-                text = f"0{text}"
-
-            self.liststore2[path][6] = "" if text == "0" else text
-            # Find selected sequence
-            sequence = self.get_selected_sequence()
-            # Find Step
-            step = int(self.liststore2[path][0])
-
-            # Update Delay Out value
-            sequence.steps[step].delay_in = float(text)
-            # Update Total Time
-            if (
-                sequence.steps[step].time_in + sequence.steps[step].delay_in
-                > sequence.steps[step].time_out + sequence.steps[step].delay_out
-            ):
-                sequence.steps[step].total_time = (
-                    sequence.steps[step].time_in
-                    + sequence.steps[step].wait
-                    + sequence.steps[step].delay_in
-                )
-            else:
-                sequence.steps[step].total_time = (
-                    sequence.steps[step].time_out
-                    + sequence.steps[step].wait
-                    + sequence.steps[step].delay_out
-                )
-            for channel in sequence.steps[step].channel_time.keys():
-                t = (
-                    sequence.steps[step].channel_time[channel].delay
-                    + sequence.steps[step].channel_time[channel].time
-                    + sequence.steps[step].wait
-                )
-                if t > sequence.steps[step].total_time:
-                    sequence.steps[step].total_time = t
-
-            # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
-
-            # Update Sequential Tab
-            if sequence == App().sequence:
-                path = str(int(path) + 1)
-                if text == "0":
-                    App().window.playback.cues_liststore1[path][6] = ""
-                else:
-                    App().window.playback.cues_liststore1[path][6] = text
-                if App().sequence.position + 1 == step:
-                    App().window.playback.sequential.delay_in = float(text)
-                    App().window.playback.sequential.total_time = sequence.steps[
-                        step
-                    ].total_time
-                    App().window.playback.sequential.queue_draw()
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = int(self.liststore2[path][0])
+        time = string_to_time(text)
+        string = time_to_string(time)
+        # Update display
+        self.liststore2[path][6] = string
+        # Update Delay Out value
+        sequence.steps[step].delay_in = time
+        # Update Total Time
+        self.update_total_time(sequence, step)
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(f"{App().ascii.basename}*")
+        # Update Sequential Tab
+        if sequence == App().sequence:
+            path = self.path_from_step(step)
+            App().window.playback.cues_liststore1[path][6] = string
+            if App().sequence.position + 1 == step:
+                App().window.playback.sequential.delay_in = time
+                App().window.playback.sequential.total_time = sequence.steps[
+                    step
+                ].total_time
+                App().window.playback.sequential.queue_draw()
 
     def text_edited(self, _widget, path, text):
         """Step's Text edited
@@ -530,26 +411,21 @@ class SequenceTab(Gtk.Grid):
             text: string
         """
         self.liststore2[path][2] = text
-
         # Find selected sequence
         sequence = self.get_selected_sequence()
         # Find Step
         step = int(self.liststore2[path][0])
-
         # Update text value
         sequence.steps[step].text = text
-
         # Tag filename as modified
         App().ascii.modified = True
         App().window.header.set_title(f"{App().ascii.basename}*")
-
         # Update Main Playback
         if sequence == App().sequence:
-            path = str(int(path) + 2)
+            path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][2] = text
-
             # Update window's subtitle if needed
-            if App().sequence.position == step:
+            if sequence.position == step:
                 subtitle = (
                     "Mem. : "
                     + str(sequence.steps[step].cue.memory)
@@ -561,8 +437,7 @@ class SequenceTab(Gtk.Grid):
                     + sequence.steps[step + 1].text
                 )
                 App().window.header.set_subtitle(subtitle)
-
-            if App().sequence.position + 1 == step:
+            elif sequence.position + 1 == step:
                 subtitle = (
                     "Mem. : "
                     + str(sequence.steps[step - 1].cue.memory)
