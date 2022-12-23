@@ -1005,20 +1005,22 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if self.midi_learn:
             return
-        # For each selected channels
-        sel = App().window.live_view.channels_view.flowbox.get_selected_children()
-        for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel)
-            for output in App().patch.channels[channel]:
-                out = output[0]
-                univ = output[1]
-                index = App().universes.index(univ)
-                level = App().dmx.frame[index][out - 1]
-                if direction == Gdk.ScrollDirection.UP:
-                    App().dmx.user[channel - 1] = min(level + step, 255)
-                elif direction == Gdk.ScrollDirection.DOWN:
-                    App().dmx.user[channel - 1] = max(level - step, 0)
+        focus = App().window.get_focus()
+        page = focus.get_current_page()
+        child = focus.get_nth_page(page)
+        channels_view = None
+        if child == App().window.live_view.channels_view:
+            channels_view = child
+        elif child in (
+            App().tabs.tabs["groups"],
+            App().tabs.tabs["indes"],
+            App().tabs.tabs["masters"],
+            App().tabs.tabs["memories"],
+            App().tabs.tabs["sequences"],
+        ):
+            channels_view = child.channels_view
+        if channels_view:
+            channels_view.wheel_level(step, direction)
 
     def inde_clicked(self, widget):
         """Independent clicked
