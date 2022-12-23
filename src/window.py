@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS, App, string_to_time, time_to_string
 from olc.step import Step
 from olc.widgets.grand_master import GMWidget
 from olc.window_channels import LiveView
@@ -344,12 +344,11 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_time(time)
-        if time.is_integer():
-            time = int(time)
-        self.playback.cues_liststore1[position + 3][5] = str(time)
-        self.playback.cues_liststore1[position + 3][7] = str(time)
+        self.playback.cues_liststore1[position + 3][5] = string
+        self.playback.cues_liststore1[position + 3][7] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.time_in = App().sequence.steps[position + 1].time_in
         self.playback.sequential.time_out = App().sequence.steps[position + 1].time_out
@@ -372,11 +371,10 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_time_in(time)
-        if time.is_integer():
-            time = int(time)
-        self.playback.cues_liststore1[position + 3][7] = str(time)
+        self.playback.cues_liststore1[position + 3][7] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.time_in = App().sequence.steps[position + 1].time_in
         self.playback.sequential.total_time = (
@@ -398,11 +396,10 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_time_out(time)
-        if time.is_integer():
-            time = int(time)
-        self.playback.cues_liststore1[position + 3][5] = str(time)
+        self.playback.cues_liststore1[position + 3][5] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.time_out = App().sequence.steps[position + 1].time_out
         self.playback.sequential.total_time = (
@@ -424,12 +421,10 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_wait(time)
-        if time.is_integer():
-            time = int(time)
-        time = "" if time == 0 else str(time)
-        self.playback.cues_liststore1[position + 3][3] = time
+        self.playback.cues_liststore1[position + 3][3] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.wait = App().sequence.steps[position + 1].wait
         self.playback.sequential.total_time = (
@@ -451,13 +446,11 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_delay(time)
-        if time.is_integer():
-            time = int(time)
-        time = "" if time == 0 else str(time)
-        self.playback.cues_liststore1[position + 3][4] = time
-        self.playback.cues_liststore1[position + 3][6] = time
+        self.playback.cues_liststore1[position + 3][4] = string
+        self.playback.cues_liststore1[position + 3][6] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.delay_in = App().sequence.steps[position + 1].delay_in
         self.playback.sequential.delay_out = (
@@ -482,12 +475,10 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_delay_in(time)
-        if time.is_integer():
-            time = int(time)
-        time = "" if time == 0 else str(time)
-        self.playback.cues_liststore1[position + 3][6] = time
+        self.playback.cues_liststore1[position + 3][6] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.delay_in = App().sequence.steps[position + 1].delay_in
         self.playback.sequential.total_time = (
@@ -509,12 +500,10 @@ class Window(Gtk.ApplicationWindow):
 
         position = App().sequence.position
 
-        time = float(self.keystring)
+        time = string_to_time(self.keystring)
+        string = time_to_string(time)
         App().sequence.steps[position + 1].set_delay_out(time)
-        if time.is_integer():
-            time = int(time)
-        time = "" if time == 0 else str(time)
-        self.playback.cues_liststore1[position + 3][4] = time
+        self.playback.cues_liststore1[position + 3][4] = string
         self.playback.step_filter1.refilter()
         self.playback.sequential.delay_out = (
             App().sequence.steps[position + 1].delay_out
