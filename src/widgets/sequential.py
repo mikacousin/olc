@@ -16,7 +16,7 @@ import math
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App, MAX_CHANNELS
+from olc.define import App, MAX_CHANNELS, time_to_string
 
 
 class SequentialWidget(Gtk.Widget):
@@ -125,11 +125,7 @@ class SequentialWidget(Gtk.Widget):
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
-            # If time is integer don't show the ".0"
-            if self.wait.is_integer():
-                cr.show_text(str(int(self.wait)))
-            else:
-                cr.show_text(str(self.wait))
+            cr.show_text(time_to_string(self.wait))
         else:
             wait_x = 0
 
@@ -145,11 +141,7 @@ class SequentialWidget(Gtk.Widget):
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
-            # If time is integer don't show the ".0"
-            if self.delay_out.is_integer():
-                cr.show_text(str(int(self.delay_out + self.wait)))
-            else:
-                cr.show_text(str(self.delay_out + self.wait))
+            cr.show_text(time_to_string(self.delay_out + self.wait))
 
         # Draw Delay In
         if self.delay_in:
@@ -168,11 +160,7 @@ class SequentialWidget(Gtk.Widget):
             cr.set_source_rgb(0.9, 0.9, 0.9)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(12)
-            # If time is integer don't show the ".0"
-            if self.delay_in.is_integer():
-                cr.show_text(str(int(self.delay_in + self.wait)))
-            else:
-                cr.show_text(str(self.delay_in + self.wait))
+            cr.show_text(time_to_string(self.delay_in + self.wait))
 
         # Draw Channel Time if any
         ct_nb = 0
@@ -276,21 +264,13 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(12 + (inter * delay) + (inter * time) + wait_x, 16)
             t = delay + time + self.wait
             if t != self.total_time:
-                # If time is integer don't show the ".0"
-                if t.is_integer():
-                    cr.show_text(str(int(t)))
-                else:
-                    cr.show_text(str(t))
+                cr.show_text(time_to_string(t))
             # draw delay number if any
             if delay:
                 cr.set_source_rgb(0.9, 0.9, 0.9)
                 cr.move_to(12 + (inter * delay) + wait_x, 16)
                 t = delay + self.wait
-                # If time is integer don't show the ".0"
-                if t.is_integer():
-                    cr.show_text(str(int(t)))
-                else:
-                    cr.show_text(str(t))
+                cr.show_text(time_to_string(t))
             ct_nb += 1
 
         # draw Out line
@@ -438,23 +418,13 @@ class SequentialWidget(Gtk.Widget):
         cr.show_text("0")
         cr.move_to(allocation.width - 24, 16)
         # Draw Total Time at the end :
-        # If time is integer don't show the ".0"
-        if time_max.is_integer():
-            cr.show_text(str(int(self.total_time)))
-        else:
-            cr.show_text(str(self.total_time))
+        cr.show_text(time_to_string(self.total_time))
         if time_max != self.total_time:
             cr.move_to(12 + (inter * time_max), 16)
-            if time_max.is_integer():
-                cr.show_text(str(int(time_max)))
-            else:
-                cr.show_text(str(time_max))
+            cr.show_text(time_to_string(time_max))
         if time_min != time_max:
             cr.move_to(12 + (inter * time_min), 16)
-            if time_min.is_integer():
-                cr.show_text(str(int(time_min)))
-            else:
-                cr.show_text(str(time_min))
+            cr.show_text(time_to_string(time_min))
 
     def do_realize(self):
         """Realize widget"""
