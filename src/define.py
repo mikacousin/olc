@@ -125,7 +125,9 @@ def string_to_time(string: str) -> float:
         elif len(tsplit) == 3:
             time = int(tsplit[0]) * 3600 + int(tsplit[1]) * 60 + float(tsplit[2])
         else:
-            time = 0
-    else:
+            time = 0.0
+    elif is_float(string):
         time = float(string)
+    else:
+        time = 0.0
     return time
