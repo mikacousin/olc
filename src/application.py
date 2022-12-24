@@ -423,9 +423,6 @@ class Application(Gtk.Application):
             for univ in self.universes:
                 self.ola.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
 
-        elif response == Gtk.ResponseType.CANCEL:
-            print("cancelled: FileChooserAction.OPEN")
-
         # destroy the FileChooserNative
         open_dialog.destroy()
 
@@ -469,9 +466,6 @@ class Application(Gtk.Application):
             # Set Main Window's title with file name
             basename = self.ascii.file.get_basename()
             self.window.header.set_title(basename)
-        # if response is "CANCEL" (the button "Cancel" has been clicked)
-        elif response == Gtk.ResponseType.CANCEL:
-            print("cancelled: FileChooserAction.SAVE")
         # destroy the FileChooserNative
         save_dialog.destroy()
 
