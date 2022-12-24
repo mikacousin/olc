@@ -564,6 +564,14 @@ class Application(Gtk.Application):
 
     def _exit(self, _action, _parameter):
         """Exit application"""
+        if self.ascii.modified:
+            dialog = DialogQuit(self.window)
+            response = dialog.run()
+            dialog.destroy()
+            if response == Gtk.ResponseType.CANCEL:
+                return
+            if response == 1:
+                self._save(None, None)
         # Stop Chasers Threads
         for chaser in self.chasers:
             if chaser.run and chaser.thread:
@@ -574,3 +582,25 @@ class Application(Gtk.Application):
         self.dmx.stop = True
         self.ola.stop()
         self.quit()
+
+
+class DialogQuit(Gtk.Dialog):
+    """Ask user if he try to quit with an unsaved file"""
+
+    def __init__(self, parent):
+        super().__init__(title=_("Save file ?"), transient_for=parent, flags=0)
+        self.add_buttons(
+            _("Save"),
+            1,
+            _("Cancel"),
+            Gtk.ResponseType.CANCEL,
+            _("Don't Save"),
+            Gtk.ResponseType.OK,
+        )
+        self.set_default_size(150, 100)
+        box = self.get_content_area()
+        label = Gtk.Label(label=_("Save changes before closing ?"))
+        box.add(label)
+        label = Gtk.Label(label=_("Your changes will be lost if you don't save them."))
+        box.add(label)
+        self.show_all()

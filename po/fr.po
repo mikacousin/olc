@@ -280,3 +280,15 @@ msgstr "Actif"
 
 msgid "Rotatives Mode"
 msgstr "Mode des rotatifs"
+
+msgid "Save file ?"
+msgstr "Enregistrer le fichier ?"
+
+msgid "Don't Save"
+msgstr "Ne pas enregistrer"
+
+msgid "Save changes before closing ?"
+msgstr "Enregistrer les modifications avant la fermeture ?"
+
+msgid "Your changes will be lost if you don't save them."
+msgstr "Vos modifications seront perdues si vous ne les enregistrez pas."
