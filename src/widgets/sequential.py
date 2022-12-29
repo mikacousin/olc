@@ -168,14 +168,13 @@ class SequentialWidget(Gtk.Widget):
         # Change height to draw channel time
         self.set_size_request(800, 300 + (len(self.channel_time) * 8))
 
-        for channel in self.channel_time.keys():
+        for channel in sorted(self.channel_time.keys(), reverse=True):
             if channel > MAX_CHANNELS:
                 continue
             delay = self.channel_time[channel].delay
             time = self.channel_time[channel].time
             # draw Channel number
             cr.move_to((inter * delay) + wait_x, allocation.height - 4 - (ct_nb * 12))
-            # cr.move_to((inter*delay)+wait_x,allocation.height-28-(ct_nb*12))
             cr.set_source_rgb(0.9, 0.6, 0.2)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10)
