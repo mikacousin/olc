@@ -513,3 +513,6 @@ class AsciiParser:
                 App().midi.control_change.control_change.update(
                     {item[0]: [int(item[1]), int(item[2])]}
                 )
+            if line[:8].upper() == "$$MIDIPW":
+                item = line[9:].split(" ")
+                App().midi.pitchwheel.pitchwheel.update({item[0]: int(item[1])})
