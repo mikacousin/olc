@@ -306,27 +306,42 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent1 = KnobWidget(text="inde_1")
         self.independent1.connect("clicked", self.inde_clicked)
         self.independent1.connect("changed", self.inde_changed)
+        self.independent1.value = App().independents.independents[0].level
         self.independent2 = KnobWidget(text="inde_2")
         self.independent2.connect("clicked", self.inde_clicked)
         self.independent2.connect("changed", self.inde_changed)
+        self.independent2.value = App().independents.independents[1].level
         self.independent3 = KnobWidget(text="inde_3")
         self.independent3.connect("clicked", self.inde_clicked)
         self.independent3.connect("changed", self.inde_changed)
+        self.independent3.value = App().independents.independents[2].level
         self.independent4 = KnobWidget(text="inde_4")
         self.independent4.connect("clicked", self.inde_clicked)
         self.independent4.connect("changed", self.inde_changed)
+        self.independent4.value = App().independents.independents[3].level
         self.independent5 = KnobWidget(text="inde_5")
         self.independent5.connect("clicked", self.inde_clicked)
         self.independent5.connect("changed", self.inde_changed)
+        self.independent5.value = App().independents.independents[4].level
         self.independent6 = KnobWidget(text="inde_6")
         self.independent6.connect("clicked", self.inde_clicked)
         self.independent6.connect("changed", self.inde_changed)
+        self.independent6.value = App().independents.independents[5].level
         self.independent7 = ToggleWidget(text="inde_7")
-        self.independent7.connect("clicked", self.inde_clicked)
         self.independent8 = ToggleWidget(text="inde_8")
-        self.independent8.connect("clicked", self.inde_clicked)
         self.independent9 = ToggleWidget(text="inde_9")
+        self.independent7.connect("clicked", self.inde_clicked)
+        if App().independents.independents[6].level:
+            self.independent7.set_active(True)
+            self.independent7.value = 255
+        self.independent8.connect("clicked", self.inde_clicked)
+        if App().independents.independents[7].level:
+            self.independent8.set_active(True)
+            self.independent8.value = 255
         self.independent9.connect("clicked", self.inde_clicked)
+        if App().independents.independents[8].level:
+            self.independent9.set_active(True)
+            self.independent9.value = 255
         self.independents.attach(self.independent1, 0, 0, 1, 1)
         self.independents.attach(self.independent2, 1, 0, 1, 1)
         self.independents.attach(self.independent3, 2, 0, 1, 1)
