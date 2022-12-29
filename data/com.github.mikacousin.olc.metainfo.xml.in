@@ -24,7 +24,7 @@
     </ul>
   </description>
   <releases>
-    <release version="0.7.beta" date="2022-12-23">
+    <release version="0.7.1.beta" date="2022-12-29">
       <description>
       </description>
     </release>
@@ -34,7 +34,7 @@
       <image>https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png</image>
     </screenshot>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png</image>
+      <image>https://raw.githubusercontent.com/mikacousin/olc/assets/virtualconsole.png</image>
     </screenshot>
   </screenshots>
   <translation type="gettext">olc</translation>
