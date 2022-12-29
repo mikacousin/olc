@@ -169,7 +169,7 @@ class IndependentsTab(Gtk.Paned):
             row = path.get_indices()[0]
             number = self.liststore[row][0]
             # Update channels level
-            channels = array.array("B", [0] * MAX_CHANNELS)
+            channels = {}
             for channel in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(channel + 1)
                 channels[channel] = channel_widget.level
@@ -254,10 +254,10 @@ class IndeChannelsView(ChannelsView):
         channel_widget = child.get_child()
         user_channels = App().tabs.tabs["indes"].user_channels
         channels = App().independents.independents[row].levels
-        if channels[channel_index] or child.is_selected():
+        if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index + 1, 0)
+                channel_widget.next_level = channels.get(channel_index + 1, 0)
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
@@ -300,10 +300,10 @@ class IndeChannelsView(ChannelsView):
         channel_widget = child.get_child()
         user_channels = App().tabs.tabs["indes"].user_channels
         channels = App().independents.independents[row].levels
-        if channels[channel_index] or child.is_selected():
+        if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels[channel_index]
-                channel_widget.next_level = channels[channel_index]
+                channel_widget.level = channels.get(channel_index + 1, 0)
+                channel_widget.next_level = channels.get(channel_index + 1, 0)
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]

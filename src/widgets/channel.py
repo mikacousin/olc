@@ -110,7 +110,7 @@ class ChannelWidget(Gtk.Widget):
         # Default color
         cr.set_source_rgb(0.9, 0.6, 0.2)
         # Independent color
-        if int(self.channel) - 1 in App().independents.get_channels():
+        if int(self.channel) in App().independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
         # Not patched color
         if int(self.channel) not in App().patch.channels:

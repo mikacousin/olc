@@ -12,8 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import array
-
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE, string_to_time
@@ -479,7 +477,7 @@ class AsciiParser:
                 flag_preset = False
                 flag_group = False
                 flag_inde = True
-                channels = array.array("B", [0] * MAX_CHANNELS)
+                channels = {}
                 text = ""
                 items = line[17:].split(" ")
                 number = int(items[0])
@@ -501,7 +499,7 @@ class AsciiParser:
                             chan = int(item[0])
                             level = int(item[1][1:], 16)
                             if chan <= MAX_CHANNELS:
-                                channels[chan - 1] = level
+                                channels[chan] = level
                 if line == "":
                     inde = Independent(number, text=text, levels=channels)
                     App().independents.update(inde)

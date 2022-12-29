@@ -12,10 +12,12 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from typing import Dict
+from gi.repository import Gio
 from olc.define import App
 
 
-def save_main_playback(stream):
+def save_main_playback(stream: Gio.FileOutputStream) -> None:
     """Save Main Sequence
 
     Args:
@@ -77,7 +79,7 @@ def save_main_playback(stream):
             stream.write(bytes("\n", "utf8"))
 
 
-def save_chasers(stream):
+def save_chasers(stream: Gio.FileOutputStream) -> None:
     """Save Chasers
 
     Args:
@@ -126,7 +128,7 @@ def save_chasers(stream):
                 stream.write(bytes("\n", "utf8"))
 
 
-def save_groups(stream):
+def save_groups(stream: Gio.FileOutputStream) -> None:
     """Save Groups
 
     Args:
@@ -157,7 +159,7 @@ def save_groups(stream):
         stream.write(bytes("\n", "utf8"))
 
 
-def save_congo_groups(stream):
+def save_congo_groups(stream: Gio.FileOutputStream) -> None:
     """Save Congo Groups
 
     Args:
@@ -189,7 +191,7 @@ def save_congo_groups(stream):
         stream.write(bytes("\n", "utf8"))
 
 
-def save_masters(stream):
+def save_masters(stream: Gio.FileOutputStream) -> None:
     """Save Masters
 
     Args:
@@ -254,7 +256,7 @@ def save_masters(stream):
     stream.write(bytes("\n", "utf8"))
 
 
-def save_patch(stream):
+def save_patch(stream: Gio.FileOutputStream) -> None:
     """Save Patch
 
     Args:
@@ -288,7 +290,7 @@ def save_patch(stream):
     stream.write(bytes("\n", "utf8"))
 
 
-def save_independents(stream):
+def save_independents(stream: Gio.FileOutputStream) -> None:
     """Save Independents
 
     Args:
@@ -310,7 +312,7 @@ def save_independents(stream):
     stream.write(bytes("\n", "utf8"))
 
 
-def save_midi_mapping(stream):
+def save_midi_mapping(stream: Gio.FileOutputStream) -> None:
     """Save MIDI mapping
 
     Args:
@@ -330,19 +332,19 @@ def save_midi_mapping(stream):
     stream.write(bytes("\n", "utf8"))
 
 
-def _save_channels(stream, channels_array):
+def _save_channels(stream: Gio.FileOutputStream, chans: Dict[int, int]) -> None:
     """Save channels
 
     Args:
         stream: File
-        channels_array: Array of channels
+        chans: Channels and Levels
     """
     channels = ""
     i = 1
-    for chan, level in enumerate(channels_array):
+    for chan, level in chans.items():
         if level != 0:
-            level = "H" + format(level, "02X")
-            channels += f" {str(chan + 1)}/{level}"
+            lvl = "H" + format(level, "02X")
+            channels += f" {str(chan)}/{lvl}"
             # 6 Channels per line
             if not i % 6 and channels != "":
                 stream.write(bytes(f"CHAN{channels}" + "\n", "utf8"))

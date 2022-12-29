@@ -25,7 +25,7 @@ class Independent:
         number (int): independent number
         level (int): independent level (0-255)
         channels (set): channels present in independent
-        levels (array): channels levels
+        levels (Dict[int, int]): channels levels
         text (str): independent text
         inde_type (str): knob or button
         dmx (array): DMX levels
@@ -35,13 +35,13 @@ class Independent:
         self,
         number,
         text="",
-        levels=array.array("B", [0] * MAX_CHANNELS),
+        levels=None,
         inde_type="knob",
     ):
         self.number = number
         self.level = 0
         self.channels = set()
-        self.levels = levels
+        self.levels = levels or {}
         self.text = text
         self.inde_type = inde_type
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
@@ -50,7 +50,7 @@ class Independent:
 
     def update_channels(self):
         """Update set of channels"""
-        for channel, level in enumerate(self.levels):
+        for channel, level in self.levels.items():
             if level:
                 self.channels.add(channel)
 
@@ -58,15 +58,15 @@ class Independent:
         """Define channels and levels
 
         Args:
-            levels (array): channels levels
+            levels (Dict[int, int]): channels levels
         """
         self.levels = levels
-        self.channels = {channel for channel, level in enumerate(levels) if level}
+        self.channels = {channel for channel, level in levels.items() if level}
 
     def update_dmx(self):
         """Update DMX levels"""
-        for channel, level in enumerate(self.levels):
-            self.dmx[channel] = round(level * (self.level / 255))
+        for channel, level in self.levels.items():
+            self.dmx[channel - 1] = round(level * (self.level / 255))
 
 
 class Independents:

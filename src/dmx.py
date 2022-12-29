@@ -70,10 +70,7 @@ class Dmx(threading.Thread):
                 # Independents
                 level_inde = -1
                 for inde in App().independents.independents:
-                    if (
-                        channel - 1 in inde.channels
-                        and inde.dmx[channel - 1] > level_inde
-                    ):
+                    if channel in inde.channels and inde.dmx[channel - 1] > level_inde:
                         level_inde = inde.dmx[channel - 1]
                 if level_inde != -1:
                     level = level_inde
