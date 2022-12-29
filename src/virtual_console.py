@@ -135,11 +135,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.output_pad = Gtk.Grid()
         # self.output_pad.set_column_homogeneous(True)
         # self.output_pad.set_row_homogeneous(True)
-        adjustment = Gtk.Adjustment(255, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(App().dmx.grand_master, 0, 255, 1, 10, 0)
         self.scale_grand_master = FaderWidget(
             text="gm", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
         )
-        self.scale_grand_master.value = 255
+        self.scale_grand_master.value = App().dmx.grand_master
         # self.scale_grand_master.height = 160
         self.scale_grand_master.connect("clicked", self.scale_clicked)
         self.scale_grand_master.connect("value-changed", self.grand_master_moved)
