@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
 from gi.repository import GLib
+from olc.define import App
 from .control_change import MidiControlChanges
 from .notes import MidiNotes
 from .ports import MidiPorts
@@ -55,13 +56,15 @@ class Midi:
         if self.ports.outports:
             for outport in self.ports.outports:
                 GLib.idle_add(outport.send, msg)
-
         if msg.type == "note_on":
             self.notes.learn(msg, self.midi_learn)
         elif msg.type == "control_change":
             self.control_change.learn(msg, self.midi_learn)
         elif msg.type == "pitchwheel":
             self.pitchwheel.learn(msg, self.midi_learn)
+        # Tag filename as modified
+        App().ascii.modified = True
+        App().window.header.set_title(f"{App().ascii.basename}*")
 
     def get_midi_learn(self) -> str:
         """Return MIDI Learn string
