@@ -69,7 +69,7 @@ $ sudo apt install meson python3-setuptools gobject-introspection cmake python-g
 ```bash
 $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
-$ meson builddir --prefix=/usr/local
+$ meson setup builddir --prefix=/usr/local
 $ sudo ninja -C builddir install
 ```
 
