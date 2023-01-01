@@ -57,9 +57,9 @@ class MidiControlChanges:
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde, port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
-                    GLib.idle_add(olc.midi_xfade.xfade_out, msg)
+                    GLib.idle_add(olc.midi.xfade.xfade_out, msg)
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(olc.midi_xfade.xfade_in, msg)
+                    GLib.idle_add(olc.midi.xfade.xfade_in, msg)
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
 
