@@ -204,8 +204,8 @@ class MastersTab(Gtk.Paned):
             self.liststores[page][path][3] = ""
             # Update Virtual Console
             if App().virtual_console and App().virtual_console.props.visible:
-                App().virtual_console.flashes[index].label = ""
-                App().virtual_console.flashes[index].queue_draw()
+                App().virtual_console.flashes[int(path)].label = ""
+                App().virtual_console.flashes[int(path)].queue_draw()
         self.get_parent().grab_focus()
 
     def on_mode_changed(self, _widget, path, text):
@@ -370,20 +370,22 @@ class MastersTab(Gtk.Paned):
         path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
+            page = int(self.stack.get_visible_child_name())
+            index = (page * 10) + row
             # Type : None
-            if App().masters[row].content_type == 0:
+            if App().masters[index].content_type == 0:
                 return False
             # Type : Preset
-            if App().masters[row].content_type == 1:
+            if App().masters[index].content_type == 1:
                 found = False
                 mem = None
                 for mem in App().memories:
-                    if mem.memory == App().masters[row].content_value:
+                    if mem.memory == App().masters[index].content_value:
                         found = True
                         break
                 if found:
-                    master_level = App().masters[row].value
-                    App().masters[row].set_level(0)
+                    master_level = App().masters[index].value
+                    App().masters[index].set_level(0)
                     channels = mem.channels
                     for chan in range(1, MAX_CHANNELS + 1):
                         channel_widget = self.channels_view.get_channel_widget(chan)
@@ -391,12 +393,12 @@ class MastersTab(Gtk.Paned):
                     # Update Preset Tab if open
                     if App().tabs.tabs["memories"]:
                         App().tabs.tabs["memories"].channels_view.update()
-                    App().masters[row].set_level(master_level)
+                    App().masters[index].set_level(master_level)
             # Type : Channels
-            if App().masters[row].content_type == 2:
-                master_level = App().masters[row].value
-                App().masters[row].set_level(0)
-                channels = App().masters[row].content_value
+            if App().masters[index].content_type == 2:
+                master_level = App().masters[index].value
+                App().masters[index].set_level(0)
+                channels = App().masters[index].content_value
                 channels.clear()
                 nb_chan = 0
                 text = "Ch"
@@ -406,21 +408,20 @@ class MastersTab(Gtk.Paned):
                         channels[chan + 1] = channel_widget.level
                         nb_chan += 1
                         text += f" {str(chan + 1)}"
-                App().masters[row].text = text
-                App().masters[row].set_level(master_level)
+                App().masters[index].text = text
+                App().masters[index].set_level(master_level)
                 # Update Display
-                page = int(self.stack.get_visible_child_name())
                 self.liststores[page][path][2] = str(nb_chan)
                 self.channels_view.update()
                 # Update Virtual Console
                 if App().virtual_console:
-                    App().virtual_console.flashes[row].label = App().masters[row].text
+                    App().virtual_console.flashes[row].label = App().masters[index].text
                     App().virtual_console.flashes[row].queue_draw()
-            elif App().masters[row].content_type == 13:
+            elif App().masters[index].content_type == 13:
                 found = False
                 grp = None
                 for grp in App().groups:
-                    if grp.index == App().masters[row].content_value:
+                    if grp.index == App().masters[index].content_value:
                         found = True
                         break
                 if found:
