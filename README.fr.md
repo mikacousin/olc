@@ -14,7 +14,7 @@ Fenêtre principale :
 ![Screenshot](../assets/olc.png?raw=true)
 
 Console virtuelle :
-![VirtualConsole](../assets/virtual_console.png?raw=true)
+![VirtualConsole](../assets/virtualconsole.png?raw=true)
 
 ## Usage
 
