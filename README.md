@@ -18,7 +18,8 @@ Virtual console :
 
 ## Usage
 
-You can find some useful informations here: [Documentation](http://mikacousin.github.io/olc/)
+You can find some useful informations here: [Documentation](http://mikacousin.github.io/olc/)  
+A [manual](http://mikacousin.github.io/olc/doc.fr/) in French is being written, it will be translated when it is advanced enough. In the meantime, you can translate it with online tools.
 
 ## Installation
 
