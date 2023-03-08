@@ -1,4 +1,4 @@
 # Console virtuelle
-![Console virtuelle](pictures/virtual_console.png)
+![Console virtuelle](pictures/virtualconsole.png)
 
 L'ouvrir avec le menu principal ou avec [Maj + Ctrl + C]

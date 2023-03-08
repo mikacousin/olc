@@ -23,7 +23,7 @@
 
 ### Virtual console
 Open with Burger menu or [Shift + Ctrl + C]
-![VirtualConsole](https://raw.githubusercontent.com/mikacousin/olc/assets/virtual_console.png)
+![VirtualConsole](https://raw.githubusercontent.com/mikacousin/olc/assets/virtualconsole.png)
 
 ### Main window
 #### Select channels
