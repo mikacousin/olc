@@ -212,7 +212,7 @@ class SequenceTab(Gtk.Grid):
         Returns:
             Row number
         """
-        for path in range(len(self.liststore2)):
+        for path in range(len(self.liststore2) + 3):
             if App().window.playback.cues_liststore1[str(path)][0] == str(step):
                 break
         return str(path)
