@@ -77,6 +77,8 @@ class Dmx(threading.Thread):
                     widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
                 # Proportional patch level
                 level = level * (App().patch.outputs[universe][output][1] / 100)
+                # TV2 Curve (for tests)
+                # level = pow(level, 0.5) * pow(255, 0.5)
                 # Grand Master
                 level = round(level * (self.grand_master / 255))
                 # Update output level
