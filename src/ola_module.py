@@ -149,4 +149,4 @@ def _is_running(name: str) -> bool:
 
 def _is_port_in_use(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as serversocket:
-        return serversocket.connect_ex(("localhost", port)) == 0
+        return serversocket.connect_ex(("127.0.0.1", port)) == 0
