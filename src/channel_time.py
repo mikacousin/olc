@@ -69,7 +69,6 @@ class ChanneltimeTab(Gtk.Paned):
     """Channels time edition"""
 
     def __init__(self, sequence, position):
-
         self.sequence = sequence
         self.position = position
 

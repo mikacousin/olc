@@ -25,7 +25,6 @@ class MidiPitchWheel:
     pitchwheel: Dict[str, int]
 
     def __init__(self):
-
         # Default MIDI pitchwheel values : "action": Channel
         self.pitchwheel = {
             "crossfade_out": -1,

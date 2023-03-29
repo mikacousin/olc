@@ -27,7 +27,6 @@ class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
 
     def __init__(self):
-
         self.keystring = ""
 
         # To stock user modification on channels

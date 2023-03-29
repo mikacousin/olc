@@ -24,7 +24,6 @@ class GroupWidget(Gtk.Widget):
     __gtype_name__ = "GroupWidget"
 
     def __init__(self, number, name):
-
         self.number = number
         self.name = name
 

@@ -24,7 +24,6 @@ class MastersTab(Gtk.Paned):
     """Masters edition"""
 
     def __init__(self):
-
         self.keystring = ""
 
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -231,7 +230,6 @@ class MastersTab(Gtk.Paned):
             text = "0"
 
         if text.replace(".", "", 1).isdigit():
-
             if text[0] == ".":
                 text = f"0{text}"
 

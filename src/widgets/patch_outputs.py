@@ -24,7 +24,6 @@ class PatchWidget(Gtk.Widget):
     __gtype_name__ = "PatchWidget"
 
     def __init__(self, universe, output):
-
         self.universe = universe
         self.output = output
 

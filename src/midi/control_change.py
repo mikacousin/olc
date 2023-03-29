@@ -25,7 +25,6 @@ class MidiControlChanges:
     control_change: Dict[str, List[int]]
 
     def __init__(self):
-
         # Default MIDI control change values : "action": Channel, CC
         self.control_change = {
             "wheel": [0, 60],

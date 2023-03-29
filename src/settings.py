@@ -22,7 +22,6 @@ class SettingsDialog:
     """Edit settings"""
 
     def __init__(self):
-
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
 

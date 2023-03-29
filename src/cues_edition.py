@@ -24,7 +24,6 @@ class CuesEditionTab(Gtk.Paned):
     """Cues edition"""
 
     def __init__(self):
-
         self.keystring = ""
 
         # Channels modified by user

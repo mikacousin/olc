@@ -24,7 +24,6 @@ class PatchOutputsTab(Gtk.Box):
     """Tab to Patch by outputs"""
 
     def __init__(self):
-
         self.keystring = ""
         self.last_out_selected = ""
         self.test = False

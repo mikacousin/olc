@@ -27,7 +27,6 @@ class SequentialWidget(Gtk.Widget):
     def __init__(
         self, total_time, time_in, time_out, delay_in, delay_out, wait, channel_time
     ):
-
         self.total_time = total_time
         self.time_in = time_in
         self.time_out = time_out

@@ -21,7 +21,6 @@ class PatchChannelsTab(Gtk.Box):
     """Tab to patch by channels"""
 
     def __init__(self):
-
         self.keystring = ""
         self.last_chan_selected = ""
 

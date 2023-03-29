@@ -35,7 +35,6 @@ class Cue:
         channels=None,
         text="",
     ):
-
         self.sequence = sequence
         self.memory = memory
         self.channels = channels or {}

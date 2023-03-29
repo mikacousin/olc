@@ -25,7 +25,6 @@ class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
     def __init__(self):
-
         # Fullscreen
         self.full = False
 

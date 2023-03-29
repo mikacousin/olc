@@ -167,7 +167,6 @@ class GroupTab(Gtk.Paned):
     flowbox: Gtk.FlowBox
 
     def __init__(self):
-
         self.keystring = ""
         self.last_group_selected = ""
 

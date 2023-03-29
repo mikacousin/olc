@@ -30,7 +30,6 @@ class MidiNotes:
     notes: Dict[str, List[int]]
 
     def __init__(self):
-
         # Default MIDI notes values : "action": Channel, Note
         self.notes = {
             "go": [0, 94],

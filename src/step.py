@@ -29,7 +29,6 @@ class Step:
         channel_time=None,
         text="",
     ):
-
         self.sequence = sequence
         self.cue = cue
         self.time_in = time_in
