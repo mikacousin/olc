@@ -871,7 +871,7 @@ class ThreadGoBack(threading.Thread):
                 widget = App().window.live_view.channels_view.get_channel_widget(
                     channel
                 )
-                self.dmxlevels[univ][output - 1] = widget.level
+                self.dmxlevels[index][output - 1] = widget.level
         # Go Back's default time
         go_back_time = App().settings.get_double("go-back-time") * 1000
         pause_time = 0
