@@ -15,11 +15,11 @@
 import array
 import socket
 import subprocess
+import sys
 import threading
 import time
 from typing import Optional
 from functools import partial
-import psutil
 
 from gi.repository import GLib
 from ola import OlaClient
@@ -89,10 +89,14 @@ class Ola:
 
     def start(self):
         """Start ola daemon"""
-        if not _is_running("olad"):
+        # Create OlaClient and start olad if needed
+        try:
+            self.ola_thread = OlaThread()
+            self.olad_pid = None
+        except OlaClient.OLADNotRunningException:
             if _is_port_in_use(self.olad_port):
                 print(f"Olad port {self.olad_port} already in use")
-                App().quit()
+                sys.exit()
             # Launch olad if not running
             self.olad_pid = subprocess.Popen(
                 ["olad", "--http-port", str(self.olad_port)]
@@ -110,41 +114,13 @@ class Ola:
                     if timer >= timeout:
                         print("Can't start olad")
                         break
-        else:
-            self.olad_pid = None
-        # Create OlaClient
-        try:
             self.ola_thread = OlaThread()
-        except Exception as e:
-            print("Can't connect to Ola !", e)
-            App().quit()
         self.ola_thread.start()
 
     def stop(self) -> None:
         """Stop olad if we launched it"""
         if self.olad_pid:
             self.olad_pid.terminate()
-
-
-def _is_running(name: str) -> bool:
-    """Check if there is any running process that contains the given name processName.
-
-    Args:
-        name: process name
-
-    Returns:
-        True if running, False otherwise
-    """
-
-    # Iterate over the all the running process
-    for proc in psutil.process_iter():
-        try:
-            # Check if process names contains the given name string
-            if name.lower() in proc.name().lower():
-                return True
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-            pass
-    return False
 
 
 def _is_port_in_use(port: int) -> bool:
