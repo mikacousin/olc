@@ -57,13 +57,13 @@ class OlaThread(threading.Thread):
         idx = App().universes.index(univ)
         if App().tabs.tabs["patch_outputs"]:
             # Find diff between old and new DMX frames
-            diff = [
-                (index, e1)
+            outputs = [
+                index
                 for index, (e1, e2) in enumerate(zip(dmxframe, self.old_frame[idx]))
                 if e1 != e2
             ]
             # Loop on outputs with different level
-            for output, level in diff:
+            for output in outputs:
                 if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
                     output + 1
                 ):
