@@ -38,11 +38,9 @@ Any help to create packages for different distributions is welcome.
 
 - gtk3 >= 3.20
 - python3
-- psutil (python-psutil on archlinux)
 - python-gobject
 - gobject-introspection
 - ola (with python3 support)
-- psutil (python-psutil on archlinux)
 - portmidi
 - mido (python-mido on archlinux)
 - liblo (python-pyliblo on archlinux)
@@ -62,7 +60,7 @@ $ sudo ldconfig
 ```
 Install olc dependencies:
 ```bash
-$ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-psutil python3-liblo python3-mido python3-rtmidi gettext
+$ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext
 ```
 
 #### Building from git
