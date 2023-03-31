@@ -86,6 +86,7 @@ class Ola:
 
     def __init__(self, olad_port=9090):
         self.olad_port = olad_port
+        self.olad_pid = None
 
     def start(self):
         """Start ola daemon"""
@@ -98,9 +99,8 @@ class Ola:
                 print(f"Olad port {self.olad_port} already in use")
                 sys.exit()
             # Launch olad if not running
-            self.olad_pid = subprocess.Popen(
-                ["olad", "--http-port", str(self.olad_port)]
-            )
+            cmd = ["olad", "--http-port", str(self.olad_port)]
+            self.olad_pid = subprocess.Popen(cmd)  # pylint: disable=R1732
             # Wait olad starting
             timeout = 15
             timer = 0.0
