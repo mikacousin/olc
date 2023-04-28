@@ -277,10 +277,13 @@ def save_patch(stream: Gio.FileOutputStream) -> None:
             output = values[0]
             univ = values[1]
             index = App().universes.index(univ)
-            patch += (
-                f" {str(channel)}<{str(output + 512 * index)}@"
-                f"{str(App().patch.outputs[univ][output][1])}"
-            )
+            limit = 255
+            curve_num = App().patch.outputs[univ][output][1]
+            if curve_num < 0:
+                curve = App().curves.get_curve(curve_num)
+                limit = curve.limit
+            level = "H" + format(limit, "02X")
+            patch += f" {str(channel)}<{str(output + 512 * index)}@{level}"
             if not i % 4 and patch != "":
                 stream.write(bytes(f"PATCH 1{patch}" + "\n", "utf8"))
                 patch = ""
@@ -331,6 +334,45 @@ def save_midi_mapping(stream: Gio.FileOutputStream) -> None:
         stream.write(bytes(f"$$MIDICC {key} {value[0]} {value[1]}\n", "utf8"))
     for key, value in App().midi.pitchwheel.pitchwheel.items():
         stream.write(bytes(f"$$MIDIPW {key} {value}\n", "utf8"))
+    stream.write(bytes("\n", "utf8"))
+
+
+def save_curves(stream: Gio.FileOutputStream) -> None:
+    """Save Curves
+
+    Args:
+        stream: File
+    """
+    stream.write(
+        bytes(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+            "utf8",
+        )
+    )
+    stream.write(bytes("! Curves\n\n", "utf8"))
+    for key, curve in App().curves.curves.items():
+        if abs(key) >= 100:
+            stream.write(bytes(f"$$CURVE {key} {curve.name}\n", "utf8"))
+    stream.write(bytes("\n", "utf8"))
+
+
+def save_outputs_curves(stream: Gio.FileOutputStream) -> None:
+    """Save Outputs curves
+
+    Args:
+        stream: File
+    """
+    stream.write(
+        bytes(
+            "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+            "utf8",
+        )
+    )
+    stream.write(bytes("! Output curves\n", "utf8"))
+    stream.write(bytes("! $$OUTPUT  Universe, Output number, Curve number\n\n", "utf8"))
+    for key, value in App().patch.outputs.items():
+        for output, chan_dic in value.items():
+            stream.write(bytes(f"$$OUTPUT {key} {output} {chan_dic[1]}\n", "utf8"))
     stream.write(bytes("\n", "utf8"))
 
 

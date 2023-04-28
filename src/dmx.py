@@ -75,10 +75,11 @@ class Dmx(threading.Thread):
                 if level_inde != -1:
                     level = level_inde
                     widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
-                # Proportional patch level
-                level = level * (App().patch.outputs[universe][output][1] / 100)
-                # TV2 Curve (for tests)
-                # level = pow(level, 0.5) * pow(255, 0.5)
+                # Curve
+                curve_numb = App().patch.outputs[universe][output][1]
+                if curve_numb:
+                    curve = App().curves.get_curve(curve_numb)
+                    level = curve.values.get(level, 0)
                 # Grand Master
                 level = round(level * (self.grand_master / 255))
                 # Update output level
@@ -146,7 +147,7 @@ class PatchDmx:
             channel (1-MAX_CHANNELS).
             For example, channel 5 could be patched on [1, 0] and [5, 1] i.e. output 1
             of universe 1 and output 5 of universe 2
-        outputs: Dictionaries of [channel (1-MAX_CHANNELS), level (0-100)] for each
+        outputs: Dictionaries of [channel (1-MAX_CHANNELS), curve number] for each
             output (1-512) of each universe (0-NB_UNIVERSES)
         universes: List of universes to use
     """
@@ -174,8 +175,8 @@ class PatchDmx:
         #             output,
         #             "Channel",
         #             chan_dic[0],
-        #             "Level",
-        #             chan_dic[1],
+        #             "Curve",
+        #             App().curves.get_curve(chan_dic[1]).name,
         #         )
 
     def patch_empty(self) -> None:
@@ -192,16 +193,14 @@ class PatchDmx:
             output = channel - (index * 512)
             self.add_output(channel, output, univ)
 
-    def add_output(
-        self, channel: int, output: int, univ: int, level: int = 100
-    ) -> None:
+    def add_output(self, channel: int, output: int, univ: int, curve: int = 0) -> None:
         """Add an output to a channel
 
         Args:
             channel: Channel number (1-MAX_CHANNELS)
             output: Dimmer number (1-512)
             univ: Universe number (one of UNIVERSES in define.py)
-            level: Max level (0-100)
+            curve: Curve number (default 0, Linear Curve)
         """
         if channel not in self.channels:
             self.channels[channel] = [[output, univ]]
@@ -209,7 +208,7 @@ class PatchDmx:
             self.channels[channel].append([output, univ])
         if univ not in self.outputs:
             self.outputs[univ] = {}
-        self.outputs[univ][output] = [channel, level]
+        self.outputs[univ][output] = [channel, curve]
 
     def unpatch(self, channel: int, output: int, univ: int) -> None:
         """Unpatch an output from a channel

@@ -26,6 +26,7 @@ olc_sources = [
   'crossfade.py',
   'cue.py',
   'cues_edition.py',
+  'curve.py',
   'define.py',
   'dmx.py',
   'enttec_wing.py',

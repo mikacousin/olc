@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
+from olc.curve import LimitCurve
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE, string_to_time
 from olc.group import Group
 from olc.independent import Independent, Independents
@@ -309,14 +310,21 @@ class AsciiParser:
                         index = int((output - 1) / 512)
                         if index < NB_UNIVERSES:
                             univ = App().universes[index]
+                            # Use Limit curve instead of proportinal level
+                            curve = 0
                             if r[1][0].upper() == "H":
-                                level = int((int(r[1][1:].upper(), 16) / 255) * 100)
+                                level = int(r[1][1:].upper(), 16)
                             else:
-                                level = int(r[1])
+                                level = round((int(r[1]) / 100) * 255)
+                            if level != 255:
+                                curve = App().curves.find_limit_curve(level)
+                                if not curve:
+                                    curve = -level - 100
+                                    App().curves.curves[curve] = LimitCurve(level)
                             if univ in App().universes:
                                 if channel < MAX_CHANNELS:
                                     out = output - (512 * index)
-                                    App().patch.add_output(channel, out, univ, level)
+                                    App().patch.add_output(channel, out, univ, curve)
                                 else:
                                     print("More than", MAX_CHANNELS, "channels")
                             else:
@@ -516,3 +524,24 @@ class AsciiParser:
             if line[:8].upper() == "$$MIDIPW":
                 item = line[9:].split(" ")
                 App().midi.pitchwheel.pitchwheel.update({item[0]: int(item[1])})
+            # Curves
+            if line[:7].upper() == "$$CURVE":
+                item = line[8:].split(" ")
+                curve_nb = int(item[0])
+                curve_name = item[1]
+                if curve_name in "Limit":
+                    limit = abs(curve_nb + 100)
+                    App().curves.curves[curve_nb] = LimitCurve(limit)
+            # Outputs curves
+            if line[:8].upper() == "$$OUTPUT":
+                item = line[9:].split(" ")
+                univ = int(item[0])
+                out = int(item[1])
+                curve_nb = int(item[2])
+                curve = App().curves.get_curve(curve_nb)
+                if (
+                    curve
+                    and univ in App().universes
+                    and out in App().patch.outputs[univ]
+                ):
+                    App().patch.outputs[univ][out][1] = curve_nb

@@ -25,6 +25,7 @@ from olc.ascii import Ascii  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
+from olc.curve import Curves  # noqa: E402
 from olc.define import MAX_CHANNELS, MAX_FADER_PAGE, UNIVERSES  # noqa: E402
 from olc.dmx import Dmx, PatchDmx  # noqa: E402
 from olc.enttec_wing import WingPlayback  # noqa: E402
@@ -88,6 +89,9 @@ class Application(Gtk.Application):
 
         # To store settings
         self.settings = Gio.Settings.new("com.github.mikacousin.olc")
+
+        # Curves
+        self.curves = Curves()
 
         # Universes
         self.universes = UNIVERSES

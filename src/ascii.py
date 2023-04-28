@@ -26,6 +26,8 @@ from olc.ascii_save import (
     save_patch,
     save_independents,
     save_midi_mapping,
+    save_curves,
+    save_outputs_curves,
 )
 from olc.cue import Cue
 from olc.define import App
@@ -88,6 +90,8 @@ class Ascii:
         save_patch(stream)
         save_independents(stream)
         save_midi_mapping(stream)
+        save_curves(stream)
+        save_outputs_curves(stream)
 
         stream.write(bytes("ENDDATA\n", "utf8"))
 
