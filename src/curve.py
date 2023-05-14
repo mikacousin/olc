@@ -14,16 +14,19 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Any, Dict
 import numpy as np
+from olc.define import App
 
 
 class Curve:
     """Curve object"""
 
     name: str  # Curve name
+    editable: bool  # Editable Curve or not
     values: Dict[int, int]  # To store values
 
-    def __init__(self, name=""):
+    def __init__(self, name="", editable=False):
         self.name = name
+        self.editable = editable
         self.values = {}
         self.populate_values()
 
@@ -78,7 +81,7 @@ class LimitCurve(Curve):
 
     def __init__(self, limit=255):
         self.limit = limit
-        super().__init__(name="Limit")
+        super().__init__(name="Limit", editable=True)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -90,18 +93,23 @@ class BezierCurve(Curve):
     """Bezier Curve"""
 
     def __init__(self):
-        coord = [(0, 0), (255, 255)]
+        coord = [(0, 0), (70, 40), (255, 255)]
         self.points = np.array(coord)
-        super().__init__(name="Bezier")
+        super().__init__(name="Bezier", editable=True)
+        import random
+
+        for _ in range(8):
+            x = random.randint(0, 256)
+            y = random.randint(0, 256)
+            self.add_point(x, y)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
         nb_interval_points = round((256 / (len(self.points) - 1)) * 4)
         self.path = self.evaluate_bezier(self.points, nb_interval_points)
         self.values = {
-            min(max(int(k), 0), 255): min(max(int(v), 0), 255) for k, v in self.path
+            min(max(round(k), 0), 255): min(max(round(v), 0), 255) for k, v in self.path
         }
-        # print(len(self.points), nb_interval_points, len(self.path), len(self.values))
 
     def add_point(self, x: int, y: int) -> None:
         """Add point to bezier curve
@@ -203,12 +211,16 @@ class BezierCurve(Curve):
 
 
 class Curves:
-    """Curves supported by application"""
+    """Curves supported by application
+
+    Curve numbers from 0 to 9 are reserved
+    """
 
     curves: Dict[int, Any]
 
     def __init__(self):
-        self.curves = {0: LinearCurve(), 1: LimitCurve(), 2: SquareRootCurve()}
+        # self.curves = {0: LinearCurve(), 1: SquareRootCurve(), 2: BezierCurve()}
+        self.curves = {0: LinearCurve(), 1: SquareRootCurve()}
 
     def get_curve(self, number: int) -> Curve:
         """Get Curve with number
@@ -231,6 +243,35 @@ class Curves:
             CurveLimit number or 0
         """
         for number, curve in self.curves.items():
-            if curve.name in "Limit" and curve.limit == limit:
+            if isinstance(curve, LimitCurve) and curve.limit == limit:
                 return number
         return 0
+
+    def add_curve(self, curve: Curve) -> int:
+        """Add curve to curves list
+
+        Args:
+            curve: Curve to add
+
+        Returns:
+            Curve number or 0
+        """
+        for index in range(10, 9999):
+            if index not in self.curves:
+                self.curves[index] = curve
+                return index
+        return 0
+
+    def del_curve(self, curve_nb: int) -> None:
+        """Delete curve
+
+        Args:
+            curve_nb: Curve number
+        """
+        # First, change each output using deleted curve to LinearCurve (0)
+        for value in App().patch.outputs.values():
+            for chan_dic in value.values():
+                if chan_dic[1] == curve_nb:
+                    chan_dic[1] = 0
+        # Delete Curve from self.curves
+        self.curves.pop(curve_nb, None)

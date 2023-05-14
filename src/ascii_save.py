@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Dict
 from gi.repository import Gio
+from olc.curve import LimitCurve
 from olc.define import App
 
 
@@ -351,8 +352,8 @@ def save_curves(stream: Gio.FileOutputStream) -> None:
     )
     stream.write(bytes("! Curves\n\n", "utf8"))
     for key, curve in App().curves.curves.items():
-        if abs(key) >= 100:
-            stream.write(bytes(f"$$CURVE {key} {curve.name}\n", "utf8"))
+        if isinstance(curve, LimitCurve):
+            stream.write(bytes(f"$$CURVE {key} {curve.name} {curve.limit}\n", "utf8"))
     stream.write(bytes("\n", "utf8"))
 
 

@@ -30,6 +30,7 @@ class Tabs:
     def __init__(self):
         self.tabs = {
             "channel_time": None,
+            "curves": None,
             "groups": None,
             "indes": None,
             "masters": None,

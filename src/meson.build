@@ -27,6 +27,7 @@ olc_sources = [
   'cue.py',
   'cues_edition.py',
   'curve.py',
+  'curve_edition.py',
   'define.py',
   'dmx.py',
   'enttec_wing.py',

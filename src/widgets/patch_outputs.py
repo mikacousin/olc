@@ -14,9 +14,25 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
 from gi.repository import Gdk, Gtk
+from olc.curve import LimitCurve
 from olc.define import App
 from olc.widgets.curve import CurveWidget
 from .common import rounded_rectangle_fill, rounded_rectangle
+
+
+class CurvePatchOutputWidget(CurveWidget):
+    """Curve Widget"""
+
+    def on_click(self, _button) -> None:
+        """Button clicked"""
+        tab = App().tabs.tabs["patch_outputs"]
+        outputs = tab.get_selected_outputs()
+        for output in outputs:
+            out = output[0]
+            univ = output[1]
+            if univ in App().patch.outputs and out in App().patch.outputs[univ]:
+                App().patch.outputs[univ][out][1] = self.curve_nb
+        tab.refresh()
 
 
 class PatchWidget(Gtk.Widget):
@@ -111,7 +127,7 @@ class PatchWidget(Gtk.Widget):
             if curve.name in "Limit":
                 label += f" {round((curve.limit / 255) * 100)}%"
             box.pack_start(Gtk.Label(label=label), False, False, 10)
-            box.pack_start(CurveWidget(number), False, False, 10)
+            box.pack_start(CurvePatchOutputWidget(number), False, False, 10)
             self.stack.add_named(box, str(number))
         curve_nb = App().patch.outputs[self.universe][self.output][1]
         child = self.stack.get_child_by_name(str(curve_nb))
@@ -186,10 +202,9 @@ class PatchWidget(Gtk.Widget):
             self.universe in App().patch.outputs
             and self.output in App().patch.outputs[self.universe]
         ):
-            if (
-                App().patch.outputs[self.universe][self.output][1] == -100
-                and App().patch.outputs[self.universe][self.output][0] != 0
-            ):
+            number = App().patch.outputs[self.universe][self.output][1]
+            curve = App().curves.get_curve(number)
+            if isinstance(curve, LimitCurve) and curve.limit == 0:
                 # Level's output blocked at 0
                 if self.get_parent().is_selected():
                     cr.set_source_rgb(0.8, 0.1, 0.1)

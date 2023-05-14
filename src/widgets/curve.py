@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gtk
 from olc.define import App
+from .common import rounded_rectangle_fill
 
 
 class CurveWidget(Gtk.Button):
@@ -29,15 +30,12 @@ class CurveWidget(Gtk.Button):
         self.connect("clicked", self.on_click)
 
     def on_click(self, _button) -> None:
-        """Button clicked"""
-        tab = App().tabs.tabs["patch_outputs"]
-        outputs = tab.get_selected_outputs()
-        for output in outputs:
-            out = output[0]
-            univ = output[1]
-            if univ in App().patch.outputs and out in App().patch.outputs[univ]:
-                App().patch.outputs[univ][out][1] = self.curve_nb
-        tab.refresh()
+        """Button clicked
+
+        Raises:
+            NotImplementedError: Must be implemented in subclass
+        """
+        raise NotImplementedError
 
     def do_draw(self, cr):
         """Draw curve
@@ -45,16 +43,22 @@ class CurveWidget(Gtk.Button):
         Args:
             cr: Cairo context
         """
-        self.set_size_request(75, 75)
+        self.set_size_request(80, 80)
         width = self.get_allocation().width
         height = self.get_allocation().height
-        state = self.get_state_flags()
-        if state & Gtk.StateFlags.ACTIVE:
-            cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
+        if isinstance(self.get_parent(), Gtk.FlowBoxChild):
+            if self.get_parent().is_selected():
+                cr.set_source_rgba(0.6, 0.4, 0.1, 1.0)
+            else:
+                cr.set_source_rgba(0.3, 0.3, 0.3, 1.0)
         else:
-            cr.set_source_rgba(0.3, 0.3, 0.3, 1.0)
-        cr.rectangle(0, 0, width, height)
-        cr.fill()
+            state = self.get_state_flags()
+            if state & Gtk.StateFlags.ACTIVE:
+                cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
+            else:
+                cr.set_source_rgba(0.3, 0.3, 0.3, 1.0)
+        area = (0, width, 0, height)
+        rounded_rectangle_fill(cr, area, 10)
         cr.set_line_width(2)
         cr.set_source_rgba(0.0, 0.0, 0.0, 1.0)
         cr.move_to(0, height - self.curve.values[0])

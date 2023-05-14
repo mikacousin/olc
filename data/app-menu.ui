@@ -26,6 +26,10 @@
         <attribute name="accel">&lt;Primary&gt;p</attribute>
       </item>
       <item>
+        <attribute name="action">app.curves</attribute>
+        <attribute name="label" translatable="yes">_Curves</attribute>
+      </item>
+      <item>
         <attribute name="action">app.memories</attribute>
         <attribute name="label" translatable="yes">_Memories</attribute>
       </item>

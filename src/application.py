@@ -26,6 +26,7 @@ from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve import Curves  # noqa: E402
+from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS, MAX_FADER_PAGE, UNIVERSES  # noqa: E402
 from olc.dmx import Dmx, PatchDmx  # noqa: E402
 from olc.enttec_wing import WingPlayback  # noqa: E402
@@ -261,6 +262,7 @@ class Application(Gtk.Application):
             "save_as": "_saveas",
             "patch_outputs": "patch_outputs",
             "patch_channels": "_patch_channels",
+            "curves": "_curves",
             "memories": "memories_cb",
             "groups": "groups_cb",
             "sequences": "sequences",
@@ -478,6 +480,10 @@ class Application(Gtk.Application):
             step: Position in sequence
         """
         self.tabs.open("channel_time", ChanneltimeTab, "Channel Time", sequence, step)
+
+    def _curves(self, _action, _parameter):
+        """Create Curves Edition Tab"""
+        self.tabs.open("curves", CurvesTab, "Curves")
 
     def _masters(self, _action, _parameter):
         """Create Masters Tab"""

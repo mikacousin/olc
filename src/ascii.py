@@ -87,11 +87,11 @@ class Ascii:
         save_groups(stream)
         save_congo_groups(stream)
         save_masters(stream)
+        save_curves(stream)
         save_patch(stream)
+        save_outputs_curves(stream)
         save_independents(stream)
         save_midi_mapping(stream)
-        save_curves(stream)
-        save_outputs_curves(stream)
 
         stream.write(bytes("ENDDATA\n", "utf8"))
 

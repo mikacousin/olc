@@ -317,10 +317,8 @@ class AsciiParser:
                             else:
                                 level = round((int(r[1]) / 100) * 255)
                             if level != 255:
-                                curve = App().curves.find_limit_curve(level)
-                                if not curve:
-                                    curve = -level - 100
-                                    App().curves.curves[curve] = LimitCurve(level)
+                                if not App().curves.find_limit_curve(level):
+                                    curve = App().curves.add_curve(LimitCurve(level))
                             if univ in App().universes:
                                 if channel < MAX_CHANNELS:
                                     out = output - (512 * index)
@@ -530,7 +528,7 @@ class AsciiParser:
                 curve_nb = int(item[0])
                 curve_name = item[1]
                 if curve_name in "Limit":
-                    limit = abs(curve_nb + 100)
+                    limit = int(item[2])
                     App().curves.curves[curve_nb] = LimitCurve(limit)
             # Outputs curves
             if line[:8].upper() == "$$OUTPUT":
