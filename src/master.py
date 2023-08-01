@@ -17,8 +17,34 @@ import threading
 import time
 import mido
 
+from gi.repository import GLib
 from olc.define import MAX_CHANNELS, App
 
+
+def update_channel_display(channel: int, level: int, seq_level: int) -> None:
+    """Update channel levels display in LiveView
+
+    Args:
+        channel: Channel number (from 1 to MAX_CHANNELS)
+        level: 0 to 255
+        seq_level: 0 to 255
+    """
+    if App().sequence.last > 1 and App().sequence.position < App().sequence.last - 1:
+        seq_next_level = (
+            App()
+            .sequence.steps[App().sequence.position + 1]
+            .cue.channels.get(channel, 0)
+        )
+    elif App().sequence.last:
+        seq_next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
+    else:
+        seq_next_level = seq_level
+    GLib.idle_add(
+        App().window.live_view.update_channel_widget,
+        channel,
+        level,
+        seq_next_level,
+    )
 
 class Master:
     """Master object, abstraction for faders
@@ -167,8 +193,15 @@ class Master:
                     # Stop Chaser
                     App().chasers[i].run = False
                     App().chasers[i].thread.stop()
+                    App().chasers[i].thread.join()
                     for channel in range(MAX_CHANNELS):
-                        self.dmx[channel - 1] = 0
+                        self.dmx[channel] = 0
+                        seq_level = (
+                            App()
+                            .sequence.steps[App().sequence.position]
+                            .cue.channels.get(channel, 0)
+                        )
+                        update_channel_display(channel + 1, 0, seq_level)
 
 
 class ThreadChaser(threading.Thread):
@@ -276,3 +309,4 @@ class ThreadChaser(threading.Thread):
                 level = int(round(level / (255 / self.level_scale)))
                 # Update master level
                 self.master.dmx[channel - 1] = level
+                update_channel_display(channel, level, seq_level)
