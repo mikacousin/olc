@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
-from olc.curve import LimitCurve
+from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE, string_to_time
 from olc.group import Group
 from olc.independent import Independent, Independents
@@ -526,10 +526,26 @@ class AsciiParser:
             if line[:7].upper() == "$$CURVE":
                 item = line[8:].split(" ")
                 curve_nb = int(item[0])
-                curve_name = item[1]
-                if curve_name in "Limit":
-                    limit = int(item[2])
-                    App().curves.curves[curve_nb] = LimitCurve(limit)
+                if curve_nb >= 10:
+                    curve_type = item[1]
+                    curve_name = item[3]
+                    for i in range(4, len(item)):
+                        curve_name += f" {item[i]}"
+                    if curve_type in "LimitCurve":
+                        limit = int(item[2])
+                        App().curves.curves[curve_nb] = LimitCurve(limit)
+                    elif curve_type in "SegmentsCurve":
+                        App().curves.curves[curve_nb] = SegmentsCurve()
+                    elif curve_type in "InterpolateCurve":
+                        App().curves.curves[curve_nb] = InterpolateCurve()
+                    if curve_type in ("SegmentsCurve", "InterpolateCurve"):
+                        points = item[2].split(";")
+                        for point in points:
+                            coord = point.split(",")
+                            App().curves.curves[curve_nb].add_point(
+                                int(coord[0]), int(coord[1])
+                            )
+                    App().curves.curves[curve_nb].name = curve_name
             # Outputs curves
             if line[:8].upper() == "$$OUTPUT":
                 item = line[9:].split(" ")
