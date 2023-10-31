@@ -201,15 +201,40 @@ class CurveButton(CurveWidget):
 
     def __init__(self, curve: int):
         super().__init__(curve)
-        self.header = Gtk.HeaderBar()
+        # self.header = Gtk.HeaderBar()
+        self.popover = Gtk.Popover()
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        entry = Gtk.Entry()
+        entry.set_has_frame(False)
+        entry.set_text(self.curve.name)
+        entry.connect("activate", self.on_edit)
+        vbox.pack_start(entry, False, True, 10)
+        vbox.show_all()
+        self.popover.add(vbox)
+        self.popover.set_relative_to(self)
+        self.popover.set_position(Gtk.PositionType.BOTTOM)
+
+    def on_edit(self, widget: Gtk.Entry) -> None:
+        """Edit Curve name
+
+        Args:
+            widget: Entry used
+        """
+        text = widget.get_text()
+        self.curve.name = text
+        App().tabs.tabs["curves"].curve_edition.header.set_title(text)
+        self.popover.popdown()
 
     def on_click(self, _button) -> None:
         """Button clicked"""
-        tab = App().tabs.tabs["curves"]
-        tab.curve_edition.change_curve(self.curve_nb)
-        tab.flowbox.unselect_all()
         child = self.get_parent()
-        tab.flowbox.select_child(child)
+        if not child.is_selected():
+            tab = App().tabs.tabs["curves"]
+            tab.curve_edition.change_curve(self.curve_nb)
+            tab.flowbox.unselect_all()
+            tab.flowbox.select_child(child)
+        elif self.curve.editable:
+            self.popover.popup()
 
 
 class CurvesTab(Gtk.Paned):
