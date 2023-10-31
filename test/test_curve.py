@@ -1,4 +1,10 @@
-from curve import LinearCurve, SquareRootCurve, LimitCurve
+from curve import (
+    LinearCurve,
+    SquareRootCurve,
+    LimitCurve,
+    SegmentsCurve,
+    InterpolateCurve,
+)
 
 
 def test_get_level():
@@ -22,3 +28,21 @@ def test_get_level_limit():
     assert curve.limit == 127
     assert curve.get_level(0) == 0
     assert curve.get_level(255) == 127
+
+
+def test_get_level_segments():
+    curve = SegmentsCurve()
+    curve.add_point(2, 0)
+    curve.add_point(3, 255)
+    assert curve.name == "Segment"
+    assert curve.get_level(0) == 0
+    assert curve.get_level(3) == 255
+    assert curve.get_level(255) == 255
+
+
+def test_get_level_interpolate():
+    curve = InterpolateCurve()
+    assert curve.name == "Interpolate"
+    assert curve.get_level(0) == 0
+    assert curve.get_level(70) == 40
+    assert curve.get_level(255) == 255
