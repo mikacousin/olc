@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Any, Dict
-import numpy as np
+from scipy.interpolate import PchipInterpolator
 from olc.define import App
 
 
@@ -89,125 +89,87 @@ class LimitCurve(Curve):
             self.values[x] = round(x * (self.limit / 255))
 
 
-class BezierCurve(Curve):
-    """Bezier Curve"""
+class SegmentsCurve(Curve):
+    """Curve with segments"""
 
     def __init__(self):
-        coord = [(0, 0), (70, 40), (255, 255)]
-        self.points = np.array(coord)
-        super().__init__(name="Bezier", editable=True)
-        import random
-
-        for _ in range(8):
-            x = random.randint(0, 256)
-            y = random.randint(0, 256)
-            self.add_point(x, y)
+        self.points = [(0, 0), (255, 255)]
+        super().__init__(name="Segment", editable=True)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
-        nb_interval_points = round((256 / (len(self.points) - 1)) * 4)
-        self.path = self.evaluate_bezier(self.points, nb_interval_points)
-        self.values = {
-            min(max(round(k), 0), 255): min(max(round(v), 0), 255) for k, v in self.path
-        }
+        intervals = len(self.points) - 1
+        for i in range(intervals):
+            x_start = self.points[i][0]
+            y_start = self.points[i][1]
+            x_end = self.points[i + 1][0]
+            y_end = self.points[i + 1][1]
+            for x in range(x_start, x_end + 1):
+                self.values[x] = round(
+                    y_start + (((x - x_start) / (x_end - x_start)) * (y_end - y_start))
+                )
 
     def add_point(self, x: int, y: int) -> None:
-        """Add point to bezier curve
+        """Add point to segment curve
 
         Args:
             x: X coordinate (0 - 255)
             y: Y coordinate (0 - 255)
         """
-        point = [(x, y)]
-        if x not in self.points[:, 0]:
-            self.points = np.append(self.points, point, axis=0)
-            # Sort x values
-            self.points = self.points[self.points[:, 0].argsort()]
+        if not any(x in point for point in self.points):
+            point = (x, y)
+            self.points.append(point)
+            self.points.sort()
             self.populate_values()
 
-    def get_bezier_coef(self, points: np.ndarray) -> tuple[np.ndarray, list]:
-        """Find the a & b points
+    def del_point(self, point_number: int) -> None:
+        """Remove a point curve
 
         Args:
-            points: Array of points
-
-        Returns:
-            A and B points
+            point_number: Point index to remove
         """
-        # since the formulas work given that we have n+1 points
-        # then n must be this:
-        n = len(points) - 1
+        del self.points[point_number]
+        self.populate_values()
 
-        # build coefficents matrix
-        C = 4 * np.identity(n)
-        np.fill_diagonal(C[1:], 1)
-        np.fill_diagonal(C[:, 1:], 1)
-        C[0, 0] = 2
-        C[n - 1, n - 1] = 7
-        C[n - 1, n - 2] = 2
 
-        # build points vector
-        P = [2 * (2 * points[i] + points[i + 1]) for i in range(n)]
-        P[0] = points[0] + 2 * points[1]
-        P[n - 1] = 8 * points[n - 1] + points[n]
+class InterpolateCurve(Curve):
+    """Interpolate Curve"""
 
-        # solve system, find a & b
-        A = np.linalg.solve(C, P)
-        B = [0] * n
-        for i in range(n - 1):
-            B[i] = 2 * points[i + 1] - A[i + 1]
-        B[n - 1] = (A[n - 1] + points[n]) / 2
+    def __init__(self):
+        self.points = [(0, 0), (70, 40), (255, 255)]
+        super().__init__(name="Interpolate", editable=True)
 
-        return A, B
+    def populate_values(self) -> None:
+        x = []
+        y = []
+        for point in self.points:
+            x.append(point[0])
+            y.append(point[1])
+        spl = PchipInterpolator(x, y)
+        for i in range(256):
+            self.values[i] = min(max(int(spl(i)), 0), 255)
 
-    def get_cubic(self, a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray):
-        """Returns the general Bezier cubic formula given 4 control points
+    def add_point(self, x: int, y: int) -> None:
+        """Add point to segment curve
 
         Args:
-            a: Point coord
-            b: Point coord
-            c: Point coord
-            d: Point coord
-
-        Returns:
-            Lambda function
+            x: X coordinate (0 - 255)
+            y: Y coordinate (0 - 255)
         """
-        return (
-            lambda t: np.power(1 - t, 3) * a
-            + 3 * np.power(1 - t, 2) * t * b
-            + 3 * (1 - t) * np.power(t, 2) * c
-            + np.power(t, 3) * d
-        )
+        if not any(x in point for point in self.points):
+            point = (x, y)
+            self.points.append(point)
+            self.points.sort()
+            self.populate_values()
 
-    def get_bezier_cubic(self, points: np.ndarray) -> list:
-        """Return one cubic curve for each consecutive points
+    def del_point(self, point_number: int) -> None:
+        """Remove a point curve
 
         Args:
-            points: Points
-
-        Returns:
-            List of self.get_cubic() functions
+            point_number: Point index to remove
         """
-        A, B = self.get_bezier_coef(points)
-        return [
-            self.get_cubic(points[i], A[i], B[i], points[i + 1])
-            for i in range(len(points) - 1)
-        ]
-
-    def evaluate_bezier(self, points: np.ndarray, nb_points: int) -> np.ndarray:
-        """Evalute each cubic curve on the range [0, 1] sliced in n points
-
-        Args:
-            points: Points
-            nb_points: Number of interval points
-
-        Returns:
-            Bezier curves points
-        """
-        curves = self.get_bezier_cubic(points)
-        return np.array(
-            [fun(t) for fun in curves for t in np.linspace(0, 1, nb_points)]
-        )
+        del self.points[point_number]
+        self.populate_values()
 
 
 class Curves:
@@ -219,8 +181,15 @@ class Curves:
     curves: Dict[int, Any]
 
     def __init__(self):
-        # self.curves = {0: LinearCurve(), 1: SquareRootCurve(), 2: BezierCurve()}
-        self.curves = {0: LinearCurve(), 1: SquareRootCurve()}
+        self.curves = {
+            0: LinearCurve(),
+            1: SquareRootCurve(),
+            2: SegmentsCurve(),
+        }
+        # Full at 1% curve
+        self.curves[2].name = "Full at 1%"
+        self.curves[2].add_point(2, 0)
+        self.curves[2].add_point(3, 255)
 
     def get_curve(self, number: int) -> Curve:
         """Get Curve with number

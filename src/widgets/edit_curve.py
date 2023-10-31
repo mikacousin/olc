@@ -13,7 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
-from gi.repository import Gtk
+from gi.repository import Gdk, Gtk
+from olc.curve import SegmentsCurve, InterpolateCurve
 from olc.define import App
 
 
@@ -28,6 +29,50 @@ class EditCurveWidget(Gtk.DrawingArea):
         self.curve_nb = curve
         self.curve = App().curves.get_curve(curve)
         self.set_size_request(1000, 500)
+
+        self.offsetx = 0
+        self.offsety = 0
+        self.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
+        self.connect("motion-notify-event", self.on_mouse_move)
+        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.connect("button-press-event", self.on_press)
+
+    def on_press(self, _tgt, event):
+        """Mouse button pressed
+
+        Args:
+            event: Gdk.event
+        """
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        # Left button and Shift pressed on a points based curve
+        if (
+            event.button == 1
+            and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
+            and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))
+        ):
+            x_curve = round(((event.x - 20) / (1000 - 40)) * 255)
+            y_curve = round(((500 - event.y - 20) / (500 - 40)) * 255)
+            x_curve = max(min(x_curve, 255), 0)
+            y_curve = max(min(y_curve, 255), 0)
+            self.curve.add_point(x_curve, y_curve)
+            self.queue_draw()
+            tab = App().tabs.tabs["curves"]
+            tab.curve_edition.points_curve()
+            if App().tabs.tabs["patch_outputs"]:
+                App().tabs.tabs["patch_outputs"].refresh()
+
+    def on_mouse_move(self, _widget, event: Gdk.Event) -> None:
+        """Update pointer coordinates
+
+        Args:
+            event: Event with corrdinates
+        """
+        tab = App().tabs.tabs["curves"]
+        x_curve = round(((event.x - 20) / (1000 - 40)) * 255)
+        y_curve = round(((500 - event.y - 20) / (500 - 40)) * 255)
+        x_curve = max(min(x_curve, 255), 0)
+        y_curve = max(min(y_curve, 255), 0)
+        tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
     def do_draw(self, cr):
         """Draw Edit Curve Widget

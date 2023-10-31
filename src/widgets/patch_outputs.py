@@ -23,8 +23,13 @@ from .common import rounded_rectangle_fill, rounded_rectangle
 class CurvePatchOutputWidget(CurveWidget):
     """Curve Widget"""
 
+    def __init__(self, curve: int, widget):
+        self.parent_widget = widget
+        super().__init__(curve)
+
     def on_click(self, _button) -> None:
         """Button clicked"""
+        self.parent_widget.popover.popdown()
         tab = App().tabs.tabs["patch_outputs"]
         outputs = tab.get_selected_outputs()
         for output in outputs:
@@ -127,7 +132,7 @@ class PatchWidget(Gtk.Widget):
             if curve.name in "Limit":
                 label += f" {round((curve.limit / 255) * 100)}%"
             box.pack_start(Gtk.Label(label=label), False, False, 10)
-            box.pack_start(CurvePatchOutputWidget(number), False, False, 10)
+            box.pack_start(CurvePatchOutputWidget(number, self), False, False, 10)
             self.stack.add_named(box, str(number))
         curve_nb = App().patch.outputs[self.universe][self.output][1]
         child = self.stack.get_child_by_name(str(curve_nb))

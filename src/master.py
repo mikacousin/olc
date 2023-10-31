@@ -46,6 +46,7 @@ def update_channel_display(channel: int, level: int, seq_level: int) -> None:
         seq_next_level,
     )
 
+
 class Master:
     """Master object, abstraction for faders
 

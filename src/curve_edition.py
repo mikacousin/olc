@@ -14,9 +14,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Any, List
 from gi.repository import Gdk, Gtk
-from olc.curve import Curve, LimitCurve, BezierCurve
+from olc.curve import Curve, LimitCurve, SegmentsCurve, InterpolateCurve
 from olc.define import App
-from olc.widgets.bezier_point import BezierPointWidget
+from olc.widgets.curve_point import CurvePointWidget
 from olc.widgets.edit_curve import EditCurveWidget
 from olc.widgets.curve import CurveWidget
 
@@ -26,17 +26,26 @@ class CurveEdition(Gtk.Box):
 
     curve_nb: int  # Curve number
     curve: Curve  # Curve
-    points: List[BezierPointWidget]  # Bezier points widgets
+    points: List[CurvePointWidget]  # Points widgets
 
     def __init__(self):
-        self.points = None
+        self.points = []
+        self.fixed = None
+        self.edit_curve = None
+        self.label = None
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         # HeaderBar
         self.header = Gtk.HeaderBar()
         text = "Select curve"
         self.header.set_title(text)
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button("New curve")
+        button = Gtk.Button("New Limit curve")
+        button.connect("clicked", self.on_new_curve)
+        box.add(button)
+        button = Gtk.Button("New Segments curve")
+        button.connect("clicked", self.on_new_curve)
+        box.add(button)
+        button = Gtk.Button("New Interpolate curve")
         button.connect("clicked", self.on_new_curve)
         box.add(button)
         self.header.pack_end(box)
@@ -44,26 +53,32 @@ class CurveEdition(Gtk.Box):
         self.hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.add(self.hbox)
 
-    def change_curve(self, curve: int) -> None:
+    def change_curve(self, curve_nb: int) -> None:
         """User selected a curve
 
         Args:
-            curve: Curve number
+            curve_nb: Curve number
         """
         # HeaderBar
-        self.curve_nb = curve
-        self.curve = App().curves.get_curve(curve)
-        text = self.curve.name
-        if isinstance(self.curve, LimitCurve):
-            text += f" {round((self.curve.limit / 255) * 100)}%"
+        self.curve_nb = curve_nb
+        curve = App().curves.get_curve(curve_nb)
+        text = curve.name
+        if isinstance(curve, LimitCurve):
+            text += f" {round((curve.limit / 255) * 100)}%"
         self.header.set_title(text)
         for child in self.header.get_children():
             child.destroy()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button("New curve")
+        button = Gtk.Button("New Limit curve")
         button.connect("clicked", self.on_new_curve)
         box.add(button)
-        if self.curve.editable:
+        button = Gtk.Button("New Segments curve")
+        button.connect("clicked", self.on_new_curve)
+        box.add(button)
+        button = Gtk.Button("New Interpolate curve")
+        button.connect("clicked", self.on_new_curve)
+        box.add(button)
+        if curve.editable:
             button = Gtk.Button("Remove curve")
             button.connect("clicked", self.on_del_curve)
             box.add(button)
@@ -71,32 +86,17 @@ class CurveEdition(Gtk.Box):
         # Display curve and tools
         for child in self.hbox.get_children():
             child.destroy()
-        fixed = Gtk.Fixed()
-        edit_curve = EditCurveWidget(self.curve_nb)
-        fixed.put(edit_curve, 0, 0)
-        if isinstance(self.curve, BezierCurve):
-            self.points = []
-            for point in self.curve.points:
-                x = point[0]
-                y = point[1]
-                # Warning: SizeRequest used, not real size
-                width = edit_curve.get_size_request()[0]
-                height = edit_curve.get_size_request()[1]
-                x = (
-                    round((x / 255) * (width - (edit_curve.delta * 2)))
-                    + edit_curve.delta
-                )
-                y = (
-                    height
-                    - edit_curve.delta
-                    - round((y / 255) * (height - (edit_curve.delta * 2)))
-                )
-                self.points.append(BezierPointWidget(curve=self.curve))
-                self.points[-1].connect("toggled", self.on_toggled, None)
-                fixed.put(self.points[-1], x - 4, y - 4)
-        self.hbox.add(fixed)
-        if isinstance(self.curve, LimitCurve):
-            adj = Gtk.Adjustment(self.curve.limit, 0, 255, 1, 10, 0)
+        self.fixed = Gtk.Fixed()
+        self.edit_curve = EditCurveWidget(self.curve_nb)
+        self.fixed.put(self.edit_curve, 0, 0)
+        self.label = Gtk.Label("X, Y")
+        self.fixed.put(self.label, 0, 0)
+        if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
+            self.points_curve()
+        self.hbox.add(self.fixed)
+        # Add special widgets
+        if isinstance(curve, LimitCurve):
+            adj = Gtk.Adjustment(curve.limit, 0, 255, 1, 10, 0)
             scale = Gtk.Scale(orientation=Gtk.Orientation.VERTICAL, adjustment=adj)
             scale.set_digits(0)
             scale.set_inverted(True)
@@ -104,11 +104,45 @@ class CurveEdition(Gtk.Box):
             self.hbox.add(scale)
         self.show_all()
 
-    def on_new_curve(self, _widget) -> None:
+    def points_curve(self) -> None:
+        """Generate PointWidgets"""
+        if self.points:
+            for point in self.points:
+                point.destroy()
+        self.points.clear()
+        curve = App().curves.get_curve(self.curve_nb)
+        for number, point in enumerate(curve.points):
+            x = point[0]
+            y = point[1]
+            # Warning: SizeRequest used, not real size
+            width = self.edit_curve.get_size_request()[0]
+            height = self.edit_curve.get_size_request()[1]
+            x = (
+                round((x / 255) * (width - (self.edit_curve.delta * 2)))
+                + self.edit_curve.delta
+            )
+            y = (
+                height
+                - self.edit_curve.delta
+                - round((y / 255) * (height - (self.edit_curve.delta * 2)))
+            )
+            self.points.append(CurvePointWidget(number=number, curve=curve))
+            self.points[-1].connect("toggled", self.on_toggled, None)
+            self.fixed.put(self.points[-1], x - 4, y - 4)
+        self.show_all()
+
+    def on_new_curve(self, widget) -> None:
         """Create a new curve
-        For now, a LimitCurve
+
+        Args:
+            widget: button clicked
         """
-        curve_nb = App().curves.add_curve(LimitCurve(255))
+        if widget.get_label() == "New Limit curve":
+            curve_nb = App().curves.add_curve(LimitCurve(255))
+        elif widget.get_label() == "New Segments curve":
+            curve_nb = App().curves.add_curve(SegmentsCurve())
+        elif widget.get_label() == "New Interpolate curve":
+            curve_nb = App().curves.add_curve(InterpolateCurve())
         tab = App().tabs.tabs["curves"]
         self.change_curve(curve_nb)
         tab.refresh()
@@ -128,7 +162,14 @@ class CurveEdition(Gtk.Box):
             curve_nb = curvebutton.curve_nb
             App().curves.del_curve(curve_nb)
             self.change_curve(0)
+            curve_nb = 0
             tab.refresh()
+            flowboxchild = None
+            for flowboxchild in tab.flowbox.get_children():
+                if flowboxchild.get_child().curve_nb == curve_nb:
+                    break
+            if flowboxchild:
+                tab.flowbox.select_child(flowboxchild)
 
     def limit_changed(self, widget: Gtk.Scale) -> None:
         """LimitCurve value has been changed
@@ -136,10 +177,11 @@ class CurveEdition(Gtk.Box):
         Args:
             widget: Scale
         """
-        self.curve.limit = int(widget.get_value())
-        self.curve.populate_values()
-        text = self.curve.name
-        text += f" {round((self.curve.limit / 255) * 100)}%*"
+        curve = App().curves.get_curve(self.curve_nb)
+        curve.limit = int(widget.get_value())
+        curve.populate_values()
+        text = curve.name
+        text += f" {round((curve.limit / 255) * 100)}%"
         self.header.set_title(text)
 
     def on_toggled(self, button, _name) -> None:
@@ -230,3 +272,18 @@ class CurvesTab(Gtk.Paned):
     def _keypress_escape(self) -> None:
         """Close Tab"""
         App().tabs.close("curves")
+
+    def _keypress_delete(self) -> None:
+        """Delete selected point"""
+        if not self.curve_edition.curve_nb:
+            return
+        curve = App().curves.get_curve(self.curve_edition.curve_nb)
+        if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
+            for toggle in self.curve_edition.points:
+                if toggle.get_active():
+                    curve.del_point(toggle.number)
+                    self.curve_edition.points_curve()
+                    self.curve_edition.queue_draw()
+                    if App().tabs.tabs["patch_outputs"]:
+                        App().tabs.tabs["patch_outputs"].refresh()
+                    break

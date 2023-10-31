@@ -41,8 +41,9 @@ Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 - gobject-introspection
 - ola (with python3 support)
 - portmidi
-- mido (python-mido on archlinux)
-- liblo (python-pyliblo on archlinux)
+- mido (python-mido pour archlinux)
+- liblo (python-pyliblo pour archlinux)
+- SciPy (python-scipy pour archlinux)
 
 #### Ubuntu
 
@@ -59,7 +60,7 @@ $ sudo ldconfig
 ```
 Installez les dépendances pour olc:
 ```bash
-$ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext
+$ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy
 ```
 
 #### Construction à partir de git
@@ -73,7 +74,7 @@ $ sudo ninja -C builddir install
 
 #### Raspberry Pi 3B+
 
-**PLus de tests sont nécessaires**
+**Plus de tests sont nécessaires**
 
 Semble fonctionner avec **1 univers et 512 circuits** (éditez le fichier src/define.py)
 
@@ -95,3 +96,4 @@ Et avec `sudo apt install` :
 - libasound2-dev
 - libjack0
 - libjack-dev
+- python3-scipy
