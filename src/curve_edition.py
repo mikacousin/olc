@@ -38,17 +38,6 @@ class CurveEdition(Gtk.Box):
         self.header = Gtk.HeaderBar()
         text = "Select curve"
         self.header.set_title(text)
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button("New Limit curve")
-        button.connect("clicked", self.on_new_curve)
-        box.add(button)
-        button = Gtk.Button("New Segments curve")
-        button.connect("clicked", self.on_new_curve)
-        box.add(button)
-        button = Gtk.Button("New Interpolate curve")
-        button.connect("clicked", self.on_new_curve)
-        box.add(button)
-        self.header.pack_end(box)
         self.add(self.header)
         self.hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.add(self.hbox)
@@ -68,21 +57,12 @@ class CurveEdition(Gtk.Box):
         self.header.set_title(text)
         for child in self.header.get_children():
             child.destroy()
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button("New Limit curve")
-        button.connect("clicked", self.on_new_curve)
-        box.add(button)
-        button = Gtk.Button("New Segments curve")
-        button.connect("clicked", self.on_new_curve)
-        box.add(button)
-        button = Gtk.Button("New Interpolate curve")
-        button.connect("clicked", self.on_new_curve)
-        box.add(button)
         if curve.editable:
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             button = Gtk.Button("Remove curve")
             button.connect("clicked", self.on_del_curve)
             box.add(button)
-        self.header.pack_end(box)
+            self.header.pack_end(box)
         # Display curve and tools
         for child in self.hbox.get_children():
             child.destroy()
@@ -130,28 +110,6 @@ class CurveEdition(Gtk.Box):
             self.points[-1].connect("toggled", self.on_toggled, None)
             self.fixed.put(self.points[-1], x - 4, y - 4)
         self.show_all()
-
-    def on_new_curve(self, widget) -> None:
-        """Create a new curve
-
-        Args:
-            widget: button clicked
-        """
-        if widget.get_label() == "New Limit curve":
-            curve_nb = App().curves.add_curve(LimitCurve(255))
-        elif widget.get_label() == "New Segments curve":
-            curve_nb = App().curves.add_curve(SegmentsCurve())
-        elif widget.get_label() == "New Interpolate curve":
-            curve_nb = App().curves.add_curve(InterpolateCurve())
-        tab = App().tabs.tabs["curves"]
-        self.change_curve(curve_nb)
-        tab.refresh()
-        flowboxchild = None
-        for flowboxchild in tab.flowbox.get_children():
-            if flowboxchild.get_child().curve_nb == curve_nb:
-                break
-        if flowboxchild:
-            tab.flowbox.select_child(flowboxchild)
 
     def on_del_curve(self, _widget) -> None:
         """Delete selected curve"""
@@ -247,11 +205,49 @@ class CurvesTab(Gtk.Paned):
         self.curve_edition = CurveEdition()
         self.add1(self.curve_edition)
 
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        box.set_homogeneous(False)
+        self.header = Gtk.HeaderBar()
+        header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        button = Gtk.Button("New Limit curve")
+        button.connect("clicked", self.on_new_curve)
+        header_box.add(button)
+        button = Gtk.Button("New Segments curve")
+        button.connect("clicked", self.on_new_curve)
+        header_box.add(button)
+        button = Gtk.Button("New Interpolate curve")
+        button.connect("clicked", self.on_new_curve)
+        header_box.add(button)
+        self.header.pack_end(header_box)
+        box.add(self.header)
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         self.flowbox = None
         self.populate_curves()
-        self.add2(self.scrolled)
+        box.add(self.scrolled)
+        box.set_child_packing(self.scrolled, True, True, 0, Gtk.PackType.START)
+        self.add2(box)
+
+    def on_new_curve(self, widget) -> None:
+        """Create new curve
+
+        Args:
+            widget: button clicked
+        """
+        if widget.get_label() == "New Limit curve":
+            curve_nb = App().curves.add_curve(LimitCurve(255))
+        elif widget.get_label() == "New Segments curve":
+            curve_nb = App().curves.add_curve(SegmentsCurve())
+        elif widget.get_label() == "New Interpolate curve":
+            curve_nb = App().curves.add_curve(InterpolateCurve())
+        self.curve_edition.change_curve(curve_nb)
+        self.refresh()
+        flowboxchild = None
+        for flowboxchild in self.flowbox.get_children():
+            if flowboxchild.get_child().curve_nb == curve_nb:
+                break
+        if flowboxchild:
+            self.flowbox.select_child(flowboxchild)
 
     def populate_curves(self) -> None:
         """Add curves to tab"""
