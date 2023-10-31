@@ -147,7 +147,7 @@ class InterpolateCurve(Curve):
             y.append(point[1])
         spl = PchipInterpolator(x, y)
         for i in range(256):
-            self.values[i] = min(max(int(spl(i)), 0), 255)
+            self.values[i] = min(max(round(float(spl(i))), 0), 255)
 
     def add_point(self, x: int, y: int) -> None:
         """Add point to segment curve
