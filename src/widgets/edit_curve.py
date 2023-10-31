@@ -32,10 +32,11 @@ class EditCurveWidget(Gtk.DrawingArea):
 
         self.offsetx = 0
         self.offsety = 0
-        self.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
-        self.connect("motion-notify-event", self.on_mouse_move)
-        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-        self.connect("button-press-event", self.on_press)
+        if self.curve.editable:
+            self.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
+            self.connect("motion-notify-event", self.on_mouse_move)
+            self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+            self.connect("button-press-event", self.on_press)
 
     def on_press(self, _tgt, event):
         """Mouse button pressed

@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Any, List
 from gi.repository import Gdk, Gtk
-from olc.curve import Curve, LimitCurve, SegmentsCurve, InterpolateCurve
+from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
 from olc.define import App
 from olc.widgets.curve_point import CurvePointWidget
 from olc.widgets.edit_curve import EditCurveWidget
@@ -25,7 +25,6 @@ class CurveEdition(Gtk.Box):
     """Edition Widget"""
 
     curve_nb: int  # Curve number
-    curve: Curve  # Curve
     points: List[CurvePointWidget]  # Points widgets
 
     def __init__(self):
@@ -71,7 +70,7 @@ class CurveEdition(Gtk.Box):
         self.fixed.put(self.edit_curve, 0, 0)
         self.label = Gtk.Label("X, Y")
         self.fixed.put(self.label, 0, 0)
-        if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
+        if isinstance(curve, (SegmentsCurve, InterpolateCurve)) and curve.editable:
             self.points_curve()
         self.hbox.add(self.fixed)
         # Add special widgets

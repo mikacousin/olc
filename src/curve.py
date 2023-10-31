@@ -187,6 +187,7 @@ class Curves:
             2: SegmentsCurve(),
         }
         # Full at 1% curve
+        self.curves[2].editable = False
         self.curves[2].name = "Full at 1%"
         self.curves[2].add_point(2, 0)
         self.curves[2].add_point(3, 255)
