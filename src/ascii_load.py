@@ -245,7 +245,7 @@ class AsciiParser:
                                 if r[0] != "":
                                     channel = int(r[0])
                                     # Ignore channels greater than MAX_CHANNELS
-                                    if channel < MAX_CHANNELS:
+                                    if channel <= MAX_CHANNELS:
                                         level = int(r[1][1:], 16)
                                         if level:
                                             channels[channel] = level
@@ -320,7 +320,7 @@ class AsciiParser:
                                 if not App().curves.find_limit_curve(level):
                                     curve = App().curves.add_curve(LimitCurve(level))
                             if univ in App().universes:
-                                if channel < MAX_CHANNELS:
+                                if channel <= MAX_CHANNELS:
                                     out = output - (512 * index)
                                     App().patch.add_output(channel, out, univ, curve)
                                 else:
