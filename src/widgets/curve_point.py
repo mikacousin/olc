@@ -14,21 +14,24 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import math
 from dataclasses import dataclass
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, Gtk, GObject
 from olc.define import App
 
 
 @dataclass
 class Point:
     """Just a point"""
+
     x = 0
     y = 0
 
 
-class CurvePointWidget(Gtk.ToggleButton):
+class CurvePointWidget(Gtk.DrawingArea):
     """Curve point widget"""
 
     __gtype_name__ = "CurvePointWidget"
+
+    __gsignals__ = {"toggled": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
     def __init__(self, *args, number=0, curve=None, **kwds):
         super().__init__(*args, **kwds)
@@ -62,12 +65,12 @@ class CurvePointWidget(Gtk.ToggleButton):
             self.max.y = parent.get_allocation().height - widget.get_allocation().height
             # Update Label with point coordinates
             x = round(event.x_root - self.offset.x)
-            y = round(event.y_root - self.offset.y)
+            y = round(event.y_root + 40 - self.offset.y)
             # 20 = offset de la grille, 4 = rayon du point
             x = max(min(x, self.max.x), 20 - 4)
             y = max(min(y, self.max.y), 20 - 4)
             x_curve = round(((x - 20 + 4) / (1000 - 40)) * 255)
-            y_curve = round(((500 - y - 20 - 4) / (500 - 40)) * 255)
+            y_curve = round(((300 - y - 20 - 4) / (300 - 40)) * 255)
             tab = App().tabs.tabs["curves"]
             tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
@@ -79,27 +82,33 @@ class CurvePointWidget(Gtk.ToggleButton):
             event: Event with coordinates
         """
         x = round(event.x_root - self.offset.x)
-        y = round(event.y_root - self.offset.y)
+        y = round(event.y_root + 40 - self.offset.y)
         # 20 = offset de la grille, 4 = rayon du point
         x = max(min(x, self.max.x), 20 - 4)
-        y = max(min(y, self.max.y), 20 - 4)
+        y = max(min(y, self.max.y - 16), 20 - 4)
         if x != self.prev.x or y != self.prev.y:
             self.prev.x = x
             self.prev.y = y
             fixed = self.get_parent()
-            # parent = widget.get_parent()
-            # width = parent.get_allocation().width
-            # height = parent.get_allocation().height
-            # 1000 = width, 500 = height
+            tab = App().tabs.tabs["curves"]
+            # 1000 = width, 300 = height
             x_curve = round(((x - 20 + 4) / (1000 - 40)) * 255)
-            y_curve = round(((500 - y - 20 - 4) / (500 - 40)) * 255)
+            y_curve = round(((300 - y - 20 - 4) / (300 - 40)) * 255)
+            # First point
+            if self.number == 0:
+                tab.curve_edition.label.set_label(f"0, {y_curve}")
+                self.curve.points[self.number] = (0, y_curve)
+                fixed.move(widget, 16, y)
+            # Last point
+            elif self.number == len(self.curve.points) - 1:
+                tab.curve_edition.label.set_label(f"255, {y_curve}")
+                self.curve.points[self.number] = (255, y_curve)
+                fixed.move(widget, 976, y)
             # Don't move before/after prev/next point
-            if (
+            elif (
                 not x_curve <= self.curve.points[self.number - 1][0]
                 and not x_curve >= self.curve.points[self.number + 1][0]
             ):
-                # Update Label with point coordinates
-                tab = App().tabs.tabs["curves"]
                 tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
                 if any(x_curve in point for point in self.curve.points):
                     if self.curve.points[self.number][0] == x_curve:
@@ -111,6 +120,9 @@ class CurvePointWidget(Gtk.ToggleButton):
             self.curve.populate_values()
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
+
+    def get_active(self):
+        return False
 
     def do_draw(self, cr):
         """Draw Curve Point Widget
@@ -125,4 +137,5 @@ class CurvePointWidget(Gtk.ToggleButton):
         else:
             cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
         cr.arc(4, 4, 4, 0, 2 * math.pi)
+        # cr.rectangle(0, 0, self.get_allocation().width, self.get_allocation().height)
         cr.fill()

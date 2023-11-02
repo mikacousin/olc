@@ -28,7 +28,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         self.delta = 20
         self.curve_nb = curve
         self.curve = App().curves.get_curve(curve)
-        self.set_size_request(1000, 500)
+        self.set_size_request(1000, 300)
 
         self.offsetx = 0
         self.offsety = 0
@@ -52,7 +52,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))
         ):
             x_curve = round(((event.x - 20) / (1000 - 40)) * 255)
-            y_curve = round(((500 - event.y - 20) / (500 - 40)) * 255)
+            y_curve = round(((300 - event.y - 20) / (300 - 40)) * 255)
             x_curve = max(min(x_curve, 255), 0)
             y_curve = max(min(y_curve, 255), 0)
             self.curve.add_point(x_curve, y_curve)
@@ -70,7 +70,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         """
         tab = App().tabs.tabs["curves"]
         x_curve = round(((event.x - 20) / (1000 - 40)) * 255)
-        y_curve = round(((500 - event.y - 20) / (500 - 40)) * 255)
+        y_curve = round(((300 - event.y - 20) / (300 - 40)) * 255)
         x_curve = max(min(x_curve, 255), 0)
         y_curve = max(min(y_curve, 255), 0)
         tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
@@ -95,7 +95,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         cr.set_line_width(1)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(8)
-        for x in range(0, 256, 5):
+        for x in range(0, 256, 10):
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
             cr.move_to(
                 round((x / 255) * (width - (self.delta * 2))) + self.delta, self.delta
