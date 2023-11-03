@@ -22,44 +22,12 @@ from olc.widgets.edit_curve import EditCurveWidget
 from olc.widgets.curve import CurveWidget
 
 
-class Value(Gtk.Entry):
-    """Edit curve value widget"""
-
-    def __init__(self, x, y):
-        super().__init__()
-        x = str(x)
-        y = str(y)
-
-    def do_draw(self, cr):
-        """Draw point values
-
-        Args:
-            cr: Cairo context
-        """
-        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-        cr.set_font_size(8)
-        cr.move_to(0, 20)
-        cr.show_text(self.x)
-        cr.move_to(0, 35)
-        cr.show_text(self.y)
-
-
-class CurveValues(Gtk.ScrolledWindow):
+class CurveValues(Gtk.DrawingArea):
     """Display Curve values"""
 
     def __init__(self):
         super().__init__()
-        self.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
-
-        # Create 256 columns
-        self.values = Gtk.ListStore(*(256 * (int,)))
-        self.tree = Gtk.TreeView(model=self.values)
-        self.tree.set_name("treeview_curve_values")
-        # self.add(self.tree)
-
-        self.draw = Gtk.DrawingArea()
-        self.draw.connect("draw", self.on_draw)
-        self.add(self.draw)
+        self.connect("draw", self.on_draw)
 
     def on_draw(self, _area, cr):
         """Draw grid
@@ -88,10 +56,15 @@ class CurveValues(Gtk.ScrolledWindow):
                 cr.rectangle(i, j, 17, 22)
                 cr.stroke()
                 if (
-                    isinstance(curve, (SegmentsCurve, InterpolateCurve))
+                    curve.editable
+                    and isinstance(curve, (SegmentsCurve, InterpolateCurve))
                     and (x, curve.values[x]) in curve.points
                 ):
-                    cr.set_source_rgb(0.9, 0.6, 0.2)
+                    idx = curve.points.index((x, curve.values[x]))
+                    if App().tabs.tabs["curves"].curve_edition.points[idx].get_active():
+                        cr.set_source_rgb(1, 0.7, 0.3)
+                    else:
+                        cr.set_source_rgb(0.8, 0.5, 0.1)
                 else:
                     cr.set_source_rgb(0.7, 0.7, 0.7)
                 cr.move_to(i + 1, j + 9)
@@ -99,31 +72,6 @@ class CurveValues(Gtk.ScrolledWindow):
                 cr.move_to(i + 1, j + 19)
                 cr.show_text(str(curve.values[x]))
                 x += 1
-
-    def refresh(self, curve):
-        """Update Treeview when curve changed
-
-        Args:
-            curve: Curve selected
-        """
-        # TODO: Unused, must be deleted
-        self.draw.queue_draw()
-        self.values.clear()
-        y = []
-        for x in range(256):
-            y.append(curve.values[x])
-        self.values.append(y)
-
-        for column in self.tree.get_columns():
-            self.tree.remove_column(column)
-
-        for val in range(256):
-            renderer = Gtk.CellRendererText()
-            if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
-                if (val, y[val]) in curve.points:
-                    renderer.set_property("foreground", "#997004")
-            column = Gtk.TreeViewColumn(str(val), renderer, text=val)
-            self.tree.append_column(column)
 
 
 class CurveEdition(Gtk.Box):
@@ -133,12 +81,12 @@ class CurveEdition(Gtk.Box):
     points: List[CurvePointWidget]  # Points widgets
 
     def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.curve_nb = None
         self.points = []
         self.fixed = None
         self.edit_curve = None
         self.label = None
-        super().__init__(orientation=Gtk.Orientation.VERTICAL)
         # HeaderBar
         self.header = Gtk.HeaderBar()
         text = "Select curve"
@@ -178,7 +126,7 @@ class CurveEdition(Gtk.Box):
         self.fixed = Gtk.Fixed()
         self.edit_curve = EditCurveWidget(self.curve_nb)
         self.fixed.put(self.edit_curve, 0, 0)
-        self.label = Gtk.Label("X, Y")
+        self.label = Gtk.Label("")
         self.fixed.put(self.label, 0, 0)
         if isinstance(curve, (SegmentsCurve, InterpolateCurve)) and curve.editable:
             self.points_curve()
@@ -191,8 +139,7 @@ class CurveEdition(Gtk.Box):
             scale.set_inverted(True)
             scale.connect("value-changed", self.limit_changed)
             self.hbox.add(scale)
-        # self.values.refresh(curve)
-        self.values.draw.queue_draw()
+        self.values.queue_draw()
         self.show_all()
 
     def points_curve(self) -> None:
@@ -254,15 +201,24 @@ class CurveEdition(Gtk.Box):
         self.header.set_title(text)
 
     def on_toggled(self, button, _name) -> None:
-        """Bezier point clicked
+        """Curve point clicked
 
         Args:
             button: Widget
         """
         if button.get_active():
             for toggle in self.points:
-                if toggle is not button:
-                    toggle.set_active(False)
+                toggle.set_active(False)
+                toggle.queue_draw()
+            button.set_active(False)
+            button.queue_draw()
+        else:
+            for toggle in self.points:
+                toggle.set_active(False)
+                toggle.queue_draw()
+            button.set_active(True)
+            button.queue_draw()
+        self.values.queue_draw()
 
 
 class CurveButton(CurveWidget):

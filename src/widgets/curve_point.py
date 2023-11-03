@@ -35,6 +35,7 @@ class CurvePointWidget(Gtk.DrawingArea):
 
     def __init__(self, *args, number=0, curve=None, **kwds):
         super().__init__(*args, **kwds)
+        self.active = False
         self.number = number
         self.curve = curve
         evmask = Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON1_MOTION_MASK
@@ -53,6 +54,11 @@ class CurvePointWidget(Gtk.DrawingArea):
             event: Event with coordinates
         """
         if event.button == 1:
+            tab = App().tabs.tabs["curves"]
+            for toggle in tab.curve_edition.points:
+                toggle.set_active(False)
+                toggle.queue_draw()
+            self.set_active(True)
             parent = widget.get_parent()
             window = parent.get_window()
             self.offset.x, self.offset.y = window.get_root_origin()
@@ -71,7 +77,6 @@ class CurvePointWidget(Gtk.DrawingArea):
             y = max(min(y, self.max.y), 20 - 4)
             x_curve = round(((x - 20 + 4) / (1000 - 40)) * 255)
             y_curve = round(((300 - y - 20 - 4) / (300 - 40)) * 255)
-            tab = App().tabs.tabs["curves"]
             tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
     def motion_notify(self, widget, event):
@@ -121,8 +126,23 @@ class CurvePointWidget(Gtk.DrawingArea):
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 
-    def get_active(self):
+    def get_active(self) -> bool:
+        """Return activate status
+
+        Returns:
+            True or False
+        """
+        if self.active:
+            return True
         return False
+
+    def set_active(self, active: bool):
+        """Set activate status
+
+        Args:
+            active: True or False
+        """
+        self.active = active
 
     def do_draw(self, cr):
         """Draw Curve Point Widget
@@ -137,5 +157,4 @@ class CurvePointWidget(Gtk.DrawingArea):
         else:
             cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
         cr.arc(4, 4, 4, 0, 2 * math.pi)
-        # cr.rectangle(0, 0, self.get_allocation().width, self.get_allocation().height)
         cr.fill()

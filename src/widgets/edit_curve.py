@@ -45,7 +45,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             event: Gdk.event
         """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        # Left button and Shift pressed on a points based curve
+        # Create new point with mouse click + Shift
         if (
             event.button == 1
             and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
@@ -59,6 +59,9 @@ class EditCurveWidget(Gtk.DrawingArea):
             self.queue_draw()
             tab = App().tabs.tabs["curves"]
             tab.curve_edition.points_curve()
+            idx = self.curve.points.index((x_curve, y_curve))
+            App().tabs.tabs["curves"].curve_edition.points[idx].set_active(True)
+            App().tabs.tabs["curves"].curve_edition.points[idx].queue_draw()
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 
@@ -105,11 +108,12 @@ class EditCurveWidget(Gtk.DrawingArea):
                 height - self.delta,
             )
             cr.move_to(
-                self.delta, round((x / 255) * (height - (self.delta * 2))) + self.delta
+                self.delta,
+                round((x / 255) * (height - (self.delta * 2))) + self.delta + 5,
             )
             cr.line_to(
                 width - self.delta,
-                round((x / 255) * (height - (self.delta * 2))) + self.delta,
+                round((x / 255) * (height - (self.delta * 2))) + self.delta + 5,
             )
             cr.stroke()
             cr.set_source_rgba(0.0, 0.0, 0.0, 1.0)
