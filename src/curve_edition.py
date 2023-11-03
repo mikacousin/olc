@@ -209,15 +209,11 @@ class CurveEdition(Gtk.Box):
         if button.get_active():
             for toggle in self.points:
                 toggle.set_active(False)
-                toggle.queue_draw()
             button.set_active(False)
-            button.queue_draw()
         else:
             for toggle in self.points:
                 toggle.set_active(False)
-                toggle.queue_draw()
             button.set_active(True)
-            button.queue_draw()
         self.values.queue_draw()
 
 
@@ -375,3 +371,34 @@ class CurvesTab(Gtk.Paned):
                     if App().tabs.tabs["patch_outputs"]:
                         App().tabs.tabs["patch_outputs"].refresh()
                     break
+
+    def _keypress_page_up(self) -> None:
+        """Select next point"""
+        index = None
+        last = len(self.curve_edition.points) - 1
+        for idx, point in enumerate(self.curve_edition.points):
+            if point.get_active():
+                index = idx
+                break
+        if index is None:
+            self.curve_edition.points[0].set_active(True)
+            self.curve_edition.values.queue_draw()
+        elif index is not None and index < last:
+            self.curve_edition.points[index].set_active(False)
+            self.curve_edition.points[index + 1].set_active(True)
+            self.curve_edition.values.queue_draw()
+
+    def _keypress_page_down(self) -> None:
+        """Select previous point"""
+        index = None
+        for idx, point in enumerate(self.curve_edition.points):
+            if point.get_active():
+                index = idx
+                break
+        if index is None:
+            self.curve_edition.points[-1].set_active(True)
+            self.curve_edition.values.queue_draw()
+        if index is not None and index > 0:
+            self.curve_edition.points[index].set_active(False)
+            self.curve_edition.points[index - 1].set_active(True)
+            self.curve_edition.values.queue_draw()

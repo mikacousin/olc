@@ -143,6 +143,7 @@ class CurvePointWidget(Gtk.DrawingArea):
             active: True or False
         """
         self.active = active
+        self.queue_draw()
 
     def do_draw(self, cr):
         """Draw Curve Point Widget
