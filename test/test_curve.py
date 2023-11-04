@@ -46,3 +46,9 @@ def test_get_level_interpolate():
     assert curve.get_level(0) == 0
     assert curve.get_level(70) == 40
     assert curve.get_level(255) == 255
+
+
+def test_set_point_segments():
+    curve = SegmentsCurve()
+    curve.set_point(0, 0, 255)
+    assert curve.get_level(0) == 255

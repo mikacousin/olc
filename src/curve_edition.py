@@ -416,12 +416,7 @@ class CurvesTab(Gtk.Paned):
             x = self.curve_edition.points[index].curve.points[index][0] - 1
             if x > self.curve_edition.points[index].curve.points[index - 1][0]:
                 y = self.curve_edition.points[index].curve.points[index][1]
-                curve = App().curves.get_curve(self.curve_edition.curve_nb)
-                curve.points[index] = (x, y)
-                curve.populate_values()
-                self.curve_edition.queue_draw()
-                self.curve_edition.points_curve()
-                self.curve_edition.points[index].set_active(True)
+                self.__update_point(index, x, y)
 
     def _keypress_right(self) -> None:
         """Move curve point right"""
@@ -431,35 +426,37 @@ class CurvesTab(Gtk.Paned):
             x = self.curve_edition.points[index].curve.points[index][0] + 1
             if x < self.curve_edition.points[index].curve.points[index + 1][0]:
                 y = self.curve_edition.points[index].curve.points[index][1]
-                curve = App().curves.get_curve(self.curve_edition.curve_nb)
-                curve.points[index] = (x, y)
-                curve.populate_values()
-                self.curve_edition.queue_draw()
-                self.curve_edition.points_curve()
-                self.curve_edition.points[index].set_active(True)
+                self.__update_point(index, x, y)
 
     def _keypress_up(self) -> None:
         """Move curve point up"""
         index = self.curve_edition.get_active_point()
         x = self.curve_edition.points[index].curve.points[index][0]
         y = self.curve_edition.points[index].curve.points[index][1] + 1
-        if y <= 255:
-            curve = App().curves.get_curve(self.curve_edition.curve_nb)
-            curve.points[index] = (x, y)
-            curve.populate_values()
-            self.curve_edition.queue_draw()
-            self.curve_edition.points_curve()
-            self.curve_edition.points[index].set_active(True)
+        self.__update_point(index, x, y)
 
     def _keypress_down(self) -> None:
         """Move curve point down"""
         index = self.curve_edition.get_active_point()
         x = self.curve_edition.points[index].curve.points[index][0]
         y = self.curve_edition.points[index].curve.points[index][1] - 1
-        if y >= 0:
-            curve = App().curves.get_curve(self.curve_edition.curve_nb)
-            curve.points[index] = (x, y)
-            curve.populate_values()
-            self.curve_edition.queue_draw()
-            self.curve_edition.points_curve()
-            self.curve_edition.points[index].set_active(True)
+        self.__update_point(index, x, y)
+
+    def __update_point(self, index: int, x: int, y: int) -> None:
+        curve = App().curves.get_curve(self.curve_edition.curve_nb)
+        curve.set_point(index, x, y)
+        self.curve_edition.queue_draw()
+        width = self.curve_edition.edit_curve.get_size_request()[0]
+        height = self.curve_edition.edit_curve.get_size_request()[1]
+        x_wgt = (
+            round((x / 255) * (width - (self.curve_edition.edit_curve.delta * 2)))
+            + self.curve_edition.edit_curve.delta
+        )
+        y_wgt = (
+            height
+            - self.curve_edition.edit_curve.delta
+            - round((y / 255) * (height - (self.curve_edition.edit_curve.delta * 2)))
+        )
+        self.curve_edition.fixed.move(
+            self.curve_edition.points[index], x_wgt - 4, y_wgt - 4
+        )

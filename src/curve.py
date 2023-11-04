@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict
+from typing import Any, Dict, List
 from scipy.interpolate import PchipInterpolator
 from olc.define import App
 
@@ -89,11 +89,64 @@ class LimitCurve(Curve):
             self.values[x] = round(x * (self.limit / 255))
 
 
-class SegmentsCurve(Curve):
+class PointsCurve(Curve):
+    """Curve defined by points"""
+
+    points: List[tuple]
+
+    def __init__(self, *args, **kwargs):
+        self.points = [(0, 0), (255, 255)]
+        super().__init__(*args, **kwargs)
+
+    def populate_values(self) -> None:
+        """Calculate each value of curve
+
+        Raises:
+            NotImplementedError: Must be implemented in subclass
+        """
+        raise NotImplementedError
+
+    def add_point(self, x: int, y: int) -> None:
+        """Add point to segment curve
+
+        Args:
+            x: X coordinate (0 - 255)
+            y: Y coordinate (0 - 255)
+        """
+        if not any(x in point for point in self.points):
+            point = (x, y)
+            self.points.append(point)
+            self.points.sort()
+            self.populate_values()
+
+    def del_point(self, point_number: int) -> None:
+        """Remove a point curve
+
+        Args:
+            point_number: Point index to remove
+        """
+        del self.points[point_number]
+        self.populate_values()
+
+    def set_point(self, point_number: int, x: int, y: int) -> None:
+        """Change point values
+
+        Args:
+            point_number: Point index
+            x: X coordinate (0 - 255)
+            y: Y coordinate (0 - 255)
+        """
+        x = min(max(x, 0), 255)
+        y = min(max(y, 0), 255)
+        if 0 <= point_number <= len(self.points) - 1:
+            self.points[point_number] = (x, y)
+            self.populate_values()
+
+
+class SegmentsCurve(PointsCurve):
     """Curve with segments"""
 
     def __init__(self):
-        self.points = [(0, 0), (255, 255)]
         super().__init__(name="Segment", editable=True)
 
     def populate_values(self) -> None:
@@ -109,35 +162,13 @@ class SegmentsCurve(Curve):
                     y_start + (((x - x_start) / (x_end - x_start)) * (y_end - y_start))
                 )
 
-    def add_point(self, x: int, y: int) -> None:
-        """Add point to segment curve
 
-        Args:
-            x: X coordinate (0 - 255)
-            y: Y coordinate (0 - 255)
-        """
-        if not any(x in point for point in self.points):
-            point = (x, y)
-            self.points.append(point)
-            self.points.sort()
-            self.populate_values()
-
-    def del_point(self, point_number: int) -> None:
-        """Remove a point curve
-
-        Args:
-            point_number: Point index to remove
-        """
-        del self.points[point_number]
-        self.populate_values()
-
-
-class InterpolateCurve(Curve):
+class InterpolateCurve(PointsCurve):
     """Interpolate Curve"""
 
     def __init__(self):
-        self.points = [(0, 0), (70, 40), (255, 255)]
         super().__init__(name="Interpolate", editable=True)
+        self.add_point(70, 40)
 
     def populate_values(self) -> None:
         x = []
@@ -148,28 +179,6 @@ class InterpolateCurve(Curve):
         spl = PchipInterpolator(x, y)
         for i in range(256):
             self.values[i] = min(max(round(float(spl(i))), 0), 255)
-
-    def add_point(self, x: int, y: int) -> None:
-        """Add point to segment curve
-
-        Args:
-            x: X coordinate (0 - 255)
-            y: Y coordinate (0 - 255)
-        """
-        if not any(x in point for point in self.points):
-            point = (x, y)
-            self.points.append(point)
-            self.points.sort()
-            self.populate_values()
-
-    def del_point(self, point_number: int) -> None:
-        """Remove a point curve
-
-        Args:
-            point_number: Point index to remove
-        """
-        del self.points[point_number]
-        self.populate_values()
 
 
 class Curves:
