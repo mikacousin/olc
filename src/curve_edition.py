@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, List
+from typing import Any, List, Optional
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
@@ -216,6 +216,19 @@ class CurveEdition(Gtk.Box):
             button.set_active(True)
         self.values.queue_draw()
 
+    def get_active_point(self) -> Optional[int]:
+        """Return index of active point
+
+        Returns:
+            Index or None if no point actived
+        """
+        index = None
+        for idx, point in enumerate(self.points):
+            if point.get_active():
+                index = idx
+                break
+        return index
+
 
 class CurveButton(CurveWidget):
     """Curve Widget"""
@@ -374,12 +387,8 @@ class CurvesTab(Gtk.Paned):
 
     def _keypress_page_up(self) -> None:
         """Select next point"""
-        index = None
         last = len(self.curve_edition.points) - 1
-        for idx, point in enumerate(self.curve_edition.points):
-            if point.get_active():
-                index = idx
-                break
+        index = self.curve_edition.get_active_point()
         if index is None:
             self.curve_edition.points[0].set_active(True)
             self.curve_edition.values.queue_draw()
@@ -390,11 +399,7 @@ class CurvesTab(Gtk.Paned):
 
     def _keypress_page_down(self) -> None:
         """Select previous point"""
-        index = None
-        for idx, point in enumerate(self.curve_edition.points):
-            if point.get_active():
-                index = idx
-                break
+        index = self.curve_edition.get_active_point()
         if index is None:
             self.curve_edition.points[-1].set_active(True)
             self.curve_edition.values.queue_draw()
@@ -402,3 +407,59 @@ class CurvesTab(Gtk.Paned):
             self.curve_edition.points[index].set_active(False)
             self.curve_edition.points[index - 1].set_active(True)
             self.curve_edition.values.queue_draw()
+
+    def _keypress_left(self) -> None:
+        """Move curve point left"""
+        index = self.curve_edition.get_active_point()
+        last = len(self.curve_edition.points) - 1
+        if index and index != last:
+            x = self.curve_edition.points[index].curve.points[index][0] - 1
+            if x > self.curve_edition.points[index].curve.points[index - 1][0]:
+                y = self.curve_edition.points[index].curve.points[index][1]
+                curve = App().curves.get_curve(self.curve_edition.curve_nb)
+                curve.points[index] = (x, y)
+                curve.populate_values()
+                self.curve_edition.queue_draw()
+                self.curve_edition.points_curve()
+                self.curve_edition.points[index].set_active(True)
+
+    def _keypress_right(self) -> None:
+        """Move curve point right"""
+        index = self.curve_edition.get_active_point()
+        last = len(self.curve_edition.points) - 1
+        if index and index != last:
+            x = self.curve_edition.points[index].curve.points[index][0] + 1
+            if x < self.curve_edition.points[index].curve.points[index + 1][0]:
+                y = self.curve_edition.points[index].curve.points[index][1]
+                curve = App().curves.get_curve(self.curve_edition.curve_nb)
+                curve.points[index] = (x, y)
+                curve.populate_values()
+                self.curve_edition.queue_draw()
+                self.curve_edition.points_curve()
+                self.curve_edition.points[index].set_active(True)
+
+    def _keypress_up(self) -> None:
+        """Move curve point up"""
+        index = self.curve_edition.get_active_point()
+        x = self.curve_edition.points[index].curve.points[index][0]
+        y = self.curve_edition.points[index].curve.points[index][1] + 1
+        if y <= 255:
+            curve = App().curves.get_curve(self.curve_edition.curve_nb)
+            curve.points[index] = (x, y)
+            curve.populate_values()
+            self.curve_edition.queue_draw()
+            self.curve_edition.points_curve()
+            self.curve_edition.points[index].set_active(True)
+
+    def _keypress_down(self) -> None:
+        """Move curve point down"""
+        index = self.curve_edition.get_active_point()
+        x = self.curve_edition.points[index].curve.points[index][0]
+        y = self.curve_edition.points[index].curve.points[index][1] - 1
+        if y >= 0:
+            curve = App().curves.get_curve(self.curve_edition.curve_nb)
+            curve.points[index] = (x, y)
+            curve.populate_values()
+            self.curve_edition.queue_draw()
+            self.curve_edition.points_curve()
+            self.curve_edition.points[index].set_active(True)
