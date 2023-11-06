@@ -37,6 +37,7 @@ Quitter le mode test output : presser à nouveau [T] ou fermer l'onglet.
 - Patch multiple : sélectionner une série d'output, entrer un numéro de circuit, choisir de patcher tout sur le même circuit ou sur des circuits consécutifs.
 
 ### Changer la courbe des outputs :  
+Chaque output a sa courbe de dessinée.  
 On peut choisir la [courbe](curves.md) de réponse des outputs. Par défaut la courbe est linéaire. 
 
 ![Select Curve](pictures/patch_set_curve.png)

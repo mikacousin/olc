@@ -39,7 +39,7 @@ Les points apparaissent sur le dessin de la courbe et dans le tableau de valeurs
 - Il est également possible de sélectionner un point avec [PageUp] et [PageDown] du clavier
 
 ### Créer et modifier une courbe Interpolation
-Une courbe Segments est définie par des points et les courbes qui les relient.  
+Une courbe Interpolation est définie par des points et les courbes qui les relient.  
 Les points apparaissent sur le dessin de la courbe et dans le tableau de valeurs.
 
 ![Limit Curve](pictures/curves_interpolate.png)
