@@ -5,6 +5,7 @@
 - [Bases du système](general.md)
 - [Fichiers](files.md)
 - [Patch](patch.md)
+- [Courbes](curves.md)
 - [Groupes](groups.md)
 - [Mémoires](cues.md)
 - [Séquences](sequences.md)

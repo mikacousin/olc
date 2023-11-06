@@ -36,8 +36,17 @@ Quitter le mode test output : presser à nouveau [T] ou fermer l'onglet.
 - Patch un output : sélectionner output, entrer un numéro de circuit, presser [C]
 - Patch multiple : sélectionner une série d'output, entrer un numéro de circuit, choisir de patcher tout sur le même circuit ou sur des circuits consécutifs.
 
-### Limiter des outputs :  
-On peut limiter la valeur maximale des outputs en appliquant un pourcentage (100% : pas de limite, 0% : coupé)
+### Changer la courbe des outputs :  
+On peut choisir la [courbe](curves.md) de réponse des outputs. Par défaut la courbe est linéaire. 
+
+![Select Curve](pictures/patch_set_curve.png)
+
 - Sélectionner un ou des output(s) patché(s)
-- [:] pour baisser
-- [!] pour augmenter
+- Cliquer sur un des outputs sélectionnés
+- Choisir une courbe en les faisant défiler
+- Cliquer sur la courbe choisie
+> Vous pouvez appuyer sur la touche [Esc] pour fermer ce popup sans faire de choix.
+
+![Red Output](pictures/patch_red_output.png)
+
+Un output avec une courbe à 0% apparaîtra en rouge pour signifier qu'il n'enverra jamais de valeur DMX.
