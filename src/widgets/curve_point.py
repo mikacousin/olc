@@ -75,8 +75,12 @@ class CurvePointWidget(Gtk.DrawingArea):
             # 20 = offset de la grille, 4 = rayon du point
             x = max(min(x, self.max.x), 20 - 4)
             y = max(min(y, self.max.y), 20 - 4)
-            x_curve = round(((x - 20 + 4) / (1000 - 40)) * 255)
-            y_curve = round(((300 - y - 20 - 4) / (300 - 40)) * 255)
+            edit_wgt_width = tab.curve_edition.edit_curve.width
+            edit_wgt_height = tab.curve_edition.edit_curve.height
+            x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
+            y_curve = round(
+                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
+            )
             tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
     def motion_notify(self, widget, event):
@@ -96,9 +100,12 @@ class CurvePointWidget(Gtk.DrawingArea):
             self.prev.y = y
             fixed = self.get_parent()
             tab = App().tabs.tabs["curves"]
-            # 1000 = width, 300 = height
-            x_curve = round(((x - 20 + 4) / (1000 - 40)) * 255)
-            y_curve = round(((300 - y - 20 - 4) / (300 - 40)) * 255)
+            edit_wgt_width = tab.curve_edition.edit_curve.width
+            edit_wgt_height = tab.curve_edition.edit_curve.height
+            x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
+            y_curve = round(
+                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
+            )
             # First point
             if self.number == 0:
                 tab.curve_edition.label.set_label(f"0, {y_curve}")

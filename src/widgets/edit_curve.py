@@ -26,9 +26,11 @@ class EditCurveWidget(Gtk.DrawingArea):
     def __init__(self, curve: int):
         super().__init__()
         self.delta = 20
+        self.width = 1000
+        self.height = 300
         self.curve_nb = curve
         self.curve = App().curves.get_curve(curve)
-        self.set_size_request(1000, 300)
+        self.set_size_request(self.width, self.height)
 
         self.offsetx = 0
         self.offsety = 0
@@ -51,8 +53,8 @@ class EditCurveWidget(Gtk.DrawingArea):
             and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
             and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))
         ):
-            x_curve = round(((event.x - 20) / (1000 - 40)) * 255)
-            y_curve = round(((300 - event.y - 20) / (300 - 40)) * 255)
+            x_curve = round(((event.x - 20) / (self.width - 40)) * 255)
+            y_curve = round(((self.height - event.y - 20) / (self.height - 40)) * 255)
             x_curve = max(min(x_curve, 255), 0)
             y_curve = max(min(y_curve, 255), 0)
             self.curve.add_point(x_curve, y_curve)
@@ -72,8 +74,8 @@ class EditCurveWidget(Gtk.DrawingArea):
             event: Event with corrdinates
         """
         tab = App().tabs.tabs["curves"]
-        x_curve = round(((event.x - 20) / (1000 - 40)) * 255)
-        y_curve = round(((300 - event.y - 20) / (300 - 40)) * 255)
+        x_curve = round(((event.x - 20) / (self.width - 40)) * 255)
+        y_curve = round(((self.height - event.y - 20) / (self.height - 40)) * 255)
         x_curve = max(min(x_curve, 255), 0)
         y_curve = max(min(y_curve, 255), 0)
         tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
