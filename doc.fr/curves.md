@@ -52,3 +52,4 @@ Les points apparaissent sur le dessin de la courbe et dans le tableau de valeurs
 ### Supprimer une courbe
 - Sélectionner la courbe
 - Cliquer sur "Supprimer la courbe"
+> Les outputs qui utilisent la courbe supprimée repassent automatiquement en courbe Linéaire.
