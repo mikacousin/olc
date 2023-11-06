@@ -129,7 +129,7 @@ class PatchWidget(Gtk.Widget):
         for number, curve in App().curves.curves.items():
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
             label = curve.name
-            if curve.name in "Limit":
+            if isinstance(curve, LimitCurve):
                 label += f" {round((curve.limit / 255) * 100)}%"
             box.pack_start(Gtk.Label(label=label), False, False, 10)
             box.pack_start(CurvePatchOutputWidget(number, self), False, False, 10)

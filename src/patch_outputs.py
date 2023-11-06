@@ -501,42 +501,6 @@ class PatchOutputsTab(Gtk.Box):
             # Patch Channel : same channel for every outputs
             App().patch.add_output(channel, output, univ)
 
-    def _keypress_exclam(self):
-        """Proportional level +"""
-        sel = self.flowbox.get_selected_children()
-        for flowboxchild in sel:
-            patchwidget = flowboxchild.get_child()
-            output = patchwidget.output
-            univ = patchwidget.universe
-            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(output):
-                App().patch.outputs[univ][output][1] += 1
-                App().patch.outputs[univ][output][1] = min(
-                    App().patch.outputs[univ][output][1], 100
-                )
-            index = App().universes.index(univ)
-            self.outputs[output - 1 + (512 * index)].queue_draw()
-
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
-    def _keypress_colon(self):
-        """Proportional level -"""
-        sel = self.flowbox.get_selected_children()
-        for flowboxchild in sel:
-            patchwidget = flowboxchild.get_child()
-            output = patchwidget.output
-            univ = patchwidget.universe
-            if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(output):
-                App().patch.outputs[univ][output][1] -= 1
-                App().patch.outputs[univ][output][1] = max(
-                    App().patch.outputs[univ][output][1], 0
-                )
-            index = App().universes.index(univ)
-            self.outputs[output - 1 + (512 * index)].queue_draw()
-
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
     def __get_output_index(self) -> Optional[int]:
         """Get Output number
 
