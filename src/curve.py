@@ -50,6 +50,20 @@ class Curve:
         """
         raise NotImplementedError
 
+    def is_all_zero(self) -> bool:
+        """Test if all curve values are 0
+
+        Returns:
+            True if all zero, else False
+        """
+        if isinstance(self, LimitCurve) and self.limit == 0:
+            # LimitCurve at 0%
+            return True
+        for value in self.values.values():
+            if value != 0:
+                return False
+        return True
+
 
 class LinearCurve(Curve):
     """Linear"""
