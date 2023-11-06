@@ -38,6 +38,7 @@ class CurvePatchOutputWidget(CurveWidget):
             if univ in App().patch.outputs and out in App().patch.outputs[univ]:
                 App().patch.outputs[univ][out][1] = self.curve_nb
         tab.refresh()
+        App().ascii.set_modified()
 
 
 class PatchWidget(Gtk.Widget):

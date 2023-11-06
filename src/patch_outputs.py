@@ -120,6 +120,7 @@ class PatchOutputsTab(Gtk.Box):
                     widget.level = level
                     widget.queue_draw()
             App().window.live_view.channels_view.update()
+        App().ascii.set_modified()
         self.get_parent().grab_focus()
 
     def refresh(self) -> None:
@@ -440,6 +441,7 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_out_selected = str(output + (512 * index))
 
+        App().ascii.set_modified()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 

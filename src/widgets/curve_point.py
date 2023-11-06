@@ -130,8 +130,7 @@ class CurvePointWidget(Gtk.DrawingArea):
                     self.curve.points[self.number] = (x_curve, y_curve)
                     fixed.move(widget, x, y)
             self.curve.populate_values()
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 

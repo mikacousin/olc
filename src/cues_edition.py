@@ -188,8 +188,7 @@ class CuesEditionTab(Gtk.Paned):
                     widget.next_level = channels.get(channel)
                     widget.queue_draw()
             # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
 
     def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
@@ -216,8 +215,7 @@ class CuesEditionTab(Gtk.Paned):
             treeiter = self.liststore.get_iter(path)
             self.liststore.remove(treeiter)
             # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
             # Update Main Playback
             App().window.playback.update_sequence_display()
             # Update Sequence Edition Tab if exist
@@ -274,8 +272,7 @@ class CuesEditionTab(Gtk.Paned):
                             widget.next_level = App().memories[i].channels[channel]
                             widget.queue_draw()
                     # Tag filename as modified
-                    App().ascii.modified = True
-                    App().window.header.set_title(f"{App().ascii.basename}*")
+                    App().ascii.set_modified()
                 self.keystring = ""
                 App().window.statusbar.push(App().window.context_id, self.keystring)
                 return True
@@ -299,8 +296,7 @@ class CuesEditionTab(Gtk.Paned):
             nb_chan = len(channels)
             self.liststore.insert(i, [str(mem), "", nb_chan])
             # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -354,8 +350,7 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.insert(i + 1, [str(mem), "", nb_chan])
 
             # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
 
             return True
 
@@ -398,8 +393,7 @@ class CuesEditionTab(Gtk.Paned):
         self.liststore.insert(i, [str(mem), "", nb_chan])
 
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

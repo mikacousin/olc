@@ -187,8 +187,7 @@ class CurveEdition(Gtk.Box):
                     break
             if flowboxchild:
                 tab.flowbox.select_child(flowboxchild)
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
 
     def limit_changed(self, widget: Gtk.Scale) -> None:
         """LimitCurve value has been changed
@@ -202,8 +201,7 @@ class CurveEdition(Gtk.Box):
         text = curve.name
         text += f" {round((curve.limit / 255) * 100)}%"
         self.header.set_title(text)
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
     def on_toggled(self, button, _name) -> None:
         """Curve point clicked
@@ -263,8 +261,7 @@ class CurveButton(CurveWidget):
         self.curve.name = text
         App().tabs.tabs["curves"].curve_edition.header.set_title(text)
         self.popover.popdown()
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
     def on_click(self, _button) -> None:
         """Button clicked"""
@@ -332,8 +329,7 @@ class CurvesTab(Gtk.Paned):
                 break
         if flowboxchild:
             self.flowbox.select_child(flowboxchild)
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
     def populate_curves(self) -> None:
         """Add curves to tab"""
@@ -391,10 +387,9 @@ class CurvesTab(Gtk.Paned):
                     curve.del_point(toggle.number)
                     self.curve_edition.points_curve()
                     self.curve_edition.queue_draw()
+                    App().ascii.set_modified()
                     if App().tabs.tabs["patch_outputs"]:
                         App().tabs.tabs["patch_outputs"].refresh()
-                    App().ascii.modified = True
-                    App().window.header.set_title(f"{App().ascii.basename}*")
                     break
 
     def _keypress_page_up(self) -> None:
@@ -472,5 +467,4 @@ class CurvesTab(Gtk.Paned):
         self.curve_edition.fixed.move(
             self.curve_edition.points[index], x_wgt - 4, y_wgt - 4
         )
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()

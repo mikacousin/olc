@@ -119,6 +119,11 @@ class Ascii:
                     raise e
             self.recent_manager.add_item(uri)
 
+    def set_modified(self) -> None:
+        """Set file as modified"""
+        self.modified = True
+        App().window.header.set_title(f"{self.basename}*")
+
     def _update_ui(self):
         """Update display after file loading"""
         # Set main window's title with the file name

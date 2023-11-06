@@ -64,8 +64,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             idx = self.curve.points.index((x_curve, y_curve))
             App().tabs.tabs["curves"].curve_edition.points[idx].set_active(True)
             App().tabs.tabs["curves"].curve_edition.points[idx].queue_draw()
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 

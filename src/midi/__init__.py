@@ -63,8 +63,7 @@ class Midi:
         elif msg.type == "pitchwheel":
             self.pitchwheel.learn(msg, self.midi_learn)
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
     def get_midi_learn(self) -> str:
         """Return MIDI Learn string

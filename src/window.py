@@ -306,8 +306,7 @@ class Window(Gtk.ApplicationWindow):
                     App().tabs.tabs["sequences"].on_sequence_changed()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -331,8 +330,7 @@ class Window(Gtk.ApplicationWindow):
                     App().sequence.steps[position].cue.channels[channel] = level
 
             # Tag filename as modified
-            App().ascii.modified = True
-            self.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
 
         dialog.destroy()
 
@@ -357,8 +355,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -382,8 +379,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -407,8 +403,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -432,8 +427,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -461,8 +455,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -486,8 +479,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)
@@ -513,8 +505,7 @@ class Window(Gtk.ApplicationWindow):
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.modified = True
-        self.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
         self.keystring = ""
         self.statusbar.push(self.context_id, self.keystring)

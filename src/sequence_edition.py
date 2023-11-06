@@ -257,8 +257,7 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
         # Update Sequential Tab
         if sequence == App().sequence:
             path = self.path_from_step(step)
@@ -290,8 +289,7 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
         # Update Sequential Tab
         if sequence == App().sequence:
             path = self.path_from_step(step)
@@ -323,8 +321,7 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
         # Update Sequential Tab
         if sequence == App().sequence:
             path = self.path_from_step(step)
@@ -356,8 +353,7 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
         # Update Sequential Tab
         if sequence == App().sequence:
             path = self.path_from_step(step)
@@ -389,8 +385,7 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
         # Update Sequential Tab
         if sequence == App().sequence:
             path = self.path_from_step(step)
@@ -417,8 +412,7 @@ class SequenceTab(Gtk.Grid):
         # Update text value
         sequence.steps[step].text = text
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
         # Update Main Playback
         if sequence == App().sequence:
             path = self.path_from_step(step)
@@ -598,8 +592,7 @@ class SequenceTab(Gtk.Grid):
                         channels[channel + 1] = channel_widget.level
                         sequence.channels[channel] = 1
                 # Tag filename as modified
-                App().ascii.modified = True
-                App().window.header.set_title(f"{App().ascii.basename}*")
+                App().ascii.set_modified()
                 # Update Main playback display
                 if sequence == App().sequence and step == App().sequence.position + 1:
                     for channel in range(1, MAX_CHANNELS + 1):
@@ -649,8 +642,7 @@ class SequenceTab(Gtk.Grid):
         )
 
         # Tag filename as modified
-        App().ascii.modified = True
-        App().window.header.set_title(f"{App().ascii.basename}*")
+        App().ascii.set_modified()
 
     def _keypress_R(self):  # pylint: disable=C0103
         """New Step and new Cue"""
@@ -698,8 +690,7 @@ class SequenceTab(Gtk.Grid):
             # Update Display
             self.update_sequence_display(step)
             # Tag filename as modified
-            App().ascii.modified = True
-            App().window.header.set_title(f"{App().ascii.basename}*")
+            App().ascii.set_modified()
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         else:  # Update Cue
@@ -718,8 +709,7 @@ class SequenceTab(Gtk.Grid):
                         ] = channel_widget.level
                         sequence.channels[channel] = 1
                 # Tag filename as modified
-                App().ascii.modified = True
-                App().window.header.set_title(f"{App().ascii.basename}*")
+                App().ascii.set_modified()
                 # Select memory modified
                 path = Gtk.TreePath.new_from_indices([step - 1])
                 self.treeview2.set_cursor(path, None, False)
