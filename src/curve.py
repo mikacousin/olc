@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from gettext import gettext as _
 from typing import Any, Dict, List
 from scipy.interpolate import PchipInterpolator
 from olc.define import App
@@ -54,7 +55,7 @@ class LinearCurve(Curve):
     """Linear"""
 
     def __init__(self):
-        super().__init__(name="Linear")
+        super().__init__(name=_("Linear"))
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -66,7 +67,7 @@ class SquareRootCurve(Curve):
     """Square Root, TV2, Linear Light"""
 
     def __init__(self):
-        super().__init__(name="Square root")
+        super().__init__(name=_("Square root"))
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -81,7 +82,7 @@ class LimitCurve(Curve):
 
     def __init__(self, limit=255):
         self.limit = limit
-        super().__init__(name="Limit", editable=True)
+        super().__init__(name=_("Limit"), editable=True)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -147,7 +148,7 @@ class SegmentsCurve(PointsCurve):
     """Curve with segments"""
 
     def __init__(self):
-        super().__init__(name="Segment", editable=True)
+        super().__init__(name=_("Segment"), editable=True)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -167,7 +168,7 @@ class InterpolateCurve(PointsCurve):
     """Interpolate Curve"""
 
     def __init__(self):
-        super().__init__(name="Interpolate", editable=True)
+        super().__init__(name=_("Interpolate"), editable=True)
         self.add_point(70, 40)
 
     def populate_values(self) -> None:
@@ -197,7 +198,7 @@ class Curves:
         }
         # Full at 1% curve
         self.curves[2].editable = False
-        self.curves[2].name = "Full at 1%"
+        self.curves[2].name = _("Full at 1%")
         self.curves[2].add_point(2, 0)
         self.curves[2].add_point(3, 255)
 

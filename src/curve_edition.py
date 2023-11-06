@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from gettext import gettext as _
 from typing import Any, List, Optional
 import cairo
 from gi.repository import Gdk, Gtk
@@ -89,7 +90,7 @@ class CurveEdition(Gtk.Box):
         self.label = None
         # HeaderBar
         self.header = Gtk.HeaderBar()
-        text = "Select curve"
+        text = _("Select curve")
         self.header.set_title(text)
         self.add(self.header)
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -116,7 +117,7 @@ class CurveEdition(Gtk.Box):
             child.destroy()
         if curve.editable:
             box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-            button = Gtk.Button("Remove curve")
+            button = Gtk.Button(_("Remove curve"))
             button.connect("clicked", self.on_del_curve)
             box.add(button)
             self.header.pack_end(box)
@@ -285,15 +286,16 @@ class CurvesTab(Gtk.Paned):
         box.set_homogeneous(False)
         self.header = Gtk.HeaderBar()
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button("New Limit curve")
-        button.connect("clicked", self.on_new_curve)
-        header_box.add(button)
-        button = Gtk.Button("New Segments curve")
-        button.connect("clicked", self.on_new_curve)
-        header_box.add(button)
-        button = Gtk.Button("New Interpolate curve")
-        button.connect("clicked", self.on_new_curve)
-        header_box.add(button)
+        self.buttons = {}
+        self.buttons["limit"] = Gtk.Button(_("New Limit curve"))
+        self.buttons["limit"].connect("clicked", self.on_new_curve)
+        header_box.add(self.buttons["limit"])
+        self.buttons["segments"] = Gtk.Button(_("New Segments curve"))
+        self.buttons["segments"].connect("clicked", self.on_new_curve)
+        header_box.add(self.buttons["segments"])
+        self.buttons["interpolate"] = Gtk.Button(_("New Interpolate curve"))
+        self.buttons["interpolate"].connect("clicked", self.on_new_curve)
+        header_box.add(self.buttons["interpolate"])
         self.header.pack_end(header_box)
         box.add(self.header)
         self.scrolled = Gtk.ScrolledWindow()
@@ -310,11 +312,11 @@ class CurvesTab(Gtk.Paned):
         Args:
             widget: button clicked
         """
-        if widget.get_label() == "New Limit curve":
+        if widget is self.buttons["limit"]:
             curve_nb = App().curves.add_curve(LimitCurve(255))
-        elif widget.get_label() == "New Segments curve":
+        elif widget is self.buttons["segments"]:
             curve_nb = App().curves.add_curve(SegmentsCurve())
-        elif widget.get_label() == "New Interpolate curve":
+        elif widget is self.buttons["interpolate"]:
             curve_nb = App().curves.add_curve(InterpolateCurve())
         self.curve_edition.change_curve(curve_nb)
         self.refresh()

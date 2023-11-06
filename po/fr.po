@@ -43,6 +43,9 @@ msgstr "Enregistrer sous"
 msgid "_Patch"
 msgstr "Patch"
 
+msgid "_Curves"
+msgstr "Courbes"
+
 msgid "_Memories"
 msgstr "Mémoires"
 
@@ -292,3 +295,36 @@ msgstr "Enregistrer les modifications avant la fermeture ?"
 
 msgid "Your changes will be lost if you don't save them."
 msgstr "Vos modifications seront perdues si vous ne les enregistrez pas."
+
+msgid "Linear"
+msgstr "Linéaire"
+
+msgid "Square root"
+msgstr "Racine carrée"
+
+msgid "Limit"
+msgstr "Limite à"
+
+msgid "Segment"
+msgstr "Segments"
+
+msgid "Interpolate"
+msgstr "Interpolation"
+
+msgid "Full at 1%"
+msgstr "Full à 1%"
+
+msgid "Select curve"
+msgstr "Sélectionner une courbe"
+
+msgid "Remove curve"
+msgstr "Supprimer la courbe"
+
+msgid "New Limit curve"                                                                    
+msgstr "Nouvelle courbe Limite" 
+
+msgid "New Segments curve"                                                                    
+msgstr "Nouvelle courbe Segments" 
+
+msgid "New Interpolate curve"                                                                    
+msgstr "Nouvelle courbe Interplation" 
