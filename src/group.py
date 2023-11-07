@@ -52,6 +52,7 @@ class GroupChannelsView(ChannelsView):
         selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
         index = selected_group.get_index()
         App().groups[index].channels[channel] = level
+        App().ascii.set_modified()
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -71,6 +72,7 @@ class GroupChannelsView(ChannelsView):
                 level = max(level - step, 0)
             App().groups[index].channels[channel - 1] = level
         self.update()
+        App().ascii.set_modified()
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Select channels to display
@@ -466,6 +468,7 @@ class GroupTab(Gtk.Paned):
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().ascii.set_modified()
 
     def _keypress_Delete(self) -> None:  # pylint: disable=C0103
         """Delete selected group"""
@@ -511,3 +514,4 @@ class GroupTab(Gtk.Paned):
         App().groups.pop(index)
         if not App().groups:
             self.last_group_selected = ""
+        App().ascii.set_modified()

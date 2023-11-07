@@ -70,6 +70,7 @@ class GroupWidget(Gtk.Widget):
                     App().virtual_console.flashes[master.number - 1].label = text
                 break
         self.popover.popdown()
+        App().ascii.set_modified()
 
     def on_click(self, _tgt, _ev):
         """Group clicked"""
