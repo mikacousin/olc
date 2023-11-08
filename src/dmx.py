@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+import time
 from typing import Dict, List
-
 from olc.define import UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
 
 
@@ -25,6 +25,8 @@ class Dmx:
     frame: List[array.array]
     sequence: array.array
     user: array.array
+    pause: bool
+    loop: bool
 
     def __init__(self):
         self.grand_master = 255
@@ -38,12 +40,17 @@ class Dmx:
         # DMX values send to Ola
         for _ in range(NB_UNIVERSES):
             self.frame.append(array.array("B", [0] * 512))
+        self.pause = False
         App().ola.thread.wrapper.AddEvent(30, self.send)
+        self.loop = False
 
     def send(self) -> None:
         """Send DMX values to Ola"""
+        if not self.pause:
+            App().ola.thread.wrapper.AddEvent(30, self.send)
         univ = []  # To store universes changed
         for channel, outputs in App().patch.channels.items():
+            self.loop = True
             for i in outputs:
                 output = i[0]
                 universe = i[1]
@@ -81,15 +88,34 @@ class Dmx:
                 # Update output level
                 index = App().universes.index(universe)
                 self.frame[index][output - 1] = level
+        self.loop = False
         if self.user_outputs:
             univ = self._send_user_outputs(univ)
         # Send DMX frames to Ola
         for universe in univ:
             index = App().universes.index(universe)
             App().ola.thread.client.SendDmx(universe, self.frame[index], self.sent)
-        App().ola.thread.wrapper.AddEvent(30, self.send)
 
-    def sent(self, state):
+    def set_pause(self, pause: bool) -> None:
+        """Set pause for DMX sent
+
+        Args:
+            pause: True = pause
+        """
+        self.pause = pause
+        if pause:
+            # Wait to avoid "dictionary changed size during iteration"
+            while self.loop:
+                time.sleep(0.01)
+        else:
+            App().ola.thread.wrapper.AddEvent(30, self.send)
+
+    def sent(self, state) -> None:  # pylint: disable=E0601
+        """DmxSent callback
+
+        Args:
+            state: OlaClient.RequestStatus
+        """
         if not state.Succeeded():
             App().ola.thread.wrapper.Stop()
             print("Error with olad Wrapper!")

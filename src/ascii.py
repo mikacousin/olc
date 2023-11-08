@@ -55,7 +55,9 @@ class Ascii:
             file_io = StringIO(contents)
             readlines = file_io.readlines()
             # Parse file
+            App().dmx.set_pause(True)
             AsciiParser().parse(readlines)
+            App().dmx.set_pause(False)
             # Add Empty Step at the end
             cue = Cue(0, 0.0)
             step = Step(1, cue=cue)
