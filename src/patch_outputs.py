@@ -12,9 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import select
 from typing import List, Optional, Tuple
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
 from olc.zoom import zoom
@@ -27,15 +26,6 @@ class PatchOutputsTab(Gtk.Box):
         self.keystring = ""
         self.last_out_selected = ""
         self.test = False
-
-        # Scan Ola messages: 27 = IN(1) + HUP(16) + PRI(2) + ERR(8)
-        self.idtag = GLib.unix_fd_add_full(
-            0,
-            App().ola.ola_thread.sock.fileno(),
-            GLib.IOCondition(27),
-            self.on_fd_read,
-            None,
-        )
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
@@ -79,19 +69,6 @@ class PatchOutputsTab(Gtk.Box):
         self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
         self.flowbox.connect("scroll-event", zoom)
 
-    def on_fd_read(self, _fd, _condition, _data):
-        """Ola messages
-
-        Returns:
-            True
-        """
-        readable, _writable, _exceptional = select.select(
-            [App().ola.ola_thread.sock], [], [], 0
-        )
-        if readable:
-            App().ola.ola_thread.ola_client.SocketReady()
-        return True
-
     def on_button_clicked(self, widget):
         """On buttons clicked
 
@@ -129,7 +106,6 @@ class PatchOutputsTab(Gtk.Box):
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
-        GLib.source_remove(self.idtag)
         if self.test:
             self._stop_test()
         App().tabs.close("patch_outputs")
@@ -174,7 +150,6 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
-        GLib.source_remove(self.idtag)
         if self.test:
             self._stop_test()
         App().tabs.close("patch_outputs")

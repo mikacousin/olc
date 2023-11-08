@@ -170,7 +170,6 @@ class Application(Gtk.Application):
 
         # Create several DMX arrays
         self.dmx = Dmx()
-        self.dmx.start()
 
         # For Manual crossfade
         self.crossfade = CrossFade()
@@ -191,21 +190,6 @@ class Application(Gtk.Application):
 
         # Init of ascii file
         self.ascii = Ascii(None)
-
-        # Send DMX every 50ms
-        GLib.timeout_add(50, self._on_timeout, None)
-
-    def _on_timeout(self, _user_data):
-        """Executed every timeout
-
-        Returns:
-            True
-        """
-        # Send DMX
-        self.dmx.send()
-        if self.dmx.stop:
-            return False
-        return True
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -292,7 +276,7 @@ class Application(Gtk.Application):
         if not dmxframe:
             return
         index = self.universes.index(univ)
-        self.ola.ola_thread.old_frame[index] = dmxframe
+        self.ola.thread.old_frame[index] = dmxframe
         for output, level in enumerate(dmxframe):
             if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
                 channel = self.patch.outputs.get(univ).get(output + 1)[0]
@@ -400,7 +384,7 @@ class Application(Gtk.Application):
             self.ascii.load()
 
             for univ in self.universes:
-                self.ola.ola_thread.ola_client.FetchDmx(univ, self.fetch_dmx)
+                self.ola.thread.client.FetchDmx(univ, self.fetch_dmx)
 
         # destroy the FileChooserNative
         open_dialog.destroy()
@@ -556,7 +540,6 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         # Stop send DMX
-        self.dmx.stop = True
         self.ola.stop()
         self.quit()
 

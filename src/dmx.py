@@ -13,23 +13,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
-import threading
 from typing import Dict, List
 
 from olc.define import UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
 
 
-class Dmx(threading.Thread):
+class Dmx:
     """Thread to send levels to Ola"""
 
     grand_master: int
     frame: List[array.array]
     sequence: array.array
     user: array.array
-    stop: bool = False
 
     def __init__(self):
-        threading.Thread.__init__(self)
         self.grand_master = 255
         self.frame = []
         # Dimers levels
@@ -38,11 +35,10 @@ class Dmx(threading.Thread):
         self.user = array.array("h", [-1] * MAX_CHANNELS)
         # To test outputs
         self.user_outputs = {}
-
-    def run(self) -> None:
         # DMX values send to Ola
         for _ in range(NB_UNIVERSES):
             self.frame.append(array.array("B", [0] * 512))
+        App().ola.thread.wrapper.AddEvent(30, self.send)
 
     def send(self) -> None:
         """Send DMX values to Ola"""
@@ -90,7 +86,13 @@ class Dmx(threading.Thread):
         # Send DMX frames to Ola
         for universe in univ:
             index = App().universes.index(universe)
-            App().ola.ola_thread.ola_client.SendDmx(universe, self.frame[index])
+            App().ola.thread.client.SendDmx(universe, self.frame[index], self.sent)
+        App().ola.thread.wrapper.AddEvent(30, self.send)
+
+    def sent(self, state):
+        if not state.Succeeded():
+            App().ola.thread.wrapper.Stop()
+            print("Error with olad Wrapper!")
 
     def _send_user_outputs(self, univ) -> List[int]:
         """Outputs at level on user demand
@@ -120,7 +122,7 @@ class Dmx(threading.Thread):
         for universe in UNIVERSES:
             index = App().universes.index(universe)
             self.frame[index] = array.array("B", [0] * 512)
-            App().ola.ola_thread.ola_client.SendDmx(universe, self.frame[index])
+            App().ola.thread.client.SendDmx(universe, self.frame[index], self.sent)
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -135,7 +137,7 @@ class Dmx(threading.Thread):
         self.frame[index][output - 1] = level
         if not level:
             self.user_outputs.pop((output, universe))
-        App().ola.ola_thread.ola_client.SendDmx(universe, self.frame[index])
+        App().ola.thread.client.SendDmx(universe, self.frame[index], self.sent)
 
 
 class PatchDmx:

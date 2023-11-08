@@ -30,22 +30,24 @@ from olc.define import NB_UNIVERSES, App
 class OlaThread(threading.Thread):
     """Create OlaClient and receive universes updates"""
 
-    ola_client: OlaClient.OlaClient
-    sock: OlaClient.OlaClient.GetSocket
+    wrapper: ClientWrapper
+    client: ClientWrapper.Client
 
     def __init__(self) -> None:
         threading.Thread.__init__(self)
-        self.ola_client = OlaClient.OlaClient()
-        self.sock = self.ola_client.GetSocket()
-
+        self.wrapper = ClientWrapper()
+        self.client = self.wrapper.Client()
         self.old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
 
     def run(self) -> None:
         """Register universes"""
+        self.wrapper = ClientWrapper()
+        self.client = self.wrapper.Client()
         for univ in App().universes:
-            self.ola_client.RegisterUniverse(
-                univ, self.ola_client.REGISTER, partial(self.on_dmx, univ)
+            self.client.RegisterUniverse(
+                univ, self.client.REGISTER, partial(self.on_dmx, univ)
             )
+        self.wrapper.Run()
 
     def on_dmx(self, univ: int, dmxframe: array.array) -> None:
         """Universe updates.
@@ -82,7 +84,7 @@ class Ola:
 
     olad_pid: Optional[subprocess.Popen]
     olad_port: int
-    ola_thread: OlaThread
+    thread: OlaThread
 
     def __init__(self, olad_port=9090):
         self.olad_port = olad_port
@@ -92,7 +94,7 @@ class Ola:
         """Start ola daemon"""
         # Create OlaClient and start olad if needed
         try:
-            self.ola_thread = OlaThread()
+            self.thread = OlaThread()
             self.olad_pid = None
         except OlaClient.OLADNotRunningException:
             if _is_port_in_use(self.olad_port):
@@ -114,11 +116,12 @@ class Ola:
                     if timer >= timeout:
                         print("Can't start olad")
                         break
-            self.ola_thread = OlaThread()
-        self.ola_thread.start()
+            self.thread = OlaThread()
+        self.thread.start()
 
     def stop(self) -> None:
         """Stop olad if we launched it"""
+        self.thread.wrapper.Stop()
         if self.olad_pid:
             self.olad_pid.terminate()
 
