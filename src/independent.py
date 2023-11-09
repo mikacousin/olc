@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
 
-from olc.define import MAX_CHANNELS
+from olc.define import App, MAX_CHANNELS
 
 
 class Independent:
@@ -66,7 +66,10 @@ class Independent:
     def update_dmx(self):
         """Update DMX levels"""
         for channel, level in self.levels.items():
-            self.dmx[channel - 1] = round(level * (self.level / 255))
+            dmx_lvl = round(level * (self.level / 255))
+            self.dmx[channel - 1] = dmx_lvl
+            next_level = App().sequence.get_next_channel_level(channel, dmx_lvl)
+            App().window.live_view.update_channel_widget(channel, next_level)
 
 
 class Independents:
