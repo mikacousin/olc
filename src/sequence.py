@@ -521,9 +521,20 @@ class ThreadGo(threading.Thread):
 
     def run(self):
         # Levels when Go is sent
-        for univ in range(NB_UNIVERSES):
-            for output in range(512):
-                self.dmxlevels[univ][output] = App().dmx.frame[univ][output]
+        for channel, outputs in App().patch.channels.items():
+            for out in outputs:
+                output = out[0]
+                universe = out[1]
+                level = App().dmx.sequence[channel - 1]
+                if App().dmx.user[channel - 1] != -1:
+                    level = App().dmx.user[channel - 1]
+                curve_numb = App().patch.outputs[universe][output][1]
+                if curve_numb:
+                    curve = App().curves.get_curve(curve_numb)
+                    level = curve.values.get(level, 0)
+                level = round(level * (App().dmx.grand_master / 255))
+                index = App().universes.index(universe)
+                self.dmxlevels[index][output - 1] = level
 
         start_pause = None
         pause_time = 0
@@ -840,11 +851,16 @@ class ThreadGoBack(threading.Thread):
             for value in outputs:
                 output = value[0]
                 univ = value[1]
+                level = App().dmx.sequence[channel - 1]
+                if App().dmx.user[channel - 1] != -1:
+                    level = App().dmx.user[channel - 1]
+                curve_numb = App().patch.outputs[univ][output][1]
+                if curve_numb:
+                    curve = App().curves.get_curve(curve_numb)
+                    level = curve.values.get(level, 0)
+                level = round(level * (App().dmx.grand_master / 255))
                 index = App().universes.index(univ)
-                widget = App().window.live_view.channels_view.get_channel_widget(
-                    channel
-                )
-                self.dmxlevels[index][output - 1] = widget.level
+                self.dmxlevels[index][output - 1] = level
         # Go Back's default time
         go_back_time = App().settings.get_double("go-back-time") * 1000
         pause_time = 0
