@@ -281,18 +281,8 @@ class Application(Gtk.Application):
             if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
                 channel = self.patch.outputs.get(univ).get(output + 1)[0]
                 self.dmx.frame[index][output] = level
-                if (
-                    self.sequence.last > 1
-                    and self.sequence.position < self.sequence.last
-                ):
-                    next_level = self.sequence.steps[
-                        self.sequence.position + 1
-                    ].cue.channels.get(channel, 0)
-                elif self.sequence.last:
-                    next_level = self.sequence.steps[0].cue.channels.get(channel, 0)
-                else:
-                    next_level = level
-                self.window.live_view.update_channel_widget(channel, level, next_level)
+                next_level = self.sequence.get_next_channel_level(channel, level)
+                self.window.live_view.update_channel_widget(channel, next_level)
                 if self.tabs.tabs["patch_outputs"]:
                     self.tabs.tabs["patch_outputs"].outputs[
                         output + (512 * index)

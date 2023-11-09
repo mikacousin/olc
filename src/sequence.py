@@ -44,33 +44,11 @@ def update_ui(position, subtitle):
             App().virtual_console.scale_b.set_inverted(True)
         App().virtual_console.scale_a.set_value(0)
         App().virtual_console.scale_b.set_value(0)
-    update_channels(position)
-
-
-def update_channels(position):
-    """Update levels of main window channels
-
-    Args:
-        position: Step
-    """
+    # Update Channels display
     for channel in range(1, MAX_CHANNELS + 1):
         level = App().sequence.steps[position].cue.channels.get(channel, 0)
-        if (
-            App().sequence.last > 1
-            and App().sequence.position < App().sequence.last - 1
-        ):
-            next_level = (
-                App()
-                .sequence.steps[App().sequence.position + 1]
-                .cue.channels.get(channel, 0)
-            )
-        elif App().sequence.last:
-            next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
-        else:
-            next_level = level
-        widget = App().window.live_view.channels_view.get_channel_widget(channel)
-        widget.next_level = next_level
-        widget.queue_draw()
+        next_level = App().sequence.get_next_channel_level(channel, level)
+        App().window.live_view.update_channel_widget(channel, next_level)
 
 
 class Sequence:
@@ -264,8 +242,7 @@ class Sequence:
                 level = self.steps[position].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
                 next_level = self.get_next_channel_level(channel, level)
-                App().window.live_view.update_channel_widget(channel, level, next_level)
-            update_channels(position)
+                App().window.live_view.update_channel_widget(channel, next_level)
 
     def sequence_minus(self):
         """Sequence -"""
@@ -334,8 +311,7 @@ class Sequence:
                 level = self.steps[position].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
                 next_level = self.get_next_channel_level(channel, level)
-                App().window.live_view.update_channel_widget(channel, level, next_level)
-            update_channels(position)
+                App().window.live_view.update_channel_widget(channel, next_level)
 
     def goto(self, keystring):
         """Jump to cue number
@@ -591,7 +567,6 @@ class ThreadGo(threading.Thread):
                 GLib.idle_add(
                     App().window.live_view.update_channel_widget,
                     channel,
-                    level,
                     next_level,
                 )
         # Go is completed
@@ -709,9 +684,7 @@ class ThreadGo(threading.Thread):
             level = self._channel_level(i, old_level, next_level)
         App().dmx.sequence[channel - 1] = level
         next_level = App().sequence.get_next_channel_level(channel, level)
-        GLib.idle_add(
-            App().window.live_view.update_channel_widget, channel, level, next_level
-        )
+        GLib.idle_add(App().window.live_view.update_channel_widget, channel, next_level)
 
     def _channel_level(self, i, old_level, next_level):
         """Return channel level
@@ -905,7 +878,6 @@ class ThreadGoBack(threading.Thread):
                 GLib.idle_add(
                     App().window.live_view.update_channel_widget,
                     channel,
-                    level,
                     next_level,
                 )
         App().sequence.on_go = False
@@ -987,7 +959,6 @@ class ThreadGoBack(threading.Thread):
                 GLib.idle_add(
                     App().window.live_view.update_channel_widget,
                     channel,
-                    level,
                     next_level,
                 )
 

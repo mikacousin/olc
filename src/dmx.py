@@ -58,10 +58,6 @@ class Dmx:
                     univ.append(universe)
                 # Level in Sequence
                 level = self.sequence[channel - 1]
-                widget = App().window.live_view.channels_view.get_channel_widget(
-                    channel
-                )
-                widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
                 if not App().sequence.on_go and self.user[channel - 1] != -1:
                     # If not on Go, use user level
                     level = self.user[channel - 1]
@@ -69,7 +65,6 @@ class Dmx:
                     # If master level is bigger, use it
                     if master.dmx[channel - 1] > level:
                         level = master.dmx[channel - 1]
-                        widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
                 # Independents
                 level_inde = -1
                 for inde in App().independents.independents:
@@ -77,7 +72,6 @@ class Dmx:
                         level_inde = inde.dmx[channel - 1]
                 if level_inde != -1:
                     level = level_inde
-                    widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
                 # Curve
                 curve_numb = App().patch.outputs[universe][output][1]
                 if curve_numb:

@@ -43,15 +43,30 @@ class LiveView(Gtk.Notebook):
         self.connect("page-added", on_page_added)
         self.connect("page-removed", on_page_added)
 
-    def update_channel_widget(self, channel: int, level: int, next_level: int) -> None:
+    def update_channel_widget(self, channel: int, next_level: int) -> None:
         """Update display of channel widget
 
         Args:
             channel: Index of channel (from 1 to MAX_CHANNELS)
-            level: Channel level (from 0 to 255)
             next_level: Channel next level (from 0 to 255)
         """
         widget = self.channels_view.get_channel_widget(channel)
+        widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
+        level = App().dmx.sequence[channel - 1]
+        if not App().sequence.on_go and App().dmx.user[channel - 1] != -1:
+            level = App().dmx.user[channel - 1]
+        for master in App().masters:
+            if master.value and master.dmx[channel - 1] >= level:
+                level = master.dmx[channel - 1]
+                if level:
+                    widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
+        level_inde = -1
+        for inde in App().independents.independents:
+            if channel in inde.channels and inde.dmx[channel - 1] > level_inde:
+                level_inde = inde.dmx[channel - 1]
+        if level_inde != -1:
+            level = level_inde
+            widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()
@@ -135,7 +150,7 @@ class LiveChannelsView(ChannelsView):
             level: DMX level (0 - 255)
         """
         App().dmx.user[channel - 1] = level
-        App().window.live_view.update_channel_widget(channel, level, level)
+        App().window.live_view.update_channel_widget(channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change patched channels level with a wheel

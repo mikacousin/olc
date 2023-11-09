@@ -21,28 +21,19 @@ from gi.repository import GLib
 from olc.define import MAX_CHANNELS, App
 
 
-def update_channel_display(channel: int, level: int, seq_level: int) -> None:
+def update_channel_display(channel: int) -> None:
     """Update channel levels display in LiveView
 
     Args:
         channel: Channel number (from 1 to MAX_CHANNELS)
-        level: 0 to 255
-        seq_level: 0 to 255
     """
-    if App().sequence.last > 1 and App().sequence.position < App().sequence.last - 1:
-        seq_next_level = (
-            App()
-            .sequence.steps[App().sequence.position + 1]
-            .cue.channels.get(channel, 0)
-        )
-    elif App().sequence.last:
-        seq_next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
-    else:
-        seq_next_level = seq_level
+    seq_level = (
+        App().sequence.steps[App().sequence.position].cue.channels.get(channel, 0)
+    )
+    seq_next_level = App().sequence.get_next_channel_level(channel, seq_level)
     GLib.idle_add(
         App().window.live_view.update_channel_widget,
         channel,
-        level,
         seq_next_level,
     )
 
@@ -153,12 +144,14 @@ class Master:
             for channel, level in mem.channels.items():
                 level = 0 if self.value == 0 else round(level / (255 / self.value))
                 self.dmx[channel - 1] = level
+                update_channel_display(channel)
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
         for channel, lvl in self.content_value.items():
             level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
             self.dmx[channel - 1] = level
+            update_channel_display(channel)
 
     def _level_changed_group(self):
         """New level and type is Group"""
@@ -172,6 +165,7 @@ class Master:
                 level = 0 if self.value == 0 else round(lvl / (255 / self.value))
                 # Update level in master array
                 self.dmx[channel - 1] = level
+                update_channel_display(channel)
 
     def _level_changed_chaser(self):
         """New level and type is Chaser"""
@@ -197,12 +191,7 @@ class Master:
                     App().chasers[i].thread.join()
                     for channel in range(MAX_CHANNELS):
                         self.dmx[channel] = 0
-                        seq_level = (
-                            App()
-                            .sequence.steps[App().sequence.position]
-                            .cue.channels.get(channel, 0)
-                        )
-                        update_channel_display(channel + 1, 0, seq_level)
+                        update_channel_display(channel + 1)
 
 
 class ThreadChaser(threading.Thread):
@@ -310,4 +299,4 @@ class ThreadChaser(threading.Thread):
                 level = int(round(level / (255 / self.level_scale)))
                 # Update master level
                 self.master.dmx[channel - 1] = level
-                update_channel_display(channel, level, seq_level)
+                update_channel_display(channel)
