@@ -77,6 +77,10 @@ class MidiNotes:
                     self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, 84]
                 else:
                     self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, -1]
+                if j < 9:
+                    self.notes[f"master_{str(j + i * 10 + 1)}"] = [0, 104 + j]
+                else:
+                    self.notes[f"master_{str(j + i * 10 + 1)}"] = [0, -1]
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
@@ -96,6 +100,12 @@ class MidiNotes:
                     fader = int(master - (page * 10))
                     if page + 1 == App().fader_page:
                         GLib.idle_add(_function_flash, msg, fader)
+                elif key[:7] == "master_":
+                    master = int(key[7:])
+                    page = int((master - 1) / 10)
+                    fader = int(master - (page * 10))
+                    if page + 1 == App().fader_page:
+                        GLib.idle_add(_function_master, msg, fader)
                 elif key[:5] == "inde_":
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
                 else:
@@ -184,6 +194,34 @@ class MidiNotes:
                 widget.set_active(True)
             else:
                 self.__update_inde_button(inde, independent, 255)
+
+
+def _function_master(msg: mido.Message, fader_index: int) -> None:
+    """Fader note
+
+    Args:
+        msg: MIDI message
+        fader_index: Master number
+    """
+    if msg.velocity == 0:
+        midi_name = f"master_{str(fader_index)}"
+        master = App().masters[fader_index - 1]
+        for outport in App().midi.ports.outports:
+            item = App().midi.control_change.control_change[midi_name]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "control_change",
+                    channel=item[0],
+                    control=item[1],
+                    value=int(master.value / 2),
+                    time=0,
+                )
+                outport.send(msg)
+            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if item != -1:
+                val = int(((master.value / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                outport.send(msg)
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
