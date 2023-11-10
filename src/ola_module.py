@@ -121,6 +121,7 @@ class Ola:
 
     def stop(self) -> None:
         """Stop olad if we launched it"""
+        App().dmx.set_pause(True)
         self.thread.wrapper.Stop()
         if self.olad_pid:
             self.olad_pid.terminate()
