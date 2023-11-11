@@ -31,7 +31,7 @@ class MidiPitchWheel:
             "crossfade_in": -1,
             "gm": 8,
         }
-        for i in range(8):
+        for i in range(10):
             for j in range(8):
                 self.pitchwheel[f"master_{str(j + i * 10 + 1)}"] = j
 

@@ -206,7 +206,7 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
     """
     if msg.velocity == 0:
         midi_name = f"master_{str(fader_index)}"
-        master = App().masters[fader_index - 1]
+        master = App().masters[fader_index - 1 + ((App().fader_page - 1) * 10)]
         for outport in App().midi.ports.outports:
             item = App().midi.control_change.control_change[midi_name]
             if item[1] != -1:
@@ -1024,15 +1024,7 @@ def _function_fader_page_plus(msg: mido.Message) -> None:
             App().fader_page += 1
             if App().fader_page > MAX_FADER_PAGE:
                 App().fader_page = 1
-            for master in App().masters:
-                if master.page == App().fader_page:
-                    val = int(((master.value / 255) * 16383) - 8192)
-                    msg = mido.Message(
-                        "pitchwheel", channel=master.number - 1, pitch=val, time=0
-                    )
-                    for outport in App().midi.ports.outports:
-                        outport.send(msg)
-            App().midi.lcd.show_masters()
+            __update_masters()
 
 
 def _function_fader_page_minus(msg: mido.Message) -> None:
@@ -1053,12 +1045,29 @@ def _function_fader_page_minus(msg: mido.Message) -> None:
             App().fader_page -= 1
             if App().fader_page < 1:
                 App().fader_page = MAX_FADER_PAGE
-            for master in App().masters:
-                if master.page == App().fader_page:
-                    val = int(((master.value / 255) * 16383) - 8192)
-                    msg = mido.Message(
-                        "pitchwheel", channel=master.number - 1, pitch=val, time=0
-                    )
-                    for outport in App().midi.ports.outports:
-                        outport.send(msg)
-            App().midi.lcd.show_masters()
+            __update_masters()
+
+
+def __update_masters() -> None:
+    """Send faders values and update display"""
+    for master in App().masters:
+        if master.page == App().fader_page:
+            midi_name = f"master_{str(master.number)}"
+            item = App().midi.control_change.control_change[midi_name]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "control_change",
+                    channel=item[0],
+                    control=item[1],
+                    value=int(master.value / 2),
+                    time=0,
+                )
+                for outport in App().midi.ports.outports:
+                    outport.send(msg)
+            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if item != -1:
+                val = int(((master.value / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                for outport in App().midi.ports.outports:
+                    outport.send(msg)
+    App().midi.lcd.show_masters()
