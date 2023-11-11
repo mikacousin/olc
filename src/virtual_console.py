@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import mido
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_FADER_PAGE
 from olc.widgets.button import ButtonWidget
@@ -500,6 +501,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     self.masters[master.number - 1].set_value(val)
                     self.flashes[master.number - 1].label = master.text
                     self.flashes[master.number - 1].queue_draw()
+            self.midi.lcd.show_masters()
 
     def on_time(self, _widget):
         """Time button"""
@@ -917,6 +919,13 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.masters.index(master)
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
+            midi_name = f"master_{str(App().masters[index].number)}"
+            for outport in App().midi.ports.outports:
+                item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+                if item != -1:
+                    val = int(((value / 255) * 16383) - 8192)
+                    msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                    outport.send(msg)
 
     def master_clicked(self, master):
         """Fader clicked

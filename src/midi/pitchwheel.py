@@ -29,9 +29,10 @@ class MidiPitchWheel:
         self.pitchwheel = {
             "crossfade_out": -1,
             "crossfade_in": -1,
+            "gm": 8,
         }
-        for i in range(10):
-            for j in range(10):
+        for i in range(8):
+            for j in range(8):
                 self.pitchwheel[f"master_{str(j + i * 10 + 1)}"] = j
 
     def scan(self, msg: mido.Message) -> None:
@@ -64,6 +65,22 @@ class MidiPitchWheel:
                 if channel == msg.channel:
                     self.pitchwheel.update({key: -1})
             self.pitchwheel.update({midi_learn: msg.channel})
+
+    def _function_gm(self, _port: str, msg: mido.Message) -> None:
+        """Grand Master
+
+        Args:
+            msg: MIDI message
+        """
+        val = ((msg.pitch + 8192) / 16383) * 255
+        if App().virtual_console:
+            App().virtual_console.scale_grand_master.set_value(val)
+            App().virtual_console.grand_master_moved(
+                App().virtual_console.scale_grand_master
+            )
+        else:
+            App().dmx.grand_master = val
+            App().window.grand_master.queue_draw()
 
 
 def _update_master(msg: mido.Message, index: int) -> None:

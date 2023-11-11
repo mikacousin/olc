@@ -66,6 +66,7 @@ class MidiNotes:
             "inde_9": [0, 34],
             "fader_page_plus": [0, 49],
             "fader_page_minus": [0, 48],
+            "gm": [0, 112],
         }
         for i in range(10):
             self.notes[f"number_{str(i)}"] = [0, -1]
@@ -77,7 +78,7 @@ class MidiNotes:
                     self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, 84]
                 else:
                     self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, -1]
-                if j < 9:
+                if j < 8:
                     self.notes[f"master_{str(j + i * 10 + 1)}"] = [0, 104 + j]
                 else:
                     self.notes[f"master_{str(j + i * 10 + 1)}"] = [0, -1]
@@ -197,7 +198,7 @@ class MidiNotes:
 
 
 def _function_master(msg: mido.Message, fader_index: int) -> None:
-    """Fader note
+    """Send Fader position when realesed
 
     Args:
         msg: MIDI message
@@ -220,6 +221,32 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
             item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
             if item != -1:
                 val = int(((master.value / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                outport.send(msg)
+
+
+def _function_gm(msg: mido.Message) -> None:
+    """Send Fader position when realesed
+
+    Args:
+        msg: MIDI message
+    """
+    if msg.velocity == 0:
+        midi_name = "gm"
+        for outport in App().midi.ports.outports:
+            item = App().midi.control_change.control_change[midi_name]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "control_change",
+                    channel=item[0],
+                    control=item[1],
+                    value=int(App().dmx.grand_master / 2),
+                    time=0,
+                )
+                outport.send(msg)
+            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if item != -1:
+                val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
                 msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
                 outport.send(msg)
 
@@ -1005,6 +1032,7 @@ def _function_fader_page_plus(msg: mido.Message) -> None:
                     )
                     for outport in App().midi.ports.outports:
                         outport.send(msg)
+            App().midi.lcd.show_masters()
 
 
 def _function_fader_page_minus(msg: mido.Message) -> None:
@@ -1033,3 +1061,4 @@ def _function_fader_page_minus(msg: mido.Message) -> None:
                     )
                     for outport in App().midi.ports.outports:
                         outport.send(msg)
+            App().midi.lcd.show_masters()

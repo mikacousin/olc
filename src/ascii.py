@@ -157,6 +157,8 @@ class Ascii:
                     )
                     App().virtual_console.flashes[master.number - 1].label = master.text
             App().virtual_console.masters_pad.queue_draw()
+        # Redraw Mackie LCD
+        App().midi.lcd.show_masters()
 
         App().window.live_view.channels_view.flowbox.unselect_all()
         App().window.live_view.channels_view.update()

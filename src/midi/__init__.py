@@ -20,6 +20,7 @@ from .notes import MidiNotes
 from .ports import MidiPorts
 from .pitchwheel import MidiPitchWheel
 from .xfade import MidiFader
+from .lcd import MackieLCD
 
 
 class Midi:
@@ -39,6 +40,7 @@ class Midi:
         self.notes = MidiNotes()
         self.control_change = MidiControlChanges()
         self.pitchwheel = MidiPitchWheel()
+        self.lcd = MackieLCD()
 
         # Create xfade Faders
         self.xfade_out = MidiFader()
@@ -72,3 +74,31 @@ class Midi:
             MIDI Learn action
         """
         return self.midi_learn
+
+    def controler_reset(self) -> None:
+        """Reset Mackie Controler"""
+        for outport in self.ports.outports:
+            for i in range(16):
+                msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
+                outport.send(msg)
+        self.lcd.clear()
+
+    def gm_init(self) -> None:
+        """Grand Master Fader"""
+        midi_name = "gm"
+        for outport in self.ports.outports:
+            item = App().midi.control_change.control_change[midi_name]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "control_change",
+                    channel=item[0],
+                    control=item[1],
+                    value=int(App().dmx.grand_master / 2),
+                    time=0,
+                )
+                outport.send(msg)
+            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if item != -1:
+                val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                outport.send(msg)

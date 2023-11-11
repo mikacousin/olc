@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gettext import gettext as _
-import mido
 
 import gi
 
@@ -176,11 +175,9 @@ class Application(Gtk.Application):
 
         # Open MIDI Inputs and Outputs
         self.midi = Midi()
-        # Reset Mackie Control Faders
-        for outport in self.midi.ports.outports:
-            for i in range(16):
-                msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
-                outport.send(msg)
+        self.midi.controler_reset()
+        self.midi.lcd.show_masters()
+        self.midi.gm_init()
 
         # Init Enttec Wing Playback
         self.wing = WingPlayback()
@@ -531,6 +528,7 @@ class Application(Gtk.Application):
                 chaser.thread.join()
         # Stop send DMX
         self.ola.stop()
+        self.midi.controler_reset()
         self.quit()
 
 
