@@ -77,11 +77,12 @@ class Midi:
 
     def controler_reset(self) -> None:
         """Reset Mackie Controler"""
+        self.lcd.clear()
         for outport in self.ports.outports:
             for i in range(16):
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 outport.send(msg)
-        self.lcd.clear()
+            outport.reset()
 
     def gm_init(self) -> None:
         """Grand Master Fader"""

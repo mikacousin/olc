@@ -159,6 +159,7 @@ class LiveChannelsView(ChannelsView):
             step: Step level
             direction: Up or Down
         """
+        level = None
         channels = self.get_selected_channels()
         for channel in channels:
             if App().patch.channels.get(channel):
@@ -171,3 +172,5 @@ class LiveChannelsView(ChannelsView):
                         App().dmx.user[channel - 1] = min(level + step, 255)
                     elif direction == Gdk.ScrollDirection.DOWN:
                         App().dmx.user[channel - 1] = max(level - step, 0)
+                next_level = App().sequence.get_next_channel_level(channel, level)
+                App().window.live_view.update_channel_widget(channel, next_level)
