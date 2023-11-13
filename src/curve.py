@@ -183,7 +183,6 @@ class InterpolateCurve(PointsCurve):
 
     def __init__(self):
         super().__init__(name=_("Interpolate"), editable=True)
-        self.add_point(70, 40)
 
     def populate_values(self) -> None:
         x = []
@@ -208,13 +207,119 @@ class Curves:
         self.curves = {
             0: LinearCurve(),
             1: SquareRootCurve(),
-            2: SegmentsCurve(),
         }
-        # Full at 1% curve
-        self.curves[2].editable = False
-        self.curves[2].name = _("Full at 1%")
-        self.curves[2].add_point(2, 0)
-        self.curves[2].add_point(3, 255)
+        self.default_curves()
+
+    def default_curves(self) -> None:
+        curves = {
+            2: (_("Full at 1%"), SegmentsCurve, ((2, 0), (3, 255))),
+            3: (
+                _("IES Square"),
+                InterpolateCurve,
+                (
+                    (13, 18),
+                    (26, 38),
+                    (38, 56),
+                    (51, 71),
+                    (64, 84),
+                    (77, 97),
+                    (89, 107),
+                    (102, 115),
+                    (115, 122),
+                    (128, 130),
+                    (140, 140),
+                    (153, 150),
+                    (166, 161),
+                    (179, 171),
+                    (191, 184),
+                    (204, 196),
+                    (217, 209),
+                    (230, 224),
+                    (242, 240),
+                ),
+            ),
+            4: (
+                _("Slow Bottom"),
+                InterpolateCurve,
+                (
+                    (13, 8),
+                    (26, 13),
+                    (38, 20),
+                    (51, 28),
+                    (64, 36),
+                    (77, 48),
+                    (89, 64),
+                    (102, 82),
+                    (115, 99),
+                    (128, 120),
+                    (140, 140),
+                    (153, 161),
+                    (166, 176),
+                    (179, 194),
+                    (191, 207),
+                    (204, 219),
+                    (217, 230),
+                    (230, 240),
+                    (242, 247),
+                ),
+            ),
+            5: (
+                _("Fast Bottom"),
+                InterpolateCurve,
+                (
+                    (13, 26),
+                    (26, 51),
+                    (38, 74),
+                    (51, 94),
+                    (64, 110),
+                    (77, 122),
+                    (89, 133),
+                    (102, 140),
+                    (115, 150),
+                    (128, 158),
+                    (140, 166),
+                    (153, 173),
+                    (166, 181),
+                    (179, 189),
+                    (191, 199),
+                    (204, 209),
+                    (217, 219),
+                    (230, 230),
+                    (242, 242),
+                ),
+            ),
+            6: (
+                _("Fast Top"),
+                InterpolateCurve,
+                (
+                    (13, 13),
+                    (26, 26),
+                    (38, 33),
+                    (51, 41),
+                    (64, 46),
+                    (77, 51),
+                    (89, 56),
+                    (102, 64),
+                    (115, 74),
+                    (128, 89),
+                    (140, 107),
+                    (153, 128),
+                    (166, 148),
+                    (179, 168),
+                    (191, 189),
+                    (204, 207),
+                    (217, 227),
+                    (230, 242),
+                    (242, 250),
+                ),
+            ),
+        }
+        for number, curve in curves.items():
+            self.curves[number] = curve[1]()
+            self.curves[number].editable = False
+            self.curves[number].name = curve[0]
+            for point in curve[2]:
+                self.curves[number].add_point(point[0], point[1])
 
     def get_curve(self, number: int) -> Curve:
         """Get Curve with number

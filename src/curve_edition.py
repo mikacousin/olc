@@ -238,7 +238,6 @@ class CurveButton(CurveWidget):
 
     def __init__(self, curve: int):
         super().__init__(curve)
-        # self.header = Gtk.HeaderBar()
         self.popover = Gtk.Popover()
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         entry = Gtk.Entry()
@@ -321,6 +320,7 @@ class CurvesTab(Gtk.Paned):
             curve_nb = App().curves.add_curve(SegmentsCurve())
         elif widget is self.buttons["interpolate"]:
             curve_nb = App().curves.add_curve(InterpolateCurve())
+            App().curves.curves[curve_nb].add_point(70, 40)
         self.curve_edition.change_curve(curve_nb)
         self.refresh()
         flowboxchild = None
