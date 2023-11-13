@@ -134,9 +134,13 @@ class LiveChannelsView(ChannelsView):
             Channel next level (0 - 255)
         """
         position = App().sequence.position
-        if App().sequence.last > 1 and position < App().sequence.last - 1:
+        if (
+            App().sequence.last > 1
+            and position < App().sequence.last - 1
+            and App().sequence.last <= len(App().sequence.steps)
+        ):
             next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
-        elif App.sequence.last:
+        elif App().sequence.last:
             next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
         else:
             next_level = channel_widget.level
