@@ -438,16 +438,18 @@ class CurvesTab(Gtk.Paned):
     def _keypress_up(self) -> None:
         """Move curve point up"""
         index = self.curve_edition.get_active_point()
-        x = self.curve_edition.points[index].curve.points[index][0]
-        y = self.curve_edition.points[index].curve.points[index][1] + 1
-        self.__update_point(index, x, y)
+        if index:
+            x = self.curve_edition.points[index].curve.points[index][0]
+            y = self.curve_edition.points[index].curve.points[index][1] + 1
+            self.__update_point(index, x, y)
 
     def _keypress_down(self) -> None:
         """Move curve point down"""
         index = self.curve_edition.get_active_point()
-        x = self.curve_edition.points[index].curve.points[index][0]
-        y = self.curve_edition.points[index].curve.points[index][1] - 1
-        self.__update_point(index, x, y)
+        if index:
+            x = self.curve_edition.points[index].curve.points[index][0]
+            y = self.curve_edition.points[index].curve.points[index][1] - 1
+            self.__update_point(index, x, y)
 
     def __update_point(self, index: int, x: int, y: int) -> None:
         curve = App().curves.get_curve(self.curve_edition.curve_nb)
