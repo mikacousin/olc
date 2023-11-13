@@ -501,7 +501,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     self.masters[master.number - 1].set_value(val)
                     self.flashes[master.number - 1].label = master.text
                     self.flashes[master.number - 1].queue_draw()
-            self.midi.lcd.show_masters()
+            App().midi.lcd.show_masters()
 
     def on_time(self, _widget):
         """Time button"""
