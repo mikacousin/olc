@@ -451,10 +451,15 @@ class AsciiParser:
                 if (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
                     item[1]
                 ) <= 10:
+                    # Master with channels
                     index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
                     App().masters[index] = Master(
                         int(item[0]), int(item[1]), item[2], channels
                     )
+                    flag_master = False
+                elif (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
+                    item[1]
+                ) >= 10:
                     flag_master = False
             if line[:13].upper() == "$MASTPAGEITEM":
                 item = line[14:].split(" ")
@@ -523,7 +528,7 @@ class AsciiParser:
                 item = line[9:].split(" ")
                 App().midi.pitchwheel.pitchwheel.update({item[0]: int(item[1])})
             # Curves
-            if line[:7].upper() == "$$CURVE":
+            if line[:7].upper() == "$$CURVE" and line[:12].upper() != "$$CURVEPOINT":
                 item = line[8:].split(" ")
                 curve_nb = int(item[0])
                 if curve_nb >= 10:
