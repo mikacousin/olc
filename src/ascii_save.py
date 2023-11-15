@@ -126,6 +126,8 @@ def save_chasers(stream: Gio.FileOutputStream) -> None:
                 stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "utf8"))
                 stream.write(bytes(f"UP {time_in} {delay_in}\n", "utf8"))
                 stream.write(bytes(f"$$WAIT {wait}\n", "utf8"))
+                _write_ascii(stream, step.text)
+                stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
                 _save_channels(stream, step.cue.channels)
                 stream.write(bytes("\n", "utf8"))
 
