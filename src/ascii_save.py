@@ -15,7 +15,7 @@
 from typing import Dict
 from gi.repository import Gio
 from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
-from olc.define import App
+from olc.define import App, strip_accents
 
 
 def save_main_playback(stream: Gio.FileOutputStream) -> None:
@@ -56,10 +56,10 @@ def save_main_playback(stream: Gio.FileOutputStream) -> None:
                 else str(step.delay_in)
             )
             wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
-            stream.write(bytes(f"CUE {str(step.cue.memory)}" + "\n", "utf8"))
-            stream.write(bytes(f"DOWN {time_out} {delay_out}" + "\n", "utf8"))
-            stream.write(bytes(f"UP {time_in} {delay_in}" + "\n", "utf8"))
-            stream.write(bytes(f"$$WAIT {wait}" + "\n", "utf8"))
+            stream.write(bytes(f"CUE {str(step.cue.memory)}\n", "utf8"))
+            stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "utf8"))
+            stream.write(bytes(f"UP {time_in} {delay_in}\n", "utf8"))
+            stream.write(bytes(f"$$WAIT {wait}\n", "utf8"))
             #  Chanel Time if any
             for chan in step.channel_time.keys():
                 delay = (
@@ -72,10 +72,10 @@ def save_main_playback(stream: Gio.FileOutputStream) -> None:
                     if step.channel_time[chan].time.is_integer()
                     else str(step.channel_time[chan].time)
                 )
-                stream.write(bytes(f"$$PARTTIME {delay} {time}" + "\n", "utf8"))
-                stream.write(bytes(f"$$PARTTIMECHAN {str(chan)}" + "\n", "utf8"))
-            stream.write(bytes(f"TEXT {step.text}" + "\n", "iso-8859-1"))
-            stream.write(bytes(f"$$TEXT {ascii(step.text)[1:-1]}" + "\n", "ascii"))
+                stream.write(bytes(f"$$PARTTIME {delay} {time}\n", "utf8"))
+                stream.write(bytes(f"$$PARTTIMECHAN {str(chan)}\n", "utf8"))
+            _write_ascii(stream, step.text)
+            stream.write(bytes(f"$$TEXT {step.text}\n", "utf8"))
             _save_channels(stream, step.cue.channels)
             stream.write(bytes("\n", "utf8"))
 
@@ -89,8 +89,9 @@ def save_chasers(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("! Additional Sequences\n\n", "utf8"))
 
     for chaser in App().chasers:
-        stream.write(bytes(f"$SEQUENCE {str(chaser.index)}" + "\n", "utf8"))
-        stream.write(bytes(f"TEXT {chaser.text}" + "\n\n", "utf8"))
+        stream.write(bytes(f"$SEQUENCE {str(chaser.index)}\n", "utf8"))
+        _write_ascii(stream, chaser.text)
+        stream.write(bytes(f"$$TEXT {chaser.text}\n\n", "utf8"))
         for step in chaser.steps:
             if int(step.cue.memory) != 0:
                 # Save integers as integers
@@ -117,14 +118,14 @@ def save_chasers(stream: Gio.FileOutputStream) -> None:
                 wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
                 stream.write(
                     bytes(
-                        f"$CUE {str(chaser.index)} {str(step.cue.memory)}" + "\n",
+                        f"$CUE {str(chaser.index)} {str(step.cue.memory)}\n",
                         "utf8",
                     )
                 )
 
-                stream.write(bytes(f"DOWN {time_out} {delay_out}" + "\n", "utf8"))
-                stream.write(bytes(f"UP {time_in} {delay_in}" + "\n", "utf8"))
-                stream.write(bytes(f"$$WAIT {wait}" + "\n", "utf8"))
+                stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "utf8"))
+                stream.write(bytes(f"UP {time_in} {delay_in}\n", "utf8"))
+                stream.write(bytes(f"$$WAIT {wait}\n", "utf8"))
                 _save_channels(stream, step.cue.channels)
                 stream.write(bytes("\n", "utf8"))
 
@@ -145,17 +146,12 @@ def save_groups(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("! GROUP  Standard ASCII Light Cues\n", "utf8"))
     stream.write(bytes("! CHAN   Standard ASCII Light Cues\n", "utf8"))
     stream.write(bytes("! TEXT   Standard ASCII Light Cues\n", "utf8"))
-    stream.write(bytes("! $$TEXT  Unicode encoded version of the same text\n", "utf8"))
+    stream.write(bytes("! $$TEXT Unicode encoded version of the same text\n\n", "utf8"))
 
     for group in App().groups:
-        stream.write(bytes(f"GROUP {str(group.index)}" + "\n", "utf8"))
-        stream.write(
-            bytes(f"TEXT {ascii(group.text)[1:-1]}" + "\n", "utf8")
-            .decode("utf8")
-            .encode("ascii")
-        )
-
-        stream.write(bytes(f"$$TEXT {group.text}" + "\n", "utf8"))
+        stream.write(bytes(f"GROUP {str(group.index)}\n", "utf8"))
+        _write_ascii(stream, group.text)
+        stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
         _save_channels(stream, group.channels)
         stream.write(bytes("\n", "utf8"))
 
@@ -180,14 +176,9 @@ def save_congo_groups(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("CLEAR $GROUP\n\n", "utf8"))
 
     for group in App().groups:
-        stream.write(bytes(f"$GROUP {str(group.index)}" + "\n", "utf8"))
-        stream.write(
-            bytes(f"TEXT {ascii(group.text)[1:-1]}" + "\n", "utf8")
-            .decode("utf8")
-            .encode("ascii")
-        )
-
-        stream.write(bytes(f"$$TEXT {group.text}" + "\n", "utf8"))
+        stream.write(bytes(f"$GROUP {str(group.index)}\n", "utf8"))
+        _write_ascii(stream, group.text)
+        stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
         _save_channels(stream, group.channels)
         stream.write(bytes("\n", "utf8"))
 
@@ -225,7 +216,7 @@ def save_masters(stream: Gio.FileOutputStream) -> None:
     for master in App().masters:
         if master.page != page:
             page = master.page
-            stream.write(bytes("\n$MASTPAGE " + str(page) + " 0 0 0\n", "utf8"))
+            stream.write(bytes(f"\n$MASTPAGE {page} 0 0 0\n", "utf8"))
         # MASTPAGEITEM :
         # page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
         if not master.content_value or master.content_type == 2:
@@ -238,22 +229,14 @@ def save_masters(stream: Gio.FileOutputStream) -> None:
             )
         stream.write(
             bytes(
-                "$MASTPAGEITEM "
-                + str(master.page)
-                + " "
-                + str(master.number)
-                + " "
-                + str(master.content_type)
-                + " "
-                + content
-                + " 5 0 5 255\n",
+                f"$MASTPAGEITEM {master.page} {master.number} {master.content_type} "
+                f"{content} 5 0 5 255\n",
                 "utf8",
             )
         )
         # Master of Channels, save them
         if master.content_type == 2:
             _save_channels(stream, master.content_value)
-
     stream.write(bytes("\n", "utf8"))
 
 
@@ -286,11 +269,11 @@ def save_patch(stream: Gio.FileOutputStream) -> None:
             level = "H" + format(limit, "02X")
             patch += f" {str(channel)}<{str(output + 512 * index)}@{level}"
             if not i % 4 and patch != "":
-                stream.write(bytes(f"PATCH 1{patch}" + "\n", "utf8"))
+                stream.write(bytes(f"PATCH 1{patch}\n", "utf8"))
                 patch = ""
             i += 1
     if patch != "":
-        stream.write(bytes(f"PATCH 1{patch}" + "\n", "utf8"))
+        stream.write(bytes(f"PATCH 1{patch}\n", "utf8"))
     stream.write(bytes("\n", "utf8"))
 
 
@@ -309,8 +292,8 @@ def save_independents(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("! Independents\n\n", "utf8"))
     for inde in App().independents.independents:
         stream.write(bytes(f"$SPECIALFUNCTION {inde.number} 0 0\n", "utf8"))
-        stream.write(bytes(f"TEXT {inde.text}\n", "iso-8859-1"))
-        stream.write(bytes(f"$$TEXT {ascii(inde.text)[1:-1]}\n", "ascii"))
+        _write_ascii(stream, inde.text)
+        stream.write(bytes(f"$$TEXT {inde.text}\n", "utf8"))
         _save_channels(stream, inde.levels)
         stream.write(bytes("\n", "utf8"))
     stream.write(bytes("\n", "utf8"))
@@ -411,8 +394,20 @@ def _save_channels(stream: Gio.FileOutputStream, chans: Dict[int, int]) -> None:
             channels += f" {str(chan)}/{lvl}"
             # 6 Channels per line
             if not i % 6 and channels != "":
-                stream.write(bytes(f"CHAN{channels}" + "\n", "utf8"))
+                stream.write(bytes(f"CHAN{channels}\n", "utf8"))
                 channels = ""
             i += 1
     if channels != "":
-        stream.write(bytes(f"CHAN{channels}" + "\n", "utf8"))
+        stream.write(bytes(f"CHAN{channels}\n", "utf8"))
+
+
+def _write_ascii(stream: Gio.FileOutputStream, text: str) -> None:
+    """Convert string to ASCII and write it to file
+
+    Args:
+        stream: File
+        text: Text to write
+    """
+    stream.write(
+        bytes(f"TEXT {strip_accents(text)}\n", "utf8").decode("utf8").encode("ascii")
+    )

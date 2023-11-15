@@ -191,7 +191,7 @@ class AsciiParser:
                     line = line.lstrip()
                     if line[:4].upper() == "TEXT":
                         txt = line[5:]
-                    if line[:6].upper() == "$$TEXT" and not txt:
+                    if line[:6].upper() == "$$TEXT":
                         txt = line[7:]
                     if line[:12].upper() == "$$PRESETTEXT":
                         txt = line[13:]

@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
-from olc.define import App
+from olc.define import App, strip_accents
 
 
 class MackieLCD:
@@ -31,6 +31,7 @@ class MackieLCD:
         """
         if line not in (0, 1):
             return
+        text = strip_accents(text)
         chars = [ord(c) for c in text]
         start = line * 56
         data = [0, 0, 102, 20, 18, start] + chars
@@ -48,6 +49,7 @@ class MackieLCD:
         """
         if line not in (0, 1):
             return
+        text = strip_accents(text)
         text = f"{text.ljust(7)}"
         text = text[:-1] + "|"
         chars = [ord(c) for c in text]

@@ -45,6 +45,7 @@ Any help to create packages for different distributions is welcome.
 - mido (python-mido on archlinux)
 - liblo (python-pyliblo on archlinux)
 - SciPy (python-scipy on archlinux)
+- Charset Normalizer (python-charset-normalizer on archlinux)
 
 #### Ubuntu
 
@@ -61,7 +62,7 @@ $ sudo ldconfig
 ```
 Install olc dependencies:
 ```bash
-$ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy
+$ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer
 ```
 
 #### Building from git
@@ -98,3 +99,4 @@ And with `sudo apt install` :
 - libjack0
 - libjack-dev
 - python3-scipy
+- python3-charset-normalizer

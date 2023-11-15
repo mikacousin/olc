@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Some defines for olc project."""
 from typing import Any
+import unicodedata
 from gi.repository import Gio
 
 UNIVERSES = [1, 2, 3, 4]
@@ -131,3 +132,16 @@ def string_to_time(string: str) -> float:
     else:
         time = 0.0
     return time
+
+
+def strip_accents(text: str) -> str:
+    """Remove accents from characters
+
+    Args:
+        text: Text to modify
+
+    Returns:
+        Text without accents
+    """
+    text = unicodedata.normalize("NFD", text).encode("ascii", "ignore").decode("utf-8")
+    return str(text)

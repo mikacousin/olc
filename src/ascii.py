@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from io import StringIO
-
+from charset_normalizer import from_bytes
 from gi.repository import Gio, GLib, GObject, Gtk
 
 from olc.ascii_load import AsciiParser
@@ -51,7 +51,7 @@ class Ascii:
             if not status:
                 print("Error on load contents")
                 return
-            contents = contents.decode("iso-8859-1")
+            contents = str(from_bytes(contents).best())
             file_io = StringIO(contents)
             readlines = file_io.readlines()
             # Parse file
