@@ -100,7 +100,6 @@ class PatchOutputsTab(Gtk.Box):
                     widget.queue_draw()
             App().window.live_view.channels_view.update()
         App().ascii.set_modified()
-        self.get_parent().grab_focus()
 
     def refresh(self) -> None:
         """Refresh display"""

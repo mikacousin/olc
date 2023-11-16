@@ -47,7 +47,6 @@ class CuesEditionTab(Gtk.Paned):
         self.treeview = Gtk.TreeView(model=self.filter)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_cue_changed)
-        self.treeview.connect("focus-in-event", self.on_focus)
 
         for i, column_title in enumerate(["Memory", "Text", "Channels"]):
             renderer = Gtk.CellRendererText()
@@ -62,16 +61,6 @@ class CuesEditionTab(Gtk.Paned):
         self.scrollable.add(self.treeview)
 
         self.add(self.scrollable)
-
-    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
-        """Give focus to notebook
-
-        Returns:
-            False
-        """
-        if notebook := self.get_parent():
-            notebook.grab_focus()
-        return False
 
     def on_cue_changed(self, _treeview):
         """Selected Cue"""

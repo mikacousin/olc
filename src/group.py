@@ -288,7 +288,6 @@ class GroupTab(Gtk.Paned):
             self.channels_view.flowbox.unselect_all()
             self.channels_view.update()
             self.last_group_selected = str(int(self.last_group_selected) + 1)
-        self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
     def _keypress_Left(self) -> None:  # pylint: disable=C0103
@@ -308,7 +307,6 @@ class GroupTab(Gtk.Paned):
             self.channels_view.flowbox.unselect_all()
             self.channels_view.update()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
-        self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
     def _keypress_Down(self) -> None:  # pylint: disable=C0103
@@ -334,7 +332,6 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
                 self.last_group_selected = str(index)
-        self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
     def _keypress_Up(self) -> None:  # pylint: disable=C0103
@@ -360,7 +357,6 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
                 self.last_group_selected = str(index)
-        self.get_parent().grab_focus()
         self.channels_view.last_selected_channel = ""
 
     def _keypress_g(self) -> None:
@@ -385,7 +381,6 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.channels_view.last_selected_channel = ""
 
-        self.get_parent().grab_focus()
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
 
@@ -464,7 +459,6 @@ class GroupTab(Gtk.Paned):
         self.last_group_selected = str(i)
         self.channels_view.flowbox.unselect_all()
         self.channels_view.update()
-        self.get_parent().grab_focus()
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

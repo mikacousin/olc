@@ -109,12 +109,10 @@ class Window(Gtk.ApplicationWindow):
             self.live_view.detach_tab(child)
             self.playback.append_page(child, label)
             self.playback.set_current_page(-1)
-            self.playback.grab_focus()
         else:
             self.playback.detach_tab(child)
             self.live_view.append_page(child, label)
             self.live_view.set_current_page(-1)
-            self.live_view.grab_focus()
 
     def update_channels_display(self, step):
         """Update Channels levels display

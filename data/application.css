@@ -18,16 +18,6 @@ flowboxchild:selected {
   background-color: alpha(@theme_bg_color, 0);
 }
 
-*:focus {
-  border-width: 1px;
-  border-color: @focus_color;
-}
-
-* {
-  outline-width: 0px;
-  text-shadow: none;
-}
-
 window {
   -gtk-key-bindings: unbind-keys;
 }

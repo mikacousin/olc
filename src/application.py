@@ -336,7 +336,6 @@ class Application(Gtk.Application):
                     self.virtual_console.flashes[master.number - 1].label = master.text
             self.virtual_console.masters_pad.queue_draw()
 
-        self.window.live_view.grab_focus()
         self.window.live_view.channels_view.last_selected_channel = ""
 
     def _open(self, _action, _parameter):

@@ -47,7 +47,6 @@ class SequenceTab(Gtk.Grid):
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
-        self.treeview1.connect("focus-in-event", self.on_focus)
         selection = self.treeview1.get_selection()
         selection.connect("changed", self.on_sequence_changed)
 
@@ -74,7 +73,6 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.set_enable_search(False)
         self.treeview2.connect("cursor-changed", self.on_memory_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
-        self.treeview2.connect("focus-in-event", self.on_focus)
 
         # Display selected sequence
         for i, column_title in enumerate(
@@ -171,16 +169,6 @@ class SequenceTab(Gtk.Grid):
         tree_selection = self.treeview2.get_selection()
         model, treeiter = tree_selection.get_selected()
         return int(model[treeiter][0]) if treeiter else None
-
-    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
-        """Give focus to notebook
-
-        Returns:
-            False
-        """
-        if notebook := self.get_parent():
-            notebook.grab_focus()
-        return False
 
     def on_row_activated(self, _treeview, path, column):
         """Open Channel Time Edition if double clicked
@@ -525,7 +513,6 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.set_cursor(path)
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
-        self.get_parent().grab_focus()
 
     def _keypress_q(self):
         """Prev Cue"""
@@ -539,7 +526,6 @@ class SequenceTab(Gtk.Grid):
         else:
             path = Gtk.TreePath.new_first()
             self.treeview2.set_cursor(path)
-        self.get_parent().grab_focus()
 
     def _keypress_w(self):
         """Next Cue"""
@@ -553,7 +539,6 @@ class SequenceTab(Gtk.Grid):
             path = Gtk.TreePath.new_first()
 
         self.treeview2.set_cursor(path)
-        self.get_parent().grab_focus()
 
     def _keypress_equal(self):
         """@ Level"""

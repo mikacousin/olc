@@ -17,15 +17,6 @@ from olc.define import App
 from olc.widgets.channels_view import ChannelsView, VIEW_MODES
 
 
-def on_page_added(notebook, _child, _page_num):
-    """Get focus
-
-    Args:
-        notebook: Gtk Notebook
-    """
-    notebook.grab_focus()
-
-
 class LiveView(Gtk.Notebook):
     """Live Channels View"""
 
@@ -40,8 +31,6 @@ class LiveView(Gtk.Notebook):
         self.set_tab_detachable(self.channels_view, True)
 
         self.connect("key_press_event", self.on_key_press_event)
-        self.connect("page-added", on_page_added)
-        self.connect("page-removed", on_page_added)
 
     def update_channel_widget(self, channel: int, next_level: int) -> None:
         """Update display of channel widget

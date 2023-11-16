@@ -40,7 +40,6 @@ class IndependentsTab(Gtk.Paned):
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_changed)
-        self.treeview.connect("focus-in-event", self.on_focus)
         for i, column_title in enumerate(["Number", "Type", "Text"]):
             renderer = Gtk.CellRendererText()
             if i == 2:
@@ -53,16 +52,6 @@ class IndependentsTab(Gtk.Paned):
         scrollable.set_hexpand(True)
         scrollable.add(self.treeview)
         self.add(scrollable)
-
-    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
-        """Give focus to notebook
-
-        Returns:
-            False
-        """
-        if notebook := self.get_parent():
-            notebook.grab_focus()
-        return False
 
     def on_changed(self, _treeview):
         """Select independent"""

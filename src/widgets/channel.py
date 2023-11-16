@@ -62,7 +62,6 @@ class ChannelWidget(Gtk.Widget):
             and App().tabs.tabs["track_channels"]
         ):
             App().tabs.tabs["track_channels"].update_display()
-        channels_view.grab_focus()
 
     def do_draw(self, cr):
         """Draw widget

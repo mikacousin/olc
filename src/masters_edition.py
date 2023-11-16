@@ -77,7 +77,6 @@ class MastersTab(Gtk.Paned):
         child = Gtk.TreeView(model=self.liststores[page])
         child.set_enable_search(False)
         child.connect("cursor-changed", self.on_master_changed)
-        child.connect("focus-in-event", self.on_focus)
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Master", renderer, text=0)
         child.append_column(column)
@@ -103,16 +102,6 @@ class MastersTab(Gtk.Paned):
         column = Gtk.TreeViewColumn("Mode", renderer, text=3)
         child.append_column(column)
         self.stack.add_titled(child, str(page), f"Page {str(page + 1)}")
-
-    def on_focus(self, _widget: Gtk.Widget, _event: Gdk.EventFocus) -> bool:
-        """Give focus to notebook
-
-        Returns:
-            False
-        """
-        if notebook := self.get_parent():
-            notebook.grab_focus()
-        return False
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -205,7 +194,6 @@ class MastersTab(Gtk.Paned):
             if App().virtual_console and App().virtual_console.props.visible:
                 App().virtual_console.flashes[int(path)].label = ""
                 App().virtual_console.flashes[int(path)].queue_draw()
-        self.get_parent().grab_focus()
 
     def on_mode_changed(self, _widget, path, text):
         """Master mode has been changed
@@ -217,7 +205,6 @@ class MastersTab(Gtk.Paned):
         """
         page = int(self.stack.get_visible_child_name())
         self.liststores[page][path][3] = text
-        self.get_parent().grab_focus()
 
     def on_content_value_edited(self, _widget, path, text):
         """Master Content value has been changed
@@ -267,7 +254,6 @@ class MastersTab(Gtk.Paned):
             if App().virtual_console:
                 App().virtual_console.flashes[index].label = App().masters[index].text
                 App().virtual_console.flashes[index].queue_draw()
-        self.get_parent().grab_focus()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
