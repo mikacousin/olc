@@ -17,7 +17,7 @@ from gi.repository import Gdk, Gtk
 from olc.define import App
 
 
-class ChannelWidget(Gtk.Widget):
+class ChannelWidget(Gtk.DrawingArea):
     """Channel widget"""
 
     __gtype_name__ = "ChannelWidget"
@@ -33,7 +33,9 @@ class ChannelWidget(Gtk.Widget):
         self.scale = 1.0
         self.width = 80 * self.scale
 
+        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
         self.connect("button-press-event", self.on_click)
+        self.add_events(Gdk.EventMask.TOUCH_MASK)
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
@@ -212,29 +214,3 @@ class ChannelWidget(Gtk.Widget):
                     cr.show_text(str(int(round((self.next_level / 255) * 100))))
             else:
                 cr.show_text(str(self.next_level))  # Level in 0 to 255 value
-
-    def do_realize(self):
-        """Realize widget"""
-        allocation = self.get_allocation()
-        attr = Gdk.WindowAttr()
-        attr.window_type = Gdk.WindowType.CHILD
-        attr.x = allocation.x
-        attr.y = allocation.y
-        attr.width = allocation.width
-        attr.height = allocation.height
-        attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
-        wat = Gdk.WindowAttributesType
-        mask = wat.X | wat.Y | wat.VISUAL
-
-        window = Gdk.Window(self.get_parent_window(), attr, mask)
-        self.set_window(window)
-        self.register_window(window)
-
-        self.set_realized(True)
-        window.set_background_pattern(None)

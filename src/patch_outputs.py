@@ -16,7 +16,6 @@ from typing import List, Optional, Tuple
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
-from olc.zoom import zoom
 
 
 class PatchOutputsTab(Gtk.Box):
@@ -65,9 +64,6 @@ class PatchOutputsTab(Gtk.Box):
 
         self.pack_start(header, False, False, 0)
         self.pack_start(scrolled, True, True, 0)
-
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
 
     def on_button_clicked(self, widget):
         """On buttons clicked

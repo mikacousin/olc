@@ -82,6 +82,19 @@ class Window(Gtk.ApplicationWindow):
 
         self.set_icon_name("olc")
 
+    def get_active_tab(self) -> Gtk.Widget:
+        """Get active tab
+
+        Returns:
+            Active tab
+        """
+        widget = self.get_focus()
+        while widget:
+            if widget in (self.live_view, self.playback):
+                break
+            widget = widget.get_parent()
+        return widget.get_nth_page(widget.get_current_page())
+
     def toggle_focus(self) -> None:
         """Toggle focus Left/Right"""
         focus = self.get_focus()

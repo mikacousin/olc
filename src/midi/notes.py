@@ -18,6 +18,7 @@ import typing
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App, MAX_FADER_PAGE
+from olc.zoom import zoom
 
 if typing.TYPE_CHECKING:
     from olc.independent import Independent
@@ -28,8 +29,10 @@ class MidiNotes:
     """MIDI messages from controllers"""
 
     notes: Dict[str, List[int]]
+    zoom: bool
 
     def __init__(self):
+        self.zoom = False
         # Default MIDI notes values : "action": Channel, Note
         self.notes = {
             "go": [0, 94],
@@ -67,6 +70,11 @@ class MidiNotes:
             "fader_page_plus": [0, 49],
             "fader_page_minus": [0, 48],
             "gm": [0, 112],
+            "zoom_on": [0, 100],
+            "h_plus": [0, 99],
+            "h_minus": [0, 98],
+            "v_plus": [0, 97],
+            "v_minus": [0, 96],
         }
         for i in range(10):
             self.notes[f"number_{str(i)}"] = [0, -1]
@@ -109,6 +117,12 @@ class MidiNotes:
                         GLib.idle_add(_function_master, msg, fader)
                 elif key[:5] == "inde_":
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
+                elif key[:4] == "zoom":
+                    GLib.idle_add(self._toggle_zoom, msg)
+                elif key[:6] == "h_plus" or key[:6] == "v_plus":
+                    GLib.idle_add(self._zoom_plus, msg)
+                elif key[:7] == "h_minus" or key[:7] == "v_minus":
+                    GLib.idle_add(self._zoom_minus, msg)
                 else:
                     GLib.idle_add(globals()[f"_function_{key}"], msg)
 
@@ -195,6 +209,27 @@ class MidiNotes:
                 widget.set_active(True)
             else:
                 self.__update_inde_button(inde, independent, 255)
+
+    def _toggle_zoom(self, msg: mido.Message) -> None:
+        """Zoom On/Off
+
+        Args:
+            msg: MIDI message
+        """
+        if msg.velocity == 127 and self.zoom:
+            self.zoom = False
+        elif msg.velocity == 127 and not self.zoom:
+            self.zoom = True
+
+    def _zoom_plus(self, _msg: mido.Message) -> None:
+        """Zoom plus"""
+        if self.zoom:
+            zoom("in")
+
+    def _zoom_minus(self, _msg: mido.Message) -> None:
+        """Zoom plus"""
+        if self.zoom:
+            zoom("out")
 
 
 def _function_master(msg: mido.Message, fader_index: int) -> None:

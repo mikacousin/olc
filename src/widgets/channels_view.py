@@ -15,7 +15,6 @@
 from typing import Any, Dict, List, Optional
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_CHANNELS, is_non_nul_int, is_int
-from olc.zoom import zoom
 from .channel import ChannelWidget
 
 VIEW_MODES: Dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
@@ -56,8 +55,6 @@ class ChannelsView(Gtk.Box):
         self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.flowbox.set_filter_func(self.filter_channels, None)
-        self.flowbox.add_events(Gdk.EventMask.SCROLL_MASK)
-        self.flowbox.connect("scroll-event", zoom)
         for i in range(MAX_CHANNELS):
             self.flowbox.add(ChannelWidget(i + 1, 0, 0))
         self.scrolled.add(self.flowbox)

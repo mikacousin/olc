@@ -1029,9 +1029,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if self.midi_learn:
             return
-        focus = App().window.get_focus()
-        page = focus.get_current_page()
-        child = focus.get_nth_page(page)
+        child = App().window.get_active_tab()
         channels_view = None
         if child == App().window.live_view.channels_view:
             channels_view = child

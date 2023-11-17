@@ -133,20 +133,18 @@ class MidiControlChanges:
         if App().virtual_console:
             App().virtual_console.wheel.emit("moved", direction, step)
         else:
-            focus = App().window.get_focus()
-            page = focus.get_current_page()
-            child = focus.get_nth_page(page)
+            tab = App().window.get_active_tab()
             channels_view = None
-            if child == App().window.live_view.channels_view:
-                channels_view = child
-            elif child in (
+            if tab == App().window.live_view.channels_view:
+                channels_view = tab
+            elif tab in (
                 App().tabs.tabs["groups"],
                 App().tabs.tabs["indes"],
                 App().tabs.tabs["masters"],
                 App().tabs.tabs["memories"],
                 App().tabs.tabs["sequences"],
             ):
-                channels_view = child.channels_view
+                channels_view = tab.channels_view
             if channels_view:
                 channels_view.wheel_level(step, direction)
 
