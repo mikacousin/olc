@@ -97,9 +97,6 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if not App().virtual_console and App().midi.ports.outports:
-            for outport in App().midi.ports.outports:
-                outport.send(msg)
         for key, value in self.notes.items():
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
@@ -171,12 +168,11 @@ class MidiNotes:
         inde.level = level
         inde.update_dmx()
         velocity = 0 if level == 0 else 127
-        for outport in App().midi.ports.outports:
-            item = self.notes[f"inde_{index}"]
-            msg = mido.Message(
-                "note_on", channel=item[0], note=item[1], velocity=velocity, time=0
-            )
-            GLib.idle_add(outport.send, msg)
+        item = self.notes[f"inde_{index}"]
+        msg = mido.Message(
+            "note_on", channel=item[0], note=item[1], velocity=velocity, time=0
+        )
+        App().midi.out.append(msg)
 
     def _function_inde_button(self, msg: mido.Message, independent: int) -> None:
         """Toggle independent button
@@ -233,7 +229,7 @@ class MidiNotes:
 
 
 def _function_master(msg: mido.Message, fader_index: int) -> None:
-    """Send Fader position when realesed
+    """Send Fader position when released
 
     Args:
         msg: MIDI message
@@ -242,48 +238,46 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
     if msg.velocity == 0:
         midi_name = f"master_{fader_index}"
         master = App().masters[fader_index - 1 + ((App().fader_page - 1) * 10)]
-        for outport in App().midi.ports.outports:
-            item = App().midi.control_change.control_change[midi_name]
-            if item[1] != -1:
-                msg = mido.Message(
-                    "control_change",
-                    channel=item[0],
-                    control=item[1],
-                    value=int(master.value / 2),
-                    time=0,
-                )
-                outport.send(msg)
-            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-            if item != -1:
-                val = int(((master.value / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                outport.send(msg)
+        item = App().midi.control_change.control_change[midi_name]
+        if item[1] != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=item[0],
+                control=item[1],
+                value=int(master.value / 2),
+                time=0,
+            )
+            App().midi.out.append(msg)
+        item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+        if item != -1:
+            val = int(((master.value / 255) * 16383) - 8192)
+            msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+            App().midi.out.append(msg)
 
 
 def _function_gm(msg: mido.Message) -> None:
-    """Send Fader position when realesed
+    """Send Fader position when released
 
     Args:
         msg: MIDI message
     """
     if msg.velocity == 0:
         midi_name = "gm"
-        for outport in App().midi.ports.outports:
-            item = App().midi.control_change.control_change[midi_name]
-            if item[1] != -1:
-                msg = mido.Message(
-                    "control_change",
-                    channel=item[0],
-                    control=item[1],
-                    value=int(App().dmx.grand_master / 2),
-                    time=0,
-                )
-                outport.send(msg)
-            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-            if item != -1:
-                val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                outport.send(msg)
+        item = App().midi.control_change.control_change[midi_name]
+        if item[1] != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=item[0],
+                control=item[1],
+                value=int(App().dmx.grand_master / 2),
+                time=0,
+            )
+            App().midi.out.append(msg)
+        item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+        if item != -1:
+            val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
+            msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+            App().midi.out.append(msg)
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
@@ -300,6 +294,7 @@ def _function_flash(msg: mido.Message, fader_index: int) -> None:
                 "button-release-event", event
             )
         else:
+            App().midi.out.append(msg)
             master = None
             for master in App().masters:
                 if master.page == App().fader_page and master.number == fader_index:
@@ -312,6 +307,7 @@ def _function_flash(msg: mido.Message, fader_index: int) -> None:
                 "button-press-event", event
             )
         else:
+            App().midi.out.append(msg)
             master = None
             for master in App().masters:
                 if master.page == App().fader_page and master.number == fader_index:
@@ -331,12 +327,15 @@ def _function_go(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.go_button.emit("button-release-event", event)
+        else:
+            App().midi.out.append(msg)
     elif msg.velocity == 127:
         # Go pressed
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.go_button.emit("button-press-event", event)
         else:
+            App().midi.out.append(msg)
             App().sequence.do_go(None, None)
 
 
@@ -350,11 +349,14 @@ def _function_at(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.at_level.emit("button-release-event", event)
+        else:
+            App().midi.out.append(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.at_level.emit("button-press-event", event)
         else:
+            App().midi.out.append(msg)
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_equal
             App().window.on_key_press_event(None, event)
@@ -843,11 +845,14 @@ def _function_go_back(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.goback.emit("button-release-event", event)
+        else:
+            App().midi.out.append(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.goback.emit("button-press-event", event)
         else:
+            App().midi.out.append(msg)
             App().sequence.go_back(App(), None)
 
 
@@ -881,11 +886,14 @@ def _function_seq_minus(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.seq_minus.emit("button-release-event", event)
+        else:
+            App().midi.out.append(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.seq_minus.emit("button-press-event", event)
         else:
+            App().midi.out.append(msg)
             App().sequence.sequence_minus()
             App().window.keystring = ""
             App().window.statusbar.push(App().window.context_id, "")
@@ -901,11 +909,14 @@ def _function_seq_plus(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.seq_plus.emit("button-release-event", event)
+        else:
+            App().midi.out.append(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.seq_plus.emit("button-press-event", event)
         else:
+            App().midi.out.append(msg)
             App().sequence.sequence_plus()
             App().window.keystring = ""
             App().window.statusbar.push(App().window.context_id, "")
@@ -1097,12 +1108,10 @@ def __update_masters() -> None:
                     value=int(master.value / 2),
                     time=0,
                 )
-                for outport in App().midi.ports.outports:
-                    outport.send(msg)
+                App().midi.out.append(msg)
             item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
             if item != -1:
                 val = int(((master.value / 255) * 16383) - 8192)
                 msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                for outport in App().midi.ports.outports:
-                    outport.send(msg)
+                App().midi.out.append(msg)
     App().midi.lcd.show_masters()

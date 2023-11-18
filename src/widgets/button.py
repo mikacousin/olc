@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
 import mido
-from gi.repository import Gdk, GLib, GObject, Gtk
+from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
 
@@ -47,26 +47,24 @@ class ButtonWidget(Gtk.Widget):
 
     def on_press(self, _tgt, _ev):
         """Button pressed"""
-        for outport in App().midi.ports.outports:
-            item = App().midi.notes.notes[self.text]
-            if item[1] != -1:
-                msg = mido.Message(
-                    "note_on", channel=item[0], note=item[1], velocity=127, time=0
-                )
-                GLib.idle_add(outport.send, msg)
+        item = App().midi.notes.notes[self.text]
+        if item[1] != -1:
+            msg = mido.Message(
+                "note_on", channel=item[0], note=item[1], velocity=127, time=0
+            )
+            App().midi.out.append(msg)
         self.pressed = True
         self.queue_draw()
         self.emit("clicked")
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        for outport in App().midi.ports.outports:
-            item = App().midi.notes.notes[self.text]
-            if item[1] != -1:
-                msg = mido.Message(
-                    "note_on", channel=item[0], note=item[1], velocity=0, time=0
-                )
-                GLib.idle_add(outport.send, msg)
+        item = App().midi.notes.notes[self.text]
+        if item[1] != -1:
+            msg = mido.Message(
+                "note_on", channel=item[0], note=item[1], velocity=0, time=0
+            )
+            App().midi.out.append(msg)
         self.pressed = False
         self.queue_draw()
 

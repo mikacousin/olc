@@ -134,8 +134,6 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Grand Master and Output grid
         self.output_pad = Gtk.Grid()
-        # self.output_pad.set_column_homogeneous(True)
-        # self.output_pad.set_row_homogeneous(True)
         adjustment = Gtk.Adjustment(App().dmx.grand_master, 0, 255, 1, 10, 0)
         self.scale_grand_master = FaderWidget(
             text="gm", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
@@ -918,12 +916,11 @@ class VirtualConsoleWindow(Gtk.Window):
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
             midi_name = f"master_{App().masters[index].number}"
-            for outport in App().midi.ports.outports:
-                item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-                if item != -1:
-                    val = int(((value / 255) * 16383) - 8192)
-                    msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                    outport.send(msg)
+            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if item != -1:
+                val = int(((value / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                App().midi.out.append(msg)
 
     def master_clicked(self, master):
         """Fader clicked
@@ -1004,9 +1001,13 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             value = scale.get_value()
-
             App().dmx.grand_master = value
             App().window.grand_master.queue_draw()
+            item = App().midi.pitchwheel.pitchwheel.get("gm", -1)
+            if item != -1:
+                val = int(((value / 255) * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                App().midi.out.append(msg)
 
     def controller_clicked(self, widget):
         """Controller clicked

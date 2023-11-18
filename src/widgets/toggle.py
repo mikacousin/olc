@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
-from gi.repository import GLib, Gtk
+from gi.repository import Gtk
 from olc.define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
 
@@ -44,22 +44,20 @@ class ToggleWidget(Gtk.ToggleButton):
             cr.set_source_rgb(0.3, 0.2, 0.2)
         elif self.get_active():
             cr.set_source_rgb(0.5, 0.3, 0.0)
-            for outport in App().midi.ports.outports:
-                item = App().midi.notes.notes[self.text]
-                if item[1] != -1:
-                    msg = mido.Message(
-                        "note_on", channel=item[0], note=item[1], velocity=127, time=0
-                    )
-                    GLib.idle_add(outport.send, msg)
+            item = App().midi.notes.notes[self.text]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "note_on", channel=item[0], note=item[1], velocity=127, time=0
+                )
+                App().midi.out.append(msg)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-            for outport in App().midi.ports.outports:
-                item = App().midi.notes.notes[self.text]
-                if item[1] != -1:
-                    msg = mido.Message(
-                        "note_on", channel=item[0], note=item[1], velocity=0, time=0
-                    )
-                    GLib.idle_add(outport.send, msg)
+            item = App().midi.notes.notes[self.text]
+            if item[1] != -1:
+                msg = mido.Message(
+                    "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                )
+                App().midi.out.append(msg)
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.radius)

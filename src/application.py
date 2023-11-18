@@ -519,15 +519,13 @@ class Application(Gtk.Application):
                 return
             if response == 1:
                 self._save(None, None)
-        # Stop Chasers Threads
         for chaser in self.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False
                 chaser.thread.stop()
                 chaser.thread.join()
-        # Stop send DMX
+        self.midi.stop()
         self.ola.stop()
-        self.midi.controler_reset()
         self.quit()
 
 

@@ -12,8 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import threading
+import time
 import mido
-from gi.repository import GLib
 from olc.define import App
 from .control_change import MidiControlChanges
 from .notes import MidiNotes
@@ -49,6 +50,24 @@ class Midi:
         # Create and Open MIDI ports
         self.ports = MidiPorts()
 
+        # Send MIDI messages every 25 milliseconds
+        self.out = []
+        self.rt = RepeatedTimer(.025, self.send)
+
+    def stop(self) -> None:
+        """Stop MIDI"""
+        self.rt.stop()
+        self.controler_reset()
+        self.ports.close_output()
+        self.ports.close_input()
+
+    def send(self) -> None:
+        """Send MIDI messages from the queue"""
+        for msg in self.out:
+            for outport in self.ports.outports:
+                outport.send(msg)
+        self.out.clear()
+
     def learn(self, msg: mido.Message) -> None:
         """Learn new MIDI control
 
@@ -56,8 +75,7 @@ class Midi:
             msg: MIDI message
         """
         if self.ports.outports:
-            for outport in self.ports.outports:
-                GLib.idle_add(outport.send, msg)
+            self.out.append(msg)
         if msg.type == "note_on":
             self.notes.learn(msg, self.midi_learn)
         elif msg.type == "control_change":
@@ -77,29 +95,63 @@ class Midi:
 
     def controler_reset(self) -> None:
         """Reset Mackie Controler"""
-        self.lcd.clear()
         for outport in self.ports.outports:
+            # Clear LCD
+            text = 56 * " "
+            data = [0, 0, 102, 20, 18, 0] + [ord(c) for c in text]
+            msg = mido.Message("sysex", data=data)
+            outport.send(msg)
+            data = [0, 0, 102, 20, 18, 56] + [ord(c) for c in text]
+            msg = mido.Message("sysex", data=data)
+            outport.send(msg)
+            # Faders at 0
             for i in range(16):
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 outport.send(msg)
-            outport.reset()
 
     def gm_init(self) -> None:
         """Grand Master Fader"""
         midi_name = "gm"
-        for outport in self.ports.outports:
-            item = App().midi.control_change.control_change[midi_name]
-            if item[1] != -1:
-                msg = mido.Message(
-                    "control_change",
-                    channel=item[0],
-                    control=item[1],
-                    value=int(App().dmx.grand_master / 2),
-                    time=0,
-                )
-                outport.send(msg)
-            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-            if item != -1:
-                val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                outport.send(msg)
+        item = App().midi.control_change.control_change[midi_name]
+        if item[1] != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=item[0],
+                control=item[1],
+                value=int(App().dmx.grand_master / 2),
+                time=0,
+            )
+            self.out.append(msg)
+        item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+        if item != -1:
+            val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
+            msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+            self.out.append(msg)
+
+
+class RepeatedTimer:
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer = None
+        self.interval = interval
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.is_running = False
+        self.next_call = time.time()
+        self.start()
+
+    def _run(self):
+        self.is_running = False
+        self.start()
+        self.function(*self.args, **self.kwargs)
+
+    def start(self):
+        if not self.is_running:
+            self.next_call += self.interval
+            self._timer = threading.Timer(self.next_call - time.time(), self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False

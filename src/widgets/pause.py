@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
 import mido
-from gi.repository import GLib, Gtk
+from gi.repository import Gtk
 from olc.define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
 
@@ -45,11 +45,10 @@ class PauseWidget(Gtk.Button):
         """Button pressed"""
         self.pressed = True
         item = App().midi.notes.notes[self.text]
-        for outport in App().midi.ports.outports:
-            msg = mido.Message(
-                "note_on", channel=item[0], note=item[1], velocity=127, time=0
-            )
-            GLib.idle_add(outport.send, msg)
+        msg = mido.Message(
+            "note_on", channel=item[0], note=item[1], velocity=127, time=0
+        )
+        App().midi.out.append(msg)
 
     def on_release(self, _tgt, _ev):
         """Button released"""
@@ -57,25 +56,22 @@ class PauseWidget(Gtk.Button):
         if App().sequence.on_go:
             if App().sequence.thread and App().sequence.thread.pause.is_set():
                 self.pressed = True
-                for outport in App().midi.ports.outports:
-                    msg = mido.Message(
-                        "note_on", channel=item[0], note=item[1], velocity=127, time=0
-                    )
-                    GLib.idle_add(outport.send, msg)
+                msg = mido.Message(
+                    "note_on", channel=item[0], note=item[1], velocity=127, time=0
+                )
+                App().midi.out.append(msg)
             elif App().sequence.thread:
                 self.pressed = False
-                for outport in App().midi.ports.outports:
-                    msg = mido.Message(
-                        "note_on", channel=item[0], note=item[1], velocity=0, time=0
-                    )
-                    GLib.idle_add(outport.send, msg)
-        else:
-            self.pressed = False
-            for outport in App().midi.ports.outports:
                 msg = mido.Message(
                     "note_on", channel=item[0], note=item[1], velocity=0, time=0
                 )
-                GLib.idle_add(outport.send, msg)
+                App().midi.out.append(msg)
+        else:
+            self.pressed = False
+            msg = mido.Message(
+                "note_on", channel=item[0], note=item[1], velocity=0, time=0
+            )
+            App().midi.out.append(msg)
 
     def do_draw(self, cr):
         """Draw Pause button
