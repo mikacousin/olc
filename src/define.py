@@ -96,13 +96,13 @@ def time_to_string(time: float) -> str:
     hours, minutes = divmod(minutes, 60)
     string = ""
     if hours:
-        string += str(int(hours)) + ":"
+        string += f"{int(hours)}:"
     if minutes:
-        string += str(int(minutes)) + ":"
+        string += f"{int(minutes)}:"
     if seconds.is_integer():
-        string += str(int(seconds))
+        string += f"{int(seconds)}"
     else:
-        string += str(seconds)
+        string += f"{seconds}"
     if string == "0":
         string = ""
     return string

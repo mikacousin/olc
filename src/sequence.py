@@ -222,14 +222,9 @@ class Sequence:
 
             # Window's subtitle
             subtitle = (
-                "Mem. : "
-                + str(self.steps[position].cue.memory)
-                + " "
-                + self.steps[position].text
-                + " - Next Mem. : "
-                + str(self.steps[position + 1].cue.memory)
-                + " "
-                + self.steps[position + 1].text
+                f"Mem. : {self.steps[position].cue.memory} {self.steps[position].text}"
+                f" - Next Mem. : {self.steps[position + 1].cue.memory} "
+                f"{self.steps[position + 1].text}"
             )
             # Update display
             update_ui(position, subtitle)
@@ -292,14 +287,9 @@ class Sequence:
 
             # Window's subtitle
             subtitle = (
-                "Mem. : "
-                + str(self.steps[position].cue.memory)
-                + " "
-                + self.steps[position].text
-                + " - Next Mem. : "
-                + str(self.steps[position + 1].cue.memory)
-                + " "
-                + self.steps[position + 1].text
+                f"Mem. : {self.steps[position].cue.memory} {self.steps[position].text}"
+                f" - Next Mem. : {self.steps[position + 1].cue.memory} "
+                f"{self.steps[position + 1].text}"
             )
             # Update display
             update_ui(position, subtitle)
@@ -415,9 +405,9 @@ class Sequence:
 
             # Set main window's subtitle
             subtitle = (
-                f"Mem. : {str(self.steps[position].cue.memory)} "
+                f"Mem. : {self.steps[position].cue.memory} "
                 f"{self.steps[position].text} - Next Mem. : "
-                f"{str(self.steps[position + 1].cue.memory)} "
+                f"{self.steps[position + 1].cue.memory} "
                 f"{self.steps[position + 1].text}"
             )
 
@@ -475,14 +465,9 @@ class Sequence:
         App().window.playback.grid.queue_draw()
 
         subtitle = (
-            "Mem. : "
-            + str(self.steps[position].cue.memory)
-            + " "
-            + self.steps[position].text
-            + " - Next Mem. : "
-            + str(self.steps[position - 1].cue.memory)
-            + " "
-            + self.steps[position - 1].text
+            f"Mem. : {self.steps[position].cue.memory} {self.steps[position].text}"
+            f" - Next Mem. : {self.steps[position - 1].cue.memory} "
+            f"{self.steps[position - 1].text}"
         )
         App().window.header.set_subtitle(subtitle)
 
@@ -814,14 +799,10 @@ def _next_step():
     App().window.playback.sequential.position_b = 0
     # Main window's subtitle
     subtitle = (
-        "Mem. : "
-        + str(App().sequence.steps[App().sequence.position].cue.memory)
-        + " "
-        + App().sequence.steps[App().sequence.position].text
-        + " - Next Mem. : "
-        + str(App().sequence.steps[next_step].cue.memory)
-        + " "
-        + App().sequence.steps[next_step].text
+        f"Mem. : {App().sequence.steps[App().sequence.position].cue.memory} "
+        f"{App().sequence.steps[App().sequence.position].text} - Next Mem. : "
+        f"{App().sequence.steps[next_step].cue.memory} "
+        f"{App().sequence.steps[next_step].text}"
     )
     # Update Gtk in main thread
     GLib.idle_add(update_ui, App().sequence.position, subtitle)
@@ -924,9 +905,9 @@ class ThreadGoBack(threading.Thread):
         App().window.playback.sequential.position_b = 0
         # Main window's subtitle
         subtitle = (
-            f"Mem. : {str(App().sequence.steps[prev_step].cue.memory)} "
+            f"Mem. : {App().sequence.steps[prev_step].cue.memory} "
             f"{App().sequence.steps[prev_step].text} - Next Mem. : "
-            f"{str(App().sequence.steps[prev_step + 1].cue.memory)} "
+            f"{App().sequence.steps[prev_step + 1].cue.memory} "
             f"{App().sequence.steps[prev_step + 1].text}"
         )
         # Update Gtk in the main thread

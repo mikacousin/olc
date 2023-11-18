@@ -383,7 +383,7 @@ class VirtualConsoleWindow(Gtk.Window):
             adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
             self.masters.append(
                 FaderWidget(
-                    text="master_" + str(i + 1),
+                    text=f"master_{i + 1}",
                     orientation=Gtk.Orientation.VERTICAL,
                     adjustment=adjustment,
                 )
@@ -399,7 +399,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.flashes[i].connect("clicked", self.on_flash)
             self.masters_pad.attach(self.masters[i], i, 0, 1, 1)
             self.masters_pad.attach(self.flashes[i], i, 1, 1, 1)
-            text = "flash_" + str(i + 1)
+            text = f"flash_{i + 1}"
             self.flashes[i].text = text
         for master in App().masters:
             if master.page == App().fader_page:
@@ -493,9 +493,7 @@ class VirtualConsoleWindow(Gtk.Window):
             # Redraw Masters and Flashes
             for master in App().masters:
                 if master.page == App().fader_page:
-                    text = "master_" + str(
-                        master.number + ((App().fader_page - 1) * 10)
-                    )
+                    text = f"master_{master.number + ((App().fader_page - 1) * 10)}"
                     self.masters[master.number - 1].text = text
                     val = master.value
                     self.masters[master.number - 1].set_value(val)
@@ -899,7 +897,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if self.midi_learn:
             index = self.flashes.index(widget) + 1
-            text = "flash_" + str(index)
+            text = f"flash_{index}"
             App().midi.midi_learn = text
             self.queue_draw()
 
@@ -911,7 +909,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if self.midi_learn:
             index = self.masters.index(master) + 1
-            text = "master_" + str(index)
+            text = f"master_{index}"
             App().midi.midi_learn = text
             self.queue_draw()
         else:
@@ -919,7 +917,7 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.masters.index(master)
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
-            midi_name = f"master_{str(App().masters[index].number)}"
+            midi_name = f"master_{App().masters[index].number}"
             for outport in App().midi.ports.outports:
                 item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
                 if item != -1:
@@ -935,7 +933,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if self.midi_learn:
             index = self.masters.index(master) + 1
-            text = "master_" + str(index)
+            text = f"master_{index}"
             App().midi.midi_learn = text
             self.queue_draw()
 

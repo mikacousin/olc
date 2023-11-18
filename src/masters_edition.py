@@ -101,7 +101,7 @@ class MastersTab(Gtk.Paned):
         renderer.connect("edited", self.on_mode_changed)
         column = Gtk.TreeViewColumn("Mode", renderer, text=3)
         child.append_column(column)
-        self.stack.add_titled(child, str(page), f"Page {str(page + 1)}")
+        self.stack.add_titled(child, str(page), f"Page {page + 1}")
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -391,7 +391,7 @@ class MastersTab(Gtk.Paned):
                     if channel_widget.level:
                         channels[chan + 1] = channel_widget.level
                         nb_chan += 1
-                        text += f" {str(chan + 1)}"
+                        text += f" {chan + 1}"
                 App().masters[index].text = text
                 App().masters[index].set_level(master_level)
                 # Update Display

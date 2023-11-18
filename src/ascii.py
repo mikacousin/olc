@@ -68,7 +68,7 @@ class Ascii:
             self._update_ui()
             self.add_recent_file()
         except GObject.GError as e:
-            print(f"Error: {str(e)}")
+            print(f"Error: {e}")
         self.modified = False
 
     def save(self):
@@ -132,10 +132,8 @@ class Ascii:
         App().window.header.set_title(self.basename)
         # Set main window's subtitle
         subtitle = (
-            "Mem. : 0.0 - Next Mem. : "
-            + str(App().sequence.steps[1].cue.memory)
-            + " "
-            + App().sequence.steps[1].cue.text
+            f"Mem. : 0.0 - Next Mem. : {App().sequence.steps[1].cue.memory} "
+            f"{App().sequence.steps[1].cue.text}"
         )
         App().window.header.set_subtitle(subtitle)
         # Redraw Crossfade
@@ -150,7 +148,7 @@ class Ascii:
         if App().virtual_console and App().virtual_console.props.visible:
             for master in App().masters:
                 if master.page == App().fader_page:
-                    text = f"master_{str(master.number + (App().fader_page - 1) * 10)}"
+                    text = f"master_{master.number + (App().fader_page - 1) * 10}"
                     App().virtual_console.masters[master.number - 1].text = text
                     App().virtual_console.masters[master.number - 1].set_value(
                         master.value

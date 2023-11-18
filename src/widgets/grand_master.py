@@ -45,7 +45,7 @@ class GMWidget(Gtk.Widget):
             area = (1, self.width - 2, 1, self.height - 2)
             rounded_rectangle(cr, area, self.radius)
             # Draw Text
-            self.label = f"GM {str(round(App().dmx.grand_master / 255 * 100))}%"
+            self.label = f"GM {round(App().dmx.grand_master / 255 * 100)}%"
             cr.set_source_rgb(0.8, 0.3, 0.3)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(11)

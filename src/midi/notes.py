@@ -77,19 +77,19 @@ class MidiNotes:
             "v_minus": [0, 96],
         }
         for i in range(10):
-            self.notes[f"number_{str(i)}"] = [0, -1]
+            self.notes[f"number_{i}"] = [0, -1]
         for i in range(10):
             for j in range(10):
                 if j < 8:
-                    self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, 24 + j]
+                    self.notes[f"flash_{j + i * 10 + 1}"] = [0, 24 + j]
                 elif j == 8:
-                    self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, 84]
+                    self.notes[f"flash_{j + i * 10 + 1}"] = [0, 84]
                 else:
-                    self.notes[f"flash_{str(j + i * 10 + 1)}"] = [0, -1]
+                    self.notes[f"flash_{j + i * 10 + 1}"] = [0, -1]
                 if j < 8:
-                    self.notes[f"master_{str(j + i * 10 + 1)}"] = [0, 104 + j]
+                    self.notes[f"master_{j + i * 10 + 1}"] = [0, 104 + j]
                 else:
-                    self.notes[f"master_{str(j + i * 10 + 1)}"] = [0, -1]
+                    self.notes[f"master_{j + i * 10 + 1}"] = [0, -1]
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
@@ -240,7 +240,7 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
         fader_index: Master number
     """
     if msg.velocity == 0:
-        midi_name = f"master_{str(fader_index)}"
+        midi_name = f"master_{fader_index}"
         master = App().masters[fader_index - 1 + ((App().fader_page - 1) * 10)]
         for outport in App().midi.ports.outports:
             item = App().midi.control_change.control_change[midi_name]
@@ -1087,7 +1087,7 @@ def __update_masters() -> None:
     """Send faders values and update display"""
     for master in App().masters:
         if master.page == App().fader_page:
-            midi_name = f"master_{str(master.number)}"
+            midi_name = f"master_{master.number}"
             item = App().midi.control_change.control_change[midi_name]
             if item[1] != -1:
                 msg = mido.Message(

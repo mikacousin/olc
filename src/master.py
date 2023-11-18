@@ -74,7 +74,7 @@ class Master:
             self.text += "Ch"
             self.content_value = content_value
             for channel in content_value:
-                self.text += f" {str(channel)}"
+                self.text += f" {channel}"
         elif self.content_type == 3:
             self.content_value = float(content_value)
             if chaser := next(

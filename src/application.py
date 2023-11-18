@@ -328,7 +328,7 @@ class Application(Gtk.Application):
             self.virtual_console.page_number.set_label(str(self.fader_page))
             for master in self.masters:
                 if master.page == self.fader_page:
-                    text = f"master_{str(master.number + (self.fader_page - 1) * 10)}"
+                    text = f"master_{master.number + (self.fader_page - 1) * 10}"
                     self.virtual_console.masters[master.number - 1].text = text
                     self.virtual_console.masters[master.number - 1].set_value(
                         master.value
@@ -402,7 +402,7 @@ class Application(Gtk.Application):
                 # set self.ascii.file as the current filename for the file chooser
                 save_dialog.set_file(self.ascii.file)
             except GObject.GError as e:
-                print(f"Error: {str(e)}")
+                print(f"Error: {e}")
         # show the dialog
         response = save_dialog.run()
 

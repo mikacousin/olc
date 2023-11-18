@@ -408,26 +408,18 @@ class SequenceTab(Gtk.Grid):
             # Update window's subtitle if needed
             if sequence.position == step:
                 subtitle = (
-                    "Mem. : "
-                    + str(sequence.steps[step].cue.memory)
-                    + " "
-                    + sequence.steps[step].text
-                    + " - Next Mem. : "
-                    + str(sequence.steps[step + 1].cue.memory)
-                    + " "
-                    + sequence.steps[step + 1].text
+                    f"Mem. : {sequence.steps[step].cue.memory} "
+                    f"{sequence.steps[step].text} - Next Mem. : "
+                    f"{sequence.steps[step + 1].cue.memory} "
+                    f"{sequence.steps[step + 1].text}"
                 )
                 App().window.header.set_subtitle(subtitle)
             elif sequence.position + 1 == step:
                 subtitle = (
-                    "Mem. : "
-                    + str(sequence.steps[step - 1].cue.memory)
-                    + " "
-                    + sequence.steps[step - 1].text
-                    + " - Next Mem. : "
-                    + str(sequence.steps[step].cue.memory)
-                    + " "
-                    + sequence.steps[step].text
+                    f"Mem. : {sequence.steps[step - 1].cue.memory} "
+                    f"{sequence.steps[step - 1].text} - Next Mem. : "
+                    f"{sequence.steps[step].cue.memory} "
+                    f"{sequence.steps[step].text}"
                 )
                 App().window.header.set_subtitle(subtitle)
 
@@ -819,7 +811,7 @@ class Dialog(Gtk.Dialog):
 
         self.set_default_size(150, 100)
 
-        label = Gtk.Label(f"Update memory {str(memory)} ?")
+        label = Gtk.Label(f"Update memory {memory} ?")
 
         box = self.get_content_area()
         box.add(label)

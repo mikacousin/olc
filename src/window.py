@@ -541,7 +541,7 @@ class Dialog(Gtk.Dialog):
 
         self.set_default_size(150, 100)
 
-        label = Gtk.Label(f"Update memory {str(memory)} ?")
+        label = Gtk.Label(f"Update memory {memory} ?")
 
         box = self.get_content_area()
         box.add(label)

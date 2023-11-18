@@ -39,7 +39,7 @@ class MidiControlChanges:
             "crossfade_in": [0, 9],
         }
         for i in range(1, 101):
-            self.control_change[f"master_{str(i)}"] = [0, -1]
+            self.control_change[f"master_{i}"] = [0, -1]
 
     def scan(self, port: str, msg: mido.Message) -> None:
         """Scan MIDI control changes
