@@ -112,21 +112,43 @@ class Midi:
     def gm_init(self) -> None:
         """Grand Master Fader"""
         midi_name = "gm"
-        item = App().midi.control_change.control_change[midi_name]
-        if item[1] != -1:
+        channel, control = self.control_change.control_change[midi_name]
+        if control != -1:
             msg = mido.Message(
                 "control_change",
-                channel=item[0],
-                control=item[1],
+                channel=channel,
+                control=control,
                 value=int(App().dmx.grand_master / 2),
                 time=0,
             )
             self.out.append(msg)
-        item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-        if item != -1:
+        channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
+        if channel != -1:
             val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
-            msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+            msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             self.out.append(msg)
+
+    def update_masters(self) -> None:
+        """Send faders value and update display"""
+        for master in App().masters:
+            if master.page == App().fader_page:
+                midi_name = f"master_{master.number}"
+                channel, control = self.control_change.control_change[midi_name]
+                if control != -1:
+                    msg = mido.Message(
+                        "control_change",
+                        channel=channel,
+                        control=control,
+                        value=int(master.value / 2),
+                        time=0,
+                    )
+                    self.out.append(msg)
+                channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
+                if channel != -1:
+                    val = int(((master.value / 255) * 16383) - 8192)
+                    msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
+                    self.out.append(msg)
+        self.lcd.show_masters()
 
 
 class RepeatedTimer:

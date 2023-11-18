@@ -282,6 +282,8 @@ class SettingsDialog:
         App().settings.set_strv("midi-out", midi_ports)
         GLib.idle_add(App().midi.ports.close_output)
         GLib.idle_add(App().midi.ports.open_output, midi_ports)
+        App().midi.update_masters()
+        App().midi.gm_init()
 
     def _on_change_percent(self, _widget):
         lvl = self.spin_percent_level.get_value_as_int()

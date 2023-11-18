@@ -1070,7 +1070,7 @@ def _function_fader_page_plus(msg: mido.Message) -> None:
             App().fader_page += 1
             if App().fader_page > MAX_FADER_PAGE:
                 App().fader_page = 1
-            __update_masters()
+            App().midi.update_masters()
 
 
 def _function_fader_page_minus(msg: mido.Message) -> None:
@@ -1091,27 +1091,4 @@ def _function_fader_page_minus(msg: mido.Message) -> None:
             App().fader_page -= 1
             if App().fader_page < 1:
                 App().fader_page = MAX_FADER_PAGE
-            __update_masters()
-
-
-def __update_masters() -> None:
-    """Send faders values and update display"""
-    for master in App().masters:
-        if master.page == App().fader_page:
-            midi_name = f"master_{master.number}"
-            item = App().midi.control_change.control_change[midi_name]
-            if item[1] != -1:
-                msg = mido.Message(
-                    "control_change",
-                    channel=item[0],
-                    control=item[1],
-                    value=int(master.value / 2),
-                    time=0,
-                )
-                App().midi.out.append(msg)
-            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-            if item != -1:
-                val = int(((master.value / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
-                App().midi.out.append(msg)
-    App().midi.lcd.show_masters()
+            App().midi.update_masters()
