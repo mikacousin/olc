@@ -47,10 +47,10 @@ class ButtonWidget(Gtk.Widget):
 
     def on_press(self, _tgt, _ev):
         """Button pressed"""
-        item = App().midi.notes.notes[self.text]
-        if item[1] != -1:
+        channel, note = App().midi.notes.notes[self.text]
+        if note != -1:
             msg = mido.Message(
-                "note_on", channel=item[0], note=item[1], velocity=127, time=0
+                "note_on", channel=channel, note=note, velocity=127, time=0
             )
             App().midi.out.append(msg)
         self.pressed = True
@@ -59,10 +59,10 @@ class ButtonWidget(Gtk.Widget):
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        item = App().midi.notes.notes[self.text]
-        if item[1] != -1:
+        channel, note = App().midi.notes.notes[self.text]
+        if note != -1:
             msg = mido.Message(
-                "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                "note_on", channel=channel, note=note, velocity=0, time=0
             )
             App().midi.out.append(msg)
         self.pressed = False

@@ -149,11 +149,11 @@ class MidiNotes:
 
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""
-        item = self.notes["pause"]
+        channel, note = self.notes["pause"]
         for output in App().midi.ports.outports:
-            if item[1] != -1:
+            if note != -1:
                 msg = mido.Message(
-                    "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                    "note_on", channel=channel, note=note, velocity=0, time=0
                 )
                 output.send(msg)
 
@@ -168,9 +168,9 @@ class MidiNotes:
         inde.level = level
         inde.update_dmx()
         velocity = 0 if level == 0 else 127
-        item = self.notes[f"inde_{index}"]
+        channel, note = self.notes[f"inde_{index}"]
         msg = mido.Message(
-            "note_on", channel=item[0], note=item[1], velocity=velocity, time=0
+            "note_on", channel=channel, note=note, velocity=velocity, time=0
         )
         App().midi.out.append(msg)
 
@@ -238,20 +238,20 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
     if msg.velocity == 0:
         midi_name = f"master_{fader_index}"
         master = App().masters[fader_index - 1 + ((App().fader_page - 1) * 10)]
-        item = App().midi.control_change.control_change[midi_name]
-        if item[1] != -1:
+        channel, note = App().midi.control_change.control_change[midi_name]
+        if note != -1:
             msg = mido.Message(
                 "control_change",
-                channel=item[0],
-                control=item[1],
+                channel=channel,
+                control=note,
                 value=int(master.value / 2),
                 time=0,
             )
             App().midi.out.append(msg)
-        item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-        if item != -1:
+        channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+        if channel != -1:
             val = int(((master.value / 255) * 16383) - 8192)
-            msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+            msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             App().midi.out.append(msg)
 
 
@@ -263,20 +263,20 @@ def _function_gm(msg: mido.Message) -> None:
     """
     if msg.velocity == 0:
         midi_name = "gm"
-        item = App().midi.control_change.control_change[midi_name]
-        if item[1] != -1:
+        channel, control = App().midi.control_change.control_change[midi_name]
+        if control != -1:
             msg = mido.Message(
                 "control_change",
-                channel=item[0],
-                control=item[1],
+                channel=channel,
+                control=control,
                 value=int(App().dmx.grand_master / 2),
                 time=0,
             )
             App().midi.out.append(msg)
-        item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-        if item != -1:
+        channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+        if channel != -1:
             val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
-            msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+            msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             App().midi.out.append(msg)
 
 

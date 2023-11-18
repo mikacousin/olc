@@ -916,10 +916,10 @@ class VirtualConsoleWindow(Gtk.Window):
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
             midi_name = f"master_{App().masters[index].number}"
-            item = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-            if item != -1:
+            channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+            if channel != -1:
                 val = int(((value / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
                 App().midi.out.append(msg)
 
     def master_clicked(self, master):
@@ -1003,10 +1003,10 @@ class VirtualConsoleWindow(Gtk.Window):
             value = scale.get_value()
             App().dmx.grand_master = value
             App().window.grand_master.queue_draw()
-            item = App().midi.pitchwheel.pitchwheel.get("gm", -1)
-            if item != -1:
+            channel = App().midi.pitchwheel.pitchwheel.get("gm", -1)
+            if channel != -1:
                 val = int(((value / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=item, pitch=val, time=0)
+                msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
                 App().midi.out.append(msg)
 
     def controller_clicked(self, widget):

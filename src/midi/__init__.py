@@ -52,11 +52,11 @@ class Midi:
 
         # Send MIDI messages every 25 milliseconds
         self.out = []
-        self.rt = RepeatedTimer(.025, self.send)
+        self.thread = RepeatedTimer(0.025, self.send)
 
     def stop(self) -> None:
         """Stop MIDI"""
-        self.rt.stop()
+        self.thread.stop()
         self.controler_reset()
         self.ports.close_output()
         self.ports.close_input()
@@ -152,6 +152,8 @@ class Midi:
 
 
 class RepeatedTimer:
+    """Call a function every 'interval' seconds"""
+
     def __init__(self, interval, function, *args, **kwargs):
         self._timer = None
         self.interval = interval
@@ -162,18 +164,20 @@ class RepeatedTimer:
         self.next_call = time.time()
         self.start()
 
-    def _run(self):
+    def _run(self) -> None:
         self.is_running = False
         self.start()
         self.function(*self.args, **self.kwargs)
 
-    def start(self):
+    def start(self) -> None:
+        """Start function"""
         if not self.is_running:
             self.next_call += self.interval
             self._timer = threading.Timer(self.next_call - time.time(), self._run)
             self._timer.start()
             self.is_running = True
 
-    def stop(self):
+    def stop(self) -> None:
+        """Stop function"""
         self._timer.cancel()
         self.is_running = False

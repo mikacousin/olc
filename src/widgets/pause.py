@@ -44,32 +44,30 @@ class PauseWidget(Gtk.Button):
     def on_press(self, _tgt, _ev):
         """Button pressed"""
         self.pressed = True
-        item = App().midi.notes.notes[self.text]
-        msg = mido.Message(
-            "note_on", channel=item[0], note=item[1], velocity=127, time=0
-        )
+        channel, note = App().midi.notes.notes[self.text]
+        msg = mido.Message("note_on", channel=channel, note=note, velocity=127, time=0)
         App().midi.out.append(msg)
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        item = App().midi.notes.notes[self.text]
+        channel, note = App().midi.notes.notes[self.text]
         if App().sequence.on_go:
             if App().sequence.thread and App().sequence.thread.pause.is_set():
                 self.pressed = True
                 msg = mido.Message(
-                    "note_on", channel=item[0], note=item[1], velocity=127, time=0
+                    "note_on", channel=channel, note=note, velocity=127, time=0
                 )
                 App().midi.out.append(msg)
             elif App().sequence.thread:
                 self.pressed = False
                 msg = mido.Message(
-                    "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                    "note_on", channel=channel, note=note, velocity=0, time=0
                 )
                 App().midi.out.append(msg)
         else:
             self.pressed = False
             msg = mido.Message(
-                "note_on", channel=item[0], note=item[1], velocity=0, time=0
+                "note_on", channel=channel, note=note, velocity=0, time=0
             )
             App().midi.out.append(msg)
 
