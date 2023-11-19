@@ -52,7 +52,6 @@ class ChannelsView(Gtk.Box):
         self.flowbox = Gtk.FlowBox()
         self.flowbox.set_valign(Gtk.Align.START)
         self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.flowbox.set_filter_func(self.filter_channels, None)
         for i in range(MAX_CHANNELS):

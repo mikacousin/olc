@@ -39,6 +39,6 @@ def zoom(direction: str) -> None:
             child = flowboxchild.get_child()
             if direction == "in" and child.scale < 2:
                 child.scale += 0.01
-            elif direction == "out" and child.scale > 1.01:
+            elif direction == "out" and child.scale >= 1:
                 child.scale -= 0.01
             flowboxchild.queue_draw()
