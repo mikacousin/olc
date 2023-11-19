@@ -262,6 +262,7 @@ class PatchOutputsTab(Gtk.Box):
             output -= 1
             child = self.flowbox.get_child_at_index(output)
             self.flowbox.select_child(child)
+            App().window.set_focus(child)
             self.last_out_selected = str(output)
 
         self.keystring = ""
