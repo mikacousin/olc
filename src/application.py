@@ -415,6 +415,7 @@ class Application(Gtk.Application):
             self.ascii.save()
             # Set Main Window's title with file name
             basename = self.ascii.file.get_basename()
+            self.ascii.basename = basename
             self.window.header.set_title(basename)
         # destroy the FileChooserNative
         save_dialog.destroy()
