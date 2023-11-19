@@ -49,6 +49,7 @@ class Midi:
 
         # Create and Open MIDI ports
         self.ports = MidiPorts()
+        self.controler_reset()
 
         # Send MIDI messages every 25 milliseconds
         self.out = []
@@ -108,6 +109,7 @@ class Midi:
             for i in range(16):
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 outport.send(msg)
+            outport.reset()
 
     def gm_init(self) -> None:
         """Grand Master Fader"""

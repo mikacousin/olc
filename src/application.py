@@ -175,12 +175,13 @@ class Application(Gtk.Application):
 
         # Open MIDI Inputs and Outputs
         self.midi = Midi()
-        self.midi.controler_reset()
         self.midi.lcd.show_masters()
         self.midi.gm_init()
 
         # Init Enttec Wing Playback
-        self.wing = WingPlayback()
+        # TODO: Need some work, desactivated for now
+        if False:
+            self.wing = WingPlayback()
 
         # Create and launch OSC server
         self.osc_server = OscServer()

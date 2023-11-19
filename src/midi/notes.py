@@ -150,12 +150,11 @@ class MidiNotes:
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""
         channel, note = self.notes["pause"]
-        for output in App().midi.ports.outports:
-            if note != -1:
-                msg = mido.Message(
-                    "note_on", channel=channel, note=note, velocity=0, time=0
-                )
-                output.send(msg)
+        if note != -1:
+            msg = mido.Message(
+                "note_on", channel=channel, note=note, velocity=0, time=0
+            )
+            App().midi.out.append(msg)
 
     def __update_inde_button(self, inde: Independent, index: int, level: int) -> None:
         """Update Independent Button level
@@ -822,17 +821,15 @@ def _function_pause(msg: mido.Message) -> None:
 
     if App().sequence.on_go and App().sequence.thread:
         if App().sequence.thread.pause.is_set():
-            for output in App().midi.ports.outports:
-                message = mido.Message(
-                    "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
-                )
-                output.send(message)
+            message = mido.Message(
+                "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
+            )
+            App().midi.out.append(message)
         else:
-            for output in App().midi.ports.outports:
-                message = mido.Message(
-                    "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
-                )
-                output.send(message)
+            message = mido.Message(
+                "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
+            )
+            App().midi.out.append(message)
 
 
 def _function_go_back(msg: mido.Message) -> None:
