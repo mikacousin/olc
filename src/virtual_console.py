@@ -920,7 +920,7 @@ class VirtualConsoleWindow(Gtk.Window):
             if channel != -1:
                 val = int(((value / 255) * 16383) - 8192)
                 msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                App().midi.out.append(msg)
+                App().midi.queue.enqueue(msg)
 
     def master_clicked(self, master):
         """Fader clicked
@@ -1007,7 +1007,7 @@ class VirtualConsoleWindow(Gtk.Window):
             if channel != -1:
                 val = int(((value / 255) * 16383) - 8192)
                 msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                App().midi.out.append(msg)
+                App().midi.queue.enqueue(msg)
 
     def controller_clicked(self, widget):
         """Controller clicked

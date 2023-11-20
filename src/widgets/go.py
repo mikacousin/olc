@@ -46,7 +46,7 @@ class GoWidget(Gtk.Widget):
         """Go pressed"""
         channel, note = App().midi.notes.notes["go"]
         msg = mido.Message("note_on", channel=channel, note=note, velocity=127, time=0)
-        App().midi.out.append(msg)
+        App().midi.queue.enqueue(msg)
         self.pressed = True
         self.queue_draw()
 
@@ -54,7 +54,7 @@ class GoWidget(Gtk.Widget):
         """Go released"""
         channel, note = App().midi.notes.notes["go"]
         msg = mido.Message("note_on", channel=channel, note=note, velocity=0, time=0)
-        App().midi.out.append(msg)
+        App().midi.queue.enqueue(msg)
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")

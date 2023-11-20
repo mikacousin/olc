@@ -49,7 +49,7 @@ class ToggleWidget(Gtk.ToggleButton):
                 msg = mido.Message(
                     "note_on", channel=channel, note=note, velocity=127, time=0
                 )
-                App().midi.out.append(msg)
+                App().midi.queue.enqueue(msg)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
             channel, note = App().midi.notes.notes[self.text]
@@ -57,7 +57,7 @@ class ToggleWidget(Gtk.ToggleButton):
                 msg = mido.Message(
                     "note_on", channel=channel, note=note, velocity=0, time=0
                 )
-                App().midi.out.append(msg)
+                App().midi.queue.enqueue(msg)
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.radius)

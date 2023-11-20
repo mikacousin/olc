@@ -52,7 +52,7 @@ class ButtonWidget(Gtk.Widget):
             msg = mido.Message(
                 "note_on", channel=channel, note=note, velocity=127, time=0
             )
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
         self.pressed = True
         self.queue_draw()
         self.emit("clicked")
@@ -64,7 +64,7 @@ class ButtonWidget(Gtk.Widget):
             msg = mido.Message(
                 "note_on", channel=channel, note=note, velocity=0, time=0
             )
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
         self.pressed = False
         self.queue_draw()
 
