@@ -915,12 +915,6 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.masters.index(master)
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
-            midi_name = f"master_{App().masters[index].number}"
-            channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-            if channel != -1:
-                val = int(((value / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                App().midi.queue.enqueue(msg)
 
     def master_clicked(self, master):
         """Fader clicked

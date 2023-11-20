@@ -81,6 +81,7 @@ class MidiPitchWheel:
         else:
             App().dmx.grand_master = val
             App().window.grand_master.queue_draw()
+            App().midi.queue.enqueue(msg)
 
 
 def _update_master(msg: mido.Message, index: int) -> None:
