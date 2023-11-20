@@ -36,7 +36,7 @@ class MackieLCD:
         start = line * 56
         data = [0, 0, 102, 20, 18, start] + chars
         msg = mido.Message("sysex", data=data)
-        App().midi.out.append(msg)
+        App().midi.queue.enqueue(msg)
 
     def send_to_strip(self, text: str, line: int, strip: int) -> None:
         """Send text to LCD
@@ -55,7 +55,7 @@ class MackieLCD:
         start = (line * 56) + (strip * 7)
         data = [0, 0, 102, 20, 18, start] + chars
         msg = mido.Message("sysex", data=data)
-        App().midi.out.append(msg)
+        App().midi.queue.enqueue(msg)
 
     def clear(self) -> None:
         """Clear LCD"""
@@ -81,4 +81,4 @@ class MackieLCD:
         start = 56 + int((56 - len(text)) / 2)
         data = [0, 0, 102, 20, 18, start] + chars
         msg = mido.Message("sysex", data=data)
-        App().midi.out.append(msg)
+        App().midi.queue.enqueue(msg)

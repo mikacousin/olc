@@ -154,7 +154,7 @@ class MidiNotes:
             msg = mido.Message(
                 "note_on", channel=channel, note=note, velocity=0, time=0
             )
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
 
     def __update_inde_button(self, inde: Independent, index: int, level: int) -> None:
         """Update Independent Button level
@@ -171,7 +171,7 @@ class MidiNotes:
         msg = mido.Message(
             "note_on", channel=channel, note=note, velocity=velocity, time=0
         )
-        App().midi.out.append(msg)
+        App().midi.queue.enqueue(msg)
 
     def _function_inde_button(self, msg: mido.Message, independent: int) -> None:
         """Toggle independent button
@@ -246,12 +246,12 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
                 value=int(master.value / 2),
                 time=0,
             )
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
         channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
             val = int(((master.value / 255) * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
 
 
 def _function_gm(msg: mido.Message) -> None:
@@ -271,12 +271,12 @@ def _function_gm(msg: mido.Message) -> None:
                 value=int(App().dmx.grand_master / 2),
                 time=0,
             )
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
         channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
             val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
@@ -293,7 +293,7 @@ def _function_flash(msg: mido.Message, fader_index: int) -> None:
                 "button-release-event", event
             )
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             master = None
             for master in App().masters:
                 if master.page == App().fader_page and master.number == fader_index:
@@ -306,7 +306,7 @@ def _function_flash(msg: mido.Message, fader_index: int) -> None:
                 "button-press-event", event
             )
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             master = None
             for master in App().masters:
                 if master.page == App().fader_page and master.number == fader_index:
@@ -327,14 +327,14 @@ def _function_go(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.go_button.emit("button-release-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
     elif msg.velocity == 127:
         # Go pressed
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.go_button.emit("button-press-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             App().sequence.do_go(None, None)
 
 
@@ -349,13 +349,13 @@ def _function_at(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.at_level.emit("button-release-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.at_level.emit("button-press-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_equal
             App().window.on_key_press_event(None, event)
@@ -824,12 +824,12 @@ def _function_pause(msg: mido.Message) -> None:
             message = mido.Message(
                 "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
             )
-            App().midi.out.append(message)
+            App().midi.queue.enqueue(message)
         else:
             message = mido.Message(
                 "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
             )
-            App().midi.out.append(message)
+            App().midi.queue.enqueue(message)
 
 
 def _function_go_back(msg: mido.Message) -> None:
@@ -843,13 +843,13 @@ def _function_go_back(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.goback.emit("button-release-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.goback.emit("button-press-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             App().sequence.go_back(App(), None)
 
 
@@ -884,13 +884,13 @@ def _function_seq_minus(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.seq_minus.emit("button-release-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.seq_minus.emit("button-press-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             App().sequence.sequence_minus()
             App().window.keystring = ""
             App().window.statusbar.push(App().window.context_id, "")
@@ -907,13 +907,13 @@ def _function_seq_plus(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.seq_plus.emit("button-release-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.seq_plus.emit("button-press-event", event)
         else:
-            App().midi.out.append(msg)
+            App().midi.queue.enqueue(msg)
             App().sequence.sequence_plus()
             App().window.keystring = ""
             App().window.statusbar.push(App().window.context_id, "")

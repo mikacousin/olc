@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from collections import deque
 import threading
 import time
 import mido
@@ -52,7 +53,7 @@ class Midi:
         self.controler_reset()
 
         # Send MIDI messages every 25 milliseconds
-        self.out = []
+        self.queue = Queue()
         self.thread = RepeatedTimer(0.025, self.send)
 
     def stop(self) -> None:
@@ -64,10 +65,9 @@ class Midi:
 
     def send(self) -> None:
         """Send MIDI messages from the queue"""
-        for msg in self.out:
+        for msg in self.queue:
             for outport in self.ports.outports:
                 outport.send(msg)
-        self.out.clear()
 
     def learn(self, msg: mido.Message) -> None:
         """Learn new MIDI control
@@ -76,7 +76,7 @@ class Midi:
             msg: MIDI message
         """
         if self.ports.outports:
-            self.out.append(msg)
+            self.queue.enqueue(msg)
         if msg.type == "note_on":
             self.notes.learn(msg, self.midi_learn)
         elif msg.type == "control_change":
@@ -123,12 +123,12 @@ class Midi:
                 value=int(App().dmx.grand_master / 2),
                 time=0,
             )
-            self.out.append(msg)
+            self.queue.enqueue(msg)
         channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
             val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-            self.out.append(msg)
+            self.queue.enqueue(msg)
 
     def update_masters(self) -> None:
         """Send faders value and update display"""
@@ -144,13 +144,43 @@ class Midi:
                         value=int(master.value / 2),
                         time=0,
                     )
-                    self.out.append(msg)
+                    self.queue.enqueue(msg)
                 channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
                 if channel != -1:
                     val = int(((master.value / 255) * 16383) - 8192)
                     msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                    self.out.append(msg)
+                    self.queue.enqueue(msg)
         self.lcd.show_masters()
+
+
+class Queue:
+    """Queue implementation based on deque"""
+
+    def __init__(self):
+        self._elements = deque()
+
+    def __len__(self):
+        return len(self._elements)
+
+    def __iter__(self):
+        while len(self) > 0:
+            yield self.dequeue()
+
+    def enqueue(self, element):
+        """Add a element
+
+        Args:
+            element: Element to add
+        """
+        self._elements.append(element)
+
+    def dequeue(self):
+        """Remove first element
+
+        Returns:
+            The first element
+        """
+        return self._elements.popleft()
 
 
 class RepeatedTimer:
