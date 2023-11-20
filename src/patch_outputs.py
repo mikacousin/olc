@@ -52,9 +52,10 @@ class PatchOutputsTab(Gtk.Box):
         self.channels = []
 
         for universe in App().universes:
-            self.outputs.extend(PatchWidget(universe, i + 1) for i in range(512))
-        for output in self.outputs:
-            self.flowbox.add(output)
+            for out in range(1, 513):
+                output = PatchWidget(universe, out)
+                self.outputs.extend([output])
+                self.flowbox.add(output)
 
         # Set name for CSS style
         for child in self.flowbox.get_children():

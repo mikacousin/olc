@@ -41,7 +41,7 @@ class CurvePatchOutputWidget(CurveWidget):
         App().ascii.set_modified()
 
 
-class PatchWidget(Gtk.Widget):
+class PatchWidget(Gtk.DrawingArea):
     """Patch output widget"""
 
     __gtype_name__ = "PatchWidget"
@@ -50,20 +50,17 @@ class PatchWidget(Gtk.Widget):
         self.universe = universe
         self.output = output
 
-        Gtk.Widget.__init__(self)
+        super().__init__()
         self.scale = 1.0
         self.width = 70 * self.scale
         self.set_size_request(self.width, self.width)
+        self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
         self.connect("button-press-event", self.on_click)
+        self.add_events(Gdk.EventMask.TOUCH_MASK)
         self.connect("touch-event", self.on_click)
 
-        self.popover = Gtk.Popover()
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.popover = None
         self.stack = None
-        hbox.show_all()
-        self.popover.add(hbox)
-        self.popover.set_relative_to(self)
-        self.popover.set_position(Gtk.PositionType.BOTTOM)
 
     def on_click(self, _tgt, event: Gdk.Event) -> None:
         """Widget clicked
@@ -114,7 +111,14 @@ class PatchWidget(Gtk.Widget):
 
     def open_popup(self) -> None:
         """Create and open popup to change curve"""
-        hbox = self.popover.get_children()[0]
+        if not self.popover:
+            self.popover = Gtk.Popover()
+            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            self.popover.add(hbox)
+            self.popover.set_relative_to(self)
+            self.popover.set_position(Gtk.PositionType.BOTTOM)
+        else:
+            hbox = self.popover.get_children()[0]
         children = hbox.get_children()
         # Delete old curves widgets
         if children:
@@ -311,39 +315,16 @@ class PatchWidget(Gtk.Widget):
             and self.output in App().patch.outputs[self.universe]
         ):
             number = App().patch.outputs[self.universe][self.output][1]
-            curve = App().curves.get_curve(number)
-            cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
-            cr.set_line_width(1)
-            cr.move_to(10, allocation.height - curve.values[0] - 10)
-            for x, y in curve.values.items():
-                cr.line_to(
-                    10 + (x / 255) * (allocation.width - 20),
-                    (allocation.height - 10) - ((y / 255) * (allocation.height - 20)),
-                )
-            cr.stroke()
-
-    def do_realize(self):
-        """Realize widget"""
-        allocation = self.get_allocation()
-        attr = Gdk.WindowAttr()
-        attr.window_type = Gdk.WindowType.CHILD
-        attr.x = allocation.x
-        attr.y = allocation.y
-        attr.width = allocation.width
-        attr.height = allocation.height
-        attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
-        wat = Gdk.WindowAttributesType
-        mask = wat.X | wat.Y | wat.VISUAL
-
-        window = Gdk.Window(self.get_parent_window(), attr, mask)
-        self.set_window(window)
-        self.register_window(window)
-
-        self.set_realized(True)
-        window.set_background_pattern(None)
+            # Don't draw linear curve
+            if number:
+                curve = App().curves.get_curve(number)
+                cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
+                cr.set_line_width(1)
+                cr.move_to(10, allocation.height - curve.values[0] - 10)
+                for x, y in curve.values.items():
+                    cr.line_to(
+                        10 + (x / 255) * (allocation.width - 20),
+                        (allocation.height - 10)
+                        - ((y / 255) * (allocation.height - 20)),
+                    )
+                cr.stroke()
