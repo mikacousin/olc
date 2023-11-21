@@ -15,7 +15,7 @@
 import array
 import time
 from typing import Dict, List
-from olc.define import UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
+from olc.define import DMX_INTERVAL, UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
 
 
 class Dmx:
@@ -41,13 +41,13 @@ class Dmx:
         for _ in range(NB_UNIVERSES):
             self.frame.append(array.array("B", [0] * 512))
         self.pause = False
-        App().ola.thread.wrapper.AddEvent(30, self.send)
+        App().ola.thread.wrapper.AddEvent(DMX_INTERVAL, self.send)
         self.loop = False
 
     def send(self) -> None:
         """Send DMX values to Ola"""
         if not self.pause:
-            App().ola.thread.wrapper.AddEvent(30, self.send)
+            App().ola.thread.wrapper.AddEvent(DMX_INTERVAL, self.send)
         univ = []  # To store universes changed
         for channel, outputs in App().patch.channels.items():
             self.loop = True
@@ -102,7 +102,7 @@ class Dmx:
             while self.loop:
                 time.sleep(0.01)
         else:
-            App().ola.thread.wrapper.AddEvent(30, self.send)
+            App().ola.thread.wrapper.AddEvent(DMX_INTERVAL, self.send)
 
     def sent(self, state) -> None:  # pylint: disable=E0601
         """DmxSent callback

@@ -26,6 +26,9 @@ MAX_FADER_PAGE = 10
 
 App = Gio.Application.get_default
 
+# Send DMX every DMX_INTERVAL (milliseconds)
+DMX_INTERVAL = 25
+
 
 def is_float(element: Any) -> bool:
     """Test if argument is a float
