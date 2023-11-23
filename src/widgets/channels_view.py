@@ -125,6 +125,7 @@ class ChannelsView(Gtk.Box):
             index = VIEW_MODES.get(text, 0)
             self.view_mode = index
             self.flowbox.invalidate_filter()
+        self.grab_focus()
 
     def toggle_view_mode(self) -> None:
         """Select next View Mode"""
@@ -451,6 +452,14 @@ class ChannelsView(Gtk.Box):
                 break
         return child.get_index()
 
+    def grab_focus(self) -> None:
+        """Grab focus to active Tab"""
+        parent = self.get_parent()
+        if App().window and parent in (App().window.live_view, App().window.playback):
+            parent.grab_focus()
+        elif parent:
+            parent.get_parent().grab_focus()
+
     def on_key_press(self, keyname: str, keystring: str) -> Any:
         """Processes common keyboard methods of Channels View
 
@@ -488,6 +497,7 @@ class ChannelsView(Gtk.Box):
             Keys buffer
         """
         self.toggle_view_mode()
+        self.grab_focus()
         return keystring
 
     def _keypress_a(self, keystring: str) -> str:
@@ -500,6 +510,7 @@ class ChannelsView(Gtk.Box):
             Keys buffer
         """
         self.select_all()
+        self.grab_focus()
         return keystring
 
     def _keypress_page_up(self, keystring: str) -> str:
@@ -512,6 +523,7 @@ class ChannelsView(Gtk.Box):
             Empty string
         """
         self.select_next()
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
         return keystring
@@ -526,6 +538,7 @@ class ChannelsView(Gtk.Box):
             Empty string
         """
         self.select_previous()
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
         return keystring
@@ -540,6 +553,7 @@ class ChannelsView(Gtk.Box):
             Empty string
         """
         self.select_channel(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
         return keystring
@@ -557,6 +571,7 @@ class ChannelsView(Gtk.Box):
             Empty string
         """
         self.select_thru(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
         return keystring
@@ -574,6 +589,7 @@ class ChannelsView(Gtk.Box):
             Empty string
         """
         self.select_plus(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
         return keystring
@@ -591,6 +607,7 @@ class ChannelsView(Gtk.Box):
             Empty string
         """
         self.select_minus(keystring)
+        self.grab_focus()
         keystring = ""
         App().window.statusbar.push(App().window.context_id, keystring)
         return keystring
