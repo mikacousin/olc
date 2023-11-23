@@ -194,7 +194,6 @@ class PatchChannelsTab(Gtk.Box):
         """Modify Output"""
         sel = self.flowbox.get_selected_children()
         several = len(sel) > 1
-        App().dmx.set_pause(True)
         for i, flowboxchild in enumerate(sel):
             patchchannelwidget = flowboxchild.get_child()
             channel = patchchannelwidget.channel
@@ -255,7 +254,6 @@ class PatchChannelsTab(Gtk.Box):
             widget.level = level
             widget.queue_draw()
             App().window.live_view.channels_view.update()
-        App().dmx.set_pause(False)
         # Select next channel
         if sel and channel < MAX_CHANNELS:
             self.flowbox.unselect_all()
@@ -271,7 +269,6 @@ class PatchChannelsTab(Gtk.Box):
         if self.keystring in ["", "0"]:
             return
         sel = self.flowbox.get_selected_children()
-        App().dmx.set_pause(True)
         for flowboxchild in sel:
             patchchannelwidget = flowboxchild.get_child()
             channel = patchchannelwidget.channel
@@ -312,7 +309,6 @@ class PatchChannelsTab(Gtk.Box):
                 )
                 widget.queue_draw()
                 App().window.live_view.channels_view.update()
-        App().dmx.set_pause(False)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)
@@ -322,7 +318,6 @@ class PatchChannelsTab(Gtk.Box):
         if self.keystring in ["", "0"]:
             return
         sel = self.flowbox.get_selected_children()
-        App().dmx.set_pause(True)
         for flowboxchild in sel:
             patchchannelwidget = flowboxchild.get_child()
             channel = patchchannelwidget.channel
@@ -350,7 +345,6 @@ class PatchChannelsTab(Gtk.Box):
             widget = App().window.live_view.channels_view.get_channel_widget(channel)
             widget.queue_draw()
             App().window.live_view.channels_view.update()
-        App().dmx.set_pause(False)
 
         self.keystring = ""
         App().window.statusbar.push(App().window.context_id, self.keystring)

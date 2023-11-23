@@ -217,6 +217,7 @@ class IndeChannelsView(ChannelsView):
             True or False
         """
         if not App().independents.independents or not App().tabs.tabs["indes"]:
+            child.set_visible(False)
             return False
         # Find selected independent
         path, _focus_column = App().tabs.tabs["indes"].treeview.get_cursor()
@@ -227,6 +228,7 @@ class IndeChannelsView(ChannelsView):
             if self.view_mode == VIEW_MODES["Patched"]:
                 return self._filter_patched(row, child)
             return self._filter_all(row, child)
+        child.set_visible(False)
         return False
 
     def _filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
@@ -250,13 +252,16 @@ class IndeChannelsView(ChannelsView):
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         if user_channels[channel_index] != -1:
             channel_widget.level = user_channels[channel_index]
             channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(False)
         return False
 
     def _filter_patched(self, row: int, child: Gtk.FlowBoxChild) -> bool:
@@ -270,8 +275,9 @@ class IndeChannelsView(ChannelsView):
             True or False
         """
         # Return all patched channels
-        channel_index = child.get_index()
-        if channel_index + 1 not in App().patch.channels:
+        channel = child.get_index() + 1
+        if not App().patch.is_patched(channel):
+            child.set_visible(False)
             return False
         return self._filter_all(row, child)
 
@@ -296,11 +302,14 @@ class IndeChannelsView(ChannelsView):
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         if user_channels[channel_index] != -1:
             channel_widget.level = user_channels[channel_index]
             channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True

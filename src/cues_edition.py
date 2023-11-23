@@ -435,16 +435,24 @@ class CueChannelsView(ChannelsView):
             True or False
         """
         if not App().memories or not App().tabs.tabs["memories"]:
+            child.set_visible(False)
             return False
         # Find selected row
         path, _focus_column = App().tabs.tabs["memories"].treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if self.view_mode == VIEW_MODES["Active"]:
-                return self.__filter_active(row, child)
+                visible = self.__filter_active(row, child)
+                child.set_visible(visible)
+                return visible
             if self.view_mode == VIEW_MODES["Patched"]:
-                return self.__filter_patched(row, child)
-            return self.__filter_all(row, child)
+                visible = self.__filter_patched(row, child)
+                child.set_visible(visible)
+                return visible
+            self.__filter_all(row, child)
+            child.set_visible(True)
+            return True
+        child.set_visible(False)
         return False
 
     def __filter_active(self, row, child: Gtk.FlowBoxChild) -> bool:
@@ -470,9 +478,17 @@ class CueChannelsView(ChannelsView):
         return True
 
     def __filter_patched(self, row, child: Gtk.FlowBoxChild) -> bool:
-        # Return all patched channels
-        channel_index = child.get_index()
-        if channel_index + 1 not in App().patch.channels:
+        """Return all patched channels
+
+        Args:
+            row: Cue index
+            child: FlowBoxChild corresponding to a channel
+
+        Returns:
+            True if patched, else False
+        """
+        channel = child.get_index() + 1
+        if not App().patch.is_patched(channel):
             return False
         return self.__filter_all(row, child)
 

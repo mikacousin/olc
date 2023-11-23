@@ -431,6 +431,14 @@ class CTChannelsView(ChannelsView):
             direction: Up or Down
         """
 
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Channel at level
+
+        Args:
+            channel: Channel number (1 - MAX_CHANNELS)
+            level: DMX level (0 - 255)
+        """
+
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Filter channels to display
 
@@ -453,14 +461,18 @@ class CTChannelsView(ChannelsView):
             if channel - 1 == channel_index or child.is_selected():
                 channel_widget.level = channels.get(channel_index, 0)
                 channel_widget.next_level = channels.get(channel_index, 0)
+                child.set_visible(True)
                 return True
             channel_widget.level = 0
             channel_widget.next_level = 0
+            child.set_visible(False)
             return False
         if child.is_selected():
             channel_widget.level = channels.get(channel_index, 0)
             channel_widget.next_level = channels.get(channel_index, 0)
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(False)
         return False

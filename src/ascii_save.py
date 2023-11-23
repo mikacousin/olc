@@ -259,6 +259,8 @@ def save_patch(stream: Gio.FileOutputStream) -> None:
     i = 1
     patch = ""
     for channel, outputs in App().patch.channels.items():
+        if not App().patch.is_patched(channel):
+            continue
         for values in outputs:
             output = values[0]
             univ = values[1]

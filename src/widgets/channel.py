@@ -23,7 +23,7 @@ class ChannelWidget(Gtk.DrawingArea):
     __gtype_name__ = "ChannelWidget"
 
     def __init__(self, channel, level, next_level):
-        Gtk.Widget.__init__(self)
+        super().__init__()
 
         self.channel = str(channel)
         self.level = level
@@ -114,7 +114,7 @@ class ChannelWidget(Gtk.DrawingArea):
         if int(self.channel) in App().independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
         # Not patched color
-        if int(self.channel) not in App().patch.channels:
+        if not App().patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)

@@ -13,10 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from collections import deque
-import threading
-import time
 import mido
 from olc.define import App
+from olc.timer import RepeatedTimer
 from .control_change import MidiControlChanges
 from .notes import MidiNotes
 from .ports import MidiPorts
@@ -181,35 +180,3 @@ class Queue:
             The first element
         """
         return self._elements.popleft()
-
-
-class RepeatedTimer:
-    """Call a function every 'interval' seconds"""
-
-    def __init__(self, interval, function, *args, **kwargs):
-        self._timer = None
-        self.interval = interval
-        self.function = function
-        self.args = args
-        self.kwargs = kwargs
-        self.is_running = False
-        self.next_call = time.time()
-        self.start()
-
-    def _run(self) -> None:
-        self.is_running = False
-        self.start()
-        self.function(*self.args, **self.kwargs)
-
-    def start(self) -> None:
-        """Start function"""
-        if not self.is_running:
-            self.next_call += self.interval
-            self._timer = threading.Timer(self.next_call - time.time(), self._run)
-            self._timer.start()
-            self.is_running = True
-
-    def stop(self) -> None:
-        """Stop function"""
-        self._timer.cancel()
-        self.is_running = False

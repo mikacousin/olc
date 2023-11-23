@@ -102,14 +102,19 @@ class LiveChannelsView(ChannelsView):
         channel = child.get_index() + 1
         channel_widget.next_level = self.get_next_level(channel, channel_widget)
         if self.view_mode == VIEW_MODES["Active"]:
-            return bool(
+            visible = bool(
                 channel_widget.level or channel_widget.next_level or child.is_selected()
             )
+            child.set_visible(visible)
+            return visible
 
         if self.view_mode == VIEW_MODES["Patched"]:
-            return channel in App().patch.channels
-        if channel not in App().patch.channels:
+            patched = App().patch.is_patched(channel)
+            child.set_visible(patched)
+            return patched
+        if not App().patch.is_patched(channel):
             channel_widget.level = 0
+        child.set_visible(True)
         return True
 
     def get_next_level(self, channel: int, channel_widget) -> int:
@@ -143,6 +148,7 @@ class LiveChannelsView(ChannelsView):
             level: DMX level (0 - 255)
         """
         App().dmx.user[channel - 1] = level
+        App().dmx.set_levels()
         App().window.live_view.update_channel_widget(channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
@@ -155,15 +161,17 @@ class LiveChannelsView(ChannelsView):
         level = None
         channels = self.get_selected_channels()
         for channel in channels:
-            if App().patch.channels.get(channel):
-                for output in App().patch.channels[channel]:
-                    out = output[0]
-                    univ = output[1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][out - 1]
-                    if direction == Gdk.ScrollDirection.UP:
-                        App().dmx.user[channel - 1] = min(level + step, 255)
-                    elif direction == Gdk.ScrollDirection.DOWN:
-                        App().dmx.user[channel - 1] = max(level - step, 0)
-                next_level = App().sequence.get_next_channel_level(channel, level)
-                App().window.live_view.update_channel_widget(channel, next_level)
+            if not App().patch.is_patched(channel):
+                continue
+            for output in App().patch.channels[channel]:
+                out = output[0]
+                univ = output[1]
+                index = App().universes.index(univ)
+                level = App().dmx.frame[index][out - 1]
+                if direction == Gdk.ScrollDirection.UP:
+                    App().dmx.user[channel - 1] = min(level + step, 255)
+                elif direction == Gdk.ScrollDirection.DOWN:
+                    App().dmx.user[channel - 1] = max(level - step, 0)
+            next_level = App().sequence.get_next_channel_level(channel, level)
+            App().window.live_view.update_channel_widget(channel, next_level)
+        App().dmx.set_levels()

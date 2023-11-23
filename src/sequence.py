@@ -234,10 +234,13 @@ class Sequence:
 
             # Send DMX values
             for channel in App().patch.channels:
+                if not App().patch.is_patched(channel):
+                    continue
                 level = self.steps[position].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
                 next_level = self.get_next_channel_level(channel, level)
                 App().window.live_view.update_channel_widget(channel, next_level)
+            App().dmx.set_levels()
 
     def sequence_minus(self):
         """Sequence -"""
@@ -298,10 +301,13 @@ class Sequence:
             App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
 
             for channel in App().patch.channels:
+                if not App().patch.is_patched(channel):
+                    continue
                 level = self.steps[position].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
                 next_level = self.get_next_channel_level(channel, level)
                 App().window.live_view.update_channel_widget(channel, next_level)
+            App().dmx.set_levels()
 
     def goto(self, keystring):
         """Jump to cue number
@@ -510,6 +516,8 @@ class ThreadGo(threading.Thread):
             for out in outputs:
                 output = out[0]
                 universe = out[1]
+                if None in (output, universe):
+                    continue
                 level = App().dmx.sequence[channel - 1]
                 if App().dmx.user[channel - 1] != -1:
                     level = App().dmx.user[channel - 1]
@@ -548,6 +556,8 @@ class ThreadGo(threading.Thread):
             for values in outputs:
                 output = values[0]
                 univ = values[1]
+                if None in (output, univ):
+                    continue
                 index = App().universes.index(univ)
                 if App().sequence.position < App().sequence.last - 1:
                     level = (
@@ -565,6 +575,7 @@ class ThreadGo(threading.Thread):
                     channel,
                     next_level,
                 )
+        App().dmx.set_levels()
         # Go is completed
         App().sequence.on_go = False
         # Empty DMX user array
@@ -659,6 +670,7 @@ class ThreadGo(threading.Thread):
                         App().sequence.position = 0
 
                     self._set_level(channel, i, old_level, next_level)
+        App().dmx.set_levels()
 
     def _set_level(self, channel, i, old_level, next_level):
         """Get level
@@ -832,6 +844,8 @@ class ThreadGoBack(threading.Thread):
             for value in outputs:
                 output = value[0]
                 univ = value[1]
+                if None in (output, univ):
+                    continue
                 level = App().dmx.sequence[channel - 1]
                 if App().dmx.user[channel - 1] != -1:
                     level = App().dmx.user[channel - 1]
@@ -867,6 +881,8 @@ class ThreadGoBack(threading.Thread):
             for values in outputs:
                 output = values[0]
                 univ = values[1]
+                if None in (output, univ):
+                    continue
                 index = App().universes.index(univ)
                 level = App().sequence.steps[prev_step].cue.channels.get(channel, 0)
                 App().dmx.sequence[channel - 1] = level
@@ -877,6 +893,7 @@ class ThreadGoBack(threading.Thread):
                     channel,
                     next_level,
                 )
+        App().dmx.set_levels()
         App().sequence.on_go = False
         # Reset user levels
         App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
@@ -946,6 +963,8 @@ class ThreadGoBack(threading.Thread):
             for value in outputs:
                 output = value[0]
                 univ = value[1]
+                if None in (output, univ):
+                    continue
                 index = App().universes.index(univ)
                 old_level = self.dmxlevels[index][output - 1]
                 next_level = (
@@ -958,6 +977,7 @@ class ThreadGoBack(threading.Thread):
                     channel,
                     next_level,
                 )
+        App().dmx.set_levels()
 
     def _channel_level(self, i, old_level, next_level, go_back_time):
         """Return channel level

@@ -75,13 +75,11 @@ class PatchOutputsTab(Gtk.Box):
         button_label = widget.get_label()
 
         if button_label == "Unpatch all":
-            App().dmx.set_pause(True)
             App().patch.patch_empty()
             self.flowbox.queue_draw()
             App().window.live_view.channels_view.update()
             App().dmx.user_outputs.clear()
             App().dmx.all_outputs_at_zero()
-            App().dmx.set_pause(False)
 
         elif button_label == "Patch 1:1":
             App().patch.patch_1on1()
@@ -406,9 +404,7 @@ class PatchOutputsTab(Gtk.Box):
                 several = True
             dialog.destroy()
 
-        App().dmx.set_pause(True)
         output, index = self._patch(sel, several)
-        App().dmx.set_pause(False)
 
         # Select next output
         if output + (512 * index) < (len(App().universes) * 512):

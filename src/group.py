@@ -94,6 +94,7 @@ class GroupChannelsView(ChannelsView):
                 if group.index == group_number:
                     break
             if not group:
+                child.set_visible(False)
                 return False
             # Display active channels
             if self.view_mode == VIEW_MODES["Active"]:
@@ -103,6 +104,7 @@ class GroupChannelsView(ChannelsView):
                 return self.__filter_patched(group, child)
             # Display all channels by default
             return self.__filter_all(group, child)
+        child.set_visible(False)
         return False
 
     def __filter_all(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
@@ -123,6 +125,7 @@ class GroupChannelsView(ChannelsView):
         else:
             channel_widget.level = 0
             channel_widget.next_level = 0
+        child.set_visible(True)
         return True
 
     def __filter_patched(self, group: GroupWidget, child: Gtk.FlowBoxChild) -> bool:
@@ -136,7 +139,8 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel = child.get_index() + 1
-        if channel not in App().patch.channels:
+        if not App().patch.is_patched(channel):
+            child.set_visible(False)
             return False
         return self.__filter_all(group, child)
 
@@ -155,7 +159,9 @@ class GroupChannelsView(ChannelsView):
         if group.channels.get(channel) or child.is_selected():
             channel_widget.level = group.channels.get(channel, 0)
             channel_widget.next_level = channel_widget.level
+            child.set_visible(True)
             return True
+        child.set_visible(False)
         return False
 
 

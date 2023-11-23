@@ -863,10 +863,12 @@ class SeqChannelsView(ChannelsView):
             True or False
         """
         if not App().tabs.tabs["sequences"]:
+            child.set_visible(False)
             return False
         sequence = App().tabs.tabs["sequences"].get_selected_sequence()
         step = App().tabs.tabs["sequences"].get_selected_step()
         if not sequence or not step:
+            child.set_visible(False)
             return False
         channel = child.get_index() + 1
         channel_level = sequence.steps[step].cue.channels.get(channel, 0)
@@ -896,13 +898,16 @@ class SeqChannelsView(ChannelsView):
             else:
                 channel_widget.level = user_channel
                 channel_widget.next_level = user_channel
+            child.set_visible(True)
             return True
         if user_channel != -1:
             channel_widget.level = user_channel
             channel_widget.next_level = user_channel
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(False)
         return False
 
     def _filter_patched(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
@@ -915,8 +920,9 @@ class SeqChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        channel_index = child.get_index()
-        if channel_index + 1 not in App().patch.channels:
+        channel = child.get_index() + 1
+        if not App().patch.is_patched(channel):
+            child.set_visible(False)
             return False
         return self._filter_all(child, channel_level)
 
@@ -940,11 +946,14 @@ class SeqChannelsView(ChannelsView):
             else:
                 channel_widget.level = user_channel
                 channel_widget.next_level = user_channel
+            child.set_visible(True)
             return True
         if user_channel != -1:
             channel_widget.level = user_channel
             channel_widget.next_level = user_channel
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True

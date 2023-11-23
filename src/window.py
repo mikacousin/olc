@@ -250,6 +250,8 @@ class Window(Gtk.ApplicationWindow):
             # Create Preset
             channels = {}
             for channel, outputs in App().patch.channels.items():
+                if not App().patch.is_patched(channel):
+                    continue
                 for values in outputs:
                     output = values[0]
                     univ = values[1]
@@ -333,6 +335,8 @@ class Window(Gtk.ApplicationWindow):
 
         if response == Gtk.ResponseType.OK:
             for channel, outputs in App().patch.channels.items():
+                if not App().patch.is_patched(channel):
+                    continue
                 if channel not in App().independents.channels:
                     output = outputs[0][0] - 1
                     univ = outputs[0][1]

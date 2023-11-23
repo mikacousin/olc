@@ -194,6 +194,7 @@ class CrossFade:
                 elif scale == self.scale_b:
                     # Get SequentialWindow's width to place cursor
                     update_b(channel + 1, old_level, next_level, wait, position)
+            App().dmx.set_levels()
 
 
 def update_a(channel, old_level, next_level, wait, pos):

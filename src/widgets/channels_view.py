@@ -194,8 +194,10 @@ class ChannelsView(Gtk.Box):
             return
         if self.view_mode == VIEW_MODES["Patched"]:
             self._next_patched()
+            return
         if self.view_mode == VIEW_MODES["Active"]:
             self._next_active()
+            return
         # Default mode: All channels
         selected_channel = ""
         channel_index = (
@@ -243,7 +245,7 @@ class ChannelsView(Gtk.Box):
         )
 
         for channel_index in range(start, MAX_CHANNELS):
-            if channel_index + 1 in App().patch.channels:
+            if App().patch.is_patched(channel_index + 1):
                 break
         if channel_index + 1 >= MAX_CHANNELS:
             channel_index = App().patch.get_first_patched_channel() - 1
@@ -263,8 +265,10 @@ class ChannelsView(Gtk.Box):
             return
         if self.view_mode == VIEW_MODES["Patched"]:
             self._previous_patched()
+            return
         if self.view_mode == VIEW_MODES["Active"]:
             self._previous_active()
+            return
         # Default mode: All channels
         selected_channel = ""
         channel_index = (
@@ -313,7 +317,7 @@ class ChannelsView(Gtk.Box):
         )
 
         for channel_index in range(start, 0, -1):
-            if channel_index + 1 in App().patch.channels:
+            if App().patch.is_patched(channel_index + 1):
                 break
         if channel_index < App().patch.get_first_patched_channel() - 1:
             channel_index = App().patch.get_last_patched_channel() - 1

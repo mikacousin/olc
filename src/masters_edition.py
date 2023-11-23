@@ -470,6 +470,7 @@ class MasterChannelsView(ChannelsView):
             True or False
         """
         if not App().tabs.tabs["masters"]:
+            child.set_visible(False)
             return False
         treeview = App().tabs.tabs["masters"].stack.get_visible_child()
         path, _focus_column = treeview.get_cursor()
@@ -479,6 +480,7 @@ class MasterChannelsView(ChannelsView):
             index = row + (page * 10)
             # Master type is None or Sequence: No channels to display
             if App().masters[index].content_type in (0, 3):
+                child.set_visible(False)
                 return False
             if self.view_mode == VIEW_MODES["Active"]:
                 return self._filter_active(index, child)
@@ -506,6 +508,7 @@ class MasterChannelsView(ChannelsView):
         # Master type is Group
         if App().masters[index].content_type == 13:
             return self.__filter_active_group(index, child)
+        child.set_visible(False)
         return False
 
     def __filter_active_preset(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -528,6 +531,7 @@ class MasterChannelsView(ChannelsView):
         if found:
             channels = mem.channels
             return self.__active_channels(channels, child)
+        child.set_visible(False)
         return False
 
     def __filter_active_channels(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -563,6 +567,7 @@ class MasterChannelsView(ChannelsView):
         if found:
             channels = grp.channels
             return self.__active_channels(channels, child)
+        child.set_visible(False)
         return False
 
     def __active_channels(
@@ -587,13 +592,16 @@ class MasterChannelsView(ChannelsView):
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         if user_channels[channel_index] != -1:
             channel_widget.level = user_channels[channel_index]
             channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(False)
         return False
 
     def _filter_patched(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -607,8 +615,9 @@ class MasterChannelsView(ChannelsView):
             True or False
         """
         # Return False if not patched
-        channel_index = child.get_index()
-        if channel_index + 1 not in App().patch.channels:
+        channel = child.get_index() + 1
+        if not App().patch.is_patched(channel):
+            child.set_visible(False)
             return False
         # Return all other channels
         if App().masters[index].content_type == 1:
@@ -620,6 +629,7 @@ class MasterChannelsView(ChannelsView):
         channel_widget = child.get_child()
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True
 
     def _filter_all(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -644,6 +654,7 @@ class MasterChannelsView(ChannelsView):
         channel_widget = child.get_child()
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True
 
     def __filter_all_preset(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -669,6 +680,7 @@ class MasterChannelsView(ChannelsView):
         channel_widget = child.get_child()
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True
 
     def __filter_all_channels(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -707,6 +719,7 @@ class MasterChannelsView(ChannelsView):
         channel_widget = child.get_child()
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True
 
     def __all_channels(self, channels: Dict[int, int], child: Gtk.FlowBoxChild) -> bool:
@@ -729,11 +742,14 @@ class MasterChannelsView(ChannelsView):
             else:
                 channel_widget.level = user_channels[channel_index]
                 channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         if user_channels[channel_index] != -1:
             channel_widget.level = user_channels[channel_index]
             channel_widget.next_level = user_channels[channel_index]
+            child.set_visible(True)
             return True
         channel_widget.level = 0
         channel_widget.next_level = 0
+        child.set_visible(True)
         return True

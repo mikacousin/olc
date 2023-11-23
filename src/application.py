@@ -297,6 +297,7 @@ class Application(Gtk.Application):
         # All channels at 0
         for channel in range(MAX_CHANNELS):
             self.dmx.user[channel] = 0
+        self.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
         self.patch.patch_1on1()

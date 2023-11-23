@@ -18,7 +18,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional
+from typing import List, Optional
 from functools import partial
 
 from gi.repository import GLib
@@ -30,11 +30,11 @@ from olc.define import NB_UNIVERSES, App
 class OlaThread(threading.Thread):
     """Create OlaClient and receive universes updates"""
 
-    wrapper: ClientWrapper
-    client: ClientWrapper.Client
+    client: OlaClient.OlaClient
+    old_frame: List[array.array]
 
     def __init__(self) -> None:
-        threading.Thread.__init__(self)
+        super().__init__()
         self.wrapper = ClientWrapper()
         self.client = self.wrapper.Client()
         self.old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
@@ -50,7 +50,7 @@ class OlaThread(threading.Thread):
         self.wrapper.Run()
 
     def on_dmx(self, univ: int, dmxframe: array.array) -> None:
-        """Universe updates.
+        """Executed when ola detect universe update
 
         Args:
             univ (int): universe
@@ -121,7 +121,7 @@ class Ola:
 
     def stop(self) -> None:
         """Stop olad if we launched it"""
-        App().dmx.set_pause(True)
+        App().dmx.thread.stop()
         self.thread.wrapper.Stop()
         if self.olad_pid:
             self.olad_pid.terminate()

@@ -145,6 +145,7 @@ class Master:
                 level = 0 if self.value == 0 else round(level / (255 / self.value))
                 self.dmx[channel - 1] = level
                 update_channel_display(channel)
+            App().dmx.set_levels()
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
@@ -152,6 +153,7 @@ class Master:
             level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
             self.dmx[channel - 1] = level
             update_channel_display(channel)
+        App().dmx.set_levels()
 
     def _level_changed_group(self):
         """New level and type is Group"""
@@ -166,6 +168,7 @@ class Master:
                 # Update level in master array
                 self.dmx[channel - 1] = level
                 update_channel_display(channel)
+            App().dmx.set_levels()
 
     def _level_changed_chaser(self):
         """New level and type is Chaser"""
@@ -192,6 +195,7 @@ class Master:
                     for channel in range(MAX_CHANNELS):
                         self.dmx[channel] = 0
                         update_channel_display(channel + 1)
+                    App().dmx.set_levels()
 
 
 class ThreadChaser(threading.Thread):
@@ -300,3 +304,4 @@ class ThreadChaser(threading.Thread):
                 # Update master level
                 self.master.dmx[channel - 1] = level
                 update_channel_display(channel)
+        App().dmx.set_levels()

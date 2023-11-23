@@ -45,6 +45,7 @@ olc_sources = [
   'settings.py',
   'step.py',
   'tabs_manager.py',
+  'timer.py',
   'track_channels.py',
   'virtual_console.py',
   'window.py',
