@@ -42,9 +42,12 @@ def test_get_level_segments():
 
 def test_get_level_interpolate():
     curve = InterpolateCurve()
+    curve.add_point(70, 40)
     assert curve.name == "Interpolate"
     assert curve.get_level(0) == 0
+    assert curve.get_level(40) == 20
     assert curve.get_level(70) == 40
+    assert curve.get_level(100) == 64
     assert curve.get_level(255) == 255
 
 
