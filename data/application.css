@@ -1,6 +1,3 @@
-@define-color seq_selected_bg #997004;
-@define-color focus_color #795004;
-@define-color grey #666666;
 @define-color myred #880000;
 
 @binding-set unbind-keys {
@@ -20,28 +17,6 @@ flowboxchild:selected {
 
 window {
   -gtk-key-bindings: unbind-keys;
-}
-
-#olc treeview {
-  padding: 2px 2px 2px 2px;
-  border-radius: 4px;
-}
-
-#olc treeview:selected:hover {
-  background-color: shade(@seq_selected_bg, 0.9);
-  color: @theme_selected_fg_color;
-}
-
-#olc treeview:hover {
-  background-color: alpha(@theme_fg_color, 0.05);
-  color: @theme_fg_color;
-}
-
-#olc treeview:selected {
-  box-shadow: none;
-  text-shadow: none;
-  color: @theme_selected_fg_color;
-  background-color: @seq_selected_bg;
 }
 
 #midi_toggle:checked {
