@@ -41,7 +41,7 @@ from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
 from olc.sequence_edition import SequenceTab  # noqa: E402
-from olc.settings import SettingsDialog  # noqa: E402
+from olc.settings import SettingsTab  # noqa: E402
 from olc.tabs_manager import Tabs  # noqa: E402
 from olc.track_channels import TrackChannelsTab  # noqa: E402
 from olc.virtual_console import VirtualConsoleWindow  # noqa: E402
@@ -123,7 +123,6 @@ class Application(Gtk.Application):
         self.window = None
         self.about_window = None
         self.virtual_console = None
-        self.win_settings = None
         self.shortcuts = None
 
         # For Tabs
@@ -476,9 +475,7 @@ class Application(Gtk.Application):
 
     def _settings(self, _action, _parameter):
         """Settings"""
-        if not self.win_settings:
-            self.win_settings = SettingsDialog()
-            self.win_settings.settings_dialog.show_all()
+        self.tabs.open("settings", SettingsTab, "Settings")
 
     def _shortcuts(self, _action, _parameter):
         """Create Shortcuts Window"""

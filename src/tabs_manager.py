@@ -38,6 +38,7 @@ class Tabs:
             "patch_outputs": None,
             "patch_channels": None,
             "sequences": None,
+            "settings": None,
             "track_channels": None,
         }
 

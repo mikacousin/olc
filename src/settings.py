@@ -15,42 +15,42 @@
 import ipaddress
 import socket
 from gettext import gettext as _
+from typing import Any
 import mido
-from gi.repository import GLib, Gtk
+from gi.repository import Gdk, GLib, Gtk
 from olc.define import App
 from olc.osc import Osc
 
 
-class SettingsDialog:
-    """Edit settings"""
+class SettingsTab(Gtk.Box):
+    """Settings"""
 
     def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL)
+
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
-        self.settings_dialog = builder.get_object("settings_dialog")
+        settings_dialog = builder.get_object("settings")
 
         # Appearence
-        switch_percent = builder.get_object("switch_percent")
-        switch_percent.set_state(App().settings.get_boolean("percent"))
-
-        spin = builder.get_object("spin_percent_level")
+        widget = builder.get_object("switch_percent")
+        widget.set_state(App().settings.get_boolean("percent"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        spin.set_adjustment(adjustment)
-        spin.set_value(App().settings.get_int("percent-level"))
-
-        spin = builder.get_object("spin_default_time")
+        widget = builder.get_object("spin_percent_level")
+        widget.set_adjustment(adjustment)
+        widget.set_value(App().settings.get_int("percent-level"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        spin.set_adjustment(adjustment)
-        spin.set_value(App().settings.get_double("default-time"))
-
-        spin = builder.get_object("spin_go_back_time")
+        widget = builder.get_object("spin_default_time")
+        widget.set_adjustment(adjustment)
+        widget.set_value(App().settings.get_double("default-time"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        spin.set_adjustment(adjustment)
-        spin.set_value(App().settings.get_double("go-back-time"))
+        widget = builder.get_object("spin_go_back_time")
+        widget.set_adjustment(adjustment)
+        widget.set_value(App().settings.get_double("go-back-time"))
 
         # OSC
-        switch_osc = builder.get_object("switch_osc")
-        switch_osc.set_state(App().settings.get_boolean("osc"))
+        widget = builder.get_object("switch_osc")
+        widget.set_state(App().settings.get_boolean("osc"))
 
         self.entry_client_ip = builder.get_object("entry_client_ip")
         self.entry_client_ip.set_text(App().settings.get_string("osc-host"))
@@ -70,6 +70,14 @@ class SettingsDialog:
         ip_addr = socket.gethostbyname(hostname)
         local_ip.set_label(ip_addr)
 
+        # MIDI
+        self._midi_in(builder)
+        self._midi_out(builder)
+
+        builder.connect_signals(self)
+        self.pack_start(settings_dialog, True, True, 0)
+
+    def _midi_in(self, builder):
         # List of MIDI Controllers (In)
         liststore_modes = Gtk.ListStore(str)
         for item in ["Absolute", "Relative1", "Relative2", "Relative3 (Makie)"]:
@@ -137,6 +145,8 @@ class SettingsDialog:
         column_combo = Gtk.TreeViewColumn(_("Rotatives Mode"), renderer_combo, text=2)
         treeview.append_column(column_combo)
         midi_grid.add(treeview)
+
+    def _midi_out(self, builder):
         # List of MIDI Controllers (Out)
         midi_grid = builder.get_object("midi_out_grid")
         midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
@@ -151,30 +161,39 @@ class SettingsDialog:
                     [midi_out.split(":")[0], False, midi_out]
                 )
         renderer_text = Gtk.CellRendererText()
-        column_text = Gtk.TreeViewColumn("MIDI Port", renderer_text, text=0)
+        column_text = Gtk.TreeViewColumn(_("MIDI Port"), renderer_text, text=0)
         treeview.append_column(column_text)
         renderer_toggle = Gtk.CellRendererToggle()
         renderer_toggle.connect("toggled", self.on_midi_out_toggle)
-        column_toggle = Gtk.TreeViewColumn("Active", renderer_toggle, active=1)
+        column_toggle = Gtk.TreeViewColumn(_("Active"), renderer_toggle, active=1)
         treeview.append_column(column_toggle)
         midi_grid.add(treeview)
 
-        builder.connect_signals(self)
+    def refresh(self) -> None:
+        """Refresh (Do nothing here)"""
 
-        self.settings_dialog.connect("delete-event", self.close)
+    def on_close_icon(self, _widget) -> None:
+        """Close Tab on close clicked"""
+        App().tabs.close("settings")
 
-    def close(self, widget, _param):
-        """Mark window as closed
+    def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
+        """Key has been pressed
 
         Args:
-            widget: Widget to destroy
+            event: Gdk.EventKey
 
         Returns:
-            True
+            False or function
         """
-        App().win_settings = None
-        widget.destroy()
-        return True
+        keyname = Gdk.keyval_name(event.keyval)
+
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
+            return func()
+        return False
+
+    def _keypress_escape(self) -> None:
+        """Close Tab"""
+        App().tabs.close("settings")
 
     def on_combo_change(self, _widget, path, text):
         """Change rotatives mode

@@ -328,3 +328,30 @@ msgstr "Nouvelle courbe Segments"
 
 msgid "New Interpolate curve"                                                                    
 msgstr "Nouvelle courbe Interplation" 
+
+msgid "Percentage"
+msgstr "Pourcentage"
+
+msgid "+% et -% value"
+msgstr "Valeur de +% et -%"
+
+msgid "Default transfer time"
+msgstr "Temps de transfert par défaut"
+
+msgid "Default Go Back time"
+msgstr "Temps de Go Back par défaut"
+
+msgid "Appearance"
+msgstr "Apparance"
+
+msgid "Local IP address"
+msgstr "Adresse IP locale"
+
+msgid "Server port"
+msgstr "Port du serveur"
+
+msgid "Client port"
+msgstr "Port du client"
+
+msgid "Client IP address"
+msgstr "Adresse IP du client"

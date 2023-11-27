@@ -2,373 +2,332 @@
 <!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.20"/>
-  <object class="GtkWindow" id="settings_dialog">
-    <property name="can-focus">False</property>
+  <object class="GtkNotebook" id="settings">
+    <property name="visible">True</property>
+    <property name="can-focus">True</property>
     <child>
-      <object class="GtkNotebook">
+      <!-- n-columns=2 n-rows=4 -->
+      <object class="GtkGrid">
         <property name="visible">True</property>
-        <property name="can-focus">True</property>
-        <property name="show-border">False</property>
+        <property name="can-focus">False</property>
+        <property name="margin-top">10</property>
+        <property name="margin-bottom">10</property>
+        <property name="row-spacing">10</property>
+        <property name="column-spacing">10</property>
         <child>
-          <!-- n-columns=2 n-rows=4 -->
-          <object class="GtkGrid">
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="margin-top">10</property>
-            <property name="margin-bottom">10</property>
-            <property name="row-spacing">10</property>
-            <property name="column-spacing">10</property>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="label" translatable="yes">Pourcentage</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSwitch" id="switch_percent">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <signal name="state-set" handler="_update_ui_percent" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="hexpand">True</property>
-                <property name="label" translatable="yes">Valeur de +% et -%</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin_percent_level">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <property name="numeric">True</property>
-                <signal name="value-changed" handler="_on_change_percent" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="hexpand">True</property>
-                <property name="label" translatable="yes">Temps de transfert par défaut</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin_default_time">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <property name="input-purpose">digits</property>
-                <property name="numeric">True</property>
-                <signal name="value-changed" handler="_on_change_default_time" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="hexpand">True</property>
-                <property name="label" translatable="yes">Temps du Go Back par défaut</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin_go_back_time">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <property name="input-purpose">digits</property>
-                <property name="numeric">True</property>
-                <signal name="value-changed" handler="_on_change_go_back_time" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">3</property>
-              </packing>
-            </child>
-          </object>
-        </child>
-        <child type="tab">
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="label" translatable="yes">Apparance</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Percentage</property>
           </object>
           <packing>
-            <property name="tab-fill">False</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
         <child>
-          <!-- n-columns=2 n-rows=5 -->
-          <object class="GtkGrid">
+          <object class="GtkSwitch" id="switch_percent">
             <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <property name="margin-top">10</property>
-            <property name="margin-bottom">10</property>
-            <property name="row-spacing">10</property>
-            <property name="column-spacing">10</property>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="label" translatable="yes">Local IP address</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">4</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="label" translatable="yes">Port du serveur</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin_server_port">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <property name="numeric">True</property>
-                <property name="update-policy">if-valid</property>
-                <signal name="value-changed" handler="_server_port_changed" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin_client_port">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <property name="input-purpose">digits</property>
-                <property name="numeric">True</property>
-                <property name="update-policy">if-valid</property>
-                <signal name="value-changed" handler="_client_port_changed" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="label" translatable="yes">Port du client</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="label" translatable="yes">Adresse IP du client</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="entry_client_ip">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="hexpand">True</property>
-                <signal name="activate" handler="_client_ip_changed" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">start</property>
-                <property name="margin-start">10</property>
-                <property name="label" translatable="yes">OSC</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSwitch" id="switch_osc">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="active">True</property>
-                <signal name="state-set" handler="_switch_osc" swapped="no"/>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="local_ip">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="halign">end</property>
-                <property name="margin-end">10</property>
-                <property name="label" translatable="yes">0.0.0.0</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">4</property>
-              </packing>
-            </child>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <signal name="state-set" handler="_update_ui_percent" swapped="no"/>
           </object>
           <packing>
-            <property name="position">1</property>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
-        <child type="tab">
+        <child>
           <object class="GtkLabel">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="hexpand">True</property>
+            <property name="label" translatable="yes">+% et -% value</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_percent_level">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="numeric">True</property>
+            <signal name="value-changed" handler="_on_change_percent" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="hexpand">True</property>
+            <property name="label" translatable="yes">Default transfer time</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_default_time">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="input-purpose">digits</property>
+            <property name="numeric">True</property>
+            <signal name="value-changed" handler="_on_change_default_time" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="hexpand">True</property>
+            <property name="label" translatable="yes">Default Go Back time</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_go_back_time">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="input-purpose">digits</property>
+            <property name="numeric">True</property>
+            <signal name="value-changed" handler="_on_change_go_back_time" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <child type="tab">
+      <object class="GtkLabel">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">Appearance</property>
+      </object>
+      <packing>
+        <property name="tab-fill">False</property>
+      </packing>
+    </child>
+    <child>
+      <!-- n-columns=2 n-rows=5 -->
+      <object class="GtkGrid">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="margin-top">10</property>
+        <property name="margin-bottom">10</property>
+        <property name="row-spacing">10</property>
+        <property name="column-spacing">10</property>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Local IP address</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">4</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Server port</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_server_port">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="numeric">True</property>
+            <property name="update-policy">if-valid</property>
+            <signal name="value-changed" handler="_server_port_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">3</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkSpinButton" id="spin_client_port">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <property name="input-purpose">digits</property>
+            <property name="numeric">True</property>
+            <property name="update-policy">if-valid</property>
+            <signal name="value-changed" handler="_client_port_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Client port</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
+            <property name="label" translatable="yes">Client IP address</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkEntry" id="entry_client_ip">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="hexpand">True</property>
+            <signal name="activate" handler="_client_ip_changed" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">1</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="halign">start</property>
+            <property name="margin-start">10</property>
             <property name="label" translatable="yes">OSC</property>
           </object>
           <packing>
-            <property name="position">1</property>
-            <property name="tab-fill">False</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
         <child>
-          <!-- n-columns=1 n-rows=3 -->
-          <object class="GtkGrid">
+          <object class="GtkSwitch" id="switch_osc">
+            <property name="visible">True</property>
+            <property name="can-focus">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="active">True</property>
+            <signal name="state-set" handler="_switch_osc" swapped="no"/>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="local_ip">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="margin-top">10</property>
-            <property name="margin-bottom">10</property>
-            <property name="orientation">vertical</property>
-            <property name="row-spacing">10</property>
-            <property name="column-spacing">10</property>
-            <property name="row-homogeneous">True</property>
+            <property name="halign">end</property>
+            <property name="margin-end">10</property>
+            <property name="label" translatable="yes">0.0.0.0</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">4</property>
+          </packing>
+        </child>
+      </object>
+      <packing>
+        <property name="position">1</property>
+      </packing>
+    </child>
+    <child type="tab">
+      <object class="GtkLabel">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">OSC</property>
+      </object>
+      <packing>
+        <property name="position">1</property>
+        <property name="tab-fill">False</property>
+      </packing>
+    </child>
+    <child>
+      <!-- n-columns=1 n-rows=2 -->
+      <object class="GtkGrid">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="margin-top">10</property>
+        <property name="margin-bottom">10</property>
+        <property name="orientation">vertical</property>
+        <property name="row-spacing">10</property>
+        <property name="column-spacing">10</property>
+        <child>
+          <!-- n-columns=1 n-rows=2 -->
+          <object class="GtkGrid" id="midi_out_grid">
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="margin-top">3</property>
+            <property name="margin-bottom">6</property>
             <child>
-              <!-- n-columns=1 n-rows=2 -->
-              <object class="GtkGrid" id="midi_out_grid">
+              <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="margin-top">3</property>
-                <property name="margin-bottom">6</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">MIDI Out</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">1</property>
-              </packing>
-            </child>
-            <child>
-              <!-- n-columns=1 n-rows=2 -->
-              <object class="GtkGrid" id="midi_in_grid">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="margin-top">6</property>
-                <property name="margin-bottom">3</property>
-                <child>
-                  <object class="GtkLabel">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="label" translatable="yes">MIDI In</property>
-                  </object>
-                  <packing>
-                    <property name="left-attach">0</property>
-                    <property name="top-attach">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
+                <property name="label" translatable="yes">MIDI Out</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
@@ -380,21 +339,52 @@
             </child>
           </object>
           <packing>
-            <property name="position">3</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">1</property>
           </packing>
         </child>
-        <child type="tab">
-          <object class="GtkLabel">
+        <child>
+          <!-- n-columns=1 n-rows=2 -->
+          <object class="GtkGrid" id="midi_in_grid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
-            <property name="label" translatable="yes">MIDI</property>
+            <property name="margin-top">6</property>
+            <property name="margin-bottom">3</property>
+            <child>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="label" translatable="yes">MIDI In</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
           </object>
           <packing>
-            <property name="position">3</property>
-            <property name="tab-fill">False</property>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
           </packing>
         </child>
       </object>
+      <packing>
+        <property name="position">2</property>
+      </packing>
+    </child>
+    <child type="tab">
+      <object class="GtkLabel">
+        <property name="visible">True</property>
+        <property name="can-focus">False</property>
+        <property name="label" translatable="yes">MIDI</property>
+      </object>
+      <packing>
+        <property name="position">2</property>
+        <property name="tab-fill">False</property>
+      </packing>
     </child>
   </object>
 </interface>
