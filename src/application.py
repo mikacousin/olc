@@ -36,7 +36,7 @@ from olc.master import Master  # noqa: E402
 from olc.masters_edition import MastersTab  # noqa: E402
 from olc.midi import Midi  # noqa: E402
 from olc.ola_module import Ola  # noqa: E402
-from olc.osc import OscServer  # noqa: E402
+from olc.osc import Osc  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
@@ -132,7 +132,7 @@ class Application(Gtk.Application):
         self.dmx = None
         self.crossfade = None
         self.midi = None
-        self.osc_server = None
+        self.osc = None
         self.ascii = None
         self.wing = None
 
@@ -184,7 +184,8 @@ class Application(Gtk.Application):
             self.wing = WingPlayback()
 
         # Create and launch OSC server
-        self.osc_server = OscServer()
+        if self.settings.get_boolean("osc"):
+            self.osc = Osc()
 
         # Init of ascii file
         self.ascii = Ascii(None)

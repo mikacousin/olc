@@ -10,7 +10,7 @@
         <property name="can-focus">True</property>
         <property name="show-border">False</property>
         <child>
-          <!-- n-columns=3 n-rows=4 -->
+          <!-- n-columns=2 n-rows=4 -->
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -23,6 +23,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">start</property>
+                <property name="margin-start">10</property>
                 <property name="label" translatable="yes">Pourcentage</property>
               </object>
               <packing>
@@ -35,7 +36,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="halign">end</property>
-                <property name="margin-right">10</property>
+                <property name="margin-end">10</property>
                 <property name="hexpand">True</property>
                 <signal name="state-set" handler="_update_ui_percent" swapped="no"/>
               </object>
@@ -49,6 +50,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">start</property>
+                <property name="margin-start">10</property>
                 <property name="hexpand">True</property>
                 <property name="label" translatable="yes">Valeur de +% et -%</property>
               </object>
@@ -62,6 +64,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="halign">end</property>
+                <property name="margin-end">10</property>
                 <property name="hexpand">True</property>
                 <property name="numeric">True</property>
                 <signal name="value-changed" handler="_on_change_percent" swapped="no"/>
@@ -76,6 +79,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">start</property>
+                <property name="margin-start">10</property>
                 <property name="hexpand">True</property>
                 <property name="label" translatable="yes">Temps de transfert par défaut</property>
               </object>
@@ -89,6 +93,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="halign">end</property>
+                <property name="margin-end">10</property>
                 <property name="hexpand">True</property>
                 <property name="input-purpose">digits</property>
                 <property name="numeric">True</property>
@@ -104,6 +109,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
                 <property name="halign">start</property>
+                <property name="margin-start">10</property>
                 <property name="hexpand">True</property>
                 <property name="label" translatable="yes">Temps du Go Back par défaut</property>
               </object>
@@ -117,6 +123,7 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="halign">end</property>
+                <property name="margin-end">10</property>
                 <property name="hexpand">True</property>
                 <property name="input-purpose">digits</property>
                 <property name="numeric">True</property>
@@ -126,18 +133,6 @@
                 <property name="left-attach">1</property>
                 <property name="top-attach">3</property>
               </packing>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
-            </child>
-            <child>
-              <placeholder/>
             </child>
           </object>
         </child>
@@ -152,68 +147,38 @@
           </packing>
         </child>
         <child>
-          <!-- n-columns=3 n-rows=4 -->
+          <!-- n-columns=2 n-rows=5 -->
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="margin-top">10</property>
+            <property name="margin-bottom">10</property>
+            <property name="row-spacing">10</property>
+            <property name="column-spacing">10</property>
             <child>
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Adresse IP du client</property>
+                <property name="halign">start</property>
+                <property name="margin-start">10</property>
+                <property name="label" translatable="yes">Local IP address</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
-                <property name="top-attach">0</property>
+                <property name="top-attach">4</property>
               </packing>
             </child>
             <child>
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">Port du client</property>
-              </object>
-              <packing>
-                <property name="left-attach">0</property>
-                <property name="top-attach">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="halign">start</property>
+                <property name="margin-start">10</property>
                 <property name="label" translatable="yes">Port du serveur</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
-                <property name="top-attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkEntry" id="entry_client_ip">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="hexpand">True</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkSpinButton" id="spin_client_port">
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="halign">end</property>
-                <property name="hexpand">True</property>
-                <property name="input-purpose">digits</property>
-                <property name="numeric">True</property>
-                <property name="update-policy">if-valid</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">1</property>
+                <property name="top-attach">3</property>
               </packing>
             </child>
             <child>
@@ -221,22 +186,11 @@
                 <property name="visible">True</property>
                 <property name="can-focus">True</property>
                 <property name="halign">end</property>
+                <property name="margin-end">10</property>
                 <property name="hexpand">True</property>
                 <property name="numeric">True</property>
                 <property name="update-policy">if-valid</property>
-              </object>
-              <packing>
-                <property name="left-attach">1</property>
-                <property name="top-attach">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="connect_btn">
-                <property name="label" translatable="yes">Connect</property>
-                <property name="visible">True</property>
-                <property name="can-focus">True</property>
-                <property name="receives-default">True</property>
-                <signal name="clicked" handler="_on_btn_clicked" swapped="no"/>
+                <signal name="value-changed" handler="_server_port_changed" swapped="no"/>
               </object>
               <packing>
                 <property name="left-attach">1</property>
@@ -244,19 +198,101 @@
               </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkSpinButton" id="spin_client_port">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="halign">end</property>
+                <property name="margin-end">10</property>
+                <property name="hexpand">True</property>
+                <property name="input-purpose">digits</property>
+                <property name="numeric">True</property>
+                <property name="update-policy">if-valid</property>
+                <signal name="value-changed" handler="_client_port_changed" swapped="no"/>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">2</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">start</property>
+                <property name="margin-start">10</property>
+                <property name="label" translatable="yes">Port du client</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">2</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">start</property>
+                <property name="margin-start">10</property>
+                <property name="label" translatable="yes">Adresse IP du client</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">1</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkEntry" id="entry_client_ip">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="halign">end</property>
+                <property name="margin-end">10</property>
+                <property name="hexpand">True</property>
+                <signal name="activate" handler="_client_ip_changed" swapped="no"/>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">1</property>
+              </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkLabel">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">start</property>
+                <property name="margin-start">10</property>
+                <property name="label" translatable="yes">OSC</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSwitch" id="switch_osc">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <property name="halign">end</property>
+                <property name="margin-end">10</property>
+                <property name="active">True</property>
+                <signal name="state-set" handler="_switch_osc" swapped="no"/>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkLabel" id="local_ip">
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <property name="halign">end</property>
+                <property name="margin-end">10</property>
+                <property name="label" translatable="yes">0.0.0.0</property>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">4</property>
+              </packing>
             </child>
           </object>
           <packing>
@@ -279,7 +315,11 @@
           <object class="GtkGrid">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
+            <property name="margin-top">10</property>
+            <property name="margin-bottom">10</property>
             <property name="orientation">vertical</property>
+            <property name="row-spacing">10</property>
+            <property name="column-spacing">10</property>
             <property name="row-homogeneous">True</property>
             <child>
               <!-- n-columns=1 n-rows=2 -->

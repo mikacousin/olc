@@ -12,11 +12,29 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import sys
-
+from typing import Optional
 import liblo
 from gi.repository import Gdk, GLib
 from olc.define import App
+
+
+class Osc:
+    """OSC"""
+
+    def __init__(self):
+        self.client = OscClient()
+        self.server = OscServer()
+
+    def restart_server(self) -> None:
+        """Restart OSC server"""
+        self.server.free()
+        self.server = OscServer()
+
+    def stop(self) -> None:
+        """Stop OSC"""
+        self.client = None
+        self.server.free()
+        self.server = None
 
 
 class OscClient:
@@ -32,7 +50,22 @@ class OscClient:
             self.target = liblo.Address(self.host, self.port)
         except liblo.AddressError as err:
             print(err)
-            sys.exit()
+
+    def target_changed(self, host: str = "", port: Optional[int] = None) -> None:
+        """Client IP address or port have changed
+
+        Args:
+            host: IP address
+            port: Port number
+        """
+        if host:
+            self.host = host
+        if port:
+            self.port = port
+        try:
+            self.target = liblo.Address(self.host, self.port)
+        except liblo.AddressError as err:
+            print(err)
 
     def send(self, path, *arg):
         """Send OSC message to the client
@@ -50,12 +83,8 @@ class OscServer(liblo.ServerThread):
     def __init__(self):
         # Port to listen data from the client
         self.serv_port = App().settings.get_int("osc-server-port")
-
         # Create Thread server
-        liblo.ServerThread.__init__(self, self.serv_port)
-
-        # Create Client
-        self.client = OscClient()
+        super().__init__(self.serv_port)
 
         # Add methods (strings the server will respond)
         self.add_method("/seq/go", "i", self._seqgo_cb)  # Go
@@ -150,7 +179,7 @@ class OscServer(liblo.ServerThread):
         """
         for a, _t in zip(args, types):
             if a == 1:
-                self.client.send("/seq/go", App().window.keystring)
+                App().osc.client.send("/seq/go", App().window.keystring)
                 GLib.idle_add(App().sequence.do_go, None, None)
 
     def _seqplus_cb(self, _path, args, types):
@@ -188,7 +217,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad2_cb(self, _path, args, types):
         """Pad 2
@@ -203,7 +232,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad3_cb(self, _path, args, types):
         """Pad 3
@@ -218,7 +247,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad4_cb(self, _path, args, types):
         """Pad 4
@@ -233,7 +262,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad5_cb(self, _path, args, types):
         """Pad 5
@@ -248,7 +277,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad6_cb(self, _path, args, types):
         """Pad 6
@@ -263,7 +292,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad7_cb(self, _path, args, types):
         """Pad 7
@@ -278,7 +307,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad8_cb(self, _path, args, types):
         """Pad 8
@@ -293,7 +322,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad9_cb(self, _path, args, types):
         """Pad 9
@@ -308,7 +337,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _pad0_cb(self, _path, args, types):
         """Pad 0
@@ -323,7 +352,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _paddot_cb(self, _path, args, types):
         """Pad .
@@ -338,7 +367,7 @@ class OscServer(liblo.ServerThread):
                 App().window.statusbar.push(
                     App().window.context_id, App().window.keystring
                 )
-                self.client.send("/pad/saisieText", App().window.keystring)
+                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
     def _padchannel_cb(self, _path, args, types):
         """Pad Channel
@@ -352,7 +381,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_c
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padall_cb(self, _path, args, types):
         """Pad All
@@ -366,7 +395,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_a
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padlevel_cb(self, _path, args, types):
         """Pad @
@@ -380,7 +409,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_equal
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padfull_cb(self, _path, args, types):
         """Pad Full
@@ -398,7 +427,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_equal
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padthru_cb(self, _path, args, types):
         """Pad Thru
@@ -412,7 +441,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_greater
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padplus_cb(self, _path, args, types):
         """Pad +
@@ -426,7 +455,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_plus
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padminus_cb(self, _path, args, types):
         """Pad -
@@ -440,7 +469,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_minus
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padpluspourcent_cb(self, _path, args, types):
         """Pad +%
@@ -454,7 +483,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_exclam
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padminuspourcent_cb(self, _path, args, types):
         """Pad -%
@@ -468,7 +497,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_colon
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _padclear_cb(self, _path, args, types):
         """Pad Clear
@@ -482,7 +511,7 @@ class OscServer(liblo.ServerThread):
                 event = Gdk.EventKey()
                 event.keyval = Gdk.KEY_BackSpace
                 App().window.on_key_press_event(None, event)
-                self.client.send("/pad/saisieText", "")
+                App().osc.client.send("/pad/saisieText", "")
 
     def _sub_launch_cb(self, _path, args, types):
         """Launch Sub page
@@ -517,4 +546,4 @@ class OscServer(liblo.ServerThread):
                 if master.page == App().fader_page and master.number == master_index:
                     break
             master.set_level(level)
-        self.client.send("/subStick/level", ("i", master_index), ("i", level))
+        App().osc.client.send("/subStick/level", ("i", master_index), ("i", level))

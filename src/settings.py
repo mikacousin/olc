@@ -12,10 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import ipaddress
+import socket
 from gettext import gettext as _
 import mido
 from gi.repository import GLib, Gtk
 from olc.define import App
+from olc.osc import Osc
 
 
 class SettingsDialog:
@@ -24,26 +27,30 @@ class SettingsDialog:
     def __init__(self):
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
-
         self.settings_dialog = builder.get_object("settings_dialog")
 
+        # Appearence
         switch_percent = builder.get_object("switch_percent")
         switch_percent.set_state(App().settings.get_boolean("percent"))
 
-        self.spin_percent_level = builder.get_object("spin_percent_level")
+        spin = builder.get_object("spin_percent_level")
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        self.spin_percent_level.set_adjustment(adjustment)
-        self.spin_percent_level.set_value(App().settings.get_int("percent-level"))
+        spin.set_adjustment(adjustment)
+        spin.set_value(App().settings.get_int("percent-level"))
 
-        self.spin_default_time = builder.get_object("spin_default_time")
+        spin = builder.get_object("spin_default_time")
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        self.spin_default_time.set_adjustment(adjustment)
-        self.spin_default_time.set_value(App().settings.get_double("default-time"))
+        spin.set_adjustment(adjustment)
+        spin.set_value(App().settings.get_double("default-time"))
 
-        self.spin_go_back_time = builder.get_object("spin_go_back_time")
+        spin = builder.get_object("spin_go_back_time")
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        self.spin_go_back_time.set_adjustment(adjustment)
-        self.spin_go_back_time.set_value(App().settings.get_double("go-back-time"))
+        spin.set_adjustment(adjustment)
+        spin.set_value(App().settings.get_double("go-back-time"))
+
+        # OSC
+        switch_osc = builder.get_object("switch_osc")
+        switch_osc.set_state(App().settings.get_boolean("osc"))
 
         self.entry_client_ip = builder.get_object("entry_client_ip")
         self.entry_client_ip.set_text(App().settings.get_string("osc-host"))
@@ -57,6 +64,11 @@ class SettingsDialog:
         adjustment = Gtk.Adjustment(0, 0, 65535, 1, 10, 0)
         self.spin_server_port.set_adjustment(adjustment)
         self.spin_server_port.set_value(App().settings.get_int("osc-server-port"))
+
+        local_ip = builder.get_object("local_ip")
+        hostname = socket.gethostname()
+        ip_addr = socket.gethostbyname(hostname)
+        local_ip.set_label(ip_addr)
 
         # List of MIDI Controllers (In)
         liststore_modes = Gtk.ListStore(str)
@@ -285,16 +297,16 @@ class SettingsDialog:
         App().midi.update_masters()
         App().midi.gm_init()
 
-    def _on_change_percent(self, _widget):
-        lvl = self.spin_percent_level.get_value_as_int()
+    def _on_change_percent(self, widget: Gtk.SpinButton) -> None:
+        lvl = widget.get_value_as_int()
         App().settings.set_value("percent-level", GLib.Variant("i", lvl))
 
-    def _on_change_default_time(self, _widget):
-        time = self.spin_default_time.get_value()
+    def _on_change_default_time(self, widget: Gtk.SpinButton) -> None:
+        time = widget.get_value()
         App().settings.set_value("default-time", GLib.Variant("d", time))
 
-    def _on_change_go_back_time(self, _widget):
-        time = self.spin_go_back_time.get_value()
+    def _on_change_go_back_time(self, widget) -> None:
+        time = widget.get_value()
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
     def _update_ui_percent(self, _widget, state):
@@ -320,15 +332,35 @@ class SettingsDialog:
         if App().tabs.tabs["memories"]:
             App().tabs.tabs["memories"].channels_view.update()
 
-    def _on_btn_clicked(self, _button):
-        address_ip = self.entry_client_ip.get_text()
-        client_port = self.spin_client_port.get_value_as_int()
-        server_port = self.spin_server_port.get_value_as_int()
+    def _switch_osc(self, _widget, state):
+        App().settings.set_value("osc", GLib.Variant("b", state))
+        if state:
+            App().osc = Osc()
+        else:
+            App().osc.stop()
+            App().osc = None
 
-        print("Relancer OSC :")
-        print("Client IP :", address_ip, "Port :", client_port)
-        print("Server Port :", server_port)
+    def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
+        port = widget.get_value_as_int()
+        App().settings.set_value("osc-client-port", GLib.Variant("i", port))
+        App().osc.client.target_changed(port=port)
 
-        App().settings.set_value("osc-host", GLib.Variant("s", address_ip))
-        App().settings.set_value("osc-client-port", GLib.Variant("i", client_port))
-        App().settings.set_value("osc-server-port", GLib.Variant("i", server_port))
+    def _server_port_changed(self, widget: Gtk.SpinButton) -> None:
+        port = widget.get_value_as_int()
+        App().settings.set_value("osc-server-port", GLib.Variant("i", port))
+        App().osc.restart_server()
+
+    def _client_ip_changed(self, widget: Gtk.Entry) -> None:
+        ip_addr = widget.get_text()
+        if self._is_ip(ip_addr):
+            App().settings.set_value("osc-host", GLib.Variant("s", ip_addr))
+            App().osc.client.target_changed(host=ip_addr)
+        else:
+            widget.set_text(App().settings.get_string("osc-host"))
+
+    def _is_ip(self, string: str) -> bool:
+        try:
+            ipaddress.ip_address(string)
+            return True
+        except ValueError:
+            return False

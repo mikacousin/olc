@@ -21,9 +21,14 @@
       <summary>Go Back Time</summary>
       <description></description>
     </key>
+    <key name="osc" type="b">
+      <default>true</default>
+      <summary>OSC</summary>
+      <description>Start/Stop OSC</description>
+    </key>
     <key name="osc-host" type="s">
-      <default>"10.0.0.3"</default>
-      <summary>OSC client's IP address</summary>
+      <default>"127.0.0.1"</default>
+      <summary>OSC client IP address</summary>
       <description></description>
     </key>
     <key name="osc-server-port" type="i">
