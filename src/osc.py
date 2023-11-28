@@ -86,42 +86,6 @@ class OscServer(liblo.ServerThread):
         # Create Thread server
         super().__init__(self.serv_port)
 
-        # Add methods (strings the server will respond)
-        self.add_method("/seq/go", "i", self._seqgo_cb)  # Go
-        self.add_method("/seq/plus", "i", self._seqplus_cb)  # Seq +
-        self.add_method("/seq/moins", "i", self._seqless_cb)  # Seq -
-        self.add_method("/pad/1", None, self._pad1_cb)
-        self.add_method("/pad/2", None, self._pad2_cb)
-        self.add_method("/pad/3", None, self._pad3_cb)
-        self.add_method("/pad/4", None, self._pad4_cb)
-        self.add_method("/pad/5", None, self._pad5_cb)
-        self.add_method("/pad/6", None, self._pad6_cb)
-        self.add_method("/pad/7", None, self._pad7_cb)
-        self.add_method("/pad/8", None, self._pad8_cb)
-        self.add_method("/pad/9", None, self._pad9_cb)
-        self.add_method("/pad/0", None, self._pad0_cb)
-        self.add_method("/pad/dot", None, self._paddot_cb)
-        self.add_method("/pad/channel", None, self._padchannel_cb)  # Channel
-        self.add_method("/pad/all", None, self._padall_cb)
-        self.add_method("/pad/level", None, self._padlevel_cb)  # Level
-        self.add_method("/pad/ff", None, self._padfull_cb)  # Full
-        self.add_method("/pad/thru", None, self._padthru_cb)  # Thru
-        self.add_method("/pad/plus", None, self._padplus_cb)  # +
-        self.add_method("/pad/moins", None, self._padminus_cb)  # -
-        # + %
-        self.add_method("/pad/pluspourcent", None, self._padpluspourcent_cb)
-        # - %
-        self.add_method("/pad/moinspourcent", None, self._padminuspourcent_cb)
-        self.add_method("/pad/clear", None, self._padclear_cb)  # Clear
-
-        # For DiLuz :
-        # Open Masters page
-        self.add_method("/sub/launch", None, self._sub_launch_cb)
-        # Flash Master (master number, level)
-        self.add_method("/subStick/flash", "ii", self._sub_level_cb)
-        # Master level (master number, level)
-        self.add_method("/subStick/level", "ii", self._sub_level_cb)
-
         # TODO :
         self.add_method("/pad/enter", None, self._fallback)  # Enter
         self.add_method("/pad/blackout", None, self._fallback)  # Blackout (1 ou 0)
@@ -170,47 +134,27 @@ class OscServer(liblo.ServerThread):
         for a, t in zip(args, types):
             print(f"received argument {a} of type {t}")
 
+    @liblo.make_method("/seq/go", "i")
     def _seqgo_cb(self, _path, args, types):
-        """Go
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().osc.client.send("/seq/go", App().window.keystring)
                 GLib.idle_add(App().sequence.do_go, None, None)
 
+    @liblo.make_method("/seq/plus", "i")
     def _seqplus_cb(self, _path, args, types):
-        """Seq +
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 GLib.idle_add(App().sequence.sequence_plus)
 
+    @liblo.make_method("/seq/moins", "i")
     def _seqless_cb(self, _path, args, types):
-        """Seq -
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 GLib.idle_add(App().sequence.sequence_minus)
 
+    @liblo.make_method("/pad/1", None)
     def _pad1_cb(self, _path, args, types):
-        """Pad 1
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "1"
@@ -219,13 +163,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/2", None)
     def _pad2_cb(self, _path, args, types):
-        """Pad 2
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "2"
@@ -234,13 +173,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/3", None)
     def _pad3_cb(self, _path, args, types):
-        """Pad 3
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "3"
@@ -249,13 +183,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/4", None)
     def _pad4_cb(self, _path, args, types):
-        """Pad 4
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "4"
@@ -264,13 +193,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/5", None)
     def _pad5_cb(self, _path, args, types):
-        """Pad 5
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "5"
@@ -279,13 +203,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/6", None)
     def _pad6_cb(self, _path, args, types):
-        """Pad 6
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "6"
@@ -294,13 +213,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/7", None)
     def _pad7_cb(self, _path, args, types):
-        """Pad 7
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "7"
@@ -309,13 +223,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/8", None)
     def _pad8_cb(self, _path, args, types):
-        """Pad 8
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "8"
@@ -324,13 +233,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/9", None)
     def _pad9_cb(self, _path, args, types):
-        """Pad 9
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "9"
@@ -339,13 +243,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/0", None)
     def _pad0_cb(self, _path, args, types):
-        """Pad 0
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "0"
@@ -354,13 +253,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/dot", None)
     def _paddot_cb(self, _path, args, types):
-        """Pad .
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 App().window.keystring += "."
@@ -369,13 +263,8 @@ class OscServer(liblo.ServerThread):
                 )
                 App().osc.client.send("/pad/saisieText", App().window.keystring)
 
+    @liblo.make_method("/pad/channel", None)
     def _padchannel_cb(self, _path, args, types):
-        """Pad Channel
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -383,13 +272,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/all", None)
     def _padall_cb(self, _path, args, types):
-        """Pad All
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -397,13 +281,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/level", None)
     def _padlevel_cb(self, _path, args, types):
-        """Pad @
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -411,13 +290,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/ff", None)
     def _padfull_cb(self, _path, args, types):
-        """Pad Full
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 if App().settings.get_boolean("percent"):
@@ -429,13 +303,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/thru", None)
     def _padthru_cb(self, _path, args, types):
-        """Pad Thru
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -443,13 +312,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/plus", None)
     def _padplus_cb(self, _path, args, types):
-        """Pad +
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -457,13 +321,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/moins", None)
     def _padminus_cb(self, _path, args, types):
-        """Pad -
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -471,13 +330,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/pluspourcent", None)
     def _padpluspourcent_cb(self, _path, args, types):
-        """Pad +%
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -485,13 +339,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/moinspourcent", None)
     def _padminuspourcent_cb(self, _path, args, types):
-        """Pad -%
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -499,13 +348,8 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/pad/clear", None)
     def _padclear_cb(self, _path, args, types):
-        """Pad Clear
-
-        Args:
-            args: Args
-            types: Types
-        """
         for a, _t in zip(args, types):
             if a == 1:
                 event = Gdk.EventKey()
@@ -513,24 +357,15 @@ class OscServer(liblo.ServerThread):
                 App().window.on_key_press_event(None, event)
                 App().osc.client.send("/pad/saisieText", "")
 
+    @liblo.make_method("/sub/launch", None)
     def _sub_launch_cb(self, _path, args, types):
-        """Launch Sub page
-
-        Args:
-            args: Args
-            types: Types
-        """
         for i in range(10):
-            self.client.send(
+            App().osc.client.send(
                 "/subStick/text", ("i", i + 1), ("s", App().masters[i].text)
             )
 
+    @liblo.make_method("/subStick/level", "ii")
     def _sub_level_cb(self, _path, args, _types):
-        """Master Level
-
-        Args:
-            args: Args
-        """
         master_index, level = args
         if App().virtual_console:
             GLib.idle_add(
