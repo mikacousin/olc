@@ -21,7 +21,6 @@ class PatchChannelsTab(Gtk.Box):
     """Tab to patch by channels"""
 
     def __init__(self):
-        self.keystring = ""
         self.last_chan_selected = ""
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -76,8 +75,7 @@ class PatchChannelsTab(Gtk.Box):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -91,12 +89,10 @@ class PatchChannelsTab(Gtk.Box):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -107,8 +103,7 @@ class PatchChannelsTab(Gtk.Box):
         App().tabs.close("patch_channels")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_Down(self):  # pylint: disable=C0103
         """Select Next Channel"""
@@ -123,8 +118,7 @@ class PatchChannelsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_Up(self):  # pylint: disable=C0103
         """Select Previous Channel"""
@@ -138,22 +132,21 @@ class PatchChannelsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_c(self):
         """Select Channel"""
         self.flowbox.unselect_all()
 
-        if self.keystring != "" and "." not in self.keystring:
-            channel = int(self.keystring) - 1
+        keystring = App().window.commandline.get_string()
+        if keystring != "" and "." not in keystring:
+            channel = int(keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(channel)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Thru"""
@@ -175,7 +168,7 @@ class PatchChannelsTab(Gtk.Box):
         if not self.last_chan_selected:
             return
 
-        to_chan = int(self.keystring)
+        to_chan = int(App().window.commandline.get_string())
 
         if to_chan > int(self.last_chan_selected):
             for chan in range(int(self.last_chan_selected), to_chan):
@@ -187,8 +180,7 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
         self.last_chan_selected = str(to_chan - 1)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_m(self):
         """Modify Output"""
@@ -198,8 +190,9 @@ class PatchChannelsTab(Gtk.Box):
             patchchannelwidget = flowboxchild.get_child()
             channel = patchchannelwidget.channel
 
+            keystring = App().window.commandline.get_string()
             # Unpatch if no entry
-            if self.keystring in ["", "0"]:
+            if keystring in ["", "0"]:
                 for item in App().patch.channels[channel]:
                     output = item[0]
                     universe = item[1]
@@ -208,20 +201,20 @@ class PatchChannelsTab(Gtk.Box):
                 self.channels[channel].queue_draw()
             else:
                 # New values
-                if "." in self.keystring:
-                    if self.keystring[0] == ".":
+                if "." in keystring:
+                    if keystring[0] == ".":
                         # ".universe" for change universe
                         output = App().patch.channels[channel][0][0]
-                        universe = int(self.keystring[1:])
+                        universe = int(keystring[1:])
                         several = False
                     else:
                         # "output.universe"
-                        split = self.keystring.split(".")
+                        split = keystring.split(".")
                         output = int(split[0])
                         universe = int(split[1])
                 else:
                     # "output", use first universe
-                    output = int(self.keystring)
+                    output = int(keystring)
                     universe = App().universes[0]
 
                 if 0 < output + i <= 512:
@@ -261,12 +254,12 @@ class PatchChannelsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_chan_selected = str(channel)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_i(self):
         """Insert Output"""
-        if self.keystring in ["", "0"]:
+        keystring = App().window.commandline.get_string()
+        if keystring in ["", "0"]:
             return
         sel = self.flowbox.get_selected_children()
         for flowboxchild in sel:
@@ -274,19 +267,19 @@ class PatchChannelsTab(Gtk.Box):
             channel = patchchannelwidget.channel
 
             # New values
-            if "." in self.keystring:
-                if self.keystring[0] == ".":
+            if "." in keystring:
+                if keystring[0] == ".":
                     # ".universe" for change universe
                     output = App().patch.channels[channel][0][0]
-                    universe = int(self.keystring[1:])
+                    universe = int(keystring[1:])
                 else:
                     # "output.universe"
-                    split = self.keystring.split(".")
+                    split = keystring.split(".")
                     output = int(split[0])
                     universe = int(split[1])
             else:
                 # "output", use first universe
-                output = int(self.keystring)
+                output = int(keystring)
                 universe = App().universes[0]
 
             if 0 < output <= 512:
@@ -310,26 +303,26 @@ class PatchChannelsTab(Gtk.Box):
                 widget.queue_draw()
                 App().window.live_view.channels_view.update()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_r(self):
         """Remove Output"""
-        if self.keystring in ["", "0"]:
+        keystring = App().window.commandline.get_string()
+        if keystring in ["", "0"]:
             return
         sel = self.flowbox.get_selected_children()
         for flowboxchild in sel:
             patchchannelwidget = flowboxchild.get_child()
             channel = patchchannelwidget.channel
-            if "." in self.keystring:
-                if self.keystring[0] != ".":
+            if "." in keystring:
+                if keystring[0] != ".":
                     # "output.universe"
-                    split = self.keystring.split(".")
+                    split = keystring.split(".")
                     output = int(split[0])
                     universe = int(split[1])
             else:
                 # "output", use first universe
-                output = int(self.keystring)
+                output = int(keystring)
                 universe = App().universes[0]
 
             if (
@@ -346,5 +339,4 @@ class PatchChannelsTab(Gtk.Box):
             widget.queue_draw()
             App().window.live_view.channels_view.update()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")

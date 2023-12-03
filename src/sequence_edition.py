@@ -27,8 +27,6 @@ class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
 
     def __init__(self):
-        self.keystring = ""
-
         # To stock user modification on channels
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -455,8 +453,7 @@ class SequenceTab(Gtk.Grid):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -470,15 +467,13 @@ class SequenceTab(Gtk.Grid):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         # Channels View
-        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+        self.channels_view.on_key_press(keyname)
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -490,8 +485,7 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_Q(self):  # pylint: disable=C0103
         """Cycle Sequences"""
@@ -534,10 +528,9 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_equal(self):
         """@ Level"""
-        self.channels_view.at_level(self.keystring)
+        self.channels_view.at_level()
         self.channels_view.update()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_colon(self):
         """Level - %"""
@@ -629,7 +622,8 @@ class SequenceTab(Gtk.Grid):
         if not sequence:
             return
         step = self.get_selected_step()
-        if self.keystring == "":
+        keystring = App().window.commandline.get_string()
+        if keystring == "":
             if step:
                 # New Cue number
                 mem = sequence.get_next_cue(step=step)
@@ -640,10 +634,9 @@ class SequenceTab(Gtk.Grid):
                 step = 1
         else:
             # Cue number given by user
-            mem = float(self.keystring)
+            mem = float(keystring)
             found, step = sequence.get_step(cue=mem)
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.set_string("")
         if not found:  # New Cue
             # Create Cue
             channels = {}

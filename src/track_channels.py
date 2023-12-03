@@ -23,7 +23,6 @@ class TrackChannelsTab(Gtk.Grid):
     def __init__(self):
         self.percent_level = App().settings.get_boolean("percent")
 
-        self.keystring = ""
         self.last_step_selected = ""
 
         self.channel_selected = 0
@@ -138,8 +137,7 @@ class TrackChannelsTab(Gtk.Grid):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -153,8 +151,7 @@ class TrackChannelsTab(Gtk.Grid):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -166,8 +163,7 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_Right(self):  # pylint: disable=C0103
         """Next Channel"""
@@ -236,7 +232,7 @@ class TrackChannelsTab(Gtk.Grid):
             widget = flowboxchild.get_child()
             step = widget.step
             channel = self.channels[self.channel_selected]
-            level = int(self.keystring)
+            level = int(App().window.commandline.get_string())
 
             if App().settings.get_boolean("percent"):
                 level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
@@ -245,16 +241,15 @@ class TrackChannelsTab(Gtk.Grid):
                 widget.levels[self.channel_selected] = level
                 widget.queue_draw()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_c(self):
         """Select Channel"""
 
         App().window.live_view.channels_view.flowbox.unselect_all()
 
-        if self.keystring not in ["", "0"]:
-            channel = int(self.keystring) - 1
+        if App().window.commandline.get_string() not in ["", "0"]:
+            channel = int(App().window.commandline.get_string()) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = App().window.live_view.channels_view.flowbox.get_child_at_index(
                     channel
@@ -264,8 +259,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.update_display()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_KP_Divide(self):  # pylint: disable=C0103
         """Channel Thru"""
@@ -275,6 +269,7 @@ class TrackChannelsTab(Gtk.Grid):
         """Channel Thru"""
 
         sel = App().window.live_view.channels_view.flowbox.get_selected_children()
+        keystring = App().window.commandline.get_string()
 
         if len(sel) == 1:
             flowboxchild = sel[0]
@@ -290,7 +285,7 @@ class TrackChannelsTab(Gtk.Grid):
                 App().window.last_chan_selected = str(channel)
 
         if App().window.last_chan_selected:
-            to_chan = int(self.keystring)
+            to_chan = int(keystring)
             if to_chan > int(App().window.last_chan_selected):
                 for channel in range(int(App().window.last_chan_selected) - 1, to_chan):
                     child = (
@@ -308,12 +303,11 @@ class TrackChannelsTab(Gtk.Grid):
                     )
                     App().window.live_view.channels_view.flowbox.select_child(child)
 
-            App().window.last_chan_selected = self.keystring
+            App().window.last_chan_selected = keystring
 
             self.update_display()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_KP_Add(self):  # pylint: disable=C0103
         """Channel +"""
@@ -321,22 +315,21 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_plus(self):
         """Channel +"""
-
-        if self.keystring == "":
+        keystring = App().window.commandline.get_string()
+        if keystring == "":
             return
 
-        channel = int(self.keystring) - 1
+        channel = int(keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
             child = App().window.live_view.channels_view.flowbox.get_child_at_index(
                 channel
             )
             App().window.live_view.channels_view.flowbox.select_child(child)
-            App().window.last_chan_selected = self.keystring
+            App().window.last_chan_selected = keystring
 
             self.update_display()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_KP_Subtract(self):  # pylint: disable=C0103
         """Channel -"""
@@ -344,19 +337,18 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_minus(self):
         """Channel -"""
-
-        if self.keystring == "":
+        keystring = App().window.commandline.get_string()
+        if keystring == "":
             return
 
-        channel = int(self.keystring) - 1
+        channel = int(keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
             child = App().window.live_view.channels_view.flowbox.get_child_at_index(
                 channel
             )
             App().window.live_view.channels_view.flowbox.unselect_child(child)
-            App().window.last_chan_selected = self.keystring
+            App().window.last_chan_selected = keystring
 
             self.update_display()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")

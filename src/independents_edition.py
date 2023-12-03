@@ -23,7 +23,6 @@ class IndependentsTab(Gtk.Paned):
     """Tab to edit independents"""
 
     def __init__(self):
-        self.keystring = ""
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -99,8 +98,7 @@ class IndependentsTab(Gtk.Paned):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
         if keyname in (
             "KP_1",
             "KP_2",
@@ -113,13 +111,11 @@ class IndependentsTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
         # Channels View
-        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+        self.channels_view.on_key_press(keyname)
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -130,15 +126,13 @@ class IndependentsTab(Gtk.Paned):
         App().tabs.close("indes")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_equal(self):
         """@ level"""
-        self.channels_view.at_level(self.keystring)
+        self.channels_view.at_level()
         self.channels_view.update()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_colon(self):
         """Level - %"""

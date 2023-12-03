@@ -72,8 +72,6 @@ class ChanneltimeTab(Gtk.Paned):
         self.sequence = sequence
         self.position = position
 
-        self.keystring = ""
-
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
@@ -213,8 +211,7 @@ class ChanneltimeTab(Gtk.Paned):
                     App().window.playback.sequential.total_time = self.step.total_time
                     App().window.playback.sequential.queue_draw()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def time_edited(self, _widget, path, text):
         """Time changed
@@ -298,8 +295,7 @@ class ChanneltimeTab(Gtk.Paned):
                     App().window.playback.sequential.total_time = self.step.total_time
                     App().window.playback.sequential.queue_draw()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def on_channeltime_changed(self, _treeview):
         """Select a Channel Time"""
@@ -328,8 +324,7 @@ class ChanneltimeTab(Gtk.Paned):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -343,15 +338,13 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         # Channels View
-        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+        self.channels_view.on_key_press(keyname)
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -369,8 +362,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().tabs.close("channel_time")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_q(self):
         """Prev Channel Time"""

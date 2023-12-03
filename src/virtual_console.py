@@ -605,9 +605,8 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "goto"
             self.queue_draw()
         else:
-            App().sequence.goto(App().window.keystring)
-            App().window.keystring = ""
-            App().window.statusbar.push(App().window.context_id, "")
+            App().sequence.goto(App().window.commandline.get_string())
+            App().window.commandline.set_string("")
 
     def on_channel(self, _widget):
         """Channel button"""
@@ -765,8 +764,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_0"
             self.queue_draw()
         else:
-            App().window.keystring += "0"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("0")
 
     def on_1(self, _widget):
         """1"""
@@ -774,8 +772,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_1"
             self.queue_draw()
         else:
-            App().window.keystring += "1"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("1")
 
     def on_2(self, _widget):
         """2"""
@@ -783,8 +780,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_2"
             self.queue_draw()
         else:
-            App().window.keystring += "2"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("2")
 
     def on_3(self, _widget):
         """3"""
@@ -792,8 +788,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_3"
             self.queue_draw()
         else:
-            App().window.keystring += "3"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("3")
 
     def on_4(self, _widget):
         """4"""
@@ -801,8 +796,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_4"
             self.queue_draw()
         else:
-            App().window.keystring += "4"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("4")
 
     def on_5(self, _widget):
         """5"""
@@ -810,8 +804,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_5"
             self.queue_draw()
         else:
-            App().window.keystring += "5"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("5")
 
     def on_6(self, _widget):
         """6"""
@@ -819,8 +812,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_6"
             self.queue_draw()
         else:
-            App().window.keystring += "6"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("6")
 
     def on_7(self, _widget):
         """7"""
@@ -828,8 +820,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_7"
             self.queue_draw()
         else:
-            App().window.keystring += "7"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("7")
 
     def on_8(self, _widget):
         """8"""
@@ -837,8 +828,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_8"
             self.queue_draw()
         else:
-            App().window.keystring += "8"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("8")
 
     def on_9(self, _widget):
         """9"""
@@ -846,8 +836,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "number_9"
             self.queue_draw()
         else:
-            App().window.keystring += "9"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("9")
 
     def on_dot(self, _widget):
         """."""
@@ -855,8 +844,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.midi_learn = "dot"
             self.queue_draw()
         else:
-            App().window.keystring += "."
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string(".")
 
     def flash_on(self, widget, _event):
         """Flash button pressed

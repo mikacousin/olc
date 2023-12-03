@@ -114,6 +114,11 @@ class Master:
             val = int(((value / 255) * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             App().midi.queue.enqueue(msg)
+        if App().osc:
+            page = 1
+            index = self.number
+            path = f"olc/fader/{page}/{index}/level"
+            App().osc.client.send(path, ("i", value))
         # Set value
         self.value = value
         self.level_changed()

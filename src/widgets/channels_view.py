@@ -134,13 +134,10 @@ class ChannelsView(Gtk.Box):
             index = 0
         self.combo.set_active(index)
 
-    def select_channel(self, keystring: str) -> None:
-        """Select one channel
-
-        Args:
-            keystring: Channel number (1-MAX_CHANNELS)
-        """
+    def select_channel(self) -> None:
+        """Select one channel"""
         string = ""
+        keystring = App().window.commandline.get_string()
         self.flowbox.unselect_all()
         if is_non_nul_int(keystring):
             channel = int(keystring)
@@ -152,13 +149,10 @@ class ChannelsView(Gtk.Box):
         self.flowbox.invalidate_filter()
         self.last_selected_channel = string
 
-    def select_plus(self, keystring: str) -> None:
-        """Add channel to selection
-
-        Args:
-            keystring: Channel number (1-MAX_CHANNELS)
-        """
+    def select_plus(self) -> None:
+        """Add channel to selection"""
         string = ""
+        keystring = App().window.commandline.get_string()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
@@ -169,13 +163,10 @@ class ChannelsView(Gtk.Box):
         self.flowbox.invalidate_filter()
         self.last_selected_channel = string
 
-    def select_minus(self, keystring: str) -> None:
-        """Remove channel from selection
-
-        Args:
-            keystring: Channel number (1-MAX_CHANNELS)
-        """
+    def select_minus(self) -> None:
+        """Remove channel from selection"""
         string = ""
+        keystring = App().window.commandline.get_string()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
@@ -339,14 +330,11 @@ class ChannelsView(Gtk.Box):
             if level:
                 self.flowbox.select_child(flowboxchild)
 
-    def select_thru(self, keystring: str) -> None:
-        """Select Channel Thru
-
-        Args:
-            keystring: Channel number
-        """
+    def select_thru(self) -> None:
+        """Select Channel Thru"""
         last_chan = self.last_selected_channel
         string = last_chan
+        keystring = App().window.commandline.get_string()
         if is_non_nul_int(keystring) and last_chan:
             from_chan = int(last_chan)
             to_chan = int(keystring)
@@ -366,12 +354,9 @@ class ChannelsView(Gtk.Box):
             string = keystring
         self.last_selected_channel = string
 
-    def at_level(self, keystring: str) -> None:
-        """Channels at level
-
-        Args:
-            keystring: Level (positive integer)
-        """
+    def at_level(self) -> None:
+        """Channels at level"""
+        keystring = App().window.commandline.get_string()
         if not is_int(keystring):
             return
         level = int(keystring)
@@ -460,15 +445,14 @@ class ChannelsView(Gtk.Box):
         elif parent:
             parent.get_parent().grab_focus()
 
-    def on_key_press(self, keyname: str, keystring: str) -> Any:
+    def on_key_press(self, keyname: str) -> Any:
         """Processes common keyboard methods of Channels View
 
         Args:
             keyname: Gdk Name of the pressed key
-            keystring: Keys buffer
 
         Returns:
-            method or Keys buffer
+            method or None
         """
         if keyname in {
             "f",
@@ -484,130 +468,60 @@ class ChannelsView(Gtk.Box):
             "minus",
         }:
             if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-                return func(keystring)
-        return keystring
+                return func()
+        return None
 
-    def _keypress_f(self, keystring: str) -> str:
-        """Toggle display mode
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Keys buffer
-        """
+    def _keypress_f(self) -> None:
+        """Toggle display mode"""
         self.toggle_view_mode()
         self.grab_focus()
-        return keystring
 
-    def _keypress_a(self, keystring: str) -> str:
-        """All Channels
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Keys buffer
-        """
+    def _keypress_a(self) -> None:
+        """All Channels"""
         self.select_all()
         self.grab_focus()
-        return keystring
 
-    def _keypress_page_up(self, keystring: str) -> str:
-        """Next Channel
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Empty string
-        """
+    def _keypress_page_up(self) -> None:
+        """Next Channel"""
         self.select_next()
         self.grab_focus()
-        keystring = ""
-        App().window.statusbar.push(App().window.context_id, keystring)
-        return keystring
+        App().window.commandline.set_string("")
 
-    def _keypress_page_down(self, keystring: str) -> str:
-        """Previous Channel
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Empty string
-        """
+    def _keypress_page_down(self) -> None:
+        """Previous Channel"""
         self.select_previous()
         self.grab_focus()
-        keystring = ""
-        App().window.statusbar.push(App().window.context_id, keystring)
-        return keystring
+        App().window.commandline.set_string("")
 
-    def _keypress_c(self, keystring: str) -> str:
-        """Channel
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Empty string
-        """
-        self.select_channel(keystring)
+    def _keypress_c(self) -> None:
+        """Channel"""
+        self.select_channel()
         self.grab_focus()
-        keystring = ""
-        App().window.statusbar.push(App().window.context_id, keystring)
-        return keystring
+        App().window.commandline.set_string("")
 
-    def _keypress_kp_divide(self, keystring):
-        self._keypress_greater(keystring)
+    def _keypress_kp_divide(self):
+        self._keypress_greater()
 
-    def _keypress_greater(self, keystring: str) -> str:
-        """Channel Thru
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Empty string
-        """
-        self.select_thru(keystring)
+    def _keypress_greater(self) -> None:
+        """Channel Thru"""
+        self.select_thru()
         self.grab_focus()
-        keystring = ""
-        App().window.statusbar.push(App().window.context_id, keystring)
-        return keystring
+        App().window.commandline.set_string("")
 
-    def _keypress_kp_add(self, keystring):
-        self._keypress_plus(keystring)
+    def _keypress_kp_add(self):
+        self._keypress_plus()
 
-    def _keypress_plus(self, keystring: str) -> str:
-        """Channel +
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Empty string
-        """
-        self.select_plus(keystring)
+    def _keypress_plus(self) -> None:
+        """Channel +"""
+        self.select_plus()
         self.grab_focus()
-        keystring = ""
-        App().window.statusbar.push(App().window.context_id, keystring)
-        return keystring
+        App().window.commandline.set_string("")
 
-    def _keypress_kp_subtract(self, keystring):
-        self._keypress_minus(keystring)
+    def _keypress_kp_subtract(self):
+        self._keypress_minus()
 
-    def _keypress_minus(self, keystring: str) -> str:
-        """Channel -
-
-        Args:
-            keystring: Keys buffer
-
-        Returns:
-            Empty string
-        """
-        self.select_minus(keystring)
+    def _keypress_minus(self) -> None:
+        """Channel -"""
+        self.select_minus()
         self.grab_focus()
-        keystring = ""
-        App().window.statusbar.push(App().window.context_id, keystring)
-        return keystring
+        App().window.commandline.set_string("")

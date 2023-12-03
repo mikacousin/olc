@@ -81,7 +81,7 @@ class Tabs:
             tab_name : Tab name found in self.tabs
         """
         if self.tabs[tab_name]:
-            App().window.statusbar.push(App().window.context_id, "")
+            App().window.commandline.set_string("")
             notebook = self.tabs[tab_name].get_parent()  # type: ignore[union-attr]
             page = notebook.page_num(self.tabs[tab_name])
             notebook.remove_page(page)

@@ -656,8 +656,7 @@ def _function_number_0(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.zero.emit("button-press-event", event)
         else:
-            App().window.keystring += "0"
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string("0")
 
 
 def do_numbers(msg: mido.Message, widget: ButtonWidget, keystring: str) -> None:
@@ -677,8 +676,7 @@ def do_numbers(msg: mido.Message, widget: ButtonWidget, keystring: str) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             widget.emit("button-press-event", event)
         else:
-            App().window.keystring += keystring
-            App().window.statusbar.push(App().window.context_id, App().window.keystring)
+            App().window.commandline.add_string(keystring)
 
 
 def _function_number_1(msg: mido.Message) -> None:
@@ -868,9 +866,8 @@ def _function_goto(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.goto.emit("button-press-event", event)
         else:
-            App().sequence.goto(App().window.keystring)
-            App().window.keystring = ""
-            App().window.statusbar.push(App().window.context_id, "")
+            App().sequence.goto(App().window.commandline.get_string())
+            App().window.commandline.set_string("")
 
 
 def _function_seq_minus(msg: mido.Message) -> None:
@@ -892,8 +889,7 @@ def _function_seq_minus(msg: mido.Message) -> None:
         else:
             App().midi.queue.enqueue(msg)
             App().sequence.sequence_minus()
-            App().window.keystring = ""
-            App().window.statusbar.push(App().window.context_id, "")
+            App().window.commandline.set_string("")
 
 
 def _function_seq_plus(msg: mido.Message) -> None:
@@ -915,8 +911,7 @@ def _function_seq_plus(msg: mido.Message) -> None:
         else:
             App().midi.queue.enqueue(msg)
             App().sequence.sequence_plus()
-            App().window.keystring = ""
-            App().window.statusbar.push(App().window.context_id, "")
+            App().window.commandline.set_string("")
 
 
 def _function_output(msg: mido.Message) -> None:

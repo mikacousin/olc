@@ -480,7 +480,7 @@ class Sequence:
         self.on_go = True
         self.thread = ThreadGoBack()
         self.thread.start()
-        return True
+        return False
 
     def pause(self, _action, _param):
         """Toggle pause"""

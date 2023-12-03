@@ -24,8 +24,6 @@ class CuesEditionTab(Gtk.Paned):
     """Cues edition"""
 
     def __init__(self):
-        self.keystring = ""
-
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -92,8 +90,7 @@ class CuesEditionTab(Gtk.Paned):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -107,15 +104,13 @@ class CuesEditionTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         # Channels View
-        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+        self.channels_view.on_key_press(keyname)
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -126,15 +121,13 @@ class CuesEditionTab(Gtk.Paned):
         App().tabs.close("memories")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_equal(self):
         """@ level"""
-        self.channels_view.at_level(self.keystring)
+        self.channels_view.at_level()
         self.channels_view.update()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_colon(self):
         """Level - %"""
@@ -233,10 +226,10 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             True or False
         """
-        if not is_float(self.keystring):
+        if not is_float(App().window.commandline.get_string()):
             return False
 
-        mem = float(self.keystring)
+        mem = float(App().window.commandline.get_string())
         if not mem:
             return False
 
@@ -262,8 +255,7 @@ class CuesEditionTab(Gtk.Paned):
                             widget.queue_draw()
                     # Tag filename as modified
                     App().ascii.set_modified()
-                self.keystring = ""
-                App().window.statusbar.push(App().window.context_id, self.keystring)
+                App().window.commandline.set_string("")
                 return True
 
         # Find selected memory
@@ -287,8 +279,7 @@ class CuesEditionTab(Gtk.Paned):
             # Tag filename as modified
             App().ascii.set_modified()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
         return True
 
     def _keypress_Insert(self):  # pylint: disable=C0103
@@ -297,7 +288,8 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             True or False
         """
-        if self.keystring == "":
+        keystring = App().window.commandline.get_string()
+        if keystring == "":
             # Insert memory with the next free number
             mem = False
             # Find Next free number
@@ -344,7 +336,7 @@ class CuesEditionTab(Gtk.Paned):
             return True
 
         # Insert memory with the given number
-        mem = float(self.keystring)
+        mem = float(keystring)
 
         # Memory already exist ?
         for item in App().memories:
@@ -384,9 +376,7 @@ class CuesEditionTab(Gtk.Paned):
         # Tag filename as modified
         App().ascii.set_modified()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
-
+        App().window.commandline.set_string("")
         return True
 
 

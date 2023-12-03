@@ -22,7 +22,6 @@ class PatchOutputsTab(Gtk.Box):
     """Tab to Patch by outputs"""
 
     def __init__(self):
-        self.keystring = ""
         self.last_out_selected = ""
         self.test = False
 
@@ -118,8 +117,7 @@ class PatchOutputsTab(Gtk.Box):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -133,12 +131,10 @@ class PatchOutputsTab(Gtk.Box):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -152,8 +148,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
         """Empty keys buffer"""
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _change_test_output(self, old: int, new: int) -> None:
         """Test a new output
@@ -264,14 +259,14 @@ class PatchOutputsTab(Gtk.Box):
             App().window.set_focus(child)
             self.last_out_selected = str(output)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_equal(self) -> None:
         """Output @ level"""
-        if not is_int(self.keystring):
+        keystring = App().window.commandline.get_string()
+        if not is_int(keystring):
             return
-        level = int(self.keystring)
+        level = int(keystring)
         if App().settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
@@ -282,17 +277,17 @@ class PatchOutputsTab(Gtk.Box):
             App().dmx.send_user_output(out, univ, level)
             index = App().universes.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_t(self) -> None:
         """Test Output @ level"""
         if self.test:
             self._stop_test()
             return
-        if not is_int(self.keystring):
+        keystring = App().window.commandline.get_string()
+        if not is_int(keystring):
             return
-        level = int(self.keystring)
+        level = int(keystring)
         if App().settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
@@ -305,8 +300,7 @@ class PatchOutputsTab(Gtk.Box):
             index = App().universes.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
         self.test = True
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _stop_test(self) -> None:
         """Stop test mode"""
@@ -354,8 +348,7 @@ class PatchOutputsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_out_selected = str(to_out)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_KP_Add(self):  # pylint: disable=C0103
         """+"""
@@ -369,8 +362,7 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.select_child(child)
             self.last_out_selected = str(output)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_KP_Subtract(self):  # pylint: disable=C0103
         """-"""
@@ -384,21 +376,20 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.unselect_child(child)
             self.last_out_selected = str(output)
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_c(self):
         """Patch Channel(s)"""
         several = False
         # Find Selected Outputs
         sel = self.flowbox.get_selected_children()
-        if self.keystring and (not sel or not is_int(self.keystring)):
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+        keystring = App().window.commandline.get_string()
+        if keystring and (not sel or not is_int(keystring)):
+            App().window.commandline.set_string("")
             return
         # If several outputs: choose how to patch
-        if len(sel) > 1 and is_non_nul_int(self.keystring):
-            dialog = SeveralOutputsDialog(App().window, int(self.keystring), len(sel))
+        if len(sel) > 1 and is_non_nul_int(keystring):
+            dialog = SeveralOutputsDialog(App().window, int(keystring), len(sel))
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 several = True
@@ -414,8 +405,7 @@ class PatchOutputsTab(Gtk.Box):
             self.last_out_selected = str(output + (512 * index))
 
         App().ascii.set_modified()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _patch(self, sel, several):
         """Patch Channel
@@ -433,7 +423,8 @@ class PatchOutputsTab(Gtk.Box):
             univ = patchwidget.universe
             index = App().universes.index(univ)
             # Unpatch if no entry
-            if self.keystring in ["", "0"]:
+            keystring = App().window.commandline.get_string()
+            if keystring in ["", "0"]:
                 if univ in App().patch.outputs and output in App().patch.outputs[univ]:
                     channel = App().patch.outputs[univ][output][0]
                     App().patch.unpatch(channel, output, univ)
@@ -441,7 +432,7 @@ class PatchOutputsTab(Gtk.Box):
                     channel = 0
             # Patch
             else:
-                channel = int(self.keystring)
+                channel = int(keystring)
                 if 0 < channel <= MAX_CHANNELS:
                     self.__patch(channel, patchwidget, several, i)
             # Update outputs view
@@ -484,10 +475,11 @@ class PatchOutputsTab(Gtk.Box):
             universe is 513.
         """
         output = None
-        if self.keystring:
-            if "." in self.keystring:
-                if self.keystring.index("."):
-                    split = self.keystring.split(".")
+        keystring = App().window.commandline.get_string()
+        if keystring:
+            if "." in keystring:
+                if keystring.index("."):
+                    split = keystring.split(".")
                     out = int(split[0])
                     if 0 < out <= 512:
                         univ = int(split[1])
@@ -495,7 +487,7 @@ class PatchOutputsTab(Gtk.Box):
                             index = App().universes.index(univ)
                             output = out + (index * 512)
             else:
-                output = int(self.keystring)
+                output = int(keystring)
                 if output < 1 or output > 512:
                     output = None
         return output

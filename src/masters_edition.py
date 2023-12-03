@@ -24,8 +24,6 @@ class MastersTab(Gtk.Paned):
     """Masters edition"""
 
     def __init__(self):
-        self.keystring = ""
-
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -280,8 +278,7 @@ class MastersTab(Gtk.Paned):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -295,12 +292,10 @@ class MastersTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         # Channels View
         treeview = self.stack.get_visible_child()
@@ -308,11 +303,9 @@ class MastersTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
             if App().masters[row].content_type not in (0, 3) or keyname in "f":
-                self.keystring = self.channels_view.on_key_press(
-                    keyname, self.keystring
-                )
+                self.channels_view.on_key_press(keyname)
         elif keyname in "f":
-            self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+            self.channels_view.on_key_press(keyname)
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
@@ -323,15 +316,13 @@ class MastersTab(Gtk.Paned):
         App().tabs.close("masters")
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_equal(self):
         """@ level"""
-        self.channels_view.at_level(self.keystring)
+        self.channels_view.at_level()
         self.channels_view.update()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_colon(self):
         """Level - %"""
@@ -419,8 +410,7 @@ class MastersTab(Gtk.Paned):
                     # Update Group Tab if open
                     if App().tabs.tabs["groups"]:
                         App().tabs.tabs["groups"].channels_view.update()
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.set_string("")
             return True
         return False
 

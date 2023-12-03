@@ -168,14 +168,12 @@ class GroupChannelsView(ChannelsView):
 class GroupTab(Gtk.Paned):
     """Groups edition"""
 
-    keystring: str
     last_group_selected: str
     channels_view: GroupChannelsView
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
     def __init__(self):
-        self.keystring = ""
         self.last_group_selected = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -231,8 +229,7 @@ class GroupTab(Gtk.Paned):
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.keystring += keyname
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -246,23 +243,20 @@ class GroupTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.keystring += keyname[3:]
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.keystring += "."
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.add_string(".")
 
         # Channels View
-        self.keystring = self.channels_view.on_key_press(keyname, self.keystring)
+        self.channels_view.on_key_press(keyname)
 
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
 
     def _keypress_BackSpace(self) -> None:  # pylint: disable=C0103
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_Escape(self) -> None:  # pylint: disable=C0103
         """Close Tab"""
@@ -273,8 +267,7 @@ class GroupTab(Gtk.Paned):
         if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             flowboxchild.get_child().popover.popup()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_Right(self) -> None:  # pylint: disable=C0103
         """Next Group"""
@@ -369,8 +362,9 @@ class GroupTab(Gtk.Paned):
         """Select Group"""
         self.flowbox.unselect_all()
 
-        if self.keystring != "":
-            group = float(self.keystring)
+        keystring = App().window.commandline.get_string()
+        if keystring != "":
+            group = float(keystring)
             flowbox_children = self.flowbox.get_children()
             for flowbox_child in flowbox_children:
                 group_widget = flowbox_child.get_child()
@@ -387,8 +381,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.channels_view.last_selected_channel = ""
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _update_master_level(self) -> None:
         """Update selected master channels levels"""
@@ -404,44 +397,40 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_equal(self) -> None:
         """@ Level"""
-        self.channels_view.at_level(self.keystring)
+        self.channels_view.at_level()
         self.channels_view.update()
         self._update_master_level()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
         self._update_master_level()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
         self._update_master_level()
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
 
     def _keypress_N(self) -> None:  # pylint: disable=C0103
         """New Group"""
+        keystring = App().window.commandline.get_string()
         # If no group number, use the next one
-        if self.keystring == "":
+        if keystring == "":
             group_nb = 1.0 if len(App().groups) == 0 else App().groups[-1].index + 1.0
-        elif is_non_nul_float(self.keystring):
-            group_nb = float(self.keystring)
+        elif is_non_nul_float(keystring):
+            group_nb = float(keystring)
         else:
-            self.keystring = ""
-            App().window.statusbar.push(App().window.context_id, self.keystring)
+            App().window.commandline.set_string("")
             return
 
         for group in App().groups:
             if group.index == group_nb:
-                self.keystring = ""
-                App().window.statusbar.push(App().window.context_id, self.keystring)
+                App().window.commandline.set_string("")
                 return
 
         channels: Dict[int, int] = {}
@@ -466,8 +455,7 @@ class GroupTab(Gtk.Paned):
         self.channels_view.flowbox.unselect_all()
         self.channels_view.update()
 
-        self.keystring = ""
-        App().window.statusbar.push(App().window.context_id, self.keystring)
+        App().window.commandline.set_string("")
         App().ascii.set_modified()
 
     def _keypress_Delete(self) -> None:  # pylint: disable=C0103

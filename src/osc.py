@@ -15,7 +15,7 @@
 from typing import Optional
 import liblo
 from gi.repository import Gdk, GLib
-from olc.define import App
+from olc.define import App, MAX_FADER_PAGE
 
 
 class Osc:
@@ -85,288 +85,204 @@ class OscServer(liblo.ServerThread):
         self.serv_port = App().settings.get_int("osc-server-port")
         # Create Thread server
         super().__init__(self.serv_port)
-
-        # TODO :
-        self.add_method("/pad/enter", None, self._fallback)  # Enter
-        self.add_method("/pad/blackout", None, self._fallback)  # Blackout (1 ou 0)
-        self.add_method("/pad/freeze", None, self._fallback)  # Freeze (1 ou 0)
-        self.add_method("/pad/scene", None, self._fallback)  # X1
-
-        self.add_method("/seq/pause", None, self._fallback)  # Pause
-        self.add_method("/seq/goback", None, self._fallback)  # Go Back
-        self.add_method("/seq/fadeX1", None, self._fallback)  # (float entre 0 et 255)
-        self.add_method("/seq/fadeX2", None, self._fallback)  # (float entre 0 et 255)
-
-        # For TouchOSC :
-        # Master 1 (float entre 0 et 255)
-        self.add_method("/sub/1/level", "f", self._fallback)
-        # Master 2 (float entre 0 et 255)
-        self.add_method("/sub/2/level", "f", self._fallback)
-        # Master 3 (float entre 0 et 255)
-        self.add_method("/sub/3/level", "f", self._fallback)
-        # Master 4 (float entre 0 et 255)
-        self.add_method("/sub/4/level", "f", self._fallback)
-        # Master 5 (float entre 0 et 255)
-        self.add_method("/sub/5/level", "f", self._fallback)
-        # Master 6 (float entre 0 et 255)
-        self.add_method("/sub/6/level", "f", self._fallback)
-        # Master 7 (float entre 0 et 255)
-        self.add_method("/sub/7/level", "f", self._fallback)
-        # Master 8 (float entre 0 et 255)
-        self.add_method("/sub/8/level", "f", self._fallback)
-        # Master 9 (float entre 0 et 255)
-        self.add_method("/sub/9/level", "f", self._fallback)
-        # Master 10 (float entre 0 et 255)
-        self.add_method("/sub/10/level", "f", self._fallback)
-        # Master 1A (float entre 0 et 255)
-        self.add_method("/sub/11/level", "f", self._fallback)
-        # Master 12 (float entre 0 et 255)
-        self.add_method("/sub/12/level", "f", self._fallback)
-
-        # Register a fallback for unhandled messages
-        self.add_method(None, None, self._fallback)
-
         # Launch server
         self.start()
 
-    def _fallback(self, path, args, types, src):
-        print(f"Got unknown message '{path}' from '{src.url}'")
-        for a, t in zip(args, types):
-            print(f"received argument {a} of type {t}")
+    @liblo.make_method("/olc/command_line", None)
+    def _commandline(self, _path, _args, _types):
+        App().osc.client.send(
+            "/olc/command_line", ("s", App().window.commandline.get_string())
+        )
 
-    @liblo.make_method("/seq/go", "i")
-    def _seqgo_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().osc.client.send("/seq/go", App().window.keystring)
-                GLib.idle_add(App().sequence.do_go, None, None)
+    @liblo.make_method("/olc/key/go", None)
+    def _go(self, _path, _args, _types):
+        App().osc.client.send("/olc/key/go")
+        GLib.idle_add(App().sequence.do_go, None, None)
 
-    @liblo.make_method("/seq/plus", "i")
-    def _seqplus_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                GLib.idle_add(App().sequence.sequence_plus)
+    @liblo.make_method("/olc/key/pause", "i")
+    def _pause(self, _path, _args, _types):
+        App().osc.client.send("/seq/pause")
+        GLib.idle_add(App().sequence.pause, None, None)
 
-    @liblo.make_method("/seq/moins", "i")
-    def _seqless_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                GLib.idle_add(App().sequence.sequence_minus)
+    @liblo.make_method("/olc/key/goback", "i")
+    def _goback(self, _path, _args, _types):
+        App().osc.client.send("/seq/goback")
+        GLib.idle_add(App().sequence.go_back, None, None)
 
-    @liblo.make_method("/pad/1", None)
-    def _pad1_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "1"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+    @liblo.make_method("/olc/key/seq+", "i")
+    def _seq_plus(self, _path, _args, _types):
+        GLib.idle_add(App().sequence.sequence_plus)
+
+    @liblo.make_method("/olc/key/seq-", "i")
+    def _seq_minus(self, _path, _args, _types):
+        GLib.idle_add(App().sequence.sequence_minus)
+
+    @liblo.make_method("/olc/key/clear", None)
+    def _clear(self, _path, _args, _types):
+        App().window.commandline.set_string("")
+
+    @liblo.make_method("/olc/key/1", None)
+    def _1(self, _path, _args, _types):
+        App().window.commandline.add_string("1")
+
+    @liblo.make_method("/olc/key/2", None)
+    def _2(self, _path, _args, _types):
+        App().window.commandline.add_string("2")
+
+    @liblo.make_method("/olc/key/3", None)
+    def _3(self, _path, _args, _types):
+        App().window.commandline.add_string("3")
+
+    @liblo.make_method("/olc/key/4", None)
+    def _4(self, _path, _args, _types):
+        App().window.commandline.add_string("4")
+
+    @liblo.make_method("/olc/key/5", None)
+    def _5(self, _path, _args, _types):
+        App().window.commandline.add_string("5")
+
+    @liblo.make_method("/olc/key/6", None)
+    def _6(self, _path, _args, _types):
+        App().window.commandline.add_string("6")
+
+    @liblo.make_method("/olc/key/7", None)
+    def _7(self, _path, _args, _types):
+        App().window.commandline.add_string("7")
+
+    @liblo.make_method("/olc/key/8", None)
+    def _8(self, _path, _args, _types):
+        App().window.commandline.add_string("8")
+
+    @liblo.make_method("/olc/key/9", None)
+    def _9(self, _path, _args, _types):
+        App().window.commandline.add_string("9")
+
+    @liblo.make_method("/olc/key/0", None)
+    def _0(self, _path, _args, _types):
+        App().window.commandline.add_string("0")
+
+    @liblo.make_method("/olc/key/.", None)
+    def _period(self, _path, _args, _types):
+        App().window.commandline.add_string(".")
+
+    @liblo.make_method("/olc/key/channel", None)
+    def _channel(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_c
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/all", None)
+    def _all(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_a
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/level", None)
+    def _level(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_equal
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/ff", None)
+    def _full(self, _path, _args, _types):
+        if App().settings.get_boolean("percent"):
+            App().window.commandline.set_string("100")
+        else:
+            App().window.commandline.set_string("255")
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_equal
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/thru", None)
+    def _thru(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_greater
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/+", None)
+    def _plus(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_plus
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/-", None)
+    def _minus(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_minus
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/+%", None)
+    def _pluspercent(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_exclam
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/key/-%", None)
+    def _minuspercent(self, _path, _args, _types):
+        event = Gdk.EventKey()
+        event.keyval = Gdk.KEY_colon
+        App().window.on_key_press_event(None, event)
+
+    @liblo.make_method("/olc/fader/pageupdate", None)
+    def _sub_launch(self, _path, _args, _types):
+        App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
+        for master in App().masters:
+            if master.page == App().fader_page:
+                App().osc.client.send(
+                    f"/olc/fader/1/{master.number}/label", ("s", master.text)
                 )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
-    @liblo.make_method("/pad/2", None)
-    def _pad2_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "2"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+    @liblo.make_method("/olc/fader/page+", None)
+    def _fader_page_plus(self, _path, _args, _types):
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            App().virtual_console.fader_page_plus.emit("button-press-event", event)
+            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+            App().virtual_console.fader_page_plus.emit("button-release-event", event)
+        else:
+            App().fader_page += 1
+            if App().fader_page > MAX_FADER_PAGE:
+                App().fader_page = 1
+            App().midi.update_masters()
+        App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
+        for master in App().masters:
+            if master.page == App().fader_page:
+                App().osc.client.send(
+                    f"/olc/fader/1/{master.number}/label", ("s", master.text)
                 )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
-    @liblo.make_method("/pad/3", None)
-    def _pad3_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "3"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
+    @liblo.make_method("/olc/fader/page-", None)
+    def _fader_page_minus(self, _path, _args, _types):
+        if App().virtual_console:
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            App().virtual_console.fader_page_minus.emit("button-press-event", event)
+            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+            App().virtual_console.fader_page_minus.emit("button-release-event", event)
+        else:
+            App().fader_page -= 1
+            if App().fader_page < 1:
+                App().fader_page = MAX_FADER_PAGE
+            App().midi.update_masters()
+        App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
+        for master in App().masters:
+            if master.page == App().fader_page:
+                App().osc.client.send(
+                    f"/olc/fader/1/{master.number}/label", ("s", master.text)
                 )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
 
-    @liblo.make_method("/pad/4", None)
-    def _pad4_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "4"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/5", None)
-    def _pad5_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "5"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/6", None)
-    def _pad6_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "6"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/7", None)
-    def _pad7_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "7"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/8", None)
-    def _pad8_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "8"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/9", None)
-    def _pad9_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "9"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/0", None)
-    def _pad0_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "0"
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/dot", None)
-    def _paddot_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                App().window.keystring += "."
-                App().window.statusbar.push(
-                    App().window.context_id, App().window.keystring
-                )
-                App().osc.client.send("/pad/saisieText", App().window.keystring)
-
-    @liblo.make_method("/pad/channel", None)
-    def _padchannel_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_c
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/all", None)
-    def _padall_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_a
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/level", None)
-    def _padlevel_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_equal
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/ff", None)
-    def _padfull_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                if App().settings.get_boolean("percent"):
-                    App().window.keystring = "100"
-                else:
-                    App().window.keystring = "255"
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_equal
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/thru", None)
-    def _padthru_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_greater
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/plus", None)
-    def _padplus_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_plus
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/moins", None)
-    def _padminus_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_minus
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/pluspourcent", None)
-    def _padpluspourcent_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_exclam
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/moinspourcent", None)
-    def _padminuspourcent_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_colon
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/pad/clear", None)
-    def _padclear_cb(self, _path, args, types):
-        for a, _t in zip(args, types):
-            if a == 1:
-                event = Gdk.EventKey()
-                event.keyval = Gdk.KEY_BackSpace
-                App().window.on_key_press_event(None, event)
-                App().osc.client.send("/pad/saisieText", "")
-
-    @liblo.make_method("/sub/launch", None)
-    def _sub_launch_cb(self, _path, args, types):
-        for i in range(10):
-            App().osc.client.send(
-                "/subStick/text", ("i", i + 1), ("s", App().masters[i].text)
-            )
-
-    @liblo.make_method("/subStick/level", "ii")
-    def _sub_level_cb(self, _path, args, _types):
-        master_index, level = args
+    @liblo.make_method("/olc/fader/1/1/level", "i")
+    @liblo.make_method("/olc/fader/1/2/level", "i")
+    @liblo.make_method("/olc/fader/1/3/level", "i")
+    @liblo.make_method("/olc/fader/1/4/level", "i")
+    @liblo.make_method("/olc/fader/1/5/level", "i")
+    @liblo.make_method("/olc/fader/1/6/level", "i")
+    @liblo.make_method("/olc/fader/1/7/level", "i")
+    @liblo.make_method("/olc/fader/1/8/level", "i")
+    @liblo.make_method("/olc/fader/1/9/level", "i")
+    @liblo.make_method("/olc/fader/1/10/level", "i")
+    def _sub_level(self, path, args, _types):
+        master_index = int(path.split("/")[4])
+        level = args[0]
         if App().virtual_console:
             GLib.idle_add(
                 App().virtual_console.masters[master_index - 1].set_value, level
@@ -381,4 +297,10 @@ class OscServer(liblo.ServerThread):
                 if master.page == App().fader_page and master.number == master_index:
                     break
             master.set_level(level)
-        App().osc.client.send("/subStick/level", ("i", master_index), ("i", level))
+        App().osc.client.send(path, ("i", level))
+
+    @liblo.make_method(None, None)
+    def _fallback(self, path, args, types, src):
+        print(f"Got unknown message '{path}' from '{src.url}'")
+        for a, t in zip(args, types):
+            print(f"received argument {a} of type {t}")
