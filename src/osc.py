@@ -96,24 +96,21 @@ class OscServer(liblo.ServerThread):
 
     @liblo.make_method("/olc/key/go", None)
     def _go(self, _path, _args, _types):
-        App().osc.client.send("/olc/key/go")
         GLib.idle_add(App().sequence.do_go, None, None)
 
-    @liblo.make_method("/olc/key/pause", "i")
+    @liblo.make_method("/olc/key/pause", None)
     def _pause(self, _path, _args, _types):
-        App().osc.client.send("/seq/pause")
         GLib.idle_add(App().sequence.pause, None, None)
 
-    @liblo.make_method("/olc/key/goback", "i")
+    @liblo.make_method("/olc/key/goback", None)
     def _goback(self, _path, _args, _types):
-        App().osc.client.send("/seq/goback")
         GLib.idle_add(App().sequence.go_back, None, None)
 
-    @liblo.make_method("/olc/key/seq+", "i")
+    @liblo.make_method("/olc/key/seq+", None)
     def _seq_plus(self, _path, _args, _types):
         GLib.idle_add(App().sequence.sequence_plus)
 
-    @liblo.make_method("/olc/key/seq-", "i")
+    @liblo.make_method("/olc/key/seq-", None)
     def _seq_minus(self, _path, _args, _types):
         GLib.idle_add(App().sequence.sequence_minus)
 
@@ -183,7 +180,7 @@ class OscServer(liblo.ServerThread):
         event.keyval = Gdk.KEY_equal
         App().window.on_key_press_event(None, event)
 
-    @liblo.make_method("/olc/key/ff", None)
+    @liblo.make_method("/olc/key/full", None)
     def _full(self, _path, _args, _types):
         if App().settings.get_boolean("percent"):
             App().window.commandline.set_string("100")
@@ -280,7 +277,7 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method("/olc/fader/1/8/level", "i")
     @liblo.make_method("/olc/fader/1/9/level", "i")
     @liblo.make_method("/olc/fader/1/10/level", "i")
-    def _sub_level(self, path, args, _types):
+    def _fader_level(self, path, args, _types):
         master_index = int(path.split("/")[4])
         level = args[0]
         if App().virtual_console:
@@ -298,6 +295,28 @@ class OscServer(liblo.ServerThread):
                     break
             master.set_level(level)
         App().osc.client.send(path, ("i", level))
+
+    @liblo.make_method("/olc/fader/1/1/flash", "i")
+    @liblo.make_method("/olc/fader/1/2/flash", "i")
+    @liblo.make_method("/olc/fader/1/3/flash", "i")
+    @liblo.make_method("/olc/fader/1/4/flash", "i")
+    @liblo.make_method("/olc/fader/1/5/flash", "i")
+    @liblo.make_method("/olc/fader/1/6/flash", "i")
+    @liblo.make_method("/olc/fader/1/7/flash", "i")
+    @liblo.make_method("/olc/fader/1/8/flash", "i")
+    @liblo.make_method("/olc/fader/1/9/flash", "i")
+    @liblo.make_method("/olc/fader/1/10/flash", "i")
+    def _fader_flash(self, path, args, _types):
+        pressed = args[0]
+        master_index = int(path.split("/")[4])
+        master = None
+        for master in App().masters:
+            if master.page == App().fader_page and master.number == master_index:
+                break
+        if pressed:
+            master.flash_on()
+        else:
+            master.flash_off()
 
     @liblo.make_method(None, None)
     def _fallback(self, path, args, types, src):

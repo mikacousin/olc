@@ -287,32 +287,19 @@ def _function_flash(msg: mido.Message, fader_index: int) -> None:
         fader_index: Master number
     """
     if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.flashes[fader_index - 1].emit(
-                "button-release-event", event
-            )
-        else:
-            App().midi.queue.enqueue(msg)
-            master = None
-            for master in App().masters:
-                if master.page == App().fader_page and master.number == fader_index:
-                    break
-            master.set_level(master.old_value)
+        App().midi.queue.enqueue(msg)
+        master = None
+        for master in App().masters:
+            if master.page == App().fader_page and master.number == fader_index:
+                break
+        master.flash_off()
     elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.flashes[fader_index - 1].emit(
-                "button-press-event", event
-            )
-        else:
-            App().midi.queue.enqueue(msg)
-            master = None
-            for master in App().masters:
-                if master.page == App().fader_page and master.number == fader_index:
-                    break
-            master.old_value = master.value
-            master.set_level(255)
+        App().midi.queue.enqueue(msg)
+        master = None
+        for master in App().masters:
+            if master.page == App().fader_page and master.number == fader_index:
+                break
+        master.flash_on()
 
 
 def _function_go(msg: mido.Message) -> None:

@@ -855,11 +855,8 @@ class VirtualConsoleWindow(Gtk.Window):
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
-                    # Save Master's value
                     index = i + ((App().fader_page - 1) * 10)
-                    App().masters[index].old_value = App().masters[index].value
-                    self.masters[i].set_value(255)
-                    App().masters[index].set_level(255)
+                    App().masters[index].flash_on()
 
     def flash_off(self, widget, _event):
         """Flash button released
@@ -870,10 +867,8 @@ class VirtualConsoleWindow(Gtk.Window):
         if not self.midi_learn:
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
-                    # Restore Master's value
                     index = i + ((App().fader_page - 1) * 10)
-                    self.masters[i].set_value(App().masters[index].old_value)
-                    App().masters[index].set_level(App().masters[index].old_value)
+                    App().masters[index].flash_off()
 
     def on_flash(self, widget):
         """Flash button clicked

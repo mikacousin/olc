@@ -123,6 +123,19 @@ class Master:
         self.value = value
         self.level_changed()
 
+    def flash_on(self) -> None:
+        """Flash Master at full"""
+        self.old_value = self.value
+        self.set_level(255)
+        if App().virtual_console:
+            App().virtual_console.masters[self.number - 1].set_value(255)
+
+    def flash_off(self) -> None:
+        """Stop flash"""
+        self.set_level(self.old_value)
+        if App().virtual_console:
+            App().virtual_console.masters[self.number - 1].set_value(self.old_value)
+
     def level_changed(self):
         """Master level has changed"""
         # Type : None
