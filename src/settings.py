@@ -374,6 +374,7 @@ class SettingsTab(Gtk.Box):
         if self._is_ip(ip_addr):
             App().settings.set_value("osc-host", GLib.Variant("s", ip_addr))
             App().osc.client.target_changed(host=ip_addr)
+            self.get_parent().grab_focus()
         else:
             widget.set_text(App().settings.get_string("osc-host"))
 

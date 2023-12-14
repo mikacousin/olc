@@ -38,6 +38,7 @@ olc_sources = [
   'masters_edition.py',
   'ola_module.py',
   'osc.py',
+  'patch.py',
   'patch_channels.py',
   'patch_outputs.py',
   'sequence.py',

@@ -12,10 +12,10 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional
+from typing import Optional, Tuple
 import liblo
 from gi.repository import Gdk, GLib
-from olc.define import App, MAX_FADER_PAGE
+from olc.define import App, MAX_FADER_PAGE, UNIVERSES
 
 
 class Osc:
@@ -318,8 +318,45 @@ class OscServer(liblo.ServerThread):
         else:
             master.flash_off()
 
+    @liblo.make_method("/olc/patch/channel", None)
+    def _patch_channel(self, _path, _args, _types):
+        App().patch.by_outputs.patch_channel(True)
+
+    @liblo.make_method("/olc/patch/output", None)
+    def _patch_output(self, _path, _args, _types):
+        App().patch.by_outputs.select_output()
+
+    @liblo.make_method("/olc/patch/thru", None)
+    def _patch_thru(self, _path, _args, _types):
+        App().patch.by_outputs.thru()
+
+    @liblo.make_method("/olc/patch/+", None)
+    def _patch_plus(self, _path, _args, _types):
+        App().patch.by_outputs.add_output()
+
+    @liblo.make_method("/olc/patch/-", None)
+    def _patch_minus(self, _path, _args, _types):
+        App().patch.by_outputs.del_output()
+
     @liblo.make_method(None, None)
     def _fallback(self, path, args, types, src):
         print(f"Got unknown message '{path}' from '{src.url}'")
         for a, t in zip(args, types):
             print(f"received argument {a} of type {t}")
+
+    def _string_to_output(self) -> Tuple[Optional[int], Optional[int]]:
+        output = None
+        universe = None
+        keystring = App().window.commandline.get_string()
+        if not keystring:
+            keystring = "0"
+        if "." in keystring:
+            if keystring.index("."):
+                split = keystring.split(".")
+                output = int(split[0])
+                if 0 < output <= 512:
+                    universe = int(split[1])
+        else:
+            output = int(keystring)
+            universe = UNIVERSES[0]
+        return (output, universe)

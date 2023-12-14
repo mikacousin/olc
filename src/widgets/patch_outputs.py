@@ -73,10 +73,8 @@ class PatchWidget(Gtk.DrawingArea):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Shift pressed: Thru
-            App().tabs.tabs[
-                "patch_outputs"
-            ].keystring = f"{self.output}.{self.universe}"
-            App().tabs.tabs["patch_outputs"].thru()
+            App().window.commandline.set_string(f"{self.output}.{self.universe}")
+            App().patch.by_outputs.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
             child = (
@@ -86,9 +84,12 @@ class PatchWidget(Gtk.DrawingArea):
             )
             if self.get_parent().is_selected():
                 App().tabs.tabs["patch_outputs"].flowbox.unselect_child(child)
+                App().window.commandline.set_string(f"{self.output}.{self.universe}")
+                App().patch.by_outputs.del_output()
             else:
                 App().tabs.tabs["patch_outputs"].flowbox.select_child(child)
-            App().tabs.tabs["patch_outputs"].last_out_selected = str(widget_index)
+                App().window.commandline.set_string(f"{self.output}.{self.universe}")
+                App().patch.by_outputs.add_output()
         else:
             child = (
                 App()
@@ -96,12 +97,8 @@ class PatchWidget(Gtk.DrawingArea):
                 .flowbox.get_child_at_index(widget_index)
             )
             if not child.is_selected():
-                # Deselect selected widgets
-                App().window.live_view.channels_view.flowbox.unselect_all()
-                App().tabs.tabs["patch_outputs"].flowbox.unselect_all()
-                # Select clicked widget
-                App().tabs.tabs["patch_outputs"].flowbox.select_child(child)
-                App().tabs.tabs["patch_outputs"].last_out_selected = str(widget_index)
+                App().window.commandline.set_string(f"{self.output}.{self.universe}")
+                App().patch.by_outputs.select_output()
             elif (
                 self.universe in App().patch.outputs
                 and self.output in App().patch.outputs[self.universe]

@@ -27,7 +27,7 @@ from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve import Curves  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS, MAX_FADER_PAGE, UNIVERSES  # noqa: E402
-from olc.dmx import Dmx, PatchDmx  # noqa: E402
+from olc.dmx import Dmx  # noqa: E402
 from olc.enttec_wing import WingPlayback  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
@@ -37,6 +37,7 @@ from olc.masters_edition import MastersTab  # noqa: E402
 from olc.midi import Midi  # noqa: E402
 from olc.ola_module import Ola  # noqa: E402
 from olc.osc import Osc  # noqa: E402
+from olc.patch import DMXPatch  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
@@ -96,7 +97,7 @@ class Application(Gtk.Application):
         # Universes
         self.universes = UNIVERSES
         # Create patch (1:1)
-        self.patch = PatchDmx(self.universes)
+        self.patch = DMXPatch(self.universes)
 
         # Create Main Playback
         self.sequence = Sequence(1, text="Main Playback")
