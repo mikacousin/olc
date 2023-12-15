@@ -96,7 +96,7 @@ class DMXPatch:
             curve: Curve number (default 0, Linear Curve)
         """
         if self.channels[channel] == [[None, None]]:
-            del self.channels[channel]
+            self.channels[channel] = [[output, univ]]
         if channel not in self.channels:
             self.channels[channel] = [[output, univ]]
         else:
