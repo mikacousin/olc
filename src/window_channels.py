@@ -49,12 +49,8 @@ class LiveView(Gtk.Notebook):
                 level = master.dmx[channel - 1]
                 if level:
                     widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
-        level_inde = -1
-        for inde in App().independents.independents:
-            if channel in inde.channels and inde.dmx[channel - 1] > level_inde:
-                level_inde = inde.dmx[channel - 1]
-        if level_inde != -1:
-            level = level_inde
+        if App().independents.dmx[channel - 1] > level:
+            level = App().independents.dmx[channel - 1]
             widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
         widget.level = level
         widget.next_level = next_level

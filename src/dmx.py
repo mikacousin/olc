@@ -55,12 +55,8 @@ class Dmx:
                 if master.dmx[channel] > level:
                     level = master.dmx[channel]
             # Independents
-            level_inde = -1
-            for inde in App().independents.independents:
-                if channel + 1 in inde.channels and inde.dmx[channel] > level_inde:
-                    level_inde = inde.dmx[channel]
-            if level_inde != -1:
-                level = level_inde
+            if App().independents.dmx[channel] > level:
+                level = App().independents.dmx[channel]
             for i in outputs:
                 output = i[0]
                 universe = i[1]

@@ -70,6 +70,7 @@ class Independent:
             self.dmx[channel - 1] = dmx_lvl
             next_level = App().sequence.get_next_channel_level(channel, dmx_lvl)
             App().window.live_view.update_channel_widget(channel, next_level)
+        App().independents.update_dmx()
         App().dmx.set_levels()
 
 
@@ -84,12 +85,24 @@ class Independents:
     def __init__(self):
         self.independents = []
         self.channels = set()
+        self.dmx = array.array("B", [0] * MAX_CHANNELS)
 
         # Create 9 Independents
         for i in range(6):
             self.add(Independent(i + 1))
         for i in range(6, 9):
             self.add(Independent(i + 1, inde_type="button"))
+
+    def update_dmx(self):
+        """Update DMX levels"""
+        for channel in self.channels:
+            channel -= 1
+            level_inde = -1
+            for inde in self.independents:
+                if channel + 1 in inde.channels and inde.dmx[channel] > level_inde:
+                    level_inde = inde.dmx[channel]
+            if level_inde != -1:
+                self.dmx[channel] = level_inde
 
     def add(self, independent):
         """Add an independent

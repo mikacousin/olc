@@ -130,11 +130,7 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.set_font_size(13 * self.scale)
         cr.move_to(6 * self.scale, 48 * self.scale)
         # Don't show level 0
-        if (
-            self.level != 0
-            or self.next_level != 0
-            and int(self.channel) - 1 not in App().independents.get_channels()
-        ):
+        if self.level != 0 or self.next_level != 0:
             if percent_level:
                 if self.level == 255:
                     cr.show_text("F")
@@ -153,7 +149,7 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
         # Don't draw next level if channel is in an independent
-        if int(self.channel) - 1 in App().independents.get_channels():
+        if int(self.channel) in App().independents.get_channels():
             return
         # Draw down icon
         if self.next_level < self.level:
