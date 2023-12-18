@@ -97,9 +97,7 @@ class DMXPatch:
         """
         if self.channels[channel] == [[None, None]]:
             self.channels[channel] = [[output, univ]]
-        if channel not in self.channels:
-            self.channels[channel] = [[output, univ]]
-        else:
+        elif [output, univ] not in self.channels[channel]:
             self.channels[channel].append([output, univ])
         if univ not in self.outputs:
             self.outputs[univ] = {}
