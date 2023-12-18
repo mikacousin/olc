@@ -86,29 +86,6 @@ class Dmx:
                 App().ola.thread.client.SendDmx(universe, self.frame[index])
                 self._old_frame[index] = self.frame[index][:]
 
-    def _send_user_outputs(self, univ) -> List[int]:
-        """Outputs at level on user demand
-
-        Args:
-            univ: Universes with level modification
-
-        Returns:
-            Universes with level modification updated
-        """
-        user_outputs_to_delete = []
-        for output, level in self.user_outputs.items():
-            out = output[0]
-            universe = output[1]
-            if universe not in univ:
-                univ.append(universe)
-            index = App().universes.index(universe)
-            self.frame[index][out - 1] = level
-            if not level:
-                user_outputs_to_delete.append(output)
-        for output in user_outputs_to_delete:
-            self.user_outputs.pop(output)
-        return univ
-
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
         for universe in UNIVERSES:
