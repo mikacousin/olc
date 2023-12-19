@@ -99,7 +99,7 @@ Then:
 > MIDI mapping is save in ASCII files.
 
 ### Open Sound Control
-By default olc listen on port 7000 and send infos to IP address 10.0.0.3, port 9000.  
+By default olc listen on port 7000 and send infos to IP address 127.0.0.1, port 9000.  
 This can be changed in settings
 <style>
 .tablelines table, .tablelines td, .tablelines th {
@@ -108,29 +108,42 @@ This can be changed in settings
 </style>
 OSC Path | Value | Command
 -------- | ----- | -------
-/seq/go | 1 | Go
-/seq/plus | 1 | Seq+
-/seq/moins | 1 | Seq-
-/pad/1 | | 1
-/pad/2 | | 2
-/pad/3 | | 3
-/pad/4 | | 4
-/pad/5 | | 5
-/pad/6 | | 6
-/pad/7 | | 7
-/pad/8 | | 8
-/pad/9 | | 9
-/pad/9 | | 0
-/pad/dot | | .
-/pad/clear | | C
-/pad/channel | | Ch
-/pad/thru | | Thru
-/pad/plus | | +
-/pad/moins | | -
-/pad/all | | All
-/pad/level | | @
-/pad/pluspourcent | | +%
-/pad/moinspourcent | | -%
-/pad/ff | | Full
-/subStick/flash | master(1-40), level(0-255) | Flash Master
-/subStick/level | master(1-40), level(0-255) | Master at level
+/olc/key/go | | Go
+/olc/key/seq+ | | Seq+
+/olc/key/seq- | | Seq-
+/olc/key/pause | | Pause
+/olc/key/goback | | Go Back
+/olc/key/1 | | 1
+/olc/key/2 | | 2
+/olc/key/3 | | 3
+/olc/key/4 | | 4
+/olc/key/5 | | 5
+/olc/key/6 | | 6
+/olc/key/7 | | 7
+/olc/key/8 | | 8
+/olc/key/9 | | 9
+/olc/key/0 | | 0
+/olc/key/. | | .
+/olc/key/clear | | Clear Command Line
+/olc/key/channel | | Channel
+/olc/key/thru | | Thru
+/olc/key/+ | | +
+/olc/key/- | | -
+/olc/key/all | | All
+/olc/key/level | | @
+/pad/+% | | +%
+/pad/-% | | -%
+/olc/key/full | | Full
+/olc/fader/pageupdate | | Send Faders Page infos
+/olc/fader/page | int (de 1 à 10) | Send Fader Page number
+/olc/fader/1/x/label | str | Send Fader n°x (1 - 10) name
+/olc/fader/page+ | | Next Faders Page
+/olc/fader/page- | | Prev Faders Page
+/olc/fader/1/x/level | int (de 0 à 255) | Fader n°x level
+/olc/fader/1/x/flash | int (0 ou 1) | Flash Fader n°x
+/olc/patch/output | | Select Output to patch
+/olc/patch/thru | | Output Thru
+/olc/patch/+ | | Add Output
+/olc/patch/- | | Remove Output
+/olc/patch/channel | | Patch Outputs to channel
+/olc/patch/selected_outputs | | Send selected Outputs
