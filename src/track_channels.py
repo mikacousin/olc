@@ -223,7 +223,7 @@ class TrackChannelsTab(Gtk.Grid):
             index = child.get_index()
             self.last_step_selected = str(index)
 
-    def _keypress_m(self):
+    def _keypress_equal(self):
         """Modify Level"""
 
         # Find selected Channel
@@ -231,7 +231,7 @@ class TrackChannelsTab(Gtk.Grid):
         for flowboxchild in sel:
             widget = flowboxchild.get_child()
             step = widget.step
-            channel = self.channels[self.channel_selected]
+            channel = self.channels[self.channel_selected] + 1
             level = int(App().window.commandline.get_string())
 
             if App().settings.get_boolean("percent"):
@@ -240,6 +240,9 @@ class TrackChannelsTab(Gtk.Grid):
                 App().sequence.steps[step].cue.channels[channel] = level
                 widget.levels[self.channel_selected] = level
                 widget.queue_draw()
+                App().tabs.refresh_all()
+                App().window.live_view.channels_view.update()
+                App().ascii.set_modified()
 
         App().window.commandline.set_string("")
 
