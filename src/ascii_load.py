@@ -116,8 +116,10 @@ class AsciiParser:
                 flag_preset = False
             # Chasers
             if flag_seq and type_seq == "Chaser":
-                if line[:4].upper() == "TEXT":
+                if line[:4].upper() == "TEXT" and not App().chasers[-1].text:
                     App().chasers[-1].text = line[5:]
+                if line[:6].upper() == "$$TEXT" and not App().chasers[-1].text:
+                    App().chasers[-1].text = line[7:]
                 if line[:4].upper() == "$CUE":
                     in_cue = True
                     channels = {}
