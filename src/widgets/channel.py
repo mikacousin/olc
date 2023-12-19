@@ -52,7 +52,8 @@ class ChannelWidget(Gtk.DrawingArea):
         channels_view = flowbox.get_parent().get_parent().get_parent()
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            channels_view.select_thru(self.channel)
+            App().window.commandline.set_string(str(self.channel))
+            channels_view.select_thru()
         elif flowboxchild.is_selected():
             flowbox.unselect_child(flowboxchild)
         else:

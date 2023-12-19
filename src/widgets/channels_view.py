@@ -353,6 +353,7 @@ class ChannelsView(Gtk.Box):
             self.flowbox.invalidate_filter()
             string = keystring
         self.last_selected_channel = string
+        App().window.commandline.set_string("")
 
     def at_level(self) -> None:
         """Channels at level"""
