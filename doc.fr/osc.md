@@ -2,7 +2,7 @@
 Par défaut, olc écoute sur le port 7000 et envoie les infos à l'adresse IP 127.0.0.1, port 9000.  
 Ceci peut être modifié dans les Paramètres.
 
-Vous pouvez [télécharger une télécommande](../assets/olc.tosc) basée sur [TouchOSC](https://hexler.net/touchosc).
+Vous pouvez [télécharger une télécommande](https://github.com/mikacousin/olc/raw/assets/olc.tosc) basée sur [TouchOSC](https://hexler.net/touchosc).
 
 <style>
 .tablelines table, .tablelines td, .tablelines th {
