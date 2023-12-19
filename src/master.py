@@ -61,8 +61,8 @@ class Master:
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
         self.value = 0.0
         self.old_value = 0
+        self.channels = set()
 
-        # Type 0: None
         if self.content_type == 0:
             pass
         elif self.content_type == 1:
@@ -90,8 +90,69 @@ class Master:
                 self.text = group.text
         else:
             print("Master Type : Unknown")
+        self.update_channels()
 
-    def set_level(self, value):
+    def update_channels(self) -> None:
+        """Update channels of master"""
+        self.channels.clear()
+        if self.content_type == 1:
+            if cue := next(
+                mem for mem in App().memories if mem.memory == self.content_value
+            ):
+                for channel in cue.channels:
+                    self.channels.add(channel)
+        elif self.content_type == 2:
+            for channel in self.content_value:
+                self.channels.add(channel)
+        elif self.content_type == 3:
+            if chaser := next(
+                chs for chs in App().chasers if chs.index == self.content_value
+            ):
+                self.channels = chaser.channels
+        elif self.content_type == 13:
+            if group := next(
+                grp for grp in App().groups if grp.index == self.content_value
+            ):
+                for channel in group.channels:
+                    self.channels.add(channel)
+
+    def set_content_type(self, content_type: int) -> None:
+        """Set content type
+
+        Args:
+            content_type: Content type
+        """
+        self.content_type = content_type
+        self.content_value = {} if content_type == 2 else -1
+        self.text = ""
+        self.channels.clear()
+
+    def set_content_value(self, value: float) -> None:
+        """Set content value
+
+        Args:
+            value: Content value
+        """
+        self.content_value = value
+        self.text = ""
+        if self.content_type == 1:
+            for cue in App().memories:
+                if cue.memory == value:
+                    self.text = cue.text
+                    break
+        elif self.content_type == 13:
+            for grp in App().groups:
+                if grp.index == value:
+                    self.text = grp.text
+                    break
+        elif self.content_type == 3:
+            for chaser in App().chasers:
+                if chaser.index == value:
+                    self.text = chaser.text
+                    break
+        self.update_channels()
+
+    def set_level(self, value: int) -> None:
         """Set master level
 
         Args:
@@ -163,7 +224,8 @@ class Master:
                 level = 0 if self.value == 0 else round(level / (255 / self.value))
                 self.dmx[channel - 1] = level
                 update_channel_display(channel)
-            App().dmx.set_levels()
+            App().dmx.update_masters()
+            App().dmx.set_levels(self.channels)
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
@@ -171,7 +233,8 @@ class Master:
             level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
             self.dmx[channel - 1] = level
             update_channel_display(channel)
-        App().dmx.set_levels()
+        App().dmx.update_masters()
+        App().dmx.set_levels(self.channels)
 
     def _level_changed_group(self):
         """New level and type is Group"""
@@ -186,7 +249,8 @@ class Master:
                 # Update level in master array
                 self.dmx[channel - 1] = level
                 update_channel_display(channel)
-            App().dmx.set_levels()
+            App().dmx.update_masters()
+            App().dmx.set_levels(self.channels)
 
     def _level_changed_chaser(self):
         """New level and type is Chaser"""
@@ -213,7 +277,9 @@ class Master:
                     for channel in range(MAX_CHANNELS):
                         self.dmx[channel] = 0
                         update_channel_display(channel + 1)
-                    App().dmx.set_levels()
+                    App().dmx.update_masters()
+                    App().dmx.set_levels(App().chasers[i].channels)
+                    break
 
 
 class ThreadChaser(threading.Thread):
@@ -274,7 +340,7 @@ class ThreadChaser(threading.Thread):
         """
         for channel in App().patch.channels:
             # Change only channels in chaser
-            if App().chasers[self.chaser].channels[channel - 1] != 0:
+            if channel in App().chasers[self.chaser].channels:
                 # Start level
                 old_level = (
                     App()
@@ -322,4 +388,5 @@ class ThreadChaser(threading.Thread):
                 # Update master level
                 self.master.dmx[channel - 1] = level
                 update_channel_display(channel)
-        App().dmx.set_levels()
+        App().dmx.update_masters()
+        App().dmx.set_levels(App().chasers[self.chaser].channels)

@@ -41,9 +41,9 @@ class LiveView(Gtk.Notebook):
         """
         widget = self.channels_view.get_channel_widget(channel)
         widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
-        level = App().dmx.sequence[channel - 1]
-        if not App().sequence.on_go and App().dmx.user[channel - 1] != -1:
-            level = App().dmx.user[channel - 1]
+        level = App().dmx.levels["sequence"][channel - 1]
+        if not App().sequence.on_go and App().dmx.levels["user"][channel - 1] != -1:
+            level = App().dmx.levels["user"][channel - 1]
         for master in App().masters:
             if master.value and master.dmx[channel - 1] >= level:
                 level = master.dmx[channel - 1]
@@ -143,8 +143,9 @@ class LiveChannelsView(ChannelsView):
             channel: channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        App().dmx.user[channel - 1] = level
-        App().dmx.set_levels()
+        App().dmx.levels["user"][channel - 1] = level
+        App().sequence.update_channels()
+        App().dmx.set_levels({channel})
         App().window.live_view.update_channel_widget(channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
@@ -165,9 +166,9 @@ class LiveChannelsView(ChannelsView):
                 index = App().universes.index(univ)
                 level = App().dmx.frame[index][out - 1]
                 if direction == Gdk.ScrollDirection.UP:
-                    App().dmx.user[channel - 1] = min(level + step, 255)
+                    App().dmx.levels["user"][channel - 1] = min(level + step, 255)
                 elif direction == Gdk.ScrollDirection.DOWN:
-                    App().dmx.user[channel - 1] = max(level - step, 0)
+                    App().dmx.levels["user"][channel - 1] = max(level - step, 0)
             next_level = App().sequence.get_next_channel_level(channel, level)
             App().window.live_view.update_channel_widget(channel, next_level)
-        App().dmx.set_levels()
+        App().dmx.set_levels(set(channels))

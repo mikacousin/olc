@@ -560,7 +560,7 @@ class SequenceTab(Gtk.Grid):
                     channel_widget = self.channels_view.get_channel_widget(channel + 1)
                     if channel_widget.level:
                         channels[channel + 1] = channel_widget.level
-                        sequence.channels[channel] = 1
+                sequence.update_channels()
                 # Tag filename as modified
                 App().ascii.set_modified()
                 # Update Main playback display
@@ -587,6 +587,7 @@ class SequenceTab(Gtk.Grid):
         if sequence and step:
             sequence.steps.pop(step)
             sequence.last -= 1
+            sequence.update_channels()
             self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
             self.populate_liststore(step)
             # Update Main Playback
@@ -657,6 +658,7 @@ class SequenceTab(Gtk.Grid):
                     App().tabs.tabs["memories"].liststore.insert(
                         step - 1, [str(mem), "", nb_chan]
                     )
+            sequence.update_channels()
             # Update Display
             self.update_sequence_display(step)
             # Tag filename as modified
@@ -677,7 +679,7 @@ class SequenceTab(Gtk.Grid):
                         sequence.steps[step].cue.channels[
                             channel
                         ] = channel_widget.level
-                        sequence.channels[channel] = 1
+                sequence.update_channels()
                 # Tag filename as modified
                 App().ascii.set_modified()
                 # Select memory modified

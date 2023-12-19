@@ -66,7 +66,8 @@ class Sequence:
         # Flag to know if we have a Go in progress
         self.on_go = False
         # Channels present in this sequence
-        self.channels = array.array("B", [0] * MAX_CHANNELS)
+        # self.channels = array.array("B", [0] * MAX_CHANNELS)
+        self.channels = set()
         # Flag for chasers
         self.run = False
         # Thread for Go and GoBack
@@ -79,6 +80,16 @@ class Sequence:
         # Last Step
         self.add_step(step)
 
+    def update_channels(self):
+        """Update channels present in sequence"""
+        self.channels.clear()
+        for step in self.steps:
+            for channel in step.cue.channels:
+                self.channels.add(channel)
+        for channel, level in enumerate(App().dmx.levels["user"]):
+            if level != -1:
+                self.channels.add(channel + 1)
+
     def add_step(self, step):
         """Add step at the end
 
@@ -89,7 +100,7 @@ class Sequence:
         self.last = len(self.steps)
         # Channels used in sequential
         for channel in step.cue.channels:
-            self.channels[channel - 1] = 1
+            self.channels.add(channel)
 
     def insert_step(self, index, step):
         """Insert step at index
@@ -102,7 +113,7 @@ class Sequence:
         self.last = len(self.steps)
         # Channels used in sequential
         for channel in step.cue.channels:
-            self.channels[channel - 1] = 1
+            self.channels.add(channel)
 
     def get_step(self, cue=None):
         """Get Cues's Step
@@ -230,17 +241,18 @@ class Sequence:
             update_ui(position, subtitle)
 
             # Empty DMX user array
-            App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
+            App().dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+            self.update_channels()
 
             # Send DMX values
             for channel in App().patch.channels:
                 if not App().patch.is_patched(channel):
                     continue
                 level = self.steps[position].cue.channels.get(channel, 0)
-                App().dmx.sequence[channel - 1] = level
+                App().dmx.levels["sequence"][channel - 1] = level
                 next_level = self.get_next_channel_level(channel, level)
                 App().window.live_view.update_channel_widget(channel, next_level)
-            App().dmx.set_levels()
+            App().dmx.set_levels(self.channels)
 
     def sequence_minus(self):
         """Sequence -"""
@@ -298,16 +310,17 @@ class Sequence:
             update_ui(position, subtitle)
 
             # Empty DMX user array
-            App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
+            App().dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+            self.update_channels()
 
             for channel in App().patch.channels:
                 if not App().patch.is_patched(channel):
                     continue
                 level = self.steps[position].cue.channels.get(channel, 0)
-                App().dmx.sequence[channel - 1] = level
+                App().dmx.levels["sequence"][channel - 1] = level
                 next_level = self.get_next_channel_level(channel, level)
                 App().window.live_view.update_channel_widget(channel, next_level)
-            App().dmx.set_levels()
+            App().dmx.set_levels(self.channels)
 
     def goto(self, keystring):
         """Jump to cue number
@@ -513,14 +526,16 @@ class ThreadGo(threading.Thread):
     def run(self):
         # Levels when Go is sent
         for channel, outputs in App().patch.channels.items():
+            if not App().patch.is_patched(channel):
+                continue
             for out in outputs:
                 output = out[0]
                 universe = out[1]
                 if None in (output, universe):
                     continue
-                level = App().dmx.sequence[channel - 1]
-                if App().dmx.user[channel - 1] != -1:
-                    level = App().dmx.user[channel - 1]
+                level = App().dmx.levels["sequence"][channel - 1]
+                if App().dmx.levels["user"][channel - 1] != -1:
+                    level = App().dmx.levels["user"][channel - 1]
                 curve_numb = App().patch.outputs[universe][output][1]
                 if curve_numb:
                     curve = App().curves.get_curve(curve_numb)
@@ -553,6 +568,8 @@ class ThreadGo(threading.Thread):
             return
         # Finish to load memory
         for channel, outputs in App().patch.channels.items():
+            if not App().patch.is_patched(channel):
+                continue
             for values in outputs:
                 output = values[0]
                 univ = values[1]
@@ -567,7 +584,7 @@ class ThreadGo(threading.Thread):
                     )
                 else:
                     level = App().sequence.steps[0].cue.channels.get(channel, 0)
-                App().dmx.sequence[channel - 1] = level
+                App().dmx.levels["sequence"][channel - 1] = level
                 App().dmx.frame[index][output - 1] = level
                 next_level = App().sequence.get_next_channel_level(channel, level)
                 GLib.idle_add(
@@ -575,11 +592,12 @@ class ThreadGo(threading.Thread):
                     channel,
                     next_level,
                 )
-        App().dmx.set_levels()
+        App().dmx.set_levels(App().sequence.channels)
         # Go is completed
         App().sequence.on_go = False
         # Empty DMX user array
-        App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
+        App().dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+        App().sequence.update_channels()
         next_step = _next_step()
         # Wait, launch next step
         if App().sequence.steps[next_step].wait:
@@ -651,6 +669,8 @@ class ThreadGo(threading.Thread):
             i: Time spent
         """
         for channel, outputs in App().patch.channels.items():
+            if not App().patch.is_patched(channel):
+                continue
             for chan in outputs:
                 if output := chan[0]:
                     output -= 1
@@ -670,7 +690,7 @@ class ThreadGo(threading.Thread):
                         App().sequence.position = 0
 
                     self._set_level(channel, i, old_level, next_level)
-        App().dmx.set_levels()
+        App().dmx.set_levels(App().sequence.channels)
 
     def _set_level(self, channel, i, old_level, next_level):
         """Get level
@@ -690,7 +710,7 @@ class ThreadGo(threading.Thread):
         # Else channel is normal
         else:
             level = self._channel_level(i, old_level, next_level)
-        App().dmx.sequence[channel - 1] = level
+        App().dmx.levels["sequence"][channel - 1] = level
         next_level = App().sequence.get_next_channel_level(channel, level)
         GLib.idle_add(App().window.live_view.update_channel_widget, channel, next_level)
 
@@ -846,9 +866,9 @@ class ThreadGoBack(threading.Thread):
                 univ = value[1]
                 if None in (output, univ):
                     continue
-                level = App().dmx.sequence[channel - 1]
-                if App().dmx.user[channel - 1] != -1:
-                    level = App().dmx.user[channel - 1]
+                level = App().dmx.levels["sequence"][channel - 1]
+                if App().dmx.levels["user"][channel - 1] != -1:
+                    level = App().dmx.levels["user"][channel - 1]
                 curve_numb = App().patch.outputs[univ][output][1]
                 if curve_numb:
                     curve = App().curves.get_curve(curve_numb)
@@ -885,7 +905,7 @@ class ThreadGoBack(threading.Thread):
                     continue
                 index = App().universes.index(univ)
                 level = App().sequence.steps[prev_step].cue.channels.get(channel, 0)
-                App().dmx.sequence[channel - 1] = level
+                App().dmx.levels["sequence"][channel - 1] = level
                 App().dmx.frame[index][output - 1] = level
                 next_level = App().sequence.get_next_channel_level(channel, level)
                 GLib.idle_add(
@@ -893,10 +913,11 @@ class ThreadGoBack(threading.Thread):
                     channel,
                     next_level,
                 )
-        App().dmx.set_levels()
+        App().dmx.set_levels(App().sequence.channels)
         App().sequence.on_go = False
         # Reset user levels
-        App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
+        App().dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+        App().sequence.update_channels()
         # Prev step
         App().sequence.position = prev_step
         App().window.playback.sequential.time_in = (
@@ -971,13 +992,13 @@ class ThreadGoBack(threading.Thread):
                     App().sequence.steps[position - 1].cue.channels.get(channel, 0)
                 )
                 level = self._channel_level(i, old_level, next_level, go_back_time)
-                App().dmx.sequence[channel - 1] = level
+                App().dmx.levels["sequence"][channel - 1] = level
                 GLib.idle_add(
                     App().window.live_view.update_channel_widget,
                     channel,
                     next_level,
                 )
-        App().dmx.set_levels()
+        App().dmx.set_levels(App().sequence.channels)
 
     def _channel_level(self, i, old_level, next_level, go_back_time):
         """Return channel level

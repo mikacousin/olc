@@ -180,10 +180,7 @@ class MastersTab(Gtk.Paned):
         # Update content type
         index = int(path) + (page * 10)
         if App().masters[index].content_type != content_type:
-            App().masters[index].content_type = content_type
-            # Update content value
-            App().masters[index].content_value = {} if content_type == 2 else -1
-            App().masters[index].text = ""
+            App().masters[index].set_content_type(content_type)
             # Update ui
             self.channels_view.update()
             self.liststores[page][path][2] = ""
@@ -226,29 +223,13 @@ class MastersTab(Gtk.Paned):
             index = int(path) + (page * 10)
             content_value = float(text)
 
-            App().masters[index].content_value = content_value
+            App().masters[index].set_content_value(content_value)
 
-            if App().masters[index].content_type in [0, 2]:
-                App().masters[index].text = ""
-            elif App().masters[index].content_type == 1:
+            if App().masters[index].content_type == 1:
                 if self.liststores[page][path][2] != "":
                     self.liststores[page][path][2] = str(
                         float(self.liststores[page][path][2])
                     )
-                App().masters[index].text = ""
-                for mem in App().memories:
-                    if mem.memory == content_value:
-                        App().masters[index].text = mem.text
-            elif App().masters[index].content_type == 13:
-                App().masters[index].text = ""
-                for grp in App().groups:
-                    if grp.index == content_value:
-                        App().masters[index].text = grp.text
-            elif App().masters[index].content_type == 3:
-                App().masters[index].text = ""
-                for chaser in App().chasers:
-                    if chaser.index == content_value:
-                        App().masters[index].text = chaser.text
             self.channels_view.update()
             # Update Virtual Console
             if App().virtual_console:
@@ -410,6 +391,7 @@ class MastersTab(Gtk.Paned):
                     # Update Group Tab if open
                     if App().tabs.tabs["groups"]:
                         App().tabs.tabs["groups"].channels_view.update()
+            App().masters[index].update_channels()
             App().window.commandline.set_string("")
             return True
         return False

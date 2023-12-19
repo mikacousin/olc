@@ -71,7 +71,7 @@ class Independent:
             next_level = App().sequence.get_next_channel_level(channel, dmx_lvl)
             App().window.live_view.update_channel_widget(channel, next_level)
         App().independents.update_dmx()
-        App().dmx.set_levels()
+        App().dmx.set_levels(self.channels)
 
 
 class Independents:

@@ -107,7 +107,8 @@ class CrossFade:
         self.scale_a.moved = False
         App().sequence.on_go = False
         # Empty array of levels enter by user
-        App().dmx.user = array.array("h", [-1] * MAX_CHANNELS)
+        App().dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+        App().sequence.update_channels()
         # Go to next step
         next_step = App().sequence.position + 1
         if next_step < App().sequence.last - 1:
@@ -175,7 +176,9 @@ class CrossFade:
         App().window.playback.sequential.queue_draw()
         # Update levels
         if position >= wait:
-            for channel in range(MAX_CHANNELS):
+            for channel in range(1, MAX_CHANNELS + 1):
+                if not App().patch.is_patched(channel):
+                    continue
                 old_level = (
                     App()
                     .sequence.steps[App().sequence.position]
@@ -190,11 +193,12 @@ class CrossFade:
                 else:
                     next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
                 if scale == self.scale_a:
-                    update_a(channel + 1, old_level, next_level, wait, position)
+                    update_a(channel, old_level, next_level, wait, position)
                 elif scale == self.scale_b:
                     # Get SequentialWindow's width to place cursor
-                    update_b(channel + 1, old_level, next_level, wait, position)
-            App().dmx.set_levels()
+                    update_b(channel, old_level, next_level, wait, position)
+                App().window.live_view.update_channel_widget(channel, next_level)
+            App().dmx.set_levels(App().sequence.channels)
 
 
 def update_a(channel, old_level, next_level, wait, pos):
@@ -211,17 +215,14 @@ def update_a(channel, old_level, next_level, wait, pos):
     delay_out = App().sequence.steps[App().sequence.position + 1].delay_out * 1000
     # Channel Time
     lvl = _update_a_channel_time(channel, old_level, next_level, wait, pos)
-    user_level = App().dmx.user[channel - 1]
+    user_level = App().dmx.levels["user"][channel - 1]
     if user_level != -1 and next_level < user_level:
         # Update channel level with user changed
         if pos <= wait + delay_out:
             lvl = old_level
         elif wait + delay_out < pos < time_out + wait + delay_out:
             lvl = user_level - abs(
-                int(
-                    round(((next_level - user_level) / time_out))
-                    * (pos - wait - delay_out)
-                )
+                int(((next_level - user_level) / time_out) * (pos - wait - delay_out))
             )
         else:
             lvl = next_level
@@ -240,7 +241,7 @@ def update_a(channel, old_level, next_level, wait, pos):
         else:
             lvl = next_level
     if lvl != -1:
-        App().dmx.sequence[channel - 1] = lvl
+        App().dmx.levels["sequence"][channel - 1] = lvl
 
 
 def _update_a_channel_time(channel, old_level, next_level, wait, pos):
@@ -265,11 +266,7 @@ def _update_a_channel_time(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif ct_delay + wait <= pos < ct_delay + ct_time + wait:
             lvl = old_level - abs(
-                int(
-                    round(
-                        ((next_level - old_level) / ct_time) * (pos - ct_delay - wait)
-                    )
-                )
+                int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait))
             )
         else:
             lvl = next_level
@@ -291,14 +288,14 @@ def update_b(channel, old_level, next_level, wait, pos):
     delay_in = App().sequence.steps[App().sequence.position + 1].delay_in * 1000
     # Channel Time
     lvl = _update_b_channel_time(channel, old_level, next_level, wait, pos)
-    user_level = App().dmx.user[channel - 1]
+    user_level = App().dmx.levels["user"][channel - 1]
     if user_level != -1 and next_level > user_level:
         # User change channel's value
         if pos <= wait + delay_in:
             lvl = old_level
         elif wait + delay_in < pos < time_in + wait + delay_in:
             lvl = int(
-                round(((next_level - user_level) / time_in) * (pos - wait - delay_in))
+                ((next_level - user_level) / time_in) * (pos - wait - delay_in)
                 + user_level
             )
         else:
@@ -309,13 +306,13 @@ def update_b(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif wait + delay_in < pos < time_in + wait + delay_in:
             lvl = int(
-                round(((next_level - old_level) / time_in) * (pos - wait - delay_in))
+                ((next_level - old_level) / time_in) * (pos - wait - delay_in)
                 + old_level
             )
         else:
             lvl = next_level
     if lvl != -1:
-        App().dmx.sequence[channel - 1] = lvl
+        App().dmx.levels["sequence"][channel - 1] = lvl
 
 
 def _update_b_channel_time(channel, old_level, next_level, wait, pos):
@@ -341,7 +338,7 @@ def _update_b_channel_time(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif ct_delay + wait <= pos < ct_delay + ct_time + wait:
             lvl = int(
-                round(((next_level - old_level) / ct_time) * (pos - ct_delay - wait))
+                ((next_level - old_level) / ct_time) * (pos - ct_delay - wait)
                 + old_level
             )
         else:

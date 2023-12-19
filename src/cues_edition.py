@@ -156,8 +156,8 @@ class CuesEditionTab(Gtk.Paned):
                 channel_widget = self.channels_view.get_channel_widget(chan + 1)
                 if channel_widget.level:
                     channels[chan + 1] = channel_widget.level
-                    App().sequence.channels[chan] = 1
                     nb_chan += 1
+            App().sequence.update_channels()
             # Update Display
             treeiter = self.liststore.get_iter(row)
             self.liststore.set_value(treeiter, 2, nb_chan)
@@ -193,6 +193,8 @@ class CuesEditionTab(Gtk.Paned):
                 App().sequence.last -= 1
             # Delete memory from the Memories List
             App().memories.pop(row)
+            # Update list of channels in Sequence
+            App().sequence.update_channels()
             # Remove it from the ListStore
             treeiter = self.liststore.get_iter(path)
             self.liststore.remove(treeiter)
@@ -244,6 +246,7 @@ class CuesEditionTab(Gtk.Paned):
                     App().memories[i].channels = App().memories[row].channels.copy()
                     # Count channels
                     nb_chan = len(App().memories[i].channels)
+                    App().sequence.update_channels()
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
@@ -275,6 +278,7 @@ class CuesEditionTab(Gtk.Paned):
                 i += 1
             App().memories.insert(i, cue)
             nb_chan = len(channels)
+            App().sequence.update_channels()
             self.liststore.insert(i, [str(mem), "", nb_chan])
             # Tag filename as modified
             App().ascii.set_modified()
@@ -328,6 +332,7 @@ class CuesEditionTab(Gtk.Paned):
             cue = Cue(0, mem, channels)
             App().memories.insert(i + 1, cue)
             nb_chan = len(channels)
+            App().sequence.update_channels()
             self.liststore.insert(i + 1, [str(mem), "", nb_chan])
 
             # Tag filename as modified
@@ -368,6 +373,7 @@ class CuesEditionTab(Gtk.Paned):
         # Create Memory
         cue = Cue(sequence, mem, channels)
         App().memories.insert(i, cue)
+        App().sequence.update_channels()
 
         # Update display
         nb_chan = len(channels)

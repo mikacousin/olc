@@ -297,7 +297,7 @@ class Application(Gtk.Application):
                 chaser.thread.join()
         # All channels at 0
         for channel in range(MAX_CHANNELS):
-            self.dmx.user[channel] = 0
+            self.dmx.levels["user"][channel] = -1
         self.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
@@ -306,6 +306,7 @@ class Application(Gtk.Application):
         self.sequence = Sequence(1, "Main Playback")
         self.sequence.position = 0
         self.sequence.window = self.window
+        self.sequence.update_channels()
         # Delete memories, groups, chasers, masters
         del self.memories[:]
         del self.groups[:]
