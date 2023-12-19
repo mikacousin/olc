@@ -15,4 +15,4 @@ Ouvrir l'onglet : [Maj + Ctrl + T] ou 'Suivi de circuits' dans le menu principal
 - [↑] [↓] : changer de pas de séquence
 
 ### Modifier un circuit :
-Valeur puis [M] : met le circuit sélectionné au pas de séquence sélectionné à la valeur donnée
+Valeur puis [=] : met le circuit sélectionné au pas de séquence sélectionné à la valeur donnée
