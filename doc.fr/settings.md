@@ -36,4 +36,6 @@ Voir [Contôleurs MIDI](midi.md).
 
 ![MIDI](pictures/settings_midi.png)
 
+Olc surveille en permanence les ports MIDI. Quand vous branchez votre contrôleur, il doit apparaître dans la liste.
+
 Activer le(s) contrôleur(s) MIDI et choisir le mode pour les rotatifs.
