@@ -35,7 +35,5 @@ Affichage de l'adresse IP de la machine sur laquelle olc est exécutée.
 Voir [Contôleurs MIDI](midi.md).
 
 ![MIDI](pictures/settings_midi.png)
-### MIDI In
-Sélectionner le(s) contrôleur(s) MIDI et le mode pour les rotatifs.
-### MIDI out
-Si le(s) contrôleur(s) MIDI a des faders motorisés, un module d'affichage ou peut recevoir des retours d'infos, le sélectionner ici.
+
+Activer le(s) contrôleur(s) MIDI et choisir le mode pour les rotatifs.
