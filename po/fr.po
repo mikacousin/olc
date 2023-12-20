@@ -275,6 +275,9 @@ msgstr "Enregistrer fichier ASCII"
 msgid "Save"
 msgstr "Enregistrer"
 
+msgid "MIDI Controllers"
+msgstr "Contrôleurs MIDI"
+
 msgid "MIDI Port"
 msgstr "Port MIDI"
 

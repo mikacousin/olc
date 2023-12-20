@@ -327,7 +327,7 @@
               <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="label" translatable="yes">MIDI Controler</property>
+                <property name="label" translatable="yes">MIDI Controllers</property>
               </object>
               <packing>
                 <property name="left-attach">0</property>
