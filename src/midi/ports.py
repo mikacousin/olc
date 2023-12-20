@@ -12,21 +12,23 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, List, Optional
+from typing import Optional
 import mido
+from gi.repository import GLib
 from olc.define import App
+from olc.timer import RepeatedTimer
 
 
-class MidiIn:
-    """A thin wrapper around mido input port"""
+class MidiIO:
+    """A thin wrapper around mido IO port"""
 
     name: Optional[str]  # The port name
     port: mido.ports.BaseInput  # The port itself
 
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
-        self.port = mido.open_input(self.name)
-        self.port.callback = self.receive_callback
+        self.port = mido.open_ioport(name=self.name, callback=self.receive_callback)
+        # self.port.callback = self.receive_callback
 
     def __del__(self) -> None:
         self.port.callback = None
@@ -60,56 +62,44 @@ class MidiIn:
 class MidiPorts:
     """MIDI In and Out ports"""
 
-    inports: List[MidiIn]
-    outports: List[Any]
+    ports: list[MidiIO]
 
     def __init__(self):
-        self.inports = []
-        self.outports = []
+        self.ports = []
+        self.mido_ports = None
 
-        # Open MIDI In ports
-        ports = App().settings.get_strv("midi-in")
-        self.open_input(ports)
-        # Open MIDI Out ports
-        ports = App().settings.get_strv("midi-out")
-        self.open_output(ports)
+        ports = App().settings.get_strv("midi-ports")
+        self.mido_ports = mido.get_ioport_names()
+        self.open(ports)
 
-    def open_input(self, ports: List[str]) -> None:
-        """Open MIDI inputs
+        self.poll = RepeatedTimer(1, self.polling)
 
-        Args:
-            ports: MIDI ports to open
-        """
-        input_names = mido.get_input_names()
-        for port in ports:
-            if port in input_names:
-                inport = MidiIn(port)
-                self.inports.append(inport)
-            else:
-                inport = MidiIn()
+    def polling(self) -> None:
+        """Poll MIDI ports"""
+        port_names = mido.get_ioport_names()
+        if port_names != self.mido_ports:
+            self.mido_ports = port_names
+            self.open(App().settings.get_strv("midi-ports"))
+            App().midi.update_masters()
+            App().midi.gm_init()
+            if App().tabs.tabs["settings"]:
+                GLib.idle_add(App().tabs.tabs["settings"].refresh)
 
-    def open_output(self, ports: List[str]) -> None:
-        """Open MIDI outputs
+    def open(self, ports: list[str]) -> None:
+        """Open MIDI IO
 
         Args:
             ports: MIDI ports to open
         """
-        output_names = mido.get_output_names()
         for port in ports:
-            if port in output_names:
-                outport = mido.open_output(port)
-                self.outports.append(outport)
+            if port in self.mido_ports:
+                ioport = MidiIO(port)
+                self.ports.append(ioport)
             else:
-                outport = mido.open_output()
+                ioport = MidiIO()
 
-    def close_input(self) -> None:
+    def close(self) -> None:
         """Close MIDI inputs"""
-        for inport in self.inports:
-            inport.close()
-            self.inports.remove(inport)
-
-    def close_output(self) -> None:
-        """Close MIDI outputs"""
-        for outport in self.outports:
-            outport.close()
-            self.outports.remove(outport)
+        for port in self.ports:
+            port.close()
+            self.ports.remove(port)

@@ -57,16 +57,16 @@ class Midi:
 
     def stop(self) -> None:
         """Stop MIDI"""
+        self.ports.poll.stop()
         self.thread.stop()
         self.controler_reset()
-        self.ports.close_output()
-        self.ports.close_input()
+        self.ports.close()
 
     def send(self) -> None:
         """Send MIDI messages from the queue"""
         for msg in self.queue:
-            for outport in self.ports.outports:
-                outport.send(msg)
+            for port in self.ports.ports:
+                port.port.send(msg)
 
     def learn(self, msg: mido.Message) -> None:
         """Learn new MIDI control
@@ -74,7 +74,7 @@ class Midi:
         Args:
             msg: MIDI message
         """
-        if self.ports.outports:
+        if self.ports.ports:
             self.queue.enqueue(msg)
         if msg.type == "note_on":
             self.notes.learn(msg, self.midi_learn)
@@ -95,20 +95,20 @@ class Midi:
 
     def controler_reset(self) -> None:
         """Reset Mackie Controler"""
-        for outport in self.ports.outports:
+        for port in self.ports.ports:
             # Clear LCD
             text = 56 * " "
             data = [0, 0, 102, 20, 18, 0] + [ord(c) for c in text]
             msg = mido.Message("sysex", data=data)
-            outport.send(msg)
+            port.port.send(msg)
             data = [0, 0, 102, 20, 18, 56] + [ord(c) for c in text]
             msg = mido.Message("sysex", data=data)
-            outport.send(msg)
+            port.port.send(msg)
             # Faders at 0
             for i in range(16):
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
-                outport.send(msg)
-            outport.reset()
+                port.port.send(msg)
+            port.port.reset()
 
     def gm_init(self) -> None:
         """Grand Master Fader"""

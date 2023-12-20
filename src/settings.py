@@ -16,7 +16,6 @@ import ipaddress
 import socket
 from gettext import gettext as _
 from typing import Any
-import mido
 from gi.repository import Gdk, GLib, Gtk
 from olc.define import App
 from olc.osc import Osc
@@ -71,69 +70,26 @@ class SettingsTab(Gtk.Box):
         local_ip.set_label(ip_addr)
 
         # MIDI
-        self._midi_in(builder)
-        self._midi_out(builder)
+        self._midi(builder)
 
         builder.connect_signals(self)
         self.pack_start(settings_dialog, True, True, 0)
 
-    def _midi_in(self, builder):
-        # List of MIDI Controllers (In)
+    def _midi(self, builder):
+        # List of MIDI Controllers
         liststore_modes = Gtk.ListStore(str)
         for item in ["Absolute", "Relative1", "Relative2", "Relative3 (Makie)"]:
             liststore_modes.append([item])
-        midi_grid = builder.get_object("midi_in_grid")
+        midi_grid = builder.get_object("midi_io_grid")
         midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
-        default = App().settings.get_strv("midi-in")
-        relative1 = App().settings.get_strv("relative1")
-        relative2 = App().settings.get_strv("relative2")
-        makies = App().settings.get_strv("makie")
-        absolutes = App().settings.get_strv("absolute")
-        self.liststore_midi_in = Gtk.ListStore(str, bool, str, str)
-        treeview = Gtk.TreeView(model=self.liststore_midi_in)
-        for midi_in in sorted(list(set(mido.get_input_names()))):
-            if midi_in in default:
-                if midi_in in relative1:
-                    self.liststore_midi_in.append(
-                        [midi_in.split(":")[0], True, "Relative1", midi_in]
-                    )
-                elif midi_in in relative2:
-                    self.liststore_midi_in.append(
-                        [midi_in.split(":")[0], True, "Relative2", midi_in]
-                    )
-                elif midi_in in makies:
-                    self.liststore_midi_in.append(
-                        [midi_in.split(":")[0], True, "Relative3 (Makie)", midi_in]
-                    )
-                elif midi_in in absolutes:
-                    self.liststore_midi_in.append(
-                        [midi_in.split(":")[0], True, "Absolute", midi_in]
-                    )
-                else:
-                    # Default: Makie mode
-                    self.liststore_midi_in.append(
-                        [midi_in.split(":")[0], True, "Relative3 (Makie)", midi_in]
-                    )
-                    makies.append(midi_in)
-                    if midi_in in absolutes:
-                        absolutes.remove(midi_in)
-                    elif midi_in in relative1:
-                        relative1.remove(midi_in)
-                    elif midi_in in relative2:
-                        relative2.remove(midi_in)
-                    App().settings.set_strv("relative1", relative1)
-                    App().settings.set_strv("relative2", relative2)
-                    App().settings.set_strv("makie", makies)
-                    App().settings.set_strv("absolute", absolutes)
-            else:
-                self.liststore_midi_in.append(
-                    [midi_in.split(":")[0], False, "", midi_in]
-                )
+        self.liststore_midi = Gtk.ListStore(str, bool, str, str)
+        treeview = Gtk.TreeView(model=self.liststore_midi)
+        self._populate_midi_ports()
         renderer_text = Gtk.CellRendererText()
         column_text = Gtk.TreeViewColumn(_("MIDI Port"), renderer_text, text=0)
         treeview.append_column(column_text)
         renderer_toggle = Gtk.CellRendererToggle()
-        renderer_toggle.connect("toggled", self.on_midi_in_toggle)
+        renderer_toggle.connect("toggled", self.on_midi_toggle)
         column_toggle = Gtk.TreeViewColumn(_("Active"), renderer_toggle, active=1)
         treeview.append_column(column_toggle)
         renderer_combo = Gtk.CellRendererCombo()
@@ -146,31 +102,55 @@ class SettingsTab(Gtk.Box):
         treeview.append_column(column_combo)
         midi_grid.add(treeview)
 
-    def _midi_out(self, builder):
-        # List of MIDI Controllers (Out)
-        midi_grid = builder.get_object("midi_out_grid")
-        midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
-        default = App().settings.get_strv("midi-out")
-        self.liststore_midi_out = Gtk.ListStore(str, bool, str)
-        treeview = Gtk.TreeView(model=self.liststore_midi_out)
-        for midi_out in sorted(list(set(mido.get_output_names()))):
-            if midi_out in default:
-                self.liststore_midi_out.append([midi_out.split(":")[0], True, midi_out])
+    def _populate_midi_ports(self) -> None:
+        default = App().settings.get_strv("midi-ports")
+        relative1 = App().settings.get_strv("relative1")
+        relative2 = App().settings.get_strv("relative2")
+        makies = App().settings.get_strv("makie")
+        absolutes = App().settings.get_strv("absolute")
+        for midi_port in sorted(list(set(App().midi.ports.mido_ports))):
+            if midi_port in default:
+                if midi_port in relative1:
+                    self.liststore_midi.append(
+                        [midi_port.split(":")[0], True, "Relative1", midi_port]
+                    )
+                elif midi_port in relative2:
+                    self.liststore_midi.append(
+                        [midi_port.split(":")[0], True, "Relative2", midi_port]
+                    )
+                elif midi_port in makies:
+                    self.liststore_midi.append(
+                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
+                    )
+                elif midi_port in absolutes:
+                    self.liststore_midi.append(
+                        [midi_port.split(":")[0], True, "Absolute", midi_port]
+                    )
+                else:
+                    # Default: Makie mode
+                    self.liststore_midi.append(
+                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
+                    )
+                    makies.append(midi_port)
+                    if midi_port in absolutes:
+                        absolutes.remove(midi_port)
+                    elif midi_port in relative1:
+                        relative1.remove(midi_port)
+                    elif midi_port in relative2:
+                        relative2.remove(midi_port)
+                    App().settings.set_strv("relative1", relative1)
+                    App().settings.set_strv("relative2", relative2)
+                    App().settings.set_strv("makie", makies)
+                    App().settings.set_strv("absolute", absolutes)
             else:
-                self.liststore_midi_out.append(
-                    [midi_out.split(":")[0], False, midi_out]
+                self.liststore_midi.append(
+                    [midi_port.split(":")[0], False, "", midi_port]
                 )
-        renderer_text = Gtk.CellRendererText()
-        column_text = Gtk.TreeViewColumn(_("MIDI Port"), renderer_text, text=0)
-        treeview.append_column(column_text)
-        renderer_toggle = Gtk.CellRendererToggle()
-        renderer_toggle.connect("toggled", self.on_midi_out_toggle)
-        column_toggle = Gtk.TreeViewColumn(_("Active"), renderer_toggle, active=1)
-        treeview.append_column(column_toggle)
-        midi_grid.add(treeview)
 
     def refresh(self) -> None:
-        """Refresh (Do nothing here)"""
+        """Refresh MIDI ports"""
+        self.liststore_midi.clear()
+        self._populate_midi_ports()
 
     def on_close_icon(self, _widget) -> None:
         """Close Tab on close clicked"""
@@ -203,116 +183,80 @@ class SettingsTab(Gtk.Box):
             path: Path to combo
             text: New combo's text
         """
-        self.liststore_midi_in[path][2] = text
+        self.liststore_midi[path][2] = text
         relative1 = App().settings.get_strv("relative1")
         relative2 = App().settings.get_strv("relative2")
         makies = App().settings.get_strv("makie")
         absolutes = App().settings.get_strv("absolute")
+        if self.liststore_midi[path][3] in relative1:
+            relative1.remove(self.liststore_midi[path][3])
+        elif self.liststore_midi[path][3] in relative2:
+            relative2.remove(self.liststore_midi[path][3])
+        elif self.liststore_midi[path][3] in absolutes:
+            absolutes.remove(self.liststore_midi[path][3])
+        elif self.liststore_midi[path][3] in makies:
+            makies.remove(self.liststore_midi[path][3])
         if text == "Relative1":
-            relative1.append(self.liststore_midi_in[path][3])
-            if self.liststore_midi_in[path][3] in makies:
-                makies.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in relative2:
-                relative2.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in absolutes:
-                absolutes.remove(self.liststore_midi_in[path][3])
+            relative1.append(self.liststore_midi[path][3])
         elif text == "Relative2":
-            relative2.append(self.liststore_midi_in[path][3])
-            if self.liststore_midi_in[path][3] in relative1:
-                relative1.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in makies:
-                makies.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in absolutes:
-                absolutes.remove(self.liststore_midi_in[path][3])
+            relative2.append(self.liststore_midi[path][3])
         elif text == "Relative3 (Makie)":
-            makies.append(self.liststore_midi_in[path][3])
-            if self.liststore_midi_in[path][3] in relative1:
-                relative1.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in relative2:
-                relative2.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in absolutes:
-                absolutes.remove(self.liststore_midi_in[path][3])
+            makies.append(self.liststore_midi[path][3])
         elif text == "Absolute":
-            absolutes.append(self.liststore_midi_in[path][3])
-            if self.liststore_midi_in[path][3] in relative1:
-                relative1.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in relative2:
-                relative2.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in makies:
-                makies.remove(self.liststore_midi_in[path][3])
+            absolutes.append(self.liststore_midi[path][3])
         App().settings.set_strv("relative1", relative1)
         App().settings.set_strv("relative2", relative2)
         App().settings.set_strv("makie", makies)
         App().settings.set_strv("absolute", absolutes)
 
-    def on_midi_in_toggle(self, _widget, path):
+    def on_midi_toggle(self, _widget, path):
         """Active / Unactive MIDI controllers
 
         Args:
             _widget: Widget clicked
             path: button number
         """
-        midi_ports = App().settings.get_strv("midi-in")
+        midi_ports = App().settings.get_strv("midi-ports")
         relative1 = App().settings.get_strv("relative1")
         relative2 = App().settings.get_strv("relative2")
         makies = App().settings.get_strv("makie")
         absolutes = App().settings.get_strv("absolute")
-        self.liststore_midi_in[path][1] = not self.liststore_midi_in[path][1]
-        if self.liststore_midi_in[path][1]:
-            midi_ports.append(self.liststore_midi_in[path][3])
-            if self.liststore_midi_in[path][2] == "Relative1":
-                relative1.append(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][2] == "Relative2":
-                relative2.append(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][2] == "Relative3 (Makie)":
-                makies.append(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][2] == "Absolute":
-                absolutes.append(self.liststore_midi_in[path][3])
+        self.liststore_midi[path][1] = not self.liststore_midi[path][1]
+        if self.liststore_midi[path][1]:
+            midi_ports.append(self.liststore_midi[path][3])
+            if self.liststore_midi[path][2] == "Relative1":
+                relative1.append(self.liststore_midi[path][3])
+            elif self.liststore_midi[path][2] == "Relative2":
+                relative2.append(self.liststore_midi[path][3])
+            elif self.liststore_midi[path][2] == "Relative3 (Makie)":
+                makies.append(self.liststore_midi[path][3])
+            elif self.liststore_midi[path][2] == "Absolute":
+                absolutes.append(self.liststore_midi[path][3])
             else:
-                self.liststore_midi_in.set_value(
-                    self.liststore_midi_in.get_iter(path), 2, "Relative3 (Makie)"
+                self.liststore_midi.set_value(
+                    self.liststore_midi.get_iter(path), 2, "Relative3 (Makie)"
                 )
-                makies.append(self.liststore_midi_in[path][3])
+                makies.append(self.liststore_midi[path][3])
 
         else:
-            midi_ports.remove(self.liststore_midi_in[path][3])
-            if self.liststore_midi_in[path][3] in relative1:
-                relative1.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in relative2:
-                relative2.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in makies:
-                makies.remove(self.liststore_midi_in[path][3])
-            elif self.liststore_midi_in[path][3] in absolutes:
-                absolutes.remove(self.liststore_midi_in[path][3])
-            self.liststore_midi_in.set_value(
-                self.liststore_midi_in.get_iter(path), 2, ""
-            )
+            midi_ports.remove(self.liststore_midi[path][3])
+            if self.liststore_midi[path][3] in relative1:
+                relative1.remove(self.liststore_midi[path][3])
+            elif self.liststore_midi[path][3] in relative2:
+                relative2.remove(self.liststore_midi[path][3])
+            elif self.liststore_midi[path][3] in makies:
+                makies.remove(self.liststore_midi[path][3])
+            elif self.liststore_midi[path][3] in absolutes:
+                absolutes.remove(self.liststore_midi[path][3])
+            self.liststore_midi.set_value(self.liststore_midi.get_iter(path), 2, "")
         midi_ports = list(set(midi_ports))
-        App().settings.set_strv("midi-in", midi_ports)
+        App().settings.set_strv("midi-ports", midi_ports)
         App().settings.set_strv("relative1", relative1)
         App().settings.set_strv("relative2", relative2)
         App().settings.set_strv("makie", makies)
         App().settings.set_strv("absolute", absolutes)
-        GLib.idle_add(App().midi.ports.close_input)
-        GLib.idle_add(App().midi.ports.open_input, midi_ports)
-
-    def on_midi_out_toggle(self, _widget, path):
-        """Active / Unactive MIDI controllers (output)
-
-        Args:
-            _widget: Widget clicked
-            path: Path to button clicked
-        """
-        midi_ports = App().settings.get_strv("midi-out")
-        self.liststore_midi_out[path][1] = not self.liststore_midi_out[path][1]
-        if self.liststore_midi_out[path][1]:
-            midi_ports.append(self.liststore_midi_out[path][2])
-        else:
-            midi_ports.remove(self.liststore_midi_out[path][2])
-        midi_ports = list(set(midi_ports))
-        App().settings.set_strv("midi-out", midi_ports)
-        GLib.idle_add(App().midi.ports.close_output)
-        GLib.idle_add(App().midi.ports.open_output, midi_ports)
+        GLib.idle_add(App().midi.ports.close)
+        GLib.idle_add(App().midi.ports.open, midi_ports)
         App().midi.update_masters()
         App().midi.gm_init()
 

@@ -41,14 +41,9 @@
       <summary>OSC client port</summary>
       <description>Port use by OSC to send data to the client</description>
     </key>
-    <key name="midi-in" type="as">
+    <key name="midi-ports" type="as">
       <default>[""]</default>
-      <summary>MIDI In</summary>
-      <description></description>
-    </key>
-    <key name="midi-out" type="as">
-      <default>[""]</default>
-      <summary>MIDI Out</summary>
+      <summary>MIDI Ports</summary>
       <description></description>
     </key>
     <key name="relative1" type="as">
