@@ -222,7 +222,7 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
     elif port in absolutes:
         # Absolute mode (value: 0-127)
         inde, val = __new_inde_value(independent, 0)
-        val = (msg.value / 127) * 255
+        val = round((msg.value / 127) * 255)
         __update_inde(independent, inde, val)
 
 

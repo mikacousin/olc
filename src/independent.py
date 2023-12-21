@@ -90,8 +90,6 @@ class Independent:
         for channel, level in self.levels.items():
             dmx_lvl = round(level * (self.level / 255))
             self.dmx[channel - 1] = dmx_lvl
-            next_level = App().sequence.get_next_channel_level(channel, dmx_lvl)
-            App().window.live_view.update_channel_widget(channel, next_level)
         App().independents.update_dmx()
         App().dmx.set_levels(self.channels)
 
@@ -125,6 +123,10 @@ class Independents:
                     level_inde = inde.dmx[channel]
             if level_inde != -1:
                 self.dmx[channel] = level_inde
+                next_level = App().sequence.get_next_channel_level(
+                    channel + 1, level_inde
+                )
+                App().window.live_view.update_channel_widget(channel + 1, next_level)
 
     def add(self, independent):
         """Add an independent

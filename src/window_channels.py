@@ -40,17 +40,16 @@ class LiveView(Gtk.Notebook):
             next_level: Channel next level (from 0 to 255)
         """
         widget = self.channels_view.get_channel_widget(channel)
+        channel -= 1
         widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
-        level = App().dmx.levels["sequence"][channel - 1]
-        if not App().sequence.on_go and App().dmx.levels["user"][channel - 1] != -1:
-            level = App().dmx.levels["user"][channel - 1]
-        for master in App().masters:
-            if master.value and master.dmx[channel - 1] >= level:
-                level = master.dmx[channel - 1]
-                if level:
-                    widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
-        if App().independents.dmx[channel - 1] > level:
-            level = App().independents.dmx[channel - 1]
+        level = App().dmx.levels["sequence"][channel]
+        if not App().sequence.on_go and App().dmx.levels["user"][channel] != -1:
+            level = App().dmx.levels["user"][channel]
+        if App().dmx.levels["masters"][channel] > level:
+            level = App().dmx.levels["masters"][channel]
+            widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
+        if App().independents.dmx[channel] > level:
+            level = App().independents.dmx[channel]
             widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
         widget.level = level
         widget.next_level = next_level

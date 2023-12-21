@@ -101,5 +101,5 @@ class MidiPorts:
     def close(self) -> None:
         """Close MIDI inputs"""
         for port in self.ports:
-            port.close()
             self.ports.remove(port)
+            port.close()
