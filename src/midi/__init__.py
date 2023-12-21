@@ -108,6 +108,11 @@ class Midi:
             for i in range(16):
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 port.port.send(msg)
+            for i in range(48, 56):
+                msg = mido.Message(
+                    "control_change", channel=0, control=i, value=0, time=0
+                )
+                port.port.send(msg)
             port.port.reset()
 
     def gm_init(self) -> None:
