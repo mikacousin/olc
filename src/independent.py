@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+import mido
 
 from olc.define import App, MAX_CHANNELS
 
@@ -62,6 +63,27 @@ class Independent:
         """
         self.levels = levels
         self.channels = {channel for channel, level in levels.items() if level}
+
+    def set_level(self, value: int) -> None:
+        """Set independent level
+
+        Args:
+            value: New level
+        """
+        # Send MIDI message to knob leds
+        midi_name = f"inde_{self.number}"
+        channel, control = App().midi.control_change.control_change[midi_name]
+        if control != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=channel,
+                control=47 + self.number,
+                value=32 + int((value / 255) * 12),
+                time=0,
+            )
+            App().midi.queue.enqueue(msg)
+        self.level = value
+        self.update_dmx()
 
     def update_dmx(self):
         """Update DMX levels"""

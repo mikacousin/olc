@@ -266,5 +266,4 @@ def __update_inde(independent: int, inde, val: int) -> None:
             App().virtual_console.independent6.emit("changed")
             App().virtual_console.independent6.queue_draw()
     else:
-        inde.level = val
-        inde.update_dmx()
+        inde.set_level(val)
