@@ -178,11 +178,6 @@ class Application(Gtk.Application):
         self.midi.lcd.show_masters()
         self.midi.gm_init()
 
-        # Init Enttec Wing Playback
-        # TODO: Need some work, desactivated for now
-        if False:
-            self.wing = WingPlayback()
-
         # Create and launch OSC server
         if self.settings.get_boolean("osc"):
             self.osc = Osc()
@@ -211,13 +206,10 @@ class Application(Gtk.Application):
 
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
         Gtk.Application.do_command_line(self, command_line)
-        # Options (olad http port)
-        olad_port = 9090
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
-        if "http-port" in options:
-            olad_port = options["http-port"]
+        olad_port = options["http-port"] if "http-port" in options else 9090
         # Start Ola and activate olc
         self.ola = Ola(olad_port)
         self.ola.start()

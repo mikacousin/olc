@@ -59,10 +59,7 @@ class Curve:
         if isinstance(self, LimitCurve) and self.limit == 0:
             # LimitCurve at 0%
             return True
-        for value in self.values.values():
-            if value != 0:
-                return False
-        return True
+        return all(value == 0 for value in self.values.values())
 
 
 class LinearCurve(Curve):
@@ -128,7 +125,7 @@ class PointsCurve(Curve):
             x: X coordinate (0 - 255)
             y: Y coordinate (0 - 255)
         """
-        if not any(x in point for point in self.points):
+        if all(x not in point for point in self.points):
             point = (x, y)
             self.points.append(point)
             self.points.sort()
@@ -341,10 +338,14 @@ class Curves:
         Returns:
             CurveLimit number or 0
         """
-        for number, curve in self.curves.items():
-            if isinstance(curve, LimitCurve) and curve.limit == limit:
-                return number
-        return 0
+        return next(
+            (
+                number
+                for number, curve in self.curves.items()
+                if isinstance(curve, LimitCurve) and curve.limit == limit
+            ),
+            0,
+        )
 
     def add_curve(self, curve: Curve) -> int:
         """Add curve to curves list

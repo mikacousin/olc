@@ -373,8 +373,7 @@ class ChannelsView(Gtk.Box):
         step_level = App().settings.get_int("percent-level")
         channels = self.get_selected_channels()
         for channel in channels:
-            channel_widget = self.get_channel_widget(channel)
-            if channel_widget:
+            if channel_widget := self.get_channel_widget(channel):
                 level = channel_widget.level
                 if App().settings.get_boolean("percent"):
                     percent_level = round((level / 256) * 100) + step_level
@@ -388,8 +387,7 @@ class ChannelsView(Gtk.Box):
         step_level = App().settings.get_int("percent-level")
         channels = self.get_selected_channels()
         for channel in channels:
-            channel_widget = self.get_channel_widget(channel)
-            if channel_widget:
+            if channel_widget := self.get_channel_widget(channel):
                 level = channel_widget.level
                 if App().settings.get_boolean("percent"):
                     percent_level = round((level / 256) * 100) - step_level

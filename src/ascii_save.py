@@ -350,9 +350,7 @@ def save_curves(stream: Gio.FileOutputStream) -> None:
                     )
                 )
             if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
-                points = ""
-                for point in curve.points:
-                    points += f"{point[0]},{point[1]};"
+                points = "".join(f"{point[0]},{point[1]};" for point in curve.points)
                 if points:
                     points = points[:-1]
                 stream.write(

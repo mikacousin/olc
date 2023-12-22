@@ -53,35 +53,36 @@ class CurvePointWidget(Gtk.DrawingArea):
             widget: Widget pressed
             event: Event with coordinates
         """
-        if event.button == 1:
-            tab = App().tabs.tabs["curves"]
-            for toggle in tab.curve_edition.points:
-                toggle.set_active(False)
-                toggle.queue_draw()
-            self.set_active(True)
-            parent = widget.get_parent()
-            window = parent.get_window()
-            self.offset.x, self.offset.y = window.get_root_origin()
-            x, y = parent.translate_coordinates(self.get_toplevel(), 0, 0)
-            self.offset.x += x
-            self.offset.y += y
-            self.offset.x += event.x
-            self.offset.y += event.y
-            self.max.x = parent.get_allocation().width - widget.get_allocation().width
-            self.max.y = parent.get_allocation().height - widget.get_allocation().height
-            # Update Label with point coordinates
-            x = round(event.x_root - self.offset.x)
-            y = round(event.y_root + 40 - self.offset.y)
-            # 20 = offset de la grille, 4 = rayon du point
-            x = max(min(x, self.max.x), 20 - 4)
-            y = max(min(y, self.max.y), 20 - 4)
-            edit_wgt_width = tab.curve_edition.edit_curve.width
-            edit_wgt_height = tab.curve_edition.edit_curve.height
-            x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
-            y_curve = round(
-                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
-            )
-            tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
+        if event.button != 1:
+            return
+        tab = App().tabs.tabs["curves"]
+        for toggle in tab.curve_edition.points:
+            toggle.set_active(False)
+            toggle.queue_draw()
+        self.set_active(True)
+        parent = widget.get_parent()
+        window = parent.get_window()
+        self.offset.x, self.offset.y = window.get_root_origin()
+        x, y = parent.translate_coordinates(self.get_toplevel(), 0, 0)
+        self.offset.x += x
+        self.offset.y += y
+        self.offset.x += event.x
+        self.offset.y += event.y
+        self.max.x = parent.get_allocation().width - widget.get_allocation().width
+        self.max.y = parent.get_allocation().height - widget.get_allocation().height
+        # Update Label with point coordinates
+        x = round(event.x_root - self.offset.x)
+        y = round(event.y_root + 40 - self.offset.y)
+        # 20 = offset de la grille, 4 = rayon du point
+        x = max(min(x, self.max.x), 20 - 4)
+        y = max(min(y, self.max.y), 20 - 4)
+        edit_wgt_width = tab.curve_edition.edit_curve.width
+        x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
+        edit_wgt_height = tab.curve_edition.edit_curve.height
+        y_curve = round(
+            ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
+        )
+        tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
     def motion_notify(self, widget, event):
         """Button moved
@@ -111,12 +112,10 @@ class CurvePointWidget(Gtk.DrawingArea):
                 tab.curve_edition.label.set_label(f"0, {y_curve}")
                 self.curve.points[self.number] = (0, y_curve)
                 fixed.move(widget, 16, y)
-            # Last point
             elif self.number == len(self.curve.points) - 1:
                 tab.curve_edition.label.set_label(f"255, {y_curve}")
                 self.curve.points[self.number] = (255, y_curve)
                 fixed.move(widget, 976, y)
-            # Don't move before/after prev/next point
             elif (
                 not x_curve <= self.curve.points[self.number - 1][0]
                 and not x_curve >= self.curve.points[self.number + 1][0]
@@ -126,7 +125,7 @@ class CurvePointWidget(Gtk.DrawingArea):
                     if self.curve.points[self.number][0] == x_curve:
                         self.curve.points[self.number] = (x_curve, y_curve)
                         fixed.move(widget, x, y)
-                if not any(x_curve in point for point in self.curve.points):
+                if all(x_curve not in point for point in self.curve.points):
                     self.curve.points[self.number] = (x_curve, y_curve)
                     fixed.move(widget, x, y)
             self.curve.populate_values()
@@ -140,9 +139,7 @@ class CurvePointWidget(Gtk.DrawingArea):
         Returns:
             True or False
         """
-        if self.active:
-            return True
-        return False
+        return bool(self.active)
 
     def set_active(self, active: bool):
         """Set activate status

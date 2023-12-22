@@ -158,12 +158,12 @@ class MidiControlChanges:
         val = (msg.value / 127) * 255
         fader = App().midi.gm_fader
         gm_val = round(App().dmx.grand_master.value * 255)
-        if fader.valid is FaderState.UP:
-            if fader.value < gm_val:
+        if fader.value < gm_val:
+            if fader.valid is FaderState.UP:
                 fader.value = val
                 return
-        if fader.valid is FaderState.DOWN:
-            if fader.value > gm_val:
+        if fader.value > gm_val:
+            if fader.valid is FaderState.DOWN:
                 fader.value = val
                 return
         fader.value = val

@@ -107,8 +107,7 @@ class Ascii:
         Raises:
             e: not documented
         """
-        uri = self.file.get_uri()
-        if uri:
+        if uri := self.file.get_uri():
             # We remove the project from recent projects list
             # and then re-add it to this list to make sure it
             # gets positioned at the top of the recent projects list.

@@ -116,9 +116,7 @@ class PatchWidget(Gtk.DrawingArea):
             self.popover.set_position(Gtk.PositionType.BOTTOM)
         else:
             hbox = self.popover.get_children()[0]
-        children = hbox.get_children()
-        # Delete old curves widgets
-        if children:
+        if children := hbox.get_children():
             for child in children:
                 child.destroy()
         button = Gtk.Button.new_with_label("<")
@@ -162,8 +160,6 @@ class PatchWidget(Gtk.DrawingArea):
             if not next_curve:
                 next_curve = 0
             child = self.stack.get_child_by_name(str(next_curve))
-            child.show()
-            self.stack.set_visible_child(child)
         else:
             curve_nb = int(self.stack.get_visible_child_name())
             keys = iter(App().curves.curves)
@@ -174,8 +170,9 @@ class PatchWidget(Gtk.DrawingArea):
                     break
             prev_curve = curves_list[i - 1]
             child = self.stack.get_child_by_name(str(prev_curve))
-            child.show()
-            self.stack.set_visible_child(child)
+
+        child.show()
+        self.stack.set_visible_child(child)
 
     def do_draw(self, cr):
         """Draw widget
@@ -311,9 +308,7 @@ class PatchWidget(Gtk.DrawingArea):
             self.universe in App().patch.outputs
             and self.output in App().patch.outputs[self.universe]
         ):
-            number = App().patch.outputs[self.universe][self.output][1]
-            # Don't draw linear curve
-            if number:
+            if number := App().patch.outputs[self.universe][self.output][1]:
                 curve = App().curves.get_curve(number)
                 cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
                 cr.set_line_width(1)

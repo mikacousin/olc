@@ -296,8 +296,7 @@ class PatchOutputsTab(Gtk.Box):
         if App().settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
-        selected_outputs = self.get_selected_outputs()
-        if selected_outputs:
+        if selected_outputs := self.get_selected_outputs():
             output = selected_outputs[0]
             out = output[0]
             univ = output[1]

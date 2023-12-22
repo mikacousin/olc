@@ -67,9 +67,7 @@ class DMXPatch:
         Returns:
             True if patched, else False
         """
-        if None in self.channels[channel][0]:
-            return False
-        return True
+        return None not in self.channels[channel][0]
 
     def patch_empty(self) -> None:
         """Set Dimmers patch to Zero"""
@@ -158,14 +156,12 @@ class PatchByOutputs:
         for out in self.outputs:
             output, universe = self.get_output_universe(out)
             outs.append(f"{output}.{universe}")
-        string = ", ".join(str(out) for out in outs)
-        return string
+        return ", ".join(str(out) for out in outs)
 
     def select_output(self) -> None:
         """Select one output"""
         output, universe = self._string_to_output()
-        output_index = self._get_output_index(output, universe)
-        if output_index:
+        if output_index := self._get_output_index(output, universe):
             self.outputs = [output_index]
             self.last = output_index
         else:
@@ -182,8 +178,7 @@ class PatchByOutputs:
     def thru(self) -> None:
         """Thru output"""
         output, universe = self._string_to_output()
-        output_index = self._get_output_index(output, universe)
-        if output_index:
+        if output_index := self._get_output_index(output, universe):
             if output_index > self.last:
                 for out in range(self.last + 1, output_index + 1):
                     self.outputs.append(out)
@@ -202,8 +197,7 @@ class PatchByOutputs:
     def add_output(self) -> None:
         """Add an output to selection"""
         output, universe = self._string_to_output()
-        output_index = self._get_output_index(output, universe)
-        if output_index:
+        if output_index := self._get_output_index(output, universe):
             self.outputs.append(output_index)
             self.last = output_index
         if App().osc:
@@ -217,8 +211,7 @@ class PatchByOutputs:
     def del_output(self) -> None:
         """Remove an output to selection"""
         output, universe = self._string_to_output()
-        output_index = self._get_output_index(output, universe)
-        if output_index:
+        if output_index := self._get_output_index(output, universe):
             self.outputs.remove(output_index)
             self.last = output_index
         if App().osc:
@@ -344,6 +337,4 @@ class PatchByOutputs:
         keystring = App().window.commandline.get_string()
         if not keystring:
             keystring = "0"
-        if not is_int(keystring):
-            return None
-        return int(keystring)
+        return None if not is_int(keystring) else int(keystring)

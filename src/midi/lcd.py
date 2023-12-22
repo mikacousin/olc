@@ -50,7 +50,7 @@ class MackieLCD:
             return
         text = strip_accents(text)
         text = f"{text.ljust(7)}"
-        text = text[:-1] + "|"
+        text = f"{text[:-1]}|"
         chars = [ord(c) for c in text]
         start = (line * 56) + (strip * 7)
         data = [0, 0, 102, 20, 18, start] + chars

@@ -225,12 +225,10 @@ class CurveEdition(Gtk.Box):
         Returns:
             Index or None if no point actived
         """
-        index = None
-        for idx, point in enumerate(self.points):
-            if point.get_active():
-                index = idx
-                break
-        return index
+        return next(
+            (idx for idx, point in enumerate(self.points) if point.get_active()),
+            None,
+        )
 
 
 class CurveButton(CurveWidget):
@@ -288,8 +286,7 @@ class CurvesTab(Gtk.Paned):
         box.set_homogeneous(False)
         self.header = Gtk.HeaderBar()
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        self.buttons = {}
-        self.buttons["limit"] = Gtk.Button(_("New Limit curve"))
+        self.buttons = {"limit": Gtk.Button(_("New Limit curve"))}
         self.buttons["limit"].connect("clicked", self.on_new_curve)
         header_box.add(self.buttons["limit"])
         self.buttons["segments"] = Gtk.Button(_("New Segments curve"))
@@ -399,7 +396,7 @@ class CurvesTab(Gtk.Paned):
         if index is None:
             self.curve_edition.points[0].set_active(True)
             self.curve_edition.values.queue_draw()
-        elif index is not None and index < last:
+        elif index < last:
             self.curve_edition.points[index].set_active(False)
             self.curve_edition.points[index + 1].set_active(True)
             self.curve_edition.values.queue_draw()
@@ -437,16 +434,14 @@ class CurvesTab(Gtk.Paned):
 
     def _keypress_up(self) -> None:
         """Move curve point up"""
-        index = self.curve_edition.get_active_point()
-        if index:
+        if index := self.curve_edition.get_active_point():
             x = self.curve_edition.points[index].curve.points[index][0]
             y = self.curve_edition.points[index].curve.points[index][1] + 1
             self.__update_point(index, x, y)
 
     def _keypress_down(self) -> None:
         """Move curve point down"""
-        index = self.curve_edition.get_active_point()
-        if index:
+        if index := self.curve_edition.get_active_point():
             x = self.curve_edition.points[index].curve.points[index][0]
             y = self.curve_edition.points[index].curve.points[index][1] - 1
             self.__update_point(index, x, y)

@@ -102,10 +102,7 @@ def time_to_string(time: float) -> str:
         string += f"{int(hours)}:"
     if minutes:
         string += f"{int(minutes)}:"
-    if seconds.is_integer():
-        string += f"{int(seconds)}"
-    else:
-        string += f"{seconds}"
+    string += f"{int(seconds)}" if seconds.is_integer() else f"{seconds}"
     if string == "0":
         string = ""
     return string
@@ -120,7 +117,7 @@ def string_to_time(string: str) -> float:
     Returns:
         time in seconds
     """
-    if string == "":
+    if not string:
         string = "0"
     if ":" in string:
         tsplit = string.split(":")

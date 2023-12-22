@@ -128,12 +128,11 @@ class LiveChannelsView(ChannelsView):
             and position < App().sequence.last - 1
             and App().sequence.last <= len(App().sequence.steps)
         ):
-            next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
+            return App().sequence.steps[position + 1].cue.channels.get(channel, 0)
         elif App().sequence.last:
-            next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
+            return App().sequence.steps[0].cue.channels.get(channel, 0)
         else:
-            next_level = channel_widget.level
-        return next_level
+            return channel_widget.level
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level

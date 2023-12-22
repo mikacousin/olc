@@ -71,9 +71,7 @@ class Dmx:
             for out in outputs:
                 output = out[0]
                 universe = out[1]
-                # Curve
-                curve_numb = App().patch.outputs[universe][output][1]
-                if curve_numb:
+                if curve_numb := App().patch.outputs[universe][output][1]:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
                 # Grand Master

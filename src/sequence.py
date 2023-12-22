@@ -178,12 +178,11 @@ class Sequence:
             level in next cue (0 - 255)
         """
         if self.last > 1 and self.position < self.last - 1:
-            next_level = self.steps[self.position + 1].cue.channels.get(channel, 0)
+            return self.steps[self.position + 1].cue.channels.get(channel, 0)
         elif self.last:
-            next_level = self.steps[0].cue.channels.get(channel, 0)
+            return self.steps[0].cue.channels.get(channel, 0)
         else:
-            next_level = level
-        return next_level
+            return level
 
     def sequence_plus(self):
         """Sequence +"""
@@ -201,8 +200,7 @@ class Sequence:
                 self.thread.join()
                 self.on_go = False
                 # Stop at the end
-                if self.position > self.last - 3:
-                    self.position = self.last - 3
+                self.position = min(self.position, self.last - 3)
             except Exception as e:
                 print("Error :", e)
 
@@ -536,8 +534,7 @@ class ThreadGo(threading.Thread):
                 level = App().dmx.levels["sequence"][channel - 1]
                 if App().dmx.levels["user"][channel - 1] != -1:
                     level = App().dmx.levels["user"][channel - 1]
-                curve_numb = App().patch.outputs[universe][output][1]
-                if curve_numb:
+                if curve_numb := App().patch.outputs[universe][output][1]:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
                 level = round(level * App().dmx.grand_master.value)
@@ -869,8 +866,7 @@ class ThreadGoBack(threading.Thread):
                 level = App().dmx.levels["sequence"][channel - 1]
                 if App().dmx.levels["user"][channel - 1] != -1:
                     level = App().dmx.levels["user"][channel - 1]
-                curve_numb = App().patch.outputs[univ][output][1]
-                if curve_numb:
+                if curve_numb := App().patch.outputs[univ][output][1]:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
                 level = round(level * App().dmx.grand_master.value)

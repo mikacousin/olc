@@ -47,8 +47,7 @@ class Midi:
         self.lcd = MackieLCD()
 
         self.faders = []
-        for _ in range(10):
-            self.faders.append(MIDIFader())
+        self.faders.extend(MIDIFader() for _ in range(10))
         self.gm_fader = MIDIFader()
 
         # Create xfade Faders

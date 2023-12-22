@@ -166,7 +166,7 @@ class Master:
                 "control_change",
                 channel=channel,
                 control=control,
-                value=int(value / 2),
+                value=value // 2,
                 time=0,
             )
             App().midi.queue.enqueue(msg)

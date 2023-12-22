@@ -86,10 +86,7 @@ class MidiNotes:
                     self.notes[f"flash_{j + i * 10 + 1}"] = [0, 84]
                 else:
                     self.notes[f"flash_{j + i * 10 + 1}"] = [0, -1]
-                if j < 8:
-                    self.notes[f"master_{j + i * 10 + 1}"] = [0, 104 + j]
-                else:
-                    self.notes[f"master_{j + i * 10 + 1}"] = [0, -1]
+                self.notes[f"master_{j + i * 10 + 1}"] = [0, 104 + j] if j < 8 else [0, -1]
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
@@ -116,9 +113,9 @@ class MidiNotes:
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
                 elif key[:4] == "zoom":
                     GLib.idle_add(self._toggle_zoom, msg)
-                elif key[:6] == "h_plus" or key[:6] == "v_plus":
+                elif key[:6] in ["h_plus", "v_plus"]:
                     GLib.idle_add(self._zoom_plus, msg)
-                elif key[:7] == "h_minus" or key[:7] == "v_minus":
+                elif key[:7] in ["h_minus", "v_minus"]:
                     GLib.idle_add(self._zoom_minus, msg)
                 else:
                     GLib.idle_add(globals()[f"_function_{key}"], msg)
@@ -211,10 +208,8 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 127 and self.zoom:
-            self.zoom = False
-        elif msg.velocity == 127 and not self.zoom:
-            self.zoom = True
+        if msg.velocity == 127:
+            self.zoom = not self.zoom
 
     def _zoom_plus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
@@ -260,23 +255,24 @@ def _function_gm(msg: mido.Message) -> None:
     Args:
         msg: MIDI message
     """
-    if msg.velocity == 0:
-        midi_name = "gm"
-        channel, control = App().midi.control_change.control_change[midi_name]
-        if control != -1:
-            msg = mido.Message(
-                "control_change",
-                channel=channel,
-                control=control,
-                value=round(App().dmx.grand_master.value * 127),
-                time=0,
-            )
-            App().midi.queue.enqueue(msg)
-        channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-        if channel != -1:
-            val = round((App().dmx.grand_master.value * 16383) - 8192)
-            msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-            App().midi.queue.enqueue(msg)
+    if msg.velocity != 0:
+        return
+    midi_name = "gm"
+    channel, control = App().midi.control_change.control_change[midi_name]
+    if control != -1:
+        msg = mido.Message(
+            "control_change",
+            channel=channel,
+            control=control,
+            value=round(App().dmx.grand_master.value * 127),
+            time=0,
+        )
+        App().midi.queue.enqueue(msg)
+    channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
+    if channel != -1:
+        val = round((App().dmx.grand_master.value * 16383) - 8192)
+        msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
+        App().midi.queue.enqueue(msg)
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
@@ -809,12 +805,12 @@ def _function_pause(msg: mido.Message) -> None:
             message = mido.Message(
                 "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
             )
-            App().midi.queue.enqueue(message)
         else:
             message = mido.Message(
                 "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
             )
-            App().midi.queue.enqueue(message)
+
+        App().midi.queue.enqueue(message)
 
 
 def _function_go_back(msg: mido.Message) -> None:
