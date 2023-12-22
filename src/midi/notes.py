@@ -268,13 +268,13 @@ def _function_gm(msg: mido.Message) -> None:
                 "control_change",
                 channel=channel,
                 control=control,
-                value=int(App().dmx.grand_master / 2),
+                value=round(App().dmx.grand_master.value * 127),
                 time=0,
             )
             App().midi.queue.enqueue(msg)
         channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
-            val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
+            val = round((App().dmx.grand_master.value * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             App().midi.queue.enqueue(msg)
 

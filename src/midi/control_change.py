@@ -156,13 +156,24 @@ class MidiControlChanges:
             msg: MIDI message
         """
         val = (msg.value / 127) * 255
+        fader = App().midi.gm_fader
+        gm_val = round(App().dmx.grand_master.value * 255)
+        if fader.valid is FaderState.UP:
+            if fader.value < gm_val:
+                fader.value = val
+                return
+        if fader.valid is FaderState.DOWN:
+            if fader.value > gm_val:
+                fader.value = val
+                return
+        fader.value = val
         if App().virtual_console:
             App().virtual_console.scale_grand_master.set_value(val)
             App().virtual_console.grand_master_moved(
                 App().virtual_console.scale_grand_master
             )
         else:
-            App().dmx.grand_master = val
+            App().dmx.grand_master.set_level(val / 255)
             App().window.grand_master.queue_draw()
 
 

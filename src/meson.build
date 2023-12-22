@@ -31,6 +31,7 @@ olc_sources = [
   'define.py',
   'dmx.py',
   'enttec_wing.py',
+  'grand_master.py',
   'group.py',
   'independent.py',
   'independents_edition.py',

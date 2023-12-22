@@ -135,12 +135,13 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Grand Master and Output grid
         self.output_pad = Gtk.Grid()
-        adjustment = Gtk.Adjustment(App().dmx.grand_master, 0, 255, 1, 10, 0)
+        adjustment = Gtk.Adjustment(
+            round(App().dmx.grand_master.value * 255), 0, 255, 1, 10, 0
+        )
         self.scale_grand_master = FaderWidget(
             text="gm", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
         )
         self.scale_grand_master.value = App().dmx.grand_master
-        # self.scale_grand_master.height = 160
         self.scale_grand_master.connect("clicked", self._scale_clicked)
         self.scale_grand_master.connect("value-changed", self.grand_master_moved)
         self.scale_grand_master.set_draw_value(False)
@@ -985,8 +986,16 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             value = scale.get_value()
-            App().dmx.grand_master = value
+            App().dmx.grand_master.set_level(value / 255)
             App().window.grand_master.queue_draw()
+            midi_fader = App().midi.gm_fader
+            midi_value = midi_fader.value
+            if value > midi_value:
+                midi_fader.valid = FaderState.UP
+            elif value < midi_value:
+                midi_fader.valid = FaderState.DOWN
+            else:
+                midi_fader.valid = FaderState.VALID
             channel = App().midi.pitchwheel.pitchwheel.get("gm", -1)
             if channel != -1:
                 val = int(((value / 255) * 16383) - 8192)

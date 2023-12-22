@@ -540,7 +540,7 @@ class ThreadGo(threading.Thread):
                 if curve_numb:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
-                level = round(level * (App().dmx.grand_master / 255))
+                level = round(level * App().dmx.grand_master.value)
                 index = App().universes.index(universe)
                 self.dmxlevels[index][output - 1] = level
 
@@ -873,7 +873,7 @@ class ThreadGoBack(threading.Thread):
                 if curve_numb:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
-                level = round(level * (App().dmx.grand_master / 255))
+                level = round(level * App().dmx.grand_master.value)
                 index = App().universes.index(univ)
                 self.dmxlevels[index][output - 1] = level
         # Go Back's default time

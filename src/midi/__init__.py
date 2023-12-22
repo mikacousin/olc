@@ -36,6 +36,7 @@ class Midi:
     xfade_out: XFader
     xfade_in: XFader
     faders: list[MIDIFader]
+    gm_fader: MIDIFader
 
     def __init__(self):
         self.midi_learn = ""
@@ -48,6 +49,7 @@ class Midi:
         self.faders = []
         for _ in range(10):
             self.faders.append(MIDIFader())
+        self.gm_fader = MIDIFader()
 
         # Create xfade Faders
         self.xfade_out = XFader()
@@ -130,13 +132,13 @@ class Midi:
                 "control_change",
                 channel=channel,
                 control=control,
-                value=int(App().dmx.grand_master / 2),
+                value=round(App().dmx.grand_master.value * 127),
                 time=0,
             )
             self.queue.enqueue(msg)
         channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
-            val = int(((App().dmx.grand_master / 255) * 16383) - 8192)
+            val = round((App().dmx.grand_master.value * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             self.queue.enqueue(msg)
 

@@ -18,6 +18,7 @@ from enum import Enum
 
 class FaderState(Enum):
     """MIDI fader states"""
+
     VALID = 1
     UP = 2
     DOWN = 3

@@ -15,20 +15,21 @@
 import array
 from typing import Optional
 from olc.define import DMX_INTERVAL, UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
+from olc.grand_master import GrandMaster
 from olc.timer import RepeatedTimer
 
 
 class Dmx:
     """Thread to send levels to Ola"""
 
-    grand_master: int
+    grand_master: GrandMaster
     levels: dict[str, array.array]
     frame: list[array.array]
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
 
     def __init__(self):
-        self.grand_master = 255
+        self.grand_master = GrandMaster()
         # Dimmers levels
         self.levels = {
             "sequence": array.array("B", [0] * MAX_CHANNELS),
@@ -76,7 +77,7 @@ class Dmx:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
                 # Grand Master
-                level = round(level * (self.grand_master / 255))
+                level = round(level * self.grand_master.value)
                 # Update output level
                 index = App().universes.index(universe)
                 self.frame[index][output - 1] = level
