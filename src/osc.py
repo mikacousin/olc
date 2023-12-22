@@ -16,6 +16,7 @@ from typing import Optional, Tuple
 import liblo
 from gi.repository import Gdk, GLib
 from olc.define import App, MAX_FADER_PAGE, UNIVERSES
+from olc.midi.fader import FaderState
 
 
 class Osc:
@@ -294,6 +295,14 @@ class OscServer(liblo.ServerThread):
                 if master.page == App().fader_page and master.number == master_index:
                     break
             master.set_level(level)
+            midi_fader = App().midi.faders[master_index - 1]
+            midi_value = midi_fader.value
+            if level > midi_value:
+                midi_fader.valid = FaderState.UP
+            elif level < midi_value:
+                midi_fader.valid = FaderState.DOWN
+            else:
+                midi_fader.valid = FaderState.VALID
         App().osc.client.send(path, ("i", level))
 
     @liblo.make_method("/olc/fader/1/1/flash", "i")

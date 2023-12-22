@@ -15,6 +15,7 @@
 import mido
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_FADER_PAGE
+from olc.midi.fader import FaderState
 from olc.widgets.button import ButtonWidget
 from olc.widgets.controller import ControllerWidget
 from olc.widgets.fader import FaderWidget
@@ -896,6 +897,14 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.masters.index(master)
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
+            midi_fader = App().midi.faders[self.masters.index(master)]
+            midi_value = midi_fader.value
+            if value > midi_value:
+                midi_fader.valid = FaderState.UP
+            elif value < midi_value:
+                midi_fader.valid = FaderState.DOWN
+            else:
+                midi_fader.valid = FaderState.VALID
 
     def _master_clicked(self, master):
         """Fader clicked

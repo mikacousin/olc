@@ -16,7 +16,7 @@ import mido
 from olc.define import App
 
 
-class MidiFader:
+class XFader:
     """MIDI Faders"""
 
     value: int
@@ -82,7 +82,7 @@ def xfade_in(msg: mido.Message) -> None:
         _xfade(App().midi.xfade_in, round((msg.value / 127) * 16383))
 
 
-def _xfade(fader: MidiFader, value: int) -> None:
+def _xfade(fader: XFader, value: int) -> None:
     """Crossfade
 
     Args:

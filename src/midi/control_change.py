@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Tuple
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App
+from olc.midi.fader import FaderState
 import olc.midi.xfade
 
 
@@ -173,16 +174,26 @@ def _function_master(msg: mido.Message, master_index: int) -> None:
         master_index: Master number
     """
     val = (msg.value / 127) * 255
+    fader = App().midi.faders[master_index - 1]
+    master = None
+    for master in App().masters:
+        if master.page == App().fader_page and master.number == master_index:
+            break
+    if fader.valid is FaderState.UP:
+        if fader.value < master.value:
+            fader.value = val
+            return
+    if fader.valid is FaderState.DOWN:
+        if fader.value > master.value:
+            fader.value = val
+            return
+    fader.value = val
     if App().virtual_console:
         App().virtual_console.masters[master_index - 1].set_value(val)
         App().virtual_console.master_moved(
             App().virtual_console.masters[master_index - 1]
         )
     else:
-        master = None
-        for master in App().masters:
-            if master.page == App().fader_page and master.number == master_index:
-                break
         master.set_level(val)
 
 

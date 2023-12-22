@@ -17,10 +17,11 @@ import mido
 from olc.define import App
 from olc.timer import RepeatedTimer
 from .control_change import MidiControlChanges
+from .fader import MIDIFader
 from .notes import MidiNotes
 from .ports import MidiPorts
 from .pitchwheel import MidiPitchWheel
-from .xfade import MidiFader
+from .xfade import XFader
 from .lcd import MackieLCD
 
 
@@ -32,8 +33,9 @@ class Midi:
     notes: MidiNotes
     control_change: MidiControlChanges
     pitchwheel: MidiPitchWheel
-    xfade_out: MidiFader
-    xfade_in: MidiFader
+    xfade_out: XFader
+    xfade_in: XFader
+    faders: list[MIDIFader]
 
     def __init__(self):
         self.midi_learn = ""
@@ -43,9 +45,13 @@ class Midi:
         self.pitchwheel = MidiPitchWheel()
         self.lcd = MackieLCD()
 
+        self.faders = []
+        for _ in range(10):
+            self.faders.append(MIDIFader())
+
         # Create xfade Faders
-        self.xfade_out = MidiFader()
-        self.xfade_in = MidiFader()
+        self.xfade_out = XFader()
+        self.xfade_in = XFader()
 
         # Create and Open MIDI ports
         self.ports = MidiPorts()
