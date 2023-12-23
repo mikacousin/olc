@@ -87,21 +87,21 @@ class MidiControlChanges:
             )
             App().midi.enqueue(msg)
 
-    def learn(self, msg: mido.Message, midi_learn: str) -> None:
+    def learn(self, msg: mido.Message, learning: str) -> None:
         """Learn new MIDI Control Change control
 
         Args:
             msg: MIDI message
-            midi_learn: action to update
+            learning: action to update
         """
-        if self.control_change.get(midi_learn):
+        if self.control_change.get(learning):
             # Find if values are already used
             for key, value in self.control_change.items():
                 if value[0] == msg.channel and value[1] == msg.control:
                     # Delete it
                     self.control_change.update({key: [0, -1]})
                 # Learn new values
-                self.control_change.update({midi_learn: [msg.channel, msg.control]})
+                self.control_change.update({learning: [msg.channel, msg.control]})
 
     def __get_step(
         self, msg: mido.Message, port: str

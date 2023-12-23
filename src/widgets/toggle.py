@@ -39,7 +39,7 @@ class ToggleWidget(Gtk.ToggleButton):
         self.set_size_request(self.width, self.height)
         # Button
         area = (10, self.width - 10, 10, self.height - 10)
-        if App().midi.midi_learn == self.text:
+        if App().midi.learning == self.text:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         elif self.get_active():
             cr.set_source_rgb(0.5, 0.3, 0.0)

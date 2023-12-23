@@ -113,7 +113,7 @@ class MidiSend:  # pylint: disable=R0903
 class Midi:
     """MIDI messages from controllers"""
 
-    midi_learn: str
+    learning: str
     messages: MidiMessages
     faders: MidiFaders
     xfade_out: XFader
@@ -122,7 +122,7 @@ class Midi:
     send: MidiSend
 
     def __init__(self):
-        self.midi_learn = ""
+        self.learning = ""
         self.messages = MidiMessages()
         self.faders = MidiFaders()
         # Create xfade Faders
@@ -157,21 +157,13 @@ class Midi:
         if self.ports.ports:
             self.enqueue(msg)
         if msg.type == "note_on":
-            self.messages.notes.learn(msg, self.midi_learn)
+            self.messages.notes.learn(msg, self.learning)
         elif msg.type == "control_change":
-            self.messages.control_change.learn(msg, self.midi_learn)
+            self.messages.control_change.learn(msg, self.learning)
         elif msg.type == "pitchwheel":
-            self.messages.pitchwheel.learn(msg, self.midi_learn)
+            self.messages.pitchwheel.learn(msg, self.learning)
         # Tag filename as modified
         App().ascii.set_modified()
-
-    def get_midi_learn(self) -> str:
-        """Return MIDI Learn string
-
-        Returns:
-            MIDI Learn action
-        """
-        return self.midi_learn
 
     def controler_reset(self) -> None:
         """Reset Mackie Controler"""

@@ -46,7 +46,7 @@ class MidiIO:
             msg: MIDI message
         """
         # print(self.name, msg)
-        if App().midi.midi_learn:
+        if App().midi.learning:
             App().midi.learn(msg)
 
         # Find action actived

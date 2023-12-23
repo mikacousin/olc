@@ -137,19 +137,19 @@ class MidiNotes:
             )
             App().midi.enqueue(msg)
 
-    def learn(self, msg: mido.Message, midi_learn: str) -> None:
+    def learn(self, msg: mido.Message, learning: str) -> None:
         """Learn new MIDI Note control
 
         Args:
             msg: MIDI message
-            midi_learn: action to update
+            learning: action to update
         """
-        if not self.notes.get(midi_learn):
+        if not self.notes.get(learning):
             return
             # Find if values are already used
         for key, value in self.notes.items():
             if value[0] == msg.channel and value[1] == msg.note:
-                if midi_learn.startswith("flash_"):
+                if learning.startswith("flash_"):
                     # Don't delete flash button from other pages
                     index = int(key[6:])
                     page = index // 11 + 1
@@ -159,7 +159,7 @@ class MidiNotes:
                     # Delete it
                     self.notes.update({key: [0, -1]})
         # Learn new values
-        self.notes.update({midi_learn: [msg.channel, msg.note]})
+        self.notes.update({learning: [msg.channel, msg.note]})
 
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""

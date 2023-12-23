@@ -68,11 +68,11 @@ class PauseWidget(Gtk.Button):
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         elif self.pressed:
-            if App().midi.midi_learn == self.text:
+            if App().midi.learning == self.text:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif App().midi.midi_learn == self.text:
+        elif App().midi.learning == self.text:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)

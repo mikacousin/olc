@@ -96,7 +96,7 @@ class FaderWidget(Gtk.Scale):
         # Draw Cursor
         area = ((width / 2) - 19, (width / 2) + 19, h - 20, h)
 
-        if App().midi.midi_learn == self.text:
+        if App().midi.learning == self.text:
             if self.pressed:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:

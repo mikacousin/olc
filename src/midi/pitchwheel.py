@@ -65,18 +65,18 @@ class MidiPitchWheel:
             msg = mido.Message("pitchwheel", channel=channel, pitch=value, time=0)
             App().midi.enqueue(msg)
 
-    def learn(self, msg: mido.Message, midi_learn: str) -> None:
+    def learn(self, msg: mido.Message, learning: str) -> None:
         """Learn new MIDI Pitchwheel control
 
         Args:
             msg: MIDI message
-            midi_learn: action to update
+            learning: action to update
         """
-        if self.pitchwheel.get(midi_learn):
+        if self.pitchwheel.get(learning):
             for key, channel in self.pitchwheel.items():
                 if channel == msg.channel:
                     self.pitchwheel.update({key: -1})
-            self.pitchwheel.update({midi_learn: msg.channel})
+            self.pitchwheel.update({learning: msg.channel})
 
     def _function_gm(self, _port: str, msg: mido.Message) -> None:
         """Grand Master
