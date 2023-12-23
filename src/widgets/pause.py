@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
-import mido
 from gi.repository import Gtk
 from olc.define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
@@ -44,32 +43,21 @@ class PauseWidget(Gtk.Button):
     def on_press(self, _tgt, _ev):
         """Button pressed"""
         self.pressed = True
-        channel, note = App().midi.notes.notes[self.text]
-        msg = mido.Message("note_on", channel=channel, note=note, velocity=127, time=0)
-        App().midi.queue.enqueue(msg)
+        App().midi.messages.notes.send(self.text, 127)
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        channel, note = App().midi.notes.notes[self.text]
+        # channel, note = App().midi.messages.notes.notes[self.text]
         if App().sequence.on_go:
             if App().sequence.thread and App().sequence.thread.pause.is_set():
                 self.pressed = True
-                msg = mido.Message(
-                    "note_on", channel=channel, note=note, velocity=127, time=0
-                )
-                App().midi.queue.enqueue(msg)
+                App().midi.messages.notes.send(self.text, 127)
             elif App().sequence.thread:
                 self.pressed = False
-                msg = mido.Message(
-                    "note_on", channel=channel, note=note, velocity=0, time=0
-                )
-                App().midi.queue.enqueue(msg)
+                App().midi.messages.notes.send(self.text, 0)
         else:
             self.pressed = False
-            msg = mido.Message(
-                "note_on", channel=channel, note=note, velocity=0, time=0
-            )
-            App().midi.queue.enqueue(msg)
+            App().midi.messages.notes.send(self.text, 0)
 
     def do_draw(self, cr):
         """Draw Pause button

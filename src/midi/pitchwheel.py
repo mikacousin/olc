@@ -53,6 +53,18 @@ class MidiPitchWheel:
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, None, msg)
 
+    def send(self, midi_name: str, value: int) -> None:
+        """Send MIDI pitchwheel message
+
+        Args:
+            midi_name: action string
+            value: value to send
+        """
+        channel = self.pitchwheel.get(midi_name, -1)
+        if channel != -1:
+            msg = mido.Message("pitchwheel", channel=channel, pitch=value, time=0)
+            App().midi.enqueue(msg)
+
     def learn(self, msg: mido.Message, midi_learn: str) -> None:
         """Learn new MIDI Pitchwheel control
 
@@ -81,7 +93,6 @@ class MidiPitchWheel:
         else:
             App().dmx.grand_master.set_level(val / 255)
             App().window.grand_master.queue_draw()
-            App().midi.queue.enqueue(msg)
 
 
 def _update_master(msg: mido.Message, index: int) -> None:

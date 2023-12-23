@@ -317,11 +317,11 @@ def save_midi_mapping(stream: Gio.FileOutputStream) -> None:
         )
     )
     stream.write(bytes("! MIDI mapping\n\n", "utf8"))
-    for key, value in App().midi.notes.notes.items():
+    for key, value in App().midi.messages.notes.notes.items():
         stream.write(bytes(f"$$MIDINOTE {key} {value[0]} {value[1]}\n", "utf8"))
-    for key, value in App().midi.control_change.control_change.items():
+    for key, value in App().midi.messages.control_change.control_change.items():
         stream.write(bytes(f"$$MIDICC {key} {value[0]} {value[1]}\n", "utf8"))
-    for key, value in App().midi.pitchwheel.pitchwheel.items():
+    for key, value in App().midi.messages.pitchwheel.pitchwheel.items():
         stream.write(bytes(f"$$MIDIPW {key} {value}\n", "utf8"))
     stream.write(bytes("\n", "utf8"))
 

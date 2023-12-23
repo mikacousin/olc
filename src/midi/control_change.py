@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Tuple
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App
-from olc.midi.fader import FaderState
+from olc.midi.fader import FaderState, MIDIFader
 import olc.midi.xfade
 
 
@@ -35,6 +35,12 @@ class MidiControlChanges:
             "inde_4": [0, 19],
             "inde_5": [0, 20],
             "inde_6": [0, 21],
+            "inde_led_1": [0, 48],
+            "inde_led_2": [0, 49],
+            "inde_led_3": [0, 50],
+            "inde_led_4": [0, 51],
+            "inde_led_5": [0, 52],
+            "inde_led_6": [0, 53],
             "gm": [3, 108],
             "crossfade_out": [0, 8],
             "crossfade_in": [0, 9],
@@ -62,6 +68,24 @@ class MidiControlChanges:
                     GLib.idle_add(olc.midi.xfade.xfade_in, msg)
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
+
+    def send(self, midi_name: str, value: int) -> None:
+        """Send MIDI control change message
+
+        Args:
+            midi_name: action string
+            value: value to send
+        """
+        channel, control = self.control_change[midi_name]
+        if control != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=channel,
+                control=control,
+                value=value,
+                time=0,
+            )
+            App().midi.enqueue(msg)
 
     def learn(self, msg: mido.Message, midi_learn: str) -> None:
         """Learn new MIDI Control Change control
@@ -156,17 +180,10 @@ class MidiControlChanges:
             msg: MIDI message
         """
         val = (msg.value / 127) * 255
-        fader = App().midi.gm_fader
+        fader = App().midi.faders.gm_fader
         gm_val = round(App().dmx.grand_master.value * 255)
-        if fader.valid is FaderState.UP:
-            if fader.value < gm_val:
-                fader.value = val
-                return
-        if fader.valid is FaderState.DOWN:
-            if fader.value > gm_val:
-                fader.value = val
-                return
-        fader.value = val
+        if not _is_valid_fader(fader, val, gm_val):
+            return
         if App().virtual_console:
             App().virtual_console.scale_grand_master.set_value(val)
             App().virtual_console.grand_master_moved(
@@ -185,20 +202,13 @@ def _function_master(msg: mido.Message, master_index: int) -> None:
         master_index: Master number
     """
     val = (msg.value / 127) * 255
-    fader = App().midi.faders[master_index - 1]
+    fader = App().midi.faders.faders[master_index - 1]
     master = None
     for master in App().masters:
         if master.page == App().fader_page and master.number == master_index:
             break
-    if fader.valid is FaderState.UP:
-        if fader.value < master.value:
-            fader.value = val
-            return
-    if fader.valid is FaderState.DOWN:
-        if fader.value > master.value:
-            fader.value = val
-            return
-    fader.value = val
+    if not _is_valid_fader(fader, val, master.value):
+        return
     if App().virtual_console:
         App().virtual_console.masters[master_index - 1].set_value(val)
         App().virtual_console.master_moved(
@@ -226,29 +236,41 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
             step = msg.value - 128
         elif msg.value < 65:
             step = msg.value
-        inde, val = __new_inde_value(independent, step)
-        __update_inde(independent, inde, val)
+        inde, val = _new_inde_value(independent, step)
+        _update_inde(independent, inde, val)
     elif port in relative2:
         # Relative2 mode (value: 65-127 positive, 63-0 negative)
         step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
-        inde, val = __new_inde_value(independent, step)
-        __update_inde(independent, inde, val)
+        inde, val = _new_inde_value(independent, step)
+        _update_inde(independent, inde, val)
     elif port in makies:
         # Mackie mode (value: 0-64 positive, 65-127 negative)
         if msg.value > 64:
             step = -(msg.value - 64)
         elif msg.value < 65:
             step = msg.value
-        inde, val = __new_inde_value(independent, step)
-        __update_inde(independent, inde, val)
+        inde, val = _new_inde_value(independent, step)
+        _update_inde(independent, inde, val)
     elif port in absolutes:
         # Absolute mode (value: 0-127)
-        inde, val = __new_inde_value(independent, 0)
+        inde, _ = _new_inde_value(independent, 0)
         val = round((msg.value / 127) * 255)
-        __update_inde(independent, inde, val)
+        fader = App().midi.faders.inde_faders[independent - 1]
+        if not _is_valid_fader(fader, val, inde.level):
+            return
+        _update_inde(independent, inde, val)
 
 
-def __new_inde_value(independent: int, step: int) -> Tuple[Any, int]:
+def _is_valid_fader(fader: MIDIFader, new_value: int, level: int) -> bool:
+    fader.value = new_value
+    if (fader.valid is FaderState.UP and fader.value < level) or (
+        fader.valid is FaderState.DOWN and fader.value > level
+    ):
+        return False
+    return True
+
+
+def _new_inde_value(independent: int, step: int) -> Tuple[Any, int]:
     inde = None
     for inde in App().independents.independents:
         if inde.number == independent:
@@ -261,31 +283,22 @@ def __new_inde_value(independent: int, step: int) -> Tuple[Any, int]:
     return inde, val
 
 
-def __update_inde(independent: int, inde, val: int) -> None:
+def _update_inde(independent: int, inde, val: int) -> None:
     if App().virtual_console:
         if independent == 1:
-            App().virtual_console.independent1.value = val
-            App().virtual_console.independent1.emit("changed")
-            App().virtual_console.independent1.queue_draw()
+            widget = App().virtual_console.independent1
         elif independent == 2:
-            App().virtual_console.independent2.value = val
-            App().virtual_console.independent2.emit("changed")
-            App().virtual_console.independent2.queue_draw()
+            widget = App().virtual_console.independent2
         elif independent == 3:
-            App().virtual_console.independent3.value = val
-            App().virtual_console.independent3.emit("changed")
-            App().virtual_console.independent3.queue_draw()
+            widget = App().virtual_console.independent3
         elif independent == 4:
-            App().virtual_console.independent4.value = val
-            App().virtual_console.independent4.emit("changed")
-            App().virtual_console.independent4.queue_draw()
+            widget = App().virtual_console.independent4
         elif independent == 5:
-            App().virtual_console.independent5.value = val
-            App().virtual_console.independent5.emit("changed")
-            App().virtual_console.independent5.queue_draw()
+            widget = App().virtual_console.independent5
         elif independent == 6:
-            App().virtual_console.independent6.value = val
-            App().virtual_console.independent6.emit("changed")
-            App().virtual_console.independent6.queue_draw()
+            widget = App().virtual_console.independent6
+        widget.value = val
+        widget.emit("changed")
+        widget.queue_draw()
     else:
         inde.set_level(val)

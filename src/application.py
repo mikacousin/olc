@@ -175,7 +175,7 @@ class Application(Gtk.Application):
 
         # Open MIDI Inputs and Outputs
         self.midi = Midi()
-        self.midi.lcd.show_masters()
+        self.midi.messages.lcd.show_masters()
         self.midi.gm_init()
 
         # Init Enttec Wing Playback

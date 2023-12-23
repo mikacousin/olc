@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from dataclasses import dataclass
 from enum import Enum
 
 
@@ -24,7 +23,6 @@ class FaderState(Enum):
     DOWN = 3
 
 
-@dataclass
 class MIDIFader:
     """MIDI fader"""
 
@@ -34,3 +32,24 @@ class MIDIFader:
     def __init__(self):
         self.value = 0
         self.valid = FaderState.VALID
+
+    def get_value(self) -> float:
+        """Get fader value
+
+        Returns:
+            Fader value
+        """
+        return self.value
+
+    def set_state(self, value: int) -> None:
+        """Set Fader state
+
+        Args:
+            value: Value of object attached to MIDI fader (Fader, GM, Independent)
+        """
+        if value > self.value:
+            self.valid = FaderState.UP
+        elif value < self.value:
+            self.valid = FaderState.DOWN
+        else:
+            self.valid = FaderState.VALID

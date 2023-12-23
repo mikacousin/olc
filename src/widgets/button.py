@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
-import mido
 from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
@@ -47,24 +46,14 @@ class ButtonWidget(Gtk.Widget):
 
     def on_press(self, _tgt, _ev):
         """Button pressed"""
-        channel, note = App().midi.notes.notes[self.text]
-        if note != -1:
-            msg = mido.Message(
-                "note_on", channel=channel, note=note, velocity=127, time=0
-            )
-            App().midi.queue.enqueue(msg)
+        App().midi.messages.notes.send(self.text, 127)
         self.pressed = True
         self.queue_draw()
         self.emit("clicked")
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        channel, note = App().midi.notes.notes[self.text]
-        if note != -1:
-            msg = mido.Message(
-                "note_on", channel=channel, note=note, velocity=0, time=0
-            )
-            App().midi.queue.enqueue(msg)
+        App().midi.messages.notes.send(self.text, 0)
         self.pressed = False
         self.queue_draw()
 

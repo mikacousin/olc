@@ -190,7 +190,7 @@ class MastersTab(Gtk.Paned):
                 App().virtual_console.flashes[int(path)].label = ""
                 App().virtual_console.flashes[int(path)].queue_draw()
             # Update MIDI
-            App().midi.lcd.show_masters()
+            App().midi.messages.lcd.show_masters()
 
     def on_mode_changed(self, _widget, path, text):
         """Master mode has been changed
@@ -236,7 +236,7 @@ class MastersTab(Gtk.Paned):
                 App().virtual_console.flashes[index].label = App().masters[index].text
                 App().virtual_console.flashes[index].queue_draw()
             # Update MIDI
-            App().midi.lcd.show_masters()
+            App().midi.messages.lcd.show_masters()
 
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""

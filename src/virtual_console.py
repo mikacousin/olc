@@ -12,10 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import mido
 from gi.repository import Gdk, Gtk
 from olc.define import App, MAX_FADER_PAGE
-from olc.midi.fader import FaderState
 from olc.widgets.button import ButtonWidget
 from olc.widgets.controller import ControllerWidget
 from olc.widgets.fader import FaderWidget
@@ -497,7 +495,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     self.masters[master.number - 1].set_value(val)
                     self.flashes[master.number - 1].label = master.text
                     self.flashes[master.number - 1].queue_draw()
-            App().midi.lcd.show_masters()
+            App().midi.messages.lcd.show_masters()
 
     def _on_time(self, _widget):
         """Time button"""
@@ -898,14 +896,8 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.masters.index(master)
             index = index + ((App().fader_page - 1) * 10)
             App().masters[index].set_level(value)
-            midi_fader = App().midi.faders[self.masters.index(master)]
-            midi_value = midi_fader.value
-            if value > midi_value:
-                midi_fader.valid = FaderState.UP
-            elif value < midi_value:
-                midi_fader.valid = FaderState.DOWN
-            else:
-                midi_fader.valid = FaderState.VALID
+            midi_fader = App().midi.faders.faders[self.masters.index(master)]
+            midi_fader.set_state(value)
 
     def _master_clicked(self, master):
         """Fader clicked
@@ -988,19 +980,8 @@ class VirtualConsoleWindow(Gtk.Window):
             value = scale.get_value()
             App().dmx.grand_master.set_level(value / 255)
             App().window.grand_master.queue_draw()
-            midi_fader = App().midi.gm_fader
-            midi_value = midi_fader.value
-            if value > midi_value:
-                midi_fader.valid = FaderState.UP
-            elif value < midi_value:
-                midi_fader.valid = FaderState.DOWN
-            else:
-                midi_fader.valid = FaderState.VALID
-            channel = App().midi.pitchwheel.pitchwheel.get("gm", -1)
-            if channel != -1:
-                val = int(((value / 255) * 16383) - 8192)
-                msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                App().midi.queue.enqueue(msg)
+            midi_fader = App().midi.faders.gm_fader
+            midi_fader.set_state(value)
 
     def _controller_clicked(self, widget):
         """Controller clicked
@@ -1096,14 +1077,19 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.midi_learn:
             return
         if widget == self.independent1:
-            App().independents.independents[0].set_level(widget.value)
+            index = 0
         elif widget == self.independent2:
-            App().independents.independents[1].set_level(widget.value)
+            index = 1
         elif widget == self.independent3:
-            App().independents.independents[2].set_level(widget.value)
+            index = 2
         elif widget == self.independent4:
-            App().independents.independents[3].set_level(widget.value)
+            index = 3
         elif widget == self.independent5:
-            App().independents.independents[4].set_level(widget.value)
+            index = 4
         elif widget == self.independent6:
-            App().independents.independents[5].set_level(widget.value)
+            index = 5
+        value = widget.value
+        inde = App().independents.independents[index]
+        midi_fader = App().midi.faders.inde_faders[index]
+        inde.set_level(value)
+        midi_fader.set_state(value)

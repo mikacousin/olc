@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from collections import deque
+from dataclasses import dataclass
 import mido
 from olc.define import App
 from olc.timer import RepeatedTimer
@@ -25,56 +26,127 @@ from .xfade import XFader
 from .lcd import MackieLCD
 
 
-class Midi:
-    """MIDI messages from controllers"""
+class Queue:
+    """Queue implementation based on deque"""
 
-    ports: MidiPorts
-    midi_learn: str
+    def __init__(self):
+        self._elements = deque()
+
+    def __len__(self):
+        return len(self._elements)
+
+    def __iter__(self):
+        while len(self) > 0:
+            yield self.dequeue()
+
+    def enqueue(self, element):
+        """Add a element
+
+        Args:
+            element: Element to add
+        """
+        self._elements.append(element)
+
+    def dequeue(self):
+        """Remove first element
+
+        Returns:
+            The first element
+        """
+        return self._elements.popleft()
+
+
+@dataclass
+class MidiMessages:
+    """MIDI Messages"""
+
     notes: MidiNotes
     control_change: MidiControlChanges
     pitchwheel: MidiPitchWheel
-    xfade_out: XFader
-    xfade_in: XFader
-    faders: list[MIDIFader]
-    gm_fader: MIDIFader
+    lcd: MackieLCD
 
     def __init__(self):
-        self.midi_learn = ""
-
         self.notes = MidiNotes()
         self.control_change = MidiControlChanges()
         self.pitchwheel = MidiPitchWheel()
         self.lcd = MackieLCD()
 
+
+@dataclass
+class MidiFaders:
+    """MIDI Faders"""
+
+    faders: list[MIDIFader]
+    gm_fader: MIDIFader
+    inde_faders: list[MIDIFader]
+
+    def __init__(self):
         self.faders = []
         for _ in range(10):
             self.faders.append(MIDIFader())
         self.gm_fader = MIDIFader()
+        self.inde_faders = []
+        for _ in range(6):
+            self.inde_faders.append(MIDIFader())
 
-        # Create xfade Faders
-        self.xfade_out = XFader()
-        self.xfade_in = XFader()
 
-        # Create and Open MIDI ports
-        self.ports = MidiPorts()
-        self.controler_reset()
+class MidiSend:  # pylint: disable=R0903
+    """Send MIDI messages"""
 
+    ports: MidiPorts
+    queue: Queue
+    thread: RepeatedTimer
+
+    def __init__(self, ports):
+        self.ports = ports
         # Send MIDI messages every 25 milliseconds
         self.queue = Queue()
         self.thread = RepeatedTimer(0.025, self.send)
-
-    def stop(self) -> None:
-        """Stop MIDI"""
-        self.ports.poll.stop()
-        self.thread.stop()
-        self.controler_reset()
-        self.ports.close()
 
     def send(self) -> None:
         """Send MIDI messages from the queue"""
         for msg in self.queue:
             for port in self.ports.ports:
                 port.port.send(msg)
+
+
+class Midi:
+    """MIDI messages from controllers"""
+
+    midi_learn: str
+    messages: MidiMessages
+    faders: MidiFaders
+    xfade_out: XFader
+    xfade_in: XFader
+    ports: MidiPorts
+    send: MidiSend
+
+    def __init__(self):
+        self.midi_learn = ""
+        self.messages = MidiMessages()
+        self.faders = MidiFaders()
+        # Create xfade Faders
+        self.xfade_out = XFader()
+        self.xfade_in = XFader()
+        # Create and Open MIDI ports
+        self.ports = MidiPorts()
+        self.controler_reset()
+        self.send = MidiSend(self.ports)
+
+    def stop(self) -> None:
+        """Stop MIDI"""
+        self.ports.poll.stop()
+        self.send.thread.stop()
+        self.controler_reset()
+        self.ports.close()
+
+    def enqueue(self, msg: mido.Message) -> None:
+        """Enqueue MIDI messages to send
+
+        Args:
+            msg: MIDI message
+        """
+        self.send.queue.enqueue(msg)
 
     def learn(self, msg: mido.Message) -> None:
         """Learn new MIDI control
@@ -83,13 +155,13 @@ class Midi:
             msg: MIDI message
         """
         if self.ports.ports:
-            self.queue.enqueue(msg)
+            self.enqueue(msg)
         if msg.type == "note_on":
-            self.notes.learn(msg, self.midi_learn)
+            self.messages.notes.learn(msg, self.midi_learn)
         elif msg.type == "control_change":
-            self.control_change.learn(msg, self.midi_learn)
+            self.messages.control_change.learn(msg, self.midi_learn)
         elif msg.type == "pitchwheel":
-            self.pitchwheel.learn(msg, self.midi_learn)
+            self.messages.pitchwheel.learn(msg, self.midi_learn)
         # Tag filename as modified
         App().ascii.set_modified()
 
@@ -126,7 +198,7 @@ class Midi:
     def gm_init(self) -> None:
         """Grand Master Fader"""
         midi_name = "gm"
-        channel, control = self.control_change.control_change[midi_name]
+        channel, control = self.messages.control_change.control_change[midi_name]
         if control != -1:
             msg = mido.Message(
                 "control_change",
@@ -135,19 +207,21 @@ class Midi:
                 value=round(App().dmx.grand_master.value * 127),
                 time=0,
             )
-            self.queue.enqueue(msg)
-        channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
+            self.enqueue(msg)
+        channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
             val = round((App().dmx.grand_master.value * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-            self.queue.enqueue(msg)
+            self.enqueue(msg)
 
     def update_masters(self) -> None:
         """Send faders value and update display"""
         for master in App().masters:
             if master.page == App().fader_page:
                 midi_name = f"master_{master.number}"
-                channel, control = self.control_change.control_change[midi_name]
+                channel, control = self.messages.control_change.control_change[
+                    midi_name
+                ]
                 if control != -1:
                     msg = mido.Message(
                         "control_change",
@@ -156,40 +230,10 @@ class Midi:
                         value=int(master.value / 2),
                         time=0,
                     )
-                    self.queue.enqueue(msg)
-                channel = self.pitchwheel.pitchwheel.get(midi_name, -1)
+                    self.enqueue(msg)
+                channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
                 if channel != -1:
                     val = int(((master.value / 255) * 16383) - 8192)
                     msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                    self.queue.enqueue(msg)
-        self.lcd.show_masters()
-
-
-class Queue:
-    """Queue implementation based on deque"""
-
-    def __init__(self):
-        self._elements = deque()
-
-    def __len__(self):
-        return len(self._elements)
-
-    def __iter__(self):
-        while len(self) > 0:
-            yield self.dequeue()
-
-    def enqueue(self, element):
-        """Add a element
-
-        Args:
-            element: Element to add
-        """
-        self._elements.append(element)
-
-    def dequeue(self):
-        """Remove first element
-
-        Returns:
-            The first element
-        """
-        return self._elements.popleft()
+                    self.enqueue(msg)
+        self.messages.lcd.show_masters()

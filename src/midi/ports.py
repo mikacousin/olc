@@ -28,7 +28,6 @@ class MidiIO:
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
         self.port = mido.open_ioport(name=self.name, callback=self.receive_callback)
-        # self.port.callback = self.receive_callback
 
     def __del__(self) -> None:
         self.port.callback = None
@@ -52,11 +51,11 @@ class MidiIO:
 
         # Find action actived
         if msg.type in ("note_on", "note_off"):
-            App().midi.notes.scan(msg)
+            App().midi.messages.notes.scan(msg)
         elif msg.type == "control_change":
-            App().midi.control_change.scan(self.name, msg)
+            App().midi.messages.control_change.scan(self.name, msg)
         elif msg.type == "pitchwheel":
-            App().midi.pitchwheel.scan(msg)
+            App().midi.messages.pitchwheel.scan(msg)
 
 
 class MidiPorts:

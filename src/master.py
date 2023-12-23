@@ -15,7 +15,6 @@
 import array
 import threading
 import time
-import mido
 
 from gi.repository import GLib
 from olc.define import MAX_CHANNELS, App
@@ -160,21 +159,10 @@ class Master:
         """
         # Send MIDI message to faders
         midi_name = f"master_{self.number}"
-        channel, control = App().midi.control_change.control_change[midi_name]
-        if control != -1:
-            msg = mido.Message(
-                "control_change",
-                channel=channel,
-                control=control,
-                value=int(value / 2),
-                time=0,
-            )
-            App().midi.queue.enqueue(msg)
-        channel = App().midi.pitchwheel.pitchwheel.get(midi_name, -1)
-        if channel != -1:
-            val = int(((value / 255) * 16383) - 8192)
-            msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-            App().midi.queue.enqueue(msg)
+        App().midi.messages.control_change.send(midi_name, int(value / 2))
+        App().midi.messages.pitchwheel.send(
+            midi_name, int(((value / 255) * 16383) - 8192)
+        )
         if App().osc:
             page = 1
             index = self.number

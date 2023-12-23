@@ -69,7 +69,7 @@ class GroupWidget(Gtk.Widget):
                 if App().virtual_console and master.page == App().fader_page:
                     App().virtual_console.flashes[master.number - 1].label = text
                 break
-        App().midi.lcd.show_masters()
+        App().midi.messages.lcd.show_masters()
         self.popover.popdown()
         App().ascii.set_modified()
 

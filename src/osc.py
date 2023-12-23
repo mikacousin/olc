@@ -295,7 +295,7 @@ class OscServer(liblo.ServerThread):
                 if master.page == App().fader_page and master.number == master_index:
                     break
             master.set_level(level)
-            midi_fader = App().midi.faders[master_index - 1]
+            midi_fader = App().midi.faders.faders[master_index - 1]
             midi_value = midi_fader.value
             if level > midi_value:
                 midi_fader.valid = FaderState.UP

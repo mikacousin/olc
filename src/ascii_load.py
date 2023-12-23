@@ -520,15 +520,19 @@ class AsciiParser:
             # MIDI mapping
             if line[:10].upper() == "$$MIDINOTE":
                 item = line[11:].split(" ")
-                App().midi.notes.notes.update({item[0]: [int(item[1]), int(item[2])]})
+                App().midi.messages.notes.notes.update(
+                    {item[0]: [int(item[1]), int(item[2])]}
+                )
             if line[:8].upper() == "$$MIDICC":
                 item = line[9:].split(" ")
-                App().midi.control_change.control_change.update(
+                App().midi.messages.control_change.control_change.update(
                     {item[0]: [int(item[1]), int(item[2])]}
                 )
             if line[:8].upper() == "$$MIDIPW":
                 item = line[9:].split(" ")
-                App().midi.pitchwheel.pitchwheel.update({item[0]: int(item[1])})
+                App().midi.messages.pitchwheel.pitchwheel.update(
+                    {item[0]: int(item[1])}
+                )
             # Curves
             if line[:7].upper() == "$$CURVE" and line[:12].upper() != "$$CURVEPOINT":
                 item = line[8:].split(" ")
