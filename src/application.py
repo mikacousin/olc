@@ -137,6 +137,9 @@ class Application(Gtk.Application):
         self.wing = None
 
     def do_activate(self):
+        # Init of ascii file
+        self.ascii = Ascii(None)
+
         # Create Main Window
         self.window = Window()
         self.window.show_all()
@@ -186,9 +189,6 @@ class Application(Gtk.Application):
         # Create and launch OSC server
         if self.settings.get_boolean("osc"):
             self.osc = Osc()
-
-        # Init of ascii file
-        self.ascii = Ascii(None)
 
     def do_startup(self):
         Gtk.Application.do_startup(self)
@@ -256,7 +256,7 @@ class Application(Gtk.Application):
             "settings": "_settings",
             "show-help-overlay": "_shortcuts",
             "about": "_about",
-            "quit": "_exit",
+            "quit": "exit",
         }
         for name, func in actions.items():
             function = getattr(self, func, None)
@@ -512,7 +512,7 @@ class Application(Gtk.Application):
         dialog.destroy()
         self.about_window = None
 
-    def _exit(self, _action, _parameter):
+    def exit(self, _action, _parameter):
         """Exit application"""
         if self.ascii.modified:
             dialog = DialogQuit(self.window)

@@ -74,11 +74,10 @@ class Window(Gtk.ApplicationWindow):
         # Fullscreen
         self.full = False
 
-        Gtk.ApplicationWindow.__init__(
-            self, title="Open Lighting Console", application=App()
-        )
+        super().__init__(title="Open Lighting Console", application=App())
         self.set_default_size(1400, 1080)
         self.set_name("olc")
+        self.connect("destroy", App().exit, None)
 
         # Header Bar
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
