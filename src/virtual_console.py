@@ -924,29 +924,16 @@ class VirtualConsoleWindow(Gtk.Window):
 
             if scale == self.scale_a:
                 App().crossfade.scale_a.set_value(value)
+                midi_fader = App().midi.xfade.fader_out
+                midi_fader.set_state(value)
                 if App().crossfade.manual:
                     App().crossfade.scale_moved(App().crossfade.scale_a)
             elif scale == self.scale_b:
                 App().crossfade.scale_b.set_value(value)
+                midi_fader = App().midi.xfade.fader_in
+                midi_fader.set_state(value)
                 if App().crossfade.manual:
                     App().crossfade.scale_moved(App().crossfade.scale_b)
-
-            if (
-                self.scale_a.get_value() == 255
-                and self.scale_b.get_value() == 255
-                and App().crossfade.manual
-            ):
-                if self.scale_a.get_inverted():
-                    self.scale_a.set_inverted(False)
-                    self.scale_b.set_inverted(False)
-                else:
-                    self.scale_a.set_inverted(True)
-                    self.scale_b.set_inverted(True)
-                self.scale_a.set_value(0)
-                self.scale_b.set_value(0)
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.scale_a.emit("button-release-event", event)
-                self.scale_b.emit("button-release-event", event)
 
     def _scale_clicked(self, scale):
         """Crossfade or Grand Master clicked

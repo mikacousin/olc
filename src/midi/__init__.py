@@ -22,7 +22,7 @@ from .fader import MIDIFader
 from .notes import MidiNotes
 from .ports import MidiPorts
 from .pitchwheel import MidiPitchWheel
-from .xfade import XFader
+from .xfade import MidiXFade
 from .lcd import MackieLCD
 
 
@@ -116,8 +116,7 @@ class Midi:
     learning: str
     messages: MidiMessages
     faders: MidiFaders
-    xfade_out: XFader
-    xfade_in: XFader
+    xfade: MidiXFade
     ports: MidiPorts
     send: MidiSend
 
@@ -126,8 +125,7 @@ class Midi:
         self.messages = MidiMessages()
         self.faders = MidiFaders()
         # Create xfade Faders
-        self.xfade_out = XFader()
-        self.xfade_in = XFader()
+        self.xfade = MidiXFade()
         # Create and Open MIDI ports
         self.ports = MidiPorts()
         self.controler_reset()

@@ -16,8 +16,6 @@ from typing import Any, Dict, List, Tuple
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App
-from olc.midi.fader import FaderState, MIDIFader
-import olc.midi.xfade
 
 
 class MidiControlChanges:
@@ -63,9 +61,13 @@ class MidiControlChanges:
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde, port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
-                    GLib.idle_add(olc.midi.xfade.xfade_out, msg)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
+                    )
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(olc.midi.xfade.xfade_in, msg)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
+                    )
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
 
@@ -182,7 +184,7 @@ class MidiControlChanges:
         val = (msg.value / 127) * 255
         fader = App().midi.faders.gm_fader
         gm_val = round(App().dmx.grand_master.value * 255)
-        if not _is_valid_fader(fader, val, gm_val):
+        if not fader.is_valid(val, gm_val):
             return
         if App().virtual_console:
             App().virtual_console.scale_grand_master.set_value(val)
@@ -207,7 +209,7 @@ def _function_master(msg: mido.Message, master_index: int) -> None:
     for master in App().masters:
         if master.page == App().fader_page and master.number == master_index:
             break
-    if not _is_valid_fader(fader, val, master.value):
+    if not fader.is_valid(val, master.value):
         return
     if App().virtual_console:
         App().virtual_console.masters[master_index - 1].set_value(val)
@@ -256,18 +258,9 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
         inde, _ = _new_inde_value(independent, 0)
         val = round((msg.value / 127) * 255)
         fader = App().midi.faders.inde_faders[independent - 1]
-        if not _is_valid_fader(fader, val, inde.level):
+        if not fader.is_valid(val, inde.level):
             return
         _update_inde(independent, inde, val)
-
-
-def _is_valid_fader(fader: MIDIFader, new_value: int, level: int) -> bool:
-    fader.value = new_value
-    if (fader.valid is FaderState.UP and fader.value < level) or (
-        fader.valid is FaderState.DOWN and fader.value > level
-    ):
-        return False
-    return True
 
 
 def _new_inde_value(independent: int, step: int) -> Tuple[Any, int]:

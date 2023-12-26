@@ -16,7 +16,6 @@ from typing import Dict
 import mido
 from gi.repository import GLib
 from olc.define import App
-import olc.midi.xfade
 
 
 class MidiPitchWheel:
@@ -47,9 +46,13 @@ class MidiPitchWheel:
                     _update_master(msg, int(key[7:]) - 1)
                     break
                 if key[:13] == "crossfade_out":
-                    GLib.idle_add(olc.midi_xfade.xfade_out, msg)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
+                    )
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(olc.midi_xfade.xfade_in, msg)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
+                    )
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, None, msg)
 

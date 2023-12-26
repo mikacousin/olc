@@ -102,9 +102,9 @@ class CrossFade:
         """Slider A and B at Full"""
         if not App().sequence.on_go:
             return
+        self.scale_a.moved = False
         self.scale_b.moved = False
         self.manual = False
-        self.scale_a.moved = False
         App().sequence.on_go = False
         # Empty array of levels enter by user
         App().dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)

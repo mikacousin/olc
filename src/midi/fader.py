@@ -53,3 +53,21 @@ class MIDIFader:
             self.valid = FaderState.DOWN
         else:
             self.valid = FaderState.VALID
+
+    def is_valid(self, new_value: int, level: int) -> bool:
+        """Is fader valid
+
+        Args:
+            new_value: New value
+            level: level to compare
+
+        Returns:
+            True if anchored, else False
+        """
+        self.value = new_value
+        if (self.valid is FaderState.UP and self.value < level) or (
+            self.valid is FaderState.DOWN and self.value > level
+        ):
+            return False
+        self.valid = FaderState.VALID
+        return True
