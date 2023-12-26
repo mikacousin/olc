@@ -47,6 +47,7 @@ class MidiXFade:
             msg: MIDI message
             midi_fader: Xfade MIDI fader
         """
+        App().midi.enqueue(msg)
         if midi_fader is self.fader_in:
             xfade_val = App().crossfade.scale_b.value
         else:
@@ -61,9 +62,9 @@ class MidiXFade:
             val = abs((val - 1) * 255)
         if not midi_fader.is_valid(val, xfade_val):
             return
-        self.xfade(midi_fader, val)
+        self._xfade(midi_fader, val)
 
-    def xfade(self, fader: MIDIFader, value: int) -> None:
+    def _xfade(self, fader: MIDIFader, value: float) -> None:
         """Manual Crossfade
 
         Args:
