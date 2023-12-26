@@ -208,9 +208,9 @@ class Curves:
             0: LinearCurve(),
             1: SquareRootCurve(),
         }
-        self.default_curves()
+        self._default_curves()
 
-    def default_curves(self) -> None:
+    def _default_curves(self) -> None:
         curves = {
             2: (_("Full at 1%"), SegmentsCurve, ((2, 0), (3, 255))),
             3: (
