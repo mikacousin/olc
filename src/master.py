@@ -44,7 +44,7 @@ class Master:
         page (int): page number
         number (int): master number in page
         content_type (int): 0 = None, 1 = Preset, 2 = Channels, 3 = Sequence,
-            13 = Group
+            13 = Group, 99 = GM
         content_value (float or array): number's object or array of channels
         text (str): text
         value (float): value (0-255)
@@ -87,6 +87,8 @@ class Master:
                 grp for grp in App().groups if grp.index == self.content_value
             ):
                 self.text = group.text
+        elif self.content_type == 99:
+            self.text = "GM"
         else:
             print("Master Type : Unknown")
         self.update_channels()
@@ -123,7 +125,11 @@ class Master:
         """
         self.content_type = content_type
         self.content_value = {} if content_type == 2 else -1
-        self.text = ""
+        if self.content_type == 99:
+            self.text = "GM"
+            self.value = round(App().dmx.grand_master.get_level() * 255)
+        else:
+            self.text = ""
         self.channels.clear()
 
     def set_content_value(self, value: float) -> None:
@@ -202,6 +208,13 @@ class Master:
         # Type: Chaser
         elif self.content_type == 3:
             self._level_changed_chaser()
+        # Type: GM
+        elif self.content_type == 99:
+            self._level_changed_gm()
+
+    def _level_changed_gm(self):
+        App().dmx.grand_master.set_level(self.value / 255)
+        App().window.grand_master.queue_draw()
 
     def _level_changed_preset(self):
         """New level and type is Preset"""

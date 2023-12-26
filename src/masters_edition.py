@@ -34,7 +34,7 @@ class MastersTab(Gtk.Paned):
 
         # Content Type
         content_type = Gtk.ListStore(str)
-        types = ["", "Preset", "Channels", "Sequence", "Group"]
+        types = ["", "Preset", "Channels", "Sequence", "Group", "GM"]
         for item in types:
             content_type.append([item])
         # Mode
@@ -146,6 +146,9 @@ class MastersTab(Gtk.Paned):
                     else str(App().masters[index].content_value)
                 )
                 self.liststores[page].append([index + 1, "Sequence", content_value, ""])
+            # Type: GM
+            elif App().masters[index].content_type == 99:
+                self.liststores[page].append([index + 1, "GM", "", ""])
             else:
                 self.liststores[page].append([index + 1, "Unknown", "", ""])
 
@@ -177,8 +180,11 @@ class MastersTab(Gtk.Paned):
             content_type = 1
         elif text == "Sequence":
             content_type = 3
+        elif text == "GM":
+            content_type = 99
         # Update content type
-        index = int(path) + (page * 10)
+        idx = int(path)
+        index = idx + (page * 10)
         if App().masters[index].content_type != content_type:
             App().masters[index].set_content_type(content_type)
             # Update ui
@@ -187,8 +193,12 @@ class MastersTab(Gtk.Paned):
             self.liststores[page][path][3] = ""
             # Update Virtual Console
             if App().virtual_console and App().virtual_console.props.visible:
-                App().virtual_console.flashes[int(path)].label = ""
-                App().virtual_console.flashes[int(path)].queue_draw()
+                if content_type == 99:
+                    App().virtual_console.flashes[idx].label = "GM"
+                else:
+                    App().virtual_console.flashes[idx].label = ""
+                App().virtual_console.masters[idx].set_value(App().masters[index].value)
+                App().virtual_console.flashes[idx].queue_draw()
             # Update MIDI
             App().midi.messages.lcd.show_masters()
 
@@ -450,8 +460,8 @@ class MasterChannelsView(ChannelsView):
             row = path.get_indices()[0]
             page = int(App().tabs.tabs["masters"].stack.get_visible_child_name())
             index = row + (page * 10)
-            # Master type is None or Sequence: No channels to display
-            if App().masters[index].content_type in (0, 3):
+            # Master type is None, Sequence or GM: No channels to display
+            if App().masters[index].content_type in (0, 3, 99):
                 child.set_visible(False)
                 return False
             if self.view_mode == VIEW_MODES["Active"]:
