@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gettext import gettext as _
+from typing import Optional
 
 import gi
 
@@ -512,14 +513,18 @@ class Application(Gtk.Application):
         dialog.destroy()
         self.about_window = None
 
-    def exit(self, _action, _parameter):
-        """Exit application"""
+    def exit(self, _action, _parameter) -> Optional[bool]:
+        """Exit application
+
+        Returns:
+            True to not propagate signal
+        """
         if self.ascii.modified:
             dialog = DialogQuit(self.window)
             response = dialog.run()
             dialog.destroy()
             if response == Gtk.ResponseType.CANCEL:
-                return
+                return True
             if response == 1:
                 self._save(None, None)
         for chaser in self.chasers:
@@ -530,6 +535,7 @@ class Application(Gtk.Application):
         self.midi.stop()
         self.ola.stop()
         self.quit()
+        return False
 
 
 class DialogQuit(Gtk.Dialog):
