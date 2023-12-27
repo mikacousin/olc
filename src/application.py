@@ -408,6 +408,8 @@ class Application(Gtk.Application):
                 save_dialog.set_file(self.ascii.file)
             except GObject.GError as e:
                 print(f"Error: {e}")
+        else:
+            save_dialog.set_current_name("Untitled.asc")
         # show the dialog
         response = save_dialog.run()
 
