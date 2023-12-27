@@ -25,6 +25,7 @@ Console virtuelle :
 ## Installation
 
 ### Paquets:
+> Recommandé pour les utilisateurs finaux.
 
 Distribution | Paquet
 ------------ | ------
@@ -34,6 +35,7 @@ Archlinux | [![AUR](https://img.shields.io/aur/version/olc-git)](https://aur.arc
 Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 
 ### Manuellement:
+> Si vous voulez contribuer, vous aller avoir besoin d'installer depuis les sources.
 
 #### Dependances
 
@@ -52,14 +54,7 @@ Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 
 Installez ola avec le support de python 3:
 ```bash
-$ sudo apt install git libcppunit-dev libcppunit-1.15-0 uuid-dev pkg-config libncurses5-dev libtool autoconf automake g++ libmicrohttpd-dev libmicrohttpd12 protobuf-compiler libprotobuf-lite23 python3-protobuf libprotobuf-dev libprotoc-dev zlib1g-dev bison flex make libftdi-dev libftdi1 libusb-1.0-0-dev liblo-dev libavahi-client-dev python3-numpy
-$ git clone https://github.com/OpenLightingProject/ola
-$ cd ola
-$ autoreconf -i
-$ PYTHON=python3 ./configure --disable-unittests --disable-examples --disable-osc --enable-http --enable-python-libs
-$ make
-$ sudo make install
-$ sudo ldconfig
+$ sudo apt install ola-python
 ```
 Installez les dépendances pour olc:
 ```bash
@@ -80,24 +75,3 @@ $ sudo ninja -C builddir install
 **Plus de tests sont nécessaires**
 
 Semble fonctionner avec **1 univers et 512 circuits** (éditez le fichier src/define.py)
-
-Installez ola à partir de  git avec le support de python3.
-
-Et avec `sudo apt install` :
-
-- gnome-common
-- python-gobject
-- gobject-introspection
-- libglib2.0-dev
-- libgirepository1.0-dev
-- libgtk-3-dev
-- python3-cairo
-- python3-gi-cairo
-- python3-liblo
-- python3-mido
-- python3-rtmidi
-- libasound2-dev
-- libjack0
-- libjack-dev
-- python3-scipy
-- python3-charset-normalizer

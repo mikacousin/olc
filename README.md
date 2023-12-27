@@ -24,6 +24,7 @@ A [manual](http://mikacousin.github.io/olc/doc.fr/) in French is being written, 
 ## Installation
 
 ### Packages:
+> Recommended for end users
 
 Distribution | Package
 ------------ | -------
@@ -33,6 +34,7 @@ Archlinux | [![AUR](https://img.shields.io/aur/version/olc-git)](https://aur.arc
 Any help to create packages for different distributions is welcome.
 
 ### Manually:
+> If you want to contribute, you'll need to install from source
 
 #### Depends on
 
@@ -51,14 +53,7 @@ Any help to create packages for different distributions is welcome.
 
 Install ola with python 3 support:
 ```bash
-$ sudo apt install git libcppunit-dev uuid-dev pkg-config libncurses5-dev libtool autoconf automake g++ libmicrohttpd-dev libmicrohttpd12 protobuf-compiler libprotobuf-lite23 python3-protobuf libprotobuf-dev libprotoc-dev zlib1g-dev bison flex make libftdi-dev libftdi1 libusb-1.0-0-dev liblo-dev libavahi-client-dev python3-numpy
-$ git clone https://github.com/OpenLightingProject/ola
-$ cd ola
-$ autoreconf -i
-$ PYTHON=python3 ./configure --disable-unittests --disable-examples --disable-osc --enable-http --enable-python-libs
-$ make
-$ sudo make install
-$ sudo ldconfig
+$ sudo apt install ola-python
 ```
 Install olc dependencies:
 ```bash
@@ -79,24 +74,3 @@ $ sudo ninja -C builddir install
 **Need some tests**
 
 Seems to work with **1 universe and 512 channels** (edit src/define.py)
-
-Install ola fom git with python3 support.
-
-And with `sudo apt install` :
-
-- gnome-common
-- python-gobject
-- gobject-introspection
-- libglib2.0-dev
-- libgirepository1.0-dev
-- libgtk-3-dev
-- python3-cairo
-- python3-gi-cairo
-- python3-liblo
-- python3-mido
-- python3-rtmidi
-- libasound2-dev
-- libjack0
-- libjack-dev
-- python3-scipy
-- python3-charset-normalizer
