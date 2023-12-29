@@ -15,7 +15,14 @@
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, App, MAX_FADER_PAGE, string_to_time
+from olc.define import (
+    App,
+    UNIVERSES,
+    MAX_CHANNELS,
+    NB_UNIVERSES,
+    MAX_FADER_PAGE,
+    string_to_time,
+)
 from olc.group import Group
 from olc.independent import Independent, Independents
 from olc.master import Master
@@ -77,7 +84,7 @@ class AsciiParser:
                 for page in range(MAX_FADER_PAGE):
                     for i in range(10):
                         App().masters.append(Master(page + 1, i + 1, 0, 0))
-                App().patch.patch_empty()
+                App().backend.patch.patch_empty()
                 del App().sequence.steps[1:]
                 App().independents = Independents()
             # Sequence
@@ -298,7 +305,7 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = False
-                App().patch.patch_empty()  # Empty patch
+                App().backend.patch.patch_empty()  # Empty patch
                 App().window.live_view.channels_view.update()
             if flag_patch and line[:0] == "!":
                 flag_patch = False
@@ -311,7 +318,7 @@ class AsciiParser:
                         output = int(r[0])
                         index = int((output - 1) / 512)
                         if index < NB_UNIVERSES:
-                            univ = App().universes[index]
+                            univ = UNIVERSES[index]
                             # Use Limit curve instead of proportinal level
                             curve = 0
                             if r[1][0].upper() == "H":
@@ -321,10 +328,12 @@ class AsciiParser:
                             if level != 255:
                                 if not App().curves.find_limit_curve(level):
                                     curve = App().curves.add_curve(LimitCurve(level))
-                            if univ in App().universes:
+                            if univ in UNIVERSES:
                                 if channel <= MAX_CHANNELS:
                                     out = output - (512 * index)
-                                    App().patch.add_output(channel, out, univ, curve)
+                                    App().backend.patch.add_output(
+                                        channel, out, univ, curve
+                                    )
                                 else:
                                     print("More than", MAX_CHANNELS, "channels")
                             else:
@@ -566,7 +575,7 @@ class AsciiParser:
                 curve = App().curves.get_curve(curve_nb)
                 if (
                     curve
-                    and univ in App().universes
-                    and out in App().patch.outputs[univ]
+                    and univ in UNIVERSES
+                    and out in App().backend.patch.outputs[univ]
                 ):
-                    App().patch.outputs[univ][out][1] = curve_nb
+                    App().backend.patch.outputs[univ][out][1] = curve_nb

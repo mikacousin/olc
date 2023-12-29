@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App, string_to_time, time_to_string
+from olc.define import App, MAX_CHANNELS, UNIVERSES, string_to_time, time_to_string
 from olc.step import Step
 from olc.widgets.grand_master import GMWidget
 from olc.window_channels import LiveView
@@ -277,14 +277,14 @@ class Window(Gtk.ApplicationWindow):
         if not found:
             # Create Preset
             channels = {}
-            for channel, outputs in App().patch.channels.items():
-                if not App().patch.is_patched(channel):
+            for channel, outputs in App().backend.patch.channels.items():
+                if not App().backend.patch.is_patched(channel):
                     continue
                 for values in outputs:
                     output = values[0]
                     univ = values[1]
-                    index = App().universes.index(univ)
-                    if level := App().dmx.frame[index][output - 1]:
+                    index = UNIVERSES.index(univ)
+                    if level := App().backend.dmx.frame[index][output - 1]:
                         channels[channel] = level
             cue = Cue(1, mem, channels)
             App().memories.insert(step - 1, cue)
@@ -316,11 +316,11 @@ class Window(Gtk.ApplicationWindow):
                     break
             i -= 1
 
-            for univ in App().universes:
+            for univ in UNIVERSES:
                 for output in range(512):
-                    channel = App().patch.outputs[univ][output + 1][0]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][output]
+                    channel = App().backend.patch.outputs[univ][output + 1][0]
+                    index = UNIVERSES.index(univ)
+                    level = App().backend.dmx.frame[index][output]
 
                     App().memories[i].channels[channel - 1] = level
 
@@ -361,14 +361,14 @@ class Window(Gtk.ApplicationWindow):
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
-            for channel, outputs in App().patch.channels.items():
-                if not App().patch.is_patched(channel):
+            for channel, outputs in App().backend.patch.channels.items():
+                if not App().backend.patch.is_patched(channel):
                     continue
                 if channel not in App().independents.channels:
                     output = outputs[0][0] - 1
                     univ = outputs[0][1]
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][output]
+                    index = UNIVERSES.index(univ)
+                    level = App().backend.dmx.frame[index][output]
                     App().sequence.steps[position].cue.channels[channel] = level
 
             # Tag filename as modified

@@ -257,10 +257,10 @@ def _function_gm(msg: mido.Message) -> None:
     """
     if msg.velocity == 0:
         App().midi.messages.control_change.send(
-            "gm", round(App().dmx.grand_master.value * 127)
+            "gm", round(App().backend.dmx.grand_master.value * 127)
         )
         App().midi.messages.pitchwheel.send(
-            "gm", round((App().dmx.grand_master.value * 16383) - 8192)
+            "gm", round((App().backend.dmx.grand_master.value * 16383) - 8192)
         )
 
 
@@ -901,7 +901,7 @@ def _function_output(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.output.emit("button-press-event", event)
         else:
-            App().patch_outputs(None, None)
+            App().backend.patch_outputs(None, None)
 
 
 def _function_seq(msg: mido.Message) -> None:

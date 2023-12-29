@@ -194,13 +194,13 @@ class Midi:
                 "control_change",
                 channel=channel,
                 control=control,
-                value=round(App().dmx.grand_master.value * 127),
+                value=round(App().backend.dmx.grand_master.value * 127),
                 time=0,
             )
             self.enqueue(msg)
         channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
-            val = round((App().dmx.grand_master.value * 16383) - 8192)
+            val = round((App().backend.dmx.grand_master.value * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             self.enqueue(msg)
 

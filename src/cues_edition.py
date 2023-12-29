@@ -484,7 +484,7 @@ class CueChannelsView(ChannelsView):
             True if patched, else False
         """
         channel = child.get_index() + 1
-        if not App().patch.is_patched(channel):
+        if not App().backend.patch.is_patched(channel):
             return False
         return self.__filter_all(row, child)
 

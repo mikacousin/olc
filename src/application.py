@@ -12,8 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import sys
 from gettext import gettext as _
-from typing import Optional
+from typing import Any, Optional
 
 import gi
 
@@ -22,23 +23,20 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
 from olc.ascii import Ascii  # noqa: E402
+from olc.backends.backend import select_backend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve import Curves  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
-from olc.define import MAX_CHANNELS, MAX_FADER_PAGE, UNIVERSES  # noqa: E402
-from olc.dmx import Dmx  # noqa: E402
-from olc.enttec_wing import WingPlayback  # noqa: E402
+from olc.define import MAX_CHANNELS, MAX_FADER_PAGE  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
 from olc.master import Master  # noqa: E402
 from olc.masters_edition import MastersTab  # noqa: E402
 from olc.midi import Midi  # noqa: E402
-from olc.ola_module import Ola  # noqa: E402
 from olc.osc import Osc  # noqa: E402
-from olc.patch import DMXPatch  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
@@ -53,9 +51,10 @@ from olc.window import Window  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
-    ola: Ola
+    backend: Any
 
     def __init__(self, *args, **kwargs):
+        self.backend = None
         super().__init__(
             *args,
             application_id="com.github.mikacousin.olc",
@@ -72,6 +71,15 @@ class Application(Gtk.Application):
             GLib.OptionArg.INT,
             "The port to run the Ola HTTP server on. Defaults to 9090",
             None,
+        )
+
+        self.add_main_option(
+            "backend",
+            ord("b"),
+            GLib.OptionFlags.NONE,
+            GLib.OptionArg.STRING,
+            "The backend to use (sacn or ola). Defaults to sacn",
+            "<backend>",
         )
 
         css_provider_file = Gio.File.new_for_uri(
@@ -94,11 +102,6 @@ class Application(Gtk.Application):
 
         # Curves
         self.curves = Curves()
-
-        # Universes
-        self.universes = UNIVERSES
-        # Create patch (1:1)
-        self.patch = DMXPatch(self.universes)
 
         # Create Main Playback
         self.sequence = Sequence(1, text="Main Playback")
@@ -130,12 +133,10 @@ class Application(Gtk.Application):
         # For Tabs
         self.tabs = Tabs()
 
-        self.dmx = None
         self.crossfade = None
         self.midi = None
         self.osc = None
         self.ascii = None
-        self.wing = None
 
     def do_activate(self):
         # Init of ascii file
@@ -171,9 +172,6 @@ class Application(Gtk.Application):
         action.connect("activate", self.window.fullscreen_toggle)
         self.add_action(action)
 
-        # Create several DMX arrays
-        self.dmx = Dmx()
-
         # For Manual crossfade
         self.crossfade = CrossFade()
 
@@ -181,11 +179,6 @@ class Application(Gtk.Application):
         self.midi = Midi()
         self.midi.messages.lcd.show_masters()
         self.midi.gm_init()
-
-        # Init Enttec Wing Playback
-        # TODO: Need some work, desactivated for now
-        if False:
-            self.wing = WingPlayback()
 
         # Create and launch OSC server
         if self.settings.get_boolean("osc"):
@@ -212,16 +205,13 @@ class Application(Gtk.Application):
 
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
         Gtk.Application.do_command_line(self, command_line)
-        # Options (olad http port)
-        olad_port = 9090
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
-        if "http-port" in options:
-            olad_port = options["http-port"]
-        # Start Ola and activate olc
-        self.ola = Ola(olad_port)
-        self.ola.start()
+        self.backend = select_backend(options, self.settings)
+        if not self.backend:
+            sys.exit()
+        # Activate olc
         self.activate()
         # Arguments (one ASCII file to open)
         arguments = command_line.get_arguments()
@@ -266,28 +256,6 @@ class Application(Gtk.Application):
             self.add_action(action)
         return menu
 
-    def fetch_dmx(self, _request, univ, dmxframe):
-        """Fetch DMX
-
-        Args:
-            univ: DMX universe
-            dmxframe: List of DMX data
-        """
-        if not dmxframe:
-            return
-        index = self.universes.index(univ)
-        self.ola.thread.old_frame[index] = dmxframe
-        for output, level in enumerate(dmxframe):
-            if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
-                channel = self.patch.outputs.get(univ).get(output + 1)[0]
-                self.dmx.frame[index][output] = level
-                next_level = self.sequence.get_next_channel_level(channel, level)
-                self.window.live_view.update_channel_widget(channel, next_level)
-                if self.tabs.tabs["patch_outputs"]:
-                    self.tabs.tabs["patch_outputs"].outputs[
-                        output + (512 * index)
-                    ].queue_draw()
-
     def _new(self, _action, _parameter):
         """New show"""
         # Stop Chasers
@@ -298,11 +266,11 @@ class Application(Gtk.Application):
                 chaser.thread.join()
         # All channels at 0
         for channel in range(MAX_CHANNELS):
-            self.dmx.levels["user"][channel] = -1
-        self.dmx.set_levels()
+            self.backend.dmx.levels["user"][channel] = -1
+        self.backend.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
-        self.patch.patch_1on1()
+        self.backend.patch.patch_1on1()
         # Reset Main Playback
         self.sequence = Sequence(1, "Main Playback")
         self.sequence.position = 0
@@ -321,8 +289,6 @@ class Application(Gtk.Application):
         # Redraw Sequential Window
         self.window.playback.update_sequence_display()
         self.window.playback.update_xfade_display(self.sequence.position)
-        # Turn off all channels
-        self.dmx.send()
         self.window.update_channels_display(self.sequence.position)
 
         # Redraw all open tabs
@@ -374,11 +340,14 @@ class Application(Gtk.Application):
             # Load the ASCII file
             self.ascii.load()
 
-            for univ in self.universes:
-                self.ola.thread.client.FetchDmx(univ, self.fetch_dmx)
-
         # destroy the FileChooserNative
         open_dialog.destroy()
+
+        # All channels at 0
+        for channel in range(MAX_CHANNELS):
+            self.backend.dmx.levels["sequence"][channel] = 0
+            self.backend.dmx.levels["user"][channel] = -1
+        self.backend.dmx.set_levels()
 
     def _save(self, _action, _parameter):
         """Save"""
@@ -535,7 +504,7 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         self.midi.stop()
-        self.ola.stop()
+        self.backend.stop()
         self.quit()
         return False
 

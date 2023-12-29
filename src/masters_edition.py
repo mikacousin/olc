@@ -598,7 +598,7 @@ class MasterChannelsView(ChannelsView):
         """
         # Return False if not patched
         channel = child.get_index() + 1
-        if not App().patch.is_patched(channel):
+        if not App().backend.patch.is_patched(channel):
             child.set_visible(False)
             return False
         # Return all other channels

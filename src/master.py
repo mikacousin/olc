@@ -127,7 +127,7 @@ class Master:
         self.content_value = {} if content_type == 2 else -1
         if self.content_type == 99:
             self.text = "GM"
-            self.value = round(App().dmx.grand_master.get_level() * 255)
+            self.value = round(App().backend.dmx.grand_master.get_level() * 255)
         else:
             self.text = ""
         self.channels.clear()
@@ -213,7 +213,7 @@ class Master:
             self._level_changed_gm()
 
     def _level_changed_gm(self):
-        App().dmx.grand_master.set_level(self.value / 255)
+        App().backend.dmx.grand_master.set_level(self.value / 255)
         App().window.grand_master.queue_draw()
 
     def _level_changed_preset(self):
@@ -225,8 +225,8 @@ class Master:
                 level = 0 if self.value == 0 else round(level / (255 / self.value))
                 self.dmx[channel - 1] = level
                 update_channel_display(channel)
-            App().dmx.update_masters()
-            App().dmx.set_levels(self.channels)
+            App().backend.dmx.update_masters()
+            App().backend.dmx.set_levels(self.channels)
 
     def _level_changed_channels(self):
         """New level and type is Channels"""
@@ -234,8 +234,8 @@ class Master:
             level = 0 if self.value == 0 else int(round(lvl / (255 / self.value)))
             self.dmx[channel - 1] = level
             update_channel_display(channel)
-        App().dmx.update_masters()
-        App().dmx.set_levels(self.channels)
+        App().backend.dmx.update_masters()
+        App().backend.dmx.set_levels(self.channels)
 
     def _level_changed_group(self):
         """New level and type is Group"""
@@ -250,8 +250,8 @@ class Master:
                 # Update level in master array
                 self.dmx[channel - 1] = level
                 update_channel_display(channel)
-            App().dmx.update_masters()
-            App().dmx.set_levels(self.channels)
+            App().backend.dmx.update_masters()
+            App().backend.dmx.set_levels(self.channels)
 
     def _level_changed_chaser(self):
         """New level and type is Chaser"""
@@ -278,8 +278,8 @@ class Master:
                     for channel in range(MAX_CHANNELS):
                         self.dmx[channel] = 0
                         update_channel_display(channel + 1)
-                    App().dmx.update_masters()
-                    App().dmx.set_levels(App().chasers[i].channels)
+                    App().backend.dmx.update_masters()
+                    App().backend.dmx.set_levels(App().chasers[i].channels)
                     break
 
 
@@ -339,7 +339,7 @@ class ThreadChaser(threading.Thread):
             i: Time spent
             position: Step
         """
-        for channel in App().patch.channels:
+        for channel in App().backend.patch.channels:
             # Change only channels in chaser
             if channel in App().chasers[self.chaser].channels:
                 # Start level
@@ -389,5 +389,5 @@ class ThreadChaser(threading.Thread):
                 # Update master level
                 self.master.dmx[channel - 1] = level
                 update_channel_display(channel)
-        App().dmx.update_masters()
-        App().dmx.set_levels(App().chasers[self.chaser].channels)
+        App().backend.dmx.update_masters()
+        App().backend.dmx.set_levels(App().chasers[self.chaser].channels)

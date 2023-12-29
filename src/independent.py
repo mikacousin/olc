@@ -82,7 +82,7 @@ class Independent:
             dmx_lvl = round(level * (self.level / 255))
             self.dmx[channel - 1] = dmx_lvl
         App().independents.update_dmx()
-        App().dmx.set_levels(self.channels)
+        App().backend.dmx.set_levels(self.channels)
 
 
 class Independents:

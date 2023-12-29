@@ -30,14 +30,12 @@ olc_sources = [
   'curve_edition.py',
   'define.py',
   'dmx.py',
-  'enttec_wing.py',
   'grand_master.py',
   'group.py',
   'independent.py',
   'independents_edition.py',
   'master.py',
   'masters_edition.py',
-  'ola_module.py',
   'osc.py',
   'patch.py',
   'patch_channels.py',
@@ -58,6 +56,11 @@ olc_sources = [
 
 install_data(
   olc_sources,
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
+  'backends',
   install_dir: join_paths(python_dir, 'olc')
 )
 

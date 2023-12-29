@@ -73,6 +73,8 @@ class DMXPatch:
 
     def patch_empty(self) -> None:
         """Set Dimmers patch to Zero"""
+        if App().backend:
+            App().backend.dmx.all_outputs_at_zero()
         self.outputs = {}
         for channel in range(1, MAX_CHANNELS + 1):
             self.channels[channel] = [[None, None]]
@@ -116,7 +118,7 @@ class DMXPatch:
         if not self.channels[channel]:
             self.channels[channel] = [[None, None]]
         index = self.universes.index(univ)
-        App().dmx.frame[index][output - 1] = 0
+        App().backend.dmx.frame[index][output - 1] = 0
 
     def get_first_patched_channel(self) -> int:
         """Return first patched channel
@@ -251,9 +253,9 @@ class PatchByOutputs:
             output_index = self.last
             if output_index < NB_UNIVERSES * 512:
                 output_index += 1
-            output, universe = App().patch.by_outputs.get_output_universe(output_index)
+            output, universe = self.get_output_universe(output_index)
             App().window.commandline.set_string(f"{output}.{universe}")
-            App().patch.by_outputs.select_output()
+            self.select_output()
         App().ascii.set_modified()
         App().window.commandline.set_string("")
 
@@ -267,23 +269,23 @@ class PatchByOutputs:
                 else:
                     old_channel = None
                     if (
-                        univ in App().patch.outputs
-                        and output in App().patch.outputs[univ]
+                        univ in App().backend.patch.outputs
+                        and output in App().backend.patch.outputs[univ]
                     ):
-                        old_channel = App().patch.outputs[univ][output][0]
+                        old_channel = App().backend.patch.outputs[univ][output][0]
                     # Unpatch old value if exist
                     if old_channel:
-                        App().patch.unpatch(old_channel, output, univ)
+                        App().backend.patch.unpatch(old_channel, output, univ)
                     if several:
                         # Patch Channel : increment channels for each output
-                        App().patch.add_output(channel + i, output, univ)
+                        App().backend.patch.add_output(channel + i, output, univ)
                     else:
                         # Patch Channel : same channel for every outputs
-                        App().patch.add_output(channel, output, univ)
+                        App().backend.patch.add_output(channel, output, univ)
                 # Refresh LiveView
                 if 0 < channel <= MAX_CHANNELS:
-                    index = App().universes.index(univ)
-                    level = App().dmx.frame[index][output - 1]
+                    index = UNIVERSES.index(univ)
+                    level = App().backend.dmx.frame[index][output - 1]
                     widget = App().window.live_view.channels_view.get_channel_widget(
                         channel
                     )
@@ -291,9 +293,12 @@ class PatchByOutputs:
                     widget.queue_draw()
 
     def __unpatch(self, output, univ) -> None:
-        if univ in App().patch.outputs and output in App().patch.outputs[univ]:
-            chan = App().patch.outputs[univ][output][0]
-            App().patch.unpatch(chan, output, univ)
+        if (
+            univ in App().backend.patch.outputs
+            and output in App().backend.patch.outputs[univ]
+        ):
+            chan = App().backend.patch.outputs[univ][output][0]
+            App().backend.patch.unpatch(chan, output, univ)
 
     def get_output_universe(self, out: int) -> Tuple[Optional[int], Optional[int]]:
         """Returns output.universe correponding to output index (1 - NB_UNIVERSES * 512)
@@ -318,8 +323,8 @@ class PatchByOutputs:
         output = None
         if out is None or univ is None:
             return None
-        if (0 < out <= 512) and univ in App().universes:
-            univ_index = App().universes.index(univ)
+        if (0 < out <= 512) and univ in UNIVERSES:
+            univ_index = UNIVERSES.index(univ)
             output = out + (univ_index * 512)
         return output
 

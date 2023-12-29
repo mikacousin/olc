@@ -18,32 +18,36 @@ import subprocess
 import sys
 import threading
 import time
-from typing import List, Optional
+from typing import Optional
 from functools import partial
-
 from gi.repository import GLib
 from ola import OlaClient
 from ola.ClientWrapper import ClientWrapper
-from olc.define import NB_UNIVERSES, App
+from olc.backends import DMXBackend
+from olc.define import App, NB_UNIVERSES, UNIVERSES
+from olc.patch import DMXPatch
 
 
 class OlaThread(threading.Thread):
     """Create OlaClient and receive universes updates"""
 
+    wrapper: ClientWrapper
     client: OlaClient.OlaClient
-    old_frame: List[array.array]
+    old_frame: list[array.array]
+    patch: DMXPatch
 
-    def __init__(self) -> None:
+    def __init__(self, patch: DMXPatch):
         super().__init__()
         self.wrapper = ClientWrapper()
         self.client = self.wrapper.Client()
         self.old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
+        self.patch = patch
 
     def run(self) -> None:
         """Register universes"""
         self.wrapper = ClientWrapper()
         self.client = self.wrapper.Client()
-        for univ in App().universes:
+        for univ in UNIVERSES:
             self.client.RegisterUniverse(
                 univ, self.client.REGISTER, partial(self.on_dmx, univ)
             )
@@ -53,10 +57,10 @@ class OlaThread(threading.Thread):
         """Executed when ola detect universe update
 
         Args:
-            univ (int): universe
-            dmxframe (array): 512 bytes with levels outputs
+            univ: universe
+            dmxframe: 512 bytes with levels outputs
         """
-        idx = App().universes.index(univ)
+        idx = UNIVERSES.index(univ)
         if App().tabs.tabs["patch_outputs"]:
             # Find diff between old and new DMX frames
             outputs = [
@@ -66,7 +70,7 @@ class OlaThread(threading.Thread):
             ]
             # Loop on outputs with different level
             for output in outputs:
-                if App().patch.outputs.get(univ) and App().patch.outputs[univ].get(
+                if self.patch.outputs.get(univ) and self.patch.outputs[univ].get(
                     output + 1
                 ):
                     GLib.idle_add(
@@ -78,23 +82,47 @@ class OlaThread(threading.Thread):
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe
 
+    def fetch_dmx(
+        self, status: OlaClient.RequestStatus, univ: int, dmxframe: array.array
+    ) -> None:
+        """Fetch DMX
 
-class Ola:
-    """To manage ola daemon"""
+        Args:
+            status: RequestStatus
+            univ: DMX universe
+            dmxframe: DMX data
+        """
+        if not status.Succeeded() or not dmxframe:
+            return
+        index = UNIVERSES.index(univ)
+        self.old_frame[index] = dmxframe
+        for output, level in enumerate(dmxframe):
+            if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
+                channel = self.patch.outputs.get(univ).get(output + 1)[0]
+                App().backend.dmx.frame[index][output] = level
+                next_level = App().sequence.get_next_channel_level(channel, level)
+                App().window.live_view.update_channel_widget(channel, next_level)
+                if App().tabs.tabs["patch_outputs"]:
+                    App().tabs.tabs["patch_outputs"].outputs[
+                        output + (512 * index)
+                    ].queue_draw()
 
-    olad_pid: Optional[subprocess.Popen]
+
+class Ola(DMXBackend):
+    """Ola Backend"""
+
     olad_port: int
+    olad_pid: Optional[subprocess.Popen]
     thread: OlaThread
 
-    def __init__(self, olad_port=9090):
+    def __init__(self, olad_port: int = 9090):
+        super().__init__()
         self.olad_port = olad_port
         self.olad_pid = None
 
-    def start(self):
-        """Start ola daemon"""
         # Create OlaClient and start olad if needed
         try:
-            self.thread = OlaThread()
+            self.thread = OlaThread(self.patch)
             self.olad_pid = None
         except OlaClient.OLADNotRunningException:
             if _is_port_in_use(self.olad_port):
@@ -116,15 +144,25 @@ class Ola:
                     if timer >= timeout:
                         print("Can't start olad")
                         break
-            self.thread = OlaThread()
+            self.thread = OlaThread(self.patch)
         self.thread.start()
 
     def stop(self) -> None:
-        """Stop olad if we launched it"""
-        App().dmx.thread.stop()
+        """Stop Ola backend"""
+        super().stop()
         self.thread.wrapper.Stop()
+        # Stop olad if we launched it
         if self.olad_pid:
             self.olad_pid.terminate()
+
+    def send(self, universe: int, index: int) -> None:
+        """Send DMX universe
+
+        Args:
+            universe: one in UNIVERSES
+            index: Index of universe
+        """
+        self.thread.client.SendDmx(universe, self.dmx.frame[index])
 
 
 def _is_port_in_use(port: int) -> bool:

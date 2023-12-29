@@ -233,14 +233,14 @@ class ChannelsView(Gtk.Box):
         start = (
             int(self.last_selected_channel)
             if self.last_selected_channel
-            else App().patch.get_first_patched_channel() - 1
+            else App().backend.patch.get_first_patched_channel() - 1
         )
 
         for channel_index in range(start, MAX_CHANNELS):
-            if App().patch.is_patched(channel_index + 1):
+            if App().backend.patch.is_patched(channel_index + 1):
                 break
         if channel_index + 1 >= MAX_CHANNELS:
-            channel_index = App().patch.get_first_patched_channel() - 1
+            channel_index = App().backend.patch.get_first_patched_channel() - 1
         flowboxchild = self.flowbox.get_child_at_index(channel_index)
         self.flowbox.select_child(flowboxchild)
         App().window.set_focus(flowboxchild)
@@ -305,14 +305,14 @@ class ChannelsView(Gtk.Box):
         start = (
             int(self.last_selected_channel) - 2
             if self.last_selected_channel
-            else App().patch.get_last_patched_channel()
+            else App().backend.patch.get_last_patched_channel()
         )
 
         for channel_index in range(start, 0, -1):
-            if App().patch.is_patched(channel_index + 1):
+            if App().backend.patch.is_patched(channel_index + 1):
                 break
-        if channel_index < App().patch.get_first_patched_channel() - 1:
-            channel_index = App().patch.get_last_patched_channel() - 1
+        if channel_index < App().backend.patch.get_first_patched_channel() - 1:
+            channel_index = App().backend.patch.get_last_patched_channel() - 1
         flowboxchild = self.flowbox.get_child_at_index(channel_index)
         self.flowbox.select_child(flowboxchild)
         App().window.set_focus(flowboxchild)

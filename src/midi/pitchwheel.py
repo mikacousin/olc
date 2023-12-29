@@ -94,7 +94,7 @@ class MidiPitchWheel:
                 App().virtual_console.scale_grand_master
             )
         else:
-            App().dmx.grand_master.set_level(val / 255)
+            App().backend.dmx.grand_master.set_level(val / 255)
             App().window.grand_master.queue_draw()
 
 

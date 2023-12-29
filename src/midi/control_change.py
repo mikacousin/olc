@@ -183,7 +183,7 @@ class MidiControlChanges:
         """
         val = (msg.value / 127) * 255
         fader = App().midi.faders.gm_fader
-        gm_val = round(App().dmx.grand_master.value * 255)
+        gm_val = round(App().backend.dmx.grand_master.value * 255)
         if not fader.is_valid(val, gm_val):
             return
         if App().virtual_console:
@@ -192,7 +192,7 @@ class MidiControlChanges:
                 App().virtual_console.scale_grand_master
             )
         else:
-            App().dmx.grand_master.set_level(val / 255)
+            App().backend.dmx.grand_master.set_level(val / 255)
             App().window.grand_master.queue_draw()
 
 

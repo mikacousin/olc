@@ -132,12 +132,12 @@ class VirtualConsoleWindow(Gtk.Window):
         # Grand Master and Output grid
         self.output_pad = Gtk.Grid()
         adjustment = Gtk.Adjustment(
-            round(App().dmx.grand_master.value * 255), 0, 255, 1, 10, 0
+            round(App().backend.dmx.grand_master.value * 255), 0, 255, 1, 10, 0
         )
         self.scale_grand_master = FaderWidget(
             text="gm", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
         )
-        self.scale_grand_master.value = App().dmx.grand_master
+        self.scale_grand_master.value = App().backend.dmx.grand_master
         self.scale_grand_master.connect("clicked", self._scale_clicked)
         self.scale_grand_master.connect("value-changed", self.grand_master_moved)
         self.scale_grand_master.set_draw_value(False)
@@ -961,7 +961,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             value = scale.get_value()
-            App().dmx.grand_master.set_level(value / 255)
+            App().backend.dmx.grand_master.set_level(value / 255)
             App().window.grand_master.queue_draw()
             midi_fader = App().midi.faders.gm_fader
             midi_fader.set_state(value)

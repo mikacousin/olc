@@ -329,23 +329,23 @@ class OscServer(liblo.ServerThread):
 
     @liblo.make_method("/olc/patch/channel", None)
     def _patch_channel(self, _path, _args, _types):
-        App().patch.by_outputs.patch_channel(True)
+        App().backend.patch.by_outputs.patch_channel(True)
 
     @liblo.make_method("/olc/patch/output", None)
     def _patch_output(self, _path, _args, _types):
-        App().patch.by_outputs.select_output()
+        App().backend.patch.by_outputs.select_output()
 
     @liblo.make_method("/olc/patch/thru", None)
     def _patch_thru(self, _path, _args, _types):
-        App().patch.by_outputs.thru()
+        App().backend.patch.by_outputs.thru()
 
     @liblo.make_method("/olc/patch/+", None)
     def _patch_plus(self, _path, _args, _types):
-        App().patch.by_outputs.add_output()
+        App().backend.patch.by_outputs.add_output()
 
     @liblo.make_method("/olc/patch/-", None)
     def _patch_minus(self, _path, _args, _types):
-        App().patch.by_outputs.del_output()
+        App().backend.patch.by_outputs.del_output()
 
     @liblo.make_method(None, None)
     def _fallback(self, path, args, types, src):

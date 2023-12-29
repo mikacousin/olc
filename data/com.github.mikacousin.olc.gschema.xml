@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="com.github.mikacousin.olc" path="/com/github/mikacousin/olc/" gettext-domain="olc">
+    <key name="backend" type="s">
+      <default>"sacn"</default>
+      <summary>DMX backend</summary>
+      <description>"sacn" or "ola"</description>
+    </key>
     <key name="percent" type="b">
       <default>true</default>
       <summary>Display in percent</summary>

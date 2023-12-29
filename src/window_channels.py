@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
-from olc.define import App
+from olc.define import App, UNIVERSES
 from olc.widgets.channels_view import ChannelsView, VIEW_MODES
 
 
@@ -42,11 +42,11 @@ class LiveView(Gtk.Notebook):
         widget = self.channels_view.get_channel_widget(channel)
         channel -= 1
         widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
-        level = App().dmx.levels["sequence"][channel]
-        if not App().sequence.on_go and App().dmx.levels["user"][channel] != -1:
-            level = App().dmx.levels["user"][channel]
-        if App().dmx.levels["masters"][channel] > level:
-            level = App().dmx.levels["masters"][channel]
+        level = App().backend.dmx.levels["sequence"][channel]
+        if not App().sequence.on_go and App().backend.dmx.levels["user"][channel] != -1:
+            level = App().backend.dmx.levels["user"][channel]
+        if App().backend.dmx.levels["masters"][channel] > level:
+            level = App().backend.dmx.levels["masters"][channel]
             widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
         if App().independents.dmx[channel] > level:
             level = App().independents.dmx[channel]
@@ -104,10 +104,10 @@ class LiveChannelsView(ChannelsView):
             return visible
 
         if self.view_mode == VIEW_MODES["Patched"]:
-            patched = App().patch.is_patched(channel)
+            patched = App().backend.patch.is_patched(channel)
             child.set_visible(patched)
             return patched
-        if not App().patch.is_patched(channel):
+        if not App().backend.patch.is_patched(channel):
             channel_widget.level = 0
         child.set_visible(True)
         return True
@@ -142,9 +142,9 @@ class LiveChannelsView(ChannelsView):
             channel: channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        App().dmx.levels["user"][channel - 1] = level
+        App().backend.dmx.levels["user"][channel - 1] = level
         App().sequence.update_channels()
-        App().dmx.set_levels({channel})
+        App().backend.dmx.set_levels({channel})
         App().window.live_view.update_channel_widget(channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
@@ -157,17 +157,19 @@ class LiveChannelsView(ChannelsView):
         level = None
         channels = self.get_selected_channels()
         for channel in channels:
-            if not App().patch.is_patched(channel):
+            if not App().backend.patch.is_patched(channel):
                 continue
-            for output in App().patch.channels[channel]:
+            for output in App().backend.patch.channels[channel]:
                 out = output[0]
                 univ = output[1]
-                index = App().universes.index(univ)
-                level = App().dmx.frame[index][out - 1]
+                index = UNIVERSES.index(univ)
+                level = App().backend.dmx.frame[index][out - 1]
                 if direction == Gdk.ScrollDirection.UP:
-                    App().dmx.levels["user"][channel - 1] = min(level + step, 255)
+                    App().backend.dmx.levels["user"][channel - 1] = min(
+                        level + step, 255
+                    )
                 elif direction == Gdk.ScrollDirection.DOWN:
-                    App().dmx.levels["user"][channel - 1] = max(level - step, 0)
+                    App().backend.dmx.levels["user"][channel - 1] = max(level - step, 0)
             next_level = App().sequence.get_next_channel_level(channel, level)
             App().window.live_view.update_channel_widget(channel, next_level)
-        App().dmx.set_levels(set(channels))
+        App().backend.dmx.set_levels(set(channels))

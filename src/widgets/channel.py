@@ -115,7 +115,7 @@ class ChannelWidget(Gtk.DrawingArea):
         if int(self.channel) in App().independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
         # Not patched color
-        if not App().patch.is_patched(int(self.channel)):
+        if not App().backend.patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)

@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App
+from olc.define import App, MAX_CHANNELS, UNIVERSES
 from olc.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
 
 
@@ -36,7 +36,7 @@ class PatchChannelsTab(Gtk.Box):
         self.channels = []
 
         for channel in range(MAX_CHANNELS):
-            self.channels.append(PatchChannelWidget(channel + 1, App().patch))
+            self.channels.append(PatchChannelWidget(channel + 1, App().backend.patch))
             self.flowbox.add(self.channels[channel])
 
         self.scrollable = Gtk.ScrolledWindow()
@@ -193,10 +193,10 @@ class PatchChannelsTab(Gtk.Box):
             keystring = App().window.commandline.get_string()
             # Unpatch if no entry
             if keystring in ["", "0"]:
-                for item in App().patch.channels[channel]:
+                for item in App().backend.patch.channels[channel]:
                     output = item[0]
                     universe = item[1]
-                    App().patch.unpatch(channel, output, universe)
+                    App().backend.patch.unpatch(channel, output, universe)
                 # Update ui
                 self.channels[channel].queue_draw()
             else:
@@ -204,7 +204,7 @@ class PatchChannelsTab(Gtk.Box):
                 if "." in keystring:
                     if keystring[0] == ".":
                         # ".universe" for change universe
-                        output = App().patch.channels[channel][0][0]
+                        output = App().backend.patch.channels[channel][0][0]
                         universe = int(keystring[1:])
                         several = False
                     else:
@@ -215,34 +215,36 @@ class PatchChannelsTab(Gtk.Box):
                 else:
                     # "output", use first universe
                     output = int(keystring)
-                    universe = App().universes[0]
+                    universe = UNIVERSES[0]
 
                 if 0 < output + i <= 512:
                     # Unpatch old values
-                    if channel in App().patch.channels:
-                        for item in App().patch.channels[channel]:
+                    if channel in App().backend.patch.channels:
+                        for item in App().backend.patch.channels[channel]:
                             out = item[0]
                             univ = item[1]
-                            App().patch.unpatch(channel, out, univ)
+                            App().backend.patch.unpatch(channel, out, univ)
                     if (
-                        universe in App().patch.outputs
-                        and output + i in App().patch.outputs[universe]
+                        universe in App().backend.patch.outputs
+                        and output + i in App().backend.patch.outputs[universe]
                     ):
-                        old_channel = App().patch.outputs[universe][output + i][0]
-                        App().patch.unpatch(old_channel, output + i, universe)
+                        old_channel = App().backend.patch.outputs[universe][output + i][
+                            0
+                        ]
+                        App().backend.patch.unpatch(old_channel, output + i, universe)
                         # Update ui
                         self.channels[old_channel - 1].queue_draw()
                     # Patch
                     if several:
-                        App().patch.add_output(channel, output + i, universe)
+                        App().backend.patch.add_output(channel, output + i, universe)
                     else:
-                        App().patch.add_output(channel, output, universe)
+                        App().backend.patch.add_output(channel, output, universe)
                     # Update ui
                     self.channels[channel - 1].queue_draw()
 
             # Update list of channels
-            index = App().universes.index(universe)
-            level = App().dmx.frame[index][output]
+            index = UNIVERSES.index(universe)
+            level = App().backend.dmx.frame[index][output]
             widget = App().window.live_view.channels_view.get_channel_widget(channel)
             widget.level = level
             widget.queue_draw()
@@ -270,7 +272,7 @@ class PatchChannelsTab(Gtk.Box):
             if "." in keystring:
                 if keystring[0] == ".":
                     # ".universe" for change universe
-                    output = App().patch.channels[channel][0][0]
+                    output = App().backend.patch.channels[channel][0][0]
                     universe = int(keystring[1:])
                 else:
                     # "output.universe"
@@ -280,19 +282,19 @@ class PatchChannelsTab(Gtk.Box):
             else:
                 # "output", use first universe
                 output = int(keystring)
-                universe = App().universes[0]
+                universe = UNIVERSES[0]
 
             if 0 < output <= 512:
                 # Unpatch old value
                 if (
-                    universe in App().patch.outputs
-                    and output in App().patch.outputs[universe]
+                    universe in App().backend.patch.outputs
+                    and output in App().backend.patch.outputs[universe]
                 ):
-                    old_channel = App().patch.outputs[universe][output][0]
-                    App().patch.unpatch(old_channel, output, universe)
+                    old_channel = App().backend.patch.outputs[universe][output][0]
+                    App().backend.patch.unpatch(old_channel, output, universe)
                     self.channels[old_channel - 1].queue_draw()
                 # Patch
-                App().patch.add_output(channel, output, universe)
+                App().backend.patch.add_output(channel, output, universe)
                 # Update ui
                 self.channels[channel - 1].queue_draw()
 
@@ -323,14 +325,14 @@ class PatchChannelsTab(Gtk.Box):
             else:
                 # "output", use first universe
                 output = int(keystring)
-                universe = App().universes[0]
+                universe = UNIVERSES[0]
 
             if (
                 0 < output <= 512
-                and [output, universe] in App().patch.channels[channel]
+                and [output, universe] in App().backend.patch.channels[channel]
             ):
                 # Remove Output
-                App().patch.unpatch(channel, output, universe)
+                App().backend.patch.unpatch(channel, output, universe)
                 # Update ui
                 self.channels[channel - 1].queue_draw()
 

@@ -15,7 +15,7 @@
 from typing import Dict
 from gi.repository import Gio
 from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
-from olc.define import App, strip_accents
+from olc.define import App, strip_accents, UNIVERSES
 
 
 def save_main_playback(stream: Gio.FileOutputStream) -> None:
@@ -259,15 +259,15 @@ def save_patch(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
     i = 1
     patch = ""
-    for channel, outputs in App().patch.channels.items():
-        if not App().patch.is_patched(channel):
+    for channel, outputs in App().backend.patch.channels.items():
+        if not App().backend.patch.is_patched(channel):
             continue
         for values in outputs:
             output = values[0]
             univ = values[1]
-            index = App().universes.index(univ)
+            index = UNIVERSES.index(univ)
             limit = 255
-            curve_num = App().patch.outputs[univ][output][1]
+            curve_num = App().backend.patch.outputs[univ][output][1]
             if curve_num < 0:
                 curve = App().curves.get_curve(curve_num)
                 limit = curve.limit
@@ -378,7 +378,7 @@ def save_outputs_curves(stream: Gio.FileOutputStream) -> None:
     )
     stream.write(bytes("! Output curves\n", "utf8"))
     stream.write(bytes("! $$OUTPUT  Universe, Output number, Curve number\n\n", "utf8"))
-    for key, value in App().patch.outputs.items():
+    for key, value in App().backend.patch.outputs.items():
         for output, chan_dic in value.items():
             stream.write(bytes(f"$$OUTPUT {key} {output} {chan_dic[1]}\n", "utf8"))
     stream.write(bytes("\n", "utf8"))

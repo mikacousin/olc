@@ -53,9 +53,9 @@ class Dmx:
         if not channels:
             channels = set(range(1, MAX_CHANNELS + 1))
         for channel in channels:
-            if not App().patch.is_patched(channel):
+            if not App().backend.patch.is_patched(channel):
                 continue
-            outputs = App().patch.channels[channel]
+            outputs = App().backend.patch.channels[channel]
             channel -= 1
             # Sequence
             level = self.levels["sequence"][channel]
@@ -72,28 +72,29 @@ class Dmx:
                 output = out[0]
                 universe = out[1]
                 # Curve
-                curve_numb = App().patch.outputs[universe][output][1]
+                curve_numb = App().backend.patch.outputs[universe][output][1]
                 if curve_numb:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
                 # Grand Master
                 level = round(level * self.grand_master.value)
                 # Update output level
-                index = App().universes.index(universe)
+                index = UNIVERSES.index(universe)
                 self.frame[index][output - 1] = level
 
     def send(self) -> None:
         """Send DMX values to Ola"""
-        for universe in UNIVERSES:
-            index = App().universes.index(universe)
-            App().ola.thread.client.SendDmx(universe, self.frame[index])
+        if App().backend:
+            for universe in UNIVERSES:
+                index = UNIVERSES.index(universe)
+                App().backend.send(universe, index)
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
         for universe in UNIVERSES:
-            index = App().universes.index(universe)
+            index = UNIVERSES.index(universe)
             self.frame[index] = array.array("B", [0] * 512)
-            App().ola.thread.client.SendDmx(universe, self.frame[index])
+            App().backend.send(universe, index)
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -104,16 +105,16 @@ class Dmx:
             level: Output level (0-255)
         """
         self.user_outputs[(output, universe)] = level
-        index = App().universes.index(universe)
+        index = UNIVERSES.index(universe)
         self.frame[index][output - 1] = level
         if not level:
             self.user_outputs.pop((output, universe))
-        App().ola.thread.client.SendDmx(universe, self.frame[index])
+        App().backend.send(universe, index)
 
     def update_masters(self) -> None:
         """Update masters levels"""
         for channel in range(MAX_CHANNELS):
-            if not App().patch.is_patched(channel + 1):
+            if not App().backend.patch.is_patched(channel + 1):
                 continue
             level_master = -1
             for master in App().masters:

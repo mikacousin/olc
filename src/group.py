@@ -139,7 +139,7 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel = child.get_index() + 1
-        if not App().patch.is_patched(channel):
+        if not App().backend.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self.__filter_all(group, child)

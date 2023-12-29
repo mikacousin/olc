@@ -43,7 +43,7 @@ class TrackChannelsTab(Gtk.Grid):
         for flowboxchild in sel:
             channelwidget = flowboxchild.get_child()
             channel = int(channelwidget.channel)
-            if App().patch.is_patched(channel):
+            if App().backend.patch.is_patched(channel):
                 self.channels.append(channel - 1)
 
         self.populate_steps()
@@ -100,7 +100,7 @@ class TrackChannelsTab(Gtk.Grid):
         for flowboxchild in sel:
             channelwidget = flowboxchild.get_child()
             channel = int(channelwidget.channel)
-            if App().patch.is_patched(channel):
+            if App().backend.patch.is_patched(channel):
                 self.channels.append(channel - 1)
         self.channel_selected = 0
         # Update Track Channels Tab

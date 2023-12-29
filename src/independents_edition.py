@@ -270,7 +270,7 @@ class IndeChannelsView(ChannelsView):
         """
         # Return all patched channels
         channel = child.get_index() + 1
-        if not App().patch.is_patched(channel):
+        if not App().backend.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self._filter_all(row, child)
