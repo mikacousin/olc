@@ -53,8 +53,9 @@ class Application(Gtk.Application):
 
     backend: Any
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, version, *args, **kwargs):
         self.backend = None
+        self.version = version
         super().__init__(
             *args,
             application_id="com.github.mikacousin.olc",
@@ -63,6 +64,15 @@ class Application(Gtk.Application):
         )
         GLib.set_application_name("OpenLightingConsole")
         GLib.set_prgname("olc")
+
+        self.add_main_option(
+            "version",
+            ord("v"),
+            GLib.OptionFlags.NONE,
+            GLib.OptionArg.NONE,
+            "Show Open Lighting Console version",
+            None,
+        )
 
         self.add_main_option(
             "http-port",
@@ -208,6 +218,9 @@ class Application(Gtk.Application):
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
+        if "version" in options:
+            print(self.version)
+            sys.exit()
         self.backend = select_backend(options, self.settings)
         if not self.backend:
             sys.exit()

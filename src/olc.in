@@ -39,7 +39,7 @@ if __name__ == "__main__":
     resource = Gio.resource_load(os.path.join(PKGDATADIR, "olc.gresource"))
     Gio.Resource._register(resource)
 
-    app = Application()
+    app = Application("@REVISION@")
 
     exit_status = app.run(sys.argv)
 
