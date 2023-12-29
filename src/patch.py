@@ -38,7 +38,7 @@ class DMXPatch:
         self.universes = universes
         self.channels = {}
         self.outputs = {}
-        self.by_outputs = PatchByOutputs()
+        self.by_outputs = PatchByOutputs(self)
 
         self.patch_1on1()
 
@@ -146,9 +146,10 @@ class DMXPatch:
 class PatchByOutputs:
     """Manipulate Patch using Outputs order"""
 
-    def __init__(self):
+    def __init__(self, patch):
         self.outputs = []
         self.last = 0
+        self.patch = patch
 
     def get_selected(self) -> str:
         """Return selected outputs
@@ -269,19 +270,19 @@ class PatchByOutputs:
                 else:
                     old_channel = None
                     if (
-                        univ in App().backend.patch.outputs
-                        and output in App().backend.patch.outputs[univ]
+                        univ in self.patch.outputs
+                        and output in self.patch.outputs[univ]
                     ):
-                        old_channel = App().backend.patch.outputs[univ][output][0]
+                        old_channel = self.patch.outputs[univ][output][0]
                     # Unpatch old value if exist
                     if old_channel:
-                        App().backend.patch.unpatch(old_channel, output, univ)
+                        self.patch.unpatch(old_channel, output, univ)
                     if several:
                         # Patch Channel : increment channels for each output
-                        App().backend.patch.add_output(channel + i, output, univ)
+                        self.patch.add_output(channel + i, output, univ)
                     else:
                         # Patch Channel : same channel for every outputs
-                        App().backend.patch.add_output(channel, output, univ)
+                        self.patch.add_output(channel, output, univ)
                 # Refresh LiveView
                 if 0 < channel <= MAX_CHANNELS:
                     index = UNIVERSES.index(univ)
@@ -293,12 +294,9 @@ class PatchByOutputs:
                     widget.queue_draw()
 
     def __unpatch(self, output, univ) -> None:
-        if (
-            univ in App().backend.patch.outputs
-            and output in App().backend.patch.outputs[univ]
-        ):
-            chan = App().backend.patch.outputs[univ][output][0]
-            App().backend.patch.unpatch(chan, output, univ)
+        if univ in self.patch.outputs and output in self.patch.outputs[univ]:
+            chan = self.patch.outputs[univ][output][0]
+            self.patch.unpatch(chan, output, univ)
 
     def get_output_universe(self, out: int) -> Tuple[Optional[int], Optional[int]]:
         """Returns output.universe correponding to output index (1 - NB_UNIVERSES * 512)

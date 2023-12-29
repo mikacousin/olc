@@ -85,14 +85,12 @@ class Dmx:
     def send(self) -> None:
         """Send DMX values to Ola"""
         if App().backend:
-            for universe in UNIVERSES:
-                index = UNIVERSES.index(universe)
+            for index, universe in enumerate(UNIVERSES):
                 App().backend.send(universe, index)
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
-        for universe in UNIVERSES:
-            index = UNIVERSES.index(universe)
+        for index, universe in enumerate(UNIVERSES):
             self.frame[index] = array.array("B", [0] * 512)
             App().backend.send(universe, index)
 

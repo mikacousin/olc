@@ -52,6 +52,7 @@ class Application(Gtk.Application):
     """Application Class"""
 
     backend: Any
+    version: str
 
     def __init__(self, version, *args, **kwargs):
         self.backend = None
@@ -410,11 +411,15 @@ class Application(Gtk.Application):
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
-        self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs")
+        self.tabs.open(
+            "patch_outputs", PatchOutputsTab, "Patch Outputs", self.backend.patch
+        )
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
-        self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels")
+        self.tabs.open(
+            "patch_channels", PatchChannelsTab, "Patch Channels", self.backend.patch
+        )
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""

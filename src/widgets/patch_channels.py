@@ -18,6 +18,7 @@ from olc.define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
 
 
+# pylint: disable=R0903
 class PatchChannelHeader(Gtk.Misc):
     """Header widget"""
 
@@ -170,9 +171,8 @@ class PatchChannelWidget(Gtk.Widget):
         """
         nb_outputs = 0
         if self.channel in App().backend.patch.channels:
-            nb_outputs = len(App().backend.patch.channels[self.channel])
-        if not nb_outputs:
-            return
+            if App().backend.patch.channels[self.channel] == [[None, None]]:
+                return
 
         if nb_outputs <= 8:
             self._draw_one_line(cr)
