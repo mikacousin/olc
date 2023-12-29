@@ -13,22 +13,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
-from typing import Optional
+from typing import Any, Optional
 from olc.define import DMX_INTERVAL, UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
 from olc.grand_master import GrandMaster
 from olc.timer import RepeatedTimer
 
 
 class Dmx:
-    """Thread to send levels to Ola"""
+    """Send levels to backend"""
 
+    backend: Any
     grand_master: GrandMaster
     levels: dict[str, array.array]
     frame: list[array.array]
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
 
-    def __init__(self):
+    def __init__(self, backend):
+        self.backend = backend
         self.grand_master = GrandMaster()
         # Dimmers levels
         self.levels = {
@@ -36,7 +38,7 @@ class Dmx:
             "user": array.array("h", [-1] * MAX_CHANNELS),
             "masters": array.array("B", [0] * MAX_CHANNELS),
         }
-        # DMX values send to Ola
+        # DMX values
         self.frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
         self._old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
         # To test outputs
@@ -53,9 +55,9 @@ class Dmx:
         if not channels:
             channels = set(range(1, MAX_CHANNELS + 1))
         for channel in channels:
-            if not App().backend.patch.is_patched(channel):
+            if not self.backend.patch.is_patched(channel):
                 continue
-            outputs = App().backend.patch.channels[channel]
+            outputs = self.backend.patch.channels[channel]
             channel -= 1
             # Sequence
             level = self.levels["sequence"][channel]
@@ -72,7 +74,7 @@ class Dmx:
                 output = out[0]
                 universe = out[1]
                 # Curve
-                curve_numb = App().backend.patch.outputs[universe][output][1]
+                curve_numb = self.backend.patch.outputs[universe][output][1]
                 if curve_numb:
                     curve = App().curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
@@ -84,15 +86,15 @@ class Dmx:
 
     def send(self) -> None:
         """Send DMX values to Ola"""
-        if App().backend:
+        if self.backend:
             for index, universe in enumerate(UNIVERSES):
-                App().backend.send(universe, index)
+                self.backend.send(universe, index)
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
         for index, universe in enumerate(UNIVERSES):
             self.frame[index] = array.array("B", [0] * 512)
-            App().backend.send(universe, index)
+            self.backend.send(universe, index)
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -107,12 +109,12 @@ class Dmx:
         self.frame[index][output - 1] = level
         if not level:
             self.user_outputs.pop((output, universe))
-        App().backend.send(universe, index)
+        self.backend.send(universe, index)
 
     def update_masters(self) -> None:
         """Update masters levels"""
         for channel in range(MAX_CHANNELS):
-            if not App().backend.patch.is_patched(channel + 1):
+            if not self.backend.patch.is_patched(channel + 1):
                 continue
             level_master = -1
             for master in App().masters:

@@ -32,7 +32,7 @@ class DMXBackend:
     patch: DMXPatch
 
     def __init__(self):
-        self.dmx = Dmx()
+        self.dmx = Dmx(self)
         self.patch = DMXPatch(UNIVERSES)
 
     def stop(self) -> None:
