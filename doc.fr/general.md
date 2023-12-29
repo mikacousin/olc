@@ -1,7 +1,44 @@
 # Bases du système
 
-## Open Lighting Architecture
-[OLA](https://www.openlighting.org/ola/) est nécessaire au fonctionnement d'olc. Pour simplifier, c'est le lien entre olc et le DMX, sACN, artnet, et d'autres protocoles moins courants.  
+## Installation
+
+- Vous pouvez l'installer depuis flathub.org en suivant les instructions sur
+[cette page](https://flathub.org/apps/com.github.mikacousin.olc).  
+Normalement, cette version doit s'installer sur toutes les distributions Linux. De plus, elle contient toutes les dépendances dont olc a besoin.
+
+[<img alt="" height="100" src="https://flathub.org/assets/badges/flathub-badge-en.png">](https://flathub.org/apps/com.github.mikacousin.olc)
+
+- Si vous utiliez Archlinux, un paquet
+[AUR](https://aur.archlinux.org/packages/olc-git) est disponible.
+
+- Toute aide pour créer des paquets pour d'autres distributions est la bienvenue.
+
+## Moteurs DMX
+Pour piloter le matériel lumière, olc doit utiliser un moteur DMX.  
+Deux moteurs sont pris en charges et au moins l'un des deux doit être installé.  
+
+Il est possible de choisir le moteur en lançant olc en ligne de commande :
+```bash
+$ olc --backend <backend>
+```
+Si ce choix aboutit, la modification est enregistrée pour les prochains lancements.
+
+### sACN
+C'est le moteur par défaut.
+Il est basé sur le module python [sACN/E1.31](https://github.com/Hundemeier/sacn).  
+
+Pour choisir ce moteur :
+```bash
+$ olc --backend sacn
+```
+
+### Open Lighting Architecture
+Un moteur basé sur [OLA](https://www.openlighting.org/ola/) est disponible. Pour simplifier, c'est le lien entre olc et le DMX, sACN, artnet, et d'autres protocoles moins courants.  
+
+Pour choisir ce moteur :
+```bash
+$ olc --backend ola
+```
 Au démarrage, Open Lighting Console lancera automatiquement olad, s'il ne tourne pas déjà.  
 Pour configurer OLA, utiliser l'interface web en suivant le lien [http://localhost:9090](http://localhost:9090) une fois olad lancé.  
 Il est possible de préciser un autre port pour l'interface web d'OLA en lançant olc en ligne de commande, par exemple :
@@ -83,7 +120,7 @@ Un pas contient une mémoire et des temps
 > Le temps du Go Back Time peut être modifié dans les Paramêtres
 
 ## Divers :
-- La partie active est entourée d'un cadre doré. La touche [Tab] permet de la changer.
+- La touche [Tab] permet de changer la partie active.
 - Pour effacer le buffer clavier : [Backspace]
 - Pour fermer un onglet : cliquer avec la souris sur la croix de l'onglet ou [Esc]
 - Pour passer l'application en plein écran [F11]
