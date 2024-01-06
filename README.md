@@ -43,8 +43,8 @@ Any help to create packages for different distributions is welcome.
 - python-gobject
 - gobject-introspection
 - ola (with python3 support)
-- portmidi
-- mido (python-mido on archlinux)
+- sacn (python-sacn (AUR) on archlinux)
+- mido (python-mido (AUR) on archlinux)
 - liblo (python-pyliblo on archlinux)
 - SciPy (python-scipy on archlinux)
 - Charset Normalizer (python-charset-normalizer on archlinux)
@@ -55,10 +55,13 @@ Install ola with python 3 support:
 ```bash
 $ sudo apt install ola-python
 ```
+
 Install olc dependencies:
 ```bash
 $ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer
 ```
+
+**A package for sacn python module is missing. If you know how to install it, please tell me.**
 
 #### Building from git
 
@@ -67,6 +70,11 @@ $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
 $ meson setup builddir --prefix=/usr/local
 $ sudo ninja -C builddir install
+```
+
+You can execute the software without sacn python module:
+```bash
+$ olc --backend ola
 ```
 
 #### Raspberry Pi 3B+

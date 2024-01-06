@@ -43,9 +43,9 @@ Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 - python3
 - python-gobject
 - gobject-introspection
-- ola (with python3 support)
-- portmidi
-- mido (python-mido pour archlinux)
+- ola (avec support python3)
+- sacn (python-sacn (AUR) pour archlinux)
+- mido (python-mido (AUR) pour archlinux)
 - liblo (python-pyliblo pour archlinux)
 - SciPy (python-scipy pour archlinux)
 - Charset Normalizer (python-charset-normalizer pour archlinux)
@@ -56,10 +56,13 @@ Installez ola avec le support de python 3:
 ```bash
 $ sudo apt install ola-python
 ```
+
 Installez les dépendances pour olc:
 ```bash
 $ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer
 ```
+
+**Il manque le paquet pour installer le module sacn pour python. Si vous connaissez une méthode pour l'installer, merci de la partager.**
 
 #### Construction à partir de git
 
@@ -68,6 +71,11 @@ $ git clone https://github.com/mikacousin/olc.git
 $ cd olc
 $ meson setup builddir --prefix=/usr/local
 $ sudo ninja -C builddir install
+```
+
+Pour exécuter le logiciel sans le module sacn pour python:
+```bash
+$ olc --backend ola
 ```
 
 #### Raspberry Pi 3B+
