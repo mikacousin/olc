@@ -23,7 +23,8 @@ VIEW_MODES: Dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
 class ChannelsView(Gtk.Box):
     """Channels view
 
-    This class must be subclassed and filter_channels implemented
+    This class must be subclassed and filter_channels, wheel_level, set_channel_level
+    implemented
     """
 
     view_mode: int
