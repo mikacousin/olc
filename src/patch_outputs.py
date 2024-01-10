@@ -88,8 +88,7 @@ class PatchOutputsTab(Gtk.Box):
                 for channel in range(512):
                     level = App().backend.dmx.frame[univ][channel]
                     widget = App().window.live_view.channels_view.get_channel_widget(
-                        channel + 1
-                    )
+                        channel + 1)
                     widget.level = level
                     widget.queue_draw()
             App().window.live_view.channels_view.update()
@@ -129,16 +128,16 @@ class PatchOutputsTab(Gtk.Box):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -225,9 +224,8 @@ class PatchOutputsTab(Gtk.Box):
             old_output = self.patch.by_outputs.last
             child = self.flowbox.get_child_at_index(old_output - 1)
             allocation = child.get_allocation()
-            if child := self.flowbox.get_child_at_pos(
-                allocation.x, allocation.y + allocation.height
-            ):
+            if child := self.flowbox.get_child_at_pos(allocation.x,
+                                                      allocation.y + allocation.height):
                 index = child.get_index()
                 new_output = index + 1
                 output, universe = self.patch.by_outputs.get_output_universe(new_output)
@@ -249,8 +247,7 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(old_output - 1)
             allocation = child.get_allocation()
             if child := self.flowbox.get_child_at_pos(
-                allocation.x, allocation.y - allocation.height / 2
-            ):
+                    allocation.x, allocation.y - allocation.height / 2):
                 index = child.get_index()
                 new_output = index + 1
                 output, universe = self.patch.by_outputs.get_output_universe(new_output)
@@ -395,8 +392,7 @@ class SeveralOutputsDialog(Gtk.Dialog):
         self.set_default_size(150, 100)
 
         label = Gtk.Label(
-            f"Do you want to patch {out} selected outputs to one or several channels ?"
-        )
+            f"Do you want to patch {out} selected outputs to one or several channels ?")
 
         box = self.get_content_area()
         box.add(label)

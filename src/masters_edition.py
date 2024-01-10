@@ -126,25 +126,20 @@ class MastersTab(Gtk.Paned):
                 self.liststores[page].append([index + 1, "Preset", content_value, ""])
             # Type: Group
             elif App().masters[index].content_type == 13:
-                content_value = (
-                    str(int(App().masters[index].content_value))
-                    if App().masters[index].content_value.is_integer()
-                    else str(App().masters[index].content_value)
-                )
+                content_value = (str(int(App().masters[index].content_value))
+                                 if App().masters[index].content_value.is_integer() else
+                                 str(App().masters[index].content_value))
                 self.liststores[page].append(
-                    [index + 1, "Group", content_value, "Exclusif"]
-                )
+                    [index + 1, "Group", content_value, "Exclusif"])
             # Type: Channels
             elif App().masters[index].content_type == 2:
                 nb_chan = len(App().masters[index].content_value)
                 self.liststores[page].append([index + 1, "Channels", str(nb_chan), ""])
             # Type: Sequence
             elif App().masters[index].content_type == 3:
-                content_value = (
-                    str(int(App().masters[index].content_value))
-                    if App().masters[index].content_value.is_integer()
-                    else str(App().masters[index].content_value)
-                )
+                content_value = (str(int(App().masters[index].content_value))
+                                 if App().masters[index].content_value.is_integer() else
+                                 str(App().masters[index].content_value))
                 self.liststores[page].append([index + 1, "Sequence", content_value, ""])
             # Type: GM
             elif App().masters[index].content_type == 99:
@@ -238,8 +233,7 @@ class MastersTab(Gtk.Paned):
             if App().masters[index].content_type == 1:
                 if self.liststores[page][path][2] != "":
                     self.liststores[page][path][2] = str(
-                        float(self.liststores[page][path][2])
-                    )
+                        float(self.liststores[page][path][2]))
             self.channels_view.update()
             # Update Virtual Console
             if App().virtual_console:
@@ -272,16 +266,16 @@ class MastersTab(Gtk.Paned):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -552,9 +546,8 @@ class MasterChannelsView(ChannelsView):
         child.set_visible(False)
         return False
 
-    def __active_channels(
-        self, channels: Dict[int, int], child: Gtk.FlowBoxChild
-    ) -> bool:
+    def __active_channels(self, channels: Dict[int, int],
+                          child: Gtk.FlowBoxChild) -> bool:
         """Set Channel Widget level in Active mode
 
         Args:

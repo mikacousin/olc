@@ -100,16 +100,16 @@ class IndependentsTab(Gtk.Paned):
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             App().window.commandline.add_string(keyname)
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
         if keyname == "period":

@@ -56,11 +56,9 @@ class CurveValues(Gtk.DrawingArea):
                 j = 1 + row * 30
                 cr.rectangle(i, j, 17, 22)
                 cr.stroke()
-                if (
-                    curve.editable
-                    and isinstance(curve, (SegmentsCurve, InterpolateCurve))
-                    and (x, curve.values[x]) in curve.points
-                ):
+                if (curve.editable and isinstance(curve,
+                                                  (SegmentsCurve, InterpolateCurve))
+                        and (x, curve.values[x]) in curve.points):
                     idx = curve.points.index((x, curve.values[x]))
                     if App().tabs.tabs["curves"].curve_edition.points[idx].get_active():
                         cr.set_source_rgb(1, 0.7, 0.3)
@@ -156,15 +154,10 @@ class CurveEdition(Gtk.Box):
             # Warning: SizeRequest used, not real size
             width = self.edit_curve.get_size_request()[0]
             height = self.edit_curve.get_size_request()[1]
-            x = (
-                round((x / 255) * (width - (self.edit_curve.delta * 2)))
-                + self.edit_curve.delta
-            )
-            y = (
-                height
-                - self.edit_curve.delta
-                - round((y / 255) * (height - (self.edit_curve.delta * 2)))
-            )
+            x = (round((x / 255) * (width - (self.edit_curve.delta * 2))) +
+                 self.edit_curve.delta)
+            y = (height - self.edit_curve.delta - round(
+                (y / 255) * (height - (self.edit_curve.delta * 2))))
             self.points.append(CurvePointWidget(number=number, curve=curve))
             self.points[-1].connect("toggled", self.on_toggled, None)
             self.fixed.put(self.points[-1], x - 4, y - 4)
@@ -457,16 +450,11 @@ class CurvesTab(Gtk.Paned):
         self.curve_edition.queue_draw()
         width = self.curve_edition.edit_curve.get_size_request()[0]
         height = self.curve_edition.edit_curve.get_size_request()[1]
-        x_wgt = (
-            round((x / 255) * (width - (self.curve_edition.edit_curve.delta * 2)))
-            + self.curve_edition.edit_curve.delta
-        )
-        y_wgt = (
-            height
-            - self.curve_edition.edit_curve.delta
-            - round((y / 255) * (height - (self.curve_edition.edit_curve.delta * 2)))
-        )
-        self.curve_edition.fixed.move(
-            self.curve_edition.points[index], x_wgt - 4, y_wgt - 4
-        )
+        x_wgt = (round(
+            (x / 255) * (width - (self.curve_edition.edit_curve.delta * 2))) +
+                 self.curve_edition.edit_curve.delta)
+        y_wgt = (height - self.curve_edition.edit_curve.delta - round(
+            (y / 255) * (height - (self.curve_edition.edit_curve.delta * 2))))
+        self.curve_edition.fixed.move(self.curve_edition.points[index], x_wgt - 4,
+                                      y_wgt - 4)
         App().ascii.set_modified()

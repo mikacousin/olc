@@ -58,7 +58,8 @@ class Tabs:
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
             button.connect(
-                "clicked", self.tabs[tab_name].on_close_icon  # type: ignore[union-attr]
+                "clicked",
+                self.tabs[tab_name].on_close_icon  # type: ignore[union-attr]
             )
             newlabel = Gtk.Box()
             newlabel.pack_start(Gtk.Label(label), False, False, 0)

@@ -26,9 +26,8 @@ def update_channel_display(channel: int) -> None:
     Args:
         channel: Channel number (from 1 to MAX_CHANNELS)
     """
-    seq_level = (
-        App().sequence.steps[App().sequence.position].cue.channels.get(channel, 0)
-    )
+    seq_level = (App().sequence.steps[App().sequence.position].cue.channels.get(
+        channel, 0))
     seq_next_level = App().sequence.get_next_channel_level(channel, seq_level)
     GLib.idle_add(
         App().window.live_view.update_channel_widget,
@@ -73,9 +72,8 @@ class Master:
             pass
         elif self.content_type == 1:
             self.content_value = float(content_value)
-            if cue := next(
-                mem for mem in App().memories if mem.memory == self.content_value
-            ):
+            if cue := next(mem for mem in App().memories
+                           if mem.memory == self.content_value):
                 self.text = cue.text
         elif self.content_type == 2:
             self.text += "Ch"
@@ -84,15 +82,13 @@ class Master:
                 self.text += f" {channel}"
         elif self.content_type == 3:
             self.content_value = float(content_value)
-            if chaser := next(
-                chsr for chsr in App().chasers if chsr.index == self.content_value
-            ):
+            if chaser := next(chsr for chsr in App().chasers
+                              if chsr.index == self.content_value):
                 self.text = chaser.text
         elif self.content_type == 13:
             self.content_value = float(content_value)
-            if group := next(
-                grp for grp in App().groups if grp.index == self.content_value
-            ):
+            if group := next(grp for grp in App().groups
+                             if grp.index == self.content_value):
                 self.text = group.text
         elif self.content_type == 99:
             self.text = "GM"
@@ -104,23 +100,20 @@ class Master:
         """Update channels of master"""
         self.channels.clear()
         if self.content_type == 1:
-            if cue := next(
-                mem for mem in App().memories if mem.memory == self.content_value
-            ):
+            if cue := next(mem for mem in App().memories
+                           if mem.memory == self.content_value):
                 for channel in cue.channels:
                     self.channels.add(channel)
         elif self.content_type == 2:
             for channel in self.content_value:
                 self.channels.add(channel)
         elif self.content_type == 3:
-            if chaser := next(
-                chs for chs in App().chasers if chs.index == self.content_value
-            ):
+            if chaser := next(chs for chs in App().chasers
+                              if chs.index == self.content_value):
                 self.channels = chaser.channels
         elif self.content_type == 13:
-            if group := next(
-                grp for grp in App().groups if grp.index == self.content_value
-            ):
+            if group := next(grp for grp in App().groups
+                             if grp.index == self.content_value):
                 for channel in group.channels:
                     self.channels.add(channel)
 
@@ -173,9 +166,8 @@ class Master:
         # Send MIDI message to faders
         midi_name = f"master_{self.number}"
         App().midi.messages.control_change.send(midi_name, int(value / 2))
-        App().midi.messages.pitchwheel.send(
-            midi_name, int(((value / 255) * 16383) - 8192)
-        )
+        App().midi.messages.pitchwheel.send(midi_name,
+                                            int(((value / 255) * 16383) - 8192))
         if App().osc:
             page = 1
             index = self.number
@@ -225,9 +217,8 @@ class Master:
 
     def _level_changed_preset(self):
         """New level and type is Preset"""
-        if mem := next(
-            cue for cue in App().memories if cue.memory == self.content_value
-        ):
+        if mem := next(cue for cue in App().memories
+                       if cue.memory == self.content_value):
             for channel, level in mem.channels.items():
                 level = 0 if self.value == 0 else round(level / (255 / self.value))
                 self.dmx[channel - 1] = level
@@ -247,9 +238,8 @@ class Master:
     def _level_changed_group(self):
         """New level and type is Group"""
         # Find group
-        if group := next(
-            grp for grp in App().groups if grp.index == self.content_value
-        ):
+        if group := next(grp for grp in App().groups
+                         if grp.index == self.content_value):
             # Get Channels and Levels in group
             for channel, lvl in group.channels.items():
                 # Calculate level
@@ -351,43 +341,32 @@ class ThreadChaser(threading.Thread):
             if channel in App().chasers[self.chaser].channels:
                 # Start level
                 old_level = (
-                    App()
-                    .chasers[self.chaser]
-                    .steps[position]
-                    .cue.channels.get(channel, 0)
-                )
+                    App().chasers[self.chaser].steps[position].cue.channels.get(
+                        channel, 0))
                 # Level in the sequence
                 seq_level = (
-                    App()
-                    .sequence.steps[App().sequence.position]
-                    .cue.channels.get(channel, 0)
-                )
+                    App().sequence.steps[App().sequence.position].cue.channels.get(
+                        channel, 0))
                 old_level = max(old_level, seq_level)
                 # Loop on cues and come back at first step
                 if position < App().chasers[self.chaser].last - 1:
-                    next_level = (
-                        App()
-                        .chasers[self.chaser]
-                        .steps[position + 1]
-                        .cue.channels.get(channel, 0)
-                    )
+                    next_level = (App().chasers[self.chaser].steps[position +
+                                                                   1].cue.channels.get(
+                                                                       channel, 0))
                     next_level = max(next_level, seq_level)
                 else:
-                    next_level = (
-                        App().chasers[self.chaser].steps[1].cue.channels.get(channel, 0)
-                    )
+                    next_level = (App().chasers[self.chaser].steps[1].cue.channels.get(
+                        channel, 0))
                     next_level = max(next_level, seq_level)
                     App().chasers[self.chaser].position = 1
                 # If level increases, use time In
                 if next_level > old_level and i < delay_in:
-                    level = (
-                        int(((next_level - old_level + 1) / delay_in) * i) + old_level
-                    )
+                    level = (int(
+                        ((next_level - old_level + 1) / delay_in) * i) + old_level)
                 # If level decreases, use time Out
                 elif next_level < old_level and i < delay_out:
                     level = old_level - abs(
-                        int(((next_level - old_level - 1) / delay_out) * i)
-                    )
+                        int(((next_level - old_level - 1) / delay_out) * i))
                 # Else, level is already good
                 else:
                     level = next_level

@@ -232,16 +232,16 @@ class GroupTab(Gtk.Paned):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -280,8 +280,7 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.update()
                 self.flowbox.invalidate_filter()
         elif child := self.flowbox.get_child_at_index(
-            int(self.last_group_selected) + 1
-        ):
+                int(self.last_group_selected) + 1):
             self.flowbox.select_child(child)
             App().window.set_focus(child)
             self.channels_view.flowbox.unselect_all()
@@ -321,9 +320,8 @@ class GroupTab(Gtk.Paned):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
-            if child := self.flowbox.get_child_at_pos(
-                allocation.x, allocation.y + allocation.height
-            ):
+            if child := self.flowbox.get_child_at_pos(allocation.x,
+                                                      allocation.y + allocation.height):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
@@ -347,8 +345,7 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
             if child := self.flowbox.get_child_at_pos(
-                allocation.x, allocation.y - allocation.height / 2
-            ):
+                    allocation.x, allocation.y - allocation.height / 2):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
@@ -389,10 +386,8 @@ class GroupTab(Gtk.Paned):
             flowboxchild = selected[0]
             index = flowboxchild.get_index()
             for master in App().masters:
-                if (
-                    master.content_type == 13
-                    and master.content_value == App().groups[index].index
-                ):
+                if (master.content_type == 13
+                        and master.content_value == App().groups[index].index):
                     master.set_level(master.value)
 
     def _keypress_equal(self) -> None:
@@ -444,9 +439,8 @@ class GroupTab(Gtk.Paned):
             if group_nb < channel_widget.number:
                 i = child.get_index()
                 break
-        self.flowbox.insert(
-            GroupWidget(App().groups[-1].index, App().groups[-1].text), i
-        )
+        self.flowbox.insert(GroupWidget(App().groups[-1].index,
+                                        App().groups[-1].text), i)
         flowboxchild = self.flowbox.get_child_at_index(i)
         flowboxchild.show_all()
         self.flowbox.select_child(flowboxchild)
@@ -476,10 +470,8 @@ class GroupTab(Gtk.Paned):
         self.channels_view.update()
         # Update masters
         for master in App().masters:
-            if (
-                master.content_type == 13
-                and master.content_value == App().groups[index].index
-            ):
+            if (master.content_type == 13
+                    and master.content_value == App().groups[index].index):
                 master.set_level(0)
                 master.content_type = 0
                 master.content_value = None

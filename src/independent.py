@@ -70,9 +70,8 @@ class Independent:
             value: New level
         """
         # Send MIDI message to knob LEDs
-        App().midi.messages.control_change.send(
-            f"inde_led_{self.number}", 32 + int((value / 255) * 12)
-        )
+        App().midi.messages.control_change.send(f"inde_led_{self.number}", 32 + int(
+            (value / 255) * 12))
         self.level = value
         self.update_dmx()
 
@@ -115,8 +114,7 @@ class Independents:
             if level_inde != -1:
                 self.dmx[channel] = level_inde
                 next_level = App().sequence.get_next_channel_level(
-                    channel + 1, level_inde
-                )
+                    channel + 1, level_inde)
                 App().window.live_view.update_channel_widget(channel + 1, next_level)
 
     def add(self, independent):

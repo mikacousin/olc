@@ -130,12 +130,11 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Grand Master and Output grid
         self.output_pad = Gtk.Grid()
-        adjustment = Gtk.Adjustment(
-            round(App().backend.dmx.grand_master.value * 255), 0, 255, 1, 10, 0
-        )
-        self.scale_grand_master = FaderWidget(
-            text="gm", orientation=Gtk.Orientation.VERTICAL, adjustment=adjustment
-        )
+        adjustment = Gtk.Adjustment(round(App().backend.dmx.grand_master.value * 255),
+                                    0, 255, 1, 10, 0)
+        self.scale_grand_master = FaderWidget(text="gm",
+                                              orientation=Gtk.Orientation.VERTICAL,
+                                              adjustment=adjustment)
         self.scale_grand_master.value = App().backend.dmx.grand_master
         self.scale_grand_master.connect("clicked", self._scale_clicked)
         self.scale_grand_master.connect("value-changed", self.grand_master_moved)
@@ -379,8 +378,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     text=f"master_{i + 1}",
                     orientation=Gtk.Orientation.VERTICAL,
                     adjustment=adjustment,
-                )
-            )
+                ))
             self.masters[i].set_vexpand(True)
             self.masters[i].set_draw_value(False)
             self.masters[i].set_inverted(True)
@@ -989,11 +987,11 @@ class VirtualConsoleWindow(Gtk.Window):
         if child == App().window.live_view.channels_view:
             channels_view = child
         elif child in (
-            App().tabs.tabs["groups"],
-            App().tabs.tabs["indes"],
-            App().tabs.tabs["masters"],
-            App().tabs.tabs["memories"],
-            App().tabs.tabs["sequences"],
+                App().tabs.tabs["groups"],
+                App().tabs.tabs["indes"],
+                App().tabs.tabs["masters"],
+                App().tabs.tabs["memories"],
+                App().tabs.tabs["sequences"],
         ):
             channels_view = child.channels_view
         if channels_view:

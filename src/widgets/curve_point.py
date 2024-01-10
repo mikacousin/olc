@@ -79,8 +79,7 @@ class CurvePointWidget(Gtk.DrawingArea):
             edit_wgt_height = tab.curve_edition.edit_curve.height
             x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
             y_curve = round(
-                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
-            )
+                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255)
             tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
     def motion_notify(self, widget, event):
@@ -104,8 +103,7 @@ class CurvePointWidget(Gtk.DrawingArea):
             edit_wgt_height = tab.curve_edition.edit_curve.height
             x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
             y_curve = round(
-                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
-            )
+                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255)
             # First point
             if self.number == 0:
                 tab.curve_edition.label.set_label(f"0, {y_curve}")
@@ -117,10 +115,8 @@ class CurvePointWidget(Gtk.DrawingArea):
                 self.curve.points[self.number] = (255, y_curve)
                 fixed.move(widget, 976, y)
             # Don't move before/after previous/next point
-            elif (
-                not x_curve <= self.curve.points[self.number - 1][0]
-                and not x_curve >= self.curve.points[self.number + 1][0]
-            ):
+            elif (not x_curve <= self.curve.points[self.number - 1][0]
+                  and not x_curve >= self.curve.points[self.number + 1][0]):
                 tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
                 if any(x_curve in point for point in self.curve.points):
                     if self.curve.points[self.number][0] == x_curve:

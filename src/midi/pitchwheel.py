@@ -46,13 +46,11 @@ class MidiPitchWheel:
                     _update_master(msg, int(key[7:]) - 1)
                     break
                 if key[:13] == "crossfade_out":
-                    GLib.idle_add(
-                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
-                    )
+                    GLib.idle_add(App().midi.xfade.moved, msg,
+                                  App().midi.xfade.fader_out)
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(
-                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
-                    )
+                    GLib.idle_add(App().midi.xfade.moved, msg,
+                                  App().midi.xfade.fader_in)
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, None, msg)
 
@@ -91,8 +89,7 @@ class MidiPitchWheel:
         if App().virtual_console:
             App().virtual_console.scale_grand_master.set_value(val)
             App().virtual_console.grand_master_moved(
-                App().virtual_console.scale_grand_master
-            )
+                App().virtual_console.scale_grand_master)
         else:
             App().backend.dmx.grand_master.set_level(val / 255)
             App().window.grand_master.queue_draw()
@@ -102,9 +99,8 @@ def _update_master(msg: mido.Message, index: int) -> None:
     val = ((msg.pitch + 8192) / 16383) * 255
     if App().virtual_console:
         GLib.idle_add(App().virtual_console.masters[index].set_value, val)
-        GLib.idle_add(
-            App().virtual_console.master_moved, App().virtual_console.masters[index]
-        )
+        GLib.idle_add(App().virtual_console.master_moved,
+                      App().virtual_console.masters[index])
     else:
         page = App().fader_page
         number = index + 1

@@ -88,7 +88,6 @@ class PauseWidget(Gtk.Button):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(self.font_size)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-        cr.move_to(
-            self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
-        )
+        cr.move_to(self.width / 2 - w / 2,
+                   self.height / 2 - (h - (self.radius * 2)) / 2)
         cr.show_text(self.label)

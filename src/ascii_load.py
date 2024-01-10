@@ -332,8 +332,7 @@ class AsciiParser:
                                 if channel <= MAX_CHANNELS:
                                     out = output - (512 * index)
                                     App().backend.patch.add_output(
-                                        channel, out, univ, curve
-                                    )
+                                        channel, out, univ, curve)
                                 else:
                                     print("More than", MAX_CHANNELS, "channels")
                             else:
@@ -460,17 +459,14 @@ class AsciiParser:
                             if level and channel <= MAX_CHANNELS:
                                 channels[channel] = level
                 if (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
-                    item[1]
-                ) <= 10:
+                        item[1]) <= 10:
                     # Master with channels
                     index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
-                    App().masters[index] = Master(
-                        int(item[0]), int(item[1]), item[2], channels
-                    )
+                    App().masters[index] = Master(int(item[0]), int(item[1]), item[2],
+                                                  channels)
                     flag_master = False
                 elif (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
-                    item[1]
-                ) >= 10:
+                        item[1]) >= 10:
                     flag_master = False
             if line[:13].upper() == "$MASTPAGEITEM":
                 item = line[14:].split(" ")
@@ -488,9 +484,8 @@ class AsciiParser:
                 # Only 10 Masters per pages
                 elif int(item[1]) <= 10:
                     index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
-                    App().masters[index] = Master(
-                        int(item[0]), int(item[1]), item[2], item[3]
-                    )
+                    App().masters[index] = Master(int(item[0]), int(item[1]), item[2],
+                                                  item[3])
             # Independents
             if line[:16].upper() == "$SPECIALFUNCTION":
                 flag_seq = False
@@ -530,18 +525,15 @@ class AsciiParser:
             if line[:10].upper() == "$$MIDINOTE":
                 item = line[11:].split(" ")
                 App().midi.messages.notes.notes.update(
-                    {item[0]: [int(item[1]), int(item[2])]}
-                )
+                    {item[0]: [int(item[1]), int(item[2])]})
             if line[:8].upper() == "$$MIDICC":
                 item = line[9:].split(" ")
                 App().midi.messages.control_change.control_change.update(
-                    {item[0]: [int(item[1]), int(item[2])]}
-                )
+                    {item[0]: [int(item[1]), int(item[2])]})
             if line[:8].upper() == "$$MIDIPW":
                 item = line[9:].split(" ")
                 App().midi.messages.pitchwheel.pitchwheel.update(
-                    {item[0]: int(item[1])}
-                )
+                    {item[0]: int(item[1])})
             # Curves
             if line[:7].upper() == "$$CURVE" and line[:12].upper() != "$$CURVEPOINT":
                 item = line[8:].split(" ")
@@ -563,8 +555,7 @@ class AsciiParser:
                         for point in points:
                             coord = point.split(",")
                             App().curves.curves[curve_nb].add_point(
-                                int(coord[0]), int(coord[1])
-                            )
+                                int(coord[0]), int(coord[1]))
                     App().curves.curves[curve_nb].name = curve_name
             # Outputs curves
             if line[:8].upper() == "$$OUTPUT":
@@ -573,9 +564,6 @@ class AsciiParser:
                 out = int(item[1])
                 curve_nb = int(item[2])
                 curve = App().curves.get_curve(curve_nb)
-                if (
-                    curve
-                    and univ in UNIVERSES
-                    and out in App().backend.patch.outputs[univ]
-                ):
+                if (curve and univ in UNIVERSES
+                        and out in App().backend.patch.outputs[univ]):
                     App().backend.patch.outputs[univ][out][1] = curve_nb

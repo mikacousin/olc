@@ -182,8 +182,7 @@ class ChannelsView(Gtk.Box):
         """Select next channel"""
         self.flowbox.unselect_all()
         if self.last_selected_channel and not is_non_nul_int(
-            self.last_selected_channel
-        ):
+                self.last_selected_channel):
             return
         if self.view_mode == VIEW_MODES["Patched"]:
             self._next_patched()
@@ -193,9 +192,8 @@ class ChannelsView(Gtk.Box):
             return
         # Default mode: All channels
         selected_channel = ""
-        channel_index = (
-            int(self.last_selected_channel) if self.last_selected_channel else 0
-        )
+        channel_index = (int(self.last_selected_channel)
+                         if self.last_selected_channel else 0)
 
         if channel_index > MAX_CHANNELS - 1:
             channel_index = 0
@@ -210,11 +208,8 @@ class ChannelsView(Gtk.Box):
         """Select next channel in Active mode view"""
         selected_channel = ""
         children = self.flowbox.get_children()
-        start = (
-            int(self.last_selected_channel)
-            if self.last_selected_channel
-            else self.__get_first_active_channel()
-        )
+        start = (int(self.last_selected_channel)
+                 if self.last_selected_channel else self.__get_first_active_channel())
 
         for child in children:
             channel_index = child.get_index()
@@ -231,11 +226,8 @@ class ChannelsView(Gtk.Box):
 
     def _next_patched(self) -> None:
         """Select next channel in Patched mode view"""
-        start = (
-            int(self.last_selected_channel)
-            if self.last_selected_channel
-            else App().backend.patch.get_first_patched_channel() - 1
-        )
+        start = (int(self.last_selected_channel) if self.last_selected_channel else
+                 App().backend.patch.get_first_patched_channel() - 1)
 
         for channel_index in range(start, MAX_CHANNELS):
             if App().backend.patch.is_patched(channel_index + 1):
@@ -253,8 +245,7 @@ class ChannelsView(Gtk.Box):
         """Select previous channel"""
         self.flowbox.unselect_all()
         if self.last_selected_channel and not is_non_nul_int(
-            self.last_selected_channel
-        ):
+                self.last_selected_channel):
             return
         if self.view_mode == VIEW_MODES["Patched"]:
             self._previous_patched()
@@ -264,9 +255,8 @@ class ChannelsView(Gtk.Box):
             return
         # Default mode: All channels
         selected_channel = ""
-        channel_index = (
-            int(self.last_selected_channel) - 2 if self.last_selected_channel else 0
-        )
+        channel_index = (int(self.last_selected_channel) -
+                         2 if self.last_selected_channel else 0)
 
         if channel_index < 0:
             channel_index = MAX_CHANNELS - 1
@@ -280,11 +270,9 @@ class ChannelsView(Gtk.Box):
     def _previous_active(self) -> None:
         """Select previous channel in Active mode view"""
         selected_channel = ""
-        start = (
-            int(self.last_selected_channel) - 2
-            if self.last_selected_channel
-            else self.__get_last_active_channel() + 1
-        )
+        start = (int(self.last_selected_channel) -
+                 2 if self.last_selected_channel else self.__get_last_active_channel() +
+                 1)
 
         children = self.flowbox.get_children()
         children.reverse()
@@ -303,11 +291,8 @@ class ChannelsView(Gtk.Box):
 
     def _previous_patched(self) -> None:
         """Select previous channel in Patched mode view"""
-        start = (
-            int(self.last_selected_channel) - 2
-            if self.last_selected_channel
-            else App().backend.patch.get_last_patched_channel()
-        )
+        start = (int(self.last_selected_channel) - 2 if self.last_selected_channel else
+                 App().backend.patch.get_last_patched_channel())
 
         for channel_index in range(start, 0, -1):
             if App().backend.patch.is_patched(channel_index + 1):
@@ -457,17 +442,17 @@ class ChannelsView(Gtk.Box):
             method or None
         """
         if keyname in {
-            "f",
-            "Page_Up",
-            "Page_Down",
-            "a",
-            "c",
-            "KP_Divide",
-            "greater",
-            "KP_Add",
-            "plus",
-            "KP_Subtract",
-            "minus",
+                "f",
+                "Page_Up",
+                "Page_Down",
+                "a",
+                "c",
+                "KP_Divide",
+                "greater",
+                "KP_Add",
+                "plus",
+                "KP_Subtract",
+                "minus",
         }:
             if func := getattr(self, f"_keypress_{keyname.lower()}", None):
                 return func()

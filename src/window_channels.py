@@ -97,9 +97,8 @@ class LiveChannelsView(ChannelsView):
         channel = child.get_index() + 1
         channel_widget.next_level = self.get_next_level(channel, channel_widget)
         if self.view_mode == VIEW_MODES["Active"]:
-            visible = bool(
-                channel_widget.level or channel_widget.next_level or child.is_selected()
-            )
+            visible = bool(channel_widget.level or channel_widget.next_level
+                           or child.is_selected())
             child.set_visible(visible)
             return visible
 
@@ -123,11 +122,8 @@ class LiveChannelsView(ChannelsView):
             Channel next level (0 - 255)
         """
         position = App().sequence.position
-        if (
-            App().sequence.last > 1
-            and position < App().sequence.last - 1
-            and App().sequence.last <= len(App().sequence.steps)
-        ):
+        if (App().sequence.last > 1 and position < App().sequence.last - 1
+                and App().sequence.last <= len(App().sequence.steps)):
             next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
         elif App().sequence.last:
             next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
@@ -166,8 +162,7 @@ class LiveChannelsView(ChannelsView):
                 level = App().backend.dmx.frame[index][out - 1]
                 if direction == Gdk.ScrollDirection.UP:
                     App().backend.dmx.levels["user"][channel - 1] = min(
-                        level + step, 255
-                    )
+                        level + step, 255)
                 elif direction == Gdk.ScrollDirection.DOWN:
                     App().backend.dmx.levels["user"][channel - 1] = max(level - step, 0)
             next_level = App().sequence.get_next_channel_level(channel, level)

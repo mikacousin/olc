@@ -61,13 +61,11 @@ class MidiControlChanges:
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde, port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
-                    GLib.idle_add(
-                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
-                    )
+                    GLib.idle_add(App().midi.xfade.moved, msg,
+                                  App().midi.xfade.fader_out)
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(
-                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
-                    )
+                    GLib.idle_add(App().midi.xfade.moved, msg,
+                                  App().midi.xfade.fader_in)
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
 
@@ -105,9 +103,8 @@ class MidiControlChanges:
                 # Learn new values
                 self.control_change.update({learning: [msg.channel, msg.control]})
 
-    def __get_step(
-        self, msg: mido.Message, port: str
-    ) -> Tuple[int, Gdk.ScrollDirection]:
+    def __get_step(self, msg: mido.Message,
+                   port: str) -> Tuple[int, Gdk.ScrollDirection]:
         """Return direction and step value
 
         Args:
@@ -165,11 +162,11 @@ class MidiControlChanges:
             if tab == App().window.live_view.channels_view:
                 channels_view = tab
             elif tab in (
-                App().tabs.tabs["groups"],
-                App().tabs.tabs["indes"],
-                App().tabs.tabs["masters"],
-                App().tabs.tabs["memories"],
-                App().tabs.tabs["sequences"],
+                    App().tabs.tabs["groups"],
+                    App().tabs.tabs["indes"],
+                    App().tabs.tabs["masters"],
+                    App().tabs.tabs["memories"],
+                    App().tabs.tabs["sequences"],
             ):
                 channels_view = tab.channels_view
             if channels_view:
@@ -189,8 +186,7 @@ class MidiControlChanges:
         if App().virtual_console:
             App().virtual_console.scale_grand_master.set_value(val)
             App().virtual_console.grand_master_moved(
-                App().virtual_console.scale_grand_master
-            )
+                App().virtual_console.scale_grand_master)
         else:
             App().backend.dmx.grand_master.set_level(val / 255)
             App().window.grand_master.queue_draw()
@@ -213,9 +209,8 @@ def _function_master(msg: mido.Message, master_index: int) -> None:
         return
     if App().virtual_console:
         App().virtual_console.masters[master_index - 1].set_value(val)
-        App().virtual_console.master_moved(
-            App().virtual_console.masters[master_index - 1]
-        )
+        App().virtual_console.master_moved(App().virtual_console.masters[master_index -
+                                                                         1])
     else:
         master.set_level(val)
 

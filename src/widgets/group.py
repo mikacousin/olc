@@ -60,10 +60,8 @@ class GroupWidget(Gtk.Widget):
         App().groups[index].text = text
         # Update Master text
         for master in App().masters:
-            if (
-                master.content_type == 13
-                and master.content_value == App().groups[index].index
-            ):
+            if (master.content_type == 13
+                    and master.content_value == App().groups[index].index):
                 master.text = text
                 # Update Virtual Console
                 if App().virtual_console and master.page == App().fader_page:
@@ -134,12 +132,10 @@ class GroupWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

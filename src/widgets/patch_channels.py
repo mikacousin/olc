@@ -114,11 +114,8 @@ class PatchChannelWidget(Gtk.Widget):
             App().tabs.tabs["patch_channels"].thru()
         else:
             App().tabs.tabs["patch_channels"].flowbox.unselect_all()
-            child = (
-                App()
-                .tabs.tabs["patch_channels"]
-                .flowbox.get_child_at_index(self.channel - 1)
-            )
+            child = (App().tabs.tabs["patch_channels"].flowbox.get_child_at_index(
+                self.channel - 1))
             App().tabs.tabs["patch_channels"].flowbox.select_child(child)
             App().tabs.tabs["patch_channels"].last_chan_selected = str(self.channel - 1)
 
@@ -198,15 +195,13 @@ class PatchChannelWidget(Gtk.Widget):
 
                 # Draw Output number
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.select_font_face(
-                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                )
+                cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
+                                    cairo.FontWeight.BOLD)
                 cr.set_font_size(12)
                 univ = item[1]
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{output}.{univ}")
-                cr.move_to(
-                    65 + (i * 65) + (60 / 2) - w / 2, self.height / 2 - (h - 20) / 2
-                )
+                cr.move_to(65 + (i * 65) + (60 / 2) - w / 2,
+                           self.height / 2 - (h - 20) / 2)
                 cr.show_text(f"{output}.{univ}")
 
     def _draw_two_lines(self, cr):
@@ -242,9 +237,8 @@ class PatchChannelWidget(Gtk.Widget):
 
                     # Draw Output number
                     cr.set_source_rgb(0.9, 0.9, 0.9)
-                    cr.select_font_face(
-                        "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                    )
+                    cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
+                                        cairo.FontWeight.BOLD)
                     cr.set_font_size(10)
                     if i == 31:
                         # Draw '...' in the last box
@@ -281,9 +275,8 @@ class PatchChannelWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{output}.{univ}")
-        cr.move_to(
-            65 + (i * 32) + (30 / 2) - w / 2, (self.height / 2) / 2 - (h - 20) / 2
-        )
+        cr.move_to(65 + (i * 32) + (30 / 2) - w / 2,
+                   (self.height / 2) / 2 - (h - 20) / 2)
 
     def do_realize(self):
         """Realize widget"""
@@ -295,12 +288,10 @@ class PatchChannelWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

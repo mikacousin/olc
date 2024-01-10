@@ -87,9 +87,8 @@ class KnobWidget(Gtk.DrawingArea):
             angle = angle + math.pi / 2
             self.x1 = x2
             self.y1 = y2
-        self.value = self.old_value + (
-            (self.old_angle + angle) * (180 * 255) / (300 * math.pi)
-        )
+        self.value = self.old_value + ((self.old_angle + angle) * (180 * 255) /
+                                       (300 * math.pi))
         if self.value < 0:
             self.value = 0
         elif self.value > 255:

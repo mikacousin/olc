@@ -34,10 +34,10 @@ class Sacn(DMXBackend):
             self.sender.activate_output(universe)
             self.sender[universe].multicast = True
             self.receiver.join_multicast(universe)
-            self.receiver.register_listener(
-                "universe", self.receive_packet, universe=universe
-            )
-        self.old_frame = [(0,) * 512 for _ in range(NB_UNIVERSES)]
+            self.receiver.register_listener("universe",
+                                            self.receive_packet,
+                                            universe=universe)
+        self.old_frame = [(0, ) * 512 for _ in range(NB_UNIVERSES)]
         super().__init__()
 
     def stop(self) -> None:
@@ -69,21 +69,17 @@ class Sacn(DMXBackend):
             # Find diff between old and new DMX frames
             outputs = [
                 index
-                for index, (e1, e2) in enumerate(
-                    zip(packet.dmxData, self.old_frame[idx])
-                )
+                for index, (e1,
+                            e2) in enumerate(zip(packet.dmxData, self.old_frame[idx]))
                 if e1 != e2
             ]
             # Loop on outputs with different level
             for output in outputs:
                 if self.patch.outputs.get(univ) and self.patch.outputs[univ].get(
-                    output + 1
-                ):
+                        output + 1):
                     GLib.idle_add(
-                        App()
-                        .tabs.tabs["patch_outputs"]
-                        .outputs[output + (idx * 512)]
-                        .queue_draw
-                    )
+                        App().tabs.tabs["patch_outputs"].outputs[output +
+                                                                 (idx *
+                                                                  512)].queue_draw)
         # Save DMX frame for next call
         self.old_frame[idx] = packet.dmxData

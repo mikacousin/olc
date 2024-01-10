@@ -35,10 +35,8 @@ class CurvePatchOutputWidget(CurveWidget):
         for output in outputs:
             out = output[0]
             univ = output[1]
-            if (
-                univ in App().backend.patch.outputs
-                and out in App().backend.patch.outputs[univ]
-            ):
+            if (univ in App().backend.patch.outputs
+                    and out in App().backend.patch.outputs[univ]):
                 App().backend.patch.outputs[univ][out][1] = self.curve_nb
         tab.refresh()
         App().ascii.set_modified()
@@ -80,11 +78,8 @@ class PatchWidget(Gtk.DrawingArea):
             App().backend.patch.by_outputs.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
-            child = (
-                App()
-                .tabs.tabs["patch_outputs"]
-                .flowbox.get_child_at_index(widget_index)
-            )
+            child = (App().tabs.tabs["patch_outputs"].flowbox.get_child_at_index(
+                widget_index))
             if self.get_parent().is_selected():
                 App().tabs.tabs["patch_outputs"].flowbox.unselect_child(child)
                 App().window.commandline.set_string(f"{self.output}.{self.universe}")
@@ -94,18 +89,13 @@ class PatchWidget(Gtk.DrawingArea):
                 App().window.commandline.set_string(f"{self.output}.{self.universe}")
                 App().backend.patch.by_outputs.add_output()
         else:
-            child = (
-                App()
-                .tabs.tabs["patch_outputs"]
-                .flowbox.get_child_at_index(widget_index)
-            )
+            child = (App().tabs.tabs["patch_outputs"].flowbox.get_child_at_index(
+                widget_index))
             if not child.is_selected():
                 App().window.commandline.set_string(f"{self.output}.{self.universe}")
                 App().backend.patch.by_outputs.select_output()
-            elif (
-                self.universe in App().backend.patch.outputs
-                and self.output in App().backend.patch.outputs[self.universe]
-            ):
+            elif (self.universe in App().backend.patch.outputs
+                  and self.output in App().backend.patch.outputs[self.universe]):
                 # Change curve only on patched outputs
                 self.open_popup()
 
@@ -208,10 +198,8 @@ class PatchWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
-        if (
-            self.universe in App().backend.patch.outputs
-            and self.output in App().backend.patch.outputs[self.universe]
-        ):
+        if (self.universe in App().backend.patch.outputs
+                and self.output in App().backend.patch.outputs[self.universe]):
             number = App().backend.patch.outputs[self.universe][self.output][1]
             curve = App().curves.get_curve(number)
             if curve.is_all_zero():
@@ -236,9 +224,8 @@ class PatchWidget(Gtk.DrawingArea):
         if App().backend.dmx.frame[index][self.output - 1]:
             level = App().backend.dmx.frame[index][self.output - 1]
             # cr.move_to(0, 0)
-            cr.set_source_rgba(
-                0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
-            )
+            cr.set_source_rgba(0.3 + (0.2 / 255 * level), 0.3,
+                               0.3 - (0.3 / 255 * level), 0.6)
             area = (1, allocation.width - 2, 1, allocation.height - 2)
             rounded_rectangle_fill(cr, area, 10)
 
@@ -254,9 +241,8 @@ class PatchWidget(Gtk.DrawingArea):
         cr.set_font_size(11 * self.scale)
         text = f"{self.output}.{self.universe}"
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-        cr.move_to(
-            allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4
-        )
+        cr.move_to(allocation.width / 2 - width / 2,
+                   allocation.height / 4 - (height - 20) / 4)
         cr.show_text(text)
 
     def _draw_channel_number(self, cr, allocation):
@@ -269,10 +255,8 @@ class PatchWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
-        if (
-            self.universe in App().backend.patch.outputs
-            and self.output in App().backend.patch.outputs[self.universe]
-        ):
+        if (self.universe in App().backend.patch.outputs
+                and self.output in App().backend.patch.outputs[self.universe]):
             text = str(App().backend.patch.outputs[self.universe][self.output][0])
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
             if App().backend.patch.outputs[self.universe][self.output][0] > 0:
@@ -310,10 +294,8 @@ class PatchWidget(Gtk.DrawingArea):
             cr: Cairo context
             allocation: Widget allocation
         """
-        if (
-            self.universe in App().backend.patch.outputs
-            and self.output in App().backend.patch.outputs[self.universe]
-        ):
+        if (self.universe in App().backend.patch.outputs
+                and self.output in App().backend.patch.outputs[self.universe]):
             number = App().backend.patch.outputs[self.universe][self.output][1]
             # Don't draw linear curve
             if number:
@@ -324,7 +306,7 @@ class PatchWidget(Gtk.DrawingArea):
                 for x, y in curve.values.items():
                     cr.line_to(
                         10 + (x / 255) * (allocation.width - 20),
-                        (allocation.height - 10)
-                        - ((y / 255) * (allocation.height - 20)),
+                        (allocation.height - 10) - ((y / 255) *
+                                                    (allocation.height - 20)),
                     )
                 cr.stroke()

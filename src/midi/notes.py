@@ -132,9 +132,11 @@ class MidiNotes:
         """
         channel, note = self.notes[midi_name]
         if note != -1:
-            msg = mido.Message(
-                "note_on", channel=channel, note=note, velocity=value, time=0
-            )
+            msg = mido.Message("note_on",
+                               channel=channel,
+                               note=note,
+                               velocity=value,
+                               time=0)
             App().midi.enqueue(msg)
 
     def learn(self, msg: mido.Message, learning: str) -> None:
@@ -197,9 +199,8 @@ class MidiNotes:
             inde = App().independents.independents[8]
             if App().virtual_console:
                 widget = App().virtual_console.independent9
-        if msg.type == "note_off" or (
-            msg.type == "note_on" and msg.velocity == 127 and inde.level == 255
-        ):
+        if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 127
+                                      and inde.level == 255):
             if App().virtual_console:
                 widget.set_active(False)
             else:
@@ -244,9 +245,8 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
         master = App().masters[fader_index - 1 + ((App().fader_page - 1) * 10)]
 
         App().midi.messages.control_change.send(midi_name, int(master.value / 2))
-        App().midi.messages.pitchwheel.send(
-            midi_name, int(((master.value / 255) * 16383) - 8192)
-        )
+        App().midi.messages.pitchwheel.send(midi_name,
+                                            int(((master.value / 255) * 16383) - 8192))
 
 
 def _function_gm(msg: mido.Message) -> None:
@@ -257,11 +257,9 @@ def _function_gm(msg: mido.Message) -> None:
     """
     if msg.velocity == 0:
         App().midi.messages.control_change.send(
-            "gm", round(App().backend.dmx.grand_master.value * 127)
-        )
+            "gm", round(App().backend.dmx.grand_master.value * 127))
         App().midi.messages.pitchwheel.send(
-            "gm", round((App().backend.dmx.grand_master.value * 16383) - 8192)
-        )
+            "gm", round((App().backend.dmx.grand_master.value * 16383) - 8192))
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
@@ -791,14 +789,18 @@ def _function_pause(msg: mido.Message) -> None:
 
     if App().sequence.on_go and App().sequence.thread:
         if App().sequence.thread.pause.is_set():
-            message = mido.Message(
-                "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
-            )
+            message = mido.Message("note_on",
+                                   channel=msg.channel,
+                                   note=msg.note,
+                                   velocity=0,
+                                   time=0)
             App().midi.enqueue(message)
         else:
-            message = mido.Message(
-                "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
-            )
+            message = mido.Message("note_on",
+                                   channel=msg.channel,
+                                   note=msg.note,
+                                   velocity=127,
+                                   time=0)
             App().midi.enqueue(message)
 
 

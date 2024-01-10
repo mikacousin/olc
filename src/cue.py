@@ -47,12 +47,8 @@ class Cue:
             channel: channel number (1-MAX_CHANNELS)
             level: level (0 - 255)
         """
-        if (
-            isinstance(level, int)
-            and 0 <= level < 256
-            and isinstance(channel, int)
-            and 0 < channel <= MAX_CHANNELS
-        ):
+        if (isinstance(level, int) and 0 <= level < 256 and isinstance(channel, int)
+                and 0 < channel <= MAX_CHANNELS):
             self.channels[channel] = level
 
     def get_level(self, channel: int) -> int:

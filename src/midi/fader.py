@@ -65,9 +65,9 @@ class MIDIFader:
             True if anchored, else False
         """
         self.value = new_value
-        if (self.valid is FaderState.UP and self.value < level) or (
-            self.valid is FaderState.DOWN and self.value > level
-        ):
+        if (self.valid is FaderState.UP
+                and self.value < level) or (self.valid is FaderState.DOWN
+                                            and self.value > level):
             return False
         self.valid = FaderState.VALID
         return True

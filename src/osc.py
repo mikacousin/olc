@@ -91,9 +91,8 @@ class OscServer(liblo.ServerThread):
 
     @liblo.make_method("/olc/command_line", None)
     def _commandline(self, _path, _args, _types):
-        App().osc.client.send(
-            "/olc/command_line", ("s", App().window.commandline.get_string())
-        )
+        App().osc.client.send("/olc/command_line",
+                              ("s", App().window.commandline.get_string()))
 
     @liblo.make_method("/olc/key/go", None)
     def _go(self, _path, _args, _types):
@@ -226,9 +225,8 @@ class OscServer(liblo.ServerThread):
         App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
         for master in App().masters:
             if master.page == App().fader_page:
-                App().osc.client.send(
-                    f"/olc/fader/1/{master.number}/label", ("s", master.text)
-                )
+                App().osc.client.send(f"/olc/fader/1/{master.number}/label",
+                                      ("s", master.text))
 
     @liblo.make_method("/olc/fader/page+", None)
     def _fader_page_plus(self, _path, _args, _types):
@@ -245,9 +243,8 @@ class OscServer(liblo.ServerThread):
         App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
         for master in App().masters:
             if master.page == App().fader_page:
-                App().osc.client.send(
-                    f"/olc/fader/1/{master.number}/label", ("s", master.text)
-                )
+                App().osc.client.send(f"/olc/fader/1/{master.number}/label",
+                                      ("s", master.text))
 
     @liblo.make_method("/olc/fader/page-", None)
     def _fader_page_minus(self, _path, _args, _types):
@@ -264,9 +261,8 @@ class OscServer(liblo.ServerThread):
         App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
         for master in App().masters:
             if master.page == App().fader_page:
-                App().osc.client.send(
-                    f"/olc/fader/1/{master.number}/label", ("s", master.text)
-                )
+                App().osc.client.send(f"/olc/fader/1/{master.number}/label",
+                                      ("s", master.text))
 
     @liblo.make_method("/olc/fader/1/1/level", "i")
     @liblo.make_method("/olc/fader/1/2/level", "i")
@@ -282,9 +278,8 @@ class OscServer(liblo.ServerThread):
         master_index = int(path.split("/")[4])
         level = args[0]
         if App().virtual_console:
-            GLib.idle_add(
-                App().virtual_console.masters[master_index - 1].set_value, level
-            )
+            GLib.idle_add(App().virtual_console.masters[master_index - 1].set_value,
+                          level)
             GLib.idle_add(
                 App().virtual_console.master_moved,
                 App().virtual_console.masters[master_index - 1],

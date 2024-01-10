@@ -64,11 +64,8 @@ class CrossFade:
         if level not in (255, 0):
             App().sequence.on_go = True
             # If Go is sent, stop it
-            if (
-                App().crossfade.manual
-                and App().sequence.thread
-                and App().sequence.thread.is_alive()
-            ):
+            if (App().crossfade.manual and App().sequence.thread
+                    and App().sequence.thread.is_alive()):
                 App().sequence.thread.stop()
                 App().sequence.thread.join()
 
@@ -80,12 +77,8 @@ class CrossFade:
             # Update sliders position
             self.update_slider(scale, level)
 
-        if (
-            self.scale_a.get_value() == 255
-            and self.scale_b.get_value() == 255
-            and self.scale_a.moved
-            and self.scale_b.moved
-        ):
+        if (self.scale_a.get_value() == 255 and self.scale_b.get_value() == 255
+                and self.scale_a.moved and self.scale_b.moved):
             # In and Out Crossfades at Full
             self.at_full()
 
@@ -121,32 +114,24 @@ class CrossFade:
             next_step = 1
         # Update user interface
         App().window.playback.sequential.total_time = (
-            App().sequence.steps[next_step].total_time
-        )
+            App().sequence.steps[next_step].total_time)
         App().window.playback.sequential.time_in = (
-            App().sequence.steps[next_step].time_in
-        )
+            App().sequence.steps[next_step].time_in)
         App().window.playback.sequential.time_out = (
-            App().sequence.steps[next_step].time_out
-        )
+            App().sequence.steps[next_step].time_out)
         App().window.playback.sequential.delay_in = (
-            App().sequence.steps[next_step].delay_in
-        )
+            App().sequence.steps[next_step].delay_in)
         App().window.playback.sequential.delay_out = (
-            App().sequence.steps[next_step].delay_out
-        )
+            App().sequence.steps[next_step].delay_out)
         App().window.playback.sequential.wait = App().sequence.steps[next_step].wait
         App().window.playback.sequential.channel_time = (
-            App().sequence.steps[next_step].channel_time
-        )
+            App().sequence.steps[next_step].channel_time)
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
-        subtitle = (
-            f"Mem. :{App().sequence.steps[App().sequence.position].cue.memory} "
-            f"{App().sequence.steps[App().sequence.position].text} "
-            f"- Next Mem. : {App().sequence.steps[next_step].cue.memory} "
-            f"{App().sequence.steps[next_step].text}"
-        )
+        subtitle = (f"Mem. :{App().sequence.steps[App().sequence.position].cue.memory} "
+                    f"{App().sequence.steps[App().sequence.position].text} "
+                    f"- Next Mem. : {App().sequence.steps[next_step].cue.memory} "
+                    f"{App().sequence.steps[next_step].text}")
         update_ui(App().sequence.position, subtitle)
         # If Wait
         if App().sequence.steps[next_step].wait:
@@ -165,14 +150,12 @@ class CrossFade:
         position = (level / 255) * total_time
         if scale == self.scale_a:
             App().window.playback.sequential.position_a = (
-                (App().window.playback.sequential.get_allocation().width - 32)
-                / total_time
-            ) * position
+                (App().window.playback.sequential.get_allocation().width - 32) /
+                total_time) * position
         elif scale == self.scale_b:
             App().window.playback.sequential.position_b = (
-                (App().window.playback.sequential.get_allocation().width - 32)
-                / total_time
-            ) * position
+                (App().window.playback.sequential.get_allocation().width - 32) /
+                total_time) * position
         App().window.playback.sequential.queue_draw()
         # Update levels
         if position >= wait:
@@ -180,16 +163,11 @@ class CrossFade:
                 if not App().backend.patch.is_patched(channel):
                     continue
                 old_level = (
-                    App()
-                    .sequence.steps[App().sequence.position]
-                    .cue.channels.get(channel, 0)
-                )
+                    App().sequence.steps[App().sequence.position].cue.channels.get(
+                        channel, 0))
                 if App().sequence.position < App().sequence.last - 1:
-                    next_level = (
-                        App()
-                        .sequence.steps[App().sequence.position + 1]
-                        .cue.channels.get(channel, 0)
-                    )
+                    next_level = (App().sequence.steps[App().sequence.position +
+                                                       1].cue.channels.get(channel, 0))
                 else:
                     next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
                 if scale == self.scale_a:
@@ -222,8 +200,7 @@ def update_a(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif wait + delay_out < pos < time_out + wait + delay_out:
             lvl = user_level - abs(
-                int(((next_level - user_level) / time_out) * (pos - wait - delay_out))
-            )
+                int(((next_level - user_level) / time_out) * (pos - wait - delay_out)))
         else:
             lvl = next_level
     elif next_level < old_level:
@@ -233,11 +210,8 @@ def update_a(channel, old_level, next_level, wait, pos):
         elif wait + delay_out < pos < time_out + wait + delay_out:
             lvl = old_level - abs(
                 int(
-                    round(
-                        ((next_level - old_level) / time_out) * (pos - wait - delay_out)
-                    )
-                )
-            )
+                    round(((next_level - old_level) / time_out) *
+                          (pos - wait - delay_out))))
         else:
             lvl = next_level
     if lvl != -1:
@@ -266,8 +240,7 @@ def _update_a_channel_time(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif ct_delay + wait <= pos < ct_delay + ct_time + wait:
             lvl = old_level - abs(
-                int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait))
-            )
+                int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait)))
         else:
             lvl = next_level
     return lvl
@@ -294,10 +267,8 @@ def update_b(channel, old_level, next_level, wait, pos):
         if pos <= wait + delay_in:
             lvl = old_level
         elif wait + delay_in < pos < time_in + wait + delay_in:
-            lvl = int(
-                ((next_level - user_level) / time_in) * (pos - wait - delay_in)
-                + user_level
-            )
+            lvl = int(((next_level - user_level) / time_in) * (pos - wait - delay_in) +
+                      user_level)
         else:
             lvl = next_level
     elif next_level > old_level:
@@ -305,10 +276,8 @@ def update_b(channel, old_level, next_level, wait, pos):
         if pos <= wait + delay_in:
             lvl = old_level
         elif wait + delay_in < pos < time_in + wait + delay_in:
-            lvl = int(
-                ((next_level - old_level) / time_in) * (pos - wait - delay_in)
-                + old_level
-            )
+            lvl = int(((next_level - old_level) / time_in) * (pos - wait - delay_in) +
+                      old_level)
         else:
             lvl = next_level
     if lvl != -1:
@@ -337,10 +306,8 @@ def _update_b_channel_time(channel, old_level, next_level, wait, pos):
         if pos < ct_delay + wait:
             lvl = old_level
         elif ct_delay + wait <= pos < ct_delay + ct_time + wait:
-            lvl = int(
-                ((next_level - old_level) / ct_time) * (pos - ct_delay - wait)
-                + old_level
-            )
+            lvl = int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait) +
+                      old_level)
         else:
             lvl = next_level
     return lvl

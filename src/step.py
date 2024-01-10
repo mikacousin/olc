@@ -51,17 +51,10 @@ class Step:
             self.total_time = self.time_out + self.delay_out + self.wait
 
         for channel in self.channel_time.keys():
-            if (
-                self.channel_time[channel].delay
-                + self.channel_time[channel].time
-                + self.wait
-                > self.total_time
-            ):
-                self.total_time = (
-                    self.channel_time[channel].delay
-                    + self.channel_time[channel].time
-                    + self.wait
-                )
+            if (self.channel_time[channel].delay + self.channel_time[channel].time +
+                    self.wait > self.total_time):
+                self.total_time = (self.channel_time[channel].delay +
+                                   self.channel_time[channel].time + self.wait)
 
     def set_time_in(self, time_in):
         """Set Time In

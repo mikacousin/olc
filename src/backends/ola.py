@@ -48,9 +48,8 @@ class OlaThread(threading.Thread):
         self.wrapper = ClientWrapper()
         self.client = self.wrapper.Client()
         for univ in UNIVERSES:
-            self.client.RegisterUniverse(
-                univ, self.client.REGISTER, partial(self.on_dmx, univ)
-            )
+            self.client.RegisterUniverse(univ, self.client.REGISTER,
+                                         partial(self.on_dmx, univ))
         self.wrapper.Run()
 
     def on_dmx(self, univ: int, dmxframe: array.array) -> None:
@@ -71,20 +70,16 @@ class OlaThread(threading.Thread):
             # Loop on outputs with different level
             for output in outputs:
                 if self.patch.outputs.get(univ) and self.patch.outputs[univ].get(
-                    output + 1
-                ):
+                        output + 1):
                     GLib.idle_add(
-                        App()
-                        .tabs.tabs["patch_outputs"]
-                        .outputs[output + (idx * 512)]
-                        .queue_draw
-                    )
+                        App().tabs.tabs["patch_outputs"].outputs[output +
+                                                                 (idx *
+                                                                  512)].queue_draw)
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe
 
-    def fetch_dmx(
-        self, status: OlaClient.RequestStatus, univ: int, dmxframe: array.array
-    ) -> None:
+    def fetch_dmx(self, status: OlaClient.RequestStatus, univ: int,
+                  dmxframe: array.array) -> None:
         """Fetch DMX
 
         Args:
@@ -103,9 +98,9 @@ class OlaThread(threading.Thread):
                 next_level = App().sequence.get_next_channel_level(channel, level)
                 App().window.live_view.update_channel_widget(channel, next_level)
                 if App().tabs.tabs["patch_outputs"]:
-                    App().tabs.tabs["patch_outputs"].outputs[
-                        output + (512 * index)
-                    ].queue_draw()
+                    App().tabs.tabs["patch_outputs"].outputs[output +
+                                                             (512 *
+                                                              index)].queue_draw()
 
 
 class Ola(DMXBackend):

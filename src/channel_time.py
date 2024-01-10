@@ -89,18 +89,14 @@ class ChanneltimeTab(Gtk.Paned):
         self.step = self.sequence.steps[int(position)]
 
         for channel in self.step.channel_time.keys():
-            delay = (
-                str(int(self.step.channel_time[channel].delay))
-                if self.step.channel_time[channel].delay.is_integer()
-                else str(self.step.channel_time[channel].delay)
-            )
+            delay = (str(int(self.step.channel_time[channel].delay))
+                     if self.step.channel_time[channel].delay.is_integer() else str(
+                         self.step.channel_time[channel].delay))
             if delay == "0":
                 delay = ""
-            time = (
-                str(int(self.step.channel_time[channel].time))
-                if self.step.channel_time[channel].time.is_integer()
-                else str(self.step.channel_time[channel].time)
-            )
+            time = (str(int(self.step.channel_time[channel].time))
+                    if self.step.channel_time[channel].time.is_integer() else str(
+                        self.step.channel_time[channel].time))
             if time == "0":
                 time = ""
             self.liststore.append([channel, delay, time])
@@ -151,18 +147,14 @@ class ChanneltimeTab(Gtk.Paned):
                 # Redraw list of Channel Time
                 self.liststore.clear()
                 for channel in self.step.channel_time.keys():
-                    delay = (
-                        str(int(self.step.channel_time[channel].delay))
-                        if self.step.channel_time[channel].delay.is_integer()
-                        else str(self.step.channel_time[channel].delay)
-                    )
+                    delay = (str(int(self.step.channel_time[channel].delay))
+                             if self.step.channel_time[channel].delay.is_integer() else
+                             str(self.step.channel_time[channel].delay))
                     if delay == "0":
                         delay = ""
-                    time = (
-                        str(int(self.step.channel_time[channel].time))
-                        if self.step.channel_time[channel].time.is_integer()
-                        else str(self.step.channel_time[channel].time)
-                    )
+                    time = (str(int(self.step.channel_time[channel].time))
+                            if self.step.channel_time[channel].time.is_integer() else
+                            str(self.step.channel_time[channel].time))
                     if time == "0":
                         time = ""
                     self.liststore.append([channel, delay, time])
@@ -174,28 +166,23 @@ class ChanneltimeTab(Gtk.Paned):
             if App().tabs.tabs["sequences"]:
                 # Start to find the selected sequence
                 seq_path, _focus_column = (
-                    App().tabs.tabs["sequences"].treeview1.get_cursor()
-                )
+                    App().tabs.tabs["sequences"].treeview1.get_cursor())
                 selected = seq_path.get_indices()
                 sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    App().tabs.tabs["sequences"].liststore2[path][8] = (
-                        "" if ct_nb == 0 else str(ct_nb)
-                    )
+                    App().tabs.tabs["sequences"].liststore2[path][8] = ("" if ct_nb == 0
+                                                                        else str(ct_nb))
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
             else:
                 self.step.total_time = self.step.time_out + self.step.wait
             for channel in self.step.channel_time.keys():
-                t = (
-                    self.step.channel_time[channel].delay
-                    + self.step.channel_time[channel].time
-                    + self.step.wait
-                )
+                t = (self.step.channel_time[channel].delay +
+                     self.step.channel_time[channel].time + self.step.wait)
                 if t > self.step.total_time:
                     self.step.total_time = t
 
@@ -235,18 +222,14 @@ class ChanneltimeTab(Gtk.Paned):
                 # Redraw List of Channel Time
                 self.liststore.clear()
                 for channel in self.step.channel_time.keys():
-                    delay = (
-                        str(int(self.step.channel_time[channel].delay))
-                        if self.step.channel_time[channel].delay.is_integer()
-                        else str(self.step.channel_time[channel].delay)
-                    )
+                    delay = (str(int(self.step.channel_time[channel].delay))
+                             if self.step.channel_time[channel].delay.is_integer() else
+                             str(self.step.channel_time[channel].delay))
                     if delay == "0":
                         delay = ""
-                    time = (
-                        str(int(self.step.channel_time[channel].time))
-                        if self.step.channel_time[channel].time.is_integer()
-                        else str(self.step.channel_time[channel].time)
-                    )
+                    time = (str(int(self.step.channel_time[channel].time))
+                            if self.step.channel_time[channel].time.is_integer() else
+                            str(self.step.channel_time[channel].time))
                     if time == "0":
                         time = ""
                     self.liststore.append([channel, delay, time])
@@ -258,28 +241,23 @@ class ChanneltimeTab(Gtk.Paned):
             if App().tabs.tabs["sequences"]:
                 # Start to find the selected sequence
                 seq_path, _focus_column = (
-                    App().tabs.tabs["sequences"].treeview1.get_cursor()
-                )
+                    App().tabs.tabs["sequences"].treeview1.get_cursor())
                 selected = seq_path.get_indices()
                 sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
                 # If the same sequence is selected
                 if sequence == self.sequence.index:
                     path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                     ct_nb = len(self.step.channel_time)
-                    App().tabs.tabs["sequences"].liststore2[path][8] = (
-                        "" if ct_nb == 0 else str(ct_nb)
-                    )
+                    App().tabs.tabs["sequences"].liststore2[path][8] = ("" if ct_nb == 0
+                                                                        else str(ct_nb))
             # Update Total Time
             if self.step.time_in > self.step.time_out:
                 self.step.total_time = self.step.time_in + self.step.wait
             else:
                 self.step.total_time = self.step.time_out + self.step.wait
             for channel in self.step.channel_time.keys():
-                t = (
-                    self.step.channel_time[channel].delay
-                    + self.step.channel_time[channel].time
-                    + self.step.wait
-                )
+                t = (self.step.channel_time[channel].delay +
+                     self.step.channel_time[channel].time + self.step.wait)
                 if t > self.step.total_time:
                     self.step.total_time = t
 
@@ -327,16 +305,16 @@ class ChanneltimeTab(Gtk.Paned):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 

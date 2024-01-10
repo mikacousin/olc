@@ -50,9 +50,8 @@ class GMWidget(Gtk.Widget):
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(11)
             (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-            cr.move_to(
-                self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
-            )
+            cr.move_to(self.width / 2 - w / 2,
+                       self.height / 2 - (h - (self.radius * 2)) / 2)
             cr.show_text(self.label)
 
     def do_realize(self):
@@ -65,12 +64,10 @@ class GMWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

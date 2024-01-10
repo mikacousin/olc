@@ -89,13 +89,11 @@ class MainPlaybackView(Gtk.Notebook):
             t_wait = 0.0
             channel_time = {}
         # Crossfade widget
-        self.sequential = SequentialWidget(
-            t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
-        )
+        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait,
+                                           channel_time)
         # Main Playback
-        self.cues_liststore1 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str, str, int, int
-        )
+        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str,
+                                             str, str, int, int)
         # Filters
         self.step_filter1 = self.cues_liststore1.filter_new()
         self.step_filter1.set_visible_func(step_filter_func1)
@@ -106,8 +104,7 @@ class MainPlaybackView(Gtk.Notebook):
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(
-            [
+        for i, column_title in enumerate([
                 "Step",
                 "Cue",
                 "Text",
@@ -117,15 +114,16 @@ class MainPlaybackView(Gtk.Notebook):
                 "Delay In",
                 "In",
                 "Channel Time",
-            ]
-        ):
+        ]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(
-                column_title, renderer, text=i, background=9, weight=10
-            )
+            column = Gtk.TreeViewColumn(column_title,
+                                        renderer,
+                                        text=i,
+                                        background=9,
+                                        weight=10)
             if i == 2:
                 column.set_min_width(400)
                 column.set_resizable(True)
@@ -134,8 +132,7 @@ class MainPlaybackView(Gtk.Notebook):
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(
-            [
+        for i, column_title in enumerate([
                 "Step",
                 "Cue",
                 "Text",
@@ -145,8 +142,7 @@ class MainPlaybackView(Gtk.Notebook):
                 "Delay In",
                 "In",
                 "Channel Time",
-            ]
-        ):
+        ]):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
@@ -166,19 +162,16 @@ class MainPlaybackView(Gtk.Notebook):
         self.grid = Gtk.Grid()
         self.grid.set_row_homogeneous(False)
         self.grid.attach(self.treeview1, 0, 0, 1, 1)
-        self.grid.attach_next_to(
-            self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1
-        )
-        self.grid.attach_next_to(
-            scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
-        )
+        self.grid.attach_next_to(self.sequential, self.treeview1,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+        self.grid.attach_next_to(scrollable2, self.sequential, Gtk.PositionType.BOTTOM,
+                                 1, 1)
 
         self.populate_sequence()
 
         if App().sequence.last == 1:
             self.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-            )
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1])
 
         self.append_page(self.grid, Gtk.Label("Main Playback"))
         self.set_tab_reorderable(self.grid, True)
@@ -194,11 +187,9 @@ class MainPlaybackView(Gtk.Notebook):
     def populate_sequence(self):
         """Display main playback"""
         self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
-        )
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0])
         self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
-        )
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1])
         for i in range(App().sequence.last):
             wait = time_to_string(App().sequence.steps[i].wait)
             t_out = time_to_string(App().sequence.steps[i].time_out)
@@ -217,39 +208,35 @@ class MainPlaybackView(Gtk.Notebook):
             # Actual and Next Cue in Bold
             weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
             if i in (0, App().sequence.last - 1):
-                self.cues_liststore1.append(
-                    [
-                        str(i),
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        "",
-                        background,
-                        Pango.Weight.NORMAL,
-                        99,
-                    ]
-                )
+                self.cues_liststore1.append([
+                    str(i),
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    "",
+                    background,
+                    Pango.Weight.NORMAL,
+                    99,
+                ])
             else:
-                self.cues_liststore1.append(
-                    [
-                        str(i),
-                        str(App().sequence.steps[i].cue.memory),
-                        str(App().sequence.steps[i].text),
-                        wait,
-                        d_out,
-                        str(t_out),
-                        d_in,
-                        str(t_in),
-                        channel_time,
-                        background,
-                        weight,
-                        99,
-                    ]
-                )
+                self.cues_liststore1.append([
+                    str(i),
+                    str(App().sequence.steps[i].cue.memory),
+                    str(App().sequence.steps[i].text),
+                    wait,
+                    d_out,
+                    str(t_out),
+                    d_in,
+                    str(t_in),
+                    channel_time,
+                    background,
+                    weight,
+                    99,
+                ])
         self.update_active_cues_display()
         self.grid.queue_draw()
 

@@ -112,25 +112,20 @@ class SettingsTab(Gtk.Box):
             if midi_port in default:
                 if midi_port in relative1:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative1", midi_port]
-                    )
+                        [midi_port.split(":")[0], True, "Relative1", midi_port])
                 elif midi_port in relative2:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative2", midi_port]
-                    )
+                        [midi_port.split(":")[0], True, "Relative2", midi_port])
                 elif midi_port in makies:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
-                    )
+                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port])
                 elif midi_port in absolutes:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Absolute", midi_port]
-                    )
+                        [midi_port.split(":")[0], True, "Absolute", midi_port])
                 else:
                     # Default: Mackie mode
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
-                    )
+                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port])
                     makies.append(midi_port)
                     if midi_port in absolutes:
                         absolutes.remove(midi_port)
@@ -144,8 +139,7 @@ class SettingsTab(Gtk.Box):
                     App().settings.set_strv("absolute", absolutes)
             else:
                 self.liststore_midi.append(
-                    [midi_port.split(":")[0], False, "", midi_port]
-                )
+                    [midi_port.split(":")[0], False, "", midi_port])
 
     def refresh(self) -> None:
         """Refresh MIDI ports"""
@@ -233,9 +227,8 @@ class SettingsTab(Gtk.Box):
             elif self.liststore_midi[path][2] == "Absolute":
                 absolutes.append(self.liststore_midi[path][3])
             else:
-                self.liststore_midi.set_value(
-                    self.liststore_midi.get_iter(path), 2, "Relative3 (Makie)"
-                )
+                self.liststore_midi.set_value(self.liststore_midi.get_iter(path), 2,
+                                              "Relative3 (Makie)")
                 makies.append(self.liststore_midi[path][3])
 
         else:

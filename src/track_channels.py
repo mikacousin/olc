@@ -140,16 +140,16 @@ class TrackChannelsTab(Gtk.Grid):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -255,8 +255,7 @@ class TrackChannelsTab(Gtk.Grid):
             channel = int(App().window.commandline.get_string()) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = App().window.live_view.channels_view.flowbox.get_child_at_index(
-                    channel
-                )
+                    channel)
                 App().window.live_view.channels_view.flowbox.select_child(child)
                 App().window.last_chan_selected = str(channel)
 
@@ -291,19 +290,13 @@ class TrackChannelsTab(Gtk.Grid):
             to_chan = int(keystring)
             if to_chan > int(App().window.last_chan_selected):
                 for channel in range(int(App().window.last_chan_selected) - 1, to_chan):
-                    child = (
-                        App().window.live_view.channels_view.flowbox.get_child_at_index(
-                            channel
-                        )
-                    )
+                    child = (App().window.live_view.channels_view.flowbox.
+                             get_child_at_index(channel))
                     App().window.live_view.channels_view.flowbox.select_child(child)
             else:
                 for channel in range(to_chan - 1, int(App().window.last_chan_selected)):
-                    child = (
-                        App().window.live_view.channels_view.flowbox.get_child_at_index(
-                            channel
-                        )
-                    )
+                    child = (App().window.live_view.channels_view.flowbox.
+                             get_child_at_index(channel))
                     App().window.live_view.channels_view.flowbox.select_child(child)
 
             App().window.last_chan_selected = keystring
@@ -325,8 +318,7 @@ class TrackChannelsTab(Gtk.Grid):
         channel = int(keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
             child = App().window.live_view.channels_view.flowbox.get_child_at_index(
-                channel
-            )
+                channel)
             App().window.live_view.channels_view.flowbox.select_child(child)
             App().window.last_chan_selected = keystring
 
@@ -347,8 +339,7 @@ class TrackChannelsTab(Gtk.Grid):
         channel = int(keystring) - 1
         if 0 <= channel < MAX_CHANNELS:
             child = App().window.live_view.channels_view.flowbox.get_child_at_index(
-                channel
-            )
+                channel)
             App().window.live_view.channels_view.flowbox.unselect_child(child)
             App().window.last_chan_selected = keystring
 

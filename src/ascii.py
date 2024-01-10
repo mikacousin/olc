@@ -129,10 +129,8 @@ class Ascii:
         # Set main window's title with the file name
         App().window.header.set_title(self.basename)
         # Set main window's subtitle
-        subtitle = (
-            f"Mem. : 0.0 - Next Mem. : {App().sequence.steps[1].cue.memory} "
-            f"{App().sequence.steps[1].cue.text}"
-        )
+        subtitle = (f"Mem. : 0.0 - Next Mem. : {App().sequence.steps[1].cue.memory} "
+                    f"{App().sequence.steps[1].cue.text}")
         App().window.header.set_subtitle(subtitle)
         # Redraw Crossfade
         App().window.playback.update_xfade_display(0)
@@ -149,8 +147,7 @@ class Ascii:
                     text = f"master_{master.number + (App().fader_page - 1) * 10}"
                     App().virtual_console.masters[master.number - 1].text = text
                     App().virtual_console.masters[master.number - 1].set_value(
-                        master.value
-                    )
+                        master.value)
                     App().virtual_console.flashes[master.number - 1].label = master.text
             App().virtual_console.masters_pad.queue_draw()
         # Redraw Mackie LCD

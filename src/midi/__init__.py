@@ -179,9 +179,11 @@ class Midi:
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 port.port.send(msg)
             for i in range(48, 56):
-                msg = mido.Message(
-                    "control_change", channel=0, control=i, value=0, time=0
-                )
+                msg = mido.Message("control_change",
+                                   channel=0,
+                                   control=i,
+                                   value=0,
+                                   time=0)
                 port.port.send(msg)
             port.port.reset()
 
@@ -210,8 +212,7 @@ class Midi:
             if master.page == App().fader_page:
                 midi_name = f"master_{master.number}"
                 channel, control = self.messages.control_change.control_change[
-                    midi_name
-                ]
+                    midi_name]
                 if control != -1:
                     msg = mido.Message(
                         "control_change",

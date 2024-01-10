@@ -173,9 +173,8 @@ class SegmentsCurve(PointsCurve):
             x_end = self.points[i + 1][0]
             y_end = self.points[i + 1][1]
             for x in range(x_start, x_end + 1):
-                self.values[x] = round(
-                    y_start + (((x - x_start) / (x_end - x_start)) * (y_end - y_start))
-                )
+                self.values[x] = round(y_start + (((x - x_start) / (x_end - x_start)) *
+                                                  (y_end - y_start)))
 
 
 class InterpolateCurve(PointsCurve):

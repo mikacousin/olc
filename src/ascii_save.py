@@ -28,33 +28,20 @@ def save_main_playback(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Main sequence\n\n", "utf8"))
     stream.write(bytes("$SEQUENCE 1 0\n\n", "utf8"))
     for step in App().sequence.steps:
         if int(step.cue.memory) != 0:
             # Save integers as integers
-            time_out = (
-                str(int(step.time_out))
-                if step.time_out.is_integer()
-                else str(step.time_out)
-            )
-            delay_out = (
-                str(int(step.delay_out))
-                if step.delay_out.is_integer()
-                else str(step.delay_out)
-            )
-            time_in = (
-                str(int(step.time_in))
-                if step.time_in.is_integer()
-                else str(step.time_in)
-            )
-            delay_in = (
-                str(int(step.delay_in))
-                if step.delay_in.is_integer()
-                else str(step.delay_in)
-            )
+            time_out = (str(int(step.time_out))
+                        if step.time_out.is_integer() else str(step.time_out))
+            delay_out = (str(int(step.delay_out))
+                         if step.delay_out.is_integer() else str(step.delay_out))
+            time_in = (str(int(step.time_in))
+                       if step.time_in.is_integer() else str(step.time_in))
+            delay_in = (str(int(step.delay_in))
+                        if step.delay_in.is_integer() else str(step.delay_in))
             wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
             stream.write(bytes(f"CUE {step.cue.memory}\n", "utf8"))
             stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "utf8"))
@@ -62,16 +49,12 @@ def save_main_playback(stream: Gio.FileOutputStream) -> None:
             stream.write(bytes(f"$$WAIT {wait}\n", "utf8"))
             #  Chanel Time if any
             for chan in step.channel_time.keys():
-                delay = (
-                    str(int(step.channel_time[chan].delay))
-                    if step.channel_time[chan].delay.is_integer()
-                    else str(step.channel_time[chan].delay)
-                )
-                time = (
-                    str(int(step.channel_time[chan].time))
-                    if step.channel_time[chan].time.is_integer()
-                    else str(step.channel_time[chan].time)
-                )
+                delay = (str(int(step.channel_time[chan].delay))
+                         if step.channel_time[chan].delay.is_integer() else str(
+                             step.channel_time[chan].delay))
+                time = (str(int(step.channel_time[chan].time))
+                        if step.channel_time[chan].time.is_integer() else str(
+                            step.channel_time[chan].time))
                 stream.write(bytes(f"$$PARTTIME {delay} {time}\n", "utf8"))
                 stream.write(bytes(f"$$PARTTIMECHAN {chan}\n", "utf8"))
             _write_ascii(stream, step.text)
@@ -95,33 +78,19 @@ def save_chasers(stream: Gio.FileOutputStream) -> None:
         for step in chaser.steps:
             if int(step.cue.memory) != 0:
                 # Save integers as integers
-                time_out = (
-                    str(int(step.time_out))
-                    if step.time_out.is_integer()
-                    else str(step.time_out)
-                )
-                delay_out = (
-                    str(int(step.delay_out))
-                    if step.delay_out.is_integer()
-                    else str(step.delay_out)
-                )
-                time_in = (
-                    str(int(step.time_in))
-                    if step.time_in.is_integer()
-                    else str(step.time_in)
-                )
-                delay_in = (
-                    str(int(step.delay_in))
-                    if step.delay_in.is_integer()
-                    else str(step.delay_in)
-                )
+                time_out = (str(int(step.time_out))
+                            if step.time_out.is_integer() else str(step.time_out))
+                delay_out = (str(int(step.delay_out))
+                             if step.delay_out.is_integer() else str(step.delay_out))
+                time_in = (str(int(step.time_in))
+                           if step.time_in.is_integer() else str(step.time_in))
+                delay_in = (str(int(step.delay_in))
+                            if step.delay_in.is_integer() else str(step.delay_in))
                 wait = str(int(step.wait)) if step.wait.is_integer() else str(step.wait)
-                stream.write(
-                    bytes(
-                        f"$CUE {chaser.index} {step.cue.memory}\n",
-                        "utf8",
-                    )
-                )
+                stream.write(bytes(
+                    f"$CUE {chaser.index} {step.cue.memory}\n",
+                    "utf8",
+                ))
 
                 stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "utf8"))
                 stream.write(bytes(f"UP {time_in} {delay_in}\n", "utf8"))
@@ -143,8 +112,7 @@ def save_groups(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Groups (presets not in sequence)\n", "utf8"))
     stream.write(bytes("! GROUP  Standard ASCII Light Cues\n", "utf8"))
     stream.write(bytes("! CHAN   Standard ASCII Light Cues\n", "utf8"))
@@ -169,8 +137,7 @@ def save_congo_groups(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Congo Groups\n", "utf8"))
     stream.write(bytes("! $GROUP  Group number\n", "utf8"))
     stream.write(bytes("! CHAN    Standard ASCII Light Cues\n", "utf8"))
@@ -196,21 +163,18 @@ def save_masters(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Master Pages\n", "utf8"))
     stream.write(bytes("! $MASTPAGE     Master page number\n", "utf8"))
     stream.write(bytes("! TEXT          Master page text\n", "utf8"))
     stream.write(
-        bytes("! $TEXT         Unicode encoded version of the same text\n", "utf8")
-    )
+        bytes("! $TEXT         Unicode encoded version of the same text\n", "utf8"))
     stream.write(bytes("! $MASTPAGEITEM Page number, Master number,\n", "utf8"))
     stream.write(
-        bytes("!               Content type (2 = Channels, 3 = Chaser,\n", "utf8")
-    )
+        bytes("!               Content type (2 = Channels, 3 = Chaser,\n", "utf8"))
     stream.write(
-        bytes("!               13 = Group), Content value (Chaser#, Group#),\n", "utf8")
-    )
+        bytes("!               13 = Group), Content value (Chaser#, Group#),\n",
+              "utf8"))
     stream.write(bytes("!               Time In, Wait time, Time Out,\n", "utf8"))
     stream.write(bytes("!               Flash level (0-255)\n", "utf8"))
     stream.write(bytes("CLEAR $MASTPAGE\n\n", "utf8"))
@@ -225,18 +189,14 @@ def save_masters(stream: Gio.FileOutputStream) -> None:
         if not master.content_value or master.content_type == 2:
             content = "0"
         else:
-            content = (
-                str(int(master.content_value))
-                if master.content_value.is_integer()
-                else str(master.content_value)
-            )
+            content = (str(int(master.content_value)) if
+                       master.content_value.is_integer() else str(master.content_value))
         stream.write(
             bytes(
                 f"$MASTPAGEITEM {master.page} {master.number} {master.content_type} "
                 f"{content} 5 0 5 255\n",
                 "utf8",
-            )
-        )
+            ))
         # Master of Channels, save them
         if master.content_type == 2:
             _save_channels(stream, master.content_value)
@@ -253,8 +213,7 @@ def save_patch(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Patch\n", "utf8"))
     stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
     i = 1
@@ -292,8 +251,7 @@ def save_independents(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Independents\n\n", "utf8"))
     for inde in App().independents.independents:
         stream.write(bytes(f"$SPECIALFUNCTION {inde.number} 0 0\n", "utf8"))
@@ -314,8 +272,7 @@ def save_midi_mapping(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! MIDI mapping\n\n", "utf8"))
     for key, value in App().midi.messages.notes.notes.items():
         stream.write(bytes(f"$$MIDINOTE {key} {value[0]} {value[1]}\n", "utf8"))
@@ -336,8 +293,7 @@ def save_curves(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Curves\n\n", "utf8"))
     for key, curve in App().curves.curves.items():
         if key >= 10:
@@ -347,8 +303,7 @@ def save_curves(stream: Gio.FileOutputStream) -> None:
                     bytes(
                         f"$$CURVE {key} {curve_type} {curve.limit} {curve.name}\n",
                         "utf8",
-                    )
-                )
+                    ))
             if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
                 points = ""
                 for point in curve.points:
@@ -359,8 +314,7 @@ def save_curves(stream: Gio.FileOutputStream) -> None:
                     bytes(
                         f"$$CURVE {key} {curve_type} {points} {curve.name}\n",
                         "utf8",
-                    )
-                )
+                    ))
     stream.write(bytes("\n", "utf8"))
 
 
@@ -374,8 +328,7 @@ def save_outputs_curves(stream: Gio.FileOutputStream) -> None:
         bytes(
             "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
             "utf8",
-        )
-    )
+        ))
     stream.write(bytes("! Output curves\n", "utf8"))
     stream.write(bytes("! $$OUTPUT  Universe, Output number, Curve number\n\n", "utf8"))
     for key, value in App().backend.patch.outputs.items():
@@ -414,5 +367,4 @@ def _write_ascii(stream: Gio.FileOutputStream, text: str) -> None:
         text: Text to write
     """
     stream.write(
-        bytes(f"TEXT {strip_accents(text)}\n", "utf8").decode("utf8").encode("ascii")
-    )
+        bytes(f"TEXT {strip_accents(text)}\n", "utf8").decode("utf8").encode("ascii"))

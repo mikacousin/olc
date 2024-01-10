@@ -105,12 +105,10 @@ class TrackChannelsHeader(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 
@@ -254,10 +252,8 @@ class TrackChannelsWidget(Gtk.Widget):
             # Draw boxes
             cr.move_to(535 + (i * 65), 0)
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
-            if (
-                self.get_parent().is_selected()
-                and i == App().tabs.tabs["track_channels"].channel_selected
-            ):
+            if (self.get_parent().is_selected()
+                    and i == App().tabs.tabs["track_channels"].channel_selected):
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -265,16 +261,13 @@ class TrackChannelsWidget(Gtk.Widget):
 
             # Draw Level number
             if lvl:
-                level = (
-                    str(int(round(((lvl / 255) * 100))))
-                    if App().settings.get_boolean("percent")
-                    else str(lvl)
-                )
+                level = (str(int(round(
+                    ((lvl / 255) *
+                     100)))) if App().settings.get_boolean("percent") else str(lvl))
 
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.select_font_face(
-                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
-                )
+                cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
+                                    cairo.FontWeight.BOLD)
                 cr.set_font_size(12)
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(level)
                 cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
@@ -290,12 +283,10 @@ class TrackChannelsWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (
-            self.get_events()
-            | Gdk.EventMask.EXPOSURE_MASK
-            | Gdk.EventMask.BUTTON_PRESS_MASK
-            | Gdk.EventMask.TOUCH_MASK
-        )
+        attr.event_mask = (self.get_events()
+                           | Gdk.EventMask.EXPOSURE_MASK
+                           | Gdk.EventMask.BUTTON_PRESS_MASK
+                           | Gdk.EventMask.TOUCH_MASK)
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

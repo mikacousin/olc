@@ -93,16 +93,16 @@ class CuesEditionTab(Gtk.Paned):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
+                "KP_1",
+                "KP_2",
+                "KP_3",
+                "KP_4",
+                "KP_5",
+                "KP_6",
+                "KP_7",
+                "KP_8",
+                "KP_9",
+                "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -165,8 +165,7 @@ class CuesEditionTab(Gtk.Paned):
             if App().sequence.steps[App().sequence.position + 1].cue == cue:
                 for channel in channels:
                     widget = App().window.live_view.channels_view.get_channel_widget(
-                        channel
-                    )
+                        channel)
                     widget.next_level = channels.get(channel)
                     widget.queue_draw()
             # Tag filename as modified
@@ -183,8 +182,7 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
             # Find Steps using selected memory
             steps = [
-                i
-                for i, _ in enumerate(App().sequence.steps)
+                i for i, _ in enumerate(App().sequence.steps)
                 if App().sequence.steps[i].cue.memory == App().memories[row].memory
             ]
             # Delete Steps
@@ -205,20 +203,16 @@ class CuesEditionTab(Gtk.Paned):
             # Update Sequence Edition Tab if exist
             if App().tabs.tabs["sequences"]:
                 App().tabs.tabs["sequences"].liststore1.clear()
-                App().tabs.tabs["sequences"].liststore1.append(
-                    [
-                        App().sequence.index,
-                        App().sequence.type_seq,
-                        App().sequence.text,
-                    ]
-                )
+                App().tabs.tabs["sequences"].liststore1.append([
+                    App().sequence.index,
+                    App().sequence.type_seq,
+                    App().sequence.text,
+                ])
                 for chaser in App().chasers:
                     App().tabs.tabs["sequences"].liststore1.append(
-                        [chaser.index, chaser.type_seq, chaser.text]
-                    )
+                        [chaser.index, chaser.type_seq, chaser.text])
                 App().tabs.tabs["sequences"].treeview1.set_model(
-                    App().tabs.tabs["sequences"].liststore1
-                )
+                    App().tabs.tabs["sequences"].liststore1)
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
@@ -299,11 +293,8 @@ class CuesEditionTab(Gtk.Paned):
             # Find Next free number
             if len(App().memories) > 1:
                 for i, _ in enumerate(App().memories[:-1]):
-                    if (
-                        int(App().memories[i + 1].memory)
-                        - int(App().memories[i].memory)
-                        > 1
-                    ):
+                    if (int(App().memories[i + 1].memory) -
+                            int(App().memories[i].memory) > 1):
                         mem = App().memories[i].memory + 1
                         break
             elif len(App().memories) == 1:

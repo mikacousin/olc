@@ -80,12 +80,8 @@ class FaderWidget(Gtk.Scale):
         if self.get_inverted():
             h = height - (((height - layout_h - 10 - (20 / 2)) / 255) * value)
         else:
-            h = (
-                layout_h
-                + 10
-                + (20 / 2)
-                + (((height - layout_h - 10 - (20 / 2)) / 255) * value)
-            )
+            h = (layout_h + 10 + (20 / 2) + (((height - layout_h - 10 -
+                                               (20 / 2)) / 255) * value))
 
         # Draw LED
         if self.led:

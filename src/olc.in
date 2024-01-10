@@ -29,7 +29,6 @@ from olc.application import Application  # noqa: E402
 LOCALEDIR = "@localedir@"
 PKGDATADIR = "@pkgdatadir@"
 
-
 if __name__ == "__main__":
     locale.bindtextdomain("olc", LOCALEDIR)
     locale.textdomain("olc")
