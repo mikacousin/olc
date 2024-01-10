@@ -192,7 +192,7 @@ max-spelling-suggestions=4
 
 # Spelling dictionary name. Available dictionaries: none. To make it work,
 # install the python-enchant package.
-spelling-dict=
+spelling-dict=en_US
 
 # List of comma separated words that should not be checked.
 spelling-ignore-words=

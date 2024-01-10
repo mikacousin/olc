@@ -65,6 +65,11 @@ install_subdir(
 )
 
 install_subdir(
+  'files',
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
   'midi',
   install_dir: join_paths(python_dir, 'olc')
 )

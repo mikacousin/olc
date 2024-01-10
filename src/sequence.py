@@ -140,7 +140,8 @@ class Sequence:
                 if item.cue.memory > cue:
                     exist = True
                     break
-            if not exist and self is not App().sequence:
+            # if not exist and self is not App().sequence:
+            if not exist:
                 step += 1
         elif step:
             step += 1
@@ -161,11 +162,8 @@ class Sequence:
             return memory + 1
 
         next_memory = self.steps[step + 1].cue.memory
-        return (
-            ((next_memory - memory) / 2) + memory
-            if next_memory != 0.0 and (next_memory - memory) <= 1
-            else memory + 1
-        )
+        return (((next_memory - memory) / 2) + memory if next_memory != 0.0 and
+                (next_memory - memory) <= 1 else memory + 1)
 
     def get_next_channel_level(self, channel: int, level: int) -> int:
         """Get channel level in next cue
@@ -177,7 +175,9 @@ class Sequence:
         Returns:
             level in next cue (0 - 255)
         """
-        if self.last > 1 and self.position < self.last - 1:
+        if len(
+                self.steps
+        ) > self.position + 1 and self.last > 1 and self.position < self.last - 1:
             next_level = self.steps[self.position + 1].cue.channels.get(channel, 0)
         elif self.last:
             next_level = self.steps[0].cue.channels.get(channel, 0)
@@ -211,23 +211,18 @@ class Sequence:
         position += 1
         if position < self.last - 1:  # Stop on the last cue
             self.position += 1
-            App().window.playback.sequential.total_time = self.steps[
-                position + 1
-            ].total_time
+            App().window.playback.sequential.total_time = self.steps[position +
+                                                                     1].total_time
             App().window.playback.sequential.time_in = self.steps[position + 1].time_in
-            App().window.playback.sequential.time_out = self.steps[
-                position + 1
-            ].time_out
-            App().window.playback.sequential.delay_in = self.steps[
-                position + 1
-            ].delay_in
-            App().window.playback.sequential.delay_out = self.steps[
-                position + 1
-            ].delay_out
+            App().window.playback.sequential.time_out = self.steps[position +
+                                                                   1].time_out
+            App().window.playback.sequential.delay_in = self.steps[position +
+                                                                   1].delay_in
+            App().window.playback.sequential.delay_out = self.steps[position +
+                                                                    1].delay_out
             App().window.playback.sequential.wait = self.steps[position + 1].wait
-            App().window.playback.sequential.channel_time = self.steps[
-                position + 1
-            ].channel_time
+            App().window.playback.sequential.channel_time = self.steps[position +
+                                                                       1].channel_time
             App().window.playback.sequential.position_a = 0
             App().window.playback.sequential.position_b = 0
 
@@ -235,8 +230,7 @@ class Sequence:
             subtitle = (
                 f"Mem. : {self.steps[position].cue.memory} {self.steps[position].text}"
                 f" - Next Mem. : {self.steps[position + 1].cue.memory} "
-                f"{self.steps[position + 1].text}"
-            )
+                f"{self.steps[position + 1].text}")
             # Update display
             update_ui(position, subtitle)
 
@@ -280,23 +274,18 @@ class Sequence:
         if position >= 0:
             self.position -= 1
             # Always use times for next cue
-            App().window.playback.sequential.total_time = self.steps[
-                position + 1
-            ].total_time
+            App().window.playback.sequential.total_time = self.steps[position +
+                                                                     1].total_time
             App().window.playback.sequential.time_in = self.steps[position + 1].time_in
-            App().window.playback.sequential.time_out = self.steps[
-                position + 1
-            ].time_out
-            App().window.playback.sequential.delay_in = self.steps[
-                position + 1
-            ].delay_in
-            App().window.playback.sequential.delay_out = self.steps[
-                position + 1
-            ].delay_out
+            App().window.playback.sequential.time_out = self.steps[position +
+                                                                   1].time_out
+            App().window.playback.sequential.delay_in = self.steps[position +
+                                                                   1].delay_in
+            App().window.playback.sequential.delay_out = self.steps[position +
+                                                                    1].delay_out
             App().window.playback.sequential.wait = self.steps[position + 1].wait
-            App().window.playback.sequential.channel_time = self.steps[
-                position + 1
-            ].channel_time
+            App().window.playback.sequential.channel_time = self.steps[position +
+                                                                       1].channel_time
             App().window.playback.sequential.position_a = 0
             App().window.playback.sequential.position_b = 0
 
@@ -304,8 +293,7 @@ class Sequence:
             subtitle = (
                 f"Mem. : {self.steps[position].cue.memory} {self.steps[position].text}"
                 f" - Next Mem. : {self.steps[position + 1].cue.memory} "
-                f"{self.steps[position + 1].text}"
-            )
+                f"{self.steps[position + 1].text}")
             # Update display
             update_ui(position, subtitle)
 
@@ -343,22 +331,17 @@ class Sequence:
                 next_step = self.position + 1
                 # Redraw Sequential window with new times
                 App().window.playback.sequential.total_time = self.steps[
-                    next_step
-                ].total_time
+                    next_step].total_time
                 App().window.playback.sequential.time_in = self.steps[next_step].time_in
-                App().window.playback.sequential.time_out = self.steps[
-                    next_step
-                ].time_out
-                App().window.playback.sequential.delay_in = self.steps[
-                    next_step
-                ].delay_in
-                App().window.playback.sequential.delay_out = self.steps[
-                    next_step
-                ].delay_out
+                App(
+                ).window.playback.sequential.time_out = self.steps[next_step].time_out
+                App(
+                ).window.playback.sequential.delay_in = self.steps[next_step].delay_in
+                App(
+                ).window.playback.sequential.delay_out = self.steps[next_step].delay_out
                 App().window.playback.sequential.wait = self.steps[next_step].wait
                 App().window.playback.sequential.channel_time = self.steps[
-                    next_step
-                ].channel_time
+                    next_step].channel_time
                 App().window.playback.sequential.position_a = 0
                 App().window.playback.sequential.position_b = 0
 
@@ -402,33 +385,26 @@ class Sequence:
                 self.position = 0
                 position = 0
             self.on_go = False
-            App().window.playback.sequential.total_time = self.steps[
-                position + 1
-            ].total_time
+            App().window.playback.sequential.total_time = self.steps[position +
+                                                                     1].total_time
             App().window.playback.sequential.time_in = self.steps[position + 1].time_in
-            App().window.playback.sequential.time_out = self.steps[
-                position + 1
-            ].time_out
-            App().window.playback.sequential.delay_in = self.steps[
-                position + 1
-            ].delay_in
-            App().window.playback.sequential.delay_out = self.steps[
-                position + 1
-            ].delay_out
+            App().window.playback.sequential.time_out = self.steps[position +
+                                                                   1].time_out
+            App().window.playback.sequential.delay_in = self.steps[position +
+                                                                   1].delay_in
+            App().window.playback.sequential.delay_out = self.steps[position +
+                                                                    1].delay_out
             App().window.playback.sequential.wait = self.steps[position + 1].wait
-            App().window.playback.sequential.channel_time = self.steps[
-                position + 1
-            ].channel_time
+            App().window.playback.sequential.channel_time = self.steps[position +
+                                                                       1].channel_time
             App().window.playback.sequential.position_a = 0
             App().window.playback.sequential.position_b = 0
 
             # Set main window's subtitle
-            subtitle = (
-                f"Mem. : {self.steps[position].cue.memory} "
-                f"{self.steps[position].text} - Next Mem. : "
-                f"{self.steps[position + 1].cue.memory} "
-                f"{self.steps[position + 1].text}"
-            )
+            subtitle = (f"Mem. : {self.steps[position].cue.memory} "
+                        f"{self.steps[position].text} - Next Mem. : "
+                        f"{self.steps[position + 1].cue.memory} "
+                        f"{self.steps[position + 1].text}")
 
             # Update Sequential Tab
             App().window.playback.update_active_cues_display()
@@ -467,17 +443,15 @@ class Sequence:
                 print("Error :", e)
             self.on_go = False
 
-        App().window.playback.sequential.total_time = self.steps[
-            position - 1
-        ].total_time
+        App().window.playback.sequential.total_time = self.steps[position -
+                                                                 1].total_time
         App().window.playback.sequential.time_in = self.steps[position - 1].time_in
         App().window.playback.sequential.time_out = self.steps[position - 1].time_out
         App().window.playback.sequential.delay_in = self.steps[position - 1].delay_in
         App().window.playback.sequential.delay_out = self.steps[position - 1].delay_out
         App().window.playback.sequential.wait = self.steps[position - 1].wait
-        App().window.playback.sequential.channel_time = self.steps[
-            position - 1
-        ].channel_time
+        App().window.playback.sequential.channel_time = self.steps[position -
+                                                                   1].channel_time
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
 
@@ -486,8 +460,7 @@ class Sequence:
         subtitle = (
             f"Mem. : {self.steps[position].cue.memory} {self.steps[position].text}"
             f" - Next Mem. : {self.steps[position - 1].cue.memory} "
-            f"{self.steps[position - 1].text}"
-        )
+            f"{self.steps[position - 1].text}")
         App().window.header.set_subtitle(subtitle)
 
         self.on_go = True
@@ -577,11 +550,8 @@ class ThreadGo(threading.Thread):
                     continue
                 index = UNIVERSES.index(univ)
                 if App().sequence.position < App().sequence.last - 1:
-                    level = (
-                        App()
-                        .sequence.steps[App().sequence.position + 1]
-                        .cue.channels.get(channel, 0)
-                    )
+                    level = (App().sequence.steps[App().sequence.position +
+                                                  1].cue.channels.get(channel, 0))
                 else:
                     level = App().sequence.steps[0].cue.channels.get(channel, 0)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
@@ -615,13 +585,11 @@ class ThreadGo(threading.Thread):
         """
         # Update sliders position
         App().window.playback.sequential.position_a = (
-            (App().window.playback.sequential.get_allocation().width - 32)
-            / self.total_time
-        ) * i
+            (App().window.playback.sequential.get_allocation().width - 32) /
+            self.total_time) * i
         App().window.playback.sequential.position_b = (
-            (App().window.playback.sequential.get_allocation().width - 32)
-            / self.total_time
-        ) * i
+            (App().window.playback.sequential.get_allocation().width - 32) /
+            self.total_time) * i
         GLib.idle_add(App().window.playback.sequential.queue_draw)
         # Move Virtual Console's XFade
         if App().virtual_console and App().virtual_console.props.visible:
@@ -649,15 +617,12 @@ class ThreadGo(threading.Thread):
                     index = UNIVERSES.index(univ)
                     old_level = self.dmxlevels[index][output]
                     if App().sequence.position < App().sequence.last - 1:
-                        next_level = (
-                            App()
-                            .sequence.steps[App().sequence.position + 1]
-                            .cue.channels.get(channel, 0)
-                        )
+                        next_level = (App().sequence.steps[App().sequence.position +
+                                                           1].cue.channels.get(
+                                                               channel, 0))
                     else:
-                        next_level = (
-                            App().sequence.steps[0].cue.channels.get(channel, 0)
-                        )
+                        next_level = (App().sequence.steps[0].cue.channels.get(
+                            channel, 0))
                         App().sequence.position = 0
 
                     self._set_level(channel, i, old_level, next_level)
@@ -678,15 +643,12 @@ class ThreadGo(threading.Thread):
                     index = UNIVERSES.index(univ)
                     old_level = self.dmxlevels[index][output]
                     if App().sequence.position < App().sequence.last - 1:
-                        next_level = (
-                            App()
-                            .sequence.steps[App().sequence.position + 1]
-                            .cue.channels.get(channel, 0)
-                        )
+                        next_level = (App().sequence.steps[App().sequence.position +
+                                                           1].cue.channels.get(
+                                                               channel, 0))
                     else:
-                        next_level = (
-                            App().sequence.steps[0].cue.channels.get(channel, 0)
-                        )
+                        next_level = (App().sequence.steps[0].cue.channels.get(
+                            channel, 0))
                         App().sequence.position = 0
 
                     self._set_level(channel, i, old_level, next_level)
@@ -704,9 +666,8 @@ class ThreadGo(threading.Thread):
         channel_time = App().sequence.steps[App().sequence.position + 1].channel_time
         if channel in channel_time:
             # Channel is in a channel time
-            level = self._channel_time_level(
-                i, channel_time[channel], old_level, next_level
-            )
+            level = self._channel_time_level(i, channel_time[channel], old_level,
+                                             next_level)
         # Else channel is normal
         else:
             level = self._channel_level(i, old_level, next_level)
@@ -726,32 +687,18 @@ class ThreadGo(threading.Thread):
             channel level
         """
         # If level increases, use Time In
-        if (
-            next_level > old_level
-            and self.wait + self.delay_in < i < self.time_in + self.wait + self.delay_in
-        ):
-            return (
-                int(
-                    ((next_level - old_level + 1) / self.time_in)
-                    * (i - self.wait - self.delay_in)
-                )
-                + old_level
-            )
+        if (next_level > old_level and self.wait + self.delay_in < i <
+                self.time_in + self.wait + self.delay_in):
+            return (int(((next_level - old_level + 1) / self.time_in) *
+                        (i - self.wait - self.delay_in)) + old_level)
         if next_level > old_level and i > self.time_in + self.wait + self.delay_in:
             return next_level
         # If level decreases, use Time Out
-        if (
-            next_level < old_level
-            and self.wait + self.delay_out
-            < i
-            < self.time_out + self.wait + self.delay_out
-        ):
+        if (next_level < old_level and self.wait + self.delay_out < i <
+                self.time_out + self.wait + self.delay_out):
             return old_level - abs(
-                int(
-                    ((next_level - old_level - 1) / self.time_out)
-                    * (i - self.wait - self.delay_out)
-                )
-            )
+                int(((next_level - old_level - 1) / self.time_out) *
+                    (i - self.wait - self.delay_out)))
         if next_level < old_level and i > self.time_out + self.wait + self.delay_out:
             return next_level
         # Level doesn't change
@@ -775,24 +722,16 @@ class ThreadGo(threading.Thread):
             if i < ct_delay + self.wait:
                 level = old_level
             elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
-                level = (
-                    int(
-                        ((next_level - old_level + 1) / ct_time)
-                        * (i - ct_delay - self.wait)
-                    )
-                    + old_level
-                )
+                level = (int(((next_level - old_level + 1) / ct_time) *
+                             (i - ct_delay - self.wait)) + old_level)
             else:
                 level = next_level
         elif i < ct_delay + self.wait:
             level = old_level
         elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
             level = old_level - abs(
-                int(
-                    ((next_level - old_level - 1) / ct_time)
-                    * (i - ct_delay - self.wait)
-                )
-            )
+                int(((next_level - old_level - 1) / ct_time) *
+                    (i - ct_delay - self.wait)))
         else:
             level = next_level
         return level
@@ -815,27 +754,22 @@ def _next_step():
         next_step = 1
     # Update times for visual xfade
     App().window.playback.sequential.total_time = (
-        App().sequence.steps[next_step].total_time
-    )
+        App().sequence.steps[next_step].total_time)
     App().window.playback.sequential.time_in = App().sequence.steps[next_step].time_in
     App().window.playback.sequential.time_out = App().sequence.steps[next_step].time_out
     App().window.playback.sequential.delay_in = App().sequence.steps[next_step].delay_in
     App().window.playback.sequential.delay_out = (
-        App().sequence.steps[next_step].delay_out
-    )
+        App().sequence.steps[next_step].delay_out)
     App().window.playback.sequential.wait = App().sequence.steps[next_step].wait
     App().window.playback.sequential.channel_time = (
-        App().sequence.steps[next_step].channel_time
-    )
+        App().sequence.steps[next_step].channel_time)
     App().window.playback.sequential.position_a = 0
     App().window.playback.sequential.position_b = 0
     # Main window's subtitle
-    subtitle = (
-        f"Mem. : {App().sequence.steps[App().sequence.position].cue.memory} "
-        f"{App().sequence.steps[App().sequence.position].text} - Next Mem. : "
-        f"{App().sequence.steps[next_step].cue.memory} "
-        f"{App().sequence.steps[next_step].text}"
-    )
+    subtitle = (f"Mem. : {App().sequence.steps[App().sequence.position].cue.memory} "
+                f"{App().sequence.steps[App().sequence.position].text} - Next Mem. : "
+                f"{App().sequence.steps[next_step].cue.memory} "
+                f"{App().sequence.steps[next_step].text}")
     # Update Gtk in main thread
     GLib.idle_add(update_ui, App().sequence.position, subtitle)
     return next_step
@@ -920,34 +854,26 @@ class ThreadGoBack(threading.Thread):
         App().sequence.update_channels()
         # Prev step
         App().sequence.position = prev_step
-        App().window.playback.sequential.time_in = (
-            App().sequence.steps[prev_step + 1].time_in
-        )
-        App().window.playback.sequential.time_out = (
-            App().sequence.steps[prev_step + 1].time_out
-        )
-        App().window.playback.sequential.delay_in = (
-            App().sequence.steps[prev_step + 1].delay_in
-        )
-        App().window.playback.sequential.delay_out = (
-            App().sequence.steps[prev_step + 1].delay_out
-        )
+        App().window.playback.sequential.time_in = (App().sequence.steps[prev_step +
+                                                                         1].time_in)
+        App().window.playback.sequential.time_out = (App().sequence.steps[prev_step +
+                                                                          1].time_out)
+        App().window.playback.sequential.delay_in = (App().sequence.steps[prev_step +
+                                                                          1].delay_in)
+        App().window.playback.sequential.delay_out = (App().sequence.steps[prev_step +
+                                                                           1].delay_out)
         App().window.playback.sequential.wait = App().sequence.steps[prev_step + 1].wait
         App().window.playback.sequential.total_time = (
-            App().sequence.steps[prev_step + 1].total_time
-        )
+            App().sequence.steps[prev_step + 1].total_time)
         App().window.playback.sequential.channel_time = (
-            App().sequence.steps[prev_step + 1].channel_time
-        )
+            App().sequence.steps[prev_step + 1].channel_time)
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
         # Main window's subtitle
-        subtitle = (
-            f"Mem. : {App().sequence.steps[prev_step].cue.memory} "
-            f"{App().sequence.steps[prev_step].text} - Next Mem. : "
-            f"{App().sequence.steps[prev_step + 1].cue.memory} "
-            f"{App().sequence.steps[prev_step + 1].text}"
-        )
+        subtitle = (f"Mem. : {App().sequence.steps[prev_step].cue.memory} "
+                    f"{App().sequence.steps[prev_step].text} - Next Mem. : "
+                    f"{App().sequence.steps[prev_step + 1].cue.memory} "
+                    f"{App().sequence.steps[prev_step + 1].text}")
         # Update Gtk in the main thread
         GLib.idle_add(update_ui, prev_step, subtitle)
         # Wait
@@ -969,11 +895,9 @@ class ThreadGoBack(threading.Thread):
         # Update sliders position
         allocation = App().window.playback.sequential.get_allocation()
         App().window.playback.sequential.position_a = (
-            (allocation.width - 32) / go_back_time
-        ) * i
+            (allocation.width - 32) / go_back_time) * i
         App().window.playback.sequential.position_b = (
-            (allocation.width - 32) / go_back_time
-        ) * i
+            (allocation.width - 32) / go_back_time) * i
         GLib.idle_add(App().window.playback.sequential.queue_draw)
         # Move Virtual Console's XFade
         if App().virtual_console and App().virtual_console.props.visible:
@@ -988,9 +912,8 @@ class ThreadGoBack(threading.Thread):
                     continue
                 index = UNIVERSES.index(univ)
                 old_level = self.dmxlevels[index][output - 1]
-                next_level = (
-                    App().sequence.steps[position - 1].cue.channels.get(channel, 0)
-                )
+                next_level = (App().sequence.steps[position - 1].cue.channels.get(
+                    channel, 0))
                 level = self._channel_level(i, old_level, next_level, go_back_time)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
                 GLib.idle_add(

@@ -30,6 +30,7 @@ from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve import Curves  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS, MAX_FADER_PAGE  # noqa: E402
+from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
@@ -150,7 +151,7 @@ class Application(Gtk.Application):
         self.ascii = None
 
     def do_activate(self):
-        # Init of ascii file
+        # Initialization of ascii file
         self.ascii = Ascii(None)
 
         # Create Main Window
@@ -178,7 +179,7 @@ class Application(Gtk.Application):
         action.connect("activate", self.sequence.pause)
         self.add_action(action)
         self.set_accels_for_action("app.pause", ["<Control>z"])
-        # Fullscreen
+        # Full screen
         action = Gio.SimpleAction.new("fullscreen", None)
         action.connect("activate", self.window.fullscreen_toggle)
         self.add_action(action)
@@ -201,6 +202,7 @@ class Application(Gtk.Application):
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])
         self.set_accels_for_action("app.open", ["<Control>o"])
+        self.set_accels_for_action("app.import_ascii", ["<Shift><Control>o"])
         self.set_accels_for_action("app.save", ["<Control>s"])
         self.set_accels_for_action("app.save_as", ["<Shift><Control>s"])
         self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
@@ -248,6 +250,7 @@ class Application(Gtk.Application):
             "open": "_open",
             "save": "_save",
             "save_as": "_saveas",
+            "import_ascii": "_import_ascii",
             "patch_outputs": "patch_outputs",
             "patch_channels": "_patch_channels",
             "curves": "_curves",
@@ -324,7 +327,7 @@ class Application(Gtk.Application):
         self.window.live_view.channels_view.last_selected_channel = ""
 
     def _open(self, _action, _parameter):
-        """create a filechooserdialog to open:
+        """create a file chooser dialog to open:
         the arguments are: title of the window, parent_window, action,
         (buttons, response)
         """
@@ -362,6 +365,28 @@ class Application(Gtk.Application):
             self.backend.dmx.levels["sequence"][channel] = 0
             self.backend.dmx.levels["user"][channel] = -1
         self.backend.dmx.set_levels()
+
+    def _import_ascii(self, _action, _parameter):
+        open_dialog = Gtk.FileChooserNative.new(
+            _("Import ASCII File"),
+            self.window,
+            Gtk.FileChooserAction.OPEN,
+            _("Open"),
+            _("Cancel"),
+        )
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name("Text Files")
+        filter_text.add_mime_type("text/plain")
+        open_dialog.add_filter(filter_text)
+        open_dialog.set_local_only(False)
+        open_dialog.set_modal(True)
+        response = open_dialog.run()
+
+        if response == Gtk.ResponseType.ACCEPT:
+            imported = ImportFile(open_dialog.get_file(), "ascii")
+            imported.parse()
+            imported.select_data()
+        open_dialog.destroy()
 
     def _save(self, _action, _parameter):
         """Save"""

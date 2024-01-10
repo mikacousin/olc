@@ -28,52 +28,58 @@ msgstr "Une console lumière."
 msgid "Visit Open Lighting Console website"
 msgstr "Visiter le site web de Open Lighting Console"
 
-msgid "_New"
+msgid "New"
 msgstr "Nouveau"
 
-msgid "_Open"
+msgid "File"
+msgstr "Fichier"
+
+msgid "Open"
 msgstr "Ouvrir"
 
-msgid "_Save"
+msgid "Save"
 msgstr "Enregistrer"
 
-msgid "_Save As"
+msgid "Save As"
 msgstr "Enregistrer sous"
 
-msgid "_Patch"
+msgid "Import ASCII"
+msgstr "Importer ASCII"
+
+msgid "Patch"
 msgstr "Patch"
 
-msgid "_Curves"
+msgid "Curves"
 msgstr "Courbes"
 
-msgid "_Memories"
+msgid "Cues"
 msgstr "Mémoires"
 
-msgid "_Groups"
+msgid "Groups"
 msgstr "Groupes"
 
-msgid "_Sequences"
+msgid "Sequences"
 msgstr "Séquences"
 
-msgid "_Masters"
+msgid "Masters"
 msgstr "Masters"
 
-msgid "_Track channels"
+msgid "Track channels"
 msgstr "Suivi de circuits"
 
-msgid "_Virtual Console"
+msgid "Virtual Console"
 msgstr "Console virtuelle"
 
-msgid "_Preferences"
+msgid "Preferences"
 msgstr "Préférences"
 
-msgid "_Keyboard Shortcuts"
+msgid "Keyboard Shortcuts"
 msgstr "Raccourcis claviers"
 
-msgid "_About OLC"
+msgid "About OLC"
 msgstr "À propos"
 
-msgid "_Quit"
+msgid "Quit"
 msgstr "Quitter"
 
 msgctxt "shortcut window"
@@ -263,17 +269,11 @@ msgstr "Enregistrer mémoire"
 msgid "Open ASCII File"
 msgstr "Ouvrir fichier ASCII"
 
-msgid "Open"
-msgstr "Ouvrir"
-
 msgid "Cancel"
 msgstr "Annuler"
 
 msgid "Save ASCII File"
 msgstr "Enregistrer fichier ASCII"
-
-msgid "Save"
-msgstr "Enregistrer"
 
 msgid "MIDI Controllers"
 msgstr "Contrôleurs MIDI"

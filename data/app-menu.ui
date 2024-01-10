@@ -1,88 +1,83 @@
+<?xml version="1.0"?>
 <interface domain="olc">
+
   <menu id="app-menu">
-    <section>
-      <item>
-        <attribute name="action">app.new</attribute>
-        <attribute name="label" translatable="yes">_New</attribute>
-        <attribute name="accel">&lt;Primary&gt;n</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.open</attribute>
-        <attribute name="label" translatable="yes">_Open</attribute>
-        <attribute name="accel">&lt;Primary&gt;o</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.save</attribute>
-        <attribute name="label" translatable="yes">_Save</attribute>
-        <attribute name="accel">&lt;Primary&gt;s</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.save_as</attribute>
-        <attribute name="label" translatable="yes">_Save As</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.patch_outputs</attribute>
-        <attribute name="label" translatable="yes">_Patch</attribute>
-        <attribute name="accel">&lt;Primary&gt;p</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.curves</attribute>
-        <attribute name="label" translatable="yes">_Curves</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.memories</attribute>
-        <attribute name="label" translatable="yes">_Memories</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.groups</attribute>
-        <attribute name="label" translatable="yes">_Groups</attribute>
-        <attribute name="accel">&lt;Primary&gt;g</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.sequences</attribute>
-        <attribute name="label" translatable="yes">_Sequences</attribute>
-        <attribute name="accel">&lt;Primary&gt;t</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.masters</attribute>
-        <attribute name="label" translatable="yes">_Masters</attribute>
-        <attribute name="accel">&lt;Primary&gt;m</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.track_channels</attribute>
-        <attribute name="label" translatable="yes">_Track channels</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.independents</attribute>
-        <attribute name="label" translatable="yes">_Independents</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="action">app.virtual_console</attribute>
-        <attribute name="label" translatable="yes">_Virtual Console</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="action">app.settings</attribute>
-        <attribute name="label" translatable="yes">_Preferences</attribute>
-      </item>
-    </section>
-    <section>
-      <item>
-        <attribute name="action">app.show-help-overlay</attribute>
-        <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.about</attribute>
-        <attribute name="label" translatable="yes">_About OLC</attribute>
-      </item>
-      <item>
-        <attribute name="action">app.quit</attribute>
-        <attribute name="label" translatable="yes">_Quit</attribute>
-        <attribute name="accel">&lt;Primary&gt;q</attribute>
+    <item>
+      <attribute name="label" translatable="yes">New</attribute>
+      <attribute name="action">app.new</attribute>
     </item>
-    </section>
+    <submenu>
+      <attribute name="label" translatable="yes">File</attribute>
+      <section>
+        <item>
+          <attribute name="label" translatable="yes">Open</attribute>
+          <attribute name="action">app.open</attribute>
+        </item>
+        <item>
+          <attribute name="label" translatable="yes">Save</attribute>
+          <attribute name="action">app.save</attribute>
+        </item>
+        <item>
+          <attribute name="label" translatable="yes">Save As</attribute>
+          <attribute name="action">app.save_as</attribute>
+        </item>
+        <item>
+          <attribute name="label" translatable="yes">Import ASCII</attribute>
+          <attribute name="action">app.import_ascii</attribute>
+        </item>
+      </section>
+    </submenu>
+    <item>
+      <attribute name="label" translatable="yes">Patch</attribute>
+      <attribute name="action">app.patch_outputs</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Curves</attribute>
+      <attribute name="action">app.curves</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Cues</attribute>
+      <attribute name="action">app.memories</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Groups</attribute>
+      <attribute name="action">app.groups</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Sequences</attribute>
+      <attribute name="action">app.sequences</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Masters</attribute>
+      <attribute name="action">app.masters</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Track channels</attribute>
+      <attribute name="action">app.track_channels</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Independents</attribute>
+      <attribute name="action">app.independents</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Virtual Console</attribute>
+      <attribute name="action">app.virtual_console</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Preferences</attribute>
+      <attribute name="action">app.settings</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Keyboard Shortcuts</attribute>
+      <attribute name="action">app.show-help-overlay</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">About OLC</attribute>
+      <attribute name="action">app.about</attribute>
+    </item>
+    <item>
+      <attribute name="label" translatable="yes">Quit</attribute>
+      <attribute name="action">app.quit</attribute>
+    </item>
   </menu>
 </interface>
