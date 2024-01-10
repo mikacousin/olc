@@ -31,7 +31,7 @@ class SettingsTab(Gtk.Box):
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
         settings_dialog = builder.get_object("settings")
 
-        # Appearence
+        # Appearance
         widget = builder.get_object("switch_percent")
         widget.set_state(App().settings.get_boolean("percent"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
@@ -127,7 +127,7 @@ class SettingsTab(Gtk.Box):
                         [midi_port.split(":")[0], True, "Absolute", midi_port]
                     )
                 else:
-                    # Default: Makie mode
+                    # Default: Mackie mode
                     self.liststore_midi.append(
                         [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
                     )
@@ -210,7 +210,7 @@ class SettingsTab(Gtk.Box):
         App().settings.set_strv("absolute", absolutes)
 
     def on_midi_toggle(self, _widget, path):
-        """Active / Unactive MIDI controllers
+        """Active / Inactive MIDI controllers
 
         Args:
             _widget: Widget clicked

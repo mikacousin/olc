@@ -176,7 +176,7 @@ class TrackChannelsWidget(Gtk.Widget):
         self._draw_cue_box(cr)
         # Draw Text box
         self._draw_text_box(cr)
-        # Draw level boxex
+        # Draw level boxes
         self._draw_level_boxes(cr)
 
     def _draw_step_box(self, cr):

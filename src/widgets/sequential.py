@@ -42,7 +42,7 @@ class SequentialWidget(Gtk.Widget):
         self.set_size_request(800, 300)
 
     def do_draw(self, cr):
-        """Draw xfade widget
+        """Draw crossfade widget
 
         Args:
             cr: Cairo context
@@ -92,7 +92,7 @@ class SequentialWidget(Gtk.Widget):
 
         # Draw Wait if any
         if self.wait > 0:
-            # Draw a grey box
+            # Draw a Grey box
             cr.set_source_rgb(0.2, 0.2, 0.2)
             if self.position_a or self.position_b:  # Red filter in fades
                 cr.set_source_rgba(1, 0, 0, 0.1)

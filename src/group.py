@@ -218,7 +218,7 @@ class GroupTab(Gtk.Paned):
         App().tabs.close("groups")
 
     def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
-        """Key has been presed
+        """Key has been pressed
 
         Args:
             event: Gdk.EventKey

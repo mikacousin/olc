@@ -23,18 +23,18 @@ from olc.step import Step
 
 
 def update_ui(position, subtitle):
-    """Update UI when Step is in scene
+    """Update user interface when Step is in scene
 
     Args:
         position: Step
-        subtitle: Memories number in headerbar
+        subtitle: Memories number in header bar
     """
     # Update Sequential Tab
     App().window.playback.update_active_cues_display()
     App().window.playback.grid.queue_draw()
     # Update Main Window's Subtitle
     App().window.header.set_subtitle(subtitle)
-    # Virtual Console's Xfade
+    # Virtual Console crossfade
     if App().virtual_console and App().virtual_console.props.visible:
         if App().virtual_console.scale_a.get_inverted():
             App().virtual_console.scale_a.set_inverted(False)
@@ -116,7 +116,7 @@ class Sequence:
             self.channels.add(channel)
 
     def get_step(self, cue=None):
-        """Get Cues's Step
+        """Get Cue Step
 
         Args:
             cue (float): Cue number
@@ -263,7 +263,7 @@ class Sequence:
                 self.thread.stop()
                 self.thread.join()
                 self.on_go = False
-                # Stop at the begining
+                # Stop at the beginning
                 self.position = max(self.position, 1)
             except Exception as e:
                 print("Error :", e)
@@ -345,7 +345,7 @@ class Sequence:
                 App().window.playback.sequential.position_a = 0
                 App().window.playback.sequential.position_b = 0
 
-                # Update ui
+                # Update user interface
                 App().window.playback.cues_liststore1[old_pos][9] = "#232729"
                 App().window.playback.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
                 App().window.playback.update_active_cues_display()
@@ -415,7 +415,7 @@ class Sequence:
             self.do_go(None, None)
 
         else:
-            # On indique qu'un Go est en cours
+            # Indicates that a Go is in progress
             self.on_go = True
             self.thread = ThreadGo(goto)
             self.thread.start()
@@ -591,7 +591,7 @@ class ThreadGo(threading.Thread):
             (App().window.playback.sequential.get_allocation().width - 32) /
             self.total_time) * i
         GLib.idle_add(App().window.playback.sequential.queue_draw)
-        # Move Virtual Console's XFade
+        # Move Virtual Console crossfade
         if App().virtual_console and App().virtual_console.props.visible:
             val = round((255 / self.total_time) * i)
             GLib.idle_add(App().virtual_console.scale_a.set_value, val)
@@ -748,11 +748,11 @@ def _next_step():
     if next_step < App().sequence.last - 1:
         App().sequence.position += 1
         next_step += 1
-    # If no next step, go to beggining
+    # If no next step, go to beginning
     else:
         App().sequence.position = 0
         next_step = 1
-    # Update times for visual xfade
+    # Update times for visual crossfade
     App().window.playback.sequential.total_time = (
         App().sequence.steps[next_step].total_time)
     App().window.playback.sequential.time_in = App().sequence.steps[next_step].time_in
@@ -852,7 +852,7 @@ class ThreadGoBack(threading.Thread):
         # Reset user levels
         App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
         App().sequence.update_channels()
-        # Prev step
+        # Previous step
         App().sequence.position = prev_step
         App().window.playback.sequential.time_in = (App().sequence.steps[prev_step +
                                                                          1].time_in)
@@ -899,7 +899,7 @@ class ThreadGoBack(threading.Thread):
         App().window.playback.sequential.position_b = (
             (allocation.width - 32) / go_back_time) * i
         GLib.idle_add(App().window.playback.sequential.queue_draw)
-        # Move Virtual Console's XFade
+        # Move Virtual Console crossfade
         if App().virtual_console and App().virtual_console.props.visible:
             val = round((255 / go_back_time) * i)
             GLib.idle_add(App().virtual_console.scale_a.set_value, val)

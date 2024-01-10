@@ -824,7 +824,7 @@ def _function_go_back(msg: mido.Message) -> None:
 
 
 def _function_goto(msg: mido.Message) -> None:
-    """Goto Cue
+    """Go to Cue
 
     Args:
         msg: MIDI message

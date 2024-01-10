@@ -68,14 +68,14 @@ class OscClient:
         except liblo.AddressError as err:
             print(err)
 
-    def send(self, path, *arg):
+    def send(self, path, *args):
         """Send OSC message to the client
 
         Args:
             path: Gtk Path
-            *arg: Arguments
+            args: Arguments
         """
-        liblo.send(self.target, path, *arg)
+        liblo.send(self.target, path, *args)
 
 
 class OscServer(liblo.ServerThread):

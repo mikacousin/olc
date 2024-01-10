@@ -41,14 +41,21 @@ class Master:
     """Master object, abstraction for faders
 
     Attributes:
-        page (int): page number
-        number (int): master number in page
-        content_type (int): 0 = None, 1 = Preset, 2 = Channels, 3 = Sequence,
+        page: page number
+        number: master number in page
+        content_type: 0 = None, 1 = Preset, 2 = Channels, 3 = Sequence,
             13 = Group, 99 = GM
-        content_value (float or array): number's object or array of channels
-        text (str): text
-        value (float): value (0-255)
+        content_value: number's object or array of channels
+        text: text
+        value: value (0-255)
     """
+
+    page: int
+    number: int
+    content_type: int
+    content_value: array.array | float
+    text: str
+    value: float
 
     def __init__(self, page, number, content_type, content_value):
         self.page = page
@@ -256,20 +263,20 @@ class Master:
     def _level_changed_chaser(self):
         """New level and type is Chaser"""
         number = self.content_value
-        # On cherche le chaser
+        # Look for the chaser
         for i, chaser in enumerate(App().chasers):
             if chaser.index == number:
-                # Si il ne tournait pas et master > 0
+                # If it was not running and master > 0
                 if self.value and chaser.run is False:
                     # Start Chaser
                     App().chasers[i].run = True
                     App().chasers[i].thread = ThreadChaser(self, i, self.value)
                     App().chasers[i].thread.start()
-                # Si il tournait déjà et master > 0
+                # If it was running and master > 0
                 elif self.value and chaser.run is True:
                     # Update Max Level
                     App().chasers[i].thread.level_scale = self.value
-                # Si il tournait et que le master passe à 0
+                # If it was running an master go to 0
                 elif self.value == 0 and chaser.run is True:
                     # Stop Chaser
                     App().chasers[i].run = False

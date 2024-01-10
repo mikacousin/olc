@@ -197,7 +197,7 @@ class PatchChannelsTab(Gtk.Box):
                     output = item[0]
                     universe = item[1]
                     self.patch.unpatch(channel, output, universe)
-                # Update ui
+                # Update user interface
                 self.channels[channel].queue_draw()
             else:
                 # New values
@@ -226,7 +226,7 @@ class PatchChannelsTab(Gtk.Box):
                         self.patch.add_output(channel, output + i, universe)
                     else:
                         self.patch.add_output(channel, output, universe)
-                    # Update ui
+                    # Update user interface
                     self.channels[channel - 1].queue_draw()
 
             # Update list of channels
@@ -276,7 +276,7 @@ class PatchChannelsTab(Gtk.Box):
                 self._unpatch(output, universe)
                 # Patch
                 self.patch.add_output(channel, output, universe)
-                # Update ui
+                # Update user interface
                 self.channels[channel - 1].queue_draw()
 
                 # Update list of channels
@@ -311,7 +311,7 @@ class PatchChannelsTab(Gtk.Box):
             if 0 < output <= 512 and [output, universe] in self.patch.channels[channel]:
                 # Remove Output
                 self.patch.unpatch(channel, output, universe)
-                # Update ui
+                # Update user interface
                 self.channels[channel - 1].queue_draw()
 
             # Update list of channels

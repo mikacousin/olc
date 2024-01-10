@@ -501,7 +501,7 @@ class SequenceTab(Gtk.Grid):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
     def _keypress_q(self):
-        """Prev Cue"""
+        """Previous Cue"""
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -669,7 +669,7 @@ class SequenceTab(Gtk.Grid):
             dialog = Dialog(App().window, str(mem))
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
-                # Find Preset's position
+                # Find Preset position
                 found, step = sequence.get_step(cue=mem)
                 # Update Cue
                 channels = {}
@@ -767,7 +767,7 @@ class SequenceTab(Gtk.Grid):
         sequence = self.get_selected_sequence()
         # Update Main Playback
         if sequence is App().sequence:
-            # Update indexes of cues in listsore
+            # Update indexes of cues in liststore
             for i in range(step, sequence.last - 2):
                 self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
             # Update Main Tab
@@ -779,7 +779,7 @@ class SequenceTab(Gtk.Grid):
                 App().window.update_channels_display(step - 1)
         # Update Chasers
         else:
-            # Update indexes of cues in listsore
+            # Update indexes of cues in liststore
             for i in range(step, sequence.last - 1):
                 self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
         # Select new step

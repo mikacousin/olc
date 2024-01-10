@@ -158,12 +158,12 @@ class MastersTab(Gtk.Paned):
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         self.channels_view.update()
 
-    def on_content_type_changed(self, _widget, path, text):
+    def on_content_type_changed(self, _widget, path: int, text: str) -> None:
         """Master type has been changed
 
         Args:
-            path (int): Row (starting at 0)
-            text (str): Master type
+            path: Row (starting at 0)
+            text: Master type
         """
         page = int(self.stack.get_visible_child_name())
         # Update display
@@ -187,7 +187,7 @@ class MastersTab(Gtk.Paned):
         index = idx + (page * 10)
         if App().masters[index].content_type != content_type:
             App().masters[index].set_content_type(content_type)
-            # Update ui
+            # Update user interface
             self.channels_view.update()
             self.liststores[page][path][2] = ""
             self.liststores[page][path][3] = ""
@@ -202,23 +202,23 @@ class MastersTab(Gtk.Paned):
             # Update MIDI
             App().midi.messages.lcd.show_masters()
 
-    def on_mode_changed(self, _widget, path, text):
+    def on_mode_changed(self, _widget, path: int, text: str) -> None:
         """Master mode has been changed
         Master modes are not used for now, just change displayed text
 
         Args:
-            path (int): Row number (starting at 0)
-            text (str): Mode
+            path: Row number (starting at 0)
+            text: Mode
         """
         page = int(self.stack.get_visible_child_name())
         self.liststores[page][path][3] = text
 
-    def on_content_value_edited(self, _widget, path, text):
+    def on_content_value_edited(self, _widget, path: int, text: str) -> None:
         """Master Content value has been changed
 
         Args:
-            path (int): Row number (starting at 0)
-            text (str): Value
+            path: Row number (starting at 0)
+            text: Value
         """
         if text == "":
             text = "0"

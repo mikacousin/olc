@@ -39,15 +39,15 @@ class ChannelWidget(Gtk.DrawingArea):
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
-    def on_click(self, tgt, event):
+    def on_click(self, target, event):
         """Select clicked widget
 
         Args:
-            tgt: Target
+            target: Target
             event: Gdk.EventButton or Gdk.EventTouch
         """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        flowboxchild = tgt.get_parent()
+        flowboxchild = target.get_parent()
         flowbox = flowboxchild.get_parent()
         channels_view = flowbox.get_parent().get_parent().get_parent()
 

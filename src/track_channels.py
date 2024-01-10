@@ -93,7 +93,7 @@ class TrackChannelsTab(Gtk.Grid):
         return child
 
     def update_display(self):
-        """Update diplay of tracked channels"""
+        """Update display of tracked channels"""
         # Find selected channels
         self.channels = []
         sel = App().window.live_view.channels_view.flowbox.get_selected_children()

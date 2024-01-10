@@ -66,7 +66,7 @@ class AsciiParser:
         item = ""
 
         for line in readlines:
-            # Remove not needed endline
+            # Remove not needed end line
             line = line.replace("\r", "")
             line = line.replace("\n", "")
             # Marker for end of file
@@ -319,7 +319,7 @@ class AsciiParser:
                         index = int((output - 1) / 512)
                         if index < NB_UNIVERSES:
                             univ = UNIVERSES[index]
-                            # Use Limit curve instead of proportinal level
+                            # Use Limit curve instead of proportional level
                             curve = 0
                             if r[1][0].upper() == "H":
                                 level = int(r[1][1:].upper(), 16)
@@ -379,7 +379,7 @@ class AsciiParser:
                             if level and channel <= MAX_CHANNELS:
                                 channels[channel] = level
                 if line == "":
-                    # Find Preset's position
+                    # Find Preset position
                     found = False
                     i = 0
                     for i, _ in enumerate(App().memories):

@@ -72,7 +72,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         """Update pointer coordinates
 
         Args:
-            event: Event with corrdinates
+            event: Event with coordinates
         """
         tab = App().tabs.tabs["curves"]
         x_curve = round(((event.x - 20) / (self.width - 40)) * 255)

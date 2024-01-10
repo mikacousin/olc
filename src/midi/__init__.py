@@ -124,7 +124,7 @@ class Midi:
         self.learning = ""
         self.messages = MidiMessages()
         self.faders = MidiFaders()
-        # Create xfade Faders
+        # Create crossfade Faders
         self.xfade = MidiXFade()
         # Create and Open MIDI ports
         self.ports = MidiPorts()
@@ -164,7 +164,7 @@ class Midi:
         App().ascii.set_modified()
 
     def controler_reset(self) -> None:
-        """Reset Mackie Controler"""
+        """Reset Mackie Controller"""
         for port in self.ports.ports:
             # Clear LCD
             text = 56 * " "

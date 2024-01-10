@@ -27,7 +27,7 @@ class PatchOutputsTab(Gtk.Box):
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
-        # Headerbar with buttons
+        # Header bar with buttons
         header = Gtk.HeaderBar()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         button = Gtk.Button()

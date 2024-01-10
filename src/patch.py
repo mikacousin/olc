@@ -42,13 +42,13 @@ class DMXPatch:
 
         self.patch_1on1()
 
-        # for chan, chan_list in self.channels.items():
+        # for channel, chan_list in self.channels.items():
         #     for out in chan_list:
-        #         print("Channel", chan, "Output", out[0], "Universe", out[1])
+        #         print("Channel", channel, "Output", out[0], "Universe", out[1])
         # for key, value in self.outputs.items():
         #     for output, chan_dic in value.items():
         #         print(
-        #             "Univers",
+        #             "Universe",
         #             key,
         #             "Output",
         #             output,
@@ -94,7 +94,7 @@ class DMXPatch:
         Args:
             channel: Channel number (1-MAX_CHANNELS)
             output: Dimmer number (1-512)
-            univ: Universe number (one of UNIVERSES in define.py)
+            univ: Universe number (one of UNIVERSES in define module)
             curve: Curve number (default 0, Linear Curve)
         """
         if self.channels[channel] == [[None, None]]:
@@ -111,7 +111,7 @@ class DMXPatch:
         Args:
             channel: Channel number (1-MAX_CHANNELS)
             output: Dimmer number (1-512)
-            univ: Universe number (one of UNIVERSES in define.py)
+            univ: Universe number (one of UNIVERSES in define module)
         """
         del self.outputs[univ][output]
         self.channels[channel].remove([output, univ])
@@ -175,9 +175,8 @@ class PatchByOutputs:
             self.outputs = []
             self.last = 0
         if App().osc:
-            App().osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
-            )
+            App().osc.client.send("/olc/patch/selected_outputs",
+                                  ("s", self.get_selected()))
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -195,9 +194,8 @@ class PatchByOutputs:
                     self.outputs.append(out)
             self.last = output_index
         if App().osc:
-            App().osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
-            )
+            App().osc.client.send("/olc/patch/selected_outputs",
+                                  ("s", self.get_selected()))
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -210,9 +208,8 @@ class PatchByOutputs:
             self.outputs.append(output_index)
             self.last = output_index
         if App().osc:
-            App().osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
-            )
+            App().osc.client.send("/olc/patch/selected_outputs",
+                                  ("s", self.get_selected()))
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -225,9 +222,8 @@ class PatchByOutputs:
             self.outputs.remove(output_index)
             self.last = output_index
         if App().osc:
-            App().osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
-            )
+            App().osc.client.send("/olc/patch/selected_outputs",
+                                  ("s", self.get_selected()))
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -245,9 +241,8 @@ class PatchByOutputs:
         self.__for_each_output(channel, several)
         App().window.live_view.channels_view.update()
         if App().osc:
-            App().osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
-            )
+            App().osc.client.send("/olc/patch/selected_outputs",
+                                  ("s", self.get_selected()))
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].refresh()
             # Select next output
@@ -269,10 +264,8 @@ class PatchByOutputs:
                     self.__unpatch(output, univ)
                 else:
                     old_channel = None
-                    if (
-                        univ in self.patch.outputs
-                        and output in self.patch.outputs[univ]
-                    ):
+                    if (univ in self.patch.outputs
+                            and output in self.patch.outputs[univ]):
                         old_channel = self.patch.outputs[univ][output][0]
                     # Unpatch old value if exist
                     if old_channel:
@@ -288,8 +281,7 @@ class PatchByOutputs:
                     index = UNIVERSES.index(univ)
                     level = App().backend.dmx.frame[index][output - 1]
                     widget = App().window.live_view.channels_view.get_channel_widget(
-                        channel
-                    )
+                        channel)
                     widget.level = level
                     widget.queue_draw()
 
@@ -299,7 +291,7 @@ class PatchByOutputs:
             self.patch.unpatch(chan, output, univ)
 
     def get_output_universe(self, out: int) -> Tuple[Optional[int], Optional[int]]:
-        """Returns output.universe correponding to output index (1 - NB_UNIVERSES * 512)
+        """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)
 
         Args:
             out: output index
@@ -315,9 +307,8 @@ class PatchByOutputs:
             output = out - (univ_index * 512)
         return (output, universe)
 
-    def _get_output_index(
-        self, out: Optional[int], univ: Optional[int]
-    ) -> Optional[int]:
+    def _get_output_index(self, out: Optional[int],
+                          univ: Optional[int]) -> Optional[int]:
         output = None
         if out is None or univ is None:
             return None

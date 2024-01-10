@@ -71,7 +71,7 @@ class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
     def __init__(self):
-        # Fullscreen
+        # Full screen
         self.full = False
 
         super().__init__(title="Open Lighting Console", application=App())
@@ -142,7 +142,7 @@ class Window(Gtk.ApplicationWindow):
             self.live_view.grab_focus()
 
     def fullscreen_toggle(self, _action, _param):
-        """Toggle fullscreen"""
+        """Toggle full screen"""
         if self.full:
             self.unfullscreen()
             self.full = False
@@ -239,7 +239,7 @@ class Window(Gtk.ApplicationWindow):
         self.commandline.set_string("")
 
     def _keypress_Escape(self):  # pylint: disable=C0103
-        """Unselect all channels"""
+        """Deselect all channels"""
         self.live_view.channels_view.flowbox.unselect_all()
         self.live_view.channels_view.last_selected_channel = ""
         if App().tabs.tabs["track_channels"]:
@@ -307,7 +307,7 @@ class Window(Gtk.ApplicationWindow):
             self.playback.update_xfade_display(step)
             self.update_channels_display(step)
         else:  # Update Preset
-            # Find Preset's position
+            # Find Preset position
             found = False
             i = 0
             for i, item in enumerate(App().memories):

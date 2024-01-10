@@ -34,7 +34,7 @@ class VirtualConsoleWindow(Gtk.Window):
         # On close window
         self.connect("delete-event", self._close)
 
-        # Headerbar
+        # Header bar
         self.header = Gtk.HeaderBar()
         self.header.set_show_close_button(True)
         self.header.props.title = "Virtual Console"
@@ -95,7 +95,6 @@ class VirtualConsoleWindow(Gtk.Window):
         self.delay.connect("clicked", self._on_delay)
         self.button_in = ButtonWidget("In")
         self.button_out = ButtonWidget("Out")
-        # self.labelGM = Gtk.Label('Grand Master')
         self.label = Gtk.Label("")
         self.time_pad.attach(self.label, 0, 0, 1, 1)
         self.label = Gtk.Label("")
@@ -211,7 +210,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.label = Gtk.Label("")
         self.thru_pad.attach(self.label, 2, 4, 1, 1)
 
-        # Insert, Delete, Esc, Modify, Up, Down, Left, Right
+        # Insert, Delete, Escape, Modify, Up, Down, Left, Right
         self.modify_pad = Gtk.Grid()
         # self.modify_pad.set_column_homogeneous(True)
         # self.modify_pad.set_row_homogeneous(True)
@@ -911,7 +910,7 @@ class VirtualConsoleWindow(Gtk.Window):
         """Crossfade moved
 
         Args:
-            scale (FaderWidget): xfade fader
+            scale (FaderWidget): crossfade fader
         """
         if App().midi.learning:
             if scale == self.scale_a:

@@ -95,15 +95,13 @@ class Application(Gtk.Application):
         )
 
         css_provider_file = Gio.File.new_for_uri(
-            "resource://com/github/mikacousin/olc/application.css"
-        )
+            "resource://com/github/mikacousin/olc/application.css")
         css_provider = Gtk.CssProvider()
         css_provider.load_from_file(css_provider_file)
         screen = Gdk.Screen.get_default()
         style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(
-            screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
-        )
+        style_context.add_provider_for_screen(screen, css_provider,
+                                              Gtk.STYLE_PROVIDER_PRIORITY_USER)
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()
@@ -319,8 +317,7 @@ class Application(Gtk.Application):
                     text = f"master_{master.number + (self.fader_page - 1) * 10}"
                     self.virtual_console.masters[master.number - 1].text = text
                     self.virtual_console.masters[master.number - 1].set_value(
-                        master.value
-                    )
+                        master.value)
                     self.virtual_console.flashes[master.number - 1].label = master.text
             self.virtual_console.masters_pad.queue_draw()
 
@@ -436,15 +433,13 @@ class Application(Gtk.Application):
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
-        self.tabs.open(
-            "patch_outputs", PatchOutputsTab, "Patch Outputs", self.backend.patch
-        )
+        self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs",
+                       self.backend.patch)
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
-        self.tabs.open(
-            "patch_channels", PatchChannelsTab, "Patch Channels", self.backend.patch
-        )
+        self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels",
+                       self.backend.patch)
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""

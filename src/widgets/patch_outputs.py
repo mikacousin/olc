@@ -205,7 +205,7 @@ class PatchWidget(Gtk.DrawingArea):
 
         Args:
             cr: Cairo context
-            allocation: Widget's allocation
+            allocation: Widget allocation
         """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
         if (
@@ -247,7 +247,7 @@ class PatchWidget(Gtk.DrawingArea):
 
         Args:
             cr: Cairo context
-            allocation: Widget alocation
+            allocation: Widget allocation
         """
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)

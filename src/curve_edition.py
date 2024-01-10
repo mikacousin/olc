@@ -223,7 +223,7 @@ class CurveEdition(Gtk.Box):
         """Return index of active point
 
         Returns:
-            Index or None if no point actived
+            Index or None if no point activated
         """
         index = None
         for idx, point in enumerate(self.points):

@@ -18,7 +18,7 @@ from .fader import MIDIFader
 
 
 class MidiXFade:
-    """MIDI manual XFade"""
+    """MIDI manual Crossfade"""
 
     def __init__(self):
         self.fader_in = MIDIFader()
@@ -32,20 +32,20 @@ class MidiXFade:
         """
         return self.inverted
 
-    def set_inverted(self, inv: bool) -> None:
+    def set_inverted(self, invert: bool) -> None:
         """Set inverted status
 
         Args:
-            inv: True or False
+            invert: True or False
         """
-        self.inverted = inv
+        self.inverted = invert
 
     def moved(self, msg: mido.Message, midi_fader) -> None:
         """Fader moved
 
         Args:
             msg: MIDI message
-            midi_fader: Xfade MIDI fader
+            midi_fader: Crossfade MIDI fader
         """
         App().midi.enqueue(msg)
         if midi_fader is self.fader_in:

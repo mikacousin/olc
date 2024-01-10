@@ -32,7 +32,7 @@ class Curve:
         self.populate_values()
 
     def get_level(self, level: int) -> int:
-        """Get precalculate curve levels.
+        """Get precalculated curve levels.
 
         Args:
             level: input level (0 - 255)
@@ -325,7 +325,7 @@ class Curves:
         """Get Curve with number
 
         Args:
-            number: Curve number (key in dictionnary)
+            number: Curve number (key in dictionary)
 
         Returns:
             Curve or 0

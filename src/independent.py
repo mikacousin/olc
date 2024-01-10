@@ -69,7 +69,7 @@ class Independent:
         Args:
             value: New level
         """
-        # Send MIDI message to knob leds
+        # Send MIDI message to knob LEDs
         App().midi.messages.control_change.send(
             f"inde_led_{self.number}", 32 + int((value / 255) * 12)
         )

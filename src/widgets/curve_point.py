@@ -72,7 +72,7 @@ class CurvePointWidget(Gtk.DrawingArea):
             # Update Label with point coordinates
             x = round(event.x_root - self.offset.x)
             y = round(event.y_root + 40 - self.offset.y)
-            # 20 = offset de la grille, 4 = rayon du point
+            # 20 = grid offset, 4 = point radius
             x = max(min(x, self.max.x), 20 - 4)
             y = max(min(y, self.max.y), 20 - 4)
             edit_wgt_width = tab.curve_edition.edit_curve.width
@@ -92,7 +92,7 @@ class CurvePointWidget(Gtk.DrawingArea):
         """
         x = round(event.x_root - self.offset.x)
         y = round(event.y_root + 40 - self.offset.y)
-        # 20 = offset de la grille, 4 = rayon du point
+        # 20 = grid offset, 4 = point radius
         x = max(min(x, self.max.x), 20 - 4)
         y = max(min(y, self.max.y - 16), 20 - 4)
         if x != self.prev.x or y != self.prev.y:
@@ -116,7 +116,7 @@ class CurvePointWidget(Gtk.DrawingArea):
                 tab.curve_edition.label.set_label(f"255, {y_curve}")
                 self.curve.points[self.number] = (255, y_curve)
                 fixed.move(widget, 976, y)
-            # Don't move before/after prev/next point
+            # Don't move before/after previous/next point
             elif (
                 not x_curve <= self.curve.points[self.number - 1][0]
                 and not x_curve >= self.curve.points[self.number + 1][0]

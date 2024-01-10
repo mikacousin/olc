@@ -90,7 +90,7 @@ class CrossFade:
             self.at_full()
 
         if self.scale_a.get_value() == 0 and self.scale_b.get_value() == 0:
-            # Stop Xfade if return to 0
+            # Stop crossfade if return to 0
             if not App().sequence.on_go:
                 return
             self.scale_a.moved = False
@@ -119,7 +119,7 @@ class CrossFade:
             # Return to first step
             App().sequence.position = 0
             next_step = 1
-        # Update UI
+        # Update user interface
         App().window.playback.sequential.total_time = (
             App().sequence.steps[next_step].total_time
         )
@@ -209,7 +209,7 @@ def update_a(channel, old_level, next_level, wait, pos):
         old_level: Old level
         next_level: Next level
         wait: Wait value
-        pos: Position in xfade
+        pos: Position in crossfade
     """
     time_out = App().sequence.steps[App().sequence.position + 1].time_out * 1000
     delay_out = App().sequence.steps[App().sequence.position + 1].delay_out * 1000
@@ -252,7 +252,7 @@ def _update_a_channel_time(channel, old_level, next_level, wait, pos):
         old_level: Old level
         next_level: Next level
         wait: Wait value
-        pos: Position in xfade
+        pos: Position in crossfade
 
     Returns:
         channel level or -1
@@ -281,7 +281,7 @@ def update_b(channel, old_level, next_level, wait, pos):
         old_level: Old level
         next_level: Next level
         wait: Wait value
-        pos: Position in xfade
+        pos: Position in crossfade
     """
     lvl = -1
     time_in = App().sequence.steps[App().sequence.position + 1].time_in * 1000
@@ -323,7 +323,7 @@ def _update_b_channel_time(channel, old_level, next_level, wait, pos):
         old_level: Old level
         next_level: Next level
         wait: Wait value
-        pos: Position in xfade
+        pos: Position in crossfade
 
     Returns:
         channel level or -1

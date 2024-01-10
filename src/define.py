@@ -47,7 +47,7 @@ def is_float(element: Any) -> bool:
 
 
 def is_non_nul_float(element: Any) -> bool:
-    """Test if argument is a float and non nul
+    """Test if argument is a float and non null
 
     Args:
         element: argument to test
@@ -75,7 +75,7 @@ def is_int(element: Any) -> bool:
 
 
 def is_non_nul_int(element: Any) -> bool:
-    """Test if argument is an integer and non nul
+    """Test if argument is an integer and non null
 
     Args:
         element: argument to test

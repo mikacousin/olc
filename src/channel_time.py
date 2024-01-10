@@ -129,17 +129,17 @@ class ChanneltimeTab(Gtk.Paned):
         self.liststore.clear()
         self.channels_view.update()
 
-    def delay_edited(self, _widget, path, text):
+    def delay_edited(self, _widget, path_to_cell: str, text: str) -> None:
         """Delay changed
 
         Args:
-            path: selected channel
-            text (str): new delay value
+            path_to_cell: selected channel
+            text: new delay value
         """
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
-            self.liststore[path][1] = "" if text == "0" else text
+            self.liststore[path_to_cell][1] = "" if text == "0" else text
         # Find selected Channel Time
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -213,17 +213,17 @@ class ChanneltimeTab(Gtk.Paned):
 
         App().window.commandline.set_string("")
 
-    def time_edited(self, _widget, path, text):
+    def time_edited(self, _widget, path_to_cell: str, text: str):
         """Time changed
 
         Args:
-            path: selected channel
-            text (str): new time value
+            path_to_cell: selected channel
+            text: new time value
         """
         if text == "":
             text = "0"
         if text.replace(".", "", 1).isdigit():
-            self.liststore[path][2] = "" if text == "0" else text
+            self.liststore[path_to_cell][2] = "" if text == "0" else text
         # Find selected Channel Time
         path, _focus_column = self.treeview.get_cursor()
         if path:
@@ -365,7 +365,7 @@ class ChanneltimeTab(Gtk.Paned):
         App().window.commandline.set_string("")
 
     def _keypress_q(self):
-        """Prev Channel Time"""
+        """Previous Channel Time"""
 
         self.channels_view.flowbox.unselect_all()
 
@@ -403,7 +403,7 @@ class ChanneltimeTab(Gtk.Paned):
                 delay = 0.0
                 time = 0.0
                 self.step.channel_time[channel] = ChannelTime(delay, time)
-                # Update ui
+                # Update user interface
                 self.liststore.append([channel, "", ""])
                 path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
                 self.treeview.set_cursor(path)

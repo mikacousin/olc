@@ -49,7 +49,7 @@ class MidiIO:
         if App().midi.learning:
             App().midi.learn(msg)
 
-        # Find action actived
+        # Find action
         if msg.type in ("note_on", "note_off"):
             App().midi.messages.notes.scan(msg)
         elif msg.type == "control_change":

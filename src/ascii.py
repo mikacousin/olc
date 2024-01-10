@@ -62,7 +62,7 @@ class Ascii:
             App().sequence.add_step(step)
             # Position main playback at start
             App().sequence.position = 0
-            # Update display informations
+            # Update display information
             self._update_ui()
             self.add_recent_file()
         except GObject.GError as e:
@@ -73,10 +73,10 @@ class Ascii:
         """Save ASCII file"""
         stream = self.file.replace("", False, Gio.FileCreateFlags.NONE, None)
 
-        # TODO: to import Fx and Masters in dlight :
+        # TODO: to import Effects and Masters in dlight :
         # MANUFACTURER NICOBATS or AVAB
         # CONSOLE      DLIGHT   or CONGO
-        # TODO: Masters dans Dlight sont en Time et pas Flash
+        # TODO: Masters in Dlight are in Time and not Flash
         stream.write(bytes("IDENT 3:0\n", "utf8"))
         stream.write(bytes("MANUFACTURER MIKA\n", "utf8"))
         stream.write(bytes("CONSOLE OLC\n\n", "utf8"))
