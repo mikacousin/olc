@@ -199,11 +199,11 @@ class AsciiParser(ReadFile):
             cue_number = float(self.args[1])
         self.data.sequences[self.current["sequence"]]["steps"].append(cue_number)
         self.data.sequences[self.current["sequence"]]["cues"][cue_number] = {
-            "out_time": 0,
-            "out_delay": 0,
-            "up_time": 0,
-            "up_delay": 0,
-            "wait": 0,
+            "out_time": 0.0,
+            "out_delay": 0.0,
+            "up_time": 0.0,
+            "up_delay": 0.0,
+            "wait": 0.0,
             "channels": {},
             "text": "",
             "channel_time": {},
@@ -221,12 +221,12 @@ class AsciiParser(ReadFile):
                 cues[self.current["cue"]]["channels"][channel] = level
         elif self.keyword == "down":
             time = string_to_time(self.args[0])
-            delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0
+            delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
             cues[self.current["cue"]]["out_time"] = time
             cues[self.current["cue"]]["out_delay"] = delay
         elif self.keyword == "up":
             time = string_to_time(self.args[0])
-            delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0
+            delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
             cues[self.current["cue"]]["up_time"] = time
             cues[self.current["cue"]]["up_delay"] = delay
         elif self.keyword in ("text", "$$text", "$$presettext"):

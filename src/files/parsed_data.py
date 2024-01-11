@@ -28,7 +28,7 @@ class ParsedData:
 
     def __init__(self):
         self.patch = {}
-        self.sequences = {}
+        self.sequences = {1: {"mode": "normal", "steps": [], "cues": {}}}
 
     def import_patch(self) -> None:
         """Import data patch"""
