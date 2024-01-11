@@ -180,6 +180,7 @@ class AsciiParser(ReadFile):
             elif seq_number > 1:
                 mode = "chaser"
             self.data.sequences[seq_number]["mode"] = mode
+            self.data.sequences[seq_number]["steps"] = []
             self.data.sequences[seq_number]["cues"] = {}
             self.current["sequence"] = seq_number
             self.state = State.IN_MPRIMARY
@@ -196,6 +197,7 @@ class AsciiParser(ReadFile):
         else:
             # $CUE sequence_number cue_number
             cue_number = float(self.args[1])
+        self.data.sequences[self.current["sequence"]]["steps"].append(cue_number)
         self.data.sequences[self.current["sequence"]]["cues"][cue_number] = {
             "out_time": 0,
             "out_delay": 0,

@@ -60,6 +60,7 @@ class Sequence:
         self.index = index
         self.type_seq = type_seq
         self.text = text
+        self.cues = set()
         self.steps = []
         self.position = 0
         self.last = 0
@@ -75,6 +76,7 @@ class Sequence:
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
+        self.cues.add(cue)
         step = Step(sequence=self.index, cue=cue)
         self.add_step(step)
         # Last Step

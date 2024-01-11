@@ -74,16 +74,16 @@ class ImportFile:
                 self._clear_sequence(sequence)
             # Import sequence
             if sequence == 1:
-                self.data.import_main_playback(sequence)
-                if self.actions["sequences"][sequence] is Action.REPLACE:
-                    # Add empty step at the end
-                    cue = Cue(0, 0.0)
-                    step = Step(sequence, cue=cue)
-                    App().sequence.add_step(step)
+                self.data.import_main_playback(sequence,
+                                               self.actions["sequences"][sequence])
+                # Add empty step at the end
+                cue = Cue(0, 0.0)
+                step = Step(sequence, cue=cue)
+                App().sequence.add_step(step)
                 # Main playback at start
                 App().sequence.position = 0
             else:
-                self.data.import_chaser(sequence)
+                self.data.import_chaser(sequence, self.actions["sequences"][sequence])
 
     def _clear_sequence(self, sequence: int) -> None:
         if sequence == 1:
