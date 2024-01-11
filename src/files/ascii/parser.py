@@ -44,9 +44,10 @@ class AsciiParser(ReadFile):
     console: dict[str, str]
     current: dict
 
-    def __init__(self, file, data):
+    def __init__(self, file, data, default_time):
         super().__init__(file)
         self.data = data
+        self.default_time = default_time
         self.tokens = {
             "basic": (
                 "clear",
@@ -199,9 +200,9 @@ class AsciiParser(ReadFile):
             cue_number = float(self.args[1])
         self.data.sequences[self.current["sequence"]]["steps"].append(cue_number)
         self.data.sequences[self.current["sequence"]]["cues"][cue_number] = {
-            "out_time": 0.0,
+            "out_time": self.default_time,
             "out_delay": 0.0,
-            "up_time": 0.0,
+            "up_time": self.default_time,
             "up_delay": 0.0,
             "wait": 0.0,
             "channels": {},
@@ -221,11 +222,15 @@ class AsciiParser(ReadFile):
                 cues[self.current["cue"]]["channels"][channel] = level
         elif self.keyword == "down":
             time = string_to_time(self.args[0])
+            if not time:
+                time = self.default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
             cues[self.current["cue"]]["out_time"] = time
             cues[self.current["cue"]]["out_delay"] = delay
         elif self.keyword == "up":
             time = string_to_time(self.args[0])
+            if not time:
+                time = self.default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
             cues[self.current["cue"]]["up_time"] = time
             cues[self.current["cue"]]["up_delay"] = delay

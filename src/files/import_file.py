@@ -37,7 +37,8 @@ class ImportFile:
         self.actions = {}
 
         if self.file_type == "ascii":
-            self.parser = AsciiParser(self.file, self.data)
+            default_time = App().settings.get_double("default-time")
+            self.parser = AsciiParser(self.file, self.data, default_time)
 
     def parse(self) -> None:
         """Start reading file"""
