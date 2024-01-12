@@ -16,6 +16,7 @@ from olc.cue import Cue
 from olc.curve import LimitCurve
 from olc.define import App
 from olc.files.import_dialog import Action
+from olc.group import Group
 from olc.sequence import Sequence
 from olc.step import Step
 
@@ -28,7 +29,10 @@ class ParsedData:
 
     def __init__(self):
         self.patch = {}
-        self.sequences = {1: {"mode": "normal", "steps": [], "cues": {}}}
+        self.sequences = {1: {"text": "", "mode": "normal", "steps": [], "cues": {}}}
+        self.groups = {}
+        self.independents = {}
+        self.presets = {}
 
     def import_patch(self) -> None:
         """Import data patch"""
@@ -41,6 +45,59 @@ class ParsedData:
                     if not App().curves.find_limit_curve(level):
                         curve = App().curves.add_curve(LimitCurve(level))
                 App().backend.patch.add_output(channel, output, univers, curve)
+
+    def import_groups(self) -> None:
+        """Import groups data"""
+        for group_number, values in self.groups.items():
+            channels = values.get("channels")
+            text = values.get("text")
+            group = None
+            found = False
+            for group in App().groups:
+                if group_number == group.index:
+                    found = True
+                    break
+            if found:
+                # If group exist, update it
+                group.text = text
+                group.channels = channels
+            else:
+                # Create new group
+                App().groups.append(Group(group_number, channels, text))
+
+    def import_independents(self) -> None:
+        """Import independents data"""
+        for inde_number, values in self.independents.items():
+            channels = values.get("channels")
+            text = values.get("text")
+            inde = None
+            found = False
+            for inde in App().independents.independents:
+                if inde_number == inde.number:
+                    found = True
+                    break
+            if found:
+                inde.text = text
+                inde.levels = channels
+                App().independents.update(inde)
+
+    def import_presets(self) -> None:
+        """Import presets data"""
+        for preset_number, values in self.presets.items():
+            channels = values.get("channels")
+            text = values.get("text")
+            found = False
+            cue = None
+            for cue in App().memories:
+                if cue.memory == preset_number:
+                    found = True
+                    break
+            if found:
+                cue.channels = channels
+                cue.text = text
+            else:
+                cue = Cue(0, preset_number, channels, text)
+                self._insert_cue(cue)
 
     def import_main_playback(self, sequence: int, action: Action) -> None:
         """Import Main Playback

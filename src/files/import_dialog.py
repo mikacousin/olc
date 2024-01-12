@@ -12,10 +12,16 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
 from enum import Enum, auto
 from gettext import gettext as _
 
 from gi.repository import Gtk
+
+if typing.TYPE_CHECKING:
+    from olc.files.parsed_data import ParsedData
 
 
 class Action(Enum):
@@ -29,14 +35,12 @@ class Action(Enum):
 class DialogData(Gtk.Dialog):
     """Dialog to choose data to import"""
 
-    action_patch: Action
-    action_sequences: dict
+    actions: dict
 
-    def __init__(self, parent, data):
+    def __init__(self, parent, data, actions):
         super().__init__(title=_("Data to import"), transient_for=parent, flags=0)
 
-        self.action_patch = Action.REPLACE
-        self.action_sequences = {}
+        self.actions = actions
 
         self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK,
                          Gtk.ResponseType.OK)
@@ -45,57 +49,111 @@ class DialogData(Gtk.Dialog):
         # If you change actions order, you have to modify combo callbacks
         actions = ["Replace", "Merge", "Ignore"]
         if data.patch:
-            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-            label = Gtk.Label("Patch:")
-            combo = Gtk.ComboBoxText()
-            combo.connect("changed", self._on_patch_changed)
-            for action in actions:
-                combo.append_text(action)
-            combo.set_active(0)
-            hbox.pack_start(label, True, True, 0)
-            hbox.add(combo)
-            box.add(hbox)
+            self._patch(actions, box)
         if data.sequences:
-            box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
-            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-            label = Gtk.Label("Sequences:")
-            hbox.pack_start(label, False, True, 0)
-            box.add(hbox)
-            combos = {}
-            for sequence in data.sequences.keys():
-                self.action_sequences[sequence] = Action.REPLACE
-                hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-                if sequence == 1:
-                    name = "MainPlayback"
-                elif data.sequences[sequence].get("text"):
-                    name = data.sequences[sequence]["text"]
-                else:
-                    name = str(sequence)
-                label = Gtk.Label(name)
-                combos[sequence] = Gtk.ComboBoxText()
-                combos[sequence].connect("changed", self._on_seq_changed, sequence)
-                for action in actions:
-                    combos[sequence].append_text(action)
-                combos[sequence].set_active(0)
-                hbox.pack_start(label, True, True, 0)
-                hbox.add(combos[sequence])
-                box.add(hbox)
+            self._sequences(actions, box, data)
+        if data.groups:
+            self._groups(actions, box)
+        if data.independents:
+            self._independents(actions, box)
         self.show_all()
+
+    def _patch(self, actions: list, box: Gtk.Box) -> None:
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        label = Gtk.Label("Patch:")
+        combo = Gtk.ComboBoxText()
+        combo.connect("changed", self._on_patch_changed)
+        for action in actions:
+            combo.append_text(action)
+        combo.set_active(0)
+        hbox.pack_start(label, True, True, 0)
+        hbox.add(combo)
+        box.add(hbox)
+
+    def _sequences(self, actions: list, box: Gtk.Box, data: ParsedData) -> None:
+        box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        label = Gtk.Label("Sequences:")
+        hbox.pack_start(label, False, True, 0)
+        box.add(hbox)
+        combos = {}
+        for sequence in data.sequences.keys():
+            self.actions["sequences"][sequence] = Action.REPLACE
+            hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+            if sequence == 1:
+                name = "MainPlayback"
+            elif data.sequences[sequence].get("text"):
+                name = data.sequences[sequence]["text"]
+            else:
+                name = str(sequence)
+            label = Gtk.Label(name)
+            combos[sequence] = Gtk.ComboBoxText()
+            combos[sequence].connect("changed", self._on_seq_changed, sequence)
+            for action in actions:
+                combos[sequence].append_text(action)
+            combos[sequence].set_active(0)
+            hbox.pack_start(label, True, True, 0)
+            hbox.add(combos[sequence])
+            box.add(hbox)
+
+    def _groups(self, actions: list, box: Gtk.Box) -> None:
+        box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        label = Gtk.Label("Groups:")
+        combo = Gtk.ComboBoxText()
+        combo.connect("changed", self._on_groups_changed)
+        for action in actions:
+            combo.append_text(action)
+        combo.set_active(0)
+        hbox.pack_start(label, True, True, 0)
+        hbox.add(combo)
+        box.add(hbox)
+
+    def _independents(self, actions: list, box: Gtk.Box) -> None:
+        box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        label = Gtk.Label("Independents:")
+        combo = Gtk.ComboBoxText()
+        combo.connect("changed", self._on_independents_changed)
+        for action in actions:
+            combo.append_text(action)
+        combo.set_active(0)
+        hbox.pack_start(label, True, True, 0)
+        hbox.add(combo)
+        box.add(hbox)
 
     def _on_patch_changed(self, widget):
         active = widget.get_active()
         if active == 0:
-            self.action_patch = Action.REPLACE
+            self.actions["patch"] = Action.REPLACE
         elif active == 1:
-            self.action_patch = Action.MERGE
+            self.actions["patch"] = Action.MERGE
         elif active == 2:
-            self.action_patch = Action.IGNORE
+            self.actions["patch"] = Action.IGNORE
 
     def _on_seq_changed(self, widget, sequence):
         active = widget.get_active()
         if active == 0:
-            self.action_sequences[sequence] = Action.REPLACE
+            self.actions["sequences"][sequence] = Action.REPLACE
         elif active == 1:
-            self.action_sequences[sequence] = Action.MERGE
+            self.actions["sequences"][sequence] = Action.MERGE
         elif active == 2:
-            self.action_sequences[sequence] = Action.IGNORE
+            self.actions["sequences"][sequence] = Action.IGNORE
+
+    def _on_groups_changed(self, widget):
+        active = widget.get_active()
+        if active == 0:
+            self.actions["groups"] = Action.REPLACE
+        elif active == 1:
+            self.actions["groups"] = Action.MERGE
+        elif active == 2:
+            self.actions["groups"] = Action.IGNORE
+
+    def _on_independents_changed(self, widget):
+        active = widget.get_active()
+        if active == 0:
+            self.actions["independents"] = Action.REPLACE
+        elif active == 1:
+            self.actions["independents"] = Action.MERGE
+        elif active == 2:
+            self.actions["independents"] = Action.IGNORE

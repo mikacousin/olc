@@ -15,7 +15,7 @@
 import re
 from enum import Enum, auto
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
+from olc.define import (MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App, string_to_time)
 from olc.files.read import ReadFile
 
 
@@ -28,10 +28,13 @@ class State(Enum):
     NEW_GROUP = auto()
     NEW_SUB = auto()
     NEW_MPRIMARY = auto()
+    NEW_PRESET = auto()
     IN_CUE = auto()
     IN_GROUP = auto()
     IN_SUB = auto()
-    IN_MPRIMARY = auto()
+    IN_SEQUENCE = auto()
+    IN_INDEPENDENT = auto()
+    IN_PRESET = auto()
 
 
 class AsciiParser(ReadFile):
@@ -44,10 +47,9 @@ class AsciiParser(ReadFile):
     console: dict[str, str]
     current: dict
 
-    def __init__(self, file, data, default_time):
+    def __init__(self, file, data):
         super().__init__(file)
         self.data = data
-        self.default_time = default_time
         self.tokens = {
             "basic": (
                 "clear",
@@ -75,9 +77,12 @@ class AsciiParser(ReadFile):
         self.args = []
         self.console = {"console": "", "manufacturer": ""}
         self.current = {
-            "cue": 0,
+            "cue": 0.0,
             "channel_time": (0, 0),
             "sequence": 1,
+            "group": 0.0,
+            "independent": 0,
+            "preset": 0.0,
         }
 
     def do_parse(self, line: str) -> bool:
@@ -122,12 +127,22 @@ class AsciiParser(ReadFile):
             self._do_basic()
         elif self.state is State.NEW_MPRIMARY:
             self._new_mprimary()
-        elif self.state is State.IN_MPRIMARY:
-            self._do_mprimary()
+        elif self.state is State.IN_SEQUENCE:
+            self._do_sequence()
         elif self.state is State.NEW_CUE:
             self._new_cue()
         elif self.state is State.IN_CUE:
             self._do_cue()
+        elif self.state is State.NEW_GROUP:
+            self._new_group()
+        elif self.state is State.IN_GROUP:
+            self._do_group()
+        elif self.state is State.IN_INDEPENDENT:
+            self._do_independent()
+        elif self.state is State.NEW_PRESET:
+            self._new_preset()
+        elif self.state is State.IN_PRESET:
+            self._do_preset()
 
     def _do_basic(self) -> None:
         if self.keyword == "ident":
@@ -184,14 +199,34 @@ class AsciiParser(ReadFile):
             self.data.sequences[seq_number]["steps"] = []
             self.data.sequences[seq_number]["cues"] = {}
             self.current["sequence"] = seq_number
-            self.state = State.IN_MPRIMARY
+            self.state = State.IN_SEQUENCE
+        elif self.keyword == "$specialfunction":
+            # Parameters not implemented:
+            # ftype = self.args[1]  # 0: inclusive, 1: Inhibit, 2: Exclusive
+            # button_mode = self.args[2]  # 0: Momentary, 1: Toggling
+            number = int(self.args[0])
+            self.data.independents[number] = {"text": "", "channels": {}}
+            self.current["independent"] = number
+            self.state = State.IN_INDEPENDENT
 
-    def _do_mprimary(self) -> None:
+    def _do_sequence(self) -> None:
         if self.keyword in ("text", "$$text"):
             text = " ".join(self.args)
             self.data.sequences[self.current["sequence"]]["text"] = text
 
+    def _do_independent(self) -> None:
+        if self.keyword in ("text", "$$text"):
+            text = " ".join(self.args)
+            self.data.independents[self.current["independent"]]["text"] = text
+        if self.keyword == "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                level = self._get_level(self.args[index + 1])
+                self.data.independents[
+                    self.current["independent"]]["channels"][channel] = level
+
     def _new_cue(self) -> None:
+        default_time = App().settings.get_double("default-time")
         if self.keyword == "cue":
             # CUE cue_number
             cue_number = float(self.args[0])
@@ -200,9 +235,9 @@ class AsciiParser(ReadFile):
             cue_number = float(self.args[1])
         self.data.sequences[self.current["sequence"]]["steps"].append(cue_number)
         self.data.sequences[self.current["sequence"]]["cues"][cue_number] = {
-            "out_time": self.default_time,
+            "out_time": default_time,
             "out_delay": 0.0,
-            "up_time": self.default_time,
+            "up_time": default_time,
             "up_delay": 0.0,
             "wait": 0.0,
             "channels": {},
@@ -214,6 +249,7 @@ class AsciiParser(ReadFile):
 
     def _do_cue(self) -> None:
         # Missed keywords: followon, link, part
+        default_time = App().settings.get_double("default-time")
         cues = self.data.sequences[self.current["sequence"]]["cues"]
         if self.keyword == "chan":
             for index in range(0, len(self.args), 2):
@@ -223,14 +259,14 @@ class AsciiParser(ReadFile):
         elif self.keyword == "down":
             time = string_to_time(self.args[0])
             if not time:
-                time = self.default_time
+                time = default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
             cues[self.current["cue"]]["out_time"] = time
             cues[self.current["cue"]]["out_delay"] = delay
         elif self.keyword == "up":
             time = string_to_time(self.args[0])
             if not time:
-                time = self.default_time
+                time = default_time
             delay = string_to_time(self.args[1]) if len(self.args) > 1 else 0.0
             cues[self.current["cue"]]["up_time"] = time
             cues[self.current["cue"]]["up_delay"] = delay
@@ -250,6 +286,38 @@ class AsciiParser(ReadFile):
                 cues[self.current["cue"]]["channel_time"][
                     self.current["channel_time"]].add(arg)
 
+    def _new_preset(self) -> None:
+        number = float(self.args[0])
+        self.data.presets[number] = {"text": "", "channels": {}}
+        self.current["preset"] = number
+        self.state = State.IN_PRESET
+
+    def _do_preset(self) -> None:
+        if self.keyword in ("text", "$$text"):
+            text = " ".join(self.args)
+            self.data.presets[self.current["preset"]]["text"] = text
+        elif self.keyword == "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                level = self._get_level(self.args[index + 1])
+                self.data.presets[self.current["preset"]]["channels"][channel] = level
+
+    def _new_group(self) -> None:
+        group_number = float(self.args[0])
+        self.data.groups[group_number] = {"text": "", "channels": {}}
+        self.current["group"] = group_number
+        self.state = State.IN_GROUP
+
+    def _do_group(self) -> None:
+        if self.keyword in ("text", "$$text", "$$presettext"):
+            text = " ".join(self.args)
+            self.data.groups[self.current["group"]]["text"] = text
+        elif self.keyword == "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                level = self._get_level(self.args[index + 1])
+                self.data.groups[self.current["group"]]["channels"][channel] = level
+
     def _get_level(self, level: str) -> int:
         if level[0] == "h":
             return int(level[1:], 16)
@@ -258,27 +326,19 @@ class AsciiParser(ReadFile):
     def _set_state(self) -> None:
         if self.state is State.START and self.keyword in self.tokens["basic"]:
             self.state = State.NO_PRIMARY
-        elif (self.state
-              in (State.START, State.NO_PRIMARY, State.IN_CUE, State.IN_MPRIMARY)
-              and self.keyword == "$sequence"):
+        elif self.keyword in ("$sequence", "$specialfunction"):
             self.state = State.NEW_MPRIMARY
-        elif self.state in (
-                State.START,
-                State.NO_PRIMARY,
-                State.IN_CUE,
-                State.IN_MPRIMARY,
-        ) and self.keyword in ("cue", "$cue"):
+        elif self.keyword in ("cue", "$cue"):
             self.state = State.NEW_CUE
-        elif self.state in (
-                State.START,
-                State.NO_PRIMARY,
-                State.IN_CUE,
-                State.IN_MPRIMARY,
-        ) and self.keyword in ("group", "$group"):
+        elif self.keyword == "$group" or (self.keyword == "group"
+                                          and not self._is_console("avab", "congo")):
             self.state = State.NEW_GROUP
-        elif (self.state
-              in (State.START, State.NO_PRIMARY, State.IN_CUE, State.IN_MPRIMARY)
-              and self.keyword == "sub"):
+        elif (self.keyword == "$preset" and
+              (self._is_console("nicobats", "dlight") or self._is_console(
+                  "avab", "vlc"))) or (self.keyword == "group"
+                                       and self.is_console("avab", "congo")):
+            self.state = State.NEW_PRESET
+        elif self.keyword == "sub":
             self.state = State.NEW_SUB
         elif (self.state in (State.START, State.NO_PRIMARY)
               and self.keyword in self.tokens["cue"]):

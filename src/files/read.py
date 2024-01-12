@@ -42,7 +42,13 @@ class ReadFile:
                 break
 
             if byte == 10 or byte == 13 and line:
-                line = str(from_bytes(bytes_line).best()).strip()
+                line = ""
+                charset_match = from_bytes(bytes_line).best()
+                if charset_match:
+                    if charset_match.language == "Unknown":
+                        line = bytes_line.decode("utf-8").strip()
+                    else:
+                        line = str(from_bytes(bytes_line).best()).strip()
                 if line:
                     loop = self.do_parse(line)
                     if not loop:
