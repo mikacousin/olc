@@ -48,6 +48,7 @@ class ImportFile:
     def parse(self) -> None:
         """Start reading file"""
         self.parser.parse()
+        self.data.clean()
 
     def select_data(self) -> None:
         """Select data to import"""

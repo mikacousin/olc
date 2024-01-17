@@ -34,6 +34,16 @@ class ParsedData:
         self.independents = {}
         self.presets = {}
 
+    def clean(self):
+        """Remove useless data"""
+        # Remove Sequences without cue
+        keys = []
+        for sequence, values in self.sequences.items():
+            if not values.get("cues"):
+                keys.append(sequence)
+        for key in keys:
+            self.sequences.pop(key)
+
     def import_patch(self) -> None:
         """Import data patch"""
         for channel, item in self.patch.items():
