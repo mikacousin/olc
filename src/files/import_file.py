@@ -14,11 +14,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gio, Gtk
 from olc.cue import Cue
-from olc.define import App
+from olc.define import MAX_FADER_PAGE, App
 from olc.files.ascii.parser import AsciiParser
 from olc.files.import_dialog import Action, DialogData
 from olc.files.parsed_data import ParsedData
 from olc.independent import Independents
+from olc.master import Master
 from olc.step import Step
 
 
@@ -39,7 +40,8 @@ class ImportFile:
             "patch": Action.REPLACE,
             "sequences": {},
             "groups": Action.REPLACE,
-            "independents": Action.REPLACE
+            "independents": Action.REPLACE,
+            "faders": Action.REPLACE
         }
 
         if self.file_type == "ascii":
@@ -51,7 +53,7 @@ class ImportFile:
 
     def parse(self) -> None:
         """Start reading file"""
-        self.parser.parse()
+        self.parser.read()
         self.data.clean()
 
     def select_data(self) -> None:
@@ -68,6 +70,7 @@ class ImportFile:
         self._do_import_groups()
         self._do_import_independents()
         self._do_import_presets()
+        self._do_import_faders()
         self._update_ui()
 
     def _do_import_patch(self) -> None:
@@ -84,6 +87,16 @@ class ImportFile:
         if self.actions["groups"] is Action.REPLACE:
             del App().groups[:]
         self.data.import_groups()
+
+    def _do_import_faders(self) -> None:
+        if self.actions["faders"] is Action.IGNORE:
+            return
+        if self.actions["faders"] is Action.REPLACE:
+            del App().masters[:]
+            for page in range(MAX_FADER_PAGE):
+                for i in range(10):
+                    App().masters.append(Master(page + 1, i + 1, 0, 0))
+        self.data.import_faders()
 
     def _do_import_independents(self) -> None:
         if self.actions["independents"] is Action.IGNORE:

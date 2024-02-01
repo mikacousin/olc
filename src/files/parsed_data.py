@@ -17,6 +17,7 @@ from olc.curve import LimitCurve
 from olc.define import App
 from olc.files.import_dialog import Action
 from olc.group import Group
+from olc.master import Master
 from olc.sequence import Sequence
 from olc.step import Step
 
@@ -28,11 +29,13 @@ class ParsedData:
     sequence: dict
 
     def __init__(self):
+        self.console = {"console": "", "manufacturer": ""}
         self.patch = {}
         self.sequences = {1: {"text": "", "mode": "normal", "steps": [], "cues": {}}}
         self.groups = {}
         self.independents = {}
         self.presets = {}
+        self.faders = {}
 
     def clean(self):
         """Remove useless data"""
@@ -74,6 +77,16 @@ class ParsedData:
             else:
                 # Create new group
                 App().groups.append(Group(group_number, channels, text))
+
+    def import_faders(self) -> None:
+        """Import faders data"""
+        for fader, values in self.faders.items():
+            page = values.get("page")
+            number = values.get("number")
+            fader_type = values.get("type")
+            value = values.get("value")
+            if number <= 10:
+                App().masters[fader] = Master(page, number, fader_type, value)
 
     def import_independents(self) -> None:
         """Import independents data"""

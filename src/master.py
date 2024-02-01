@@ -15,6 +15,7 @@
 import array
 import threading
 import time
+from enum import IntEnum
 
 from gi.repository import GLib
 from olc.define import MAX_CHANNELS, App
@@ -34,6 +35,17 @@ def update_channel_display(channel: int) -> None:
         channel,
         seq_next_level,
     )
+
+
+class FaderType(IntEnum):
+    """Fader types"""
+
+    NONE = 0
+    PRESET = 1
+    CHANNELS = 2
+    SEQUENCE = 3
+    GROUP = 13
+    GM = 99
 
 
 class Master:
@@ -68,29 +80,29 @@ class Master:
         self.old_value = 0
         self.channels = set()
 
-        if self.content_type == 0:
+        if self.content_type == FaderType.NONE:
             pass
-        elif self.content_type == 1:
+        elif self.content_type == FaderType.PRESET:
             self.content_value = float(content_value)
             if cue := next(mem for mem in App().memories
                            if mem.memory == self.content_value):
                 self.text = cue.text
-        elif self.content_type == 2:
+        elif self.content_type == FaderType.CHANNELS:
             self.text += "Ch"
             self.content_value = content_value
             for channel in content_value:
                 self.text += f" {channel}"
-        elif self.content_type == 3:
+        elif self.content_type == FaderType.SEQUENCE:
             self.content_value = float(content_value)
             if chaser := next(chsr for chsr in App().chasers
                               if chsr.index == self.content_value):
                 self.text = chaser.text
-        elif self.content_type == 13:
+        elif self.content_type == FaderType.GROUP:
             self.content_value = float(content_value)
             if group := next(grp for grp in App().groups
                              if grp.index == self.content_value):
                 self.text = group.text
-        elif self.content_type == 99:
+        elif self.content_type == FaderType.GM:
             self.text = "GM"
         else:
             print("Master Type : Unknown")
@@ -99,19 +111,19 @@ class Master:
     def update_channels(self) -> None:
         """Update channels of master"""
         self.channels.clear()
-        if self.content_type == 1:
+        if self.content_type == FaderType.PRESET:
             if cue := next(mem for mem in App().memories
                            if mem.memory == self.content_value):
                 for channel in cue.channels:
                     self.channels.add(channel)
-        elif self.content_type == 2:
+        elif self.content_type == FaderType.CHANNELS:
             for channel in self.content_value:
                 self.channels.add(channel)
-        elif self.content_type == 3:
+        elif self.content_type == FaderType.SEQUENCE:
             if chaser := next(chs for chs in App().chasers
                               if chs.index == self.content_value):
                 self.channels = chaser.channels
-        elif self.content_type == 13:
+        elif self.content_type == FaderType.GROUP:
             if group := next(grp for grp in App().groups
                              if grp.index == self.content_value):
                 for channel in group.channels:
@@ -124,8 +136,8 @@ class Master:
             content_type: Content type
         """
         self.content_type = content_type
-        self.content_value = {} if content_type == 2 else -1
-        if self.content_type == 99:
+        self.content_value = {} if content_type == FaderType.CHANNELS else -1
+        if self.content_type == FaderType.GM:
             self.text = "GM"
             self.value = round(App().backend.dmx.grand_master.get_level() * 255)
         else:
@@ -140,17 +152,17 @@ class Master:
         """
         self.content_value = value
         self.text = ""
-        if self.content_type == 1:
+        if self.content_type == FaderType.PRESET:
             for cue in App().memories:
                 if cue.memory == value:
                     self.text = cue.text
                     break
-        elif self.content_type == 13:
+        elif self.content_type == FaderType.GROUP:
             for grp in App().groups:
                 if grp.index == value:
                     self.text = grp.text
                     break
-        elif self.content_type == 3:
+        elif self.content_type == FaderType.SEQUENCE:
             for chaser in App().chasers:
                 if chaser.index == value:
                     self.text = chaser.text
@@ -193,22 +205,22 @@ class Master:
     def level_changed(self):
         """Master level has changed"""
         # Type : None
-        if self.content_type == 0:
+        if self.content_type == FaderType.NONE:
             return
         # Type : Preset
-        if self.content_type == 1:
+        if self.content_type == FaderType.PRESET:
             self._level_changed_preset()
         # Type: Channels
-        elif self.content_type == 2:
+        elif self.content_type == FaderType.CHANNELS:
             self._level_changed_channels()
         # Type: Group
-        elif self.content_type == 13:
+        elif self.content_type == FaderType.GROUP:
             self._level_changed_group()
         # Type: Chaser
-        elif self.content_type == 3:
+        elif self.content_type == FaderType.SEQUENCE:
             self._level_changed_chaser()
         # Type: GM
-        elif self.content_type == 99:
+        elif self.content_type == FaderType.GM:
             self._level_changed_gm()
 
     def _level_changed_gm(self):

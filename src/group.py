@@ -12,12 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict
 from dataclasses import dataclass
+from typing import Any, Dict
 
 from gi.repository import Gdk, Gtk
 from olc.define import App, is_non_nul_float
-from olc.widgets.channels_view import ChannelsView, VIEW_MODES
+from olc.master import FaderType
+from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.widgets.group import GroupWidget
 
 
@@ -386,7 +387,7 @@ class GroupTab(Gtk.Paned):
             flowboxchild = selected[0]
             index = flowboxchild.get_index()
             for master in App().masters:
-                if (master.content_type == 13
+                if (master.content_type == FaderType.GROUP
                         and master.content_value == App().groups[index].index):
                     master.set_level(master.value)
 
@@ -470,10 +471,10 @@ class GroupTab(Gtk.Paned):
         self.channels_view.update()
         # Update masters
         for master in App().masters:
-            if (master.content_type == 13
+            if (master.content_type == FaderType.GROUP
                     and master.content_value == App().groups[index].index):
                 master.set_level(0)
-                master.content_type = 0
+                master.content_type = FaderType.NONE
                 master.content_value = None
                 master.text = ""
                 if App().tabs.tabs["masters"]:

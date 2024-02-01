@@ -56,6 +56,8 @@ class DialogData(Gtk.Dialog):
             self._groups(actions, box)
         if data.independents:
             self._independents(actions, box)
+        if data.faders:
+            self._faders(actions, box)
         self.show_all()
 
     def _patch(self, actions: list, box: Gtk.Box) -> None:
@@ -109,6 +111,19 @@ class DialogData(Gtk.Dialog):
         hbox.add(combo)
         box.add(hbox)
 
+    def _faders(self, actions: list, box: Gtk.Box) -> None:
+        box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        label = Gtk.Label("Masters:")
+        combo = Gtk.ComboBoxText()
+        combo.connect("changed", self._on_faders_changed)
+        for action in actions:
+            combo.append_text(action)
+        combo.set_active(0)
+        hbox.pack_start(label, True, True, 0)
+        hbox.add(combo)
+        box.add(hbox)
+
     def _independents(self, actions: list, box: Gtk.Box) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -148,6 +163,15 @@ class DialogData(Gtk.Dialog):
             self.actions["groups"] = Action.MERGE
         elif active == 2:
             self.actions["groups"] = Action.IGNORE
+
+    def _on_faders_changed(self, widget):
+        active = widget.get_active()
+        if active == 0:
+            self.actions["faders"] = Action.REPLACE
+        elif active == 1:
+            self.actions["faders"] = Action.MERGE
+        elif active == 2:
+            self.actions["faders"] = Action.IGNORE
 
     def _on_independents_changed(self, widget):
         active = widget.get_active()

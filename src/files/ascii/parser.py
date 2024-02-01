@@ -15,8 +15,9 @@
 import re
 from enum import Enum, auto
 
-from olc.define import (MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time)
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
 from olc.files.read import ReadFile
+from olc.master import FaderType
 
 
 class State(Enum):
@@ -29,12 +30,14 @@ class State(Enum):
     NEW_SUB = auto()
     NEW_MPRIMARY = auto()
     NEW_PRESET = auto()
+    NEW_FADER = auto()
     IN_CUE = auto()
     IN_GROUP = auto()
     IN_SUB = auto()
     IN_SEQUENCE = auto()
     IN_INDEPENDENT = auto()
     IN_PRESET = auto()
+    IN_FADER = auto()
 
 
 class AsciiParser(ReadFile):
@@ -44,7 +47,6 @@ class AsciiParser(ReadFile):
     state: State
     keyword: str
     args: list[str]
-    console: dict[str, str]
     current: dict
 
     def __init__(self, file, data, default_time):
@@ -76,7 +78,6 @@ class AsciiParser(ReadFile):
         self.state = State.START
         self.keyword = ""
         self.args = []
-        self.console = {"console": "", "manufacturer": ""}
         self.current = {
             "cue": 0.0,
             "channel_time": (0, 0),
@@ -84,9 +85,19 @@ class AsciiParser(ReadFile):
             "group": 0.0,
             "independent": 0,
             "preset": 0.0,
+            "fader": 0
         }
 
-    def do_parse(self, line: str) -> bool:
+    def parse(self) -> None:
+        """Parse file line by line"""
+        for line in self.contents.splitlines():
+            line = line.strip()
+            if line:
+                loop = self._do_parse(line)
+                if not loop:
+                    break
+
+    def _do_parse(self, line: str) -> bool:
         """Parse line
 
         Args:
@@ -144,22 +155,27 @@ class AsciiParser(ReadFile):
             self._new_preset()
         elif self.state is State.IN_PRESET:
             self._do_preset()
+        elif self.state is State.NEW_FADER:
+            self._new_fader()
+        elif self.state is State.IN_FADER:
+            self._do_fader()
 
     def _do_basic(self) -> None:
         if self.keyword == "ident":
             if self.args[0] != "3:0":
                 print("Unexpected protocol version")
         elif self.keyword == "manufacturer":
-            self.console["manufacturer"] = self.args[0]
+            self.data.console["manufacturer"] = self.args[0]
         elif self.keyword == "console":
-            self.console["console"] = self.args[0]
+            self.data.console["console"] = self.args[0]
         if self.keyword == "clear":
-            arg = self.args[0]
-            print(f"TODO: Clear {arg}")
+            # Lets user choose
+            pass
         elif self.keyword == "patch":
             self._do_patch()
         elif self.keyword == "set":
-            print(f"TODO: Set {self.args}")
+            # Not implemented
+            pass
 
     def _do_patch(self) -> None:
         # self.args[0] is Page Patch, not used
@@ -190,12 +206,16 @@ class AsciiParser(ReadFile):
         if self.keyword == "$sequence":
             mode = "normal"
             seq_number = int(self.args[0])
+            if self._is_console("nicobats", "dlight") and seq_number == 0:
+                # DLight MainPlayback is number 0, need to be number 1
+                seq_number = 1
             self.data.sequences[seq_number] = {}
             if self._is_console("avab", "congo"):
                 if int(self.args[1]) == 1:
                     mode = "chaser"
             elif seq_number > 1:
                 mode = "chaser"
+            self.data.sequences[seq_number]["text"] = ""
             self.data.sequences[seq_number]["mode"] = mode
             self.data.sequences[seq_number]["steps"] = []
             self.data.sequences[seq_number]["cues"] = {}
@@ -317,6 +337,40 @@ class AsciiParser(ReadFile):
                 level = self._get_level(self.args[index + 1])
                 self.data.groups[self.current["group"]]["channels"][channel] = level
 
+    def _new_fader(self) -> None:
+        page = int(self.args[0])
+        number = int(self.args[1])
+        fader_type = int(self.args[2])
+        value = int(self.args[3])
+        if self._is_console("nicobats", "dlight") and fader_type == FaderType.CHANNELS:
+            # DLight use channels type for groups
+            fader_type = FaderType.GROUP
+        index = number - 1 + ((page - 1) * 10)
+        if fader_type == FaderType.CHANNELS:
+            self.data.faders[index] = {
+                "page": page,
+                "number": number,
+                "type": fader_type,
+                "value": {}
+            }
+            self.current["fader"] = index
+            self.state = State.IN_FADER
+        else:
+            self.data.faders[index] = {
+                "page": page,
+                "number": number,
+                "type": fader_type,
+                "value": value
+            }
+            self.state = State.NO_PRIMARY
+
+    def _do_fader(self) -> None:
+        if self.keyword in "chan":
+            for index in range(0, len(self.args), 2):
+                channel = int(self.args[index])
+                level = self._get_level(self.args[index + 1])
+                self.data.faders[self.current["fader"]]["value"][channel] = level
+
     def _get_level(self, level: str) -> int:
         if level[0] == "h":
             return int(level[1:], 16)
@@ -335,8 +389,10 @@ class AsciiParser(ReadFile):
         elif (self.keyword == "$preset" and
               (self._is_console("nicobats", "dlight") or self._is_console(
                   "avab", "vlc"))) or (self.keyword == "group"
-                                       and self.is_console("avab", "congo")):
+                                       and self._is_console("avab", "congo")):
             self.state = State.NEW_PRESET
+        elif self.keyword == "$mastpageitem":
+            self.state = State.NEW_FADER
         elif self.keyword == "sub":
             self.state = State.NEW_SUB
         elif (self.state in (State.START, State.NO_PRIMARY)
@@ -345,7 +401,7 @@ class AsciiParser(ReadFile):
             self.state = State.NO_PRIMARY
 
     def _is_console(self, manufacturer: str, console: str) -> bool:
-        if (manufacturer == self.console["manufacturer"]
-                and console == self.console["console"]):
+        if (manufacturer == self.data.console["manufacturer"]
+                and console == self.data.console["console"]):
             return True
         return False

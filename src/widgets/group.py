@@ -15,6 +15,8 @@
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
+from olc.master import FaderType
+
 from .common import rounded_rectangle_fill
 
 
@@ -60,7 +62,7 @@ class GroupWidget(Gtk.Widget):
         App().groups[index].text = text
         # Update Master text
         for master in App().masters:
-            if (master.content_type == 13
+            if (master.content_type == FaderType.GROUP
                     and master.content_value == App().groups[index].index):
                 master.text = text
                 # Update Virtual Console
