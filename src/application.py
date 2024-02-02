@@ -451,7 +451,7 @@ class Application(Gtk.Application):
 
     def _masters(self, _action, _parameter):
         """Create Masters Tab"""
-        self.tabs.open("masters", MastersTab, "Masters")
+        self.tabs.open("masters", MastersTab, "Masters", self.lightshow.faders)
 
     def _independents(self, _action, _parameter):
         """Create Independents Tab"""
