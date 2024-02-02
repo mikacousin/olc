@@ -130,20 +130,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Grand Master and Output grid
         self.output_pad = Gtk.Grid()
-        adjustment = Gtk.Adjustment(round(App().backend.dmx.grand_master.value * 255),
-                                    0, 255, 1, 10, 0)
-        self.scale_grand_master = FaderWidget(text="gm",
-                                              orientation=Gtk.Orientation.VERTICAL,
-                                              adjustment=adjustment)
-        self.scale_grand_master.value = App().backend.dmx.grand_master
-        self.scale_grand_master.connect("clicked", self._scale_clicked)
-        self.scale_grand_master.connect("value-changed", self.grand_master_moved)
-        self.scale_grand_master.set_draw_value(False)
-        self.scale_grand_master.set_vexpand(True)
-        self.scale_grand_master.set_inverted(True)
         self.output = ButtonWidget("Output", "output")
         self.output.connect("clicked", self._on_output)
-        self.output_pad.attach(self.scale_grand_master, 0, 0, 1, 4)
         self.label = Gtk.Label("")
         self.output_pad.attach(self.label, 1, 0, 1, 1)
         self.output_pad.attach(self.output, 2, 0, 1, 1)
