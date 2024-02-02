@@ -119,31 +119,33 @@ class MastersTab(Gtk.Paned):
         for i in range(10):
             index = i + (page * 10)
             # Type: None
-            if App().masters[index].content_type == FaderType.NONE:
+            if App().lightshow.faders[index].content_type == FaderType.NONE:
                 self.liststores[page].append([index + 1, "", "", ""])
             # Type: Preset
-            elif App().masters[index].content_type == FaderType.PRESET:
-                content_value = str(App().masters[index].content_value)
+            elif App().lightshow.faders[index].content_type == FaderType.PRESET:
+                content_value = str(App().lightshow.faders[index].content_value)
                 self.liststores[page].append([index + 1, "Preset", content_value, ""])
             # Type: Group
-            elif App().masters[index].content_type == FaderType.GROUP:
-                content_value = (str(int(App().masters[index].content_value))
-                                 if App().masters[index].content_value.is_integer() else
-                                 str(App().masters[index].content_value))
+            elif App().lightshow.faders[index].content_type == FaderType.GROUP:
+                content_value = (
+                    str(int(App().lightshow.faders[index].content_value))
+                    if App().lightshow.faders[index].content_value.is_integer() else
+                    str(App().lightshow.faders[index].content_value))
                 self.liststores[page].append(
                     [index + 1, "Group", content_value, "Exclusif"])
             # Type: Channels
-            elif App().masters[index].content_type == FaderType.CHANNELS:
-                nb_chan = len(App().masters[index].content_value)
+            elif App().lightshow.faders[index].content_type == FaderType.CHANNELS:
+                nb_chan = len(App().lightshow.faders[index].content_value)
                 self.liststores[page].append([index + 1, "Channels", str(nb_chan), ""])
             # Type: Sequence
-            elif App().masters[index].content_type == FaderType.SEQUENCE:
-                content_value = (str(int(App().masters[index].content_value))
-                                 if App().masters[index].content_value.is_integer() else
-                                 str(App().masters[index].content_value))
+            elif App().lightshow.faders[index].content_type == FaderType.SEQUENCE:
+                content_value = (
+                    str(int(App().lightshow.faders[index].content_value))
+                    if App().lightshow.faders[index].content_value.is_integer() else
+                    str(App().lightshow.faders[index].content_value))
                 self.liststores[page].append([index + 1, "Sequence", content_value, ""])
             # Type: GM
-            elif App().masters[index].content_type == FaderType.GM:
+            elif App().lightshow.faders[index].content_type == FaderType.GM:
                 self.liststores[page].append([index + 1, "GM", "", ""])
             else:
                 self.liststores[page].append([index + 1, "Unknown", "", ""])
@@ -179,8 +181,8 @@ class MastersTab(Gtk.Paned):
         # Update content type
         idx = int(path)
         index = idx + (page * 10)
-        if App().masters[index].content_type != content_type:
-            App().masters[index].set_content_type(content_type)
+        if App().lightshow.faders[index].content_type != content_type:
+            App().lightshow.faders[index].set_content_type(content_type)
             # Update user interface
             self.channels_view.update()
             self.liststores[page][path][2] = ""
@@ -191,7 +193,8 @@ class MastersTab(Gtk.Paned):
                     App().virtual_console.flashes[idx].label = "GM"
                 else:
                     App().virtual_console.flashes[idx].label = ""
-                App().virtual_console.masters[idx].set_value(App().masters[index].value)
+                App().virtual_console.masters[idx].set_value(
+                    App().lightshow.faders[index].value)
                 App().virtual_console.flashes[idx].queue_draw()
             # Update MIDI
             App().midi.messages.lcd.show_masters()
@@ -227,16 +230,17 @@ class MastersTab(Gtk.Paned):
             index = int(path) + (page * 10)
             content_value = float(text)
 
-            App().masters[index].set_content_value(content_value)
+            App().lightshow.faders[index].set_content_value(content_value)
 
-            if App().masters[index].content_type == FaderType.PRESET:
+            if App().lightshow.faders[index].content_type == FaderType.PRESET:
                 if self.liststores[page][path][2] != "":
                     self.liststores[page][path][2] = str(
                         float(self.liststores[page][path][2]))
             self.channels_view.update()
             # Update Virtual Console
             if App().virtual_console:
-                App().virtual_console.flashes[index].label = App().masters[index].text
+                App().virtual_console.flashes[index].label = App(
+                ).lightshow.faders[index].text
                 App().virtual_console.flashes[index].queue_draw()
             # Update MIDI
             App().midi.messages.lcd.show_masters()
@@ -286,7 +290,7 @@ class MastersTab(Gtk.Paned):
         path, _focus_column = treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-            if App().masters[row].content_type not in (
+            if App().lightshow.faders[row].content_type not in (
                     FaderType.NONE, FaderType.SEQUENCE) or keyname in "f":
                 self.channels_view.on_key_press(keyname)
         elif keyname in "f":
@@ -337,19 +341,19 @@ class MastersTab(Gtk.Paned):
             page = int(self.stack.get_visible_child_name())
             index = (page * 10) + row
             # Type : None
-            if App().masters[index].content_type == FaderType.NONE:
+            if App().lightshow.faders[index].content_type == FaderType.NONE:
                 return False
             # Type : Preset
-            if App().masters[index].content_type == FaderType.PRESET:
+            if App().lightshow.faders[index].content_type == FaderType.PRESET:
                 found = False
                 mem = None
-                for mem in App().memories:
-                    if mem.memory == App().masters[index].content_value:
+                for mem in App().lightshow.cues:
+                    if mem.memory == App().lightshow.faders[index].content_value:
                         found = True
                         break
                 if found:
-                    master_level = App().masters[index].value
-                    App().masters[index].set_level(0)
+                    master_level = App().lightshow.faders[index].value
+                    App().lightshow.faders[index].set_level(0)
                     channels = mem.channels
                     for chan in range(1, MAX_CHANNELS + 1):
                         channel_widget = self.channels_view.get_channel_widget(chan)
@@ -357,12 +361,12 @@ class MastersTab(Gtk.Paned):
                     # Update Preset Tab if open
                     if App().tabs.tabs["memories"]:
                         App().tabs.tabs["memories"].channels_view.update()
-                    App().masters[index].set_level(master_level)
+                    App().lightshow.faders[index].set_level(master_level)
             # Type : Channels
-            if App().masters[index].content_type == FaderType.CHANNELS:
-                master_level = App().masters[index].value
-                App().masters[index].set_level(0)
-                channels = App().masters[index].content_value
+            if App().lightshow.faders[index].content_type == FaderType.CHANNELS:
+                master_level = App().lightshow.faders[index].value
+                App().lightshow.faders[index].set_level(0)
+                channels = App().lightshow.faders[index].content_value
                 channels.clear()
                 nb_chan = 0
                 text = "Ch"
@@ -372,20 +376,21 @@ class MastersTab(Gtk.Paned):
                         channels[chan + 1] = channel_widget.level
                         nb_chan += 1
                         text += f" {chan + 1}"
-                App().masters[index].text = text
-                App().masters[index].set_level(master_level)
+                App().lightshow.faders[index].text = text
+                App().lightshow.faders[index].set_level(master_level)
                 # Update Display
                 self.liststores[page][path][2] = str(nb_chan)
                 self.channels_view.update()
                 # Update Virtual Console
                 if App().virtual_console:
-                    App().virtual_console.flashes[row].label = App().masters[index].text
+                    App().virtual_console.flashes[row].label = App(
+                    ).lightshow.faders[index].text
                     App().virtual_console.flashes[row].queue_draw()
-            elif App().masters[index].content_type == FaderType.GROUP:
+            elif App().lightshow.faders[index].content_type == FaderType.GROUP:
                 found = False
                 grp = None
-                for grp in App().groups:
-                    if grp.index == App().masters[index].content_value:
+                for grp in App().lightshow.groups:
+                    if grp.index == App().lightshow.faders[index].content_value:
                         found = True
                         break
                 if found:
@@ -395,7 +400,7 @@ class MastersTab(Gtk.Paned):
                     # Update Group Tab if open
                     if App().tabs.tabs["groups"]:
                         App().tabs.tabs["groups"].channels_view.update()
-            App().masters[index].update_channels()
+            App().lightshow.faders[index].update_channels()
             App().window.commandline.set_string("")
             return True
         return False
@@ -455,9 +460,9 @@ class MasterChannelsView(ChannelsView):
             page = int(App().tabs.tabs["masters"].stack.get_visible_child_name())
             index = row + (page * 10)
             # Master type is None, Sequence or GM: No channels to display
-            if App().masters[index].content_type in (FaderType.NONE,
-                                                     FaderType.SEQUENCE,
-                                                     FaderType.GM):
+            if App().lightshow.faders[index].content_type in (FaderType.NONE,
+                                                              FaderType.SEQUENCE,
+                                                              FaderType.GM):
                 child.set_visible(False)
                 return False
             if self.view_mode == VIEW_MODES["Active"]:
@@ -478,13 +483,13 @@ class MasterChannelsView(ChannelsView):
             True or False
         """
         # Master type is Preset
-        if App().masters[index].content_type == FaderType.PRESET:
+        if App().lightshow.faders[index].content_type == FaderType.PRESET:
             return self.__filter_active_preset(index, child)
         # Master type is Channels
-        if App().masters[index].content_type == FaderType.CHANNELS:
+        if App().lightshow.faders[index].content_type == FaderType.CHANNELS:
             return self.__filter_active_channels(index, child)
         # Master type is Group
-        if App().masters[index].content_type == FaderType.GROUP:
+        if App().lightshow.faders[index].content_type == FaderType.GROUP:
             return self.__filter_active_group(index, child)
         child.set_visible(False)
         return False
@@ -501,8 +506,8 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         mem = None
-        preset = App().masters[index].content_value
-        for mem in App().memories:
+        preset = App().lightshow.faders[index].content_value
+        for mem in App().lightshow.cues:
             if mem.memory == preset:
                 found = True
                 break
@@ -522,7 +527,7 @@ class MasterChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        channels = App().masters[index].content_value
+        channels = App().lightshow.faders[index].content_value
         return self.__active_channels(channels, child)
 
     def __filter_active_group(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -537,8 +542,8 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         grp = None
-        group = App().masters[index].content_value
-        for grp in App().groups:
+        group = App().lightshow.faders[index].content_value
+        for grp in App().lightshow.groups:
             if grp.index == group:
                 found = True
                 break
@@ -593,15 +598,15 @@ class MasterChannelsView(ChannelsView):
         """
         # Return False if not patched
         channel = child.get_index() + 1
-        if not App().backend.patch.is_patched(channel):
+        if not App().lightshow.patch.is_patched(channel):
             child.set_visible(False)
             return False
         # Return all other channels
-        if App().masters[index].content_type == FaderType.PRESET:
+        if App().lightshow.faders[index].content_type == FaderType.PRESET:
             return self.__filter_all_preset(index, child)
-        if App().masters[index].content_type == FaderType.CHANNELS:
+        if App().lightshow.faders[index].content_type == FaderType.CHANNELS:
             return self.__filter_all_channels(index, child)
-        if App().masters[index].content_type == FaderType.GROUP:
+        if App().lightshow.faders[index].content_type == FaderType.GROUP:
             return self.__filter_all_group(index, child)
         channel_widget = child.get_child()
         channel_widget.level = 0
@@ -620,13 +625,13 @@ class MasterChannelsView(ChannelsView):
             True
         """
         # Master type is Preset
-        if App().masters[index].content_type == FaderType.PRESET:
+        if App().lightshow.faders[index].content_type == FaderType.PRESET:
             return self.__filter_all_preset(index, child)
         # Master type is Channels
-        if App().masters[index].content_type == FaderType.CHANNELS:
+        if App().lightshow.faders[index].content_type == FaderType.CHANNELS:
             return self.__filter_all_channels(index, child)
         # Master type is Group
-        if App().masters[index].content_type == FaderType.GROUP:
+        if App().lightshow.faders[index].content_type == FaderType.GROUP:
             return self.__filter_all_group(index, child)
         channel_widget = child.get_child()
         channel_widget.level = 0
@@ -646,8 +651,8 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         mem = None
-        preset = App().masters[index].content_value
-        for mem in App().memories:
+        preset = App().lightshow.faders[index].content_value
+        for mem in App().lightshow.cues:
             if mem.memory == preset:
                 found = True
                 break
@@ -670,7 +675,7 @@ class MasterChannelsView(ChannelsView):
         Returns:
             True
         """
-        channels = App().masters[index].content_value
+        channels = App().lightshow.faders[index].content_value
         return self.__all_channels(channels, child)
 
     def __filter_all_group(self, index: int, child: Gtk.FlowBoxChild) -> bool:
@@ -685,8 +690,8 @@ class MasterChannelsView(ChannelsView):
         """
         found = False
         grp = None
-        group = App().masters[index].content_value
-        for grp in App().groups:
+        group = App().lightshow.faders[index].content_value
+        for grp in App().lightshow.groups:
             if grp.index == group:
                 found = True
                 break

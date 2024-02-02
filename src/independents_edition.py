@@ -16,7 +16,7 @@ import array
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
-from olc.widgets.channels_view import ChannelsView, VIEW_MODES
+from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 
 class IndependentsTab(Gtk.Paned):
@@ -34,7 +34,7 @@ class IndependentsTab(Gtk.Paned):
 
         # List of independents
         self.liststore = Gtk.ListStore(int, str, str)
-        for inde in App().independents.independents:
+        for inde in App().lightshow.independents.independents:
             self.liststore.append([inde.number, inde.inde_type, inde.text])
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
@@ -61,7 +61,7 @@ class IndependentsTab(Gtk.Paned):
     def refresh(self) -> None:
         """Refresh display"""
         self.liststore.clear()
-        for inde in App().independents.independents:
+        for inde in App().lightshow.independents.independents:
             self.liststore.append([inde.number, inde.inde_type, inde.text])
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
@@ -79,7 +79,7 @@ class IndependentsTab(Gtk.Paned):
         """
         self.liststore[path][2] = text
         number = self.liststore[path][0]
-        App().independents.independents[number - 1].text = text
+        App().lightshow.independents.independents[number - 1].text = text
 
     def on_key_press_event(self, _widget, event):
         """Keyboard events
@@ -156,9 +156,9 @@ class IndependentsTab(Gtk.Paned):
             for channel in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(channel + 1)
                 channels[channel + 1] = channel_widget.level
-            App().independents.independents[number - 1].set_levels(channels)
-            App().independents.update_channels()
-            App().independents.independents[number - 1].update_dmx()
+            App().lightshow.independents.independents[number - 1].set_levels(channels)
+            App().lightshow.independents.update_channels()
+            App().lightshow.independents.independents[number - 1].update_dmx()
             App().window.live_view.channels_view.flowbox.queue_draw()
             self.channels_view.update()
 
@@ -210,7 +210,8 @@ class IndeChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().independents.independents or not App().tabs.tabs["indes"]:
+        if not App().lightshow.independents.independents or not App(
+        ).tabs.tabs["indes"]:
             child.set_visible(False)
             return False
         # Find selected independent
@@ -238,7 +239,7 @@ class IndeChannelsView(ChannelsView):
         channel_index = child.get_index()
         channel_widget = child.get_child()
         user_channels = App().tabs.tabs["indes"].user_channels
-        channels = App().independents.independents[row].levels
+        channels = App().lightshow.independents.independents[row].levels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)
@@ -270,7 +271,7 @@ class IndeChannelsView(ChannelsView):
         """
         # Return all patched channels
         channel = child.get_index() + 1
-        if not App().backend.patch.is_patched(channel):
+        if not App().lightshow.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self._filter_all(row, child)
@@ -288,7 +289,7 @@ class IndeChannelsView(ChannelsView):
         channel_index = child.get_index()
         channel_widget = child.get_child()
         user_channels = App().tabs.tabs["indes"].user_channels
-        channels = App().independents.independents[row].levels
+        channels = App().lightshow.independents.independents[row].levels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)

@@ -13,7 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Dict, List, Optional, Tuple
-from olc.define import App, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
+
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App, is_int
 
 
 class DMXPatch:
@@ -55,7 +56,7 @@ class DMXPatch:
         #             "Channel",
         #             chan_dic[0],
         #             "Curve",
-        #             App().curves.get_curve(chan_dic[1]).name,
+        #             App().lightshow.curves.get_curve(chan_dic[1]).name,
         #         )
 
     def is_patched(self, channel: int) -> bool:
@@ -252,7 +253,7 @@ class PatchByOutputs:
             output, universe = self.get_output_universe(output_index)
             App().window.commandline.set_string(f"{output}.{universe}")
             self.select_output()
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         App().window.commandline.set_string("")
 
     def __for_each_output(self, channel, several) -> None:

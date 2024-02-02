@@ -34,6 +34,7 @@ olc_sources = [
   'group.py',
   'independent.py',
   'independents_edition.py',
+  'lightshow.py',
   'master.py',
   'masters_edition.py',
   'osc.py',

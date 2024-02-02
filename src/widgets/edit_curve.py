@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.curve import SegmentsCurve, InterpolateCurve
+from olc.curve import InterpolateCurve, SegmentsCurve
 from olc.define import App
 
 
@@ -29,7 +29,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         self.width = 1000
         self.height = 300
         self.curve_nb = curve
-        self.curve = App().curves.get_curve(curve)
+        self.curve = App().lightshow.curves.get_curve(curve)
         self.set_size_request(self.width, self.height)
 
         self.offsetx = 0
@@ -62,7 +62,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             idx = self.curve.points.index((x_curve, y_curve))
             App().tabs.tabs["curves"].curve_edition.points[idx].set_active(True)
             App().tabs.tabs["curves"].curve_edition.points[idx].queue_draw()
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 

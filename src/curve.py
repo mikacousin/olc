@@ -367,7 +367,7 @@ class Curves:
             curve_nb: Curve number
         """
         # First, change each output using deleted curve to LinearCurve (0)
-        for value in App().backend.patch.outputs.values():
+        for value in App().lightshow.patch.outputs.values():
             for chan_dic in value.values():
                 if chan_dic[1] == curve_nb:
                     chan_dic[1] = 0

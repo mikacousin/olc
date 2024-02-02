@@ -13,8 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
-from olc.define import App, UNIVERSES
-from olc.widgets.channels_view import ChannelsView, VIEW_MODES
+from olc.define import UNIVERSES, App
+from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 
 class LiveView(Gtk.Notebook):
@@ -43,13 +43,14 @@ class LiveView(Gtk.Notebook):
         channel -= 1
         widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
         level = App().backend.dmx.levels["sequence"][channel]
-        if not App().sequence.on_go and App().backend.dmx.levels["user"][channel] != -1:
+        if not App().lightshow.main_playback.on_go and App(
+        ).backend.dmx.levels["user"][channel] != -1:
             level = App().backend.dmx.levels["user"][channel]
         if App().backend.dmx.levels["masters"][channel] > level:
             level = App().backend.dmx.levels["masters"][channel]
             widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
-        if App().independents.dmx[channel] > level:
-            level = App().independents.dmx[channel]
+        if App().lightshow.independents.dmx[channel] > level:
+            level = App().lightshow.independents.dmx[channel]
             widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
         widget.level = level
         widget.next_level = next_level
@@ -103,10 +104,10 @@ class LiveChannelsView(ChannelsView):
             return visible
 
         if self.view_mode == VIEW_MODES["Patched"]:
-            patched = App().backend.patch.is_patched(channel)
+            patched = App().lightshow.patch.is_patched(channel)
             child.set_visible(patched)
             return patched
-        if not App().backend.patch.is_patched(channel):
+        if not App().lightshow.patch.is_patched(channel):
             channel_widget.level = 0
         child.set_visible(True)
         return True
@@ -121,12 +122,17 @@ class LiveChannelsView(ChannelsView):
         Returns:
             Channel next level (0 - 255)
         """
-        position = App().sequence.position
-        if (App().sequence.last > 1 and position < App().sequence.last - 1
-                and App().sequence.last <= len(App().sequence.steps)):
-            next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
-        elif App().sequence.last:
-            next_level = App().sequence.steps[0].cue.channels.get(channel, 0)
+        position = App().lightshow.main_playback.position
+        if (App().lightshow.main_playback.last > 1
+                and position < App().lightshow.main_playback.last - 1
+                and App().lightshow.main_playback.last <= len(
+                    App().lightshow.main_playback.steps)):
+            next_level = App().lightshow.main_playback.steps[position +
+                                                             1].cue.channels.get(
+                                                                 channel, 0)
+        elif App().lightshow.main_playback.last:
+            next_level = App().lightshow.main_playback.steps[0].cue.channels.get(
+                channel, 0)
         else:
             next_level = channel_widget.level
         return next_level
@@ -139,7 +145,7 @@ class LiveChannelsView(ChannelsView):
             level: DMX level (0 - 255)
         """
         App().backend.dmx.levels["user"][channel - 1] = level
-        App().sequence.update_channels()
+        App().lightshow.main_playback.update_channels()
         App().backend.dmx.set_levels({channel})
         App().window.live_view.update_channel_widget(channel, level)
 
@@ -153,9 +159,9 @@ class LiveChannelsView(ChannelsView):
         level = None
         channels = self.get_selected_channels()
         for channel in channels:
-            if not App().backend.patch.is_patched(channel):
+            if not App().lightshow.patch.is_patched(channel):
                 continue
-            for output in App().backend.patch.channels[channel]:
+            for output in App().lightshow.patch.channels[channel]:
                 out = output[0]
                 univ = output[1]
                 index = UNIVERSES.index(univ)
@@ -165,6 +171,7 @@ class LiveChannelsView(ChannelsView):
                         level + step, 255)
                 elif direction == Gdk.ScrollDirection.DOWN:
                     App().backend.dmx.levels["user"][channel - 1] = max(level - step, 0)
-            next_level = App().sequence.get_next_channel_level(channel, level)
+            next_level = App().lightshow.main_playback.get_next_channel_level(
+                channel, level)
             App().window.live_view.update_channel_widget(channel, next_level)
         App().backend.dmx.set_levels(set(channels))

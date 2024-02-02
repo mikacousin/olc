@@ -52,8 +52,8 @@ class GroupChannelsView(ChannelsView):
         """
         selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
         index = selected_group.get_index()
-        App().groups[index].channels[channel] = level
-        App().ascii.set_modified()
+        App().lightshow.groups[index].channels[channel] = level
+        App().lightshow.set_modified()
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -66,14 +66,14 @@ class GroupChannelsView(ChannelsView):
         selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
         index = selected_group.get_index()
         for channel in channels:
-            level = App().groups[index].channels.get(channel, 0)
+            level = App().lightshow.groups[index].channels.get(channel, 0)
             if direction == Gdk.ScrollDirection.UP:
                 level = min(level + step, 255)
             elif direction == Gdk.ScrollDirection.DOWN:
                 level = max(level - step, 0)
-            App().groups[index].channels[channel] = level
+            App().lightshow.groups[index].channels[channel] = level
         self.update()
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
         """Select channels to display
@@ -91,7 +91,7 @@ class GroupChannelsView(ChannelsView):
         if selected_group:
             group_number = selected_group[0].get_child().number
             group = None
-            for group in App().groups:
+            for group in App().lightshow.groups:
                 if group.index == group_number:
                     break
             if not group:
@@ -140,7 +140,7 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel = child.get_index() + 1
-        if not App().backend.patch.is_patched(channel):
+        if not App().lightshow.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self.__filter_all(group, child)
@@ -199,8 +199,10 @@ class GroupTab(Gtk.Paned):
         self.flowbox.set_activate_on_single_click(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add groups to FlowBox
-        for i, _ in enumerate(App().groups):
-            self.flowbox.add(GroupWidget(App().groups[i].index, App().groups[i].text))
+        for i, _ in enumerate(App().lightshow.groups):
+            self.flowbox.add(
+                GroupWidget(App().lightshow.groups[i].index,
+                            App().lightshow.groups[i].text))
         self.scrolled.add(self.flowbox)
 
     def refresh(self) -> None:
@@ -386,10 +388,10 @@ class GroupTab(Gtk.Paned):
         if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             index = flowboxchild.get_index()
-            for master in App().masters:
-                if (master.content_type == FaderType.GROUP
-                        and master.content_value == App().groups[index].index):
-                    master.set_level(master.value)
+            for fader in App().lightshow.faders:
+                if (fader.content_type == FaderType.GROUP
+                        and fader.content_value == App().lightshow.groups[index].index):
+                    fader.set_level(fader.value)
 
     def _keypress_equal(self) -> None:
         """@ Level"""
@@ -417,21 +419,22 @@ class GroupTab(Gtk.Paned):
         keystring = App().window.commandline.get_string()
         # If no group number, use the next one
         if keystring == "":
-            group_nb = 1.0 if len(App().groups) == 0 else App().groups[-1].index + 1.0
+            group_nb = 1.0 if len(
+                App().lightshow.groups) == 0 else App().lightshow.groups[-1].index + 1.0
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
         else:
             App().window.commandline.set_string("")
             return
 
-        for group in App().groups:
+        for group in App().lightshow.groups:
             if group.index == group_nb:
                 App().window.commandline.set_string("")
                 return
 
         channels: Dict[int, int] = {}
         txt = str(group_nb)
-        App().groups.append(Group(group_nb, channels, txt))
+        App().lightshow.groups.append(Group(group_nb, channels, txt))
         # Insert group widget
         flowbox_children = self.flowbox.get_children()
         i = len(flowbox_children)
@@ -440,8 +443,9 @@ class GroupTab(Gtk.Paned):
             if group_nb < channel_widget.number:
                 i = child.get_index()
                 break
-        self.flowbox.insert(GroupWidget(App().groups[-1].index,
-                                        App().groups[-1].text), i)
+        self.flowbox.insert(
+            GroupWidget(App().lightshow.groups[-1].index,
+                        App().lightshow.groups[-1].text), i)
         flowboxchild = self.flowbox.get_child_at_index(i)
         flowboxchild.show_all()
         self.flowbox.select_child(flowboxchild)
@@ -451,7 +455,7 @@ class GroupTab(Gtk.Paned):
         self.channels_view.update()
 
         App().window.commandline.set_string("")
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def _keypress_Delete(self) -> None:  # pylint: disable=C0103
         """Delete selected group"""
@@ -461,7 +465,7 @@ class GroupTab(Gtk.Paned):
         flowboxchild = selected[0]
         index = flowboxchild.get_index()
         flowboxchild.destroy()
-        if index + 1 == len(App().groups):
+        if index + 1 == len(App().lightshow.groups):
             flowboxchild = self.flowbox.get_child_at_index(index - 1)
             self.last_group_selected = str(index - 1)
         else:
@@ -470,29 +474,29 @@ class GroupTab(Gtk.Paned):
             self.flowbox.select_child(flowboxchild)
         self.channels_view.update()
         # Update masters
-        for master in App().masters:
-            if (master.content_type == FaderType.GROUP
-                    and master.content_value == App().groups[index].index):
-                master.set_level(0)
-                master.content_type = FaderType.NONE
-                master.content_value = None
-                master.text = ""
+        for fader in App().lightshow.faders:
+            if (fader.content_type == FaderType.GROUP
+                    and fader.content_value == App().lightshow.groups[index].index):
+                fader.set_level(0)
+                fader.content_type = FaderType.NONE
+                fader.content_value = None
+                fader.text = ""
                 if App().tabs.tabs["masters"]:
                     App().tabs.tabs["masters"].channels_view.update()
-                    liststore = App().tabs.tabs["masters"].liststores[master.page - 1]
-                    treeiter = liststore.get_iter(master.number - 1)
+                    liststore = App().tabs.tabs["masters"].liststores[fader.page - 1]
+                    treeiter = liststore.get_iter(fader.number - 1)
                     liststore.set_value(treeiter, 1, "")
                     liststore.set_value(treeiter, 2, "")
                     liststore.set_value(treeiter, 3, "")
-                if App().virtual_console and master.page == App().fader_page:
-                    index = master.number - 1
-                    fader = App().virtual_console.masters[index]
-                    fader.set_value(0)
-                    App().virtual_console.master_moved(fader)
+                if App().virtual_console and fader.page == App().fader_page:
+                    index = fader.number - 1
+                    widget = App().virtual_console.masters[index]
+                    widget.set_value(0)
+                    App().virtual_console.master_moved(widget)
                     App().virtual_console.flashes[index].label = ""
                     App().virtual_console.flashes[index].queue_draw()
         # Remove group
-        App().groups.pop(index)
-        if not App().groups:
+        App().lightshow.groups.pop(index)
+        if not App().lightshow.groups:
             self.last_group_selected = ""
-        App().ascii.set_modified()
+        App().lightshow.set_modified()

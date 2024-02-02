@@ -15,6 +15,7 @@
 import cairo
 from gi.repository import Gtk
 from olc.define import App
+
 from .common import rounded_rectangle, rounded_rectangle_fill
 
 
@@ -48,11 +49,12 @@ class PauseWidget(Gtk.Button):
     def on_release(self, _tgt, _ev):
         """Button released"""
         # channel, note = App().midi.messages.notes.notes[self.text]
-        if App().sequence.on_go:
-            if App().sequence.thread and App().sequence.thread.pause.is_set():
+        if App().lightshow.main_playback.on_go:
+            if App().lightshow.main_playback.thread and App(
+            ).lightshow.main_playback.thread.pause.is_set():
                 self.pressed = True
                 App().midi.messages.notes.send(self.text, 127)
-            elif App().sequence.thread:
+            elif App().lightshow.main_playback.thread:
                 self.pressed = False
                 App().midi.messages.notes.send(self.text, 0)
         else:

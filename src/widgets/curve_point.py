@@ -14,7 +14,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import math
 from dataclasses import dataclass
-from gi.repository import Gdk, Gtk, GObject
+
+from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
 
 
@@ -126,7 +127,7 @@ class CurvePointWidget(Gtk.DrawingArea):
                     self.curve.points[self.number] = (x_curve, y_curve)
                     fixed.move(widget, x, y)
             self.curve.populate_values()
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 

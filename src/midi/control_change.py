@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Any, Dict, List, Tuple
+
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import App
@@ -192,27 +193,27 @@ class MidiControlChanges:
             App().window.grand_master.queue_draw()
 
 
-def _function_master(msg: mido.Message, master_index: int) -> None:
+def _function_master(msg: mido.Message, fader_index: int) -> None:
     """Masters
 
     Args:
         msg: MIDI message
-        master_index: Master number
+        fader_index: Master number
     """
     val = (msg.value / 127) * 255
-    fader = App().midi.faders.faders[master_index - 1]
-    master = None
-    for master in App().masters:
-        if master.page == App().fader_page and master.number == master_index:
+    midi_fader = App().midi.faders.faders[fader_index - 1]
+    fader = None
+    for fader in App().lightshow.faders:
+        if fader.page == App().fader_page and fader.number == fader_index:
             break
-    if not fader.is_valid(val, master.value):
+    if not midi_fader.is_valid(val, fader.value):
         return
     if App().virtual_console:
-        App().virtual_console.masters[master_index - 1].set_value(val)
-        App().virtual_console.master_moved(App().virtual_console.masters[master_index -
+        App().virtual_console.masters[fader_index - 1].set_value(val)
+        App().virtual_console.master_moved(App().virtual_console.masters[fader_index -
                                                                          1])
     else:
-        master.set_level(val)
+        fader.set_level(val)
 
 
 def _function_inde(port: str, msg: mido.Message, independent: int):
@@ -260,7 +261,7 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
 
 def _new_inde_value(independent: int, step: int) -> Tuple[Any, int]:
     inde = None
-    for inde in App().independents.independents:
+    for inde in App().lightshow.independents.independents:
         if inde.number == independent:
             val = inde.level + step
             if val < 0:

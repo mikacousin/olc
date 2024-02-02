@@ -14,15 +14,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
-from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
-from olc.define import (
-    App,
-    UNIVERSES,
-    MAX_CHANNELS,
-    NB_UNIVERSES,
-    MAX_FADER_PAGE,
-    string_to_time,
-)
+from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.define import (MAX_CHANNELS, MAX_FADER_PAGE, NB_UNIVERSES, UNIVERSES, App,
+                        string_to_time)
 from olc.group import Group
 from olc.independent import Independent, Independents
 from olc.master import Master
@@ -77,16 +71,16 @@ class AsciiParser:
                 console = line[8:]
             # Clear all
             if line[:9].upper() == "CLEAR ALL":
-                del App().memories[:]
-                del App().chasers[:]
-                del App().groups[:]
-                del App().masters[:]
+                del App().lightshow.cues[:]
+                del App().lightshow.chasers[:]
+                del App().lightshow.groups[:]
+                del App().lightshow.faders[:]
                 for page in range(MAX_FADER_PAGE):
                     for i in range(10):
-                        App().masters.append(Master(page + 1, i + 1, 0, 0))
-                App().backend.patch.patch_empty()
-                del App().sequence.steps[1:]
-                App().independents = Independents()
+                        App().lightshow.faders.append(Master(page + 1, i + 1, 0, 0))
+                App().lightshow.patch.patch_empty()
+                del App().lightshow.main_playback.steps[1:]
+                App().lightshow.independents = Independents()
             # Sequence
             if line[:9].upper() == "$SEQUENCE":
                 p = line[10:].split(" ")
@@ -96,8 +90,9 @@ class AsciiParser:
                 else:
                     type_seq = "Chaser"
                     index_seq = int(p[0])
-                    App().chasers.append(Sequence(index_seq, type_seq=type_seq))
-                    del App().chasers[-1].steps[1:]
+                    App().lightshow.chasers.append(
+                        Sequence(index_seq, type_seq=type_seq))
+                    del App().lightshow.chasers[-1].steps[1:]
                 flag_seq = True
                 flag_patch = False
                 flag_master = False
@@ -113,8 +108,9 @@ class AsciiParser:
                 else:
                     type_seq = "Chaser"
                     index_seq = int(p[0])
-                    App().chasers.append(Sequence(index_seq, type_seq=type_seq))
-                    del App().chasers[-1].steps[1:]
+                    App().lightshow.chasers.append(
+                        Sequence(index_seq, type_seq=type_seq))
+                    del App().lightshow.chasers[-1].steps[1:]
                 flag_seq = True
                 flag_patch = False
                 flag_master = False
@@ -123,10 +119,11 @@ class AsciiParser:
                 flag_preset = False
             # Chasers
             if flag_seq and type_seq == "Chaser":
-                if line[:4].upper() == "TEXT" and not App().chasers[-1].text:
-                    App().chasers[-1].text = line[5:]
-                if line[:6].upper() == "$$TEXT" and not App().chasers[-1].text:
-                    App().chasers[-1].text = line[7:]
+                if line[:4].upper() == "TEXT" and not App().lightshow.chasers[-1].text:
+                    App().lightshow.chasers[-1].text = line[5:]
+                if line[:6].upper(
+                ) == "$$TEXT" and not App().lightshow.chasers[-1].text:
+                    App().lightshow.chasers[-1].text = line[7:]
                 if line[:4].upper() == "$CUE":
                     in_cue = True
                     channels = {}
@@ -179,7 +176,7 @@ class AsciiParser:
                             wait=wait,
                             text=txt,
                         )
-                        App().chasers[-1].add_step(step)
+                        App().lightshow.chasers[-1].add_step(step)
                         in_cue = False
                         t_out = False
                         t_in = False
@@ -274,7 +271,7 @@ class AsciiParser:
                         # Create Cue
                         cue = Cue(0, mem, channels, text=txt)
                         # Add cue to the list
-                        App().memories.append(cue)
+                        App().lightshow.cues.append(cue)
                         # Create Step
                         step = Step(
                             1,
@@ -288,7 +285,7 @@ class AsciiParser:
                             text=txt,
                         )
                         # Add Step to the Sequence
-                        App().sequence.add_step(step)
+                        App().lightshow.main_playback.add_step(step)
                         in_cue = False
                         txt = False
                         t_out = False
@@ -305,7 +302,7 @@ class AsciiParser:
                 flag_group = False
                 flag_inde = False
                 flag_preset = False
-                App().backend.patch.patch_empty()  # Empty patch
+                App().lightshow.patch.patch_empty()  # Empty patch
                 App().window.live_view.channels_view.update()
             if flag_patch and line[:0] == "!":
                 flag_patch = False
@@ -326,12 +323,13 @@ class AsciiParser:
                             else:
                                 level = round((int(r[1]) / 100) * 255)
                             if level != 255:
-                                if not App().curves.find_limit_curve(level):
-                                    curve = App().curves.add_curve(LimitCurve(level))
+                                if not App().lightshow.curves.find_limit_curve(level):
+                                    curve = App().lightshow.curves.add_curve(
+                                        LimitCurve(level))
                             if univ in UNIVERSES:
                                 if channel <= MAX_CHANNELS:
                                     out = output - (512 * index)
-                                    App().backend.patch.add_output(
+                                    App().lightshow.patch.add_output(
                                         channel, out, univ, curve)
                                 else:
                                     print("More than", MAX_CHANNELS, "channels")
@@ -381,8 +379,8 @@ class AsciiParser:
                     # Find Preset position
                     found = False
                     i = 0
-                    for i, _ in enumerate(App().memories):
-                        if App().memories[i].memory > preset_nb:
+                    for i, _ in enumerate(App().lightshow.cues):
+                        if App().lightshow.cues[i].memory > preset_nb:
                             found = True
                             break
                     if not found:
@@ -395,7 +393,7 @@ class AsciiParser:
                     # Create Preset
                     cue = Cue(0, preset_nb, channels, text=txt)
                     # Add preset to the list
-                    App().memories.insert(i, cue)
+                    App().lightshow.cues.insert(i, cue)
                     flag_preset = False
                     txt = ""
             # Groups
@@ -438,11 +436,11 @@ class AsciiParser:
                         txt = ""
                     # We don't create a group who already exist
                     group_exist = False
-                    for grp in App().groups:
+                    for grp in App().lightshow.groups:
                         if group_nb == grp.index:
                             group_exist = True
                     if not group_exist:
-                        App().groups.append(Group(group_nb, channels, txt))
+                        App().lightshow.groups.append(Group(group_nb, channels, txt))
                     flag_group = False
                     txt = ""
             # Masters
@@ -462,8 +460,8 @@ class AsciiParser:
                         item[1]) <= 10:
                     # Master with channels
                     index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
-                    App().masters[index] = Master(int(item[0]), int(item[1]), item[2],
-                                                  channels)
+                    App().lightshow.faders[index] = Master(int(item[0]), int(item[1]),
+                                                           item[2], channels)
                     flag_master = False
                 elif (line == "" or line[:13].upper() == "$MASTPAGEITEM") and int(
                         item[1]) >= 10:
@@ -484,8 +482,8 @@ class AsciiParser:
                 # Only 10 Masters per pages
                 elif int(item[1]) <= 10:
                     index = int(item[1]) - 1 + ((int(item[0]) - 1) * 10)
-                    App().masters[index] = Master(int(item[0]), int(item[1]), item[2],
-                                                  item[3])
+                    App().lightshow.faders[index] = Master(int(item[0]), int(item[1]),
+                                                           item[2], item[3])
             # Independents
             if line[:16].upper() == "$SPECIALFUNCTION":
                 flag_seq = False
@@ -519,7 +517,7 @@ class AsciiParser:
                                 channels[chan] = level
                 if line == "":
                     inde = Independent(number, text=text, levels=channels)
-                    App().independents.update(inde)
+                    App().lightshow.independents.update(inde)
                     flag_inde = False
             # MIDI mapping
             if line[:10].upper() == "$$MIDINOTE":
@@ -545,25 +543,25 @@ class AsciiParser:
                         curve_name += f" {item[i]}"
                     if curve_type in "LimitCurve":
                         limit = int(item[2])
-                        App().curves.curves[curve_nb] = LimitCurve(limit)
+                        App().lightshow.curves.curves[curve_nb] = LimitCurve(limit)
                     elif curve_type in "SegmentsCurve":
-                        App().curves.curves[curve_nb] = SegmentsCurve()
+                        App().lightshow.curves.curves[curve_nb] = SegmentsCurve()
                     elif curve_type in "InterpolateCurve":
-                        App().curves.curves[curve_nb] = InterpolateCurve()
+                        App().lightshow.curves.curves[curve_nb] = InterpolateCurve()
                     if curve_type in ("SegmentsCurve", "InterpolateCurve"):
                         points = item[2].split(";")
                         for point in points:
                             coord = point.split(",")
-                            App().curves.curves[curve_nb].add_point(
+                            App().lightshow.curves.curves[curve_nb].add_point(
                                 int(coord[0]), int(coord[1]))
-                    App().curves.curves[curve_nb].name = curve_name
+                    App().lightshow.curves.curves[curve_nb].name = curve_name
             # Outputs curves
             if line[:8].upper() == "$$OUTPUT":
                 item = line[9:].split(" ")
                 univ = int(item[0])
                 out = int(item[1])
                 curve_nb = int(item[2])
-                curve = App().curves.get_curve(curve_nb)
+                curve = App().lightshow.curves.get_curve(curve_nb)
                 if (curve and univ in UNIVERSES
-                        and out in App().backend.patch.outputs[univ]):
-                    App().backend.patch.outputs[univ][out][1] = curve_nb
+                        and out in App().lightshow.patch.outputs[univ]):
+                    App().lightshow.patch.outputs[univ][out][1] = curve_nb

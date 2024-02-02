@@ -13,11 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
-from typing import Dict, List
+
 import typing
+from typing import Dict, List
+
 import mido
 from gi.repository import Gdk, GLib
-from olc.define import App, MAX_FADER_PAGE
+from olc.define import MAX_FADER_PAGE, App
 from olc.zoom import zoom
 
 if typing.TYPE_CHECKING:
@@ -188,15 +190,15 @@ class MidiNotes:
             independent: Independent number
         """
         if independent == 7:
-            inde = App().independents.independents[6]
+            inde = App().lightshow.independents.independents[6]
             if App().virtual_console:
                 widget = App().virtual_console.independent7
         elif independent == 8:
-            inde = App().independents.independents[7]
+            inde = App().lightshow.independents.independents[7]
             if App().virtual_console:
                 widget = App().virtual_console.independent8
         elif independent == 9:
-            inde = App().independents.independents[8]
+            inde = App().lightshow.independents.independents[8]
             if App().virtual_console:
                 widget = App().virtual_console.independent9
         if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 127
@@ -242,11 +244,11 @@ def _function_master(msg: mido.Message, fader_index: int) -> None:
     """
     if msg.velocity == 0:
         midi_name = f"master_{fader_index}"
-        master = App().masters[fader_index - 1 + ((App().fader_page - 1) * 10)]
+        fader = App().lightshow.faders[fader_index - 1 + ((App().fader_page - 1) * 10)]
 
-        App().midi.messages.control_change.send(midi_name, int(master.value / 2))
+        App().midi.messages.control_change.send(midi_name, int(fader.value / 2))
         App().midi.messages.pitchwheel.send(midi_name,
-                                            int(((master.value / 255) * 16383) - 8192))
+                                            int(((fader.value / 255) * 16383) - 8192))
 
 
 def _function_gm(msg: mido.Message) -> None:
@@ -271,18 +273,18 @@ def _function_flash(msg: mido.Message, fader_index: int) -> None:
     """
     if msg.velocity == 0:
         App().midi.enqueue(msg)
-        master = None
-        for master in App().masters:
-            if master.page == App().fader_page and master.number == fader_index:
+        fader = None
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page and fader.number == fader_index:
                 break
-        master.flash_off()
+        fader.flash_off()
     elif msg.velocity == 127:
         App().midi.enqueue(msg)
-        master = None
-        for master in App().masters:
-            if master.page == App().fader_page and master.number == fader_index:
+        fader = None
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page and fader.number == fader_index:
                 break
-        master.flash_on()
+        fader.flash_on()
 
 
 def _function_go(msg: mido.Message) -> None:
@@ -305,7 +307,7 @@ def _function_go(msg: mido.Message) -> None:
             App().virtual_console.go_button.emit("button-press-event", event)
         else:
             App().midi.enqueue(msg)
-            App().sequence.do_go(None, None)
+            App().lightshow.main_playback.do_go(None, None)
 
 
 def _function_at(msg: mido.Message) -> None:
@@ -785,10 +787,10 @@ def _function_pause(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.pause.emit("button-press-event", event)
         else:
-            App().sequence.pause(None, None)
+            App().lightshow.main_playback.pause(None, None)
 
-    if App().sequence.on_go and App().sequence.thread:
-        if App().sequence.thread.pause.is_set():
+    if App().lightshow.main_playback.on_go and App().lightshow.main_playback.thread:
+        if App().lightshow.main_playback.thread.pause.is_set():
             message = mido.Message("note_on",
                                    channel=msg.channel,
                                    note=msg.note,
@@ -822,7 +824,7 @@ def _function_go_back(msg: mido.Message) -> None:
             App().virtual_console.goback.emit("button-press-event", event)
         else:
             App().midi.enqueue(msg)
-            App().sequence.go_back(App(), None)
+            App().lightshow.main_playback.go_back(App(), None)
 
 
 def _function_goto(msg: mido.Message) -> None:
@@ -840,7 +842,7 @@ def _function_goto(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.goto.emit("button-press-event", event)
         else:
-            App().sequence.goto(App().window.commandline.get_string())
+            App().lightshow.main_playback.goto(App().window.commandline.get_string())
             App().window.commandline.set_string("")
 
 
@@ -862,7 +864,7 @@ def _function_seq_minus(msg: mido.Message) -> None:
             App().virtual_console.seq_minus.emit("button-press-event", event)
         else:
             App().midi.enqueue(msg)
-            App().sequence.sequence_minus()
+            App().lightshow.main_playback.sequence_minus()
             App().window.commandline.set_string("")
 
 
@@ -884,7 +886,7 @@ def _function_seq_plus(msg: mido.Message) -> None:
             App().virtual_console.seq_plus.emit("button-press-event", event)
         else:
             App().midi.enqueue(msg)
-            App().sequence.sequence_plus()
+            App().lightshow.main_playback.sequence_plus()
             App().window.commandline.set_string("")
 
 
@@ -903,7 +905,7 @@ def _function_output(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.output.emit("button-press-event", event)
         else:
-            App().backend.patch_outputs(None, None)
+            App().patch_outputs(None, None)
 
 
 def _function_seq(msg: mido.Message) -> None:
@@ -921,7 +923,7 @@ def _function_seq(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.seq.emit("button-press-event", event)
         else:
-            App().sequences(None, None)
+            App().lightshow.main_playback(None, None)
 
 
 def _function_group(msg: mido.Message) -> None:

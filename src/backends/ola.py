@@ -18,13 +18,14 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional
 from functools import partial
+from typing import Optional
+
 from gi.repository import GLib
 from ola import OlaClient
 from ola.ClientWrapper import ClientWrapper
 from olc.backends import DMXBackend
-from olc.define import App, NB_UNIVERSES, UNIVERSES
+from olc.define import NB_UNIVERSES, UNIVERSES, App
 from olc.patch import DMXPatch
 
 
@@ -95,7 +96,8 @@ class OlaThread(threading.Thread):
             if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
                 channel = self.patch.outputs.get(univ).get(output + 1)[0]
                 App().backend.dmx.frame[index][output] = level
-                next_level = App().sequence.get_next_channel_level(channel, level)
+                next_level = App().lightshow.main_playback.get_next_channel_level(
+                    channel, level)
                 App().window.live_view.update_channel_widget(channel, next_level)
                 if App().tabs.tabs["patch_outputs"]:
                     App().tabs.tabs["patch_outputs"].outputs[output +
@@ -110,8 +112,8 @@ class Ola(DMXBackend):
     olad_pid: Optional[subprocess.Popen]
     thread: OlaThread
 
-    def __init__(self, olad_port: int = 9090):
-        super().__init__()
+    def __init__(self, patch, olad_port: int = 9090):
+        super().__init__(patch)
         self.olad_port = olad_port
         self.olad_pid = None
 

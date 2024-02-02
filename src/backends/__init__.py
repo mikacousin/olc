@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from enum import auto, Enum
-from olc.define import UNIVERSES
 from olc.dmx import Dmx
 from olc.patch import DMXPatch
 
@@ -31,9 +30,9 @@ class DMXBackend:
     dmx: Dmx
     patch: DMXPatch
 
-    def __init__(self):
+    def __init__(self, patch):
         self.dmx = Dmx(self)
-        self.patch = DMXPatch(UNIVERSES)
+        self.patch = patch
 
     def stop(self) -> None:
         """Stop backend"""

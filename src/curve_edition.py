@@ -14,13 +14,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gettext import gettext as _
 from typing import Any, List, Optional
+
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
+from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.define import App
+from olc.widgets.curve import CurveWidget
 from olc.widgets.curve_point import CurvePointWidget
 from olc.widgets.edit_curve import EditCurveWidget
-from olc.widgets.curve import CurveWidget
 
 
 class CurveValues(Gtk.DrawingArea):
@@ -40,7 +41,7 @@ class CurveValues(Gtk.DrawingArea):
             return
         self.set_size_request(1000, 240)
         curve_nb = App().tabs.tabs["curves"].curve_edition.curve_nb
-        curve = App().curves.get_curve(curve_nb)
+        curve = App().lightshow.curves.get_curve(curve_nb)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(8)
         x = 0
@@ -106,7 +107,7 @@ class CurveEdition(Gtk.Box):
         """
         # HeaderBar
         self.curve_nb = curve_nb
-        curve = App().curves.get_curve(curve_nb)
+        curve = App().lightshow.curves.get_curve(curve_nb)
         text = curve.name
         if isinstance(curve, LimitCurve):
             text += f" {round((curve.limit / 255) * 100)}%"
@@ -147,7 +148,7 @@ class CurveEdition(Gtk.Box):
             for point in self.points:
                 point.destroy()
         self.points.clear()
-        curve = App().curves.get_curve(self.curve_nb)
+        curve = App().lightshow.curves.get_curve(self.curve_nb)
         for number, point in enumerate(curve.points):
             x = point[0]
             y = point[1]
@@ -170,7 +171,7 @@ class CurveEdition(Gtk.Box):
             flowboxchild = selected[0]
             curvebutton = flowboxchild.get_child()
             curve_nb = curvebutton.curve_nb
-            App().curves.del_curve(curve_nb)
+            App().lightshow.curves.del_curve(curve_nb)
             self.change_curve(0)
             curve_nb = 0
             tab.refresh()
@@ -180,7 +181,7 @@ class CurveEdition(Gtk.Box):
                     break
             if flowboxchild:
                 tab.flowbox.select_child(flowboxchild)
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
 
     def limit_changed(self, widget: Gtk.Scale) -> None:
         """LimitCurve value has been changed
@@ -188,13 +189,13 @@ class CurveEdition(Gtk.Box):
         Args:
             widget: Scale
         """
-        curve = App().curves.get_curve(self.curve_nb)
+        curve = App().lightshow.curves.get_curve(self.curve_nb)
         curve.limit = int(widget.get_value())
         curve.populate_values()
         text = curve.name
         text += f" {round((curve.limit / 255) * 100)}%"
         self.header.set_title(text)
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def on_toggled(self, button, _name) -> None:
         """Curve point clicked
@@ -253,7 +254,7 @@ class CurveButton(CurveWidget):
         self.curve.name = text
         App().tabs.tabs["curves"].curve_edition.header.set_title(text)
         self.popover.popdown()
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def on_click(self, _button) -> None:
         """Button clicked"""
@@ -308,12 +309,12 @@ class CurvesTab(Gtk.Paned):
             widget: button clicked
         """
         if widget is self.buttons["limit"]:
-            curve_nb = App().curves.add_curve(LimitCurve(255))
+            curve_nb = App().lightshow.curves.add_curve(LimitCurve(255))
         elif widget is self.buttons["segments"]:
-            curve_nb = App().curves.add_curve(SegmentsCurve())
+            curve_nb = App().lightshow.curves.add_curve(SegmentsCurve())
         elif widget is self.buttons["interpolate"]:
-            curve_nb = App().curves.add_curve(InterpolateCurve())
-            App().curves.curves[curve_nb].add_point(70, 40)
+            curve_nb = App().lightshow.curves.add_curve(InterpolateCurve())
+            App().lightshow.curves.curves[curve_nb].add_point(70, 40)
         self.curve_edition.change_curve(curve_nb)
         self.refresh()
         flowboxchild = None
@@ -322,7 +323,7 @@ class CurvesTab(Gtk.Paned):
                 break
         if flowboxchild:
             self.flowbox.select_child(flowboxchild)
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def populate_curves(self) -> None:
         """Add curves to tab"""
@@ -334,7 +335,7 @@ class CurvesTab(Gtk.Paned):
         self.flowbox.set_activate_on_single_click(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add curves to Flowbox
-        for number in App().curves.curves:
+        for number in App().lightshow.curves.curves:
             self.flowbox.add(CurveButton(number))
         self.scrolled.add(self.flowbox)
 
@@ -373,14 +374,14 @@ class CurvesTab(Gtk.Paned):
         """Delete selected point"""
         if not self.curve_edition.curve_nb:
             return
-        curve = App().curves.get_curve(self.curve_edition.curve_nb)
+        curve = App().lightshow.curves.get_curve(self.curve_edition.curve_nb)
         if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
             for toggle in self.curve_edition.points:
                 if toggle.get_active():
                     curve.del_point(toggle.number)
                     self.curve_edition.points_curve()
                     self.curve_edition.queue_draw()
-                    App().ascii.set_modified()
+                    App().lightshow.set_modified()
                     if App().tabs.tabs["patch_outputs"]:
                         App().tabs.tabs["patch_outputs"].refresh()
                     break
@@ -445,7 +446,7 @@ class CurvesTab(Gtk.Paned):
             self.__update_point(index, x, y)
 
     def __update_point(self, index: int, x: int, y: int) -> None:
-        curve = App().curves.get_curve(self.curve_edition.curve_nb)
+        curve = App().lightshow.curves.get_curve(self.curve_edition.curve_nb)
         curve.set_point(index, x, y)
         self.curve_edition.queue_draw()
         width = self.curve_edition.edit_curve.get_size_request()[0]
@@ -457,4 +458,4 @@ class CurvesTab(Gtk.Paned):
             (y / 255) * (height - (self.curve_edition.edit_curve.delta * 2))))
         self.curve_edition.fixed.move(self.curve_edition.points[index], x_wgt - 4,
                                       y_wgt - 4)
-        App().ascii.set_modified()
+        App().lightshow.set_modified()

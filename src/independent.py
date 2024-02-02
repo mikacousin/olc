@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
 
-from olc.define import App, MAX_CHANNELS
+from olc.define import MAX_CHANNELS, App
 
 
 class Independent:
@@ -80,7 +80,7 @@ class Independent:
         for channel, level in self.levels.items():
             dmx_lvl = round(level * (self.level / 255))
             self.dmx[channel - 1] = dmx_lvl
-        App().independents.update_dmx()
+        App().lightshow.independents.update_dmx()
         App().backend.dmx.set_levels(self.channels)
 
 
@@ -113,7 +113,7 @@ class Independents:
                     level_inde = inde.dmx[channel]
             if level_inde != -1:
                 self.dmx[channel] = level_inde
-                next_level = App().sequence.get_next_channel_level(
+                next_level = App().lightshow.main_playback.get_next_channel_level(
                     channel + 1, level_inde)
                 App().window.live_view.update_channel_widget(channel + 1, next_level)
 

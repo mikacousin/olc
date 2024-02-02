@@ -27,10 +27,10 @@ def step_filter_func1(model, treeiter, _data):
     Returns:
         True, False or step
     """
-    if App().sequence.position <= 0:
+    if App().lightshow.main_playback.position <= 0:
         if int(model[treeiter][11]) in {0, 1} or int(model[treeiter][0]) in {0, 1}:
             return True
-    if App().sequence.position == 1:
+    if App().lightshow.main_playback.position == 1:
         if int(model[treeiter][11]) == 1:
             return True
         if int(model[treeiter][11]) == 0:
@@ -40,10 +40,10 @@ def step_filter_func1(model, treeiter, _data):
         return False
 
     return int(model[treeiter][0]) in [
-        App().sequence.position,
-        App().sequence.position + 1,
-        App().sequence.position - 1,
-        App().sequence.position - 2,
+        App().lightshow.main_playback.position,
+        App().lightshow.main_playback.position + 1,
+        App().lightshow.main_playback.position - 1,
+        App().lightshow.main_playback.position - 2,
     ]
 
 
@@ -59,7 +59,7 @@ def step_filter_func2(model, treeiter, _data):
     """
     if not model[treeiter][0]:
         return False
-    return int(model[treeiter][0]) > App().sequence.position + 1
+    return int(model[treeiter][0]) > App().lightshow.main_playback.position + 1
 
 
 class MainPlaybackView(Gtk.Notebook):
@@ -70,15 +70,15 @@ class MainPlaybackView(Gtk.Notebook):
         self.set_group_name("olc")
 
         # Sequential part of the window
-        if App().sequence.last > 1:
-            position = App().sequence.position
-            t_total = App().sequence.steps[position].total_time
-            t_in = App().sequence.steps[position].time_in
-            t_out = App().sequence.steps[position].time_out
-            d_in = App().sequence.steps[position].delay_in
-            d_out = App().sequence.steps[position].delay_out
-            t_wait = App().sequence.steps[position].wait
-            channel_time = App().sequence.steps[position].channel_time
+        if App().lightshow.main_playback.last > 1:
+            position = App().lightshow.main_playback.position
+            t_total = App().lightshow.main_playback.steps[position].total_time
+            t_in = App().lightshow.main_playback.steps[position].time_in
+            t_out = App().lightshow.main_playback.steps[position].time_out
+            d_in = App().lightshow.main_playback.steps[position].delay_in
+            d_out = App().lightshow.main_playback.steps[position].delay_out
+            t_wait = App().lightshow.main_playback.steps[position].wait
+            channel_time = App().lightshow.main_playback.steps[position].channel_time
         else:
             position = 0
             t_total = 5.0
@@ -169,7 +169,7 @@ class MainPlaybackView(Gtk.Notebook):
 
         self.populate_sequence()
 
-        if App().sequence.last == 1:
+        if App().lightshow.main_playback.last == 1:
             self.cues_liststore1.append(
                 ["", "", "", "", "", "", "", "", "", "#232729", 0, 1])
 
@@ -190,13 +190,13 @@ class MainPlaybackView(Gtk.Notebook):
             ["", "", "", "", "", "", "", "", "", "#232729", 0, 0])
         self.cues_liststore1.append(
             ["", "", "", "", "", "", "", "", "", "#232729", 0, 1])
-        for i in range(App().sequence.last):
-            wait = time_to_string(App().sequence.steps[i].wait)
-            t_out = time_to_string(App().sequence.steps[i].time_out)
-            d_out = time_to_string(App().sequence.steps[i].delay_out)
-            t_in = time_to_string(App().sequence.steps[i].time_in)
-            d_in = time_to_string(App().sequence.steps[i].delay_in)
-            channel_time = str(len(App().sequence.steps[i].channel_time))
+        for i in range(App().lightshow.main_playback.last):
+            wait = time_to_string(App().lightshow.main_playback.steps[i].wait)
+            t_out = time_to_string(App().lightshow.main_playback.steps[i].time_out)
+            d_out = time_to_string(App().lightshow.main_playback.steps[i].delay_out)
+            t_in = time_to_string(App().lightshow.main_playback.steps[i].time_in)
+            d_in = time_to_string(App().lightshow.main_playback.steps[i].delay_in)
+            channel_time = str(len(App().lightshow.main_playback.steps[i].channel_time))
             if channel_time == "0":
                 channel_time = ""
             if i == 0:
@@ -207,7 +207,7 @@ class MainPlaybackView(Gtk.Notebook):
                 background = "#232729"
             # Actual and Next Cue in Bold
             weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
-            if i in (0, App().sequence.last - 1):
+            if i in (0, App().lightshow.main_playback.last - 1):
                 self.cues_liststore1.append([
                     str(i),
                     "",
@@ -225,8 +225,8 @@ class MainPlaybackView(Gtk.Notebook):
             else:
                 self.cues_liststore1.append([
                     str(i),
-                    str(App().sequence.steps[i].cue.memory),
-                    str(App().sequence.steps[i].text),
+                    str(App().lightshow.main_playback.steps[i].cue.memory),
+                    str(App().lightshow.main_playback.steps[i].text),
                     wait,
                     d_out,
                     str(t_out),
@@ -242,20 +242,31 @@ class MainPlaybackView(Gtk.Notebook):
 
     def update_active_cues_display(self):
         """Update First part of sequential"""
-        self.cues_liststore1[App().sequence.position][9] = "#232729"
-        self.cues_liststore1[App().sequence.position][10] = Pango.Weight.NORMAL
-        if App().sequence.position + 1 <= App().sequence.last:
-            self.cues_liststore1[App().sequence.position + 1][9] = "#232729"
-            self.cues_liststore1[App().sequence.position + 1][10] = Pango.Weight.NORMAL
-        if App().sequence.position + 2 <= App().sequence.last:
-            self.cues_liststore1[App().sequence.position + 2][9] = "#997004"
-            self.cues_liststore1[App().sequence.position + 2][10] = Pango.Weight.HEAVY
-        if App().sequence.position + 3 <= App().sequence.last:
-            self.cues_liststore1[App().sequence.position + 3][9] = "#555555"
-            self.cues_liststore1[App().sequence.position + 3][10] = Pango.Weight.HEAVY
+        self.cues_liststore1[App().lightshow.main_playback.position][9] = "#232729"
+        self.cues_liststore1[
+            App().lightshow.main_playback.position][10] = Pango.Weight.NORMAL
+        if App().lightshow.main_playback.position + 1 <= App(
+        ).lightshow.main_playback.last:
+            self.cues_liststore1[App().lightshow.main_playback.position +
+                                 1][9] = "#232729"
+            self.cues_liststore1[App().lightshow.main_playback.position +
+                                 1][10] = Pango.Weight.NORMAL
+        if App().lightshow.main_playback.position + 2 <= App(
+        ).lightshow.main_playback.last:
+            self.cues_liststore1[App().lightshow.main_playback.position +
+                                 2][9] = "#997004"
+            self.cues_liststore1[App().lightshow.main_playback.position +
+                                 2][10] = Pango.Weight.HEAVY
+        if App().lightshow.main_playback.position + 3 <= App(
+        ).lightshow.main_playback.last:
+            self.cues_liststore1[App().lightshow.main_playback.position +
+                                 3][9] = "#555555"
+            self.cues_liststore1[App().lightshow.main_playback.position +
+                                 3][10] = Pango.Weight.HEAVY
         self.step_filter1.refilter()
         self.step_filter2.refilter()
-        path1 = Gtk.TreePath.new_from_indices([App().sequence.position + 2])
+        path1 = Gtk.TreePath.new_from_indices(
+            [App().lightshow.main_playback.position + 2])
         path2 = Gtk.TreePath.new_from_indices([0])
         self.treeview1.set_cursor(path1, None, False)
         self.treeview2.set_cursor(path2, None, False)
@@ -266,13 +277,18 @@ class MainPlaybackView(Gtk.Notebook):
         Args:
             step: Step
         """
-        self.sequential.total_time = App().sequence.steps[step + 1].total_time
-        self.sequential.time_in = App().sequence.steps[step + 1].time_in
-        self.sequential.time_out = App().sequence.steps[step + 1].time_out
-        self.sequential.delay_in = App().sequence.steps[step + 1].delay_in
-        self.sequential.delay_out = App().sequence.steps[step + 1].delay_out
-        self.sequential.wait = App().sequence.steps[step + 1].wait
-        self.sequential.channel_time = App().sequence.steps[step + 1].channel_time
+        self.sequential.total_time = App().lightshow.main_playback.steps[step +
+                                                                         1].total_time
+        self.sequential.time_in = App().lightshow.main_playback.steps[step + 1].time_in
+        self.sequential.time_out = App().lightshow.main_playback.steps[step +
+                                                                       1].time_out
+        self.sequential.delay_in = App().lightshow.main_playback.steps[step +
+                                                                       1].delay_in
+        self.sequential.delay_out = App().lightshow.main_playback.steps[step +
+                                                                        1].delay_out
+        self.sequential.wait = App().lightshow.main_playback.steps[step + 1].wait
+        self.sequential.channel_time = App().lightshow.main_playback.steps[
+            step + 1].channel_time
         self.sequential.queue_draw()
 
     def on_key_press_event(self, widget, event):

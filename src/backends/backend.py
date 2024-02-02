@@ -31,12 +31,13 @@ else:
     from .ola import Ola
 
 
-def select_backend(options, settings) -> Any:
+def select_backend(options, settings, patch) -> Any:
     """Select and create DMX backend
 
     Args:
         options: command line options
         settings: GSettings
+        patch: DMX patch
 
     Returns:
         Backend or None
@@ -50,19 +51,19 @@ def select_backend(options, settings) -> Any:
             if "http-port" in options:
                 olad_port = options["http-port"]
             settings.set_value("backend", GLib.Variant("s", backend))
-            return Ola(olad_port=olad_port)
+            return Ola(patch, olad_port=olad_port)
         print("Can't find ola python module")
         return None
     if "sacn" in backend:
         if SACN:
             settings.set_value("backend", GLib.Variant("s", backend))
-            return Sacn()
+            return Sacn(patch)
         print("Can't find sACN python module")
         return None
     if backend:
         print(f"{backend} is not supported. Fallback to sACN")
         if SACN:
             settings.set_value("backend", GLib.Variant("s", backend))
-            return Sacn()
+            return Sacn(patch)
     print("Can't find sACN python module")
     return None

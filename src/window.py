@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
-from olc.define import App, MAX_CHANNELS, UNIVERSES, string_to_time, time_to_string
+from olc.define import MAX_CHANNELS, UNIVERSES, App, string_to_time, time_to_string
 from olc.step import Step
 from olc.widgets.grand_master import GMWidget
 from olc.window_channels import LiveView
@@ -172,8 +172,10 @@ class Window(Gtk.ApplicationWindow):
             step: Step
         """
         for channel in range(1, MAX_CHANNELS + 1):
-            level = App().sequence.steps[step].cue.channels.get(channel, 0)
-            next_level = App().sequence.steps[step + 1].cue.channels.get(channel, 0)
+            level = App().lightshow.main_playback.steps[step].cue.channels.get(
+                channel, 0)
+            next_level = App().lightshow.main_playback.steps[step + 1].cue.channels.get(
+                channel, 0)
             widget = self.live_view.channels_view.get_channel_widget(channel)
             widget.level = level
             widget.next_level = next_level
@@ -247,17 +249,17 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_q(self):
         """Seq -"""
-        App().sequence.sequence_minus()
+        App().lightshow.main_playback.sequence_minus()
         self.commandline.set_string("")
 
     def _keypress_w(self):
         """Seq +"""
-        App().sequence.sequence_plus()
+        App().lightshow.main_playback.sequence_plus()
         self.commandline.set_string("")
 
     def _keypress_G(self):  # pylint: disable=C0103
         """Goto"""
-        App().sequence.goto(self.commandline.get_string())
+        App().lightshow.main_playback.goto(self.commandline.get_string())
         self.commandline.set_string("")
 
     def _keypress_R(self):  # pylint: disable=C0103
@@ -266,19 +268,19 @@ class Window(Gtk.ApplicationWindow):
         keystring = self.commandline.get_string()
         if keystring == "":
             # Find next free Cue
-            position = App().sequence.position
-            mem = App().sequence.get_next_cue(step=position)
+            position = App().lightshow.main_playback.position
+            mem = App().lightshow.main_playback.get_next_cue(step=position)
             step = position + 1
         else:
             # Use given number
             mem = float(keystring)
-            found, step = App().sequence.get_step(cue=mem)
+            found, step = App().lightshow.main_playback.get_step(cue=mem)
 
         if not found:
             # Create Preset
             channels = {}
-            for channel, outputs in App().backend.patch.channels.items():
-                if not App().backend.patch.is_patched(channel):
+            for channel, outputs in App().lightshow.patch.channels.items():
+                if not App().lightshow.patch.is_patched(channel):
                     continue
                 for values in outputs:
                     output = values[0]
@@ -287,7 +289,7 @@ class Window(Gtk.ApplicationWindow):
                     if level := App().backend.dmx.frame[index][output - 1]:
                         channels[channel] = level
             cue = Cue(1, mem, channels)
-            App().memories.insert(step - 1, cue)
+            App().lightshow.cues.insert(step - 1, cue)
 
             # Update Presets Tab if exist
             if App().tabs.tabs["memories"]:
@@ -295,11 +297,11 @@ class Window(Gtk.ApplicationWindow):
                 App().tabs.tabs["memories"].liststore.insert(step - 1,
                                                              [str(mem), "", nb_chan])
 
-            App().sequence.position = step
+            App().lightshow.main_playback.position = step
 
             # Create Step
             step_object = Step(1, cue=cue)
-            App().sequence.insert_step(step, step_object)
+            App().lightshow.main_playback.insert_step(step, step_object)
 
             # Update Main Playback
             self.playback.update_sequence_display()
@@ -309,7 +311,7 @@ class Window(Gtk.ApplicationWindow):
             # Find Preset position
             found = False
             i = 0
-            for i, item in enumerate(App().memories):
+            for i, item in enumerate(App().lightshow.cues):
                 if item.memory > mem:
                     found = True
                     break
@@ -317,16 +319,16 @@ class Window(Gtk.ApplicationWindow):
 
             for univ in UNIVERSES:
                 for output in range(512):
-                    channel = App().backend.patch.outputs[univ][output + 1][0]
+                    channel = App().lightshow.patch.outputs[univ][output + 1][0]
                     index = UNIVERSES.index(univ)
                     level = App().backend.dmx.frame[index][output]
 
-                    App().memories[i].channels[channel - 1] = level
+                    App().lightshow.cues[i].channels[channel - 1] = level
 
             # Update Presets Tab if exist
             if App().tabs.tabs["memories"]:
                 nb_chan = sum(
-                    bool(App().memories[i].channels[chan])
+                    bool(App().lightshow.cues[i].channels[chan])
                     for chan in range(MAX_CHANNELS))
 
                 treeiter = App().tabs.tabs["memories"].liststore.get_iter(i)
@@ -340,37 +342,38 @@ class Window(Gtk.ApplicationWindow):
             if path:
                 selected = path.get_indices()[0]
                 sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
-                if sequence == App().sequence.index:
+                if sequence == App().lightshow.main_playback.index:
                     # Yes, update it
                     App().tabs.tabs["sequences"].on_sequence_changed()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
     def _keypress_U(self):  # pylint: disable=C0103
         """Update Cue"""
-        position = App().sequence.position
-        memory = App().sequence.steps[position].cue.memory
+        position = App().lightshow.main_playback.position
+        memory = App().lightshow.main_playback.steps[position].cue.memory
 
         # Confirmation Dialog
         dialog = Dialog(self, memory)
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
-            for channel, outputs in App().backend.patch.channels.items():
-                if not App().backend.patch.is_patched(channel):
+            for channel, outputs in App().lightshow.patch.channels.items():
+                if not App().lightshow.patch.is_patched(channel):
                     continue
-                if channel not in App().independents.channels:
+                if channel not in App().lightshow.independents.channels:
                     output = outputs[0][0] - 1
                     univ = outputs[0][1]
                     index = UNIVERSES.index(univ)
                     level = App().backend.dmx.frame[index][output]
-                    App().sequence.steps[position].cue.channels[channel] = level
+                    App().lightshow.main_playback.steps[position].cue.channels[
+                        channel] = level
 
             # Tag filename as modified
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
 
         dialog.destroy()
 
@@ -380,22 +383,24 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_time(time)
+        App().lightshow.main_playback.steps[position + 1].set_time(time)
         self.playback.cues_liststore1[position + 3][5] = string
         self.playback.cues_liststore1[position + 3][7] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.time_in = App().sequence.steps[position + 1].time_in
-        self.playback.sequential.time_out = App().sequence.steps[position + 1].time_out
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.time_in = App().lightshow.main_playback.steps[
+            position + 1].time_in
+        self.playback.sequential.time_out = App().lightshow.main_playback.steps[
+            position + 1].time_out
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
@@ -405,20 +410,21 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_time_in(time)
+        App().lightshow.main_playback.steps[position + 1].set_time_in(time)
         self.playback.cues_liststore1[position + 3][7] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.time_in = App().sequence.steps[position + 1].time_in
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.time_in = App().lightshow.main_playback.steps[
+            position + 1].time_in
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
@@ -428,20 +434,21 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_time_out(time)
+        App().lightshow.main_playback.steps[position + 1].set_time_out(time)
         self.playback.cues_liststore1[position + 3][5] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.time_out = App().sequence.steps[position + 1].time_out
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.time_out = App().lightshow.main_playback.steps[
+            position + 1].time_out
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
@@ -451,20 +458,21 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_wait(time)
+        App().lightshow.main_playback.steps[position + 1].set_wait(time)
         self.playback.cues_liststore1[position + 3][3] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.wait = App().sequence.steps[position + 1].wait
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.wait = App().lightshow.main_playback.steps[position +
+                                                                            1].wait
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
@@ -474,23 +482,24 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_delay(time)
+        App().lightshow.main_playback.steps[position + 1].set_delay(time)
         self.playback.cues_liststore1[position + 3][4] = string
         self.playback.cues_liststore1[position + 3][6] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.delay_in = App().sequence.steps[position + 1].delay_in
-        self.playback.sequential.delay_out = (App().sequence.steps[position +
-                                                                   1].delay_out)
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.delay_in = App().lightshow.main_playback.steps[
+            position + 1].delay_in
+        self.playback.sequential.delay_out = (
+            App().lightshow.main_playback.steps[position + 1].delay_out)
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
@@ -500,20 +509,21 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_delay_in(time)
+        App().lightshow.main_playback.steps[position + 1].set_delay_in(time)
         self.playback.cues_liststore1[position + 3][6] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.delay_in = App().sequence.steps[position + 1].delay_in
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.delay_in = App().lightshow.main_playback.steps[
+            position + 1].delay_in
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 
@@ -523,21 +533,21 @@ class Window(Gtk.ApplicationWindow):
         if keystring == "":
             return
 
-        position = App().sequence.position
+        position = App().lightshow.main_playback.position
 
         time = string_to_time(keystring)
         string = time_to_string(time)
-        App().sequence.steps[position + 1].set_delay_out(time)
+        App().lightshow.main_playback.steps[position + 1].set_delay_out(time)
         self.playback.cues_liststore1[position + 3][4] = string
         self.playback.step_filter1.refilter()
-        self.playback.sequential.delay_out = (App().sequence.steps[position +
-                                                                   1].delay_out)
-        self.playback.sequential.total_time = (App().sequence.steps[position +
-                                                                    1].total_time)
+        self.playback.sequential.delay_out = (
+            App().lightshow.main_playback.steps[position + 1].delay_out)
+        self.playback.sequential.total_time = (
+            App().lightshow.main_playback.steps[position + 1].total_time)
         self.playback.grid.queue_draw()
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         self.commandline.set_string("")
 

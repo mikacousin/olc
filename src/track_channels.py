@@ -43,7 +43,7 @@ class TrackChannelsTab(Gtk.Grid):
         for flowboxchild in sel:
             channelwidget = flowboxchild.get_child()
             channel = int(channelwidget.channel)
-            if App().backend.patch.is_patched(channel):
+            if App().lightshow.patch.is_patched(channel):
                 self.channels.append(channel - 1)
 
         self.populate_steps()
@@ -65,12 +65,13 @@ class TrackChannelsTab(Gtk.Grid):
         self.steps.append(TrackChannelsHeader(self.channels))
         levels = [[]]
         self.flowbox.add(self.steps[0])
-        for step in range(1, App().sequence.last):
-            memory = App().sequence.steps[step].cue.memory
-            text = App().sequence.steps[step].text
+        for step in range(1, App().lightshow.main_playback.last):
+            memory = App().lightshow.main_playback.steps[step].cue.memory
+            text = App().lightshow.main_playback.steps[step].text
             levels.append([])
             for channel in self.channels:
-                level = App().sequence.steps[step].cue.channels.get(channel + 1, 0)
+                level = App().lightshow.main_playback.steps[step].cue.channels.get(
+                    channel + 1, 0)
                 levels[step].append(level)
             self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
             self.flowbox.add(self.steps[step])
@@ -86,9 +87,9 @@ class TrackChannelsTab(Gtk.Grid):
         """
         if child == self.steps[0].get_parent():
             return child
-        if len(self.steps) <= App().sequence.last - 1:
+        if len(self.steps) <= App().lightshow.main_playback.last - 1:
             return False
-        if child == self.steps[App().sequence.last - 1].get_parent():
+        if child == self.steps[App().lightshow.main_playback.last - 1].get_parent():
             return False
         return child
 
@@ -100,16 +101,17 @@ class TrackChannelsTab(Gtk.Grid):
         for flowboxchild in sel:
             channelwidget = flowboxchild.get_child()
             channel = int(channelwidget.channel)
-            if App().backend.patch.is_patched(channel):
+            if App().lightshow.patch.is_patched(channel):
                 self.channels.append(channel - 1)
         self.channel_selected = 0
         # Update Track Channels Tab
         self.steps[0].channels = self.channels
         levels = []
-        for step in range(App().sequence.last):
+        for step in range(App().lightshow.main_playback.last):
             levels.append([])
             for channel in self.channels:
-                level = App().sequence.steps[step].cue.channels.get(channel + 1, 0)
+                level = App().lightshow.main_playback.steps[step].cue.channels.get(
+                    channel + 1, 0)
                 levels[step].append(level)
             self.steps[step].levels = levels[step]
         self.flowbox.queue_draw()
@@ -202,7 +204,7 @@ class TrackChannelsTab(Gtk.Grid):
             child = self.flowbox.get_child_at_index(1)
             self.flowbox.select_child(child)
             self.last_step_selected = "1"
-        elif int(self.last_step_selected) < App().sequence.last - 2:
+        elif int(self.last_step_selected) < App().lightshow.main_playback.last - 2:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) + 1)
             self.flowbox.select_child(child)
@@ -237,12 +239,12 @@ class TrackChannelsTab(Gtk.Grid):
             if App().settings.get_boolean("percent"):
                 level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
             if 0 <= level <= 255:
-                App().sequence.steps[step].cue.channels[channel] = level
+                App().lightshow.main_playback.steps[step].cue.channels[channel] = level
                 widget.levels[self.channel_selected] = level
                 widget.queue_draw()
                 App().tabs.refresh_all()
                 App().window.live_view.channels_view.update()
-                App().ascii.set_modified()
+                App().lightshow.set_modified()
 
         App().window.commandline.set_string("")
 

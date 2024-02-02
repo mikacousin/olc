@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
-
 from olc.define import App
 from olc.widgets.channels_view import ChannelsView
 
@@ -187,14 +186,14 @@ class ChanneltimeTab(Gtk.Paned):
                     self.step.total_time = t
 
             # Redraw Main Playback
-            if self.sequence == App().sequence:
+            if self.sequence == App().lightshow.main_playback:
                 path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
                     App().window.playback.cues_liststore1[path1][8] = ""
                 else:
                     App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
-                if App().sequence.position + 1 == int(self.position):
+                if App().lightshow.main_playback.position + 1 == int(self.position):
                     App().window.playback.sequential.total_time = self.step.total_time
                     App().window.playback.sequential.queue_draw()
 
@@ -262,14 +261,14 @@ class ChanneltimeTab(Gtk.Paned):
                     self.step.total_time = t
 
             # Redraw Main Playback
-            if self.sequence == App().sequence:
+            if self.sequence == App().lightshow.main_playback:
                 path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
                 ct_nb = len(self.step.channel_time)
                 if ct_nb == 0:
                     App().window.playback.cues_liststore1[path1][8] = ""
                 else:
                     App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
-                if App().sequence.position + 1 == int(self.position):
+                if App().lightshow.main_playback.position + 1 == int(self.position):
                     App().window.playback.sequential.total_time = self.step.total_time
                     App().window.playback.sequential.queue_draw()
 

@@ -14,16 +14,18 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from collections import deque
 from dataclasses import dataclass
+
 import mido
 from olc.define import App
 from olc.timer import RepeatedTimer
+
 from .control_change import MidiControlChanges
 from .fader import MIDIFader
-from .notes import MidiNotes
-from .ports import MidiPorts
-from .pitchwheel import MidiPitchWheel
-from .xfade import MidiXFade
 from .lcd import MackieLCD
+from .notes import MidiNotes
+from .pitchwheel import MidiPitchWheel
+from .ports import MidiPorts
+from .xfade import MidiXFade
 
 
 class Queue:
@@ -161,7 +163,7 @@ class Midi:
         elif msg.type == "pitchwheel":
             self.messages.pitchwheel.learn(msg, self.learning)
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def controler_reset(self) -> None:
         """Reset Mackie Controller"""
@@ -208,9 +210,9 @@ class Midi:
 
     def update_masters(self) -> None:
         """Send faders value and update display"""
-        for master in App().masters:
-            if master.page == App().fader_page:
-                midi_name = f"master_{master.number}"
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page:
+                midi_name = f"master_{fader.number}"
                 channel, control = self.messages.control_change.control_change[
                     midi_name]
                 if control != -1:
@@ -218,13 +220,13 @@ class Midi:
                         "control_change",
                         channel=channel,
                         control=control,
-                        value=int(master.value / 2),
+                        value=int(fader.value / 2),
                         time=0,
                     )
                     self.enqueue(msg)
                 channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
                 if channel != -1:
-                    val = int(((master.value / 255) * 16383) - 8192)
+                    val = int(((fader.value / 255) * 16383) - 8192)
                     msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
                     self.enqueue(msg)
         self.messages.lcd.show_masters()

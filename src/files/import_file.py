@@ -54,6 +54,7 @@ class ImportFile:
     def parse(self) -> None:
         """Start reading file"""
         self.parser.read()
+        App().lightshow.add_recent_file()
         self.data.clean()
 
     def select_data(self) -> None:
@@ -63,6 +64,7 @@ class ImportFile:
         dialog.destroy()
         if response == Gtk.ResponseType.OK:
             self._do_import()
+            App().lightshow.set_modified()
 
     def _do_import(self):
         self._do_import_patch()
@@ -77,7 +79,7 @@ class ImportFile:
         if self.actions["patch"] is Action.IGNORE:
             return
         if self.actions["patch"] is Action.REPLACE:
-            App().backend.patch.patch_empty()
+            App().lightshow.patch.patch_empty()
         # Import patch
         self.data.import_patch()
 
@@ -85,24 +87,24 @@ class ImportFile:
         if self.actions["groups"] is Action.IGNORE:
             return
         if self.actions["groups"] is Action.REPLACE:
-            del App().groups[:]
+            del App().lightshow.groups[:]
         self.data.import_groups()
 
     def _do_import_faders(self) -> None:
         if self.actions["faders"] is Action.IGNORE:
             return
         if self.actions["faders"] is Action.REPLACE:
-            del App().masters[:]
+            del App().lightshow.faders[:]
             for page in range(MAX_FADER_PAGE):
                 for i in range(10):
-                    App().masters.append(Master(page + 1, i + 1, 0, 0))
+                    App().lightshow.faders.append(Master(page + 1, i + 1, 0, 0))
         self.data.import_faders()
 
     def _do_import_independents(self) -> None:
         if self.actions["independents"] is Action.IGNORE:
             return
         if self.actions["independents"] is Action.REPLACE:
-            App().independents = Independents()
+            App().lightshow.independents = Independents()
         self.data.import_independents()
 
     def _do_import_presets(self) -> None:
@@ -124,30 +126,31 @@ class ImportFile:
                 # Add empty step at the end
                 cue = Cue(0, 0.0)
                 step = Step(sequence, cue=cue)
-                App().sequence.add_step(step)
+                App().lightshow.main_playback.add_step(step)
                 # Main playback at start
-                App().sequence.position = 0
+                App().lightshow.main_playback.position = 0
             else:
                 self.data.import_chaser(sequence, self.actions["sequences"][sequence])
 
     def _clear_sequence(self, sequence: int) -> None:
         if sequence == 1:
-            del App().memories[:]
-            del App().sequence.steps[1:]
+            del App().lightshow.cues[:]
+            del App().lightshow.main_playback.steps[1:]
         else:
             chaser = None
-            for chsr in App().chasers:
+            for chsr in App().lightshow.chasers:
                 if chsr.index == sequence:
                     chaser = chsr
                     break
                 if chaser:
-                    App().chasers.remove(chaser)
+                    App().lightshow.chasers.remove(chaser)
 
     def _update_ui(self) -> None:
         App().window.live_view.channels_view.update()
         App().tabs.refresh_all()
-        subtitle = (f"Mem. : 0.0 - Next Mem. : {App().sequence.steps[1].cue.memory} "
-                    f"{App().sequence.steps[1].cue.text}")
+        subtitle = (f"Mem. : 0.0 - "
+                    f"Next Mem. : {App().lightshow.main_playback.steps[1].cue.memory} "
+                    f"{App().lightshow.main_playback.steps[1].cue.text}")
         App().window.header.set_subtitle(subtitle)
         App().window.playback.update_xfade_display(0)
         App().window.playback.update_sequence_display()

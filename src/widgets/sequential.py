@@ -16,7 +16,7 @@ import math
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App, MAX_CHANNELS, time_to_string
+from olc.define import MAX_CHANNELS, App, time_to_string
 
 
 class SequentialWidget(Gtk.Widget):
@@ -195,9 +195,12 @@ class SequentialWidget(Gtk.Widget):
             cr.stroke()
             cr.set_dash([])
             # draw Time Cursor
-            position = App().sequence.position
-            old_level = App().sequence.steps[position].cue.channels.get(channel, 0)
-            next_level = App().sequence.steps[position + 1].cue.channels.get(channel, 0)
+            position = App().lightshow.main_playback.position
+            old_level = App().lightshow.main_playback.steps[position].cue.channels.get(
+                channel, 0)
+            next_level = App().lightshow.main_playback.steps[position +
+                                                             1].cue.channels.get(
+                                                                 channel, 0)
             # Time Cursor follow In or Out Crossfade
             if next_level < old_level:
                 # Out Crossfade

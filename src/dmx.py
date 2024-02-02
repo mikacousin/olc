@@ -14,8 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
 from typing import Any, Optional
-from olc.define import DMX_INTERVAL, UNIVERSES, MAX_CHANNELS, NB_UNIVERSES, App
+
+from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App
 from olc.grand_master import GrandMaster
+from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
 
 
@@ -23,6 +25,7 @@ class Dmx:
     """Send levels to backend"""
 
     backend: Any
+    patch: DMXPatch
     grand_master: GrandMaster
     levels: dict[str, array.array]
     frame: list[array.array]
@@ -31,6 +34,7 @@ class Dmx:
 
     def __init__(self, backend):
         self.backend = backend
+        self.patch = App().lightshow.patch
         self.grand_master = GrandMaster()
         # Dimmers levels
         self.levels = {
@@ -55,28 +59,29 @@ class Dmx:
         if not channels:
             channels = set(range(1, MAX_CHANNELS + 1))
         for channel in channels:
-            if not self.backend.patch.is_patched(channel):
+            if not self.patch.is_patched(channel):
                 continue
-            outputs = self.backend.patch.channels[channel]
+            outputs = self.patch.channels[channel]
             channel -= 1
             # Sequence
             level = self.levels["sequence"][channel]
             # User
-            if not App().sequence.on_go and self.levels["user"][channel] != -1:
+            if not App(
+            ).lightshow.main_playback.on_go and self.levels["user"][channel] != -1:
                 level = self.levels["user"][channel]
             # Masters
             if self.levels["masters"][channel] > level:
                 level = self.levels["masters"][channel]
             # Independents
-            if App().independents.dmx[channel] > level:
-                level = App().independents.dmx[channel]
+            if App().lightshow.independents.dmx[channel] > level:
+                level = App().lightshow.independents.dmx[channel]
             for out in outputs:
                 output = out[0]
                 universe = out[1]
                 # Curve
-                curve_numb = self.backend.patch.outputs[universe][output][1]
+                curve_numb = self.patch.outputs[universe][output][1]
                 if curve_numb:
-                    curve = App().curves.get_curve(curve_numb)
+                    curve = App().lightshow.curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
                 # Grand Master
                 level = round(level * self.grand_master.value)
@@ -114,11 +119,11 @@ class Dmx:
     def update_masters(self) -> None:
         """Update masters levels"""
         for channel in range(MAX_CHANNELS):
-            if not self.backend.patch.is_patched(channel + 1):
+            if not self.patch.is_patched(channel + 1):
                 continue
             level_master = -1
-            for master in App().masters:
-                if master.dmx[channel] > level_master:
-                    level_master = master.dmx[channel]
+            for fader in App().lightshow.faders:
+                if fader.dmx[channel] > level_master:
+                    level_master = fader.dmx[channel]
             if level_master != -1:
                 self.levels["masters"][channel] = level_master

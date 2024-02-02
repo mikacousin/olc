@@ -13,9 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Optional, Tuple
+
 import liblo
 from gi.repository import Gdk, GLib
-from olc.define import App, MAX_FADER_PAGE, UNIVERSES
+from olc.define import MAX_FADER_PAGE, UNIVERSES, App
 from olc.midi.fader import FaderState
 
 
@@ -96,23 +97,23 @@ class OscServer(liblo.ServerThread):
 
     @liblo.make_method("/olc/key/go", None)
     def _go(self, _path, _args, _types):
-        GLib.idle_add(App().sequence.do_go, None, None)
+        GLib.idle_add(App().lightshow.main_playback.do_go, None, None)
 
     @liblo.make_method("/olc/key/pause", None)
     def _pause(self, _path, _args, _types):
-        GLib.idle_add(App().sequence.pause, None, None)
+        GLib.idle_add(App().lightshow.main_playback.pause, None, None)
 
     @liblo.make_method("/olc/key/goback", None)
     def _goback(self, _path, _args, _types):
-        GLib.idle_add(App().sequence.go_back, None, None)
+        GLib.idle_add(App().lightshow.main_playback.go_back, None, None)
 
     @liblo.make_method("/olc/key/seq+", None)
     def _seq_plus(self, _path, _args, _types):
-        GLib.idle_add(App().sequence.sequence_plus)
+        GLib.idle_add(App().lightshow.main_playback.sequence_plus)
 
     @liblo.make_method("/olc/key/seq-", None)
     def _seq_minus(self, _path, _args, _types):
-        GLib.idle_add(App().sequence.sequence_minus)
+        GLib.idle_add(App().lightshow.main_playback.sequence_minus)
 
     @liblo.make_method("/olc/key/clear", None)
     def _clear(self, _path, _args, _types):
@@ -223,10 +224,10 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method("/olc/fader/pageupdate", None)
     def _sub_launch(self, _path, _args, _types):
         App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
-        for master in App().masters:
-            if master.page == App().fader_page:
-                App().osc.client.send(f"/olc/fader/1/{master.number}/label",
-                                      ("s", master.text))
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page:
+                App().osc.client.send(f"/olc/fader/1/{fader.number}/label",
+                                      ("s", fader.text))
 
     @liblo.make_method("/olc/fader/page+", None)
     def _fader_page_plus(self, _path, _args, _types):
@@ -241,10 +242,10 @@ class OscServer(liblo.ServerThread):
                 App().fader_page = 1
             App().midi.update_masters()
         App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
-        for master in App().masters:
-            if master.page == App().fader_page:
-                App().osc.client.send(f"/olc/fader/1/{master.number}/label",
-                                      ("s", master.text))
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page:
+                App().osc.client.send(f"/olc/fader/1/{fader.number}/label",
+                                      ("s", fader.text))
 
     @liblo.make_method("/olc/fader/page-", None)
     def _fader_page_minus(self, _path, _args, _types):
@@ -259,10 +260,10 @@ class OscServer(liblo.ServerThread):
                 App().fader_page = MAX_FADER_PAGE
             App().midi.update_masters()
         App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
-        for master in App().masters:
-            if master.page == App().fader_page:
-                App().osc.client.send(f"/olc/fader/1/{master.number}/label",
-                                      ("s", master.text))
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page:
+                App().osc.client.send(f"/olc/fader/1/{fader.number}/label",
+                                      ("s", fader.text))
 
     @liblo.make_method("/olc/fader/1/1/level", "i")
     @liblo.make_method("/olc/fader/1/2/level", "i")
@@ -275,22 +276,22 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method("/olc/fader/1/9/level", "i")
     @liblo.make_method("/olc/fader/1/10/level", "i")
     def _fader_level(self, path, args, _types):
-        master_index = int(path.split("/")[4])
+        fader_index = int(path.split("/")[4])
         level = args[0]
         if App().virtual_console:
-            GLib.idle_add(App().virtual_console.masters[master_index - 1].set_value,
+            GLib.idle_add(App().virtual_console.masters[fader_index - 1].set_value,
                           level)
             GLib.idle_add(
                 App().virtual_console.master_moved,
-                App().virtual_console.masters[master_index - 1],
+                App().virtual_console.masters[fader_index - 1],
             )
         else:
-            master = None
-            for master in App().masters:
-                if master.page == App().fader_page and master.number == master_index:
+            fader = None
+            for fader in App().lightshow.faders:
+                if fader.page == App().fader_page and fader.number == fader_index:
                     break
-            master.set_level(level)
-            midi_fader = App().midi.faders.faders[master_index - 1]
+            fader.set_level(level)
+            midi_fader = App().midi.faders.faders[fader_index - 1]
             midi_value = midi_fader.value
             if level > midi_value:
                 midi_fader.valid = FaderState.UP
@@ -312,35 +313,35 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method("/olc/fader/1/10/flash", "i")
     def _fader_flash(self, path, args, _types):
         pressed = args[0]
-        master_index = int(path.split("/")[4])
-        master = None
-        for master in App().masters:
-            if master.page == App().fader_page and master.number == master_index:
+        fader_index = int(path.split("/")[4])
+        fader = None
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page and fader.number == fader_index:
                 break
         if pressed:
-            master.flash_on()
+            fader.flash_on()
         else:
-            master.flash_off()
+            fader.flash_off()
 
     @liblo.make_method("/olc/patch/channel", None)
     def _patch_channel(self, _path, _args, _types):
-        App().backend.patch.by_outputs.patch_channel(True)
+        App().lightshow.patch.by_outputs.patch_channel(True)
 
     @liblo.make_method("/olc/patch/output", None)
     def _patch_output(self, _path, _args, _types):
-        App().backend.patch.by_outputs.select_output()
+        App().lightshow.patch.by_outputs.select_output()
 
     @liblo.make_method("/olc/patch/thru", None)
     def _patch_thru(self, _path, _args, _types):
-        App().backend.patch.by_outputs.thru()
+        App().lightshow.patch.by_outputs.thru()
 
     @liblo.make_method("/olc/patch/+", None)
     def _patch_plus(self, _path, _args, _types):
-        App().backend.patch.by_outputs.add_output()
+        App().lightshow.patch.by_outputs.add_output()
 
     @liblo.make_method("/olc/patch/-", None)
     def _patch_minus(self, _path, _args, _types):
-        App().backend.patch.by_outputs.del_output()
+        App().lightshow.patch.by_outputs.del_output()
 
     @liblo.make_method(None, None)
     def _fallback(self, path, args, types, src):

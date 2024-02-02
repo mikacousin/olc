@@ -21,19 +21,18 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
-
 from olc.ascii import Ascii  # noqa: E402
 from olc.backends.backend import select_backend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
-from olc.curve import Curves  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS, MAX_FADER_PAGE  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
+from olc.lightshow import LightShow  # noqa: E402
 from olc.master import Master  # noqa: E402
 from olc.masters_edition import MastersTab  # noqa: E402
 from olc.midi import Midi  # noqa: E402
@@ -110,29 +109,8 @@ class Application(Gtk.Application):
         # To store settings
         self.settings = Gio.Settings.new("com.github.mikacousin.olc")
 
-        # Curves
-        self.curves = Curves()
-
-        # Create Main Playback
-        self.sequence = Sequence(1, text="Main Playback")
-
-        # Create List of Global Memories
-        self.memories = []
-
-        # Create List for Chasers
-        self.chasers = []
-
-        # Create List of Groups
-        self.groups = []
-
-        # Create pages of 10 Masters
-        self.masters = []
-        for page in range(MAX_FADER_PAGE):
-            self.masters.extend(Master(page + 1, i + 1, 0, 0) for i in range(10))
+        # Fader page
         self.fader_page = 1
-
-        # Independents
-        self.independents = Independents()
 
         # For Windows
         self.window = None
@@ -147,6 +125,9 @@ class Application(Gtk.Application):
         self.midi = None
         self.osc = None
         self.ascii = None
+
+        # Light show initialization
+        self.lightshow = LightShow()
 
     def do_activate(self):
         # Initialization of ascii file
@@ -164,17 +145,17 @@ class Application(Gtk.Application):
         # Add global shortcuts
         # Go
         action = Gio.SimpleAction.new("go", None)
-        action.connect("activate", self.sequence.do_go)
+        action.connect("activate", self.lightshow.main_playback.do_go)
         self.add_action(action)
         self.set_accels_for_action("app.go", ["<Control>g"])
         # Go Back
         action = Gio.SimpleAction.new("go_back", None)
-        action.connect("activate", self.sequence.go_back)
+        action.connect("activate", self.lightshow.main_playback.go_back)
         self.add_action(action)
         self.set_accels_for_action("app.go_back", ["<Control>b"])
         # Pause
         action = Gio.SimpleAction.new("pause", None)
-        action.connect("activate", self.sequence.pause)
+        action.connect("activate", self.lightshow.main_playback.pause)
         self.add_action(action)
         self.set_accels_for_action("app.pause", ["<Control>z"])
         # Full screen
@@ -222,7 +203,7 @@ class Application(Gtk.Application):
         if "version" in options:
             print(self.version)
             sys.exit()
-        self.backend = select_backend(options, self.settings)
+        self.backend = select_backend(options, self.settings, self.lightshow.patch)
         if not self.backend:
             sys.exit()
         # Activate olc
@@ -230,7 +211,7 @@ class Application(Gtk.Application):
         # Arguments (one ASCII file to open)
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
-            self.ascii.file = command_line.create_file_for_arg(arguments[1])
+            self.lightshow.file = command_line.create_file_for_arg(arguments[1])
             self.ascii.load()
         return False
 
@@ -274,7 +255,7 @@ class Application(Gtk.Application):
     def _new(self, _action, _parameter):
         """New show"""
         # Stop Chasers
-        for chaser in self.chasers:
+        for chaser in self.lightshow.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False
                 chaser.thread.stop()
@@ -285,26 +266,26 @@ class Application(Gtk.Application):
         self.backend.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
-        self.backend.patch.patch_1on1()
+        self.lightshow.patch.patch_1on1()
         # Reset Main Playback
-        self.sequence = Sequence(1, "Main Playback")
-        self.sequence.position = 0
-        self.sequence.window = self.window
-        self.sequence.update_channels()
-        # Delete memories, groups, chasers, masters
-        del self.memories[:]
-        del self.groups[:]
-        del self.chasers[:]
-        del self.masters[:]
+        self.lightshow.main_playback = Sequence(1, "Main Playback")
+        self.lightshow.main_playback.position = 0
+        self.lightshow.main_playback.window = self.window
+        self.lightshow.main_playback.update_channels()
+        # Delete cues, groups, chasers, masters
+        del self.lightshow.cues[:]
+        del self.lightshow.groups[:]
+        del self.lightshow.chasers[:]
+        del self.lightshow.faders[:]
         self.fader_page = 1
         for page in range(MAX_FADER_PAGE):
             for i in range(10):
-                self.masters.append(Master(page + 1, i + 1, 0, 0))
-        self.independents = Independents()
+                self.lightshow.faders.append(Master(page + 1, i + 1, 0, 0))
+        self.lightshow.independents = Independents()
         # Redraw Sequential Window
         self.window.playback.update_sequence_display()
-        self.window.playback.update_xfade_display(self.sequence.position)
-        self.window.update_channels_display(self.sequence.position)
+        self.window.playback.update_xfade_display(self.lightshow.main_playback.position)
+        self.window.update_channels_display(self.lightshow.main_playback.position)
 
         # Redraw all open tabs
         self.tabs.refresh_all()
@@ -312,13 +293,13 @@ class Application(Gtk.Application):
         # Redraw Masters in Virtual Console
         if self.virtual_console and self.virtual_console.props.visible:
             self.virtual_console.page_number.set_label(str(self.fader_page))
-            for master in self.masters:
-                if master.page == self.fader_page:
-                    text = f"master_{master.number + (self.fader_page - 1) * 10}"
-                    self.virtual_console.masters[master.number - 1].text = text
-                    self.virtual_console.masters[master.number - 1].set_value(
-                        master.value)
-                    self.virtual_console.flashes[master.number - 1].label = master.text
+            for fader in self.lightshow.faders:
+                if fader.page == self.fader_page:
+                    text = f"master_{fader.number + (self.fader_page - 1) * 10}"
+                    self.virtual_console.masters[fader.number - 1].text = text
+                    self.virtual_console.masters[fader.number - 1].set_value(
+                        fader.value)
+                    self.virtual_console.flashes[fader.number - 1].label = fader.text
             self.virtual_console.masters_pad.queue_draw()
 
         self.window.live_view.channels_view.last_selected_channel = ""
@@ -350,7 +331,7 @@ class Application(Gtk.Application):
 
         # if response is "ACCEPT" (the button "Open" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
-            self.ascii.file = open_dialog.get_file()
+            self.lightshow.file = open_dialog.get_file()
             # Load the ASCII file
             self.ascii.load()
 
@@ -387,7 +368,7 @@ class Application(Gtk.Application):
 
     def _save(self, _action, _parameter):
         """Save"""
-        if self.ascii.file is not None:
+        if self.lightshow.file is not None:
             self.ascii.save()
         else:
             self._saveas(_action, _parameter)
@@ -421,25 +402,23 @@ class Application(Gtk.Application):
         # if response is "ACCEPT" (the button "Save" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
             # self.ascii.file is the currently selected file
-            self.ascii.file = save_dialog.get_file()
+            self.lightshow.file = save_dialog.get_file()
             # save to file
             self.ascii.save()
             # Set Main Window's title with file name
-            basename = self.ascii.file.get_basename()
-            self.ascii.basename = basename
-            self.window.header.set_title(basename)
+            self.lightshow.set_not_modified()
         # destroy the FileChooserNative
         save_dialog.destroy()
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
         self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs",
-                       self.backend.patch)
+                       self.lightshow.patch)
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
         self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels",
-                       self.backend.patch)
+                       self.lightshow.patch)
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""
@@ -528,7 +507,7 @@ class Application(Gtk.Application):
         Returns:
             True to not propagate signal
         """
-        if self.ascii.modified:
+        if self.lightshow.modified:
             dialog = DialogQuit(self.window)
             response = dialog.run()
             dialog.destroy()
@@ -536,7 +515,7 @@ class Application(Gtk.Application):
                 return True
             if response == 1:
                 self._save(None, None)
-        for chaser in self.chasers:
+        for chaser in self.lightshow.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False
                 chaser.thread.stop()

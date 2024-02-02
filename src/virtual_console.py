@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
-from olc.define import App, MAX_FADER_PAGE
+from olc.define import MAX_FADER_PAGE, App
 from olc.widgets.button import ButtonWidget
 from olc.widgets.controller import ControllerWidget
 from olc.widgets.fader import FaderWidget
@@ -301,40 +301,40 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent1 = KnobWidget(text="inde_1")
         self.independent1.connect("clicked", self._inde_clicked)
         self.independent1.connect("changed", self._inde_changed)
-        self.independent1.value = App().independents.independents[0].level
+        self.independent1.value = App().lightshow.independents.independents[0].level
         self.independent2 = KnobWidget(text="inde_2")
         self.independent2.connect("clicked", self._inde_clicked)
         self.independent2.connect("changed", self._inde_changed)
-        self.independent2.value = App().independents.independents[1].level
+        self.independent2.value = App().lightshow.independents.independents[1].level
         self.independent3 = KnobWidget(text="inde_3")
         self.independent3.connect("clicked", self._inde_clicked)
         self.independent3.connect("changed", self._inde_changed)
-        self.independent3.value = App().independents.independents[2].level
+        self.independent3.value = App().lightshow.independents.independents[2].level
         self.independent4 = KnobWidget(text="inde_4")
         self.independent4.connect("clicked", self._inde_clicked)
         self.independent4.connect("changed", self._inde_changed)
-        self.independent4.value = App().independents.independents[3].level
+        self.independent4.value = App().lightshow.independents.independents[3].level
         self.independent5 = KnobWidget(text="inde_5")
         self.independent5.connect("clicked", self._inde_clicked)
         self.independent5.connect("changed", self._inde_changed)
-        self.independent5.value = App().independents.independents[4].level
+        self.independent5.value = App().lightshow.independents.independents[4].level
         self.independent6 = KnobWidget(text="inde_6")
         self.independent6.connect("clicked", self._inde_clicked)
         self.independent6.connect("changed", self._inde_changed)
-        self.independent6.value = App().independents.independents[5].level
+        self.independent6.value = App().lightshow.independents.independents[5].level
         self.independent7 = ToggleWidget(text="inde_7")
         self.independent8 = ToggleWidget(text="inde_8")
         self.independent9 = ToggleWidget(text="inde_9")
         self.independent7.connect("clicked", self._inde_clicked)
-        if App().independents.independents[6].level:
+        if App().lightshow.independents.independents[6].level:
             self.independent7.set_active(True)
             self.independent7.value = 255
         self.independent8.connect("clicked", self._inde_clicked)
-        if App().independents.independents[7].level:
+        if App().lightshow.independents.independents[7].level:
             self.independent8.set_active(True)
             self.independent8.value = 255
         self.independent9.connect("clicked", self._inde_clicked)
-        if App().independents.independents[8].level:
+        if App().lightshow.independents.independents[8].level:
             self.independent9.set_active(True)
             self.independent9.value = 255
         self.independents.attach(self.independent1, 0, 0, 1, 1)
@@ -392,13 +392,14 @@ class VirtualConsoleWindow(Gtk.Window):
             self.masters_pad.attach(self.flashes[i], i, 1, 1, 1)
             text = f"flash_{i + 1}"
             self.flashes[i].text = text
-        for master in App().masters:
-            if master.page == App().fader_page:
-                index = master.number - 1
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page:
+                index = fader.number - 1
                 # Flash with master's name
-                self.flashes[index].label = master.text
+                self.flashes[index].label = fader.text
                 # Fader at master's value
-                value = App().masters[index + ((App().fader_page - 1) * 10)].value
+                value = App().lightshow.faders[index +
+                                               ((App().fader_page - 1) * 10)].value
                 self.masters[index].set_value(value)
         self.fader_pages = Gtk.Grid()
         self.fader_page_plus = ButtonWidget("Page+", "fader_page_plus")
@@ -480,7 +481,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     App().fader_page = MAX_FADER_PAGE
             self.page_number.set_label(str(App().fader_page))
             # Redraw Masters and Flashes
-            for master in App().masters:
+            for master in App().lightshow.faders:
                 if master.page == App().fader_page:
                     text = f"master_{master.number + ((App().fader_page - 1) * 10)}"
                     self.masters[master.number - 1].text = text
@@ -516,7 +517,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "go"
             self.queue_draw()
         else:
-            App().sequence.do_go(None, None)
+            App().lightshow.main_playback.do_go(None, None)
 
     def _on_go_back(self, _widget):
         """Go back"""
@@ -524,7 +525,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "go_back"
             self.queue_draw()
         else:
-            App().sequence.go_back(None, None)
+            App().lightshow.main_playback.go_back(None, None)
 
     def _on_pause(self, _widget):
         """Pause"""
@@ -532,7 +533,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "pause"
             self.queue_draw()
         else:
-            App().sequence.pause(None, None)
+            App().lightshow.main_playback.pause(None, None)
 
     def _on_seq_plus(self, _widget):
         """Sequence +"""
@@ -540,7 +541,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "seq_plus"
             self.queue_draw()
         else:
-            App().sequence.sequence_plus()
+            App().lightshow.main_playback.sequence_plus()
 
     def _on_seq_minus(self, _widget):
         """Sequence -"""
@@ -548,7 +549,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "seq_minus"
             self.queue_draw()
         else:
-            App().sequence.sequence_minus()
+            App().lightshow.main_playback.sequence_minus()
 
     def _on_output(self, _widget):
         """Output"""
@@ -564,7 +565,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "seq"
             self.queue_draw()
         else:
-            App().sequences(None, None)
+            App().lightshow.main_playback(None, None)
 
     def _on_preset(self, _widget):
         """Preset"""
@@ -596,7 +597,7 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = "goto"
             self.queue_draw()
         else:
-            App().sequence.goto(App().window.commandline.get_string())
+            App().lightshow.main_playback.goto(App().window.commandline.get_string())
             App().window.commandline.set_string("")
 
     def _on_channel(self, _widget):
@@ -847,7 +848,7 @@ class VirtualConsoleWindow(Gtk.Window):
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
                     index = i + ((App().fader_page - 1) * 10)
-                    App().masters[index].flash_on()
+                    App().lightshow.faders[index].flash_on()
 
     def _flash_off(self, widget, _event):
         """Flash button released
@@ -859,7 +860,7 @@ class VirtualConsoleWindow(Gtk.Window):
             for i, flash in enumerate(self.flashes):
                 if flash == widget:
                     index = i + ((App().fader_page - 1) * 10)
-                    App().masters[index].flash_off()
+                    App().lightshow.faders[index].flash_off()
 
     def _on_flash(self, widget):
         """Flash button clicked
@@ -888,7 +889,7 @@ class VirtualConsoleWindow(Gtk.Window):
             value = master.get_value()
             index = self.masters.index(master)
             index = index + ((App().fader_page - 1) * 10)
-            App().masters[index].set_level(value)
+            App().lightshow.faders[index].set_level(value)
             midi_fader = App().midi.faders.faders[self.masters.index(master)]
             midi_fader.set_state(value)
 
@@ -1028,25 +1029,25 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             if widget == self.independent7 and widget.get_active():
-                App().independents.independents[6].level = 255
-                App().independents.independents[6].update_dmx()
+                App().lightshow.independents.independents[6].level = 255
+                App().lightshow.independents.independents[6].update_dmx()
             elif widget == self.independent7 and not widget.get_active():
-                App().independents.independents[6].level = 0
-                App().independents.independents[6].update_dmx()
+                App().lightshow.independents.independents[6].level = 0
+                App().lightshow.independents.independents[6].update_dmx()
             if widget == self.independent8:
                 if widget.get_active():
-                    App().independents.independents[7].level = 255
-                    App().independents.independents[7].update_dmx()
+                    App().lightshow.independents.independents[7].level = 255
+                    App().lightshow.independents.independents[7].update_dmx()
                 elif not widget.get_active():
-                    App().independents.independents[7].level = 0
-                    App().independents.independents[7].update_dmx()
+                    App().lightshow.independents.independents[7].level = 0
+                    App().lightshow.independents.independents[7].update_dmx()
             if widget == self.independent9:
                 if widget.get_active():
-                    App().independents.independents[8].level = 255
-                    App().independents.independents[8].update_dmx()
+                    App().lightshow.independents.independents[8].level = 255
+                    App().lightshow.independents.independents[8].update_dmx()
                 elif not widget.get_active():
-                    App().independents.independents[8].level = 0
-                    App().independents.independents[8].update_dmx()
+                    App().lightshow.independents.independents[8].level = 0
+                    App().lightshow.independents.independents[8].update_dmx()
 
     def _inde_changed(self, widget):
         """Independent value changed
@@ -1069,7 +1070,7 @@ class VirtualConsoleWindow(Gtk.Window):
         elif widget == self.independent6:
             index = 5
         value = widget.value
-        inde = App().independents.independents[index]
+        inde = App().lightshow.independents.independents[index]
         midi_fader = App().midi.faders.inde_faders[index]
         inde.set_level(value)
         midi_fader.set_state(value)

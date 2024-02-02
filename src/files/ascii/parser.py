@@ -397,7 +397,7 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_SUB
         elif (self.state in (State.START, State.NO_PRIMARY)
               and self.keyword in self.tokens["cue"]):
-            print(f"{self.keyword} before a primary keyword, skipping")
+            # print(f"{self.keyword} before a primary keyword, skipping")
             self.state = State.NO_PRIMARY
 
     def _is_console(self, manufacturer: str, console: str) -> bool:

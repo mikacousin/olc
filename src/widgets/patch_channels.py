@@ -167,8 +167,8 @@ class PatchChannelWidget(Gtk.Widget):
             cr: Cairo context
         """
         nb_outputs = 0
-        if self.channel in App().backend.patch.channels:
-            if App().backend.patch.channels[self.channel] == [[None, None]]:
+        if self.channel in App().lightshow.patch.channels:
+            if App().lightshow.patch.channels[self.channel] == [[None, None]]:
                 return
 
         if nb_outputs <= 8:
@@ -182,7 +182,7 @@ class PatchChannelWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
-        for i, item in enumerate(App().backend.patch.channels[self.channel]):
+        for i, item in enumerate(App().lightshow.patch.channels[self.channel]):
             output = item[0]
             if output != 0:
                 area = (65 + (i * 65), 125 + (i * 65), 0, self.height)
@@ -211,7 +211,7 @@ class PatchChannelWidget(Gtk.Widget):
             cr: Cairo context
         """
         two_lines = False
-        for i, item in enumerate(App().backend.patch.channels[self.channel]):
+        for i, item in enumerate(App().lightshow.patch.channels[self.channel]):
             if i > 15:
                 two_lines = True
             output = item[0]

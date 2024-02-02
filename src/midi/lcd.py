@@ -65,10 +65,10 @@ class MackieLCD:
 
     def show_masters(self) -> None:
         """Show masters name"""
-        for master in App().masters:
-            if master.page == App().fader_page and master.number <= 8:
-                text = master.text[:7]
-                strip = master.number - 1
+        for fader in App().lightshow.faders:
+            if fader.page == App().fader_page and fader.number <= 8:
+                text = fader.text[:7]
+                strip = fader.number - 1
                 self.send_to_strip(text, 0, strip)
         self.show_page_number()
 

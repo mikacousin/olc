@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gtk
 from olc.define import App
+
 from .common import rounded_rectangle_fill
 
 
@@ -25,7 +26,7 @@ class CurveWidget(Gtk.Button):
     def __init__(self, curve: int):
         super().__init__()
         self.curve_nb = curve
-        self.curve = App().curves.get_curve(curve)
+        self.curve = App().lightshow.curves.get_curve(curve)
 
         self.connect("clicked", self.on_click)
 

@@ -25,7 +25,7 @@ class Sacn(DMXBackend):
     receiver: sacn.sACNreceiver
     old_frame: list[tuple[int]]
 
-    def __init__(self):
+    def __init__(self, patch):
         self.sender = sacn.sACNsender()
         self.sender.start()
         self.receiver = sacn.sACNreceiver()
@@ -38,7 +38,7 @@ class Sacn(DMXBackend):
                                             self.receive_packet,
                                             universe=universe)
         self.old_frame = [(0, ) * 512 for _ in range(NB_UNIVERSES)]
-        super().__init__()
+        super().__init__(patch)
 
     def stop(self) -> None:
         """Stop sACN backend"""

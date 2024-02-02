@@ -27,9 +27,10 @@ def update_channel_display(channel: int) -> None:
     Args:
         channel: Channel number (from 1 to MAX_CHANNELS)
     """
-    seq_level = (App().sequence.steps[App().sequence.position].cue.channels.get(
-        channel, 0))
-    seq_next_level = App().sequence.get_next_channel_level(channel, seq_level)
+    seq_level = (App().lightshow.main_playback.steps[
+        App().lightshow.main_playback.position].cue.channels.get(channel, 0))
+    seq_next_level = App().lightshow.main_playback.get_next_channel_level(
+        channel, seq_level)
     GLib.idle_add(
         App().window.live_view.update_channel_widget,
         channel,
@@ -84,7 +85,7 @@ class Master:
             pass
         elif self.content_type == FaderType.PRESET:
             self.content_value = float(content_value)
-            if cue := next(mem for mem in App().memories
+            if cue := next(mem for mem in App().lightshow.cues
                            if mem.memory == self.content_value):
                 self.text = cue.text
         elif self.content_type == FaderType.CHANNELS:
@@ -94,12 +95,12 @@ class Master:
                 self.text += f" {channel}"
         elif self.content_type == FaderType.SEQUENCE:
             self.content_value = float(content_value)
-            if chaser := next(chsr for chsr in App().chasers
+            if chaser := next(chsr for chsr in App().lightshow.chasers
                               if chsr.index == self.content_value):
                 self.text = chaser.text
         elif self.content_type == FaderType.GROUP:
             self.content_value = float(content_value)
-            if group := next(grp for grp in App().groups
+            if group := next(grp for grp in App().lightshow.groups
                              if grp.index == self.content_value):
                 self.text = group.text
         elif self.content_type == FaderType.GM:
@@ -112,7 +113,7 @@ class Master:
         """Update channels of master"""
         self.channels.clear()
         if self.content_type == FaderType.PRESET:
-            if cue := next(mem for mem in App().memories
+            if cue := next(mem for mem in App().lightshow.cues
                            if mem.memory == self.content_value):
                 for channel in cue.channels:
                     self.channels.add(channel)
@@ -120,11 +121,11 @@ class Master:
             for channel in self.content_value:
                 self.channels.add(channel)
         elif self.content_type == FaderType.SEQUENCE:
-            if chaser := next(chs for chs in App().chasers
+            if chaser := next(chs for chs in App().lightshow.chasers
                               if chs.index == self.content_value):
                 self.channels = chaser.channels
         elif self.content_type == FaderType.GROUP:
-            if group := next(grp for grp in App().groups
+            if group := next(grp for grp in App().lightshow.groups
                              if grp.index == self.content_value):
                 for channel in group.channels:
                     self.channels.add(channel)
@@ -153,17 +154,17 @@ class Master:
         self.content_value = value
         self.text = ""
         if self.content_type == FaderType.PRESET:
-            for cue in App().memories:
+            for cue in App().lightshow.cues:
                 if cue.memory == value:
                     self.text = cue.text
                     break
         elif self.content_type == FaderType.GROUP:
-            for grp in App().groups:
+            for grp in App().lightshow.groups:
                 if grp.index == value:
                     self.text = grp.text
                     break
         elif self.content_type == FaderType.SEQUENCE:
-            for chaser in App().chasers:
+            for chaser in App().lightshow.chasers:
                 if chaser.index == value:
                     self.text = chaser.text
                     break
@@ -229,7 +230,7 @@ class Master:
 
     def _level_changed_preset(self):
         """New level and type is Preset"""
-        if mem := next(cue for cue in App().memories
+        if mem := next(cue for cue in App().lightshow.cues
                        if cue.memory == self.content_value):
             for channel, level in mem.channels.items():
                 level = 0 if self.value == 0 else round(level / (255 / self.value))
@@ -250,7 +251,7 @@ class Master:
     def _level_changed_group(self):
         """New level and type is Group"""
         # Find group
-        if group := next(grp for grp in App().groups
+        if group := next(grp for grp in App().lightshow.groups
                          if grp.index == self.content_value):
             # Get Channels and Levels in group
             for channel, lvl in group.channels.items():
@@ -266,29 +267,30 @@ class Master:
         """New level and type is Chaser"""
         number = self.content_value
         # Look for the chaser
-        for i, chaser in enumerate(App().chasers):
+        for i, chaser in enumerate(App().lightshow.chasers):
             if chaser.index == number:
                 # If it was not running and master > 0
                 if self.value and chaser.run is False:
                     # Start Chaser
-                    App().chasers[i].run = True
-                    App().chasers[i].thread = ThreadChaser(self, i, self.value)
-                    App().chasers[i].thread.start()
+                    App().lightshow.chasers[i].run = True
+                    App().lightshow.chasers[i].thread = ThreadChaser(
+                        self, i, self.value)
+                    App().lightshow.chasers[i].thread.start()
                 # If it was running and master > 0
                 elif self.value and chaser.run is True:
                     # Update Max Level
-                    App().chasers[i].thread.level_scale = self.value
+                    App().lightshow.chasers[i].thread.level_scale = self.value
                 # If it was running an master go to 0
                 elif self.value == 0 and chaser.run is True:
                     # Stop Chaser
-                    App().chasers[i].run = False
-                    App().chasers[i].thread.stop()
-                    App().chasers[i].thread.join()
+                    App().lightshow.chasers[i].run = False
+                    App().lightshow.chasers[i].thread.stop()
+                    App().lightshow.chasers[i].thread.join()
                     for channel in range(MAX_CHANNELS):
                         self.dmx[channel] = 0
                         update_channel_display(channel + 1)
                     App().backend.dmx.update_masters()
-                    App().backend.dmx.set_levels(App().chasers[i].channels)
+                    App().backend.dmx.set_levels(App().lightshow.chasers[i].channels)
                     break
 
 
@@ -306,14 +308,15 @@ class ThreadChaser(threading.Thread):
     def run(self):
         position = 0
 
-        while App().chasers[self.chaser].run:
+        while App().lightshow.chasers[self.chaser].run:
             # Next Step Time In and Time Out
-            if position != App().chasers[self.chaser].last - 1:
-                t_in = App().chasers[self.chaser].steps[position + 1].time_in
-                t_out = App().chasers[self.chaser].steps[position + 1].time_out
+            if position != App().lightshow.chasers[self.chaser].last - 1:
+                t_in = App().lightshow.chasers[self.chaser].steps[position + 1].time_in
+                t_out = App().lightshow.chasers[self.chaser].steps[position +
+                                                                   1].time_out
             else:
-                t_in = App().chasers[self.chaser].steps[1].time_in
-                t_out = App().chasers[self.chaser].steps[1].time_out
+                t_in = App().lightshow.chasers[self.chaser].steps[1].time_in
+                t_out = App().lightshow.chasers[self.chaser].steps[1].time_out
 
             # Longest Time
             t_max = max([t_in, t_out])
@@ -325,14 +328,14 @@ class ThreadChaser(threading.Thread):
             i = (time.time() * 1000) - start_time
 
             # Loop on longest time
-            while i < delay and App().chasers[self.chaser].run:
+            while i < delay and App().lightshow.chasers[self.chaser].run:
                 # Update levels
                 self.update_levels(delay_in, delay_out, i, position)
                 time.sleep(0.05)
                 i = (time.time() * 1000) - start_time
 
             position += 1
-            if position == App().chasers[self.chaser].last:
+            if position == App().lightshow.chasers[self.chaser].last:
                 position = 1
 
     def stop(self):
@@ -348,29 +351,30 @@ class ThreadChaser(threading.Thread):
             i: Time spent
             position: Step
         """
-        for channel in App().backend.patch.channels:
+        for channel in App().lightshow.patch.channels:
             # Change only channels in chaser
-            if channel in App().chasers[self.chaser].channels:
+            if channel in App().lightshow.chasers[self.chaser].channels:
                 # Start level
-                old_level = (
-                    App().chasers[self.chaser].steps[position].cue.channels.get(
-                        channel, 0))
+                old_level = (App().lightshow.chasers[
+                    self.chaser].steps[position].cue.channels.get(channel, 0))
                 # Level in the sequence
-                seq_level = (
-                    App().sequence.steps[App().sequence.position].cue.channels.get(
+                seq_level = (App().lightshow.main_playback.steps[
+                    App().lightshow.main_playback.position].cue.channels.get(
                         channel, 0))
                 old_level = max(old_level, seq_level)
                 # Loop on cues and come back at first step
-                if position < App().chasers[self.chaser].last - 1:
-                    next_level = (App().chasers[self.chaser].steps[position +
+                if position < App().lightshow.chasers[self.chaser].last - 1:
+                    next_level = (
+                        App().lightshow.chasers[self.chaser].steps[position +
                                                                    1].cue.channels.get(
                                                                        channel, 0))
                     next_level = max(next_level, seq_level)
                 else:
-                    next_level = (App().chasers[self.chaser].steps[1].cue.channels.get(
-                        channel, 0))
+                    next_level = (
+                        App().lightshow.chasers[self.chaser].steps[1].cue.channels.get(
+                            channel, 0))
                     next_level = max(next_level, seq_level)
-                    App().chasers[self.chaser].position = 1
+                    App().lightshow.chasers[self.chaser].position = 1
                 # If level increases, use time In
                 if next_level > old_level and i < delay_in:
                     level = (int(
@@ -388,4 +392,4 @@ class ThreadChaser(threading.Thread):
                 self.master.dmx[channel - 1] = level
                 update_channel_display(channel)
         App().backend.dmx.update_masters()
-        App().backend.dmx.set_levels(App().chasers[self.chaser].channels)
+        App().backend.dmx.set_levels(App().lightshow.chasers[self.chaser].channels)

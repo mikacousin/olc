@@ -17,10 +17,10 @@ from typing import Optional
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App, time_to_string, string_to_time
+from olc.define import MAX_CHANNELS, App, string_to_time, time_to_string
 from olc.sequence import Sequence
 from olc.step import Step
-from olc.widgets.channels_view import ChannelsView, VIEW_MODES
+from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 
 class SequenceTab(Gtk.Grid):
@@ -36,12 +36,13 @@ class SequenceTab(Gtk.Grid):
         # List of Sequences
         self.liststore1 = Gtk.ListStore(int, str, str)
 
-        self.liststore1.append(
-            [App().sequence.index,
-             App().sequence.type_seq,
-             App().sequence.text])
+        self.liststore1.append([
+            App().lightshow.main_playback.index,
+            App().lightshow.main_playback.type_seq,
+            App().lightshow.main_playback.text
+        ])
 
-        for chaser in App().chasers:
+        for chaser in App().lightshow.chasers:
             self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
@@ -128,11 +129,12 @@ class SequenceTab(Gtk.Grid):
     def refresh(self) -> None:
         """Refresh display"""
         self.liststore1.clear()
-        self.liststore1.append(
-            [App().sequence.index,
-             App().sequence.type_seq,
-             App().sequence.text])
-        for chaser in App().chasers:
+        self.liststore1.append([
+            App().lightshow.main_playback.index,
+            App().lightshow.main_playback.type_seq,
+            App().lightshow.main_playback.text
+        ])
+        for chaser in App().lightshow.chasers:
             self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
         self.treeview1.set_model(self.liststore1)
         path = Gtk.TreePath.new_first()
@@ -150,10 +152,10 @@ class SequenceTab(Gtk.Grid):
         if path:
             row = path.get_indices()[0]
             sequence_number = self.liststore1[row][0]
-            if sequence_number == App().sequence.index:
-                sequence = App().sequence
+            if sequence_number == App().lightshow.main_playback.index:
+                sequence = App().lightshow.main_playback
             else:
-                for chaser in App().chasers:
+                for chaser in App().lightshow.chasers:
                     if sequence_number == chaser.index:
                         sequence = chaser
         return sequence
@@ -240,12 +242,12 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         # Update Sequential Tab
-        if sequence == App().sequence:
+        if sequence == App().lightshow.main_playback:
             path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][3] = string
-            if App().sequence.position + 1 == step:
+            if App().lightshow.main_playback.position + 1 == step:
                 App().window.playback.sequential.wait = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step].total_time
@@ -271,12 +273,12 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         # Update Sequential Tab
-        if sequence == App().sequence:
+        if sequence == App().lightshow.main_playback:
             path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][5] = string
-            if App().sequence.position + 1 == step:
+            if App().lightshow.main_playback.position + 1 == step:
                 App().window.playback.sequential.time_out = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step].total_time
@@ -302,12 +304,12 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         # Update Sequential Tab
-        if sequence == App().sequence:
+        if sequence == App().lightshow.main_playback:
             path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][7] = string
-            if App().sequence.position + 1 == step:
+            if App().lightshow.main_playback.position + 1 == step:
                 App().window.playback.sequential.time_in = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step].total_time
@@ -333,12 +335,12 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         # Update Sequential Tab
-        if sequence == App().sequence:
+        if sequence == App().lightshow.main_playback:
             path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][4] = string
-            if App().sequence.position + 1 == step:
+            if App().lightshow.main_playback.position + 1 == step:
                 App().window.playback.sequential.delay_out = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step].total_time
@@ -364,12 +366,12 @@ class SequenceTab(Gtk.Grid):
         # Update Total Time
         self.update_total_time(sequence, step)
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         # Update Sequential Tab
-        if sequence == App().sequence:
+        if sequence == App().lightshow.main_playback:
             path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][6] = string
-            if App().sequence.position + 1 == step:
+            if App().lightshow.main_playback.position + 1 == step:
                 App().window.playback.sequential.delay_in = time
                 App().window.playback.sequential.total_time = sequence.steps[
                     step].total_time
@@ -390,9 +392,9 @@ class SequenceTab(Gtk.Grid):
         # Update text value
         sequence.steps[step].text = text
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         # Update Main Playback
-        if sequence == App().sequence:
+        if sequence == App().lightshow.main_playback:
             path = self.path_from_step(step)
             App().window.playback.cues_liststore1[path][2] = text
             # Update window's subtitle if needed
@@ -550,9 +552,10 @@ class SequenceTab(Gtk.Grid):
                         channels[channel + 1] = channel_widget.level
                 sequence.update_channels()
                 # Tag filename as modified
-                App().ascii.set_modified()
+                App().lightshow.set_modified()
                 # Update Main playback display
-                if sequence == App().sequence and step == App().sequence.position + 1:
+                if sequence == App().lightshow.main_playback and step == App(
+                ).lightshow.main_playback.position + 1:
                     for channel in range(1, MAX_CHANNELS + 1):
                         widget = (App().window.live_view.channels_view.
                                   get_channel_widget(channel))
@@ -581,21 +584,22 @@ class SequenceTab(Gtk.Grid):
         """New Chaser"""
         # Use the next free index
         # 1 is for Main Playback, Chasers start at 2
-        index_seq = App().chasers[-1].index + 1 if len(App().chasers) > 0 else 2
+        index_seq = App().lightshow.chasers[-1].index + 1 if len(
+            App().lightshow.chasers) > 0 else 2
         # Create Chaser
-        App().chasers.append(Sequence(index_seq, type_seq="Chaser"))
-        del App().chasers[-1].steps[1:]
-        App().chasers[-1].last = len(App().chasers[-1].steps)
+        App().lightshow.chasers.append(Sequence(index_seq, type_seq="Chaser"))
+        del App().lightshow.chasers[-1].steps[1:]
+        App().lightshow.chasers[-1].last = len(App().lightshow.chasers[-1].steps)
 
         # Update List of sequences
         self.liststore1.append([
-            App().chasers[-1].index,
-            App().chasers[-1].type_seq,
-            App().chasers[-1].text,
+            App().lightshow.chasers[-1].index,
+            App().lightshow.chasers[-1].type_seq,
+            App().lightshow.chasers[-1].text,
         ])
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def _keypress_R(self):  # pylint: disable=C0103
         """New Step and new Cue"""
@@ -632,8 +636,8 @@ class SequenceTab(Gtk.Grid):
             step_object = Step(sequence.index, cue=cue)
             sequence.insert_step(step, step_object)
             # If we modify Main Sequence
-            if sequence is App().sequence:
-                App().memories.insert(step, cue)
+            if sequence is App().lightshow.main_playback:
+                App().lightshow.cues.insert(step, cue)
                 # Update Preset Tab if exist
                 if App().tabs.tabs["memories"]:
                     nb_chan = len(channels)
@@ -643,7 +647,7 @@ class SequenceTab(Gtk.Grid):
             # Update Display
             self.update_sequence_display(step)
             # Tag filename as modified
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         else:  # Update Cue
@@ -661,19 +665,21 @@ class SequenceTab(Gtk.Grid):
                             channel] = channel_widget.level
                 sequence.update_channels()
                 # Tag filename as modified
-                App().ascii.set_modified()
+                App().lightshow.set_modified()
                 # Select memory modified
                 path = Gtk.TreePath.new_from_indices([step - 1])
                 self.treeview2.set_cursor(path, None, False)
                 # Update Presets Tab if exist
-                if sequence is App().sequence and App().tabs.tabs["memories"]:
-                    nb_chan = len(App().memories[step - 1].channels)
+                if sequence is App().lightshow.main_playback and App(
+                ).tabs.tabs["memories"]:
+                    nb_chan = len(App().lightshow.cues[step - 1].channels)
                     treeiter = App().tabs.tabs["memories"].liststore.get_iter(step - 1)
                     App().tabs.tabs["memories"].liststore.set_value(
                         treeiter, 2, nb_chan)
                     App().tabs.tabs["memories"].channels_view.update()
                 # Update Channels tab
-                if sequence is App().sequence and step == App().sequence.position + 1:
+                if sequence is App().lightshow.main_playback and step == App(
+                ).lightshow.main_playback.position + 1:
                     for channel in range(MAX_CHANNELS):
                         widget = (App().window.live_view.channels_view.
                                   get_channel_widget(channel + 1))
@@ -720,7 +726,7 @@ class SequenceTab(Gtk.Grid):
             step: Step
         """
         if sequence := self.get_selected_sequence():
-            if sequence == App().sequence:
+            if sequence == App().lightshow.main_playback:
                 for i in range(sequence.last)[1:-1]:
                     self.add_step_to_liststore(i)
             else:
@@ -741,13 +747,13 @@ class SequenceTab(Gtk.Grid):
         self.add_step_to_liststore(step)
         sequence = self.get_selected_sequence()
         # Update Main Playback
-        if sequence is App().sequence:
+        if sequence is App().lightshow.main_playback:
             # Update indexes of cues in liststore
             for i in range(step, sequence.last - 2):
                 self.liststore2[i][0] = str(int(self.liststore2[i][0]) + 1)
             # Update Main Tab
             App().window.playback.update_sequence_display()
-            if App().sequence.position + 1 == step:
+            if App().lightshow.main_playback.position + 1 == step:
                 # Update Crossfade
                 App().window.playback.update_xfade_display(step - 1)
                 # Update Channels Tab
@@ -891,7 +897,7 @@ class SeqChannelsView(ChannelsView):
             True or False
         """
         channel = child.get_index() + 1
-        if not App().backend.patch.is_patched(channel):
+        if not App().lightshow.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self._filter_all(child, channel_level)

@@ -104,8 +104,8 @@ def _update_master(msg: mido.Message, index: int) -> None:
     else:
         page = App().fader_page
         number = index + 1
-        master = None
-        for master in App().masters:
-            if master.page == page and master.number == number:
+        fader = None
+        for fader in App().lightshow.faders:
+            if fader.page == page and fader.number == number:
                 break
-        GLib.idle_add(master.set_level, val)
+        GLib.idle_add(fader.set_level, val)

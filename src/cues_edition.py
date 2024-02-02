@@ -17,7 +17,7 @@ import array
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App, is_float
-from olc.widgets.channels_view import ChannelsView, VIEW_MODES
+from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 
 class CuesEditionTab(Gtk.Paned):
@@ -36,7 +36,7 @@ class CuesEditionTab(Gtk.Paned):
         # List of Cues
         self.liststore = Gtk.ListStore(str, str, int)
 
-        for mem in App().memories:
+        for mem in App().lightshow.cues:
             channels = len(mem.channels)
             self.liststore.append([str(mem.memory), mem.text, channels])
 
@@ -69,7 +69,7 @@ class CuesEditionTab(Gtk.Paned):
     def refresh(self) -> None:
         """Refresh display"""
         self.liststore.clear()
-        for mem in App().memories:
+        for mem in App().lightshow.cues:
             channels = len(mem.channels)
             self.liststore.append([str(mem.memory), mem.text, channels])
         self.channels_view.update()
@@ -148,7 +148,7 @@ class CuesEditionTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
             # Memory's channels
-            cue = App().memories[row]
+            cue = App().lightshow.cues[row]
             channels = cue.channels
             # Update levels and count channels
             nb_chan = 0
@@ -157,19 +157,20 @@ class CuesEditionTab(Gtk.Paned):
                 if channel_widget.level:
                     channels[chan + 1] = channel_widget.level
                     nb_chan += 1
-            App().sequence.update_channels()
+            App().lightshow.main_playback.update_channels()
             # Update Display
             treeiter = self.liststore.get_iter(row)
             self.liststore.set_value(treeiter, 2, nb_chan)
             # Update Live View
-            if App().sequence.steps[App().sequence.position + 1].cue == cue:
+            if App().lightshow.main_playback.steps[
+                    App().lightshow.main_playback.position + 1].cue == cue:
                 for channel in channels:
                     widget = App().window.live_view.channels_view.get_channel_widget(
                         channel)
                     widget.next_level = channels.get(channel)
                     widget.queue_draw()
             # Tag filename as modified
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
 
     def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
@@ -182,33 +183,34 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
             # Find Steps using selected memory
             steps = [
-                i for i, _ in enumerate(App().sequence.steps)
-                if App().sequence.steps[i].cue.memory == App().memories[row].memory
+                i for i, _ in enumerate(App().lightshow.main_playback.steps)
+                if App().lightshow.main_playback.steps[i].cue.memory ==
+                App().lightshow.cues[row].memory
             ]
             # Delete Steps
             for step in steps:
-                App().sequence.steps.pop(step)
-                App().sequence.last -= 1
+                App().lightshow.main_playback.steps.pop(step)
+                App().lightshow.main_playback.last -= 1
             # Delete memory from the Memories List
-            App().memories.pop(row)
+            App().lightshow.cues.pop(row)
             # Update list of channels in Sequence
-            App().sequence.update_channels()
+            App().lightshow.main_playback.update_channels()
             # Remove it from the ListStore
             treeiter = self.liststore.get_iter(path)
             self.liststore.remove(treeiter)
             # Tag filename as modified
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
             # Update Main Playback
             App().window.playback.update_sequence_display()
             # Update Sequence Edition Tab if exist
             if App().tabs.tabs["sequences"]:
                 App().tabs.tabs["sequences"].liststore1.clear()
                 App().tabs.tabs["sequences"].liststore1.append([
-                    App().sequence.index,
-                    App().sequence.type_seq,
-                    App().sequence.text,
+                    App().lightshow.main_playback.index,
+                    App().lightshow.main_playback.type_seq,
+                    App().lightshow.main_playback.text,
                 ])
-                for chaser in App().chasers:
+                for chaser in App().lightshow.chasers:
                     App().tabs.tabs["sequences"].liststore1.append(
                         [chaser.index, chaser.type_seq, chaser.text])
                 App().tabs.tabs["sequences"].treeview1.set_model(
@@ -230,28 +232,30 @@ class CuesEditionTab(Gtk.Paned):
             return False
 
         # Memory already exist ?
-        for i, _ in enumerate(App().memories):
-            if App().memories[i].memory == mem:
+        for i, _ in enumerate(App().lightshow.cues):
+            if App().lightshow.cues[i].memory == mem:
                 # Find selected memory
                 path, _focus_column = self.treeview.get_cursor()
                 if path:
                     row = path.get_indices()[0]
                     # Copy channels
-                    App().memories[i].channels = App().memories[row].channels.copy()
+                    App().lightshow.cues[i].channels = App(
+                    ).lightshow.cues[row].channels.copy()
                     # Count channels
-                    nb_chan = len(App().memories[i].channels)
-                    App().sequence.update_channels()
+                    nb_chan = len(App().lightshow.cues[i].channels)
+                    App().lightshow.main_playback.update_channels()
                     # Update Display
                     treeiter = self.liststore.get_iter(i)
                     self.liststore.set_value(treeiter, 2, nb_chan)
-                    if i == App().sequence.position:
+                    if i == App().lightshow.main_playback.position:
                         for channel in range(MAX_CHANNELS):
                             flowbox = App().window.live_view.channels_view.flowbox
                             widget = flowbox.get_child_at_index(channel).get_child()
-                            widget.next_level = App().memories[i].channels[channel]
+                            widget.next_level = App(
+                            ).lightshow.cues[i].channels[channel]
                             widget.queue_draw()
                     # Tag filename as modified
-                    App().ascii.set_modified()
+                    App().lightshow.set_modified()
                 App().window.commandline.set_string("")
                 return True
 
@@ -259,23 +263,23 @@ class CuesEditionTab(Gtk.Paned):
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-            sequence = App().memories[row].sequence
-            channels = App().memories[row].channels.copy()
+            sequence = App().lightshow.cues[row].sequence
+            channels = App().lightshow.cues[row].channels.copy()
             cue = Cue(sequence, mem, channels)
             # Insert Memory
             found = False
-            for i, _ in enumerate(App().memories):
-                if App().memories[i].memory > mem:
+            for i, _ in enumerate(App().lightshow.cues):
+                if App().lightshow.cues[i].memory > mem:
                     found = True
                     break
             if not found:
                 i += 1
-            App().memories.insert(i, cue)
+            App().lightshow.cues.insert(i, cue)
             nb_chan = len(channels)
-            App().sequence.update_channels()
+            App().lightshow.main_playback.update_channels()
             self.liststore.insert(i, [str(mem), "", nb_chan])
             # Tag filename as modified
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
 
         App().window.commandline.set_string("")
         return True
@@ -291,15 +295,15 @@ class CuesEditionTab(Gtk.Paned):
             # Insert memory with the next free number
             mem = False
             # Find Next free number
-            if len(App().memories) > 1:
-                for i, _ in enumerate(App().memories[:-1]):
-                    if (int(App().memories[i + 1].memory) -
-                            int(App().memories[i].memory) > 1):
-                        mem = App().memories[i].memory + 1
+            if len(App().lightshow.cues) > 1:
+                for i, _ in enumerate(App().lightshow.cues[:-1]):
+                    if (int(App().lightshow.cues[i + 1].memory) -
+                            int(App().lightshow.cues[i].memory) > 1):
+                        mem = App().lightshow.cues[i].memory + 1
                         break
-            elif len(App().memories) == 1:
+            elif len(App().lightshow.cues) == 1:
                 # Just one memory
-                mem = App().memories[0].memory + 1
+                mem = App().lightshow.cues[0].memory + 1
                 i = 1
             else:
                 # The list is empty
@@ -308,26 +312,26 @@ class CuesEditionTab(Gtk.Paned):
 
             # Free number is at the end
             if not mem:
-                mem = App().memories[-1].memory + 1
+                mem = App().lightshow.cues[-1].memory + 1
                 i += 1
 
             # Find selected memory for channels levels
             path, _focus_column = self.treeview.get_cursor()
             if path:
                 row = path.get_indices()[0]
-                channels = App().memories[row].channels.copy()
+                channels = App().lightshow.cues[row].channels.copy()
             else:
                 channels = {}
 
             # Create new memory
             cue = Cue(0, mem, channels)
-            App().memories.insert(i + 1, cue)
+            App().lightshow.cues.insert(i + 1, cue)
             nb_chan = len(channels)
-            App().sequence.update_channels()
+            App().lightshow.main_playback.update_channels()
             self.liststore.insert(i + 1, [str(mem), "", nb_chan])
 
             # Tag filename as modified
-            App().ascii.set_modified()
+            App().lightshow.set_modified()
 
             return True
 
@@ -335,7 +339,7 @@ class CuesEditionTab(Gtk.Paned):
         mem = float(keystring)
 
         # Memory already exist ?
-        for item in App().memories:
+        for item in App().lightshow.cues:
             if item.memory == mem:
                 return False
 
@@ -344,8 +348,8 @@ class CuesEditionTab(Gtk.Paned):
         if path:
             row = path.get_indices()[0]
 
-            sequence = App().memories[row].sequence
-            channels = App().memories[row].channels.copy()
+            sequence = App().lightshow.cues[row].sequence
+            channels = App().lightshow.cues[row].channels.copy()
         else:
             sequence = 0
             channels = {}
@@ -353,8 +357,8 @@ class CuesEditionTab(Gtk.Paned):
         # Find Memory's position
         found = False
         i = 0
-        for i, _ in enumerate(App().memories):
-            if App().memories[i].memory > mem:
+        for i, _ in enumerate(App().lightshow.cues):
+            if App().lightshow.cues[i].memory > mem:
                 found = True
                 break
         if not found:
@@ -363,15 +367,15 @@ class CuesEditionTab(Gtk.Paned):
 
         # Create Memory
         cue = Cue(sequence, mem, channels)
-        App().memories.insert(i, cue)
-        App().sequence.update_channels()
+        App().lightshow.cues.insert(i, cue)
+        App().lightshow.main_playback.update_channels()
 
         # Update display
         nb_chan = len(channels)
         self.liststore.insert(i, [str(mem), "", nb_chan])
 
         # Tag filename as modified
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
         App().window.commandline.set_string("")
         return True
@@ -421,7 +425,7 @@ class CueChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().memories or not App().tabs.tabs["memories"]:
+        if not App().lightshow.cues or not App().tabs.tabs["memories"]:
             child.set_visible(False)
             return False
         # Find selected row
@@ -447,7 +451,7 @@ class CueChannelsView(ChannelsView):
         channel_index = child.get_index()
         channel_widget = child.get_child()
         # Channels in Cue
-        channels = App().memories[row].channels
+        channels = App().lightshow.cues[row].channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)
@@ -475,7 +479,7 @@ class CueChannelsView(ChannelsView):
             True if patched, else False
         """
         channel = child.get_index() + 1
-        if not App().backend.patch.is_patched(channel):
+        if not App().lightshow.patch.is_patched(channel):
             return False
         return self.__filter_all(row, child)
 
@@ -484,7 +488,7 @@ class CueChannelsView(ChannelsView):
         channel_index = child.get_index()
         channel_widget = child.get_child()
         # Channels in Cue
-        channels = App().memories[row].channels
+        channels = App().lightshow.cues[row].channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)

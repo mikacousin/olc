@@ -59,19 +59,19 @@ class GroupWidget(Gtk.Widget):
         # Update group text
         flowboxchild = self.get_parent()
         index = flowboxchild.get_index()
-        App().groups[index].text = text
+        App().lightshow.groups[index].text = text
         # Update Master text
-        for master in App().masters:
-            if (master.content_type == FaderType.GROUP
-                    and master.content_value == App().groups[index].index):
-                master.text = text
+        for fader in App().lightshow.faders:
+            if (fader.content_type == FaderType.GROUP
+                    and fader.content_value == App().lightshow.groups[index].index):
+                fader.text = text
                 # Update Virtual Console
-                if App().virtual_console and master.page == App().fader_page:
-                    App().virtual_console.flashes[master.number - 1].label = text
+                if App().virtual_console and fader.page == App().fader_page:
+                    App().virtual_console.flashes[fader.number - 1].label = text
                 break
         App().midi.messages.lcd.show_masters()
         self.popover.popdown()
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def on_click(self, _tgt, _ev):
         """Group clicked"""

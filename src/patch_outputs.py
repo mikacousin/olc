@@ -13,8 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import List, Tuple
+
 from gi.repository import Gdk, Gtk
-from olc.define import App, NB_UNIVERSES, UNIVERSES, is_int, is_non_nul_int
+from olc.define import NB_UNIVERSES, UNIVERSES, App, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
 
 
@@ -92,7 +93,7 @@ class PatchOutputsTab(Gtk.Box):
                     widget.level = level
                     widget.queue_draw()
             App().window.live_view.channels_view.update()
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -368,7 +369,7 @@ class PatchOutputsTab(Gtk.Box):
 
         self.patch.by_outputs.patch_channel(several)
 
-        App().ascii.set_modified()
+        App().lightshow.set_modified()
         App().window.commandline.set_string("")
 
 

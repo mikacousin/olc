@@ -13,9 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Dict
+
 from gi.repository import Gio
-from olc.curve import LimitCurve, SegmentsCurve, InterpolateCurve
-from olc.define import App, strip_accents, UNIVERSES
+from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.define import UNIVERSES, App, strip_accents
 
 
 def save_main_playback(stream: Gio.FileOutputStream) -> None:
@@ -31,7 +32,7 @@ def save_main_playback(stream: Gio.FileOutputStream) -> None:
         ))
     stream.write(bytes("! Main sequence\n\n", "utf8"))
     stream.write(bytes("$SEQUENCE 1 0\n\n", "utf8"))
-    for step in App().sequence.steps:
+    for step in App().lightshow.main_playback.steps:
         if int(step.cue.memory) != 0:
             # Save integers as integers
             time_out = (str(int(step.time_out))
@@ -71,7 +72,7 @@ def save_chasers(stream: Gio.FileOutputStream) -> None:
     """
     stream.write(bytes("! Additional Sequences\n\n", "utf8"))
 
-    for chaser in App().chasers:
+    for chaser in App().lightshow.chasers:
         stream.write(bytes(f"$SEQUENCE {chaser.index}\n", "utf8"))
         _write_ascii(stream, chaser.text)
         stream.write(bytes(f"$$TEXT {chaser.text}\n\n", "utf8"))
@@ -119,7 +120,7 @@ def save_groups(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("! TEXT   Standard ASCII Light Cues\n", "utf8"))
     stream.write(bytes("! $$TEXT Unicode encoded version of the same text\n\n", "utf8"))
 
-    for group in App().groups:
+    for group in App().lightshow.groups:
         stream.write(bytes(f"GROUP {group.index}\n", "utf8"))
         _write_ascii(stream, group.text)
         stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
@@ -145,7 +146,7 @@ def save_congo_groups(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("! $$TEXT  Unicode encoded version of the same text\n", "utf8"))
     stream.write(bytes("CLEAR $GROUP\n\n", "utf8"))
 
-    for group in App().groups:
+    for group in App().lightshow.groups:
         stream.write(bytes(f"$GROUP {group.index}\n", "utf8"))
         _write_ascii(stream, group.text)
         stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
@@ -180,26 +181,26 @@ def save_masters(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("CLEAR $MASTPAGE\n\n", "utf8"))
     stream.write(bytes("$MASTPAGE 1 0 0 0\n", "utf8"))
     page = 1
-    for master in App().masters:
-        if master.page != page:
-            page = master.page
+    for fader in App().lightshow.faders:
+        if fader.page != page:
+            page = fader.page
             stream.write(bytes(f"\n$MASTPAGE {page} 0 0 0\n", "utf8"))
         # MASTPAGEITEM :
         # page, sub, type, content, timeIn, autotime, timeOut, target,,,,,,
-        if not master.content_value or master.content_type == 2:
+        if not fader.content_value or fader.content_type == 2:
             content = "0"
         else:
-            content = (str(int(master.content_value)) if
-                       master.content_value.is_integer() else str(master.content_value))
+            content = (str(int(fader.content_value)) if
+                       fader.content_value.is_integer() else str(fader.content_value))
         stream.write(
             bytes(
-                f"$MASTPAGEITEM {master.page} {master.number} {master.content_type} "
+                f"$MASTPAGEITEM {fader.page} {fader.number} {fader.content_type} "
                 f"{content} 5 0 5 255\n",
                 "utf8",
             ))
-        # Master of Channels, save them
-        if master.content_type == 2:
-            _save_channels(stream, master.content_value)
+        # Fader of Channels, save them
+        if fader.content_type == 2:
+            _save_channels(stream, fader.content_value)
     stream.write(bytes("\n", "utf8"))
 
 
@@ -218,17 +219,17 @@ def save_patch(stream: Gio.FileOutputStream) -> None:
     stream.write(bytes("CLEAR PATCH\n\n", "utf8"))
     i = 1
     patch = ""
-    for channel, outputs in App().backend.patch.channels.items():
-        if not App().backend.patch.is_patched(channel):
+    for channel, outputs in App().lightshow.patch.channels.items():
+        if not App().lightshow.patch.is_patched(channel):
             continue
         for values in outputs:
             output = values[0]
             univ = values[1]
             index = UNIVERSES.index(univ)
             limit = 255
-            curve_num = App().backend.patch.outputs[univ][output][1]
+            curve_num = App().lightshow.patch.outputs[univ][output][1]
             if curve_num < 0:
-                curve = App().curves.get_curve(curve_num)
+                curve = App().lightshow.curves.get_curve(curve_num)
                 limit = curve.limit
             level = "H" + format(limit, "02X")
             patch += f" {channel}<{output + 512 * index}@{level}"
@@ -253,7 +254,7 @@ def save_independents(stream: Gio.FileOutputStream) -> None:
             "utf8",
         ))
     stream.write(bytes("! Independents\n\n", "utf8"))
-    for inde in App().independents.independents:
+    for inde in App().lightshow.independents.independents:
         stream.write(bytes(f"$SPECIALFUNCTION {inde.number} 0 0\n", "utf8"))
         _write_ascii(stream, inde.text)
         stream.write(bytes(f"$$TEXT {inde.text}\n", "utf8"))
@@ -295,7 +296,7 @@ def save_curves(stream: Gio.FileOutputStream) -> None:
             "utf8",
         ))
     stream.write(bytes("! Curves\n\n", "utf8"))
-    for key, curve in App().curves.curves.items():
+    for key, curve in App().lightshow.curves.curves.items():
         if key >= 10:
             curve_type = curve.__class__.__name__
             if isinstance(curve, LimitCurve):
@@ -331,7 +332,7 @@ def save_outputs_curves(stream: Gio.FileOutputStream) -> None:
         ))
     stream.write(bytes("! Output curves\n", "utf8"))
     stream.write(bytes("! $$OUTPUT  Universe, Output number, Curve number\n\n", "utf8"))
-    for key, value in App().backend.patch.outputs.items():
+    for key, value in App().lightshow.patch.outputs.items():
         for output, chan_dic in value.items():
             stream.write(bytes(f"$$OUTPUT {key} {output} {chan_dic[1]}\n", "utf8"))
     stream.write(bytes("\n", "utf8"))

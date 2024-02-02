@@ -110,10 +110,10 @@ class ChannelWidget(Gtk.DrawingArea):
         # Default color
         cr.set_source_rgb(0.9, 0.6, 0.2)
         # Independent color
-        if int(self.channel) in App().independents.get_channels():
+        if int(self.channel) in App().lightshow.independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
         # Not patched color
-        if not App().backend.patch.is_patched(int(self.channel)):
+        if not App().lightshow.patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
@@ -148,7 +148,7 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
         # Don't draw next level if channel is in an independent
-        if int(self.channel) in App().independents.get_channels():
+        if int(self.channel) in App().lightshow.independents.get_channels():
             return
         # Draw down icon
         if self.next_level < self.level:
