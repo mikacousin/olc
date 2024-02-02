@@ -128,7 +128,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.label = Gtk.Label("")
         self.seq_pad.attach(self.label, 0, 1, 1, 1)
 
-        # Grand Master and Output grid
+        # Output grid
         self.output_pad = Gtk.Grid()
         self.output = ButtonWidget("Output", "output")
         self.output.connect("clicked", self._on_output)
@@ -922,7 +922,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     App().crossfade.scale_moved(App().crossfade.scale_b)
 
     def _scale_clicked(self, scale):
-        """Crossfade or Grand Master clicked
+        """Crossfade clicked
 
         Args:
             scale: FaderWidget
@@ -932,25 +932,7 @@ class VirtualConsoleWindow(Gtk.Window):
                 App().midi.learning = "crossfade_out"
             elif scale == self.scale_b:
                 App().midi.learning = "crossfade_in"
-            elif scale == self.scale_grand_master:
-                App().midi.learning = "gm"
             self.queue_draw()
-
-    def grand_master_moved(self, scale):
-        """Grand Master moved
-
-        Args:
-            scale: GM FaderWidget
-        """
-        if App().midi.learning:
-            App().midi.learning = "gm"
-            self.queue_draw()
-        else:
-            value = scale.get_value()
-            App().backend.dmx.grand_master.set_level(value / 255)
-            App().window.grand_master.queue_draw()
-            midi_fader = App().midi.faders.gm_fader
-            midi_fader.set_state(value)
 
     def _controller_clicked(self, widget):
         """Controller clicked
