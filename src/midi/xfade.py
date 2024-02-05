@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
 from olc.define import App
+
 from .fader import MIDIFader
 
 

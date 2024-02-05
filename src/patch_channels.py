@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gtk
-from olc.define import App, MAX_CHANNELS, UNIVERSES
+from olc.define import MAX_CHANNELS, UNIVERSES, App
 from olc.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
 
 

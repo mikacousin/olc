@@ -46,8 +46,8 @@ class LiveView(Gtk.Notebook):
         if not App().lightshow.main_playback.on_go and App(
         ).backend.dmx.levels["user"][channel] != -1:
             level = App().backend.dmx.levels["user"][channel]
-        if App().backend.dmx.levels["masters"][channel] > level:
-            level = App().backend.dmx.levels["masters"][channel]
+        if App().backend.dmx.levels["faders"][channel] > level:
+            level = App().backend.dmx.levels["faders"][channel]
             widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
         if App().lightshow.independents.dmx[channel] > level:
             level = App().lightshow.independents.dmx[channel]

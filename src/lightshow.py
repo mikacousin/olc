@@ -12,18 +12,31 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from gi.repository import GLib, Gtk
+from __future__ import annotations
 
+import typing
+
+from gi.repository import GLib, Gtk
 from olc.curve import Curves
-from olc.define import MAX_FADER_PAGE, UNIVERSES, App
+from olc.define import UNIVERSES, App
+from olc.fader_bank import FaderBank
 from olc.independent import Independents
-from olc.master import Master
 from olc.patch import DMXPatch
 from olc.sequence import Sequence
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.cue import Cue
+    from olc.group import Group
 
 
 class ShowFile:
     """Opened file"""
+
+    file: Gio.File
+    basename: str
+    modified: bool
+    recent_manager: Gtk.RecentManager
 
     def __init__(self, file):
         self.file = file
@@ -67,6 +80,15 @@ class ShowFile:
 class LightShow(ShowFile):
     """Light show data"""
 
+    curves: Curves
+    main_playback: Sequence
+    cues: list
+    chasers: list
+    groups: list
+    fader_bank: FaderBank
+    independents: Independents
+    patch: DMXPatch
+
     def __init__(self):
         super().__init__(None)
         # Curves
@@ -79,14 +101,54 @@ class LightShow(ShowFile):
         self.chasers = []
         # List of groups
         self.groups = []
-        # pages of 10 faders
-        self.faders = []
-        for page in range(MAX_FADER_PAGE):
-            self.faders.extend(Master(page + 1, i + 1, 0, 0) for i in range(10))
+        # Faders
+        self.fader_bank = FaderBank()
         # Independents
         self.independents = Independents()
         # Patch
         self.patch = DMXPatch(UNIVERSES)
+
+    def get_cue(self, number: float) -> None | Cue:
+        """Get Cue with his number
+
+        Args:
+            number: Cue number
+
+        Returns:
+            Cue or None
+        """
+        for cue in self.cues:
+            if cue.memory == number:
+                return cue
+        return None
+
+    def get_group(self, number: float) -> None | Group:
+        """Get Group with his number
+
+        Args:
+            number: Group number
+
+        Returns:
+            Group or None
+        """
+        for group in self.groups:
+            if group.index == number:
+                return group
+        return None
+
+    def get_chaser(self, number: float) -> None | Sequence:
+        """Get Chaser with his number
+
+        Args:
+            number: Chaser number
+
+        Returns:
+            Chaser or None
+        """
+        for chaser in self.chasers:
+            if chaser.index == number:
+                return chaser
+        return None
 
     def reset(self) -> None:
         """Reset all"""
@@ -99,9 +161,6 @@ class LightShow(ShowFile):
                 chaser.thread.join()
         del self.chasers[:]
         del self.groups[:]
-        del self.faders[:]
-        App().fader_page = 1
-        for page in range(MAX_FADER_PAGE):
-            self.faders.extend(Master(page + 1, i + 1, 0, 0) for i in range(10))
+        self.fader_bank.reset_faders()
         self.independents = Independents()
         self.patch.patch_empty()

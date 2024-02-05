@@ -12,6 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
 from collections import deque
 from dataclasses import dataclass
 
@@ -26,6 +29,9 @@ from .notes import MidiNotes
 from .pitchwheel import MidiPitchWheel
 from .ports import MidiPorts
 from .xfade import MidiXFade
+
+if typing.TYPE_CHECKING:
+    from olc.fader import Fader
 
 
 class Queue:
@@ -208,25 +214,48 @@ class Midi:
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             self.enqueue(msg)
 
-    def update_masters(self) -> None:
-        """Send faders value and update display"""
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page:
-                midi_name = f"master_{fader.number}"
-                channel, control = self.messages.control_change.control_change[
-                    midi_name]
-                if control != -1:
-                    msg = mido.Message(
-                        "control_change",
-                        channel=channel,
-                        control=control,
-                        value=int(fader.value / 2),
-                        time=0,
-                    )
-                    self.enqueue(msg)
-                channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
-                if channel != -1:
-                    val = int(((fader.value / 255) * 16383) - 8192)
-                    msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
-                    self.enqueue(msg)
-        self.messages.lcd.show_masters()
+    def update_faders(self) -> None:
+        """Send faders value and update LCD display"""
+        fader_bank = App().lightshow.fader_bank
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            midi_name = f"fader_{fader.index}"
+            channel, control = self.messages.control_change.control_change[midi_name]
+            if control != -1:
+                msg = mido.Message(
+                    "control_change",
+                    channel=channel,
+                    control=control,
+                    value=round(fader.level * 127),
+                    time=0,
+                )
+                self.enqueue(msg)
+            channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
+            if channel != -1:
+                val = round((fader.level * 16383) - 8192)
+                msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
+                self.enqueue(msg)
+        self.messages.lcd.show_faders()
+
+    def update_fader(self, fader: Fader) -> None:
+        """Send fader level and update LCD
+
+        Args:
+            fader: Fader to update
+        """
+        midi_name = f"fader_{fader.index}"
+        channel, control = self.messages.control_change.control_change[midi_name]
+        if control != -1:
+            msg = mido.Message(
+                "control_change",
+                channel=channel,
+                control=control,
+                value=round(fader.level * 127),
+                time=0,
+            )
+            self.enqueue(msg)
+        channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
+        if channel != -1:
+            val = round((fader.level * 16383) - 8192)
+            msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
+            self.enqueue(msg)
+        self.messages.lcd.show_fader(fader)

@@ -40,7 +40,7 @@ class Dmx:
         self.levels = {
             "sequence": array.array("B", [0] * MAX_CHANNELS),
             "user": array.array("h", [-1] * MAX_CHANNELS),
-            "masters": array.array("B", [0] * MAX_CHANNELS),
+            "faders": array.array("B", [0] * MAX_CHANNELS),
         }
         # DMX values
         self.frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
@@ -69,9 +69,9 @@ class Dmx:
             if not App(
             ).lightshow.main_playback.on_go and self.levels["user"][channel] != -1:
                 level = self.levels["user"][channel]
-            # Masters
-            if self.levels["masters"][channel] > level:
-                level = self.levels["masters"][channel]
+            # Faders
+            if self.levels["faders"][channel] > level:
+                level = self.levels["faders"][channel]
             # Independents
             if App().lightshow.independents.dmx[channel] > level:
                 level = App().lightshow.independents.dmx[channel]
@@ -115,15 +115,3 @@ class Dmx:
         if not level:
             self.user_outputs.pop((output, universe))
         self.backend.send(universe, index)
-
-    def update_masters(self) -> None:
-        """Update masters levels"""
-        for channel in range(MAX_CHANNELS):
-            if not self.patch.is_patched(channel + 1):
-                continue
-            level_master = -1
-            for fader in App().lightshow.faders:
-                if fader.dmx[channel] > level_master:
-                    level_master = fader.dmx[channel]
-            if level_master != -1:
-                self.levels["masters"][channel] = level_master

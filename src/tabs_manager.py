@@ -31,9 +31,9 @@ class Tabs:
         self.tabs = {
             "channel_time": None,
             "curves": None,
+            "faders": None,
             "groups": None,
             "indes": None,
-            "masters": None,
             "memories": None,
             "patch_outputs": None,
             "patch_channels": None,

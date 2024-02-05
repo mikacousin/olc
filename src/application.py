@@ -27,14 +27,12 @@ from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
-from olc.define import MAX_CHANNELS, MAX_FADER_PAGE  # noqa: E402
+from olc.define import MAX_CHANNELS  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
 from olc.lightshow import LightShow  # noqa: E402
-from olc.master import Master  # noqa: E402
-from olc.masters_edition import MastersTab  # noqa: E402
 from olc.midi import Midi  # noqa: E402
 from olc.osc import Osc  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
@@ -168,7 +166,7 @@ class Application(Gtk.Application):
 
         # Open MIDI Inputs and Outputs
         self.midi = Midi()
-        self.midi.messages.lcd.show_masters()
+        self.midi.messages.lcd.show_faders()
         self.midi.gm_init()
 
         # Create and launch OSC server
@@ -188,7 +186,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
-        self.set_accels_for_action("app.masters", ["<Control>m"])
+        self.set_accels_for_action("app.faders", ["<Control>f"])
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         self.set_accels_for_action("app.independents", ["<Control>i"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
@@ -236,7 +234,7 @@ class Application(Gtk.Application):
             "memories": "memories_cb",
             "groups": "groups_cb",
             "sequences": "sequences",
-            "masters": "_masters",
+            "faders": "_faders",
             "track_channels": "track_channels",
             "independents": "_independents",
             "virtual_console": "_virtual_console",
@@ -272,15 +270,12 @@ class Application(Gtk.Application):
         self.lightshow.main_playback.position = 0
         self.lightshow.main_playback.window = self.window
         self.lightshow.main_playback.update_channels()
-        # Delete cues, groups, chasers, masters
+        # Delete cues, groups, chasers, faders
         del self.lightshow.cues[:]
         del self.lightshow.groups[:]
         del self.lightshow.chasers[:]
-        del self.lightshow.faders[:]
         self.fader_page = 1
-        for page in range(MAX_FADER_PAGE):
-            for i in range(10):
-                self.lightshow.faders.append(Master(page + 1, i + 1, 0, 0))
+        self.lightshow.fader_bank.reset_faders()
         self.lightshow.independents = Independents()
         # Redraw Sequential Window
         self.window.playback.update_sequence_display()
@@ -289,18 +284,6 @@ class Application(Gtk.Application):
 
         # Redraw all open tabs
         self.tabs.refresh_all()
-
-        # Redraw Masters in Virtual Console
-        if self.virtual_console and self.virtual_console.props.visible:
-            self.virtual_console.page_number.set_label(str(self.fader_page))
-            for fader in self.lightshow.faders:
-                if fader.page == self.fader_page:
-                    text = f"master_{fader.number + (self.fader_page - 1) * 10}"
-                    self.virtual_console.masters[fader.number - 1].text = text
-                    self.virtual_console.masters[fader.number - 1].set_value(
-                        fader.value)
-                    self.virtual_console.flashes[fader.number - 1].label = fader.text
-            self.virtual_console.masters_pad.queue_draw()
 
         self.window.live_view.channels_view.last_selected_channel = ""
 
@@ -449,9 +432,9 @@ class Application(Gtk.Application):
         """Create Curves Edition Tab"""
         self.tabs.open("curves", CurvesTab, "Curves")
 
-    def _masters(self, _action, _parameter):
-        """Create Masters Tab"""
-        self.tabs.open("masters", MastersTab, "Masters", self.lightshow.faders)
+    def _faders(self, _action, _parameter):
+        """Create Faders Tab"""
+        # self.tabs.open("faders", FadersTab, "Faders", self.lightshow.fader_bank)
 
     def _independents(self, _action, _parameter):
         """Create Independents Tab"""

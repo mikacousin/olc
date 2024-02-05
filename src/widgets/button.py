@@ -15,6 +15,7 @@
 import cairo
 from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
+
 from .common import rounded_rectangle, rounded_rectangle_fill
 
 

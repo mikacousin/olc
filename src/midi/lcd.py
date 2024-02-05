@@ -12,8 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+
 import mido
 from olc.define import App, strip_accents
+
+if typing.TYPE_CHECKING:
+    from olc.fader import Fader
 
 
 class MackieLCD:
@@ -63,20 +70,32 @@ class MackieLCD:
         self.send(text, 0)
         self.send(text, 1)
 
-    def show_masters(self) -> None:
-        """Show masters name"""
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page and fader.number <= 8:
+    def show_faders(self) -> None:
+        """Show faders name"""
+        fader_bank = App().lightshow.fader_bank
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            if fader.index <= 8:
                 text = fader.text[:7]
-                strip = fader.number - 1
+                strip = fader.index - 1
                 self.send_to_strip(text, 0, strip)
         self.show_page_number()
 
+    def show_fader(self, fader: Fader) -> None:
+        """Show fader name
+
+        Args:
+            fader: Fader to display
+        """
+        if fader.index <= 8:
+            text = fader.text[:7]
+            strip = fader.index - 1
+            self.send_to_strip(text, 0, strip)
+
     def show_page_number(self) -> None:
-        """Show masters page number"""
+        """Show fader page number"""
         text = 56 * " "
         self.send(text, 1)
-        text = f"Page {App().fader_page}"
+        text = f"Page {App().lightshow.fader_bank.active_page}"
         chars = [ord(c) for c in text]
         start = 56 + int((56 - len(text)) / 2)
         data = [0, 0, 102, 20, 18, start] + chars

@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gettext import gettext as _
 from typing import Any, Dict, List
+
 from scipy.interpolate import PchipInterpolator
 from olc.define import App
 

@@ -45,7 +45,7 @@ class MidiControlChanges:
             "crossfade_in": [0, 9],
         }
         for i in range(1, 101):
-            self.control_change[f"master_{i}"] = [0, -1]
+            self.control_change[f"fader_{i}"] = [0, -1]
 
     def scan(self, port: str, msg: mido.Message) -> None:
         """Scan MIDI control changes
@@ -56,9 +56,9 @@ class MidiControlChanges:
         """
         for key, value in self.control_change.items():
             if msg.channel == value[0] and msg.control == value[1]:
-                if key[:7] == "master_":
-                    # We need to pass master number to masters function
-                    GLib.idle_add(_function_master, msg, int(key[7:]))
+                if key[:6] == "fader_":
+                    # We need to pass fader number to faders function
+                    GLib.idle_add(_function_fader, msg, int(key[6:]))
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde, port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
@@ -165,7 +165,7 @@ class MidiControlChanges:
             elif tab in (
                     App().tabs.tabs["groups"],
                     App().tabs.tabs["indes"],
-                    App().tabs.tabs["masters"],
+                    App().tabs.tabs["faders"],
                     App().tabs.tabs["memories"],
                     App().tabs.tabs["sequences"],
             ):
@@ -193,25 +193,21 @@ class MidiControlChanges:
             App().window.grand_master.queue_draw()
 
 
-def _function_master(msg: mido.Message, fader_index: int) -> None:
-    """Masters
+def _function_fader(msg: mido.Message, fader_index: int) -> None:
+    """Faders
 
     Args:
         msg: MIDI message
-        fader_index: Master number
+        fader_index: Fader number
     """
     val = (msg.value / 127) * 255
     midi_fader = App().midi.faders.faders[fader_index - 1]
-    fader = None
-    for fader in App().lightshow.faders:
-        if fader.page == App().fader_page and fader.number == fader_index:
-            break
+    fader = App().lightshow.fader_bank.get_fader(fader_index)
     if not midi_fader.is_valid(val, fader.value):
         return
     if App().virtual_console:
-        App().virtual_console.masters[fader_index - 1].set_value(val)
-        App().virtual_console.master_moved(App().virtual_console.masters[fader_index -
-                                                                         1])
+        App().virtual_console.faders[fader_index - 1].set_value(val)
+        App().virtual_console.fader_moved(App().virtual_console.faders[fader_index - 1])
     else:
         fader.set_level(val)
 

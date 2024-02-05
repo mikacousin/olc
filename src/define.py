@@ -13,8 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Some defines for olc project."""
-from typing import Any
 import unicodedata
+from typing import Any
+
 from gi.repository import Gio
 
 UNIVERSES = [1, 2, 3, 4]

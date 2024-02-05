@@ -69,8 +69,8 @@ class MidiNotes:
             "inde_7": [0, 32],
             "inde_8": [0, 33],
             "inde_9": [0, 34],
-            "fader_page_plus": [0, 49],
-            "fader_page_minus": [0, 48],
+            "page_plus": [0, 49],
+            "page_minus": [0, 48],
             "gm": [0, 112],
             "zoom_on": [0, 100],
             "h_plus": [0, 99],
@@ -89,9 +89,9 @@ class MidiNotes:
                 else:
                     self.notes[f"flash_{j + i * 10 + 1}"] = [0, -1]
                 if j < 8:
-                    self.notes[f"master_{j + i * 10 + 1}"] = [0, 104 + j]
+                    self.notes[f"fader_{j + i * 10 + 1}"] = [0, 104 + j]
                 else:
-                    self.notes[f"master_{j + i * 10 + 1}"] = [0, -1]
+                    self.notes[f"fader_{j + i * 10 + 1}"] = [0, -1]
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
@@ -103,17 +103,17 @@ class MidiNotes:
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
                     # We need to pass fader number to flash function
-                    master = int(key[6:])
-                    page = int((master - 1) / 10)
-                    fader = int(master - (page * 10))
-                    if page + 1 == App().fader_page:
+                    fader_index = int(key[6:])
+                    page = int((fader_index - 1) / 10)
+                    fader = int(fader_index - (page * 10))
+                    if page + 1 == App().lightshow.fader_bank.active_page:
                         GLib.idle_add(_function_flash, msg, fader)
-                elif key[:7] == "master_":
-                    master = int(key[7:])
-                    page = int((master - 1) / 10)
-                    fader = int(master - (page * 10))
-                    if page + 1 == App().fader_page:
-                        GLib.idle_add(_function_master, msg, fader)
+                elif key[:6] == "fader_":
+                    fader_index = int(key[6:])
+                    page = int((fader_index - 1) / 10)
+                    fader = int(fader_index - (page * 10))
+                    if page + 1 == App().lightshow.fader_bank.active_page:
+                        GLib.idle_add(_function_fader, msg, fader)
                 elif key[:5] == "inde_":
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
                 elif key[:4] == "zoom":
@@ -157,7 +157,7 @@ class MidiNotes:
                     # Don't delete flash button from other pages
                     index = int(key[6:])
                     page = index // 11 + 1
-                    if page == App().fader_page:
+                    if page == App().lightshow.fader_bank.active_page:
                         self.notes.update({key: [0, -1]})
                 else:
                     # Delete it
@@ -235,20 +235,20 @@ class MidiNotes:
             zoom("out")
 
 
-def _function_master(msg: mido.Message, fader_index: int) -> None:
+def _function_fader(msg: mido.Message, fader_index: int) -> None:
     """Send Fader position when released
 
     Args:
         msg: MIDI message
-        fader_index: Master number
+        fader_index: Fader number
     """
     if msg.velocity == 0:
-        midi_name = f"master_{fader_index}"
-        fader = App().lightshow.faders[fader_index - 1 + ((App().fader_page - 1) * 10)]
+        midi_name = f"fader_{fader_index}"
+        fader = App().lightshow.fader_bank.get_fader(fader_index)
 
-        App().midi.messages.control_change.send(midi_name, int(fader.value / 2))
+        App().midi.messages.control_change.send(midi_name, round(fader.level * 127))
         App().midi.messages.pitchwheel.send(midi_name,
-                                            int(((fader.value / 255) * 16383) - 8192))
+                                            round(((fader.level * 16383) - 8192)))
 
 
 def _function_gm(msg: mido.Message) -> None:
@@ -265,25 +265,19 @@ def _function_gm(msg: mido.Message) -> None:
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
-    """Flash Master
+    """Flash Fader
 
     Args:
         msg: MIDI message
-        fader_index: Master number
+        fader_index: Fader number
     """
     if msg.velocity == 0:
         App().midi.enqueue(msg)
-        fader = None
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page and fader.number == fader_index:
-                break
+        fader = App().lightshow.fader_bank.get_fader(fader_index)
         fader.flash_off()
     elif msg.velocity == 127:
         App().midi.enqueue(msg)
-        fader = None
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page and fader.number == fader_index:
-                break
+        fader = App().lightshow.fader_bank.get_fader(fader_index)
         fader.flash_on()
 
 
@@ -1020,7 +1014,7 @@ def _function_record(msg: mido.Message) -> None:
             App().window.on_key_press_event(None, event)
 
 
-def _function_fader_page_plus(msg: mido.Message) -> None:
+def _function_page_plus(msg: mido.Message) -> None:
     """Increment Fader Page
 
     Args:
@@ -1035,13 +1029,13 @@ def _function_fader_page_plus(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.fader_page_plus.emit("button-press-event", event)
         else:
-            App().fader_page += 1
-            if App().fader_page > MAX_FADER_PAGE:
-                App().fader_page = 1
-            App().midi.update_masters()
+            App().lightshow.fader_bank.active_page += 1
+            if App().lightshow.fader_bank.active_page > MAX_FADER_PAGE:
+                App().lightshow.fader_bank.active_page = 1
+            App().midi.update_faders()
 
 
-def _function_fader_page_minus(msg: mido.Message) -> None:
+def _function_page_minus(msg: mido.Message) -> None:
     """Decrement Fader Page
 
     Args:
@@ -1056,7 +1050,7 @@ def _function_fader_page_minus(msg: mido.Message) -> None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.fader_page_minus.emit("button-press-event", event)
         else:
-            App().fader_page -= 1
-            if App().fader_page < 1:
-                App().fader_page = MAX_FADER_PAGE
-            App().midi.update_masters()
+            App().lightshow.fader_bank.active_page -= 1
+            if App().lightshow.fader_bank.active_page < 1:
+                App().lightshow.fader_bank.active_page = MAX_FADER_PAGE
+            App().midi.update_faders()

@@ -14,12 +14,11 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gio, Gtk
 from olc.cue import Cue
-from olc.define import MAX_FADER_PAGE, App
+from olc.define import App
 from olc.files.ascii.parser import AsciiParser
 from olc.files.import_dialog import Action, DialogData
 from olc.files.parsed_data import ParsedData
 from olc.independent import Independents
-from olc.master import Master
 from olc.step import Step
 
 
@@ -94,10 +93,7 @@ class ImportFile:
         if self.actions["faders"] is Action.IGNORE:
             return
         if self.actions["faders"] is Action.REPLACE:
-            del App().lightshow.faders[:]
-            for page in range(MAX_FADER_PAGE):
-                for i in range(10):
-                    App().lightshow.faders.append(Master(page + 1, i + 1, 0, 0))
+            App().lightshow.fader_bank.reset_faders()
         self.data.import_faders()
 
     def _do_import_independents(self) -> None:
@@ -154,3 +150,5 @@ class ImportFile:
         App().window.header.set_subtitle(subtitle)
         App().window.playback.update_xfade_display(0)
         App().window.playback.update_sequence_display()
+        # Redraw Mackie LCD
+        App().midi.messages.lcd.show_faders()

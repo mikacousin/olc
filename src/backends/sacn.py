@@ -15,7 +15,7 @@
 import sacn
 from gi.repository import GLib
 from olc.backends import DMXBackend
-from olc.define import App, NB_UNIVERSES, UNIVERSES
+from olc.define import NB_UNIVERSES, UNIVERSES, App
 
 
 class Sacn(DMXBackend):

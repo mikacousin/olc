@@ -15,7 +15,6 @@
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from olc.master import FaderType
 
 from .common import rounded_rectangle_fill
 
@@ -59,17 +58,18 @@ class GroupWidget(Gtk.Widget):
         # Update group text
         flowboxchild = self.get_parent()
         index = flowboxchild.get_index()
-        App().lightshow.groups[index].text = text
-        # Update Master text
-        for fader in App().lightshow.faders:
-            if (fader.content_type == FaderType.GROUP
-                    and fader.content_value == App().lightshow.groups[index].index):
-                fader.text = text
-                # Update Virtual Console
-                if App().virtual_console and fader.page == App().fader_page:
-                    App().virtual_console.flashes[fader.number - 1].label = text
-                break
-        App().midi.messages.lcd.show_masters()
+        group = App().lightshow.groups[index]
+        group.text = text
+        fader_bank = App().lightshow.fader_bank
+        # Update Fader text
+        for page, faders in fader_bank.faders.items():
+            for fader in faders.values():
+                if fader.contents is group:
+                    fader.text = text
+                    # Update Virtual Console
+                    if App().virtual_console and page == fader_bank.active_page:
+                        App().virtual_console.flashes[fader.index - 1].label = text
+        App().midi.messages.lcd.show_faders()
         self.popover.popdown()
         App().lightshow.set_modified()
 

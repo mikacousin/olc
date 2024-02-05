@@ -114,7 +114,7 @@ class DialogData(Gtk.Dialog):
     def _faders(self, actions: list, box: Gtk.Box) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        label = Gtk.Label("Masters:")
+        label = Gtk.Label("Faders:")
         combo = Gtk.ComboBoxText()
         combo.connect("changed", self._on_faders_changed)
         for action in actions:

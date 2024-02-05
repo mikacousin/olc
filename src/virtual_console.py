@@ -355,50 +355,48 @@ class VirtualConsoleWindow(Gtk.Window):
         self.label = Gtk.Label("")
         self.go_pad.attach(self.label, 2, 3, 1, 1)
 
-        # Masters
-        self.masters_pad = Gtk.Grid()
-        self.masters = []
+        # Faders
+        self.faders_pad = Gtk.Grid()
+        self.faders = []
         self.flashes = []
         for i in range(10):  # 10 Faders per page
             adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
-            self.masters.append(
+            self.faders.append(
                 FaderWidget(
-                    text=f"master_{i + 1}",
+                    text=f"fader_{i + 1}",
                     orientation=Gtk.Orientation.VERTICAL,
                     adjustment=adjustment,
                 ))
-            self.masters[i].set_vexpand(True)
-            self.masters[i].set_draw_value(False)
-            self.masters[i].set_inverted(True)
-            self.masters[i].connect("value-changed", self.master_moved)
-            self.masters[i].connect("clicked", self._master_clicked)
+            self.faders[i].set_vexpand(True)
+            self.faders[i].set_draw_value(False)
+            self.faders[i].set_inverted(True)
+            self.faders[i].connect("value-changed", self.fader_moved)
+            self.faders[i].connect("clicked", self._fader_clicked)
             self.flashes.append(FlashWidget(""))
             self.flashes[i].connect("button-press-event", self._flash_on)
             self.flashes[i].connect("button-release-event", self._flash_off)
             self.flashes[i].connect("clicked", self._on_flash)
-            self.masters_pad.attach(self.masters[i], i, 0, 1, 1)
-            self.masters_pad.attach(self.flashes[i], i, 1, 1, 1)
+            self.faders_pad.attach(self.faders[i], i, 0, 1, 1)
+            self.faders_pad.attach(self.flashes[i], i, 1, 1, 1)
             text = f"flash_{i + 1}"
             self.flashes[i].text = text
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page:
-                index = fader.number - 1
-                # Flash with master's name
-                self.flashes[index].label = fader.text
-                # Fader at master's value
-                value = App().lightshow.faders[index +
-                                               ((App().fader_page - 1) * 10)].value
-                self.masters[index].set_value(value)
+        fader_bank = App().lightshow.fader_bank
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            # Flash with fader name
+            self.flashes[fader.index - 1].label = fader.text
+            # Fader at fader level
+            level = round(fader.level * 255)
+            self.faders[fader.index - 1].set_value(level)
         self.fader_pages = Gtk.Grid()
-        self.fader_page_plus = ButtonWidget("Page+", "fader_page_plus")
+        self.fader_page_plus = ButtonWidget("Page+", "page_plus")
         self.fader_page_plus.connect("clicked", self._on_fader_page)
-        self.fader_page_minus = ButtonWidget("Page-", "fader_page_minus")
+        self.fader_page_minus = ButtonWidget("Page-", "page_minus")
         self.fader_page_minus.connect("clicked", self._on_fader_page)
-        self.page_number = Gtk.Label(App().fader_page)
+        self.page_number = Gtk.Label(fader_bank.active_page)
         self.fader_pages.attach(self.fader_page_plus, 0, 0, 1, 1)
         self.fader_pages.attach(self.page_number, 0, 1, 1, 1)
         self.fader_pages.attach(self.fader_page_minus, 0, 2, 1, 1)
-        self.masters_pad.attach(self.fader_pages, 11, 0, 1, 1)
+        self.faders_pad.attach(self.fader_pages, 11, 0, 1, 1)
 
         # General Grid
         self.grid = Gtk.Grid()
@@ -417,7 +415,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.grid.attach(self.crossfade_pad, 4, 0, 1, 2)
         self.grid.attach(self.independents, 5, 0, 1, 1)
         self.grid.attach(self.go_pad, 5, 1, 1, 1)
-        self.grid.attach(self.masters_pad, 6, 0, 1, 2)
+        self.grid.attach(self.faders_pad, 6, 0, 1, 2)
 
         self.add(self.grid)
 
@@ -454,30 +452,30 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if App().midi.learning:
             if widget is self.fader_page_plus:
-                App().midi.learning = "fader_page_plus"
+                App().midi.learning = "page_plus"
             elif widget is self.fader_page_minus:
-                App().midi.learning = "fader_page_minus"
+                App().midi.learning = "page_minus"
             self.queue_draw()
         else:
+            fader_bank = App().lightshow.fader_bank
             if widget is self.fader_page_plus:
-                App().fader_page += 1
-                if App().fader_page > MAX_FADER_PAGE:
-                    App().fader_page = 1
+                fader_bank.active_page += 1
+                if fader_bank.active_page > MAX_FADER_PAGE:
+                    fader_bank.active_page = 1
             elif widget is self.fader_page_minus:
-                App().fader_page -= 1
-                if App().fader_page < 1:
-                    App().fader_page = MAX_FADER_PAGE
-            self.page_number.set_label(str(App().fader_page))
-            # Redraw Masters and Flashes
-            for master in App().lightshow.faders:
-                if master.page == App().fader_page:
-                    text = f"master_{master.number + ((App().fader_page - 1) * 10)}"
-                    self.masters[master.number - 1].text = text
-                    val = master.value
-                    self.masters[master.number - 1].set_value(val)
-                    self.flashes[master.number - 1].label = master.text
-                    self.flashes[master.number - 1].queue_draw()
-            App().midi.messages.lcd.show_masters()
+                fader_bank.active_page -= 1
+                if fader_bank.active_page < 1:
+                    fader_bank.active_page = MAX_FADER_PAGE
+            self.page_number.set_label(str(fader_bank.active_page))
+            # Redraw Faders and Flashes
+            for fader in fader_bank.faders[fader_bank.active_page].values():
+                text = f"fader_{fader.index + ((fader_bank.active_page - 1) * 10)}"
+                self.faders[fader.index - 1].text = text
+                val = round(fader.level * 255)
+                self.faders[fader.index - 1].set_value(val)
+                self.flashes[fader.index - 1].label = fader.text
+                self.flashes[fader.index - 1].queue_draw()
+            App().midi.messages.lcd.show_faders()
 
     def _on_time(self, _widget):
         """Time button"""
@@ -833,10 +831,10 @@ class VirtualConsoleWindow(Gtk.Window):
             widget: Button clicked
         """
         if not App().midi.learning:
-            for i, flash in enumerate(self.flashes):
+            for index, flash in enumerate(self.flashes):
                 if flash == widget:
-                    index = i + ((App().fader_page - 1) * 10)
-                    App().lightshow.faders[index].flash_on()
+                    fader_bank = App().lightshow.fader_bank
+                    fader_bank.faders[fader_bank.active_page][index + 1].flash_on()
 
     def _flash_off(self, widget, _event):
         """Flash button released
@@ -845,10 +843,10 @@ class VirtualConsoleWindow(Gtk.Window):
             widget: Button clicked
         """
         if not App().midi.learning:
-            for i, flash in enumerate(self.flashes):
+            for index, flash in enumerate(self.flashes):
                 if flash == widget:
-                    index = i + ((App().fader_page - 1) * 10)
-                    App().lightshow.faders[index].flash_off()
+                    fader_bank = App().lightshow.fader_bank
+                    fader_bank.faders[fader_bank.active_page][index + 1].flash_off()
 
     def _on_flash(self, widget):
         """Flash button clicked
@@ -862,34 +860,34 @@ class VirtualConsoleWindow(Gtk.Window):
             App().midi.learning = text
             self.queue_draw()
 
-    def master_moved(self, master):
+    def fader_moved(self, fader):
         """Fader moved
 
         Args:
-            master: FaderWidget
+            fader: FaderWidget
         """
         if App().midi.learning:
-            index = self.masters.index(master) + 1
-            text = f"master_{index}"
+            index = self.faders.index(fader) + 1
+            text = f"fader_{index}"
             App().midi.learning = text
             self.queue_draw()
         else:
-            value = master.get_value()
-            index = self.masters.index(master)
-            index = index + ((App().fader_page - 1) * 10)
-            App().lightshow.faders[index].set_level(value)
-            midi_fader = App().midi.faders.faders[self.masters.index(master)]
+            value = fader.get_value()
+            index = self.faders.index(fader) + 1
+            fader_bank = App().lightshow.fader_bank
+            fader_bank.faders[fader_bank.active_page][index].set_level(value / 255)
+            midi_fader = App().midi.faders.faders[self.faders.index(fader)]
             midi_fader.set_state(value)
 
-    def _master_clicked(self, master):
+    def _fader_clicked(self, fader):
         """Fader clicked
 
         Args:
-            master: FaderWidget
+            fader: FaderWidget
         """
         if App().midi.learning:
-            index = self.masters.index(master) + 1
-            text = f"master_{index}"
+            index = self.faders.index(fader) + 1
+            text = f"fader_{index}"
             App().midi.learning = text
             self.queue_draw()
 
@@ -960,7 +958,7 @@ class VirtualConsoleWindow(Gtk.Window):
         elif child in (
                 App().tabs.tabs["groups"],
                 App().tabs.tabs["indes"],
-                App().tabs.tabs["masters"],
+                App().tabs.tabs["faders"],
                 App().tabs.tabs["memories"],
                 App().tabs.tabs["sequences"],
         ):

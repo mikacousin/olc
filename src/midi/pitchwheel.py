@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Dict
+
 import mido
 from gi.repository import GLib
 from olc.define import App
@@ -32,7 +33,7 @@ class MidiPitchWheel:
         }
         for i in range(10):
             for j in range(8):
-                self.pitchwheel[f"master_{j + i * 10 + 1}"] = j
+                self.pitchwheel[f"fader_{j + i * 10 + 1}"] = j
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI pitchwheel messages
@@ -42,8 +43,8 @@ class MidiPitchWheel:
         """
         for key, value in self.pitchwheel.items():
             if msg.channel == value:
-                if key[:7] == "master_":
-                    _update_master(msg, int(key[7:]) - 1)
+                if key[:6] == "fader_":
+                    _update_fader(msg, int(key[6:]) - 1)
                     break
                 if key[:13] == "crossfade_out":
                     GLib.idle_add(App().midi.xfade.moved, msg,
@@ -95,17 +96,13 @@ class MidiPitchWheel:
             App().window.grand_master.queue_draw()
 
 
-def _update_master(msg: mido.Message, index: int) -> None:
-    val = ((msg.pitch + 8192) / 16383) * 255
+def _update_fader(msg: mido.Message, index: int) -> None:
+    val = (msg.pitch + 8192) / 16383
     if App().virtual_console:
-        GLib.idle_add(App().virtual_console.masters[index].set_value, val)
-        GLib.idle_add(App().virtual_console.master_moved,
-                      App().virtual_console.masters[index])
+        GLib.idle_add(App().virtual_console.faders[index].set_value, val)
+        GLib.idle_add(App().virtual_console.fader_moved,
+                      App().virtual_console.faders[index])
     else:
-        page = App().fader_page
         number = index + 1
-        fader = None
-        for fader in App().lightshow.faders:
-            if fader.page == page and fader.number == number:
-                break
+        fader = App().lightshow.fader_bank.get_fader(number)
         GLib.idle_add(fader.set_level, val)

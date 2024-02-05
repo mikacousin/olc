@@ -223,47 +223,51 @@ class OscServer(liblo.ServerThread):
 
     @liblo.make_method("/olc/fader/pageupdate", None)
     def _sub_launch(self, _path, _args, _types):
-        App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page:
-                App().osc.client.send(f"/olc/fader/1/{fader.number}/label",
-                                      ("s", fader.text))
+        fader_bank = App().lightshow.fader_bank
+        App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            App().osc.client.send(f"/olc/fader/1/{fader.index}/label",
+                                  ("s", fader.text))
 
     @liblo.make_method("/olc/fader/page+", None)
     def _fader_page_plus(self, _path, _args, _types):
+        fader_bank = App().lightshow.fader_bank
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.fader_page_plus.emit("button-press-event", event)
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.fader_page_plus.emit("button-release-event", event)
         else:
-            App().fader_page += 1
-            if App().fader_page > MAX_FADER_PAGE:
-                App().fader_page = 1
-            App().midi.update_masters()
-        App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page:
-                App().osc.client.send(f"/olc/fader/1/{fader.number}/label",
-                                      ("s", fader.text))
+            fader_bank.active_page += 1
+            if fader_bank.active_page > MAX_FADER_PAGE:
+                fader_bank.active_page = 1
+            App().midi.update_faders()
+        App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            App().osc.client.send(f"/olc/fader/1/{fader.index}/label",
+                                  ("s", fader.text))
+            App().osc.client.send(f"/olc/fader/1/{fader.index}/level",
+                                  ("i", round(fader.level * 255)))
 
     @liblo.make_method("/olc/fader/page-", None)
     def _fader_page_minus(self, _path, _args, _types):
+        fader_bank = App().lightshow.fader_bank
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.fader_page_minus.emit("button-press-event", event)
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.fader_page_minus.emit("button-release-event", event)
         else:
-            App().fader_page -= 1
-            if App().fader_page < 1:
-                App().fader_page = MAX_FADER_PAGE
-            App().midi.update_masters()
-        App().osc.client.send("/olc/fader/page", ("i", App().fader_page))
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page:
-                App().osc.client.send(f"/olc/fader/1/{fader.number}/label",
-                                      ("s", fader.text))
+            fader_bank.active_page -= 1
+            if fader_bank.active_page < 1:
+                fader_bank.active_page = MAX_FADER_PAGE
+            App().midi.update_faders()
+        App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            App().osc.client.send(f"/olc/fader/1/{fader.index}/label",
+                                  ("s", fader.text))
+            App().osc.client.send(f"/olc/fader/1/{fader.index}/level",
+                                  ("i", round(fader.level * 255)))
 
     @liblo.make_method("/olc/fader/1/1/level", "i")
     @liblo.make_method("/olc/fader/1/2/level", "i")
@@ -279,18 +283,15 @@ class OscServer(liblo.ServerThread):
         fader_index = int(path.split("/")[4])
         level = args[0]
         if App().virtual_console:
-            GLib.idle_add(App().virtual_console.masters[fader_index - 1].set_value,
+            GLib.idle_add(App().virtual_console.faders[fader_index - 1].set_value,
                           level)
             GLib.idle_add(
-                App().virtual_console.master_moved,
-                App().virtual_console.masters[fader_index - 1],
+                App().virtual_console.fader_moved,
+                App().virtual_console.faders[fader_index - 1],
             )
         else:
-            fader = None
-            for fader in App().lightshow.faders:
-                if fader.page == App().fader_page and fader.number == fader_index:
-                    break
-            fader.set_level(level)
+            fader = App().lightshow.fader_bank.get_fader(fader_index)
+            fader.set_level(level / 255)
             midi_fader = App().midi.faders.faders[fader_index - 1]
             midi_value = midi_fader.value
             if level > midi_value:
@@ -314,10 +315,7 @@ class OscServer(liblo.ServerThread):
     def _fader_flash(self, path, args, _types):
         pressed = args[0]
         fader_index = int(path.split("/")[4])
-        fader = None
-        for fader in App().lightshow.faders:
-            if fader.page == App().fader_page and fader.number == fader_index:
-                break
+        fader = App().lightshow.fader_bank.get_fader(fader_index)
         if pressed:
             fader.flash_on()
         else:

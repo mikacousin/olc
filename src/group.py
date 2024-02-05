@@ -17,7 +17,7 @@ from typing import Any, Dict
 
 from gi.repository import Gdk, Gtk
 from olc.define import App, is_non_nul_float
-from olc.master import FaderType
+from olc.fader import FaderType
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.widgets.group import GroupWidget
 
@@ -383,35 +383,37 @@ class GroupTab(Gtk.Paned):
 
         App().window.commandline.set_string("")
 
-    def _update_master_level(self) -> None:
-        """Update selected master channels levels"""
+    def _update_fader_level(self) -> None:
+        """Update selected fader channels levels"""
         if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             index = flowboxchild.get_index()
-            for fader in App().lightshow.faders:
-                if (fader.content_type == FaderType.GROUP
-                        and fader.content_value == App().lightshow.groups[index].index):
-                    fader.set_level(fader.value)
+            group = App().lightshow.groups[index]
+            for page in App().lightshow.fader_bank.faders.values():
+                for fader in page.values():
+                    if fader.contents is group:
+                        fader.set_level(fader.level)
+                        break
 
     def _keypress_equal(self) -> None:
         """@ Level"""
         self.channels_view.at_level()
         self.channels_view.update()
-        self._update_master_level()
+        self._update_fader_level()
         App().window.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
-        self._update_master_level()
+        self._update_fader_level()
         App().window.commandline.set_string("")
 
     def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
-        self._update_master_level()
+        self._update_fader_level()
         App().window.commandline.set_string("")
 
     def _keypress_N(self) -> None:  # pylint: disable=C0103
@@ -473,28 +475,20 @@ class GroupTab(Gtk.Paned):
         if flowboxchild:
             self.flowbox.select_child(flowboxchild)
         self.channels_view.update()
-        # Update masters
-        for fader in App().lightshow.faders:
-            if (fader.content_type == FaderType.GROUP
-                    and fader.content_value == App().lightshow.groups[index].index):
-                fader.set_level(0)
-                fader.content_type = FaderType.NONE
-                fader.content_value = None
-                fader.text = ""
-                if App().tabs.tabs["masters"]:
-                    App().tabs.tabs["masters"].channels_view.update()
-                    liststore = App().tabs.tabs["masters"].liststores[fader.page - 1]
-                    treeiter = liststore.get_iter(fader.number - 1)
-                    liststore.set_value(treeiter, 1, "")
-                    liststore.set_value(treeiter, 2, "")
-                    liststore.set_value(treeiter, 3, "")
-                if App().virtual_console and fader.page == App().fader_page:
-                    index = fader.number - 1
-                    widget = App().virtual_console.masters[index]
-                    widget.set_value(0)
-                    App().virtual_console.master_moved(widget)
-                    App().virtual_console.flashes[index].label = ""
-                    App().virtual_console.flashes[index].queue_draw()
+        # Update faders
+        group = App().lightshow.groups[index]
+        fader_bank = App().lightshow.fader_bank
+        for page, faders in fader_bank.faders.items():
+            for fader in faders.values():
+                if fader.contents is group:
+                    fader_bank.set_fader(page, fader.index, FaderType.NONE, None)
+                    if App().tabs.tabs["faders"]:
+                        App().tabs.tabs["faders"].channels_view.update()
+                        liststore = App().tabs.tabs["faders"].liststores[page - 1]
+                        treeiter = liststore.get_iter(fader.index - 1)
+                        liststore.set_value(treeiter, 1, "")
+                        liststore.set_value(treeiter, 2, "")
+                        liststore.set_value(treeiter, 3, "")
         # Remove group
         App().lightshow.groups.pop(index)
         if not App().lightshow.groups:

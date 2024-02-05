@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Optional
+
 import mido
 from gi.repository import GLib
 from olc.define import App
@@ -79,7 +80,7 @@ class MidiPorts:
         if port_names != self.mido_ports:
             self.mido_ports = port_names
             self.open(App().settings.get_strv("midi-ports"))
-            App().midi.update_masters()
+            App().midi.update_faders()
             App().midi.gm_init()
             if App().tabs.tabs["settings"]:
                 GLib.idle_add(App().tabs.tabs["settings"].refresh)

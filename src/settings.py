@@ -16,6 +16,7 @@ import ipaddress
 import socket
 from gettext import gettext as _
 from typing import Any
+
 from gi.repository import Gdk, GLib, Gtk
 from olc.define import App
 from olc.osc import Osc
@@ -250,7 +251,7 @@ class SettingsTab(Gtk.Box):
         App().settings.set_strv("absolute", absolutes)
         GLib.idle_add(App().midi.ports.close)
         GLib.idle_add(App().midi.ports.open, midi_ports)
-        App().midi.update_masters()
+        App().midi.update_faders()
         App().midi.gm_init()
 
     def _on_change_percent(self, widget: Gtk.SpinButton) -> None:

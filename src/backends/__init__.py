@@ -12,7 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from enum import auto, Enum
+from enum import Enum, auto
+
 from olc.dmx import Dmx
 from olc.patch import DMXPatch
 

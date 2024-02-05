@@ -16,8 +16,8 @@ import re
 from enum import Enum, auto
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
+from olc.fader import FaderType
 from olc.files.read import ReadFile
-from olc.master import FaderType
 
 
 class State(Enum):
