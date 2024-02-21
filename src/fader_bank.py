@@ -15,12 +15,9 @@
 # from olc.define import MAX_FADER_PAGE
 from typing import Any
 
-from olc.define import App
+from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE, App
 from olc.fader import (Fader, FaderChannels, FaderGM, FaderGroup, FaderPreset,
                        FaderSequence, FaderType)
-
-MAX_FADER_PAGE = 10
-MAX_FADER_PER_PAGE = 10
 
 
 class FaderBank:
@@ -30,10 +27,12 @@ class FaderBank:
     faders: dict
     channels: set
     active_faders: set
+    max_fader_per_page: int
 
     def __init__(self):
         self.active_page = 1
         self.faders = {}
+        self.max_fader_per_page = MAX_FADER_PER_PAGE
         for page in range(1, MAX_FADER_PAGE + 1):
             self.faders[page] = {}
             for index in range(1, MAX_FADER_PER_PAGE + 1):
@@ -63,6 +62,28 @@ class FaderBank:
         self.active_faders = set()
         self.update_active_faders()
 
+    def get_fader_type(self, page: int, index: int) -> FaderType:
+        """Get Fader type
+
+        Args:
+            page: Fader page
+            index: Fader index
+
+        Returns:
+            Fader type
+        """
+        if isinstance(self.faders[page][index], FaderGroup):
+            return FaderType.GROUP
+        if isinstance(self.faders[page][index], FaderChannels):
+            return FaderType.CHANNELS
+        if isinstance(self.faders[page][index], FaderPreset):
+            return FaderType.PRESET
+        if isinstance(self.faders[page][index], FaderSequence):
+            return FaderType.SEQUENCE
+        if isinstance(self.faders[page][index], FaderGM):
+            return FaderType.GM
+        return FaderType.NONE
+
     def set_fader(self,
                   page: int,
                   index: int,
@@ -76,36 +97,70 @@ class FaderBank:
             fader_type: Fader type
             contents: Fader contents
         """
-        self.faders[page][index].set_level(0)
+        if fader_type == self.get_fader_type(page, index):
+            self._set_fader_contents(page, index, fader_type, contents)
+        else:
+            self._set_fader_type(page, index, fader_type, contents)
+
+    def _set_fader_type(self, page: int, index: int, fader_type: FaderType,
+                        contents: Any) -> None:
         if fader_type == FaderType.NONE:
             self.faders[page][index] = Fader(index, self)
+            self.faders[page][index].set_level(0)
         elif fader_type == FaderType.CHANNELS:
             self.faders[page][index] = FaderChannels(index, self, contents)
+            self.faders[page][index].set_level(0)
         elif fader_type == FaderType.GROUP:
             if group := App().lightshow.get_group(contents):
                 self.faders[page][index] = FaderGroup(index, self, group)
+            else:
+                self.faders[page][index] = FaderGroup(index, self)
+            self.faders[page][index].set_level(0)
         elif fader_type == FaderType.GM:
             self.faders[page][index] = FaderGM(index, self)
         elif fader_type == FaderType.PRESET:
             if cue := App().lightshow.get_cue(contents):
                 self.faders[page][index] = FaderPreset(index, self, cue)
+            else:
+                self.faders[page][index] = FaderPreset(index, self)
+            self.faders[page][index].set_level(0)
         elif fader_type == FaderType.SEQUENCE:
             if chaser := App().lightshow.get_chaser(contents):
                 self.faders[page][index] = FaderSequence(index, self, chaser)
+            else:
+                self.faders[page][index] = FaderSequence(index, self)
+            self.faders[page][index].set_level(0)
         if page == self.active_page:
-            # Refresh MIDI LCD
-            App().midi.update_fader(self.faders[page][index])
-            # Refresh Virtual Console
-            if App().virtual_console:
-                widget = App().virtual_console.faders[self.faders[page][index].index -
-                                                      1]
-                widget.set_value(0)
-                App().virtual_console.fader_moved(widget)
-                App().virtual_console.flashes[self.faders[page][index].index -
-                                              1].label = self.faders[page][index].text
-                App().virtual_console.flashes[self.faders[page][index].index -
-                                              1].queue_draw()
-        # TODO: Update FaderTab
+            self._refresh_faders_display(page, index)
+
+    def _set_fader_contents(self, page: int, index: int, fader_type: FaderType,
+                            contents: Any) -> None:
+        if fader_type == FaderType.GROUP:
+            if group := App().lightshow.get_group(contents):
+                self.faders[page][index].set_contents(group)
+        elif fader_type == FaderType.PRESET:
+            if cue := App().lightshow.get_cue(contents):
+                self.faders[page][index].set_contents(cue)
+        elif fader_type == FaderType.SEQUENCE:
+            if chaser := App().lightshow.get_chaser(contents):
+                self.faders[page][index].set_contents(chaser)
+        if page == self.active_page:
+            self._refresh_faders_display(page, index)
+
+    def _refresh_faders_display(self, page: int, index: int) -> None:
+        # Refresh MIDI LCD
+        App().midi.update_fader(self.faders[page][index])
+        # Refresh Virtual Console
+        if App().virtual_console:
+            widget = App().virtual_console.faders[self.faders[page][index].index - 1]
+            level = self.faders[page][index].level * 255
+            widget.set_value(level)
+            App().virtual_console.fader_moved(widget)
+            App().virtual_console.flashes[self.faders[page][index].index -
+                                          1].label = self.faders[page][index].text
+            App().virtual_console.flashes[self.faders[page][index].index -
+                                          1].queue_draw()
+        # TODO: Update FaderTab and OSC
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""

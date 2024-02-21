@@ -29,6 +29,7 @@ olc_sources = [
   'define.py',
   'dmx.py',
   'fader.py',
+  'fader_edition.py',
   'fader_bank.py',
   'grand_master.py',
   'group.py',

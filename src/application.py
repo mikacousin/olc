@@ -28,6 +28,7 @@ from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS  # noqa: E402
+from olc.fader_edition import FaderTab  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
@@ -434,7 +435,7 @@ class Application(Gtk.Application):
 
     def _faders(self, _action, _parameter):
         """Create Faders Tab"""
-        # self.tabs.open("faders", FadersTab, "Faders", self.lightshow.fader_bank)
+        self.tabs.open("faders", FaderTab, "Faders", self.lightshow.fader_bank)
 
     def _independents(self, _action, _parameter):
         """Create Independents Tab"""

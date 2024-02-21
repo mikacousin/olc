@@ -341,7 +341,7 @@ class AsciiParser(ReadFile):
         page = int(self.args[0])
         number = int(self.args[1])
         fader_type = int(self.args[2])
-        value = int(self.args[3])
+        value = int(self.args[3]) if int(self.args[3]) else None
         if self._is_console("nicobats", "dlight") and fader_type == FaderType.CHANNELS:
             # DLight use channels type for groups
             fader_type = FaderType.GROUP

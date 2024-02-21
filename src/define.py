@@ -24,6 +24,7 @@ NB_UNIVERSES = len(UNIVERSES)
 MAX_CHANNELS = 1024
 
 MAX_FADER_PAGE = 10
+MAX_FADER_PER_PAGE = 10
 
 App = Gio.Application.get_default
 

@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# from olc.define import MAX_FADER_PAGE
 from __future__ import annotations
 
 import array
@@ -165,12 +164,13 @@ class FaderGroup(Fader):
 
     def level_changed(self) -> None:
         """Fader level has changed"""
-        for channel, lvl in self.contents.channels.items():
-            level = round(lvl * self.level)
-            self.dmx[channel - 1] = level
-            update_channel_display(channel)
-        self.fader_bank.update_levels()
-        App().backend.dmx.set_levels(self.channels)
+        if self.contents:
+            for channel, lvl in self.contents.channels.items():
+                level = round(lvl * self.level)
+                self.dmx[channel - 1] = level
+                update_channel_display(channel)
+            self.fader_bank.update_levels()
+            App().backend.dmx.set_levels(self.channels)
 
 
 class FaderPreset(Fader):
@@ -209,12 +209,13 @@ class FaderPreset(Fader):
 
     def level_changed(self) -> None:
         """Fader level has changed"""
-        for channel, lvl in self.contents.channels.items():
-            level = round(lvl * self.level)
-            self.dmx[channel - 1] = level
-            update_channel_display(channel)
-        self.fader_bank.update_levels()
-        App().backend.dmx.set_levels(self.channels)
+        if self.contents:
+            for channel, lvl in self.contents.channels.items():
+                level = round(lvl * self.level)
+                self.dmx[channel - 1] = level
+                update_channel_display(channel)
+            self.fader_bank.update_levels()
+            App().backend.dmx.set_levels(self.channels)
 
 
 class FaderChannels(Fader):
@@ -242,6 +243,7 @@ class FaderChannels(Fader):
         if self.contents:
             for channel in self.contents:
                 self.channels.add(channel)
+        self.fader_bank.update_active_faders()
 
     def set_contents(self, channels: dict[int, int]) -> None:
         """Set cue
@@ -287,6 +289,7 @@ class FaderSequence(Fader):
     def update_channels(self) -> None:
         """Update channels used by fader"""
         self.channels = self.contents.channels
+        self.fader_bank.update_active_faders()
 
     def set_contents(self, chaser: Sequence) -> None:
         """Set cue
@@ -300,6 +303,8 @@ class FaderSequence(Fader):
 
     def level_changed(self) -> None:
         """Fader level has changed"""
+        if not self.contents:
+            return
         # If it was not running and fader > 0
         if self.level and self.contents.run is False:
             # Start chaser
@@ -357,7 +362,7 @@ class ThreadChaser(threading.Thread):
             if position == self.fader.contents.last:
                 position = 1
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop thread"""
         self._stopevent.set()
 

@@ -27,3 +27,15 @@ window {
 #flowbox_outputs {
   padding: 0px;
 }
+
+#fader_box {
+  border-width: 2px;
+  border-style: solid;
+  border-color: #795004;
+}
+
+#fader_box_empty {
+  border-width: 2px;
+  border-style: solid;
+  border-color: #666666;
+}
