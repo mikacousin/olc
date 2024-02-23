@@ -130,8 +130,7 @@ class FaderBank:
             else:
                 self.faders[page][index] = FaderSequence(index, self)
             self.faders[page][index].set_level(0)
-        if page == self.active_page:
-            self._refresh_faders_display(page, index)
+        self._refresh_faders_display(page, index)
 
     def _set_fader_contents(self, page: int, index: int, fader_type: FaderType,
                             contents: Any) -> None:
@@ -144,23 +143,31 @@ class FaderBank:
         elif fader_type == FaderType.SEQUENCE:
             if chaser := App().lightshow.get_chaser(contents):
                 self.faders[page][index].set_contents(chaser)
-        if page == self.active_page:
-            self._refresh_faders_display(page, index)
+        self._refresh_faders_display(page, index)
 
     def _refresh_faders_display(self, page: int, index: int) -> None:
-        # Refresh MIDI LCD
-        App().midi.update_fader(self.faders[page][index])
-        # Refresh Virtual Console
-        if App().virtual_console:
-            widget = App().virtual_console.faders[self.faders[page][index].index - 1]
-            level = self.faders[page][index].level * 255
-            widget.set_value(level)
-            App().virtual_console.fader_moved(widget)
-            App().virtual_console.flashes[self.faders[page][index].index -
-                                          1].label = self.faders[page][index].text
-            App().virtual_console.flashes[self.faders[page][index].index -
-                                          1].queue_draw()
-        # TODO: Update FaderTab and OSC
+        if page == self.active_page:
+            # Refresh MIDI LCD
+            App().midi.update_fader(self.faders[page][index])
+            # Refresh Virtual Console
+            if App().virtual_console:
+                widget = App().virtual_console.faders[self.faders[page][index].index -
+                                                      1]
+                level = self.faders[page][index].level * 255
+                widget.set_value(level)
+                App().virtual_console.fader_moved(widget)
+                App().virtual_console.flashes[self.faders[page][index].index -
+                                              1].label = self.faders[page][index].text
+                App().virtual_console.flashes[self.faders[page][index].index -
+                                              1].queue_draw()
+            # Refresh OSC
+            if App().osc:
+                App().osc.client.send("/olc/fader/page", ("i", page))
+                App().osc.client.send(f"/olc/fader/1/{index}/label",
+                                      ("s", self.faders[page][index].text))
+                App().osc.client.send(
+                    f"olc/fader/1/{index}/level",
+                    ("i", round(self.faders[page][index].level * 255)))
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""
