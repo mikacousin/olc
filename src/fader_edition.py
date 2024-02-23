@@ -16,8 +16,7 @@ from typing import Any
 
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from olc.fader import (FaderChannels, FaderGM, FaderGroup, FaderPreset, FaderSequence,
-                       FaderType)
+from olc.fader import FaderGM, FaderGroup, FaderPreset, FaderSequence, FaderType
 
 
 class FaderEdit(Gtk.Box):
@@ -39,7 +38,6 @@ class FaderEdit(Gtk.Box):
         self.label = Gtk.Label()
 
         fader_type = [[FaderType.NONE, ""], [FaderType.PRESET, "Preset"],
-                      [FaderType.CHANNELS, "Channels"],
                       [FaderType.SEQUENCE, "Sequence"], [FaderType.GROUP, "Group"],
                       [FaderType.GM, "GM"]]
         self.type_button = Gtk.MenuButton()
@@ -62,8 +60,6 @@ class FaderEdit(Gtk.Box):
             self._fader_group()
         elif isinstance(fader, FaderSequence):
             self._fader_sequence()
-        elif isinstance(fader, FaderChannels):
-            self._fader_channels()
         elif isinstance(fader, FaderGM):
             self._fader_gm()
         else:
@@ -146,14 +142,6 @@ class FaderEdit(Gtk.Box):
                 self.contents_button.set_label(f"{cue.memory} : {cue.text}")
         self._contents_popup(vbox)
 
-    def _fader_channels(self) -> None:
-        """Create edition of channels fader"""
-        self.label.set_markup(f"<span foreground='#666666'>Fader {self.index}</span>")
-        self.set_name("fader_box_empty")
-        self.type_button.set_label("Channels")
-        self.contents_button = Gtk.MenuButton()
-        self.contents_button.set_label("")
-
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:
         App().lightshow.fader_bank.set_fader(self.page, self.index, fader_type)
 
@@ -169,8 +157,6 @@ class FaderEdit(Gtk.Box):
             self._fader_preset()
         elif fader_type == FaderType.SEQUENCE:
             self._fader_sequence()
-        elif fader_type == FaderType.CHANNELS:
-            self._fader_channels()
         self.add(self.contents_button)
         self.show_all()
 
