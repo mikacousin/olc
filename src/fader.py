@@ -26,8 +26,8 @@ from olc.define import MAX_CHANNELS, App
 
 if typing.TYPE_CHECKING:
     from olc.cue import Cue
-    from olc.grand_master import GrandMaster
     from olc.group import Group
+    from olc.main_fader import MainFader
     from olc.sequence import Sequence
 
 
@@ -52,7 +52,7 @@ class FaderType(IntEnum):
     CHANNELS = 2
     SEQUENCE = 3
     GROUP = 13
-    GM = 99
+    MAIN = 99
 
 
 class Fader:
@@ -111,21 +111,21 @@ class Fader:
         """Fader level has changed"""
 
 
-class FaderGM(Fader):
-    """Fader with GM"""
+class FaderMain(Fader):
+    """Fader with MainFader"""
 
-    contents: GrandMaster
+    contents: MainFader
 
     def __init__(self, index: int, fader_bank):
         super().__init__(index, fader_bank)
-        self.contents = App().backend.dmx.grand_master
-        self.text = "GM"
+        self.contents = App().backend.dmx.main_fader
+        self.text = "Main Fader"
         self.level = self.contents.get_level()
 
     def level_changed(self) -> None:
         """Fader level has changed"""
         self.contents.set_level(self.level)
-        App().window.grand_master.queue_draw()
+        App().window.main_fader.queue_draw()
 
 
 class FaderGroup(Fader):

@@ -16,7 +16,7 @@ from typing import Any
 
 from gi.repository import Gdk, Gtk
 from olc.define import App
-from olc.fader import FaderGM, FaderGroup, FaderPreset, FaderSequence, FaderType
+from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
 
 
 class FaderEdit(Gtk.Box):
@@ -39,7 +39,7 @@ class FaderEdit(Gtk.Box):
 
         fader_type = [[FaderType.NONE, ""], [FaderType.PRESET, "Preset"],
                       [FaderType.SEQUENCE, "Sequence"], [FaderType.GROUP, "Group"],
-                      [FaderType.GM, "GM"]]
+                      [FaderType.MAIN, "Main Fader"]]
         self.type_button = Gtk.MenuButton()
         popover = Gtk.Popover()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
@@ -60,8 +60,8 @@ class FaderEdit(Gtk.Box):
             self._fader_group()
         elif isinstance(fader, FaderSequence):
             self._fader_sequence()
-        elif isinstance(fader, FaderGM):
-            self._fader_gm()
+        elif isinstance(fader, FaderMain):
+            self._fader_main()
         else:
             self._fader_none()
 
@@ -77,11 +77,11 @@ class FaderEdit(Gtk.Box):
         self.contents_button = Gtk.MenuButton()
         self.contents_button.set_label("")
 
-    def _fader_gm(self) -> None:
-        """Create edition of grand master fader"""
+    def _fader_main(self) -> None:
+        """Create edition of main fader"""
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
         self.set_name("fader_box")
-        self.type_button.set_label("GM")
+        self.type_button.set_label("Main Fader")
         self.contents_button = Gtk.MenuButton()
         self.contents_button.set_label("")
 
@@ -149,8 +149,8 @@ class FaderEdit(Gtk.Box):
 
         if fader_type == FaderType.NONE:
             self._fader_none()
-        elif fader_type == FaderType.GM:
-            self._fader_gm()
+        elif fader_type == FaderType.MAIN:
+            self._fader_main()
         elif fader_type == FaderType.GROUP:
             self._fader_group()
         elif fader_type == FaderType.PRESET:

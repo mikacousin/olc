@@ -45,7 +45,8 @@ class MIDIFader:
         """Set Fader state
 
         Args:
-            value: Value of object attached to MIDI fader (Fader, GM, Independent)
+            value: Value of object attached to MIDI fader (Fader, MainFader,
+                   Independent)
         """
         if value > self.value:
             self.valid = FaderState.UP

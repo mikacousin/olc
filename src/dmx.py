@@ -16,7 +16,7 @@ import array
 from typing import Any, Optional
 
 from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App
-from olc.grand_master import GrandMaster
+from olc.main_fader import MainFader
 from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
 
@@ -26,7 +26,7 @@ class Dmx:
 
     backend: Any
     patch: DMXPatch
-    grand_master: GrandMaster
+    main_fader: MainFader
     levels: dict[str, array.array]
     frame: list[array.array]
     user_outputs: dict[tuple[int, int], int]
@@ -35,7 +35,7 @@ class Dmx:
     def __init__(self, backend):
         self.backend = backend
         self.patch = App().lightshow.patch
-        self.grand_master = GrandMaster()
+        self.main_fader = MainFader()
         # Dimmers levels
         self.levels = {
             "sequence": array.array("B", [0] * MAX_CHANNELS),
@@ -83,8 +83,8 @@ class Dmx:
                 if curve_numb:
                     curve = App().lightshow.curves.get_curve(curve_numb)
                     level = curve.values.get(level, 0)
-                # Grand Master
-                level = round(level * self.grand_master.value)
+                # Main Fader
+                level = round(level * self.main_fader.value)
                 # Update output level
                 index = UNIVERSES.index(universe)
                 self.frame[index][output - 1] = level

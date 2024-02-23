@@ -40,7 +40,7 @@ class MidiControlChanges:
             "inde_led_4": [0, 51],
             "inde_led_5": [0, 52],
             "inde_led_6": [0, 53],
-            "gm": [3, 108],
+            "main_fader": [3, 108],
             "crossfade_out": [0, 8],
             "crossfade_in": [0, 9],
         }
@@ -173,24 +173,24 @@ class MidiControlChanges:
             if channels_view:
                 channels_view.wheel_level(step, direction)
 
-    def _function_gm(self, _port: str, msg: mido.Message) -> None:
-        """Grand Master
+    def _function_main_fader(self, _port: str, msg: mido.Message) -> None:
+        """Main Fader
 
         Args:
             msg: MIDI message
         """
         val = (msg.value / 127) * 255
-        fader = App().midi.faders.gm_fader
-        gm_val = round(App().backend.dmx.grand_master.value * 255)
-        if not fader.is_valid(val, gm_val):
+        fader = App().midi.faders.main_fader
+        mf_val = round(App().backend.dmx.main_fader.value * 255)
+        if not fader.is_valid(val, mf_val):
             return
         if App().virtual_console:
-            App().virtual_console.scale_grand_master.set_value(val)
-            App().virtual_console.grand_master_moved(
-                App().virtual_console.scale_grand_master)
+            App().virtual_console.scale_main_fader.set_value(val)
+            App().virtual_console.main_fader_moved(
+                App().virtual_console.scale_main_fader)
         else:
-            App().backend.dmx.grand_master.set_level(val / 255)
-            App().window.grand_master.queue_draw()
+            App().backend.dmx.main_fader.set_level(val / 255)
+            App().window.main_fader.queue_draw()
 
 
 def _function_fader(msg: mido.Message, fader_index: int) -> None:

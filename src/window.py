@@ -16,7 +16,7 @@ from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, UNIVERSES, App, string_to_time, time_to_string
 from olc.step import Step
-from olc.widgets.grand_master import GMWidget
+from olc.widgets.main_fader import MainFaderWidget
 from olc.window_channels import LiveView
 from olc.window_playback import MainPlaybackView
 
@@ -84,9 +84,9 @@ class Window(Gtk.ApplicationWindow):
         self.header.set_subtitle("")
         self.header.props.show_close_button = True
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        # Grand Master viewer
-        self.grand_master = GMWidget()
-        box.add(self.grand_master)
+        # Main Fader viewer
+        self.main_fader = MainFaderWidget()
+        box.add(self.main_fader)
         # Menu button
         button = Gtk.MenuButton()
         icon = Gio.ThemedIcon(name="open-menu-symbolic")

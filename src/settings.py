@@ -252,7 +252,7 @@ class SettingsTab(Gtk.Box):
         GLib.idle_add(App().midi.ports.close)
         GLib.idle_add(App().midi.ports.open, midi_ports)
         App().midi.update_faders()
-        App().midi.gm_init()
+        App().midi.main_fader_init()
 
     def _on_change_percent(self, widget: Gtk.SpinButton) -> None:
         lvl = widget.get_value_as_int()

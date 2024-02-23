@@ -71,7 +71,7 @@ class MidiNotes:
             "inde_9": [0, 34],
             "page_plus": [0, 49],
             "page_minus": [0, 48],
-            "gm": [0, 112],
+            "main_fader": [0, 112],
             "zoom_on": [0, 100],
             "h_plus": [0, 99],
             "h_minus": [0, 98],
@@ -251,17 +251,17 @@ def _function_fader(msg: mido.Message, fader_index: int) -> None:
                                             round(((fader.level * 16383) - 8192)))
 
 
-def _function_gm(msg: mido.Message) -> None:
-    """Send Fader position when released
+def _function_main_fader(msg: mido.Message) -> None:
+    """Send MainFader position when released
 
     Args:
         msg: MIDI message
     """
     if msg.velocity == 0:
         App().midi.messages.control_change.send(
-            "gm", round(App().backend.dmx.grand_master.value * 127))
+            "main_fader", round(App().backend.dmx.main_fader.value * 127))
         App().midi.messages.pitchwheel.send(
-            "gm", round((App().backend.dmx.grand_master.value * 16383) - 8192))
+            "main_fader", round((App().backend.dmx.main_fader.value * 16383) - 8192))
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:

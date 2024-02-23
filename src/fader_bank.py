@@ -16,7 +16,7 @@
 from typing import Any
 
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE, App
-from olc.fader import (Fader, FaderChannels, FaderGM, FaderGroup, FaderPreset,
+from olc.fader import (Fader, FaderChannels, FaderGroup, FaderMain, FaderPreset,
                        FaderSequence, FaderType)
 
 
@@ -80,8 +80,8 @@ class FaderBank:
             return FaderType.PRESET
         if isinstance(self.faders[page][index], FaderSequence):
             return FaderType.SEQUENCE
-        if isinstance(self.faders[page][index], FaderGM):
-            return FaderType.GM
+        if isinstance(self.faders[page][index], FaderMain):
+            return FaderType.MAIN
         return FaderType.NONE
 
     def set_fader(self,
@@ -116,8 +116,8 @@ class FaderBank:
             else:
                 self.faders[page][index] = FaderGroup(index, self)
             self.faders[page][index].set_level(0)
-        elif fader_type == FaderType.GM:
-            self.faders[page][index] = FaderGM(index, self)
+        elif fader_type == FaderType.MAIN:
+            self.faders[page][index] = FaderMain(index, self)
         elif fader_type == FaderType.PRESET:
             if cue := App().lightshow.get_cue(contents):
                 self.faders[page][index] = FaderPreset(index, self, cue)

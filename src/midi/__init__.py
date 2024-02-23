@@ -85,14 +85,14 @@ class MidiFaders:
     """MIDI Faders"""
 
     faders: list[MIDIFader]
-    gm_fader: MIDIFader
+    main_fader: MIDIFader
     inde_faders: list[MIDIFader]
 
     def __init__(self):
         self.faders = []
         for _ in range(10):
             self.faders.append(MIDIFader())
-        self.gm_fader = MIDIFader()
+        self.main_fader = MIDIFader()
         self.inde_faders = []
         for _ in range(6):
             self.inde_faders.append(MIDIFader())
@@ -195,22 +195,22 @@ class Midi:
                 port.port.send(msg)
             port.port.reset()
 
-    def gm_init(self) -> None:
-        """Grand Master Fader"""
-        midi_name = "gm"
+    def main_fader_init(self) -> None:
+        """Main Fader"""
+        midi_name = "main_fader"
         channel, control = self.messages.control_change.control_change[midi_name]
         if control != -1:
             msg = mido.Message(
                 "control_change",
                 channel=channel,
                 control=control,
-                value=round(App().backend.dmx.grand_master.value * 127),
+                value=round(App().backend.dmx.main_fader.value * 127),
                 time=0,
             )
             self.enqueue(msg)
         channel = self.messages.pitchwheel.pitchwheel.get(midi_name, -1)
         if channel != -1:
-            val = round((App().backend.dmx.grand_master.value * 16383) - 8192)
+            val = round((App().backend.dmx.main_fader.value * 16383) - 8192)
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             self.enqueue(msg)
 
