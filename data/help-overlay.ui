@@ -61,10 +61,10 @@
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="masters">
+              <object class="GtkShortcutsShortcut" id="faders">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;M</property>
-                <property name="title" translatable="yes" context="shortcut window">Masters</property>
+                <property name="accelerator">&lt;ctrl&gt;F</property>
+                <property name="title" translatable="yes" context="shortcut window">Faders</property>
               </object>
             </child>
             <child>

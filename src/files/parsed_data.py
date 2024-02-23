@@ -15,6 +15,7 @@
 from olc.cue import Cue
 from olc.curve import LimitCurve
 from olc.define import App
+from olc.fader import FaderType
 from olc.files.import_dialog import Action
 from olc.group import Group
 from olc.sequence import Sequence
@@ -45,6 +46,22 @@ class ParsedData:
                 keys.append(sequence)
         for key in keys:
             self.sequences.pop(key)
+        # Transform fader of channels in fader with group
+        index = 500.0
+        for values in self.faders.values():
+            if values.get("type") == FaderType.CHANNELS:
+                while True:
+                    if index in self.groups:
+                        index += 1
+                    else:
+                        break
+                self.groups[index] = {
+                    "channels": values.get("value"),
+                    "text": str(index)
+                }
+                values["type"] = FaderType.GROUP
+                values["value"] = index
+                index += 1
 
     def import_patch(self) -> None:
         """Import data patch"""

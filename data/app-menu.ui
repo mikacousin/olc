@@ -48,8 +48,8 @@
       <attribute name="action">app.sequences</attribute>
     </item>
     <item>
-      <attribute name="label" translatable="yes">Masters</attribute>
-      <attribute name="action">app.masters</attribute>
+      <attribute name="label" translatable="yes">Faders</attribute>
+      <attribute name="action">app.faders</attribute>
     </item>
     <item>
       <attribute name="label" translatable="yes">Track channels</attribute>
