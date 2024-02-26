@@ -25,6 +25,10 @@
           <attribute name="label" translatable="yes">Import ASCII</attribute>
           <attribute name="action">app.import_ascii</attribute>
         </item>
+        <item>
+          <attribute name="label" translatable="yes">Export ASCII</attribute>
+          <attribute name="action">app.export_ascii</attribute>
+        </item>
       </section>
     </submenu>
     <item>

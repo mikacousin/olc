@@ -29,6 +29,7 @@ from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS  # noqa: E402
 from olc.fader_edition import FaderTab  # noqa: E402
+from olc.files.export_file import ExportFile  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
@@ -229,6 +230,7 @@ class Application(Gtk.Application):
             "save": "_save",
             "save_as": "_saveas",
             "import_ascii": "_import_ascii",
+            "export_ascii": "_export_ascii",
             "patch_outputs": "patch_outputs",
             "patch_channels": "_patch_channels",
             "curves": "_curves",
@@ -328,7 +330,7 @@ class Application(Gtk.Application):
             self.backend.dmx.levels["user"][channel] = -1
         self.backend.dmx.set_levels()
 
-    def _import_ascii(self, _action, _parameter):
+    def _import_ascii(self, _action, _parameter) -> None:
         open_dialog = Gtk.FileChooserNative.new(
             _("Import ASCII File"),
             self.window,
@@ -349,6 +351,20 @@ class Application(Gtk.Application):
             imported.parse()
             imported.select_data()
         open_dialog.destroy()
+
+    def _export_ascii(self, _action, _parameter) -> None:
+        dialog = Gtk.FileChooserNative.new(_("Export ASCII File"), self.window,
+                                           Gtk.FileChooserAction.SAVE, _("Export"),
+                                           _("Cancel"))
+        dialog.set_do_overwrite_confirmation(True)
+        dialog.set_modal(True)
+        dialog.set_current_name("Untitled.asc")
+        response = dialog.run()
+
+        if response == Gtk.ResponseType.ACCEPT:
+            exported = ExportFile(dialog.get_file(), "ascii")
+            exported.write()
+        dialog.destroy()
 
     def _save(self, _action, _parameter):
         """Save"""

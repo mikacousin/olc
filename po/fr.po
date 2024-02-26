@@ -46,6 +46,12 @@ msgstr "Enregistrer sous"
 msgid "Import ASCII"
 msgstr "Importer ASCII"
 
+msgid "Export ASCII"
+msgstr "Exporter ASCII"
+
+msgid "Export"
+msgstr "Exporter"
+
 msgid "Patch"
 msgstr "Patch"
 
