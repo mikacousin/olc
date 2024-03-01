@@ -273,8 +273,9 @@ class AsciiParser(ReadFile):
         if self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
-                level = self._get_level(self.args[index + 1])
-                cues[self.current["cue"]]["channels"][channel] = level
+                if channel <= MAX_CHANNELS:
+                    level = self._get_level(self.args[index + 1])
+                    cues[self.current["cue"]]["channels"][channel] = level
         elif self.keyword == "down":
             time = string_to_time(self.args[0])
             if not time:
@@ -303,7 +304,7 @@ class AsciiParser(ReadFile):
         elif self.keyword == "$$parttimechan":
             for arg in self.args:
                 cues[self.current["cue"]]["channel_time"][
-                    self.current["channel_time"]].add(arg)
+                    self.current["channel_time"]].add(int(arg))
 
     def _new_preset(self) -> None:
         number = float(self.args[0])

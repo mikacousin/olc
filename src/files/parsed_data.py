@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.curve import LimitCurve
 from olc.define import App
@@ -169,6 +170,11 @@ class ParsedData:
                 cue = Cue(0, cue_number, value.get("channels"), text=value.get("text"))
                 App().lightshow.cues.append(cue)
             # Create new step
+            channel_time = {}
+            for times, channels in value.get("channel_time").items():
+                delay, time = times
+                for channel in channels:
+                    channel_time[channel] = ChannelTime(delay, time)
             step = Step(sequence,
                         cue,
                         time_in=value.get("up_time"),
@@ -176,6 +182,7 @@ class ParsedData:
                         delay_in=value.get("up_delay"),
                         delay_out=value.get("out_delay"),
                         wait=value.get("wait"),
+                        channel_time=channel_time,
                         text=value.get("text"))
             App().lightshow.main_playback.add_step(step)
 
@@ -193,6 +200,11 @@ class ParsedData:
             else:
                 cue = Cue(0, cue_number, value.get("channels"), text=value.get("text"))
                 self._insert_cue(cue)
+                channel_time = {}
+                for times, channels in value.get("channel_time").items():
+                    delay, time = times
+                    for channel in channels:
+                        channel_time[channel] = ChannelTime(delay, time)
                 step = Step(sequence,
                             cue,
                             time_in=value.get("up_time"),
