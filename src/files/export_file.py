@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gio
 from olc.files.ascii.writer import AsciiWriter
+from olc.files.olc.writer import OlcWriter
 
 
 class ExportFile:
@@ -29,6 +30,8 @@ class ExportFile:
 
         if self.file_type == "ascii":
             self.writer = AsciiWriter(self.file)
+        else:
+            self.writer = OlcWriter(self.file)
 
     def write(self) -> None:
         """Write file"""

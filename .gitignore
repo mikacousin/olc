@@ -4,7 +4,6 @@ data/AboutDialog.ui
 data/gschemas.compiled
 data/olc.desktop
 data/olc.gresource
-olc
 po/*.mo
 po/*.gmo
 po/POTFILES

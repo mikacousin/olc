@@ -21,7 +21,6 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
-from olc.ascii import Ascii  # noqa: E402
 from olc.backends.backend import select_backend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
@@ -124,15 +123,11 @@ class Application(Gtk.Application):
         self.crossfade = None
         self.midi = None
         self.osc = None
-        self.ascii = None
 
         # Light show initialization
         self.lightshow = LightShow()
 
     def do_activate(self):
-        # Initialization of ascii file
-        self.ascii = Ascii(None)
-
         # Create Main Window
         self.window = Window()
         self.window.show_all()
@@ -212,6 +207,7 @@ class Application(Gtk.Application):
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
             self.lightshow.file = command_line.create_file_for_arg(arguments[1])
+            # TODO: Load olc file format not ascii
             self.ascii.load()
         return False
 
@@ -369,7 +365,8 @@ class Application(Gtk.Application):
     def _save(self, _action, _parameter):
         """Save"""
         if self.lightshow.file is not None:
-            self.ascii.save()
+            exported = ExportFile(self.lightshow.file, "olc")
+            exported.write()
         else:
             self._saveas(_action, _parameter)
 
@@ -388,23 +385,24 @@ class Application(Gtk.Application):
         # dialog always on top of the main window
         save_dialog.set_modal(True)
         # if file has already been saved
-        if self.ascii.file is not None:
+        if self.lightshow.file is not None:
             try:
-                # set self.ascii.file as the current filename for the file chooser
-                save_dialog.set_file(self.ascii.file)
+                # set self.lightshow.file as the current filename for the file chooser
+                save_dialog.set_file(self.lightshow.file)
             except GObject.GError as e:
                 print(f"Error: {e}")
         else:
-            save_dialog.set_current_name("Untitled.asc")
+            save_dialog.set_current_name("Untitled.olc")
         # show the dialog
         response = save_dialog.run()
 
         # if response is "ACCEPT" (the button "Save" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
-            # self.ascii.file is the currently selected file
+            # self.lightshow.file is the currently selected file
             self.lightshow.file = save_dialog.get_file()
             # save to file
-            self.ascii.save()
+            exported = ExportFile(self.lightshow.file, "olc")
+            exported.write()
             # Set Main Window's title with file name
             self.lightshow.set_not_modified()
         # destroy the FileChooserNative

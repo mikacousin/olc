@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gio
+from olc.define import App
 
 
 class WriteFile:
@@ -25,25 +26,24 @@ class WriteFile:
     compressed: bool
     stream: Gio.FileOutputStream
 
-    def __init__(self, file: Gio.File):
+    def __init__(self, file: Gio.File, compressed: bool = False):
         self.file = file
-        self.compressed = False
+        self.compressed = compressed
         self.stream = None
 
     def write(self) -> None:
         """Write file"""
         output_stream = self.file.replace("", False, Gio.FileCreateFlags.NONE, None)
-
         if self.compressed:
             converter = Gio.ZlibCompressor.new(Gio.ZlibCompressorFormat.GZIP, -1)
             self.stream = Gio.ConverterOutputStream.new(output_stream, converter)
         else:
             self.stream = output_stream
-
         # Write data
         self.export()
-
         self.stream.close()
+        App().lightshow.set_not_modified()
+        App().lightshow.add_recent_file()
 
     def export(self) -> None:
         """Export file

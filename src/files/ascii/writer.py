@@ -60,12 +60,8 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes(f"$$WAIT {wait}\n", "ascii"))
             # ChannelTime
             for chan in step.channel_time.keys():
-                delay = (str(int(step.channel_time[chan].delay))
-                         if step.channel_time[chan].delay.is_integer() else str(
-                             step.channel_time[chan].delay))
-                time = (str(int(step.channel_time[chan].time))
-                        if step.channel_time[chan].time.is_integer() else str(
-                            step.channel_time[chan].time))
+                delay = self._float_to_str(step.channel_time[chan].delay)
+                time = self._float_to_str(step.channel_time[chan].time)
                 self.stream.write(bytes(f"$$PARTTIME {delay} {time}\n", "ascii"))
                 self.stream.write(bytes(f"$$PARTTIMECHAN {chan}\n", "ascii"))
             self._ascii_text(step.text)
