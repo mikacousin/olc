@@ -321,16 +321,16 @@ class Curves:
             for point in curve[2]:
                 self.curves[number].add_point(point[0], point[1])
 
-    def get_curve(self, number: int) -> Curve:
+    def get_curve(self, number: int) -> Curve | None:
         """Get Curve with number
 
         Args:
             number: Curve number (key in dictionary)
 
         Returns:
-            Curve or 0
+            Curve or None
         """
-        return self.curves.get(number, 0)
+        return self.curves.get(number)
 
     def find_limit_curve(self, limit: int) -> int:
         """Find CurveLimit number if a curve with limit exist
@@ -374,3 +374,12 @@ class Curves:
                     chan_dic[1] = 0
         # Delete Curve from self.curves
         self.curves.pop(curve_nb, None)
+
+    def reset(self) -> None:
+        """Delete additional curves"""
+        keys = []
+        for curve_nb in self.curves:
+            if curve_nb >= 10:
+                keys.append(curve_nb)
+        for key in keys:
+            self.del_curve(key)

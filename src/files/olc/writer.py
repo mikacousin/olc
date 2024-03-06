@@ -139,41 +139,42 @@ class OlcWriter(WriteFile):
             del self.data["groups"]
 
     def _faders(self) -> None:
-        self.data["faders"] = []
+        self.data["faders"] = {}
         for page, faders in App().lightshow.fader_bank.faders.items():
             for index, fader in faders.items():
                 content_type = App().lightshow.fader_bank.get_fader_type(page, index)
+                number = index - 1 + ((page - 1) * 10)
                 if content_type == FaderType.GROUP:
-                    self.data["faders"].append({
+                    self.data["faders"][number] = {
                         "page": page,
-                        "index": index,
+                        "number": index,
                         "type": content_type,
                         "contents": fader.contents.index,
                         "text": fader.text
-                    })
+                    }
                 elif content_type == FaderType.SEQUENCE:
-                    self.data["faders"].append({
+                    self.data["faders"][number] = {
                         "page": page,
-                        "index": index,
+                        "number": index,
                         "type": content_type,
                         "contents": fader.contents.index,
                         "text": fader.text
-                    })
+                    }
                 elif content_type == FaderType.PRESET:
-                    self.data["faders"].append({
+                    self.data["faders"][number] = {
                         "page": page,
-                        "index": index,
+                        "number": index,
                         "type": content_type,
                         "contents": fader.contents.memory,
                         "text": fader.text
-                    })
+                    }
                 elif content_type == FaderType.MAIN:
-                    self.data["faders"].append({
+                    self.data["faders"][number] = {
                         "page": page,
-                        "index": index,
+                        "number": index,
                         "type": content_type,
                         "text": fader.text
-                    })
+                    }
         if not self.data["faders"]:
             del self.data["faders"]
 

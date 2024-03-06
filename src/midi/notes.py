@@ -93,6 +93,11 @@ class MidiNotes:
                 else:
                     self.notes[f"fader_{j + i * 10 + 1}"] = [0, -1]
 
+    def reset(self) -> None:
+        """Remove all MIDI note"""
+        for action in self.notes:
+            self.notes[action] = [0, -1]
+
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
 

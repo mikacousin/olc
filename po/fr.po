@@ -101,12 +101,12 @@ msgid "About"
 msgstr "À propos"
 
 msgctxt "shortcut window"
-msgid "Open ASCII File"
-msgstr "Ouvrir un fichier ASCII"
+msgid "Open File"
+msgstr "Ouvrir"
 
 msgctxt "shortcut window"
-msgid "Save ASCII File"
-msgstr "Enregistrer un fichier ASCII"
+msgid "Save File"
+msgstr "Enregistrer"
 
 msgctxt "shortcut window"
 msgid "Save with file name"
@@ -364,3 +364,12 @@ msgstr "Port du client"
 
 msgid "Client IP address"
 msgstr "Adresse IP du client"
+
+msgid "Error"
+msgstr "Erreur"
+
+msgid "OLC Files"
+msgstr "Fichiers OLC"
+
+msgid "All Files"
+msgstr "Tous les fichiers"

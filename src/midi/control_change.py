@@ -47,6 +47,11 @@ class MidiControlChanges:
         for i in range(1, 101):
             self.control_change[f"fader_{i}"] = [0, -1]
 
+    def reset(self) -> None:
+        """Remove all MIDI control change"""
+        for action in self.control_change:
+            self.control_change[action] = [0, -1]
+
     def scan(self, port: str, msg: mido.Message) -> None:
         """Scan MIDI control changes
 

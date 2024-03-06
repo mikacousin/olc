@@ -17,6 +17,7 @@ from olc.cue import Cue
 from olc.define import App
 from olc.files.ascii.parser import AsciiParser
 from olc.files.import_dialog import Action, DialogData
+from olc.files.olc.parser import OlcParser
 from olc.files.parsed_data import ParsedData
 from olc.independent import Independents
 from olc.step import Step
@@ -36,11 +37,13 @@ class ImportFile:
         self.file_type = file_type
         self.data = ParsedData()
         self.actions = {
+            "curves": Action.REPLACE,
             "patch": Action.REPLACE,
             "sequences": {},
             "groups": Action.REPLACE,
             "independents": Action.REPLACE,
-            "faders": Action.REPLACE
+            "faders": Action.REPLACE,
+            "midi": Action.REPLACE
         }
 
         if self.file_type == "ascii":
@@ -48,17 +51,25 @@ class ImportFile:
                 default_time = App().settings.get_double("default-time")
             else:
                 default_time = 5.0
-            self.parser = AsciiParser(self.file, self.data, default_time)
+            self.parser = AsciiParser(self, default_time)
+        else:
+            self.parser = OlcParser(self)
 
     def parse(self) -> None:
         """Start reading file"""
         self.parser.read()
         App().lightshow.add_recent_file()
-        self.data.clean()
+
+    def load_all(self) -> None:
+        """Load all file"""
+        for sequence in self.data.data["sequences"]:
+            self.actions["sequences"][sequence] = Action.REPLACE
+        self._do_import()
+        App().lightshow.set_not_modified()
 
     def select_data(self) -> None:
         """Select data to import"""
-        dialog = DialogData(App().window, self.data, self.actions)
+        dialog = DialogData(App().window, self.data.data, self.actions)
         response = dialog.run()
         dialog.destroy()
         if response == Gtk.ResponseType.OK:
@@ -66,13 +77,23 @@ class ImportFile:
             App().lightshow.set_modified()
 
     def _do_import(self):
+        self._do_import_curves()
         self._do_import_patch()
         self._do_import_sequences()
         self._do_import_groups()
         self._do_import_independents()
         self._do_import_presets()
         self._do_import_faders()
+        if self.file_type == "olc":
+            self._do_import_midi()
         self._update_ui()
+
+    def _do_import_curves(self) -> None:
+        if self.actions["curves"] is Action.IGNORE:
+            return
+        if self.actions["curves"] is Action.REPLACE:
+            App().lightshow.curves.reset()
+        self.data.import_curves()
 
     def _do_import_patch(self) -> None:
         if self.actions["patch"] is Action.IGNORE:
@@ -105,7 +126,7 @@ class ImportFile:
 
     def _do_import_presets(self) -> None:
         # Presets (Cues not in a sequence) are attached to Main Playback
-        if self.actions["sequences"][1] is Action.IGNORE:
+        if self.actions["sequences"].get(1) is Action.IGNORE:
             return
         self.data.import_presets()
 
@@ -140,6 +161,13 @@ class ImportFile:
                     break
                 if chaser:
                     App().lightshow.chasers.remove(chaser)
+
+    def _do_import_midi(self) -> None:
+        if self.actions["midi"] is Action.IGNORE:
+            return
+        if self.actions["midi"] is Action.REPLACE:
+            App().midi.reset_messages()
+        self.data.import_midi()
 
     def _update_ui(self) -> None:
         App().window.live_view.channels_view.update()

@@ -19,7 +19,6 @@ configure_file(
 
 olc_sources = [
   'application.py',
-  'ascii.py',
   'channel_time.py',
   'crossfade.py',
   'cue.py',

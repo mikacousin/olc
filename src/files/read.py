@@ -12,8 +12,19 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import gzip
+import typing
+from gettext import gettext as _
+
 from charset_normalizer import from_bytes
-from gi.repository import Gio
+from gi.repository import GLib, Gtk
+from olc.define import App
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.files.import_file import ImportFile
 
 
 class ReadFile:
@@ -22,21 +33,35 @@ class ReadFile:
     This class must be sub-classed and parse implemented
     """
 
-    file: Gio.File
+    imported: ImportFile
+    compressed: bool
     contents: str
 
-    def __init__(self, file: Gio.File):
-        self.file = file
+    def __init__(self, imported: ImportFile, compressed=False, importation=False):
+        self.imported = imported
+        self.compressed = compressed
+        self.importation = importation
         self.contents = ""
+
+    def _load_cb(self, file: Gio.File, result: Gio.AsyncResult, user_data=None) -> None:
+        try:
+            _success, data, _etag = file.load_contents_finish(result)
+        except GLib.GError as error:
+            self._error_dialog(str(error))
+            return
+        if self.compressed:
+            data = gzip.decompress(data)
+        self.contents = str(from_bytes(data).best())
+        self.parse()
+        self.imported.data.clean()
+        if self.importation:
+            self.imported.select_data()
+        else:
+            self.imported.load_all()
 
     def read(self) -> None:
         """Read all file"""
-        input_stream = self.file.read()
-        file_size = input_stream.query_info(Gio.FILE_ATTRIBUTE_STANDARD_SIZE).get_size()
-        data = input_stream.read_bytes(file_size, None)
-        self.contents = str(from_bytes(data.get_data()).best())
-        input_stream.close()
-        self.parse()
+        self.imported.file.load_contents_async(None, self._load_cb, None)
 
     def parse(self) -> None:
         """Parse file
@@ -45,3 +70,11 @@ class ReadFile:
             NotImplementedError: Must be implemented in subclass
         """
         raise NotImplementedError
+
+    def _error_dialog(self, message: str) -> None:
+        dialog = Gtk.MessageDialog(
+            App().window, Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+            Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, message)
+        dialog.set_title(_("Error"))
+        dialog.run()
+        dialog.destroy()

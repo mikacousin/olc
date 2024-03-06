@@ -35,6 +35,11 @@ class MidiPitchWheel:
             for j in range(8):
                 self.pitchwheel[f"fader_{j + i * 10 + 1}"] = j
 
+    def reset(self) -> None:
+        """Remove all MIDI pitchwheel"""
+        for action in self.pitchwheel:
+            self.pitchwheel[action] = -1
+
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI pitchwheel messages
 

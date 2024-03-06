@@ -14,14 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import typing
 from enum import Enum, auto
 from gettext import gettext as _
 
 from gi.repository import Gtk
-
-if typing.TYPE_CHECKING:
-    from olc.files.parsed_data import ParsedData
 
 
 class Action(Enum):
@@ -48,15 +44,15 @@ class DialogData(Gtk.Dialog):
         box.set_spacing(6)
         # If you change actions order, you have to modify combo callbacks
         actions = ["Replace", "Merge", "Ignore"]
-        if data.patch:
+        if data["patch"]:
             self._patch(actions, box)
-        if data.sequences:
+        if data["sequences"]:
             self._sequences(actions, box, data)
-        if data.groups:
+        if data["groups"]:
             self._groups(actions, box)
-        if data.independents:
+        if data["independents"]:
             self._independents(actions, box)
-        if data.faders:
+        if data["faders"]:
             self._faders(actions, box)
         self.show_all()
 
@@ -72,20 +68,20 @@ class DialogData(Gtk.Dialog):
         hbox.add(combo)
         box.add(hbox)
 
-    def _sequences(self, actions: list, box: Gtk.Box, data: ParsedData) -> None:
+    def _sequences(self, actions: list, box: Gtk.Box, data: dict) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         label = Gtk.Label("Sequences:")
         hbox.pack_start(label, False, True, 0)
         box.add(hbox)
         combos = {}
-        for sequence in data.sequences.keys():
+        for sequence in data["sequences"].keys():
             self.actions["sequences"][sequence] = Action.REPLACE
             hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
             if sequence == 1:
                 name = "MainPlayback"
-            elif data.sequences[sequence].get("text"):
-                name = data.sequences[sequence]["text"]
+            elif data["sequences"][sequence].get("label"):
+                name = data["sequences"][sequence]["label"]
             else:
                 name = str(sequence)
             label = Gtk.Label(name)

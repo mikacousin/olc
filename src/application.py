@@ -203,12 +203,12 @@ class Application(Gtk.Application):
             sys.exit()
         # Activate olc
         self.activate()
-        # Arguments (one ASCII file to open)
+        # Arguments (one olc file to open)
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
             self.lightshow.file = command_line.create_file_for_arg(arguments[1])
-            # TODO: Load olc file format not ascii
-            self.ascii.load()
+            imported = ImportFile(self.lightshow.file, "olc")
+            imported.parse()
         return False
 
     def setup_app_menu(self):
@@ -292,7 +292,7 @@ class Application(Gtk.Application):
         (buttons, response)
         """
         open_dialog = Gtk.FileChooserNative.new(
-            _("Open ASCII File"),
+            _("Open File"),
             self.window,
             Gtk.FileChooserAction.OPEN,
             _("Open"),
@@ -300,8 +300,12 @@ class Application(Gtk.Application):
         )
 
         filter_text = Gtk.FileFilter()
-        filter_text.set_name("Text Files")
-        filter_text.add_mime_type("text/plain")
+        filter_text.set_name(_("OLC Files"))
+        filter_text.add_pattern("*.olc")
+        open_dialog.add_filter(filter_text)
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name(_("All Files"))
+        filter_text.add_pattern("*")
         open_dialog.add_filter(filter_text)
 
         # not only local files can be selected in the file selector
@@ -314,8 +318,9 @@ class Application(Gtk.Application):
         # if response is "ACCEPT" (the button "Open" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
             self.lightshow.file = open_dialog.get_file()
-            # Load the ASCII file
-            self.ascii.load()
+            # Load file
+            imported = ImportFile(self.lightshow.file, "olc")
+            imported.parse()
 
         # destroy the FileChooserNative
         open_dialog.destroy()
@@ -338,6 +343,10 @@ class Application(Gtk.Application):
         filter_text.set_name("Text Files")
         filter_text.add_mime_type("text/plain")
         open_dialog.add_filter(filter_text)
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name(_("All Files"))
+        filter_text.add_pattern("*")
+        open_dialog.add_filter(filter_text)
         open_dialog.set_local_only(False)
         open_dialog.set_modal(True)
         response = open_dialog.run()
@@ -345,7 +354,6 @@ class Application(Gtk.Application):
         if response == Gtk.ResponseType.ACCEPT:
             imported = ImportFile(open_dialog.get_file(), "ascii")
             imported.parse()
-            imported.select_data()
         open_dialog.destroy()
 
     def _export_ascii(self, _action, _parameter) -> None:
@@ -373,7 +381,7 @@ class Application(Gtk.Application):
     def _saveas(self, _action, _parameter):
         """Save as"""
         save_dialog = Gtk.FileChooserNative.new(
-            _("Save ASCII file"),
+            _("Save file"),
             self.window,
             Gtk.FileChooserAction.SAVE,
             _("Save"),

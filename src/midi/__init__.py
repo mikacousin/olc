@@ -171,6 +171,12 @@ class Midi:
         # Tag filename as modified
         App().lightshow.set_modified()
 
+    def reset_messages(self) -> None:
+        """Remove all MIDI messages"""
+        self.messages.notes.reset()
+        self.messages.control_change.reset()
+        self.messages.pitchwheel.reset()
+
     def controler_reset(self) -> None:
         """Reset Mackie Controller"""
         for port in self.ports.ports:
