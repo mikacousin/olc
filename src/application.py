@@ -108,9 +108,6 @@ class Application(Gtk.Application):
         # To store settings
         self.settings = Gio.Settings.new("com.github.mikacousin.olc")
 
-        # Fader page
-        self.fader_page = 1
-
         # For Windows
         self.window = None
         self.about_window = None
@@ -273,7 +270,6 @@ class Application(Gtk.Application):
         del self.lightshow.cues[:]
         del self.lightshow.groups[:]
         del self.lightshow.chasers[:]
-        self.fader_page = 1
         self.lightshow.fader_bank.reset_faders()
         self.lightshow.independents = Independents()
         # Redraw Sequential Window
