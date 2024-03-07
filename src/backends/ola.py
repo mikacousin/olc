@@ -110,10 +110,11 @@ class Ola(DMXBackend):
 
     olad_port: int
     olad_pid: Optional[subprocess.Popen]
-    thread: OlaThread
+    thread: OlaThread | None
 
     def __init__(self, patch, olad_port: int = 9090):
         super().__init__(patch)
+        self.thread = None
         self.olad_port = olad_port
         self.olad_pid = None
 
@@ -147,7 +148,8 @@ class Ola(DMXBackend):
     def stop(self) -> None:
         """Stop Ola backend"""
         super().stop()
-        self.thread.wrapper.Stop()
+        if self.thread:
+            self.thread.wrapper.Stop()
         # Stop olad if we launched it
         if self.olad_pid:
             self.olad_pid.terminate()
@@ -159,7 +161,8 @@ class Ola(DMXBackend):
             universe: one in UNIVERSES
             index: Index of universe
         """
-        self.thread.client.SendDmx(universe, self.dmx.frame[index])
+        if self.thread:
+            self.thread.client.SendDmx(universe, self.dmx.frame[index])
 
 
 def _is_port_in_use(port: int) -> bool:
