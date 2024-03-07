@@ -47,7 +47,7 @@ class ParsedData:
             },
             "groups": {},
             "independents": {},
-            "presets": {},
+            "cues": {},
             "faders": {},
             "midi": {}
         }
@@ -171,9 +171,9 @@ class ParsedData:
 
     def import_presets(self) -> None:
         """Import presets data"""
-        for preset_number, values in self.data["presets"].items():
+        for preset_number, values in self.data["cues"].items():
             channels = values.get("channels")
-            text = values.get("text")
+            label = values.get("label")
             found = False
             cue = None
             for cue in App().lightshow.cues:
@@ -182,9 +182,9 @@ class ParsedData:
                     break
             if found:
                 cue.channels = channels
-                cue.text = text
+                cue.text = label
             else:
-                cue = Cue(0, preset_number, channels, text)
+                cue = Cue(0, preset_number, channels, label)
                 self._insert_cue(cue)
 
     def import_main_playback(self, sequence: int, action: Action) -> None:

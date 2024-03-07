@@ -305,6 +305,7 @@ class AsciiParser(ReadFile):
         elif self.keyword in ("text", "$$text", "$$presettext"):
             label = " ".join(self.args)
             steps[self.current["step"]]["label"] = label
+            cues[self.current["cue"]]["label"] = label
         elif self.keyword == "$$wait":
             time = string_to_time(self.args[0])
             steps[self.current["step"]]["wait"] = time
@@ -321,20 +322,19 @@ class AsciiParser(ReadFile):
 
     def _new_preset(self) -> None:
         number = float(self.args[0])
-        self.data["presets"][number] = {"text": "", "channels": {}}
+        self.data["cues"][number] = {"label": "", "channels": {}}
         self.current["preset"] = number
         self.state = State.IN_PRESET
 
     def _do_preset(self) -> None:
         if self.keyword in ("text", "$$text"):
-            text = " ".join(self.args)
-            self.data["presets"][self.current["preset"]]["text"] = text
+            label = " ".join(self.args)
+            self.data["cues"][self.current["preset"]]["label"] = label
         elif self.keyword == "chan":
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
                 level = self._get_level(self.args[index + 1])
-                self.data["presets"][
-                    self.current["preset"]]["channels"][channel] = level
+                self.data["cues"][self.current["preset"]]["channels"][channel] = level
 
     def _new_group(self) -> None:
         group_number = float(self.args[0])
