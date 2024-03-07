@@ -95,8 +95,6 @@ class MidiPorts:
             if port in self.mido_ports:
                 ioport = MidiIO(port)
                 self.ports.append(ioport)
-            else:
-                ioport = MidiIO()
 
     def close(self) -> None:
         """Close MIDI inputs"""
