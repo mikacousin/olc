@@ -104,7 +104,7 @@ class MidiPitchWheel:
 def _update_fader(msg: mido.Message, index: int) -> None:
     val = (msg.pitch + 8192) / 16383
     if App().virtual_console:
-        GLib.idle_add(App().virtual_console.faders[index].set_value, val)
+        GLib.idle_add(App().virtual_console.faders[index].set_value, val * 255)
         GLib.idle_add(App().virtual_console.fader_moved,
                       App().virtual_console.faders[index])
     else:

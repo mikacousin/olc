@@ -205,13 +205,13 @@ def _function_fader(msg: mido.Message, fader_index: int) -> None:
         msg: MIDI message
         fader_index: Fader number
     """
-    val = (msg.value / 127) * 255
+    val = msg.value / 127
     midi_fader = App().midi.faders.faders[fader_index - 1]
     fader = App().lightshow.fader_bank.get_fader(fader_index)
     if not midi_fader.is_valid(val, fader.value):
         return
     if App().virtual_console:
-        App().virtual_console.faders[fader_index - 1].set_value(val)
+        App().virtual_console.faders[fader_index - 1].set_value(val * 255)
         App().virtual_console.fader_moved(App().virtual_console.faders[fader_index - 1])
     else:
         fader.set_level(val)
