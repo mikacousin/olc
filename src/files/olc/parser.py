@@ -29,24 +29,22 @@ class OlcParser(ReadFile):
     """Parse olc files"""
 
     data: ParsedData
-    json: dict
 
     def __init__(self, imported: ImportFile):
         super().__init__(imported, compressed=True)
         self.data = imported.data.data
-        self.json = {}
 
     def parse(self) -> None:
         """Parse file"""
-        self.json = json.loads(self.contents, object_hook=self._key_to_number)
-        self.data["curves"] = self.json.get("curves")
-        self.data["patch"] = self.json["patch"]
-        self.data["sequences"] = self.json["sequences"]
-        self.data["presets"] = self.json["cues"]
-        self.data["groups"] = self.json["groups"]
-        self.data["faders"] = self.json["faders"]
-        self.data["independents"] = self.json["independents"]
-        self.data["midi"] = self.json["midi_mapping"]
+        contents = json.loads(self.contents, object_hook=self._key_to_number)
+        self.data["curves"] = contents.get("curves")
+        self.data["patch"] = contents.get("patch")
+        self.data["sequences"] = contents.get("sequences")
+        self.data["presets"] = contents.get("cues")
+        self.data["groups"] = contents.get("groups")
+        self.data["faders"] = contents.get("faders")
+        self.data["independents"] = contents.get("independents")
+        self.data["midi"] = contents.get("midi_mapping")
 
     def _int_float_str(self, key):
         if is_int(key):
