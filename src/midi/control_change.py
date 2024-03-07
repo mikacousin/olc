@@ -214,7 +214,7 @@ def _function_fader(msg: mido.Message, fader_index: int) -> None:
         App().virtual_console.faders[fader_index - 1].set_value(val * 255)
         App().virtual_console.fader_moved(App().virtual_console.faders[fader_index - 1])
     else:
-        fader.set_level(val)
+        GLib.idle_add(fader.set_level, val)
 
 
 def _function_inde(port: str, msg: mido.Message, independent: int):
