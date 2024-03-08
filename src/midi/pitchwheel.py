@@ -29,10 +29,9 @@ class MidiPitchWheel:
         self.pitchwheel = {
             "crossfade_out": -1,
             "crossfade_in": -1,
-            "main_fader": 8,
         }
         for i in range(10):
-            for j in range(8):
+            for j in range(9):
                 self.pitchwheel[f"fader_{j + i * 10 + 1}"] = j
 
     def reset(self) -> None:
@@ -84,21 +83,6 @@ class MidiPitchWheel:
                 if channel == msg.channel:
                     self.pitchwheel.update({key: -1})
             self.pitchwheel.update({learning: msg.channel})
-
-    def _function_main_fader(self, _port: str, msg: mido.Message) -> None:
-        """Main Fader
-
-        Args:
-            msg: MIDI message
-        """
-        val = ((msg.pitch + 8192) / 16383) * 255
-        if App().virtual_console:
-            App().virtual_console.scale_main_fader.set_value(val)
-            App().virtual_console.main_fader_moved(
-                App().virtual_console.scale_main_fader)
-        else:
-            App().backend.dmx.main_fader.set_level(val / 255)
-            App().window.main_fader.queue_draw()
 
 
 def _update_fader(msg: mido.Message, index: int) -> None:

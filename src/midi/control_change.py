@@ -40,7 +40,6 @@ class MidiControlChanges:
             "inde_led_4": [0, 51],
             "inde_led_5": [0, 52],
             "inde_led_6": [0, 53],
-            "main_fader": [3, 108],
             "crossfade_out": [0, 8],
             "crossfade_in": [0, 9],
         }
@@ -177,25 +176,6 @@ class MidiControlChanges:
                 channels_view = tab.channels_view
             if channels_view:
                 channels_view.wheel_level(step, direction)
-
-    def _function_main_fader(self, _port: str, msg: mido.Message) -> None:
-        """Main Fader
-
-        Args:
-            msg: MIDI message
-        """
-        val = (msg.value / 127) * 255
-        fader = App().midi.faders.main_fader
-        mf_val = round(App().backend.dmx.main_fader.value * 255)
-        if not fader.is_valid(val, mf_val):
-            return
-        if App().virtual_console:
-            App().virtual_console.scale_main_fader.set_value(val)
-            App().virtual_console.main_fader_moved(
-                App().virtual_console.scale_main_fader)
-        else:
-            App().backend.dmx.main_fader.set_level(val / 255)
-            App().window.main_fader.queue_draw()
 
 
 def _function_fader(msg: mido.Message, fader_index: int) -> None:

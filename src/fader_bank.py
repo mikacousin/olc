@@ -147,7 +147,7 @@ class FaderBank:
 
     def _refresh_faders_display(self, page: int, index: int) -> None:
         if page == self.active_page:
-            # Refresh MIDI LCD
+            # Refresh MIDI
             App().midi.update_fader(self.faders[page][index])
             # Refresh Virtual Console
             if App().virtual_console:

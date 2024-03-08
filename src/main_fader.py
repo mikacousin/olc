@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from olc.define import App
 
 
 class MainFader:
@@ -29,13 +28,6 @@ class MainFader:
         Args:
             value: New level (0 - 1)
         """
-        # MIDI
-        App().midi.messages.control_change.send("main_fader", round(value * 127))
-        App().midi.messages.pitchwheel.send("main_fader", round(value * 16383) - 8192)
-        # OSC
-        if App().osc:
-            # Not implemented
-            pass
         self.value = value
 
     def get_level(self) -> float:

@@ -161,7 +161,6 @@ class Application(Gtk.Application):
         # Open MIDI Inputs and Outputs
         self.midi = Midi()
         self.midi.messages.lcd.show_faders()
-        self.midi.main_fader_init()
 
         # Create and launch OSC server
         if self.settings.get_boolean("osc"):

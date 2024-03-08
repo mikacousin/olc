@@ -81,7 +81,6 @@ class MidiPorts:
             self.mido_ports = port_names
             self.open(App().settings.get_strv("midi-ports"))
             App().midi.update_faders()
-            App().midi.main_fader_init()
             if App().tabs.tabs["settings"]:
                 GLib.idle_add(App().tabs.tabs["settings"].refresh)
 
