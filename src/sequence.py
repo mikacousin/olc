@@ -204,8 +204,7 @@ class Sequence:
                 self.thread.join()
                 self.on_go = False
                 # Stop at the end
-                if self.position > self.last - 3:
-                    self.position = self.last - 3
+                self.position = min(self.position, self.last - 3)
             except Exception as e:
                 print("Error :", e)
 

@@ -182,8 +182,7 @@ class ChanneltimeTab(Gtk.Paned):
             for channel in self.step.channel_time.keys():
                 t = (self.step.channel_time[channel].delay +
                      self.step.channel_time[channel].time + self.step.wait)
-                if t > self.step.total_time:
-                    self.step.total_time = t
+                self.step.total_time = max(self.step.total_time, t)
 
             # Redraw Main Playback
             if self.sequence == App().lightshow.main_playback:
@@ -257,8 +256,7 @@ class ChanneltimeTab(Gtk.Paned):
             for channel in self.step.channel_time.keys():
                 t = (self.step.channel_time[channel].delay +
                      self.step.channel_time[channel].time + self.step.wait)
-                if t > self.step.total_time:
-                    self.step.total_time = t
+                self.step.total_time = max(self.step.total_time, t)
 
             # Redraw Main Playback
             if self.sequence == App().lightshow.main_playback:

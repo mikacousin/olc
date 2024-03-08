@@ -219,8 +219,7 @@ class SequenceTab(Gtk.Grid):
         for channel in step.channel_time.keys():
             t = (step.channel_time[channel].delay + step.channel_time[channel].time +
                  step.wait)
-            if t > step.total_time:
-                step.total_time = t
+            step.total_time = max(step.total_time, t)
 
     def wait_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
         """Wait edited
