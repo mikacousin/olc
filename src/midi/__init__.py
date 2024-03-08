@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import threading
 import typing
 from collections import deque
 from dataclasses import dataclass
@@ -197,6 +198,16 @@ class Midi:
                                    value=0,
                                    time=0)
                 port.port.send(msg)
+            # Light off buttons
+            for values in self.messages.notes.notes.values():
+                channel, note = values
+                if note != -1:
+                    msg = mido.Message("note_on",
+                                       channel=channel,
+                                       note=note,
+                                       velocity=0,
+                                       time=0)
+                    port.port.send(msg)
             port.port.reset()
 
     def update_faders(self) -> None:
@@ -244,3 +255,22 @@ class Midi:
             msg = mido.Message("pitchwheel", channel=channel, pitch=val, time=0)
             self.enqueue(msg)
         self.messages.lcd.show_fader(fader)
+
+    def button_on(self, action: str, timer: float = 0) -> None:
+        """Light on button
+
+        Args:
+            action: Action name
+            timer: Optional time to light off
+        """
+        self.messages.notes.send(action, 127)
+        if timer:
+            threading.Timer(timer, self.messages.notes.send, [action, 0]).start()
+
+    def button_off(self, action: str) -> None:
+        """Light off button
+
+        Args:
+            action: Action name
+        """
+        self.messages.notes.send(action, 0)

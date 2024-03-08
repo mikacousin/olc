@@ -516,6 +516,7 @@ class Application(Gtk.Application):
                 return True
             if response == 1:
                 self._save(None, None)
+        self.lightshow.main_playback.stop()
         for chaser in self.lightshow.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False

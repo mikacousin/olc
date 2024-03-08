@@ -84,6 +84,30 @@ class Sequence:
         # Last Step
         self.add_step(step)
 
+    def stop(self) -> bool:
+        """Stop Go
+
+        Returns:
+            True if Go to stop, else False
+        """
+        if self.on_go and self.thread:
+            App().midi.button_off("go")
+            # Switch off Pause Led
+            if not self.thread.pause.is_set():
+                App().midi.messages.notes.led_pause_off()
+                if App().virtual_console:
+                    App().virtual_console.pause.pressed = False
+                    App().virtual_console.pause.queue_draw()
+            # Stop actual Thread
+            self.thread.pause.set()
+            self.thread.stop()
+            self.thread.join()
+            self.on_go = False
+            # Stop at the end
+            self.position = min(self.position, self.last - 3)
+            return True
+        return False
+
     def update_channels(self):
         """Update channels present in sequence"""
         self.channels.clear()
@@ -190,23 +214,8 @@ class Sequence:
 
     def sequence_plus(self):
         """Sequence +"""
-        if self.on_go and self.thread:
-            # Switch off Pause Led
-            if not self.thread.pause.is_set():
-                App().midi.messages.notes.led_pause_off()
-                if App().virtual_console:
-                    App().virtual_console.pause.pressed = False
-                    App().virtual_console.pause.queue_draw()
-            try:
-                # Stop actual Thread
-                self.thread.pause.set()
-                self.thread.stop()
-                self.thread.join()
-                self.on_go = False
-                # Stop at the end
-                self.position = min(self.position, self.last - 3)
-            except Exception as e:
-                print("Error :", e)
+        App().midi.button_on("seq_plus", .1)
+        self.stop()
 
         # Jump to next Step
         position = self.position
@@ -252,23 +261,8 @@ class Sequence:
 
     def sequence_minus(self):
         """Sequence -"""
-        if self.on_go and self.thread:
-            # Switch off Pause Led
-            if not self.thread.pause.is_set():
-                App().midi.messages.notes.led_pause_off()
-                if App().virtual_console:
-                    App().virtual_console.pause.pressed = False
-                    App().virtual_console.pause.queue_draw()
-            try:
-                # Stop actual Thread
-                self.thread.pause.set()
-                self.thread.stop()
-                self.thread.join()
-                self.on_go = False
-                # Stop at the beginning
-                self.position = max(self.position, 1)
-            except Exception as e:
-                print("Error :", e)
+        App().midi.button_on("seq_minus", .1)
+        self.stop()
 
         # Jump to previous Step
         position = self.position
@@ -363,21 +357,9 @@ class Sequence:
         Args:
             goto: True if Goto, False if Go
         """
+        App().midi.button_on("go")
         # If Go is active, go to next memory
-        if self.on_go and self.thread:
-            # Switch off Pause Led
-            if not self.thread.pause.is_set():
-                App().midi.messages.notes.led_pause_off()
-                if App().virtual_console:
-                    App().virtual_console.pause.pressed = False
-                    App().virtual_console.pause.queue_draw()
-            # Stop actual Thread
-            try:
-                self.thread.pause.set()
-                self.thread.stop()
-                self.thread.join()
-            except Exception as e:
-                print("Error :", e)
+        if self.stop():
             # Launch another Go
             position = self.position
             position += 1
@@ -433,17 +415,8 @@ class Sequence:
         if position <= 0:
             return False
 
-        if self.on_go and self.thread:
-            # Switch off Pause Led
-            if not self.thread.pause.is_set():
-                App().midi.messages.notes.led_pause_off()
-            try:
-                self.thread.pause.set()
-                self.thread.stop()
-                self.thread.join()
-            except Exception as e:
-                print("Error :", e)
-            self.on_go = False
+        App().midi.button_on("go_back")
+        self.stop()
 
         App().window.playback.sequential.total_time = self.steps[position -
                                                                  1].total_time
@@ -575,6 +548,8 @@ class ThreadGo(threading.Thread):
         # Wait, launch next step
         if self.sequence.steps[next_step].wait:
             self.sequence.do_go(None, None)
+
+        App().midi.button_off("go")
 
     def stop(self):
         """Stop"""
@@ -884,6 +859,7 @@ class ThreadGoBack(threading.Thread):
         # Wait
         if self.sequence.steps[prev_step + 1].wait:
             self.sequence.do_go(None, None)
+        App().midi.button_off("go_back")
 
     def stop(self):
         """Stop"""

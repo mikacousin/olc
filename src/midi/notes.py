@@ -283,15 +283,12 @@ def _function_go(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.go_button.emit("button-release-event", event)
-        else:
-            App().midi.enqueue(msg)
     elif msg.velocity == 127:
         # Go pressed
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.go_button.emit("button-press-event", event)
         else:
-            App().midi.enqueue(msg)
             App().lightshow.main_playback.do_go(None, None)
 
 
@@ -801,14 +798,11 @@ def _function_go_back(msg: mido.Message) -> None:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
             App().virtual_console.goback.emit("button-release-event", event)
-        else:
-            App().midi.enqueue(msg)
     elif msg.velocity == 127:
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             App().virtual_console.goback.emit("button-press-event", event)
         else:
-            App().midi.enqueue(msg)
             App().lightshow.main_playback.go_back(App(), None)
 
 

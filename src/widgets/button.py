@@ -47,14 +47,12 @@ class ButtonWidget(Gtk.Widget):
 
     def on_press(self, _tgt, _ev):
         """Button pressed"""
-        App().midi.messages.notes.send(self.text, 127)
         self.pressed = True
         self.queue_draw()
         self.emit("clicked")
 
     def on_release(self, _tgt, _ev):
         """Button released"""
-        App().midi.messages.notes.send(self.text, 0)
         self.pressed = False
         self.queue_draw()
 
