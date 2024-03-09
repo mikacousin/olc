@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gio
 from olc.files.ascii.writer import AsciiWriter
+from olc.files.file_type import FileType
 from olc.files.olc.writer import OlcWriter
 
 
@@ -21,14 +22,14 @@ class ExportFile:
     """Export file"""
 
     file: Gio.File
-    file_type: str  # "ascii" or "olc"
+    file_type: FileType
     writer: AsciiWriter
 
-    def __init__(self, file: Gio.File, file_type: str):
+    def __init__(self, file: Gio.File, file_type: FileType):
         self.file = file
         self.file_type = file_type
 
-        if self.file_type == "ascii":
+        if self.file_type is FileType.ASCII:
             self.writer = AsciiWriter(self.file)
         else:
             self.writer = OlcWriter(self.file)

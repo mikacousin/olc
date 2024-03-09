@@ -43,8 +43,8 @@ msgstr "Enregistrer"
 msgid "Save As"
 msgstr "Enregistrer sous"
 
-msgid "Import ASCII"
-msgstr "Importer ASCII"
+msgid "Import"
+msgstr "Importer"
 
 msgid "Export ASCII"
 msgstr "Exporter ASCII"
@@ -272,14 +272,8 @@ msgctxt "shortcut window"
 msgid "Record cue"
 msgstr "Enregistrer mémoire"
 
-msgid "Open ASCII File"
-msgstr "Ouvrir fichier ASCII"
-
 msgid "Cancel"
 msgstr "Annuler"
-
-msgid "Save ASCII File"
-msgstr "Enregistrer fichier ASCII"
 
 msgid "MIDI Controllers"
 msgstr "Contrôleurs MIDI"
@@ -370,6 +364,9 @@ msgstr "Erreur"
 
 msgid "OLC Files"
 msgstr "Fichiers OLC"
+
+msgid "ASCII Files"
+msgstr "Fichiers ASCII"
 
 msgid "All Files"
 msgstr "Tous les fichiers"

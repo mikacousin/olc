@@ -22,8 +22,8 @@
           <attribute name="action">app.save_as</attribute>
         </item>
         <item>
-          <attribute name="label" translatable="yes">Import ASCII</attribute>
-          <attribute name="action">app.import_ascii</attribute>
+          <attribute name="label" translatable="yes">Import</attribute>
+          <attribute name="action">app.import_file</attribute>
         </item>
         <item>
           <attribute name="label" translatable="yes">Export ASCII</attribute>

@@ -16,6 +16,7 @@ from gi.repository import Gio, Gtk
 from olc.cue import Cue
 from olc.define import App
 from olc.files.ascii.parser import AsciiParser
+from olc.files.file_type import FileType
 from olc.files.import_dialog import Action, DialogData
 from olc.files.olc.parser import OlcParser
 from olc.files.parsed_data import ParsedData
@@ -27,12 +28,12 @@ class ImportFile:
     """Import file"""
 
     file: Gio.File
-    file_type: str  # "ascii" or "olc"
+    file_type: FileType
     data = ParsedData
     actions: dict
     parser: AsciiParser
 
-    def __init__(self, file: Gio.File, file_type: str):
+    def __init__(self, file: Gio.File, file_type: FileType, importation: bool = False):
         self.file = file
         self.file_type = file_type
         self.data = ParsedData()
@@ -46,14 +47,14 @@ class ImportFile:
             "midi": Action.REPLACE
         }
 
-        if self.file_type == "ascii":
+        if self.file_type is FileType.ASCII:
             if App():
                 default_time = App().settings.get_double("default-time")
             else:
                 default_time = 5.0
-            self.parser = AsciiParser(self, default_time)
+            self.parser = AsciiParser(self, default_time, importation=importation)
         else:
-            self.parser = OlcParser(self)
+            self.parser = OlcParser(self, importation=importation)
 
     def parse(self) -> None:
         """Start reading file"""
@@ -84,7 +85,7 @@ class ImportFile:
         self._do_import_independents()
         self._do_import_presets()
         self._do_import_faders()
-        if self.file_type == "olc":
+        if self.file_type is FileType.OLC:
             self._do_import_midi()
         self._update_ui()
 

@@ -30,13 +30,17 @@ class OlcParser(ReadFile):
 
     data: ParsedData
 
-    def __init__(self, imported: ImportFile):
-        super().__init__(imported, compressed=True)
+    def __init__(self, imported: ImportFile, importation: bool = False):
+        super().__init__(imported, compressed=True, importation=importation)
         self.data = imported.data.data
 
     def parse(self) -> None:
         """Parse file"""
-        contents = json.loads(self.contents, object_hook=self._key_to_number)
+        try:
+            contents = json.loads(self.contents, object_hook=self._key_to_number)
+        except json.decoder.JSONDecodeError:
+            self._error_dialog("Input file is not a valid file: JSONDecodeError")
+            return
         self.data["curves"] = contents.get("curves")
         self.data["patch"] = contents.get("patch")
         self.data["sequences"] = contents.get("sequences")

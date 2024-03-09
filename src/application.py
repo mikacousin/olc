@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import pathlib
 import sys
 from gettext import gettext as _
 from typing import Any, Optional
@@ -29,6 +30,7 @@ from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS  # noqa: E402
 from olc.fader_edition import FaderTab  # noqa: E402
 from olc.files.export_file import ExportFile  # noqa: E402
+from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
 from olc.independent import Independents  # noqa: E402
@@ -172,7 +174,7 @@ class Application(Gtk.Application):
         # General shortcuts
         self.set_accels_for_action("app.quit", ["<Control>q"])
         self.set_accels_for_action("app.open", ["<Control>o"])
-        self.set_accels_for_action("app.import_ascii", ["<Shift><Control>o"])
+        self.set_accels_for_action("app.import_file", ["<Shift><Control>o"])
         self.set_accels_for_action("app.save", ["<Control>s"])
         self.set_accels_for_action("app.save_as", ["<Shift><Control>s"])
         self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
@@ -221,7 +223,7 @@ class Application(Gtk.Application):
             "open": "_open",
             "save": "_save",
             "save_as": "_saveas",
-            "import_ascii": "_import_ascii",
+            "import_file": "_import_file",
             "export_ascii": "_export_ascii",
             "patch_outputs": "patch_outputs",
             "patch_channels": "_patch_channels",
@@ -296,7 +298,7 @@ class Application(Gtk.Application):
 
         filter_text = Gtk.FileFilter()
         filter_text.set_name(_("OLC Files"))
-        filter_text.add_pattern("*.olc")
+        filter_text.add_pattern("*.[Oo][Ll][Cc]")
         open_dialog.add_filter(filter_text)
         filter_text = Gtk.FileFilter()
         filter_text.set_name(_("All Files"))
@@ -326,17 +328,21 @@ class Application(Gtk.Application):
             self.backend.dmx.levels["user"][channel] = -1
         self.backend.dmx.set_levels()
 
-    def _import_ascii(self, _action, _parameter) -> None:
+    def _import_file(self, _action, _parameter) -> None:
         open_dialog = Gtk.FileChooserNative.new(
-            _("Import ASCII File"),
+            _("Import File"),
             self.window,
             Gtk.FileChooserAction.OPEN,
             _("Open"),
             _("Cancel"),
         )
         filter_text = Gtk.FileFilter()
-        filter_text.set_name("Text Files")
-        filter_text.add_mime_type("text/plain")
+        filter_text.set_name(_("ASCII Files"))
+        filter_text.add_pattern("*.[Aa][Ss][Cc]")
+        open_dialog.add_filter(filter_text)
+        filter_text = Gtk.FileFilter()
+        filter_text.set_name(_("OLC Files"))
+        filter_text.add_pattern("*.[Oo][Ll][Cc]")
         open_dialog.add_filter(filter_text)
         filter_text = Gtk.FileFilter()
         filter_text.set_name(_("All Files"))
@@ -347,7 +353,18 @@ class Application(Gtk.Application):
         response = open_dialog.run()
 
         if response == Gtk.ResponseType.ACCEPT:
-            imported = ImportFile(open_dialog.get_file(), "ascii")
+            filename = open_dialog.get_filename()
+            extension = "".join(
+                [s for s in pathlib.Path(filename).suffixes if " " not in s]).lower()
+            if extension == ".asc":
+                file_type = FileType.ASCII
+            elif extension == ".olc":
+                file_type = FileType.OLC
+            else:
+                print("Extension non connue")
+                open_dialog.destroy()
+                return
+            imported = ImportFile(open_dialog.get_file(), file_type, importation=True)
             imported.parse()
         open_dialog.destroy()
 

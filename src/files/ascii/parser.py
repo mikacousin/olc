@@ -57,8 +57,8 @@ class AsciiParser(ReadFile):
     args: list[str]
     current: dict[str, Any]
 
-    def __init__(self, imported: ImportFile, default_time):
-        super().__init__(imported, importation=True)
+    def __init__(self, imported: ImportFile, default_time, importation: bool = True):
+        super().__init__(imported, importation=importation)
         self.data = imported.data.data
         self.default_time = default_time
         self.tokens = {

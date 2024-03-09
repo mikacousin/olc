@@ -37,7 +37,10 @@ class ReadFile:
     compressed: bool
     contents: str
 
-    def __init__(self, imported: ImportFile, compressed=False, importation=False):
+    def __init__(self,
+                 imported: ImportFile,
+                 compressed: bool = False,
+                 importation: bool = False):
         self.imported = imported
         self.compressed = compressed
         self.importation = importation
@@ -50,7 +53,11 @@ class ReadFile:
             self._error_dialog(str(error))
             return
         if self.compressed:
-            data = gzip.decompress(data)
+            try:
+                data = gzip.decompress(data)
+            except gzip.BadGzipFile:
+                self._error_dialog("Input file is not a valid file: BadGzipFile")
+                return
         self.contents = str(from_bytes(data).best())
         self.parse()
         self.imported.data.clean()
