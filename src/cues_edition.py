@@ -48,7 +48,9 @@ class CuesEditionTab(Gtk.Paned):
 
         for i, column_title in enumerate(["Memory", "Text", "Channels"]):
             renderer = Gtk.CellRendererText()
-
+            if i == 1:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self._text_edited)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
 
             self.treeview.append_column(column)
@@ -77,6 +79,15 @@ class CuesEditionTab(Gtk.Paned):
     def on_close_icon(self, _widget):
         """Close Tab on close clicked"""
         App().tabs.close("memories")
+
+    def _text_edited(self, _widget, path: str, text: str) -> None:
+        # Update user interface
+        self.liststore[path][1] = text
+        # Update cue
+        cue = App().lightshow.cues[int(path)]
+        cue.text = text
+        # Tag filename as modified
+        App().lightshow.set_modified()
 
     def on_key_press_event(self, _widget, event):
         """Key has been pressed
