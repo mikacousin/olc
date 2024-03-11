@@ -15,7 +15,7 @@
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.define import App
+from olc.define import MAX_FADER_PER_PAGE, App
 from olc.fader import FaderType
 from olc.files.import_dialog import Action
 from olc.group import Group
@@ -143,14 +143,24 @@ class ParsedData:
                 # Create new group
                 App().lightshow.groups.append(Group(group_number, channels, label))
 
-    def import_faders(self) -> None:
-        """Import faders data"""
+    def import_faders(self, actions: dict[str, Action]) -> None:
+        """Import faders data
+
+        Args:
+            actions: Imported action
+        """
         for values in self.data["faders"].values():
             page = values.get("page")
             number = values.get("number")
             fader_type = values.get("type")
             contents = values.get("contents")
-            if number <= 10:
+            # Don't create fader for non imported elements
+            if fader_type == FaderType.SEQUENCE and actions["sequences"][
+                    contents] is Action.IGNORE:
+                continue
+            if fader_type == FaderType.GROUP and actions["groups"] is Action.IGNORE:
+                continue
+            if number <= MAX_FADER_PER_PAGE:
                 App().lightshow.fader_bank.set_fader(page, number, fader_type, contents)
 
     def import_independents(self) -> None:

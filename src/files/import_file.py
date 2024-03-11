@@ -116,7 +116,7 @@ class ImportFile:
             return
         if self.actions["faders"] is Action.REPLACE:
             App().lightshow.fader_bank.reset_faders()
-        self.data.import_faders()
+        self.data.import_faders(self.actions)
 
     def _do_import_independents(self) -> None:
         if self.actions["independents"] is Action.IGNORE:
