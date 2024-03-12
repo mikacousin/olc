@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Copyright 2020-2023 Mika Cousin -->
+<!-- Copyright 2020-2024 Mika Cousin -->
 <component type="desktop-application">
   <id>com.github.mikacousin.olc.desktop</id>
   <metadata_license>CC0-1.0</metadata_license>
@@ -10,9 +10,9 @@
     <p>Open Lighting Console is a free software to control lights on theater shows.</p>
     <p>Some features:</p>
     <ul>
-      <li>Used Open Lighting Architecture to send DMX</li>
+      <li>Used sACN or Open Lighting Architecture to send DMX</li>
       <li>RPN syntax</li>
-      <li>Open / Save ASCII shows</li>
+      <li>Import / Export ASCII Light Cue shows</li>
       <li>Patch / Unpatch by channels or by outputs</li>
       <li>Main Playback</li>
       <li>Chasers</li>
@@ -24,7 +24,7 @@
     </ul>
   </description>
   <releases>
-    <release version="0.8.5.beta" date="2023-12-29">
+    <release version="0.9.beta" date="2024-03-12">
       <description>
       </description>
     </release>
