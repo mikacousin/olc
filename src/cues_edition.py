@@ -17,6 +17,7 @@ import array
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App, is_float
+from olc.dialog import ConfirmationDialog
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 
@@ -185,13 +186,20 @@ class CuesEditionTab(Gtk.Paned):
 
     def _keypress_Delete(self):  # pylint: disable=C0103
         """Deletes selected Memory"""
-        # TODO: Ask confirmation
         self.channels_view.flowbox.unselect_all()
 
         # Find selected memory
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
+            # Confirm Delete
+            dialog = ConfirmationDialog(
+                f"Delete memory {App().lightshow.cues[row].memory} ?")
+            response = dialog.run()
+            if response == Gtk.ResponseType.CANCEL:
+                dialog.destroy()
+                return
+            dialog.destroy()
             # Find Steps using selected memory
             steps = [
                 i for i, _ in enumerate(App().lightshow.main_playback.steps)
@@ -303,47 +311,7 @@ class CuesEditionTab(Gtk.Paned):
         """
         keystring = App().window.commandline.get_string()
         if keystring == "":
-            # Insert memory with the next free number
-            mem = False
-            # Find Next free number
-            if len(App().lightshow.cues) > 1:
-                for i, _ in enumerate(App().lightshow.cues[:-1]):
-                    if (int(App().lightshow.cues[i + 1].memory) -
-                            int(App().lightshow.cues[i].memory) > 1):
-                        mem = App().lightshow.cues[i].memory + 1
-                        break
-            elif len(App().lightshow.cues) == 1:
-                # Just one memory
-                mem = App().lightshow.cues[0].memory + 1
-                i = 1
-            else:
-                # The list is empty
-                i = 0
-                mem = 1.0
-
-            # Free number is at the end
-            if not mem:
-                mem = App().lightshow.cues[-1].memory + 1
-                i += 1
-
-            # Find selected memory for channels levels
-            path, _focus_column = self.treeview.get_cursor()
-            if path:
-                row = path.get_indices()[0]
-                channels = App().lightshow.cues[row].channels.copy()
-            else:
-                channels = {}
-
-            # Create new memory
-            cue = Cue(0, mem, channels)
-            App().lightshow.cues.insert(i + 1, cue)
-            nb_chan = len(channels)
-            App().lightshow.main_playback.update_channels()
-            self.liststore.insert(i + 1, [str(mem), "", nb_chan])
-
-            # Tag filename as modified
-            App().lightshow.set_modified()
-
+            self._insert_cue_on_next_free_number()
             return True
 
         # Insert memory with the given number
@@ -390,6 +358,43 @@ class CuesEditionTab(Gtk.Paned):
 
         App().window.commandline.set_string("")
         return True
+
+    def _insert_cue_on_next_free_number(self) -> None:
+        cue_nb = None
+        # Find Next free number
+        if len(App().lightshow.cues) > 1:
+            for i, _ in enumerate(App().lightshow.cues[:-1]):
+                if (int(App().lightshow.cues[i + 1].memory) -
+                        int(App().lightshow.cues[i].memory) > 1):
+                    cue_nb = App().lightshow.cues[i].memory + 1
+                    break
+        elif len(App().lightshow.cues) == 1:
+            # Just one memory
+            cue_nb = App().lightshow.cues[0].memory + 1
+            i = 1
+        else:
+            # The list is empty
+            i = 0
+            cue_nb = 1.0
+        # Free number is at the end
+        if not cue_nb:
+            cue_nb = App().lightshow.cues[-1].memory + 1
+            i += 1
+        # Find selected memory for channels levels
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            channels = App().lightshow.cues[row].channels.copy()
+        else:
+            channels = {}
+        # Create new memory
+        cue = Cue(0, cue_nb, channels)
+        App().lightshow.cues.insert(i + 1, cue)
+        nb_chan = len(channels)
+        App().lightshow.main_playback.update_channels()
+        self.liststore.insert(i + 1, [str(cue_nb), "", nb_chan])
+        # Tag filename as modified
+        App().lightshow.set_modified()
 
 
 class CueChannelsView(ChannelsView):

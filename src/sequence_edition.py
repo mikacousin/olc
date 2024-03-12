@@ -18,6 +18,7 @@ from typing import Optional
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, App, string_to_time, time_to_string
+from olc.dialog import ConfirmationDialog
 from olc.sequence import Sequence
 from olc.step import Step
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
@@ -541,7 +542,7 @@ class SequenceTab(Gtk.Grid):
             channels = sequence.steps[step].cue.channels
             memory = sequence.steps[step].cue.memory
             # Dialog to confirm Update
-            dialog = Dialog(App().window, memory)
+            dialog = ConfirmationDialog(f"Update memory {memory} ?")
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 # Update levels in the cue
@@ -650,7 +651,7 @@ class SequenceTab(Gtk.Grid):
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
         else:  # Update Cue
-            dialog = Dialog(App().window, str(mem))
+            dialog = ConfirmationDialog(f"Update memory {mem} ?")
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 # Find Preset position
@@ -765,32 +766,6 @@ class SequenceTab(Gtk.Grid):
         # Select new step
         path = Gtk.TreePath.new_from_indices([step - 1])
         self.treeview2.set_cursor(path, None, False)
-
-
-class Dialog(Gtk.Dialog):
-    """Confirmation dialog"""
-
-    def __init__(self, parent, memory):
-        Gtk.Dialog.__init__(
-            self,
-            "Confirmation",
-            parent,
-            0,
-            (
-                Gtk.STOCK_CANCEL,
-                Gtk.ResponseType.CANCEL,
-                Gtk.STOCK_OK,
-                Gtk.ResponseType.OK,
-            ),
-        )
-
-        self.set_default_size(150, 100)
-
-        label = Gtk.Label(f"Update memory {memory} ?")
-
-        box = self.get_content_area()
-        box.add(label)
-        self.show_all()
 
 
 class SeqChannelsView(ChannelsView):
