@@ -31,3 +31,6 @@ Numéro puis [Maj + R] : Enregistrer une copie de la mémoire sélectionnée dan
 [Insert] : Insérer une copie de la mémoire sélectionnée à la suite.
 
 Numéro + [Insert] : Insérer une copie de la mémoire sélectionnée au numéro donné.
+
+En cliquant sur le texte de la mémoire, il est possible de l'éditer.
+> Les textes affichés dans le séquentiel sont ceux des steps, pas ceux des mémoires.

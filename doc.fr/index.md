@@ -9,7 +9,7 @@
 - [Groupes](groups.md)
 - [Mémoires](cues.md)
 - [Séquences](sequences.md)
-- [Masters](masters.md)
+- [Faders](faders.md)
 - [Suivi de circuits](track_channels.md)
 - [Indépendants](independents.md)
 - [Console virtuelle](virtual_console.md)
