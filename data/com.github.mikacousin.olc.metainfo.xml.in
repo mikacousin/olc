@@ -6,9 +6,10 @@
   <project_license>GPL-3.0-or-later</project_license>
   <name>Open Lighting Console</name>
   <summary>Control your lighting shows</summary>
-  <developer>
+  <developer id="com.github.mikacousin">
     <name>Mika Cousin</name>
   </developer>
+  <launchable type="desktop-id">com.github.mikacousin.olc.desktop</launchable>
   <description>
     <p>Open Lighting Console is a free software to control lights on theater shows.</p>
     <p>Some features:</p>
