@@ -249,15 +249,15 @@ msgid "Go"
 msgstr "Go"
 
 msgctxt "shortcut window"
-msgid "Sequence +"
-msgstr "Séquence +"
+msgid "Next Cue"
+msgstr "Aller à la mémoire suivante"
 
 msgctxt "shortcut window"
-msgid "Sequence -"
-msgstr "Séquence -"
+msgid "Prev Cue"
+msgstr "Aller à la mémoire précédente"
 
 msgctxt "shortcut window"
-msgid "Goto cue"
+msgid "Goto Cue"
 msgstr "Aller à la mémoire"
 
 msgctxt "shortcut window"
@@ -284,7 +284,7 @@ msgstr "Port MIDI"
 msgid "Active"
 msgstr "Actif"
 
-msgid "Rotatives Mode"
+msgid "Rotary encoder Mode"
 msgstr "Mode des rotatifs"
 
 msgid "Save file ?"
@@ -335,7 +335,7 @@ msgstr "Nouvelle courbe Interplation"
 msgid "Percentage"
 msgstr "Pourcentage"
 
-msgid "+% et -% value"
+msgid "+% and -% value"
 msgstr "Valeur de +% et -%"
 
 msgid "Default transfer time"

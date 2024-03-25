@@ -99,7 +99,9 @@ class SettingsTab(Gtk.Box):
         renderer_combo.set_property("text-column", 0)
         renderer_combo.set_property("has-entry", False)
         renderer_combo.connect("edited", self.on_combo_change)
-        column_combo = Gtk.TreeViewColumn(_("Rotatives Mode"), renderer_combo, text=2)
+        column_combo = Gtk.TreeViewColumn(_("Rotary encoder Mode"),
+                                          renderer_combo,
+                                          text=2)
         treeview.append_column(column_combo)
         midi_grid.add(treeview)
 

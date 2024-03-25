@@ -304,21 +304,21 @@
               <object class="GtkShortcutsShortcut" id="seq+">
                 <property name="visible">1</property>
                 <property name="accelerator">w</property>
-                <property name="title" translatable="yes" context="shortcut window">Sequence +</property>
+                <property name="title" translatable="yes" context="shortcut window">Next Cue</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="seq-">
                 <property name="visible">1</property>
                 <property name="accelerator">q</property>
-                <property name="title" translatable="yes" context="shortcut window">Sequence -</property>
+                <property name="title" translatable="yes" context="shortcut window">Prev Cue</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="goto">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;Shift&gt;G</property>
-                <property name="title" translatable="yes" context="shortcut window">Goto cue</property>
+                <property name="title" translatable="yes" context="shortcut window">Goto Cue</property>
               </object>
             </child>
           </object>

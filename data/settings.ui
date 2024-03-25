@@ -48,7 +48,7 @@
             <property name="halign">start</property>
             <property name="margin-start">10</property>
             <property name="hexpand">True</property>
-            <property name="label" translatable="yes">+% et -% value</property>
+            <property name="label" translatable="yes">+% and -% value</property>
           </object>
           <packing>
             <property name="left-attach">0</property>
