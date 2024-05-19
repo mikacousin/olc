@@ -258,6 +258,13 @@ class GroupTab(Gtk.Paned):
             return func()
         return False
 
+    def _keypress_Return(self) -> None:  # pylint: disable=C0103
+        result = App().window.commandline.add_string("\n", self.channels_view)
+        if result:
+            self.channels_view.update()
+            self._update_fader_level()
+            App().window.commandline.set_string("")
+
     def _keypress_BackSpace(self) -> None:  # pylint: disable=C0103
         App().window.commandline.set_string("")
 
@@ -397,10 +404,7 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_equal(self) -> None:
         """@ Level"""
-        self.channels_view.at_level()
-        self.channels_view.update()
-        self._update_fader_level()
-        App().window.commandline.set_string("")
+        App().window.commandline.add_string(" at ", self.channels_view)
 
     def _keypress_colon(self) -> None:
         """Level - %"""

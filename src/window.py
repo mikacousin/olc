@@ -13,58 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gi.repository import Gdk, Gio, Gtk
+from olc.commandline import CommandLine
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, UNIVERSES, App, string_to_time, time_to_string
 from olc.step import Step
 from olc.widgets.main_fader import MainFaderWidget
 from olc.window_channels import LiveView
 from olc.window_playback import MainPlaybackView
-
-
-class CommandLine:
-    """Display keyboard entries"""
-
-    def __init__(self):
-        self.keystring = ""
-
-        self.statusbar = Gtk.Statusbar()
-        self.context_id = self.statusbar.get_context_id("keypress")
-        self.widget = Gtk.Grid()
-        label = Gtk.Label("Input : ")
-        self.widget.add(label)
-        self.widget.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
-
-    def update(self) -> None:
-        """Update Display"""
-        self.statusbar.push(self.context_id, self.keystring)
-        if App().osc:
-            App().osc.client.send("/olc/command_line", ("s", self.keystring))
-
-    def add_string(self, string: str) -> None:
-        """Add string to displayed string
-
-        Args:
-            string: String to add
-        """
-        self.keystring += string
-        self.update()
-
-    def set_string(self, string: str) -> None:
-        """Set string to display
-
-        Args:
-            string: String to display
-        """
-        self.keystring = string
-        self.update()
-
-    def get_string(self) -> str:
-        """Return displayed string
-
-        Returns:
-            String
-        """
-        return self.keystring
 
 
 class Window(Gtk.ApplicationWindow):
@@ -98,25 +53,26 @@ class Window(Gtk.ApplicationWindow):
         self.header.pack_end(box)
         self.set_titlebar(self.header)
 
+        # Box
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.add(box)
+
         # Paned
         paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         paned.set_position(800)
 
         # Channels
         self.live_view = LiveView()
-        paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        paned_chan.set_position(1100)
-        paned_chan.pack1(self.live_view, resize=True, shrink=False)
-        # Gtk.Statusbar to display keyboard's keys
-        self.commandline = CommandLine()
-        paned_chan.pack2(self.commandline.widget, resize=True, shrink=False)
-        paned.pack1(paned_chan, resize=True, shrink=False)
+        paned.pack1(self.live_view, resize=True, shrink=False)
 
         # Main Playback
         self.playback = MainPlaybackView()
         paned.pack2(self.playback, resize=True, shrink=False)
 
-        self.add(paned)
+        box.add(paned)
+
+        self.commandline = CommandLine()
+        box.add(self.commandline.widget)
 
         self.set_icon_name("olc")
 
@@ -193,7 +149,7 @@ class Window(Gtk.ApplicationWindow):
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.commandline.add_string(keyname, self.live_view.channels_view)
 
         if keyname in (
                 "KP_1",
@@ -207,10 +163,10 @@ class Window(Gtk.ApplicationWindow):
                 "KP_9",
                 "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:], self.live_view.channels_view)
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.commandline.add_string(".", self.live_view.channels_view)
 
         # Channels View
         self.live_view.channels_view.on_key_press(keyname)
@@ -218,6 +174,9 @@ class Window(Gtk.ApplicationWindow):
         if func := getattr(self, f"_keypress_{keyname}", None):
             return func()
         return False
+
+    def _keypress_Return(self):  # pylint: disable=C0103
+        self.commandline.add_string("\n", self.live_view.channels_view)
 
     def _keypress_exclam(self):
         """Level + (% level) of selected channels"""
@@ -228,17 +187,15 @@ class Window(Gtk.ApplicationWindow):
         self.live_view.channels_view.level_minus()
 
     def _keypress_KP_Enter(self):  # pylint: disable=C0103
-        """@ Level"""
+        """At Level"""
         self._keypress_equal()
 
     def _keypress_equal(self):
-        """@ Level"""
-        self.live_view.channels_view.at_level()
-        self.commandline.set_string("")
+        """At Level"""
+        self.commandline.add_string(" at ", self.live_view.channels_view)
 
     def _keypress_BackSpace(self):  # pylint: disable=C0103
-        """Empty keys buffer"""
-        self.commandline.set_string("")
+        self.commandline.del_last_part(self.live_view.channels_view)
 
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Deselect all channels"""

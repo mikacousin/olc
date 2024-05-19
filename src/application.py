@@ -156,6 +156,21 @@ class Application(Gtk.Application):
         action = Gio.SimpleAction.new("fullscreen", None)
         action.connect("activate", self.window.fullscreen_toggle)
         self.add_action(action)
+        # Reset command line
+        action = Gio.SimpleAction.new("empty")
+        action.connect("activate", self._empty_command_line)
+        self.add_action(action)
+        self.set_accels_for_action("app.empty", ["<Shift>BackSpace"])
+        # Previous command line
+        action = Gio.SimpleAction.new("previous")
+        action.connect("activate", self._prev_command_line)
+        self.add_action(action)
+        self.set_accels_for_action("app.previous", ["Up"])
+        # Next command line
+        action = Gio.SimpleAction.new("next")
+        action.connect("activate", self._next_command_line)
+        self.add_action(action)
+        self.set_accels_for_action("app.next", ["Down"])
 
         # For Manual crossfade
         self.crossfade = CrossFade()
@@ -246,6 +261,20 @@ class Application(Gtk.Application):
             action.connect("activate", function)
             self.add_action(action)
         return menu
+
+    def _empty_command_line(self, _action, _parameter):
+        self.window.commandline.set_string("")
+        tab = self.window.get_active_tab()
+        if tab is self.window.live_view.channels_view:
+            tab.select_channel(0)
+        else:
+            tab.channels_view.select_channel(0)
+
+    def _prev_command_line(self, _action, _parameter):
+        self.window.commandline.prev()
+
+    def _next_command_line(self, _action, _parameter):
+        self.window.commandline.next()
 
     def _new(self, _action, _parameter):
         """New show"""

@@ -22,7 +22,7 @@ class ChannelWidget(Gtk.DrawingArea):
 
     __gtype_name__ = "ChannelWidget"
 
-    def __init__(self, channel, level, next_level):
+    def __init__(self, channel: int, level: int, next_level: int):
         super().__init__()
 
         self.channel = str(channel)
@@ -39,7 +39,7 @@ class ChannelWidget(Gtk.DrawingArea):
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
-    def on_click(self, target, event):
+    def on_click(self, target: Gtk.Widget, event: Gdk.Event) -> None:
         """Select clicked widget
 
         Args:
@@ -52,19 +52,33 @@ class ChannelWidget(Gtk.DrawingArea):
         channels_view = flowbox.get_parent().get_parent().get_parent()
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            App().window.commandline.set_string(str(self.channel))
-            channels_view.select_thru()
+            App().window.commandline.add_string(f" thru {self.channel}")
+            App().window.commandline.add_string("\n", channels_view)
         elif flowboxchild.is_selected():
-            flowbox.unselect_child(flowboxchild)
+            string = App().window.commandline.get_string()
+            if f"+ {self.channel}" in string:
+                pre, _, post = string.partition(f" + {self.channel}")
+                App().window.commandline.set_string(pre + post)
+            else:
+                App().window.commandline.add_string(f" - {self.channel}")
+            App().window.commandline.add_string("\n", channels_view)
         else:
-            flowbox.select_child(flowboxchild)
-            channels_view.last_selected_channel = self.channel
+            string = App().window.commandline.get_string()
+            if not string:
+                App().window.commandline.add_string(f"chan {self.channel}")
+            else:
+                if f"- {self.channel}" in string:
+                    pre, _, post = string.partition(f" - {self.channel}")
+                    App().window.commandline.set_string(pre + post)
+                else:
+                    App().window.commandline.add_string(f" + {self.channel}")
+            App().window.commandline.add_string("\n", channels_view)
         # If Main channels view, update Track Channels if opened
         if (channels_view is App().window.live_view.channels_view
                 and App().tabs.tabs["track_channels"]):
             App().tabs.tabs["track_channels"].update_display()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw widget
 
         Args:
@@ -72,8 +86,6 @@ class ChannelWidget(Gtk.DrawingArea):
         """
         self.width = 80 * self.scale
         self.set_size_request(self.width, self.width)
-
-        percent_level = App().settings.get_boolean("percent")
 
         allocation = self.get_allocation()
 
@@ -93,7 +105,6 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.stroke()
         # Draw background
         background = Gdk.RGBA()
-        # TODO: Get background color
         background.parse("#33393B")
         cr.set_source_rgba(*list(background))
         cr.rectangle(4, 4, allocation.width - 8, self.width - 8)
@@ -120,16 +131,23 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.move_to(50 * self.scale, 15 * self.scale)
         cr.show_text(self.channel)
         # Draw level
+        self._draw_level(cr, allocation)
+        # Don't draw next level if channel is in an independent
+        if int(self.channel) not in App().lightshow.independents.get_channels():
+            self._draw_up_down(cr)
+
+    def _draw_level(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         cr.set_source_rgb(
-            self.color_level.get("red"),
-            self.color_level.get("green"),
-            self.color_level.get("blue"),
+            self.color_level.get("red", 0),
+            self.color_level.get("green", 0),
+            self.color_level.get("blue", 0),
         )
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(13 * self.scale)
         cr.move_to(6 * self.scale, 48 * self.scale)
         # Don't show level 0
         if self.level != 0 or self.next_level != 0:
+            percent_level = App().settings.get_boolean("percent")
             if percent_level:
                 if self.level == 255:
                     cr.show_text("F")
@@ -147,9 +165,8 @@ class ChannelWidget(Gtk.DrawingArea):
         )
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
-        # Don't draw next level if channel is in an independent
-        if int(self.channel) in App().lightshow.independents.get_channels():
-            return
+
+    def _draw_up_down(self, cr: cairo.Context) -> None:
         # Draw down icon
         if self.next_level < self.level:
             offset_x = 6 * self.scale
@@ -176,6 +193,7 @@ class ChannelWidget(Gtk.DrawingArea):
                 offset_x + (24 * self.scale),
                 offset_y + self.width - (6 * self.scale),
             )
+            percent_level = App().settings.get_boolean("percent")
             if percent_level:
                 if self.next_level == 255:
                     cr.show_text("F")
@@ -199,6 +217,7 @@ class ChannelWidget(Gtk.DrawingArea):
                                 cairo.FontWeight.NORMAL)
             cr.set_font_size(10 * self.scale)
             cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
+            percent_level = App().settings.get_boolean("percent")
             if percent_level:
                 if self.next_level == 255:
                     cr.show_text("F")

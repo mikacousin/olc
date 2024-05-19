@@ -121,6 +121,12 @@ class IndependentsTab(Gtk.Paned):
             return func()
         return False
 
+    def _keypress_Return(self) -> None:  # pylint: disable=C0103
+        result = App().window.commandline.add_string("\n", self.channels_view)
+        if result:
+            self.channels_view.update()
+            App().window.commandline.set_string("")
+
     def _keypress_Escape(self):  # pylint: disable=C0103
         """Close Tab"""
         App().tabs.close("indes")
@@ -130,9 +136,7 @@ class IndependentsTab(Gtk.Paned):
 
     def _keypress_equal(self):
         """@ level"""
-        self.channels_view.at_level()
-        self.channels_view.update()
-        App().window.commandline.set_string("")
+        App().window.commandline.add_string(" at ", self.channels_view)
 
     def _keypress_colon(self):
         """Level - %"""

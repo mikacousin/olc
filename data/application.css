@@ -1,6 +1,7 @@
 @define-color myred #880000;
 
 @binding-set unbind-keys {
+  unbind "Return";
   unbind "Right";
   unbind "Left";
   unbind "Up";
@@ -17,6 +18,14 @@ flowboxchild:selected {
 
 window {
   -gtk-key-bindings: unbind-keys;
+}
+
+#command_line {
+  padding: 2px 2px 2px 2px;
+  border-radius: 6px;
+  border-width: 2px;
+  border-style: solid;
+  border-color: #795004;
 }
 
 #midi_toggle:checked {

@@ -370,3 +370,6 @@ msgstr "Fichiers ASCII"
 
 msgid "All Files"
 msgstr "Tous les fichiers"
+
+msgid "Command"
+msgstr "Commande"
