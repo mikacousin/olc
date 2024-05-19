@@ -391,65 +391,9 @@ class ChannelsView(Gtk.Box):
             level = channel_widget.level
             if level:
                 channels.append(channel_index + 1)
-        string = self._get_selection_string(channels)
+        string = App().window.commandline.get_selection_string(channels)
         App().window.commandline.set_string(string)
         App().window.commandline.add_string("\n", context=self)
-
-    def _get_selection_string(self, channels) -> str:
-        ranges = self._detect_range(channels)
-        string = ""
-        start = True
-        for elem in ranges:
-            if isinstance(elem, tuple):
-                if start:
-                    if elem[1] - elem[0] != 1:
-                        string = f"chan {elem[0]} thru {elem[1]}"
-                    else:
-                        string = f"chan {elem[0]} + {elem[1]}"
-                    start = False
-                else:
-                    if elem[1] - elem[0] != 1:
-                        string += f" + {elem[0]} thru {elem[1]}"
-                    else:
-                        string += f" + {elem[0]} + {elem[1]}"
-            elif isinstance(elem, int):
-                if start:
-                    string = f"chan {elem}"
-                    start = False
-                else:
-                    string += f" + {elem}"
-        return string
-
-    def _detect_range(self, channels):
-        start = None
-        length = 0
-
-        for elem in channels:
-            # First element
-            if start is None:
-                start = elem
-                length = 1
-                continue
-            # Element in row, just count up
-            if elem == start + length:
-                length += 1
-                continue
-            # Otherwise, yield
-            if length == 1:
-                yield start
-            else:
-                yield (start, start + length - 1)
-
-            start = elem
-            length = 1
-
-        if length == 0:
-            # Channels list is empty
-            yield None
-        elif length == 1:
-            yield start
-        else:
-            yield (start, start + length - 1)
 
     def at_level(self, level: int) -> None:
         """Selected channels at level

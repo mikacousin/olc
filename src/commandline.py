@@ -188,3 +188,67 @@ class CommandLine(History, Cursor):
             String
         """
         return self.keystring
+
+    def get_selection_string(self, channels: list[int]) -> str:
+        """Create selection string from channels list
+
+        Args:
+            channels: List of channels
+
+        Returns:
+            Selection string
+        """
+        ranges = self._detect_range(channels)
+        string = ""
+        start = True
+        for elem in ranges:
+            if isinstance(elem, tuple):
+                if start:
+                    if elem[1] - elem[0] != 1:
+                        string = f"chan {elem[0]} thru {elem[1]}"
+                    else:
+                        string = f"chan {elem[0]} + {elem[1]}"
+                    start = False
+                else:
+                    if elem[1] - elem[0] != 1:
+                        string += f" + {elem[0]} thru {elem[1]}"
+                    else:
+                        string += f" + {elem[0]} + {elem[1]}"
+            elif isinstance(elem, int):
+                if start:
+                    string = f"chan {elem}"
+                    start = False
+                else:
+                    string += f" + {elem}"
+        return string
+
+    def _detect_range(self, channels: list[int]):
+        start = 0
+        length = 0
+
+        for elem in channels:
+            # First element
+            if start == 0:
+                start = elem
+                length = 1
+                continue
+            # Element in row, just count up
+            if elem == start + length:
+                length += 1
+                continue
+            # Otherwise, yield
+            if length == 1:
+                yield start
+            else:
+                yield (start, start + length - 1)
+
+            start = elem
+            length = 1
+
+        if length == 0:
+            # Channels list is empty
+            yield None
+        elif length == 1:
+            yield start
+        else:
+            yield (start, start + length - 1)

@@ -51,27 +51,27 @@ class ChannelWidget(Gtk.DrawingArea):
         flowbox = flowboxchild.get_parent()
         channels_view = flowbox.get_parent().get_parent().get_parent()
 
+        channels = channels_view.get_selected_channels()
+
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            App().window.commandline.add_string(f" thru {self.channel}")
+            start = int(channels_view.last_selected_channel)
+            for channel in range(start, int(self.channel) + 1):
+                channels.append(channel)
+            channels.sort()
+            string = App().window.commandline.get_selection_string(channels)
+            App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
         elif flowboxchild.is_selected():
-            string = App().window.commandline.get_string()
-            if f"+ {self.channel}" in string:
-                pre, _, post = string.partition(f" + {self.channel}")
-                App().window.commandline.set_string(pre + post)
-            else:
-                App().window.commandline.add_string(f" - {self.channel}")
+            channels.remove(int(self.channel))
+            channels.sort()
+            string = App().window.commandline.get_selection_string(channels)
+            App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
         else:
-            string = App().window.commandline.get_string()
-            if not string:
-                App().window.commandline.add_string(f"chan {self.channel}")
-            else:
-                if f"- {self.channel}" in string:
-                    pre, _, post = string.partition(f" - {self.channel}")
-                    App().window.commandline.set_string(pre + post)
-                else:
-                    App().window.commandline.add_string(f" + {self.channel}")
+            channels.append(int(self.channel))
+            channels.sort()
+            string = App().window.commandline.get_selection_string(channels)
+            App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
         # If Main channels view, update Track Channels if opened
         if (channels_view is App().window.live_view.channels_view
