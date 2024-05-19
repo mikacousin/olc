@@ -43,7 +43,7 @@ class ChannelsView(Gtk.Box):
         header = Gtk.HeaderBar()
         self.combo = Gtk.ComboBoxText()
         self.combo.set_entry_text_column(0)
-        self.combo.connect("changed", self.on_view_mode_changed)
+        self.combo.connect("changed", self._on_view_mode_changed)
         for mode in VIEW_MODES:
             self.combo.append_text(mode)
         header.pack_end(self.combo)
@@ -117,7 +117,7 @@ class ChannelsView(Gtk.Box):
             return flowboxchild.get_child()
         return None
 
-    def on_view_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
+    def _on_view_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
         """Change View Mode
 
         Args:
@@ -130,7 +130,7 @@ class ChannelsView(Gtk.Box):
             self.flowbox.invalidate_filter()
         self.grab_focus()
 
-    def toggle_view_mode(self) -> None:
+    def _toggle_view_mode(self) -> None:
         """Select next View Mode"""
         index = self.view_mode + 1
         if index not in VIEW_MODES.values():
@@ -384,12 +384,72 @@ class ChannelsView(Gtk.Box):
     def select_all(self) -> None:
         """Select all channel with a level > 0"""
         self.flowbox.unselect_all()
+        channels = []
         for channel_index in range(MAX_CHANNELS):
             flowboxchild = self.flowbox.get_child_at_index(channel_index)
             channel_widget = flowboxchild.get_child()
             level = channel_widget.level
             if level:
-                self.flowbox.select_child(flowboxchild)
+                channels.append(channel_index + 1)
+        string = self._get_selection_string(channels)
+        App().window.commandline.set_string(string)
+        App().window.commandline.add_string("\n", context=self)
+
+    def _get_selection_string(self, channels) -> str:
+        ranges = self._detect_range(channels)
+        string = ""
+        start = True
+        for elem in ranges:
+            if isinstance(elem, tuple):
+                if start:
+                    if elem[1] - elem[0] != 1:
+                        string = f"chan {elem[0]} thru {elem[1]}"
+                    else:
+                        string = f"chan {elem[0]} + {elem[1]}"
+                    start = False
+                else:
+                    if elem[1] - elem[0] != 1:
+                        string += f" + {elem[0]} thru {elem[1]}"
+                    else:
+                        string += f" + {elem[0]} + {elem[1]}"
+            elif isinstance(elem, int):
+                if start:
+                    string = f"chan {elem}"
+                    start = False
+                else:
+                    string += f" + {elem}"
+        return string
+
+    def _detect_range(self, channels):
+        start = None
+        length = 0
+
+        for elem in channels:
+            # First element
+            if start is None:
+                start = elem
+                length = 1
+                continue
+            # Element in row, just count up
+            if elem == start + length:
+                length += 1
+                continue
+            # Otherwise, yield
+            if length == 1:
+                yield start
+            else:
+                yield (start, start + length - 1)
+
+            start = elem
+            length = 1
+
+        if length == 0:
+            # Channels list is empty
+            yield None
+        elif length == 1:
+            yield start
+        else:
+            yield (start, start + length - 1)
 
     def at_level(self, level: int) -> None:
         """Selected channels at level
@@ -527,7 +587,7 @@ class ChannelsView(Gtk.Box):
 
     def _keypress_f(self) -> None:
         """Toggle display mode"""
-        self.toggle_view_mode()
+        self._toggle_view_mode()
         self.grab_focus()
 
     def _keypress_a(self) -> None:
