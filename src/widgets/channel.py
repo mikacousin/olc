@@ -66,6 +66,8 @@ class ChannelWidget(Gtk.DrawingArea):
             string = App().window.commandline.get_selection_string(channels)
             App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
+            # Force last selected channel
+            channels_view.last_selected_channel = self.channel
         elif flowboxchild.is_selected():
             channels.remove(int(self.channel))
             channels = list(set(channels))
@@ -73,6 +75,8 @@ class ChannelWidget(Gtk.DrawingArea):
             string = App().window.commandline.get_selection_string(channels)
             App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
+            # Force last selected channel
+            channels_view.last_selected_channel = self.channel
         else:
             channels.append(int(self.channel))
             channels = list(set(channels))
@@ -80,6 +84,8 @@ class ChannelWidget(Gtk.DrawingArea):
             string = App().window.commandline.get_selection_string(channels)
             App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
+            # Force last selected channel
+            channels_view.last_selected_channel = self.channel
         # If Main channels view, update Track Channels if opened
         if (channels_view is App().window.live_view.channels_view
                 and App().tabs.tabs["track_channels"]):
