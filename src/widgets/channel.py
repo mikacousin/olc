@@ -12,9 +12,17 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+from contextlib import suppress
+
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
+
+if typing.TYPE_CHECKING:
+    from olc.widgets.channels_view import ChannelsView
 
 
 class ChannelWidget(Gtk.DrawingArea):
@@ -54,61 +62,69 @@ class ChannelWidget(Gtk.DrawingArea):
         channels = channels_view.get_selected_channels()
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            start = int(channels_view.last_selected_channel)
-            start_flowboxchild = channels_view.get_channel_widget(start).get_parent()
-            if start_flowboxchild.is_selected():
-                # Add channels
-                if start < int(self.channel):
-                    for channel in range(start, int(self.channel) + 1):
-                        channels.append(channel)
-                else:
-                    for channel in range(int(self.channel), start):
-                        channels.append(channel)
-            else:
-                # Remove channels
-                if start < int(self.channel):
-                    for channel in range(start, int(self.channel) + 1):
-                        try:
-                            channels.remove(channel)
-                        except ValueError:
-                            pass
-                else:
-                    for channel in range(int(self.channel), start):
-                        try:
-                            channels.remove(channel)
-                        except ValueError:
-                            pass
-            channels = list(set(channels))
-            channels.sort()
-            string = App().window.commandline.get_selection_string(channels)
-            App().window.commandline.set_string(string)
-            App().window.commandline.add_string("\n", channels_view)
-            # Force last selected channel
-            channels_view.last_selected_channel = self.channel
+            self._thru(channels_view, channels)
         elif flowboxchild.is_selected():
-            channels.remove(int(self.channel))
-            channels = list(set(channels))
-            channels.sort()
-            if not channels:
-                flowbox.unselect_all()
-            string = App().window.commandline.get_selection_string(channels)
-            App().window.commandline.set_string(string)
-            App().window.commandline.add_string("\n", channels_view)
-            # Force last selected channel
-            channels_view.last_selected_channel = self.channel
+            self._remove_channel(channels_view, channels, flowbox)
         else:
-            channels.append(int(self.channel))
-            channels = list(set(channels))
-            channels.sort()
-            string = App().window.commandline.get_selection_string(channels)
-            App().window.commandline.set_string(string)
-            App().window.commandline.add_string("\n", channels_view)
-            # Force last selected channel
-            channels_view.last_selected_channel = self.channel
+            self._add_channel(channels_view, channels)
         # If Main channels view, update Track Channels if opened
         if (channels_view is App().window.live_view.channels_view
                 and App().tabs.tabs["track_channels"]):
             App().tabs.tabs["track_channels"].update_display()
+
+    def _thru(self, channels_view: ChannelsView, channels: list[int]) -> None:
+        start = int(channels_view.last_selected_channel)
+        start_flowboxchild = channels_view.get_channel_widget(start).get_parent()
+        if start_flowboxchild.is_selected():
+            # Add channels
+            if start < int(self.channel):
+                for channel in range(start, int(self.channel) + 1):
+                    channels.append(channel)
+            else:
+                for channel in range(int(self.channel), start):
+                    channels.append(channel)
+        else:
+            # Remove channels
+            if start < int(self.channel):
+                for channel in range(start, int(self.channel) + 1):
+                    # No exception if channel's not in list
+                    with suppress(ValueError):
+                        channels.remove(channel)
+            else:
+                for channel in range(int(self.channel), start):
+                    # No exception if channel's not in list
+                    with suppress(ValueError):
+                        channels.remove(channel)
+        channels = list(set(channels))
+        channels.sort()
+        string = App().window.commandline.get_selection_string(channels)
+        App().window.commandline.set_string(string)
+        App().window.commandline.add_string("\n", channels_view)
+        # Force last selected channel
+        channels_view.last_selected_channel = self.channel
+
+    def _add_channel(self, channels_view: ChannelsView, channels: list[int]) -> None:
+        channels.append(int(self.channel))
+        channels = list(set(channels))
+        channels.sort()
+        string = App().window.commandline.get_selection_string(channels)
+        App().window.commandline.set_string(string)
+        App().window.commandline.add_string("\n", channels_view)
+        # Force last selected channel
+        channels_view.last_selected_channel = self.channel
+
+    def _remove_channel(self, channels_view: ChannelsView, channels: list[int],
+                        flowbox: Gtk.FlowBox) -> None:
+        channels.remove(int(self.channel))
+        channels = list(set(channels))
+        channels.sort()
+        if not channels:
+            flowbox.unselect_all()
+        string = App().window.commandline.get_selection_string(channels)
+        App().window.commandline.set_string(string)
+        App().window.commandline.add_string("\n", channels_view)
+        # Force last selected channel
+        channels_view.last_selected_channel = self.channel
 
     def do_draw(self, cr: cairo.Context) -> None:
         """Draw widget
