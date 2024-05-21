@@ -55,12 +55,29 @@ class ChannelWidget(Gtk.DrawingArea):
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             start = int(channels_view.last_selected_channel)
-            if start < int(self.channel):
-                for channel in range(start, int(self.channel) + 1):
-                    channels.append(channel)
+            start_flowboxchild = channels_view.get_channel_widget(start).get_parent()
+            if start_flowboxchild.is_selected():
+                # Add channels
+                if start < int(self.channel):
+                    for channel in range(start, int(self.channel) + 1):
+                        channels.append(channel)
+                else:
+                    for channel in range(int(self.channel), start):
+                        channels.append(channel)
             else:
-                for channel in range(int(self.channel), start):
-                    channels.append(channel)
+                # Remove channels
+                if start < int(self.channel):
+                    for channel in range(start, int(self.channel) + 1):
+                        try:
+                            channels.remove(channel)
+                        except ValueError:
+                            pass
+                else:
+                    for channel in range(int(self.channel), start):
+                        try:
+                            channels.remove(channel)
+                        except ValueError:
+                            pass
             channels = list(set(channels))
             channels.sort()
             string = App().window.commandline.get_selection_string(channels)
@@ -72,6 +89,8 @@ class ChannelWidget(Gtk.DrawingArea):
             channels.remove(int(self.channel))
             channels = list(set(channels))
             channels.sort()
+            if not channels:
+                flowbox.unselect_all()
             string = App().window.commandline.get_selection_string(channels)
             App().window.commandline.set_string(string)
             App().window.commandline.add_string("\n", channels_view)
