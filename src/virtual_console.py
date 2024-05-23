@@ -1037,6 +1037,8 @@ class VirtualConsoleWindow(Gtk.Window):
             index = 4
         elif widget == self.independent6:
             index = 5
+        else:
+            return
         value = widget.value
         inde = App().lightshow.independents.independents[index]
         midi_fader = App().midi.faders.inde_faders[index]

@@ -123,7 +123,11 @@ class MidiControlChanges:
         relative1 = App().settings.get_strv("relative1")
         relative2 = App().settings.get_strv("relative2")
         makies = App().settings.get_strv("makie")
-        absolutes = App().settings.get_strv("absolute")
+
+        # Default returns, used with absolute mode that's not compatible with wheel
+        step = 0
+        direction = Gdk.ScrollDirection.UP
+
         if port in relative1:
             if msg.value > 64:
                 direction = Gdk.ScrollDirection.DOWN
@@ -145,10 +149,6 @@ class MidiControlChanges:
             elif msg.value < 65:
                 direction = Gdk.ScrollDirection.UP
                 step = msg.value
-        elif port in absolutes:
-            # Can't use absolute mode for wheel
-            direction = Gdk.ScrollDirection.UP
-            step = 0
         return step, direction
 
     def _function_wheel(self, port: str, msg: mido.Message) -> None:
@@ -213,7 +213,7 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
         # Relative1 mode (value: 1-64 positive, 127-65 negative)
         if msg.value > 64:
             step = msg.value - 128
-        elif msg.value < 65:
+        else:
             step = msg.value
         inde, val = _new_inde_value(independent, step)
         _update_inde(independent, inde, val)
@@ -267,6 +267,8 @@ def _update_inde(independent: int, inde, val: int) -> None:
             widget = App().virtual_console.independent5
         elif independent == 6:
             widget = App().virtual_console.independent6
+        else:
+            return
         widget.value = val
         widget.emit("changed")
         widget.queue_draw()

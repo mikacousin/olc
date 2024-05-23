@@ -193,27 +193,29 @@ class MidiNotes:
             msg: MIDI message
             independent: Independent number
         """
-        if independent == 7:
-            inde = App().lightshow.independents.independents[6]
-            if App().virtual_console:
-                widget = App().virtual_console.independent7
-        elif independent == 8:
-            inde = App().lightshow.independents.independents[7]
-            if App().virtual_console:
-                widget = App().virtual_console.independent8
-        elif independent == 9:
-            inde = App().lightshow.independents.independents[8]
-            if App().virtual_console:
-                widget = App().virtual_console.independent9
+        widget = None
+        widgets = {
+            7: App().virtual_console.independent7,
+            8: App().virtual_console.independent8,
+            9: App().virtual_console.independent9
+        }
+        if 7 <= independent <= 9:
+            inde = App().lightshow.independents.independents[independent - 1]
+        else:
+            return
         if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 127
                                       and inde.level == 255):
             if App().virtual_console:
-                widget.set_active(False)
+                widget = widgets.get(independent)
+                if widget:
+                    widget.set_active(False)
             else:
                 self._update_inde_button(inde, independent, 0)
         elif msg.type == "note_on" and msg.velocity == 127 and inde.level == 0:
             if App().virtual_console:
-                widget.set_active(True)
+                widget = widgets.get(independent)
+                if widget:
+                    widget.set_active(True)
             else:
                 self._update_inde_button(inde, independent, 255)
 
