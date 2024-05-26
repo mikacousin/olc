@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from typing import Any
+
 from olc.command.ast import LevelOp, SelAddOp, SelMinusOp, SelOp, SelStart, TreeNode
 from olc.command.lexer import Token, TokenType
 
@@ -42,8 +44,7 @@ class Parser:
         next_token = self.tokens[self.next_token_index]
         self.next_token_index += 1
         if next_token.type != expected_token_type:
-            raise SyntaxError(
-                f"expected {expected_token_type}, ate {next_token.type!r}")
+            raise SyntaxError(next_token.type.title())
         return next_token
 
     def peek(self, skip: int = 0) -> TokenType | None:
@@ -70,8 +71,8 @@ class Parser:
         self.eat(TokenType.EOF)
         return command
 
-    def interpret(self, tree, context) -> None:
-        """interprets nodes tree
+    def interpret(self, tree: list[TreeNode], context: Any) -> None:
+        """Interprets nodes tree
 
         Args:
             tree: nodes
@@ -82,6 +83,17 @@ class Parser:
                 node.eval(context)
             else:
                 node.eval()
+
+    def interpret_selec(self, tree: list[TreeNode], context: Any) -> None:
+        """Interpret selection part
+
+        Args:
+            tree: nodes
+            context: Active widget
+        """
+        for node in tree:
+            if isinstance(node, SelOp):
+                node.eval(context)
 
     def get_selection(self, tree) -> str:
         """Get selection string from first node

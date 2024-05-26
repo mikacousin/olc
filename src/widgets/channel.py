@@ -98,8 +98,7 @@ class ChannelWidget(Gtk.DrawingArea):
         channels = list(set(channels))
         channels.sort()
         string = App().window.commandline.get_selection_string(channels)
-        App().window.commandline.set_string(string)
-        App().window.commandline.add_string("\n", channels_view)
+        App().window.commandline.set_string(string, channels_view)
         # Force last selected channel
         channels_view.last_selected_channel = self.channel
 
@@ -108,8 +107,7 @@ class ChannelWidget(Gtk.DrawingArea):
         channels = list(set(channels))
         channels.sort()
         string = App().window.commandline.get_selection_string(channels)
-        App().window.commandline.set_string(string)
-        App().window.commandline.add_string("\n", channels_view)
+        App().window.commandline.set_string(string, channels_view)
         # Force last selected channel
         channels_view.last_selected_channel = self.channel
 
@@ -121,8 +119,7 @@ class ChannelWidget(Gtk.DrawingArea):
         if not channels:
             flowbox.unselect_all()
         string = App().window.commandline.get_selection_string(channels)
-        App().window.commandline.set_string(string)
-        App().window.commandline.add_string("\n", channels_view)
+        App().window.commandline.set_string(string, channels_view)
         # Force last selected channel
         channels_view.last_selected_channel = self.channel
 

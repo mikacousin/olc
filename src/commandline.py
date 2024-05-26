@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections import deque
 from gettext import gettext as _
+
 from gi.repository import GLib, Gtk
 from olc.command.lexer import Lexer
 from olc.command.parser_direct import ParserDirect
@@ -128,8 +129,9 @@ class CommandLine(History, Cursor):
         lexer = Lexer(self.keystring)
         parser = ParserDirect(list(lexer))
         try:
+            tree = parser.parse()
+            parser.interpret_selec(tree, context)
             if run:
-                tree = parser.parse()
                 parser.interpret(tree, context)
                 self.add_entry(self.keystring)
                 self.keystring = parser.get_selection(tree)
@@ -149,6 +151,9 @@ class CommandLine(History, Cursor):
             context: Widget sending delete
         """
         self.error = ""
+        # Remove trailing spaces
+        self.keystring = self.keystring.rstrip()
+        # Remove string last part
         self.keystring = " ".join(self.keystring.split(" ")[:-1])
         self.update(context)
 

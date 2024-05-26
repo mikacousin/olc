@@ -24,6 +24,16 @@ class TreeNode:
 
 
 @dataclass
+class NoneNode(TreeNode):
+
+    def __str__(self):
+        return ""
+
+    def eval(self):
+        return None
+
+
+@dataclass
 class Int(TreeNode):
     value: int
 

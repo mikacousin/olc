@@ -151,9 +151,6 @@ class ChannelsView(Gtk.Box):
             self.flowbox.invalidate_filter()
             self.last_selected_channel = str(channel)
             self.grab_focus()
-        else:
-            self.last_selected_channel = ""
-            App().window.commandline.set_string("")
 
     def select_plus(self, channel: int) -> None:
         """Add channel to selection
@@ -161,6 +158,8 @@ class ChannelsView(Gtk.Box):
         Args:
             channel: Channel to select
         """
+        if not channel:
+            return
         flowboxchild = self.flowbox.get_child_at_index(channel - 1)
         self.flowbox.select_child(flowboxchild)
         App().window.set_focus(flowboxchild)
@@ -174,6 +173,8 @@ class ChannelsView(Gtk.Box):
         Args:
             channel: Channel to deselect
         """
+        if not channel:
+            return
         flowboxchild = self.flowbox.get_child_at_index(channel - 1)
         self.flowbox.unselect_child(flowboxchild)
         App().window.set_focus(flowboxchild)
@@ -188,6 +189,8 @@ class ChannelsView(Gtk.Box):
             from_channel: Start channel
             to_channel: End channel
         """
+        if not from_channel or not to_channel:
+            return
         if from_channel < to_channel:
             for channel in range(from_channel - 1, to_channel):
                 if 0 <= channel < MAX_CHANNELS:
@@ -211,6 +214,8 @@ class ChannelsView(Gtk.Box):
             from_channel: Start channel
             to_channel: End channel
         """
+        if not from_channel or not to_channel:
+            return
         if from_channel < to_channel:
             for channel in range(from_channel - 1, to_channel):
                 if 0 <= channel < MAX_CHANNELS:
