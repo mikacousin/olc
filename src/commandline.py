@@ -18,7 +18,7 @@ from collections import deque
 from gettext import gettext as _
 
 from gi.repository import GLib, Gtk
-from olc.command.lexer import Lexer
+from olc.command.lexer import Lexer, TokenType
 from olc.command.parser_direct import ParserDirect
 from olc.define import App
 
@@ -119,19 +119,23 @@ class CommandLine(History, Cursor):
         else:
             self.statusbar.set_markup(f"<b>{self.keystring.title()}{self.cursor}</b>")
 
-    def update(self, context, run=False) -> None:
-        """Update Display
+    def interpret(self, context, run=False) -> None:
+        """Interpret Command-line
 
         Args:
             context: Widget sending string
             run: Interpret flag
         """
-        lexer = Lexer(self.keystring)
-        parser = ParserDirect(list(lexer))
+        lexer = list(Lexer(self.keystring))
+        parser = ParserDirect(lexer)
         try:
             tree = parser.parse()
-            parser.interpret_selec(tree, context)
+            if not run and len(lexer) > 1 and lexer[-2].type is not TokenType.INT:
+                # Interpret selection as user enter command-line
+                # but not when enter number
+                parser.interpret_selec(tree, context)
             if run:
+                # Interpret command-line (when user enter Return)
                 parser.interpret(tree, context)
                 self.add_entry(self.keystring)
                 self.keystring = parser.get_selection(tree)
@@ -155,7 +159,7 @@ class CommandLine(History, Cursor):
         self.keystring = self.keystring.rstrip()
         # Remove string last part
         self.keystring = " ".join(self.keystring.split(" ")[:-1])
-        self.update(context)
+        self.interpret(context)
 
     def add_string(self, string: str, context=None) -> None:
         """Add string to displayed string
@@ -165,7 +169,7 @@ class CommandLine(History, Cursor):
             context: Widget sending string
         """
         if string == "\n":
-            self.update(context, run=True)
+            self.interpret(context, run=True)
             return
         if not self.keystring and string.isdigit():
             string = f"chan {string}"
@@ -173,7 +177,7 @@ class CommandLine(History, Cursor):
                 -1] != " " and not self.keystring[-1].isdigit() and string.isdigit():
             self.keystring += " "
         self.keystring += string
-        self.update(context)
+        self.interpret(context)
 
     def set_string(self, string: str, context=None) -> None:
         """Set string to display
@@ -184,7 +188,7 @@ class CommandLine(History, Cursor):
         """
         self.error = ""
         self.keystring = string
-        self.update(context)
+        self.interpret(context)
 
     def get_string(self) -> str:
         """Return displayed string

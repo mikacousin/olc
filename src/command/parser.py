@@ -94,6 +94,8 @@ class Parser:
         for node in tree:
             if isinstance(node, SelOp):
                 node.eval(context)
+            else:
+                node.eval_selec(context)
 
     def get_selection(self, tree) -> str:
         """Get selection string from first node

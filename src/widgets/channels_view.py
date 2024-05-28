@@ -189,7 +189,12 @@ class ChannelsView(Gtk.Box):
             from_channel: Start channel
             to_channel: End channel
         """
-        if not from_channel or not to_channel:
+        if from_channel and not to_channel:
+            # Just from_channel, add it to selection
+            self.select_plus(from_channel)
+            return
+        if not from_channel:
+            # No channel given, leave
             return
         if from_channel < to_channel:
             for channel in range(from_channel - 1, to_channel):
@@ -214,7 +219,12 @@ class ChannelsView(Gtk.Box):
             from_channel: Start channel
             to_channel: End channel
         """
-        if not from_channel or not to_channel:
+        if from_channel and not to_channel:
+            # Just from_channel, remove it from selection
+            self.select_minus(from_channel)
+            return
+        if not from_channel:
+            # No channel given, leave
             return
         if from_channel < to_channel:
             for channel in range(from_channel - 1, to_channel):

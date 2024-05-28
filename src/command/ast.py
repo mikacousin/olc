@@ -163,5 +163,8 @@ class LevelOp(TreeNode):
         else:
             raise SyntaxError(f"unknown level operand: {self.op}")
 
+    def eval_selec(self, context):
+        self.selection.eval(context)
+
     def get_selection(self):
         return f"{self.selection}"
