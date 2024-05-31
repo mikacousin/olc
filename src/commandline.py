@@ -188,7 +188,7 @@ class CommandLine(History, Cursor):
         """
         self.error = ""
         self.keystring = string
-        self.interpret(context)
+        self.interpret(context, run=True)
 
     def get_string(self) -> str:
         """Return displayed string

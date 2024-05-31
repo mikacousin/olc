@@ -62,7 +62,7 @@ class ChannelWidget(Gtk.DrawingArea):
         channels = channels_view.get_selected_channels()
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            self._thru(channels_view, channels)
+            self._thru(channels_view, channels, flowbox)
         elif flowboxchild.is_selected():
             self._remove_channel(channels_view, channels, flowbox)
         else:
@@ -72,7 +72,8 @@ class ChannelWidget(Gtk.DrawingArea):
                 and App().tabs.tabs["track_channels"]):
             App().tabs.tabs["track_channels"].update_display()
 
-    def _thru(self, channels_view: ChannelsView, channels: list[int]) -> None:
+    def _thru(self, channels_view: ChannelsView, channels: list[int],
+              flowbox: Gtk.FlowBox) -> None:
         start = int(channels_view.last_selected_channel)
         start_flowboxchild = channels_view.get_channel_widget(start).get_parent()
         if start_flowboxchild.is_selected():
@@ -97,6 +98,8 @@ class ChannelWidget(Gtk.DrawingArea):
                         channels.remove(channel)
         channels = list(set(channels))
         channels.sort()
+        if not channels:
+            flowbox.unselect_all()
         string = App().window.commandline.get_selection_string(channels)
         App().window.commandline.set_string(string, channels_view)
         # Force last selected channel
