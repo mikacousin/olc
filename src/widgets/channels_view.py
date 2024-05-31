@@ -407,8 +407,7 @@ class ChannelsView(Gtk.Box):
             if level:
                 channels.append(channel_index + 1)
         string = App().window.commandline.get_selection_string(channels)
-        App().window.commandline.set_string(string)
-        App().window.commandline.add_string("\n", context=self)
+        App().window.commandline.set_string(string, context=self)
 
     def at_level(self, level: int) -> None:
         """Selected channels at level
