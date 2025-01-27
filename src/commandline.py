@@ -52,7 +52,9 @@ class History:
         self.history_idx -= 1
         self.history_idx = max(self.history_idx, 0)
         string = self.history[self.history_idx]
-        self.commandline.set_string(string)
+        self.commandline.error = ""
+        self.commandline.keystring = string
+        self.commandline.set_label()
 
     def next(self) -> None:
         """Next command line string"""
@@ -61,7 +63,9 @@ class History:
         self.history_idx += 1
         self.history_idx = min(self.history_idx, len(self.history) - 1)
         string = self.history[self.history_idx]
-        self.commandline.set_string(string)
+        self.commandline.error = ""
+        self.commandline.keystring = string
+        self.commandline.set_label()
 
 
 class Cursor:
@@ -188,7 +192,10 @@ class CommandLine(History, Cursor):
         """
         self.error = ""
         self.keystring = string
-        self.interpret(context, run=True)
+        if string:
+            self.interpret(context, run=True)
+        else:
+            self.set_label()
 
     def get_string(self) -> str:
         """Return displayed string

@@ -88,6 +88,8 @@ class SequenceTab(Gtk.Grid):
                 "Channel Time",
         ]):
             renderer = Gtk.CellRendererText()
+            renderer.connect("editing-started", self._desactivate)
+            renderer.connect("edited", self._activate)
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
@@ -126,6 +128,12 @@ class SequenceTab(Gtk.Grid):
         self.paned.add2(self.scrollable2)
 
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
+
+    def _activate(self, _cell_renderer, _editable, _path):
+        App().accels.activate()
+
+    def _desactivate(self, _cell_renderer, _editable, _path):
+        App().accels.desactivate()
 
     def refresh(self) -> None:
         """Refresh display"""

@@ -148,22 +148,6 @@ class Window(Gtk.ApplicationWindow):
         """
         keyname = Gdk.keyval_name(event.keyval)
         # print(keyname)
-        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname, self.live_view.channels_view)
-
-        if keyname in (
-                "KP_1",
-                "KP_2",
-                "KP_3",
-                "KP_4",
-                "KP_5",
-                "KP_6",
-                "KP_7",
-                "KP_8",
-                "KP_9",
-                "KP_0",
-        ):
-            self.commandline.add_string(keyname[3:], self.live_view.channels_view)
 
         if keyname == "period":
             self.commandline.add_string(".", self.live_view.channels_view)

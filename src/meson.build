@@ -44,6 +44,7 @@ olc_sources = [
   'sequence.py',
   'sequence_edition.py',
   'settings.py',
+  'shortcuts.py',
   'step.py',
   'tabs_manager.py',
   'timer.py',

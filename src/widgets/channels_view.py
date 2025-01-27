@@ -531,7 +531,6 @@ class ChannelsView(Gtk.Box):
                 "Page_Up",
                 "Page_Down",
                 "a",
-                "c",
                 "KP_Divide",
                 "greater",
                 "KP_Add",
@@ -570,11 +569,6 @@ class ChannelsView(Gtk.Box):
             App().window.commandline.set_string(f"chan {channel}")
         else:
             App().window.commandline.set_string("")
-
-    def _keypress_c(self) -> None:
-        """Channel"""
-        App().window.commandline.add_string(" chan ", context=self)
-        self.grab_focus()
 
     def _keypress_kp_divide(self):
         self._keypress_greater()

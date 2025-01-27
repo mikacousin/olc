@@ -43,6 +43,7 @@ from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
 from olc.sequence_edition import SequenceTab  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
+from olc.shortcuts import Shortcuts  # noqa: E402
 from olc.tabs_manager import Tabs  # noqa: E402
 from olc.track_channels import TrackChannelsTab  # noqa: E402
 from olc.virtual_console import VirtualConsoleWindow  # noqa: E402
@@ -95,13 +96,15 @@ class Application(Gtk.Application):
         )
 
         css_provider_file = Gio.File.new_for_uri(
-            "resource://com/github/mikacousin/olc/application.css")
+            "resource://com/github/mikacousin/olc/application.css"
+        )
         css_provider = Gtk.CssProvider()
         css_provider.load_from_file(css_provider_file)
         screen = Gdk.Screen.get_default()
         style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, css_provider,
-                                              Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        style_context.add_provider_for_screen(
+            screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
+        )
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()
@@ -126,6 +129,9 @@ class Application(Gtk.Application):
         # Light show initialization
         self.lightshow = LightShow()
 
+        # Shortcuts
+        self.accels = None
+
     def do_activate(self):
         # Create Main Window
         self.window = Window()
@@ -136,41 +142,8 @@ class Application(Gtk.Application):
         # Maximize window on startup
         self.window.maximize()
 
-        # Add global shortcuts
-        # Go
-        action = Gio.SimpleAction.new("go", None)
-        action.connect("activate", self.lightshow.main_playback.do_go)
-        self.add_action(action)
-        self.set_accels_for_action("app.go", ["<Control>g"])
-        # Go Back
-        action = Gio.SimpleAction.new("go_back", None)
-        action.connect("activate", self.lightshow.main_playback.go_back)
-        self.add_action(action)
-        self.set_accels_for_action("app.go_back", ["<Control>b"])
-        # Pause
-        action = Gio.SimpleAction.new("pause", None)
-        action.connect("activate", self.lightshow.main_playback.pause)
-        self.add_action(action)
-        self.set_accels_for_action("app.pause", ["<Control>z"])
-        # Full screen
-        action = Gio.SimpleAction.new("fullscreen", None)
-        action.connect("activate", self.window.fullscreen_toggle)
-        self.add_action(action)
-        # Reset command line
-        action = Gio.SimpleAction.new("empty")
-        action.connect("activate", self._empty_command_line)
-        self.add_action(action)
-        self.set_accels_for_action("app.empty", ["<Shift>BackSpace"])
-        # Previous command line
-        action = Gio.SimpleAction.new("previous")
-        action.connect("activate", self._prev_command_line)
-        self.add_action(action)
-        self.set_accels_for_action("app.previous", ["Up"])
-        # Next command line
-        action = Gio.SimpleAction.new("next")
-        action.connect("activate", self._next_command_line)
-        self.add_action(action)
-        self.set_accels_for_action("app.next", ["Down"])
+        # Shortcuts
+        self.accels = Shortcuts(self)
 
         # For Manual crossfade
         self.crossfade = CrossFade()
@@ -183,33 +156,13 @@ class Application(Gtk.Application):
         if self.settings.get_boolean("osc"):
             self.osc = Osc()
 
-    def do_startup(self):
-        Gtk.Application.do_startup(self)
-
-        # General shortcuts
-        self.set_accels_for_action("app.quit", ["<Control>q"])
-        self.set_accels_for_action("app.open", ["<Control>o"])
-        self.set_accels_for_action("app.import_file", ["<Shift><Control>o"])
-        self.set_accels_for_action("app.save", ["<Control>s"])
-        self.set_accels_for_action("app.save_as", ["<Shift><Control>s"])
-        self.set_accels_for_action("app.patch_outputs", ["<Control>p"])
-        self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
-        self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
-        self.set_accels_for_action("app.sequences", ["<Control>t"])
-        self.set_accels_for_action("app.faders", ["<Control>f"])
-        self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
-        self.set_accels_for_action("app.independents", ["<Control>i"])
-        self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
-        self.set_accels_for_action("app.about", ["F3"])
-        self.set_accels_for_action("app.fullscreen", ["F11"])
-
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
         Gtk.Application.do_command_line(self, command_line)
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
         if "version" in options:
-            print(self.version)
+            print(f"{self.version}, Backend: {self.settings.get_string('backend')}")
             sys.exit()
         self.backend = select_backend(options, self.settings, self.lightshow.patch)
         if not self.backend:
@@ -233,48 +186,7 @@ class Application(Gtk.Application):
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
         menu = builder.get_object("app-menu")
-        actions = {
-            "new": "_new",
-            "open": "_open",
-            "save": "_save",
-            "save_as": "_saveas",
-            "import_file": "_import_file",
-            "export_ascii": "_export_ascii",
-            "patch_outputs": "patch_outputs",
-            "patch_channels": "_patch_channels",
-            "curves": "_curves",
-            "memories": "memories_cb",
-            "groups": "groups_cb",
-            "sequences": "sequences",
-            "faders": "_faders",
-            "track_channels": "track_channels",
-            "independents": "_independents",
-            "virtual_console": "_virtual_console",
-            "settings": "_settings",
-            "show-help-overlay": "_shortcuts",
-            "about": "_about",
-            "quit": "exit",
-        }
-        for name, func in actions.items():
-            function = getattr(self, func, None)
-            action = Gio.SimpleAction.new(name, None)
-            action.connect("activate", function)
-            self.add_action(action)
         return menu
-
-    def _empty_command_line(self, _action, _parameter):
-        self.window.commandline.set_string("")
-        tab = self.window.get_active_tab()
-        if tab is self.window.live_view.channels_view:
-            tab.select_channel(0)
-        else:
-            tab.channels_view.select_channel(0)
-
-    def _prev_command_line(self, _action, _parameter):
-        self.window.commandline.prev()
-
-    def _next_command_line(self, _action, _parameter):
-        self.window.commandline.next()
 
     def _new(self, _action, _parameter):
         """New show"""
@@ -384,7 +296,8 @@ class Application(Gtk.Application):
         if response == Gtk.ResponseType.ACCEPT:
             filename = open_dialog.get_filename()
             extension = "".join(
-                [s for s in pathlib.Path(filename).suffixes if " " not in s]).lower()
+                [s for s in pathlib.Path(filename).suffixes if " " not in s]
+            ).lower()
             if extension == ".asc":
                 file_type = FileType.ASCII
             elif extension == ".olc":
@@ -398,9 +311,13 @@ class Application(Gtk.Application):
         open_dialog.destroy()
 
     def _export_ascii(self, _action, _parameter) -> None:
-        dialog = Gtk.FileChooserNative.new(_("Export ASCII File"), self.window,
-                                           Gtk.FileChooserAction.SAVE, _("Export"),
-                                           _("Cancel"))
+        dialog = Gtk.FileChooserNative.new(
+            _("Export ASCII File"),
+            self.window,
+            Gtk.FileChooserAction.SAVE,
+            _("Export"),
+            _("Cancel"),
+        )
         dialog.set_do_overwrite_confirmation(True)
         dialog.set_modal(True)
         dialog.set_current_name("Untitled.asc")
@@ -459,13 +376,15 @@ class Application(Gtk.Application):
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
-        self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs",
-                       self.lightshow.patch)
+        self.tabs.open(
+            "patch_outputs", PatchOutputsTab, "Patch Outputs", self.lightshow.patch
+        )
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
-        self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels",
-                       self.lightshow.patch)
+        self.tabs.open(
+            "patch_channels", PatchChannelsTab, "Patch Channels", self.lightshow.patch
+        )
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""
