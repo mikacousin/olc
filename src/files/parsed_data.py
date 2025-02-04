@@ -98,6 +98,7 @@ class ParsedData:
             return
         for curve_nb, values in self.data["curves"].items():
             curve_type = values["type"]
+            curve = None
             if curve_type == "LimitCurve":
                 limit = values["limit"]
                 curve = LimitCurve(limit=limit)
@@ -105,6 +106,8 @@ class ParsedData:
                 curve = SegmentsCurve()
             elif curve_type == "InterpolateCurve":
                 curve = InterpolateCurve()
+            if not curve:
+                return
             App().lightshow.curves.curves[curve_nb] = curve
             if curve_type in ("SegmentsCurve", "InterpolateCurve"):
                 points = values["points"]

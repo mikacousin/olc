@@ -302,6 +302,8 @@ class PatchChannelsTab(Gtk.Box):
                     split = keystring.split(".")
                     output = int(split[0])
                     universe = int(split[1])
+                else:
+                    return
             else:
                 # "output", use first universe
                 output = int(keystring)

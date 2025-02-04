@@ -189,24 +189,27 @@ class AsciiParser(ReadFile):
             univ = UNIVERSES[univ_index]
             if channel <= MAX_CHANNELS:
                 address = dimmer - (512 * univ_index)
-            curve_nb = 0
-            if level != 255:
-                curve_nb = App().lightshow.curves.find_limit_curve(level)
-                if not curve_nb:
-                    curve_nb = App().lightshow.curves.add_curve(LimitCurve(level))
-                self.data["curves"][curve_nb] = {"type": "LimitCurve", "limit": level}
-            if channel not in self.data["patch"]:
-                self.data["patch"][channel] = [{
-                    "output": address,
-                    "universe": univ,
-                    "curve": curve_nb
-                }]
-            else:
-                self.data["patch"][channel].append({
-                    "output": address,
-                    "universe": univ,
-                    "curve": curve_nb
-                })
+                curve_nb = 0
+                if level != 255:
+                    curve_nb = App().lightshow.curves.find_limit_curve(level)
+                    if not curve_nb:
+                        curve_nb = App().lightshow.curves.add_curve(LimitCurve(level))
+                    self.data["curves"][curve_nb] = {
+                        "type": "LimitCurve",
+                        "limit": level
+                    }
+                if channel not in self.data["patch"]:
+                    self.data["patch"][channel] = [{
+                        "output": address,
+                        "universe": univ,
+                        "curve": curve_nb
+                    }]
+                else:
+                    self.data["patch"][channel].append({
+                        "output": address,
+                        "universe": univ,
+                        "curve": curve_nb
+                    })
 
     def _new_mprimary(self) -> None:
         if self.keyword == "$sequence":

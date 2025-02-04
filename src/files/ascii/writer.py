@@ -155,6 +155,7 @@ class AsciiWriter(WriteFile):
         for page, faders in App().lightshow.fader_bank.faders.items():
             self.stream.write(bytes(f"\n$MASTPAGE {page} 0 0 0\n", "ascii"))
             for index, fader in faders.items():
+                contents = "0"
                 content_type = App().lightshow.fader_bank.get_fader_type(page, index)
                 if content_type == FaderType.GROUP:
                     contents = self._float_to_str(fader.contents.index)
