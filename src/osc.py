@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from typing import Optional, Tuple
 
-import liblo
+import pyliblo3 as liblo
 from gi.repository import Gdk, GLib
 from olc.define import MAX_FADER_PAGE, UNIVERSES, App
 from olc.midi.fader import FaderState

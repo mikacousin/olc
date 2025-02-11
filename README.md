@@ -45,7 +45,7 @@ Any help to create packages for different distributions is welcome.
 - ola (with python3 support)
 - sacn (python-sacn (AUR) on archlinux)
 - mido (python-mido (AUR) on archlinux)
-- liblo (python-pyliblo on archlinux)
+- pyliblo3
 - SciPy (python-scipy on archlinux)
 - Charset Normalizer (python-charset-normalizer on archlinux)
 

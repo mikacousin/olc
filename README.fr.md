@@ -46,7 +46,7 @@ Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 - ola (avec support python3)
 - sacn (python-sacn (AUR) pour archlinux)
 - mido (python-mido (AUR) pour archlinux)
-- liblo (python-pyliblo pour archlinux)
+- pyliblo3
 - SciPy (python-scipy pour archlinux)
 - Charset Normalizer (python-charset-normalizer pour archlinux)
 
