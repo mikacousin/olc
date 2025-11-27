@@ -7,7 +7,7 @@
     <property name="type_hint">normal</property>
     <property name="program_name">Open Lighting Console</property>
     <property name="version">@REVISION@</property>
-    <property name="copyright">Copyright © 2015-2023 Mika Cousin</property>
+    <property name="copyright">Copyright © 2025 Mika Cousin</property>
     <property name="comments" translatable="yes">A Lighting Console.</property>
     <property name="website">@PACKAGE_URL@</property>
     <property name="website_label" translatable="yes">Visit Open Lighting Console website</property>
