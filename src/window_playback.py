@@ -12,12 +12,16 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from typing import Callable
+
 from gi.repository import Gdk, Gtk, Pango
 from olc.define import App, time_to_string
 from olc.widgets.sequential import SequentialWidget
 
 
-def step_filter_func1(model, treeiter, _data):
+def step_filter_func1(
+    model: Gtk.TreeModel, treeiter: Gtk.TreeIter, _data: None
+) -> bool:
     """Filter for the first part of the cues list
 
     Args:
@@ -47,7 +51,9 @@ def step_filter_func1(model, treeiter, _data):
     ]
 
 
-def step_filter_func2(model, treeiter, _data):
+def step_filter_func2(
+    model: Gtk.TreeModel, treeiter: Gtk.TreeIter, _data: None
+) -> bool:
     """Filter for the second part of the cues list
 
     Args:
@@ -65,7 +71,7 @@ def step_filter_func2(model, treeiter, _data):
 class MainPlaybackView(Gtk.Notebook):
     """Main Playback View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         Gtk.Notebook.__init__(self)
         self.set_group_name("olc")
 
@@ -89,11 +95,13 @@ class MainPlaybackView(Gtk.Notebook):
             t_wait = 0.0
             channel_time = {}
         # Crossfade widget
-        self.sequential = SequentialWidget(t_total, t_in, t_out, d_in, d_out, t_wait,
-                                           channel_time)
+        self.sequential = SequentialWidget(
+            t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
+        )
         # Main Playback
-        self.cues_liststore1 = Gtk.ListStore(str, str, str, str, str, str, str, str,
-                                             str, str, int, int)
+        self.cues_liststore1 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str, str, int, int
+        )
         # Filters
         self.step_filter1 = self.cues_liststore1.filter_new()
         self.step_filter1.set_visible_func(step_filter_func1)
@@ -104,7 +112,8 @@ class MainPlaybackView(Gtk.Notebook):
         self.treeview1.set_enable_search(False)
         sel = self.treeview1.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate([
+        for i, column_title in enumerate(
+            [
                 "Step",
                 "Cue",
                 "Text",
@@ -114,16 +123,15 @@ class MainPlaybackView(Gtk.Notebook):
                 "Delay In",
                 "In",
                 "Channel Time",
-        ]):
+            ]
+        ):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title,
-                                        renderer,
-                                        text=i,
-                                        background=9,
-                                        weight=10)
+            column = Gtk.TreeViewColumn(
+                column_title, renderer, text=i, background=9, weight=10
+            )
             if i == 2:
                 column.set_min_width(400)
                 column.set_resizable(True)
@@ -132,7 +140,8 @@ class MainPlaybackView(Gtk.Notebook):
         self.treeview2.set_enable_search(False)
         sel = self.treeview2.get_selection()
         sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate([
+        for i, column_title in enumerate(
+            [
                 "Step",
                 "Cue",
                 "Text",
@@ -142,7 +151,8 @@ class MainPlaybackView(Gtk.Notebook):
                 "Delay In",
                 "In",
                 "Channel Time",
-        ]):
+            ]
+        ):
             renderer = Gtk.CellRendererText()
             # Change background color one column out of two
             if i % 2 == 0:
@@ -162,16 +172,19 @@ class MainPlaybackView(Gtk.Notebook):
         self.grid = Gtk.Grid()
         self.grid.set_row_homogeneous(False)
         self.grid.attach(self.treeview1, 0, 0, 1, 1)
-        self.grid.attach_next_to(self.sequential, self.treeview1,
-                                 Gtk.PositionType.BOTTOM, 1, 1)
-        self.grid.attach_next_to(scrollable2, self.sequential, Gtk.PositionType.BOTTOM,
-                                 1, 1)
+        self.grid.attach_next_to(
+            self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1
+        )
+        self.grid.attach_next_to(
+            scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
+        )
 
         self.populate_sequence()
 
         if App().lightshow.main_playback.last == 1:
             self.cues_liststore1.append(
-                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1])
+                ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+            )
 
         self.append_page(self.grid, Gtk.Label("Main Playback"))
         self.set_tab_reorderable(self.grid, True)
@@ -179,17 +192,19 @@ class MainPlaybackView(Gtk.Notebook):
 
         self.connect("key_press_event", self.on_key_press_event)
 
-    def update_sequence_display(self):
+    def update_sequence_display(self) -> None:
         """Update Sequence display"""
         self.cues_liststore1.clear()
         self.populate_sequence()
 
-    def populate_sequence(self):
+    def populate_sequence(self) -> None:
         """Display main playback"""
         self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0])
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 0]
+        )
         self.cues_liststore1.append(
-            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1])
+            ["", "", "", "", "", "", "", "", "", "#232729", 0, 1]
+        )
         for i in range(App().lightshow.main_playback.last):
             wait = time_to_string(App().lightshow.main_playback.steps[i].wait)
             t_out = time_to_string(App().lightshow.main_playback.steps[i].time_out)
@@ -208,90 +223,170 @@ class MainPlaybackView(Gtk.Notebook):
             # Actual and Next Cue in Bold
             weight = Pango.Weight.HEAVY if i in (0, 1) else Pango.Weight.NORMAL
             if i in (0, App().lightshow.main_playback.last - 1):
-                self.cues_liststore1.append([
-                    str(i),
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    background,
-                    Pango.Weight.NORMAL,
-                    99,
-                ])
+                self.cues_liststore1.append(
+                    [
+                        str(i),
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        background,
+                        Pango.Weight.NORMAL,
+                        99,
+                    ]
+                )
             else:
-                self.cues_liststore1.append([
-                    str(i),
-                    str(App().lightshow.main_playback.steps[i].cue.memory),
-                    str(App().lightshow.main_playback.steps[i].text),
-                    wait,
-                    d_out,
-                    str(t_out),
-                    d_in,
-                    str(t_in),
-                    channel_time,
-                    background,
-                    weight,
-                    99,
-                ])
+                self.cues_liststore1.append(
+                    [
+                        str(i),
+                        str(App().lightshow.main_playback.steps[i].cue.memory),
+                        str(App().lightshow.main_playback.steps[i].text),
+                        wait,
+                        d_out,
+                        str(t_out),
+                        d_in,
+                        str(t_in),
+                        channel_time,
+                        background,
+                        weight,
+                        99,
+                    ]
+                )
         self.update_active_cues_display()
         self.grid.queue_draw()
 
-    def update_active_cues_display(self):
+    def update_active_cues_display(self) -> None:
         """Update First part of sequential"""
         self.cues_liststore1[App().lightshow.main_playback.position][9] = "#232729"
-        self.cues_liststore1[
-            App().lightshow.main_playback.position][10] = Pango.Weight.NORMAL
-        if App().lightshow.main_playback.position + 1 <= App(
-        ).lightshow.main_playback.last:
-            self.cues_liststore1[App().lightshow.main_playback.position +
-                                 1][9] = "#232729"
-            self.cues_liststore1[App().lightshow.main_playback.position +
-                                 1][10] = Pango.Weight.NORMAL
-        if App().lightshow.main_playback.position + 2 <= App(
-        ).lightshow.main_playback.last:
-            self.cues_liststore1[App().lightshow.main_playback.position +
-                                 2][9] = "#997004"
-            self.cues_liststore1[App().lightshow.main_playback.position +
-                                 2][10] = Pango.Weight.HEAVY
-        if App().lightshow.main_playback.position + 3 <= App(
-        ).lightshow.main_playback.last:
-            self.cues_liststore1[App().lightshow.main_playback.position +
-                                 3][9] = "#555555"
-            self.cues_liststore1[App().lightshow.main_playback.position +
-                                 3][10] = Pango.Weight.HEAVY
+        self.cues_liststore1[App().lightshow.main_playback.position][10] = (
+            Pango.Weight.NORMAL
+        )
+        if (
+            App().lightshow.main_playback.position + 1
+            <= App().lightshow.main_playback.last
+        ):
+            self.cues_liststore1[App().lightshow.main_playback.position + 1][9] = (
+                "#232729"
+            )
+            self.cues_liststore1[App().lightshow.main_playback.position + 1][10] = (
+                Pango.Weight.NORMAL
+            )
+        if (
+            App().lightshow.main_playback.position + 2
+            <= App().lightshow.main_playback.last
+        ):
+            self.cues_liststore1[App().lightshow.main_playback.position + 2][9] = (
+                "#997004"
+            )
+            self.cues_liststore1[App().lightshow.main_playback.position + 2][10] = (
+                Pango.Weight.HEAVY
+            )
+        if (
+            App().lightshow.main_playback.position + 3
+            <= App().lightshow.main_playback.last
+        ):
+            self.cues_liststore1[App().lightshow.main_playback.position + 3][9] = (
+                "#555555"
+            )
+            self.cues_liststore1[App().lightshow.main_playback.position + 3][10] = (
+                Pango.Weight.HEAVY
+            )
         self.step_filter1.refilter()
         self.step_filter2.refilter()
         path1 = Gtk.TreePath.new_from_indices(
-            [App().lightshow.main_playback.position + 2])
+            [App().lightshow.main_playback.position + 2]
+        )
         path2 = Gtk.TreePath.new_from_indices([0])
         self.treeview1.set_cursor(path1, None, False)
         self.treeview2.set_cursor(path2, None, False)
 
-    def update_xfade_display(self, step):
+    def display_times(self) -> None:
+        """Display Cues times after countdown"""
+        step = App().lightshow.main_playback.position
+        t_wait = App().lightshow.main_playback.steps[step].wait
+        self.cues_liststore1[step + 2][3] = time_to_string(t_wait)
+        d_out = App().lightshow.main_playback.steps[step].delay_out
+        self.cues_liststore1[step + 2][4] = time_to_string(d_out)
+        t_out = App().lightshow.main_playback.steps[step].time_out
+        self.cues_liststore1[step + 2][5] = time_to_string(t_out)
+        d_in = App().lightshow.main_playback.steps[step].delay_in
+        self.cues_liststore1[step + 2][6] = time_to_string(d_in)
+        t_in = App().lightshow.main_playback.steps[step].time_in
+        self.cues_liststore1[step + 2][7] = time_to_string(t_in)
+        t_wait = App().lightshow.main_playback.steps[step + 1].wait
+        self.cues_liststore1[step + 3][3] = time_to_string(t_wait)
+        d_out = App().lightshow.main_playback.steps[step + 1].delay_out
+        self.cues_liststore1[step + 3][4] = time_to_string(d_out)
+        t_out = App().lightshow.main_playback.steps[step + 1].time_out
+        self.cues_liststore1[step + 3][5] = time_to_string(t_out)
+        d_in = App().lightshow.main_playback.steps[step + 1].delay_in
+        self.cues_liststore1[step + 3][6] = time_to_string(d_in)
+        t_in = App().lightshow.main_playback.steps[step + 1].time_in
+        self.cues_liststore1[step + 3][7] = time_to_string(t_in)
+
+    def show_timeleft(self, i: float) -> None:
+        """Display countdowns during Go
+
+        Args:
+            i: Spent time of the Go in milliseconds
+        """
+        step = App().lightshow.main_playback.position + 1
+        wait = App().lightshow.main_playback.steps[step].wait * 1000
+        if i > wait:
+            d_out = App().lightshow.main_playback.steps[step].delay_out * 1000
+            if i > wait + d_out:
+                t_out = App().lightshow.main_playback.steps[step].time_out * 1000
+                time = (t_out + wait + d_out - i) / 1000
+                if time >= 0:
+                    self.cues_liststore1[step + 2][5] = time_to_string(time)
+            else:
+                time = (d_out + wait - i) / 1000
+                if time >= 0:
+                    self.cues_liststore1[step + 2][4] = time_to_string(time)
+            d_in = App().lightshow.main_playback.steps[step].delay_in * 1000
+            if i > wait + d_in:
+                t_in = App().lightshow.main_playback.steps[step].time_in * 1000
+                time = (t_in + wait + d_in - i) / 1000
+                if time >= 0:
+                    self.cues_liststore1[step + 2][7] = time_to_string(time)
+            else:
+                time = (d_in + wait - i) / 1000
+                if time >= 0:
+                    self.cues_liststore1[step + 2][6] = time_to_string(time)
+        else:
+            time = (wait - i) / 1000
+            self.cues_liststore1[step + 2][3] = time_to_string(time)
+
+    def update_xfade_display(self, step: int) -> None:
         """Update Crossfade display
 
         Args:
             step: Step
         """
-        self.sequential.total_time = App().lightshow.main_playback.steps[step +
-                                                                         1].total_time
+        self.sequential.total_time = (
+            App().lightshow.main_playback.steps[step + 1].total_time
+        )
         self.sequential.time_in = App().lightshow.main_playback.steps[step + 1].time_in
-        self.sequential.time_out = App().lightshow.main_playback.steps[step +
-                                                                       1].time_out
-        self.sequential.delay_in = App().lightshow.main_playback.steps[step +
-                                                                       1].delay_in
-        self.sequential.delay_out = App().lightshow.main_playback.steps[step +
-                                                                        1].delay_out
+        self.sequential.time_out = (
+            App().lightshow.main_playback.steps[step + 1].time_out
+        )
+        self.sequential.delay_in = (
+            App().lightshow.main_playback.steps[step + 1].delay_in
+        )
+        self.sequential.delay_out = (
+            App().lightshow.main_playback.steps[step + 1].delay_out
+        )
         self.sequential.wait = App().lightshow.main_playback.steps[step + 1].wait
-        self.sequential.channel_time = App().lightshow.main_playback.steps[
-            step + 1].channel_time
+        self.sequential.channel_time = (
+            App().lightshow.main_playback.steps[step + 1].channel_time
+        )
         self.sequential.queue_draw()
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, widget: Gtk.Widget, event: Gdk.EventKey) -> Callable:
         """On key press event
 
         Args:
