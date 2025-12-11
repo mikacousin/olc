@@ -398,7 +398,6 @@ class Sequence:
         Args:
             goto: True if Goto, False if Go
         """
-        print(type(_action))
         App().midi.button_on("go")
         # If Go is active, go to next memory
         if self.stop():
