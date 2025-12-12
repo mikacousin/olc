@@ -467,17 +467,15 @@ class Sequence:
         App().midi.button_on("go_back")
         self.stop()
 
-        App().window.playback.sequential.total_time = self.steps[
-            position - 1
-        ].total_time
-        App().window.playback.sequential.time_in = self.steps[position - 1].time_in
-        App().window.playback.sequential.time_out = self.steps[position - 1].time_out
-        App().window.playback.sequential.delay_in = self.steps[position - 1].delay_in
-        App().window.playback.sequential.delay_out = self.steps[position - 1].delay_out
-        App().window.playback.sequential.wait = self.steps[position - 1].wait
-        App().window.playback.sequential.channel_time = self.steps[
-            position - 1
-        ].channel_time
+        goback_time = App().settings.get_double("go-back-time")
+
+        App().window.playback.sequential.total_time = goback_time
+        App().window.playback.sequential.time_in = goback_time
+        App().window.playback.sequential.time_out = goback_time
+        App().window.playback.sequential.delay_in = 0
+        App().window.playback.sequential.delay_out = 0
+        App().window.playback.sequential.wait = 0
+        App().window.playback.sequential.channel_time = {}
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
 
