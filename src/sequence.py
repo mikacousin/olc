@@ -950,9 +950,6 @@ class ThreadGoBack(threading.Thread):
         )
         # Update Gtk in the main thread
         GLib.idle_add(update_ui, prev_step, subtitle)
-        # Wait
-        if self.sequence.steps[prev_step + 1].wait:
-            self.sequence.do_go(None, False)
         App().midi.button_off("go_back")
 
     def stop(self) -> None:
