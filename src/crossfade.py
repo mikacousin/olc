@@ -21,11 +21,11 @@ from olc.sequence import update_ui
 class Scale:
     """For faders"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.value = 0
         self.moved = False
 
-    def set_value(self, value):
+    def set_value(self, value: int) -> None:
         """Set scale value
 
         Args:
@@ -34,7 +34,7 @@ class Scale:
         if 0 <= value < 256:
             self.value = value
 
-    def get_value(self):
+    def get_value(self) -> int:
         """Return scale value
 
         Returns:
@@ -46,13 +46,13 @@ class Scale:
 class CrossFade:
     """For Manual Crossfade"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.scale_a = Scale()
         self.scale_b = Scale()
 
         self.manual = False
 
-    def scale_moved(self, scale):
+    def scale_moved(self, scale: Scale) -> None:
         """On moved
 
         Args:
@@ -64,8 +64,11 @@ class CrossFade:
         if level not in (255, 0):
             App().lightshow.main_playback.on_go = True
             # If Go is sent, stop it
-            if (App().crossfade.manual and App().lightshow.main_playback.thread
-                    and App().lightshow.main_playback.thread.is_alive()):
+            if (
+                App().crossfade.manual
+                and App().lightshow.main_playback.thread
+                and App().lightshow.main_playback.thread.is_alive()
+            ):
                 App().lightshow.main_playback.thread.stop()
                 App().lightshow.main_playback.thread.join()
 
@@ -77,8 +80,12 @@ class CrossFade:
             # Update sliders position
             self.update_slider(scale, level)
 
-        if (self.scale_a.get_value() == 255 and self.scale_b.get_value() == 255
-                and self.scale_a.moved and self.scale_b.moved):
+        if (
+            self.scale_a.get_value() == 255
+            and self.scale_b.get_value() == 255
+            and self.scale_a.moved
+            and self.scale_b.moved
+        ):
             # In and Out Crossfades at Full
             self.at_full()
 
@@ -91,7 +98,7 @@ class CrossFade:
             self.manual = False
             App().lightshow.main_playback.on_go = False
 
-    def at_full(self):
+    def at_full(self) -> None:
         """Slider A and B at Full"""
         if not App().lightshow.main_playback.on_go:
             return
@@ -114,72 +121,108 @@ class CrossFade:
             next_step = 1
         # Update user interface
         App().window.playback.sequential.total_time = (
-            App().lightshow.main_playback.steps[next_step].total_time)
+            App().lightshow.main_playback.steps[next_step].total_time
+        )
         App().window.playback.sequential.time_in = (
-            App().lightshow.main_playback.steps[next_step].time_in)
+            App().lightshow.main_playback.steps[next_step].time_in
+        )
         App().window.playback.sequential.time_out = (
-            App().lightshow.main_playback.steps[next_step].time_out)
+            App().lightshow.main_playback.steps[next_step].time_out
+        )
         App().window.playback.sequential.delay_in = (
-            App().lightshow.main_playback.steps[next_step].delay_in)
+            App().lightshow.main_playback.steps[next_step].delay_in
+        )
         App().window.playback.sequential.delay_out = (
-            App().lightshow.main_playback.steps[next_step].delay_out)
-        App().window.playback.sequential.wait = App(
-        ).lightshow.main_playback.steps[next_step].wait
+            App().lightshow.main_playback.steps[next_step].delay_out
+        )
+        App().window.playback.sequential.wait = (
+            App().lightshow.main_playback.steps[next_step].wait
+        )
         App().window.playback.sequential.channel_time = (
-            App().lightshow.main_playback.steps[next_step].channel_time)
+            App().lightshow.main_playback.steps[next_step].channel_time
+        )
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
-        cue = App().lightshow.main_playback.steps[
-            App().lightshow.main_playback.position].cue.memory
-        cue_text = App().lightshow.main_playback.steps[
-            App().lightshow.main_playback.position].text
+        cue = (
+            App()
+            .lightshow.main_playback.steps[App().lightshow.main_playback.position]
+            .cue.memory
+        )
+        cue_text = (
+            App()
+            .lightshow.main_playback.steps[App().lightshow.main_playback.position]
+            .text
+        )
         next_cue = App().lightshow.main_playback.steps[next_step].cue.memory
-        subtitle = (f"Mem. :{cue} {cue_text} "
-                    f"- Next Mem. : {next_cue} "
-                    f"{App().lightshow.main_playback.steps[next_step].text}")
+        subtitle = (
+            f"Mem. :{cue} {cue_text} "
+            f"- Next Mem. : {next_cue} "
+            f"{App().lightshow.main_playback.steps[next_step].text}"
+        )
         update_ui(App().lightshow.main_playback.position, subtitle)
         # If Wait
         if App().lightshow.main_playback.steps[next_step].wait:
             App().lightshow.main_playback.on_go = False
             App().lightshow.main_playback.do_go(None, None)
 
-    def update_slider(self, scale, level):
+    def update_slider(self, scale: Scale, level: int) -> None:
         """Update sliders position
 
         Args:
             scale: Scale object
             level: int
         """
-        total_time = App().lightshow.main_playback.steps[
-            App().lightshow.main_playback.position + 1].total_time * 1000
-        wait = App().lightshow.main_playback.steps[
-            App().lightshow.main_playback.position + 1].wait * 1000
+        step = App().lightshow.main_playback.position + 1
+        total_time = App().lightshow.main_playback.steps[step].total_time * 1000
+        wait = App().lightshow.main_playback.steps[step].wait * 1000
         position = (level / 255) * total_time
         if scale == self.scale_a:
             App().window.playback.sequential.position_a = (
-                (App().window.playback.sequential.get_allocation().width - 32) /
-                total_time) * position
+                (App().window.playback.sequential.get_allocation().width - 32)
+                / total_time
+            ) * position
+            App().window.playback.show_timeleft_out(position)
         elif scale == self.scale_b:
             App().window.playback.sequential.position_b = (
-                (App().window.playback.sequential.get_allocation().width - 32) /
-                total_time) * position
+                (App().window.playback.sequential.get_allocation().width - 32)
+                / total_time
+            ) * position
+            App().window.playback.show_timeleft_in(position)
+        # Global progress is that of the least advanced. Cues colors reflect this
+        value = min(self.scale_a.get_value(), self.scale_b.get_value())
+        progress = min(max(value / 255.0, 0.0), 1.0)
+        App().window.playback.update_cue_crossfade_color(step, progress)
+        # Redraw Sequential Widget
         App().window.playback.sequential.queue_draw()
         # Update levels
         if position >= wait:
             for channel in range(1, MAX_CHANNELS + 1):
                 if not App().lightshow.patch.is_patched(channel):
                     continue
-                old_level = (App().lightshow.main_playback.steps[
-                    App().lightshow.main_playback.position].cue.channels.get(
-                        channel, 0))
-                if App().lightshow.main_playback.position < App(
-                ).lightshow.main_playback.last - 1:
-                    next_level = (App().lightshow.main_playback.steps[
-                        App().lightshow.main_playback.position + 1].cue.channels.get(
-                            channel, 0))
+                old_level = (
+                    App()
+                    .lightshow.main_playback.steps[
+                        App().lightshow.main_playback.position
+                    ]
+                    .cue.channels.get(channel, 0)
+                )
+                if (
+                    App().lightshow.main_playback.position
+                    < App().lightshow.main_playback.last - 1
+                ):
+                    next_level = (
+                        App()
+                        .lightshow.main_playback.steps[
+                            App().lightshow.main_playback.position + 1
+                        ]
+                        .cue.channels.get(channel, 0)
+                    )
                 else:
-                    next_level = App(
-                    ).lightshow.main_playback.steps[0].cue.channels.get(channel, 0)
+                    next_level = (
+                        App()
+                        .lightshow.main_playback.steps[0]
+                        .cue.channels.get(channel, 0)
+                    )
                 if scale == self.scale_a:
                     update_a(channel, old_level, next_level, wait, position)
                 elif scale == self.scale_b:
@@ -189,7 +232,9 @@ class CrossFade:
             App().backend.dmx.set_levels(App().lightshow.main_playback.channels)
 
 
-def update_a(channel, old_level, next_level, wait, pos):
+def update_a(
+    channel: int, old_level: int, next_level: int, wait: float, pos: float
+) -> None:
     """Update channel level with A Slider
 
     Args:
@@ -199,10 +244,18 @@ def update_a(channel, old_level, next_level, wait, pos):
         wait: Wait value
         pos: Position in crossfade
     """
-    time_out = App().lightshow.main_playback.steps[
-        App().lightshow.main_playback.position + 1].time_out * 1000
-    delay_out = App().lightshow.main_playback.steps[
-        App().lightshow.main_playback.position + 1].delay_out * 1000
+    time_out = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position + 1]
+        .time_out
+        * 1000
+    )
+    delay_out = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position + 1]
+        .delay_out
+        * 1000
+    )
     # Channel Time
     lvl = _update_a_channel_time(channel, old_level, next_level, wait, pos)
     user_level = App().backend.dmx.levels["user"][channel - 1]
@@ -212,7 +265,8 @@ def update_a(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif wait + delay_out < pos < time_out + wait + delay_out:
             lvl = user_level - abs(
-                int(((next_level - user_level) / time_out) * (pos - wait - delay_out)))
+                int(((next_level - user_level) / time_out) * (pos - wait - delay_out))
+            )
         else:
             lvl = next_level
     elif next_level < old_level:
@@ -222,15 +276,20 @@ def update_a(channel, old_level, next_level, wait, pos):
         elif wait + delay_out < pos < time_out + wait + delay_out:
             lvl = old_level - abs(
                 int(
-                    round(((next_level - old_level) / time_out) *
-                          (pos - wait - delay_out))))
+                    round(
+                        ((next_level - old_level) / time_out) * (pos - wait - delay_out)
+                    )
+                )
+            )
         else:
             lvl = next_level
     if lvl != -1:
         App().backend.dmx.levels["sequence"][channel - 1] = lvl
 
 
-def _update_a_channel_time(channel, old_level, next_level, wait, pos):
+def _update_a_channel_time(
+    channel: int, old_level: int, next_level: int, wait: float, pos: float
+) -> int:
     """Update channel level in Channel Time
 
     Args:
@@ -244,8 +303,11 @@ def _update_a_channel_time(channel, old_level, next_level, wait, pos):
         channel level or -1
     """
     lvl = -1
-    channel_time = App().lightshow.main_playback.steps[
-        App().lightshow.main_playback.position + 1].channel_time
+    channel_time = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position + 1]
+        .channel_time
+    )
     if channel in channel_time and next_level < old_level:
         ct_delay = channel_time[channel].delay * 1000
         ct_time = channel_time[channel].time * 1000
@@ -253,13 +315,16 @@ def _update_a_channel_time(channel, old_level, next_level, wait, pos):
             lvl = old_level
         elif ct_delay + wait <= pos < ct_delay + ct_time + wait:
             lvl = old_level - abs(
-                int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait)))
+                int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait))
+            )
         else:
             lvl = next_level
     return lvl
 
 
-def update_b(channel, old_level, next_level, wait, pos):
+def update_b(
+    channel: int, old_level: int, next_level: int, wait: float, pos: float
+) -> None:
     """Update channel level with B Slider
 
     Args:
@@ -270,10 +335,18 @@ def update_b(channel, old_level, next_level, wait, pos):
         pos: Position in crossfade
     """
     lvl = -1
-    time_in = App().lightshow.main_playback.steps[App().lightshow.main_playback.position
-                                                  + 1].time_in * 1000
-    delay_in = App().lightshow.main_playback.steps[
-        App().lightshow.main_playback.position + 1].delay_in * 1000
+    time_in = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position + 1]
+        .time_in
+        * 1000
+    )
+    delay_in = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position + 1]
+        .delay_in
+        * 1000
+    )
     # Channel Time
     lvl = _update_b_channel_time(channel, old_level, next_level, wait, pos)
     user_level = App().backend.dmx.levels["user"][channel - 1]
@@ -282,8 +355,10 @@ def update_b(channel, old_level, next_level, wait, pos):
         if pos <= wait + delay_in:
             lvl = old_level
         elif wait + delay_in < pos < time_in + wait + delay_in:
-            lvl = int(((next_level - user_level) / time_in) * (pos - wait - delay_in) +
-                      user_level)
+            lvl = int(
+                ((next_level - user_level) / time_in) * (pos - wait - delay_in)
+                + user_level
+            )
         else:
             lvl = next_level
     elif next_level > old_level:
@@ -291,15 +366,19 @@ def update_b(channel, old_level, next_level, wait, pos):
         if pos <= wait + delay_in:
             lvl = old_level
         elif wait + delay_in < pos < time_in + wait + delay_in:
-            lvl = int(((next_level - old_level) / time_in) * (pos - wait - delay_in) +
-                      old_level)
+            lvl = int(
+                ((next_level - old_level) / time_in) * (pos - wait - delay_in)
+                + old_level
+            )
         else:
             lvl = next_level
     if lvl != -1:
         App().backend.dmx.levels["sequence"][channel - 1] = lvl
 
 
-def _update_b_channel_time(channel, old_level, next_level, wait, pos):
+def _update_b_channel_time(
+    channel: int, old_level: int, next_level: int, wait: float, pos: float
+) -> int:
     """Update channel level in Channel Time
 
     Args:
@@ -313,8 +392,11 @@ def _update_b_channel_time(channel, old_level, next_level, wait, pos):
         channel level or -1
     """
     lvl = -1
-    channel_time = App().lightshow.main_playback.steps[
-        App().lightshow.main_playback.position + 1].channel_time
+    channel_time = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position + 1]
+        .channel_time
+    )
     if channel in channel_time and next_level > old_level:
         # Channel Time
         ct_delay = channel_time[channel].delay * 1000
@@ -322,8 +404,10 @@ def _update_b_channel_time(channel, old_level, next_level, wait, pos):
         if pos < ct_delay + wait:
             lvl = old_level
         elif ct_delay + wait <= pos < ct_delay + ct_time + wait:
-            lvl = int(((next_level - old_level) / ct_time) * (pos - ct_delay - wait) +
-                      old_level)
+            lvl = int(
+                ((next_level - old_level) / ct_time) * (pos - ct_delay - wait)
+                + old_level
+            )
         else:
             lvl = next_level
     return lvl

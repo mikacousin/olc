@@ -334,6 +334,20 @@ class MainPlaybackView(Gtk.Notebook):
         Args:
             i: Spent time of the Go in milliseconds
         """
+        self.show_timeleft_out(i)
+        self.show_timeleft_in(i)
+        # Color crossfade
+        step = App().lightshow.main_playback.position + 1
+        total_time = App().lightshow.main_playback.steps[step].total_time * 1000
+        progress = min(max(i / total_time, 0.0), 1.0)
+        self.update_cue_crossfade_color(step, progress)
+
+    def show_timeleft_out(self, i: float) -> None:
+        """Display Out Countdowns during Xfade
+
+        Args:
+            i: Position in Xfade in milliseconds
+        """
         step = App().lightshow.main_playback.position + 1
         wait = App().lightshow.main_playback.steps[step].wait * 1000
         if i > wait:
@@ -347,6 +361,19 @@ class MainPlaybackView(Gtk.Notebook):
                 time = (d_out + wait - i) / 1000
                 if time >= 0:
                     self.cues_liststore1[step + 2][4] = time_to_string(time)
+        else:
+            time = (wait - i) / 1000
+            self.cues_liststore1[step + 2][3] = time_to_string(time)
+
+    def show_timeleft_in(self, i: float) -> None:
+        """Display In Countdowns during Xfade
+
+        Args:
+            i: Position in Xfade in milliseconds
+        """
+        step = App().lightshow.main_playback.position + 1
+        wait = App().lightshow.main_playback.steps[step].wait * 1000
+        if i > wait:
             d_in = App().lightshow.main_playback.steps[step].delay_in * 1000
             if i > wait + d_in:
                 t_in = App().lightshow.main_playback.steps[step].time_in * 1000
@@ -360,12 +387,14 @@ class MainPlaybackView(Gtk.Notebook):
         else:
             time = (wait - i) / 1000
             self.cues_liststore1[step + 2][3] = time_to_string(time)
-        # Color crossfade
-        total_time = App().lightshow.main_playback.steps[step].total_time * 1000
-        progress = min(max(i / total_time, 0.0), 1.0)
-        self._update_cue_crossfade_color(step, progress)
 
-    def _update_cue_crossfade_color(self, step: int, progress: float) -> None:
+    def update_cue_crossfade_color(self, step: int, progress: float) -> None:
+        """Crossfade active cues color background
+
+        Args:
+            step: active step
+            progress: position in xfade in milliseconds
+        """
         start_color = "#555555"
         end_color = "#997004"
         blended = self._blend_color(start_color, end_color, progress)
@@ -385,7 +414,7 @@ class MainPlaybackView(Gtk.Notebook):
 
     def _hex_to_rgb(self, color: str) -> tuple[int, ...]:
         color = color.lstrip("#")
-        return tuple(int(color[i: i + 2], 16) for i in (0, 2, 4))
+        return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
     def _rgb_to_hex(self, rgb: tuple[int, ...]) -> str:
         return f"#{int(rgb[0]):02x}{int(rgb[1]):02x}{int(rgb[2]):02x}"
