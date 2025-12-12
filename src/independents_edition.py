@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App
@@ -22,7 +23,7 @@ from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 class IndependentsTab(Gtk.Paned):
     """Tab to edit independents"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -52,7 +53,7 @@ class IndependentsTab(Gtk.Paned):
         scrollable.add(self.treeview)
         self.add(scrollable)
 
-    def on_changed(self, _treeview):
+    def on_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select independent"""
         self.channels_view.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -66,11 +67,11 @@ class IndependentsTab(Gtk.Paned):
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
 
-    def on_close_icon(self, _widget):
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         App().tabs.close("indes")
 
-    def text_edited(self, _widget, path, text):
+    def text_edited(self, _widget: Gtk.Widget, path: int, text: str) -> None:
         """Independent text edited
 
         Args:
@@ -81,7 +82,9 @@ class IndependentsTab(Gtk.Paned):
         number = self.liststore[path][0]
         App().lightshow.independents.independents[number - 1].text = text
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | bool:
         """Keyboard events
 
         Args:
@@ -100,16 +103,16 @@ class IndependentsTab(Gtk.Paned):
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             App().window.commandline.add_string(keyname)
         if keyname in (
-                "KP_1",
-                "KP_2",
-                "KP_3",
-                "KP_4",
-                "KP_5",
-                "KP_6",
-                "KP_7",
-                "KP_8",
-                "KP_9",
-                "KP_0",
+            "KP_1",
+            "KP_2",
+            "KP_3",
+            "KP_4",
+            "KP_5",
+            "KP_6",
+            "KP_7",
+            "KP_8",
+            "KP_9",
+            "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
         if keyname == "period":
@@ -117,34 +120,34 @@ class IndependentsTab(Gtk.Paned):
         # Channels View
         self.channels_view.on_key_press(keyname)
 
-        if func := getattr(self, f"_keypress_{keyname}", None):
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
-    def _keypress_Escape(self):  # pylint: disable=C0103
+    def _keypress_escape(self) -> None:
         """Close Tab"""
         App().tabs.close("indes")
 
-    def _keypress_BackSpace(self):  # pylint: disable=C0103
+    def _keypress_backspace(self) -> None:
         App().window.commandline.set_string("")
 
-    def _keypress_equal(self):
+    def _keypress_equal(self) -> None:
         """@ level"""
         self.channels_view.at_level()
         self.channels_view.update()
         App().window.commandline.set_string("")
 
-    def _keypress_colon(self):
+    def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
 
-    def _keypress_exclam(self):
+    def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_u(self) -> None:
         """Update independent channels"""
         # Find independent
         path, _focus_column = self.treeview.get_cursor()
@@ -169,7 +172,7 @@ class IndependentsTab(Gtk.Paned):
 class IndeChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def set_channel_level(self, channel: int, level: int) -> None:
@@ -210,8 +213,10 @@ class IndeChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not App().lightshow.independents.independents or not App(
-        ).tabs.tabs["indes"]:
+        if (
+            not App().lightshow.independents.independents
+            or not App().tabs.tabs["indes"]
+        ):
             child.set_visible(False)
             return False
         # Find selected independent

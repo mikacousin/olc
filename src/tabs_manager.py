@@ -27,7 +27,7 @@ class Tabs:
 
     tabs: Dict[str, Optional[Any]]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.tabs = {
             "channel_time": None,
             "curves": None,
@@ -59,7 +59,7 @@ class Tabs:
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
             button.connect(
                 "clicked",
-                self.tabs[tab_name].on_close_icon  # type: ignore[union-attr]
+                self.tabs[tab_name].on_close_icon,  # type: ignore[union-attr]
             )
             newlabel = Gtk.Box()
             newlabel.pack_start(Gtk.Label(label), False, False, 0)
