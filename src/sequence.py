@@ -981,6 +981,8 @@ class ThreadGoBack(threading.Thread):
             val = round((255 / go_back_time) * i)
             GLib.idle_add(App().virtual_console.scale_a.set_value, val)
             GLib.idle_add(App().virtual_console.scale_b.set_value, val)
+        # Countdown
+        GLib.idle_add(App().window.playback.goback_countdown, i, go_back_time, position)
         for channel, outputs in App().lightshow.patch.channels.items():
             for value in outputs:
                 output = value[0]

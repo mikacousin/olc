@@ -414,10 +414,35 @@ class MainPlaybackView(Gtk.Notebook):
 
     def _hex_to_rgb(self, color: str) -> tuple[int, ...]:
         color = color.lstrip("#")
-        return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
+        return tuple(int(color[i: i + 2], 16) for i in (0, 2, 4))
 
     def _rgb_to_hex(self, rgb: tuple[int, ...]) -> str:
         return f"#{int(rgb[0]):02x}{int(rgb[1]):02x}{int(rgb[2]):02x}"
+
+    def goback_countdown(self, i: float, goback_time: float, step: int) -> None:
+        """Display countdowns during GoBack
+
+        Args:
+            i: Position in milliseconds
+            goback_time: GoBack Time set in preference
+            step: Active Step
+        """
+        count = (goback_time - i) / 1000
+        if count >= 0:
+            self.cues_liststore1[step + 1][5] = time_to_string(count)
+            self.cues_liststore1[step + 1][7] = time_to_string(count)
+        progress = min(max(i / goback_time, 0.0), 1.0)
+        blended = self._blend_color("#232729", "#997004", progress)
+        hex_color = self._rgb_to_hex(blended)
+        self.cues_liststore1[step + 1][9] = hex_color
+        blended = self._blend_color("#997004", "#555555", progress)
+        hex_color = self._rgb_to_hex(blended)
+        self.cues_liststore1[step + 2][9] = hex_color
+        if step < App().lightshow.main_playback.last - 2:
+            blended = self._blend_color("#555555", "#232729", progress)
+            hex_color = self._rgb_to_hex(blended)
+            self.cues_liststore1[step + 3][9] = hex_color
+        self.treeview1.queue_draw()
 
     def update_xfade_display(self, step: int) -> None:
         """Update Crossfade display
