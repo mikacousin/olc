@@ -329,7 +329,7 @@ class MainPlaybackView(Gtk.Notebook):
         self.cues_liststore1[step + 3][7] = time_to_string(t_in)
 
     def show_timeleft(self, i: float) -> None:
-        """Display countdowns during Go
+        """Display countdowns during Go and color crossfade of active cues
 
         Args:
             i: Spent time of the Go in milliseconds
@@ -360,6 +360,35 @@ class MainPlaybackView(Gtk.Notebook):
         else:
             time = (wait - i) / 1000
             self.cues_liststore1[step + 2][3] = time_to_string(time)
+        # Color crossfade
+        total_time = App().lightshow.main_playback.steps[step].total_time * 1000
+        progress = min(max(i / total_time, 0.0), 1.0)
+        self._update_cue_crossfade_color(step, progress)
+
+    def _update_cue_crossfade_color(self, step: int, progress: float) -> None:
+        start_color = "#555555"
+        end_color = "#997004"
+        blended = self._blend_color(start_color, end_color, progress)
+        hex_color = self._rgb_to_hex(blended)
+        self.cues_liststore1[step + 2][9] = hex_color
+        start_color = "#997004"
+        end_color = "#232729"
+        blended = self._blend_color(start_color, end_color, progress)
+        hex_color = self._rgb_to_hex(blended)
+        self.cues_liststore1[step + 1][9] = hex_color
+        self.treeview1.queue_draw()
+
+    def _blend_color(self, color1: str, color2: str, t: float) -> tuple[int, ...]:
+        start = self._hex_to_rgb(color1)
+        end = self._hex_to_rgb(color2)
+        return tuple(int(c1 + (c2 - c1) * t) for c1, c2 in zip(start, end, strict=True))
+
+    def _hex_to_rgb(self, color: str) -> tuple[int, ...]:
+        color = color.lstrip("#")
+        return tuple(int(color[i: i + 2], 16) for i in (0, 2, 4))
+
+    def _rgb_to_hex(self, rgb: tuple[int, ...]) -> str:
+        return f"#{int(rgb[0]):02x}{int(rgb[1]):02x}{int(rgb[2]):02x}"
 
     def update_xfade_display(self, step: int) -> None:
         """Update Crossfade display
