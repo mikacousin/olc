@@ -12,11 +12,17 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
 import math
+import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App, time_to_string
+
+if typing.TYPE_CHECKING:
+    from olc.channel_time import ChannelTime
 
 
 class SequentialWidget(Gtk.Widget):
@@ -24,8 +30,16 @@ class SequentialWidget(Gtk.Widget):
 
     __gtype_name__ = "SequentialWidget"
 
-    def __init__(self, total_time, time_in, time_out, delay_in, delay_out, wait,
-                 channel_time):
+    def __init__(
+        self,
+        total_time: float,
+        time_in: float,
+        time_out: float,
+        delay_in: float,
+        delay_out: float,
+        wait: float,
+        channel_time: dict[int, ChannelTime],
+    ) -> None:
         self.total_time = total_time
         self.time_in = time_in
         self.time_out = time_out
@@ -40,7 +54,7 @@ class SequentialWidget(Gtk.Widget):
         Gtk.Widget.__init__(self)
         self.set_size_request(800, 300)
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw crossfade widget
 
         Args:
@@ -145,8 +159,9 @@ class SequentialWidget(Gtk.Widget):
         if self.delay_in:
             cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.set_line_width(3)
-            cr.move_to(16 + wait_x,
-                       allocation.height - 32 - (len(self.channel_time) * 8))
+            cr.move_to(
+                16 + wait_x, allocation.height - 32 - (len(self.channel_time) * 8)
+            )
             cr.line_to(
                 16 + wait_x + (inter * self.delay_in),
                 allocation.height - 32 - (len(self.channel_time) * 8),
@@ -179,8 +194,9 @@ class SequentialWidget(Gtk.Widget):
             # draw Channel Time line
             cr.set_source_rgb(0.5, 0.5, 0.5)
             cr.set_line_width(1)
-            cr.move_to(16 + (inter * delay) + wait_x,
-                       allocation.height - 8 - (ct_nb * 12))
+            cr.move_to(
+                16 + (inter * delay) + wait_x, allocation.height - 8 - (ct_nb * 12)
+            )
             cr.line_to(
                 16 + (inter * delay) + (inter * time) + wait_x,
                 allocation.height - 8 - (ct_nb * 12),
@@ -190,17 +206,23 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(16 + (inter * delay) + wait_x, 24)
             cr.line_to(16 + (inter * delay) + wait_x, allocation.height)
             cr.move_to(16 + (inter * delay) + (inter * time) + wait_x, 24)
-            cr.line_to(16 + (inter * delay) + (inter * time) + wait_x,
-                       allocation.height)
+            cr.line_to(
+                16 + (inter * delay) + (inter * time) + wait_x, allocation.height
+            )
             cr.stroke()
             cr.set_dash([])
             # draw Time Cursor
             position = App().lightshow.main_playback.position
-            old_level = App().lightshow.main_playback.steps[position].cue.channels.get(
-                channel, 0)
-            next_level = App().lightshow.main_playback.steps[position +
-                                                             1].cue.channels.get(
-                                                                 channel, 0)
+            old_level = (
+                App()
+                .lightshow.main_playback.steps[position]
+                .cue.channels.get(channel, 0)
+            )
+            next_level = (
+                App()
+                .lightshow.main_playback.steps[position + 1]
+                .cue.channels.get(channel, 0)
+            )
             # Time Cursor follow In or Out Crossfade
             if next_level < old_level:
                 # Out Crossfade
@@ -214,8 +236,9 @@ class SequentialWidget(Gtk.Widget):
                         16 + position_channeltime,
                         allocation.height - 12 - (ct_nb * 12),
                     )
-                    cr.line_to(16 + position_channeltime,
-                               allocation.height - 4 - (ct_nb * 12))
+                    cr.line_to(
+                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12)
+                    )
                     cr.stroke()
                 else:
                     cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -240,8 +263,9 @@ class SequentialWidget(Gtk.Widget):
                         16 + position_channeltime,
                         allocation.height - 12 - (ct_nb * 12),
                     )
-                    cr.line_to(16 + position_channeltime,
-                               allocation.height - 4 - (ct_nb * 12))
+                    cr.line_to(
+                        16 + position_channeltime, allocation.height - 4 - (ct_nb * 12)
+                    )
                     cr.stroke()
                 else:
                     cr.set_source_rgb(0.9, 0.6, 0.2)
@@ -277,8 +301,9 @@ class SequentialWidget(Gtk.Widget):
             allocation.height - 32 - (len(self.channel_time) * 8),
         )
         cr.stroke()
-        cr.move_to((16 + wait_x + (inter * self.delay_out) + (inter * self.time_out)),
-                   24)
+        cr.move_to(
+            (16 + wait_x + (inter * self.delay_out) + (inter * self.time_out)), 24
+        )
         cr.line_to(
             (16 + wait_x + (inter * self.delay_out) + (inter * self.time_out)),
             allocation.height,
@@ -304,12 +329,13 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X1 cursor
-        if (not wait_x
-                or self.position_a > wait_x) and (not self.delay_out or self.position_a
-                                                  > (inter * self.delay_out) + wait_x):
+        if (not wait_x or self.position_a > wait_x) and (
+            not self.delay_out or self.position_a > (inter * self.delay_out) + wait_x
+        ):
             x1 = start_x + self.position_a - wait_x - (inter * self.delay_out)
-            y1 = start_y + ((self.position_a - wait_x -
-                             (inter * self.delay_out)) * math.tan(angle))
+            y1 = start_y + (
+                (self.position_a - wait_x - (inter * self.delay_out)) * math.tan(angle)
+            )
             if x1 > end_x:
                 x1 = end_x
                 y1 = end_y
@@ -370,12 +396,13 @@ class SequentialWidget(Gtk.Widget):
         cr.close_path()
         cr.fill()
         # draw X2 cursor
-        if (not wait_x
-                or self.position_b > wait_x) and (not self.delay_in or self.position_b
-                                                  > ((inter * self.delay_in) + wait_x)):
+        if (not wait_x or self.position_b > wait_x) and (
+            not self.delay_in or self.position_b > ((inter * self.delay_in) + wait_x)
+        ):
             x1 = start_x + self.position_b - wait_x - (inter * self.delay_in)
-            y1 = start_y + ((self.position_b - wait_x -
-                             (inter * self.delay_in)) * math.tan(angle))
+            y1 = start_y + (
+                (self.position_b - wait_x - (inter * self.delay_in)) * math.tan(angle)
+            )
             if x1 > end_x:
                 x1 = end_x
                 y1 = end_y
@@ -418,7 +445,7 @@ class SequentialWidget(Gtk.Widget):
             cr.move_to(12 + (inter * time_min), 16)
             cr.show_text(time_to_string(time_min))
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
