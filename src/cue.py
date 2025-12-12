@@ -30,11 +30,11 @@ class Cue:
 
     def __init__(
         self,
-        sequence,
-        memory,
-        channels=None,
-        text="",
-    ):
+        sequence: int,
+        memory: float,
+        channels: Dict[int, int] | None = None,
+        text: str = "",
+    ) -> None:
         self.sequence = sequence
         self.memory = memory
         self.channels = channels or {}
@@ -47,8 +47,12 @@ class Cue:
             channel: channel number (1-MAX_CHANNELS)
             level: level (0 - 255)
         """
-        if (isinstance(level, int) and 0 <= level < 256 and isinstance(channel, int)
-                and 0 < channel <= MAX_CHANNELS):
+        if (
+            isinstance(level, int)
+            and 0 <= level < 256
+            and isinstance(channel, int)
+            and 0 < channel <= MAX_CHANNELS
+        ):
             self.channels[channel] = level
 
     def get_level(self, channel: int) -> int:

@@ -15,8 +15,8 @@
 from gettext import gettext as _
 from typing import Any, Dict, List
 
-from scipy.interpolate import PchipInterpolator
 from olc.define import App
+from scipy.interpolate import PchipInterpolator
 
 
 class Curve:
@@ -26,7 +26,7 @@ class Curve:
     editable: bool  # Editable Curve or not
     values: Dict[int, int]  # To store values
 
-    def __init__(self, name="", editable=False):
+    def __init__(self, name: str = "", editable: bool = False) -> None:
         self.name = name
         self.editable = editable
         self.values = {}
@@ -69,7 +69,7 @@ class Curve:
 class LinearCurve(Curve):
     """Linear"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(name=_("Linear"))
 
     def populate_values(self) -> None:
@@ -81,7 +81,7 @@ class LinearCurve(Curve):
 class SquareRootCurve(Curve):
     """Square Root, TV2, Linear Light"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(name=_("Square root"))
 
     def populate_values(self) -> None:
@@ -95,7 +95,7 @@ class LimitCurve(Curve):
 
     limit: int  # Limit value (0 - 255)
 
-    def __init__(self, limit=255):
+    def __init__(self, limit: int = 255) -> None:
         self.limit = limit
         super().__init__(name=_("Limit"), editable=True)
 
@@ -110,7 +110,7 @@ class PointsCurve(Curve):
 
     points: List[tuple]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         self.points = [(0, 0), (255, 255)]
         super().__init__(*args, **kwargs)
 
@@ -162,7 +162,7 @@ class PointsCurve(Curve):
 class SegmentsCurve(PointsCurve):
     """Curve with segments"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(name=_("Segment"), editable=True)
 
     def populate_values(self) -> None:
@@ -174,14 +174,15 @@ class SegmentsCurve(PointsCurve):
             x_end = self.points[i + 1][0]
             y_end = self.points[i + 1][1]
             for x in range(x_start, x_end + 1):
-                self.values[x] = round(y_start + (((x - x_start) / (x_end - x_start)) *
-                                                  (y_end - y_start)))
+                self.values[x] = round(
+                    y_start + (((x - x_start) / (x_end - x_start)) * (y_end - y_start))
+                )
 
 
 class InterpolateCurve(PointsCurve):
     """Interpolate Curve"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(name=_("Interpolate"), editable=True)
 
     def populate_values(self) -> None:
@@ -203,7 +204,7 @@ class Curves:
 
     curves: Dict[int, Any]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.curves = {
             0: LinearCurve(),
             1: SquareRootCurve(),

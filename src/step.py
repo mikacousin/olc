@@ -12,6 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+from typing import Optional
+
+if typing.TYPE_CHECKING:
+    from olc.cue import Cue
+
+
 class Step:
     """Step
     A Step is used to store times and a Cue in a Sequence
@@ -19,16 +28,16 @@ class Step:
 
     def __init__(
         self,
-        sequence=0,
-        cue=None,
-        time_in=5.0,
-        time_out=5.0,
-        delay_in=0.0,
-        delay_out=0.0,
-        wait=0.0,
-        channel_time=None,
-        text="",
-    ):
+        sequence: int = 0,
+        cue: Optional[Cue] = None,
+        time_in: float = 5.0,
+        time_out: float = 5.0,
+        delay_in: float = 0.0,
+        delay_out: float = 0.0,
+        wait: float = 0.0,
+        channel_time: Optional[dict] = None,
+        text: str = "",
+    ) -> None:
         self.sequence = sequence
         self.cue = cue
         self.time_in = time_in
@@ -43,7 +52,7 @@ class Step:
 
         self.update_total_time()
 
-    def update_total_time(self):
+    def update_total_time(self) -> None:
         """Calculate Total Time"""
         if self.time_in + self.delay_in > self.time_out + self.delay_out:
             self.total_time = self.time_in + self.delay_in + self.wait
@@ -52,10 +61,13 @@ class Step:
 
         for channel in self.channel_time.keys():
             self.total_time = max(
-                self.total_time, self.channel_time[channel].delay +
-                self.channel_time[channel].time + self.wait)
+                self.total_time,
+                self.channel_time[channel].delay
+                + self.channel_time[channel].time
+                + self.wait,
+            )
 
-    def set_time_in(self, time_in):
+    def set_time_in(self, time_in: float) -> None:
         """Set Time In
 
         Args:
@@ -64,7 +76,7 @@ class Step:
         self.time_in = time_in
         self.update_total_time()
 
-    def set_time_out(self, time_out):
+    def set_time_out(self, time_out: float) -> None:
         """Set Time Out
 
         Args:
@@ -73,7 +85,7 @@ class Step:
         self.time_out = time_out
         self.update_total_time()
 
-    def set_delay_in(self, delay_in):
+    def set_delay_in(self, delay_in: float) -> None:
         """Set Delay In
 
         Args:
@@ -82,7 +94,7 @@ class Step:
         self.delay_in = delay_in
         self.update_total_time()
 
-    def set_delay_out(self, delay_out):
+    def set_delay_out(self, delay_out: float) -> None:
         """Set Delay Out
 
         Args:
@@ -91,7 +103,7 @@ class Step:
         self.delay_out = delay_out
         self.update_total_time()
 
-    def set_wait(self, wait):
+    def set_wait(self, wait: float) -> None:
         """Set Wait
 
         Args:
@@ -100,7 +112,7 @@ class Step:
         self.wait = wait
         self.update_total_time()
 
-    def set_time(self, time):
+    def set_time(self, time: float) -> None:
         """Set Time In and Time Out
 
         Args:
@@ -110,7 +122,7 @@ class Step:
         self.time_out = time
         self.update_total_time()
 
-    def set_delay(self, delay):
+    def set_delay(self, delay: float) -> None:
         """Set Delay In and Out
 
         Args:
