@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Some defines for olc project."""
+
 import unicodedata
 from typing import Any
 
@@ -109,7 +110,7 @@ def time_to_string(time: float) -> str:
     if seconds.is_integer():
         string += f"{int(seconds)}"
     else:
-        string += f"{seconds}"
+        string += f"{seconds:.1f}"
     if string == "0":
         string = ""
     return string

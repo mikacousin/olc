@@ -23,6 +23,7 @@ class Backend(Enum):
 
     OLA = auto()
     SACN = auto()
+    ARTNET = auto()
 
 
 class DMXBackend:
@@ -31,7 +32,7 @@ class DMXBackend:
     dmx: Dmx
     patch: DMXPatch
 
-    def __init__(self, patch):
+    def __init__(self, patch: DMXPatch) -> None:
         self.dmx = Dmx(self)
         self.patch = patch
 

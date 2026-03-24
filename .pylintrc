@@ -18,11 +18,11 @@ ignore-patterns=
 
 # Python code to execute, usually for sys.path manipulation such as
 # pygtk.require().
-init-hook='import sys; sys.path.insert(1, "/usr/local/lib/python3.11/site-packages")'
+init-hook='import sys; sys.path.insert(1, "/usr/local/lib/python3.14/site-packages")'
 
 # Use multiple processes to speed up Pylint. Specifying 0 will auto-detect the
 # number of processors available to use.
-jobs=1
+jobs=0
 
 # Control the amount of potential inferred values when inferring a single
 # object. This can help the performance when dealing with large functions or
@@ -35,10 +35,6 @@ load-plugins=
 
 # Pickle collected data for later comparisons.
 persistent=yes
-
-# When enabled, pylint would attempt to guess common misconfiguration and emit
-# user-friendly hints instead of false-positive error messages.
-suggestion-mode=yes
 
 # Allow loading of arbitrary C extensions. Extensions are imported into the
 # active Python interpreter and may run arbitrary code.
@@ -73,6 +69,7 @@ disable=raw-checker-failed,
         R0801,
         c-extension-no-member,
         no-member,
+        no-value-for-parameter,
         arguments-differ # Pylint fails at this with the Gtk do_* methods, so no thanks.
 
 # Enable the message, report, category or checker with the given id(s). You can

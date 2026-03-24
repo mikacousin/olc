@@ -15,9 +15,10 @@
 import ipaddress
 import socket
 from gettext import gettext as _
-from typing import Any
+from typing import Callable
 
 from gi.repository import Gdk, GLib, Gtk
+
 from olc.define import App
 from olc.osc import Osc
 
@@ -25,8 +26,9 @@ from olc.osc import Osc
 class SettingsTab(Gtk.Box):
     """Settings"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
+        self._last_artnet_state: list[list[str]] | None = None
 
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
@@ -73,10 +75,21 @@ class SettingsTab(Gtk.Box):
         # MIDI
         self._midi(builder)
 
+        # Art-Net Tab Visibility
+        backend = App().settings.get_string("backend")
+        if "artnet" not in backend:
+            artnet_grid = builder.get_object("artnet_grid")
+            if artnet_grid:
+                page_num = settings_dialog.page_num(artnet_grid)
+                if page_num >= 0:
+                    settings_dialog.remove_page(page_num)
+        else:
+            self._artnet(builder)
+
         builder.connect_signals(self)
         self.pack_start(settings_dialog, True, True, 0)
 
-    def _midi(self, builder):
+    def _midi(self, builder: Gtk.builder) -> None:
         # List of MIDI Controllers
         liststore_modes = Gtk.ListStore(str)
         for item in ["Absolute", "Relative1", "Relative2", "Relative3 (Makie)"]:
@@ -99,9 +112,9 @@ class SettingsTab(Gtk.Box):
         renderer_combo.set_property("text-column", 0)
         renderer_combo.set_property("has-entry", False)
         renderer_combo.connect("edited", self.on_combo_change)
-        column_combo = Gtk.TreeViewColumn(_("Rotary encoder Mode"),
-                                          renderer_combo,
-                                          text=2)
+        column_combo = Gtk.TreeViewColumn(
+            _("Rotary encoder Mode"), renderer_combo, text=2
+        )
         treeview.append_column(column_combo)
         midi_grid.add(treeview)
 
@@ -115,20 +128,25 @@ class SettingsTab(Gtk.Box):
             if midi_port in default:
                 if midi_port in relative1:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative1", midi_port])
+                        [midi_port.split(":")[0], True, "Relative1", midi_port]
+                    )
                 elif midi_port in relative2:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative2", midi_port])
+                        [midi_port.split(":")[0], True, "Relative2", midi_port]
+                    )
                 elif midi_port in makies:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port])
+                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
+                    )
                 elif midi_port in absolutes:
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Absolute", midi_port])
+                        [midi_port.split(":")[0], True, "Absolute", midi_port]
+                    )
                 else:
                     # Default: Mackie mode
                     self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port])
+                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
+                    )
                     makies.append(midi_port)
                     if midi_port in absolutes:
                         absolutes.remove(midi_port)
@@ -142,18 +160,19 @@ class SettingsTab(Gtk.Box):
                     App().settings.set_strv("absolute", absolutes)
             else:
                 self.liststore_midi.append(
-                    [midi_port.split(":")[0], False, "", midi_port])
+                    [midi_port.split(":")[0], False, "", midi_port]
+                )
 
     def refresh(self) -> None:
         """Refresh MIDI ports"""
         self.liststore_midi.clear()
         self._populate_midi_ports()
 
-    def on_close_icon(self, _widget) -> None:
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         App().tabs.close("settings")
 
-    def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
+    def on_key_press_event(self, _widget: Gtk.Widget, event: Gdk.Event) -> Callable:
         """Key has been pressed
 
         Args:
@@ -172,7 +191,7 @@ class SettingsTab(Gtk.Box):
         """Close Tab"""
         App().tabs.close("settings")
 
-    def on_combo_change(self, _widget, path, text):
+    def on_combo_change(self, _widget: Gtk.Widget, path: str, text: str) -> None:
         """Change rotatives mode
 
         Args:
@@ -206,7 +225,7 @@ class SettingsTab(Gtk.Box):
         App().settings.set_strv("makie", makies)
         App().settings.set_strv("absolute", absolutes)
 
-    def on_midi_toggle(self, _widget, path):
+    def on_midi_toggle(self, _widget: Gtk.Widget, path: str) -> None:
         """Active / Inactive MIDI controllers
 
         Args:
@@ -230,8 +249,9 @@ class SettingsTab(Gtk.Box):
             elif self.liststore_midi[path][2] == "Absolute":
                 absolutes.append(self.liststore_midi[path][3])
             else:
-                self.liststore_midi.set_value(self.liststore_midi.get_iter(path), 2,
-                                              "Relative3 (Makie)")
+                self.liststore_midi.set_value(
+                    self.liststore_midi.get_iter(path), 2, "Relative3 (Makie)"
+                )
                 makies.append(self.liststore_midi[path][3])
 
         else:
@@ -255,6 +275,106 @@ class SettingsTab(Gtk.Box):
         GLib.idle_add(App().midi.ports.open, midi_ports)
         App().midi.update_faders()
 
+    def _artnet(self, builder: Gtk.Builder) -> None:
+        self.liststore_artnet = Gtk.ListStore(str, str, str, str)
+        treeview = Gtk.TreeView(model=self.liststore_artnet)
+
+        renderer_text_name = Gtk.CellRendererText()
+        column_name = Gtk.TreeViewColumn(_("Name"), renderer_text_name, text=0)
+        treeview.append_column(column_name)
+
+        renderer_text_ip = Gtk.CellRendererText()
+        column_ip = Gtk.TreeViewColumn(_("IP Address"), renderer_text_ip, text=1)
+        treeview.append_column(column_ip)
+
+        renderer_text_type = Gtk.CellRendererText()
+        column_type = Gtk.TreeViewColumn(_("Type"), renderer_text_type, text=2)
+        treeview.append_column(column_type)
+
+        renderer_text_univ = Gtk.CellRendererText()
+        column_univ = Gtk.TreeViewColumn(_("Universes"), renderer_text_univ, text=3)
+        treeview.append_column(column_univ)
+
+        artnet_grid = builder.get_object("artnet_grid")
+        if artnet_grid:
+            scrolled_window = Gtk.ScrolledWindow()
+            scrolled_window.set_hexpand(True)
+            scrolled_window.set_vexpand(True)
+            scrolled_window.add(treeview)
+            artnet_grid.attach(scrolled_window, 0, 1, 1, 1)
+            scrolled_window.show_all()
+
+            GLib.timeout_add_seconds(1, self._refresh_artnet)
+
+    def _refresh_artnet(self) -> bool:
+        if not App().tabs.tabs.get("settings"):
+            return False
+
+        backend = App().settings.get_string("backend")
+        if "artnet" not in backend:
+            return True
+
+        current_backend = App().backend
+        if current_backend and hasattr(current_backend, "artnet"):
+            # Add physical discovered nodes (grouped by MAC and Type)
+            grouped_nodes = {}
+
+            nodes = current_backend.artnet.discovery.nodes
+            for node in nodes.values():
+                key = (node.mac, "Node")
+                if key not in grouped_nodes:
+                    grouped_nodes[key] = {
+                        "name": node.names.get("long", ""),
+                        "ip": node.ip,
+                        "type": "Node",
+                        "universes": set(node.universes),
+                    }
+                else:
+                    grouped_nodes[key]["universes"].update(node.universes)
+
+            consoles = current_backend.artnet.discovery.consoles
+            for console in consoles.values():
+                key = (console.mac, "Controller")
+                if key not in grouped_nodes:
+                    grouped_nodes[key] = {
+                        "name": console.names.get("long", ""),
+                        "ip": console.ip,
+                        "type": "Controller",
+                        "universes": set(console.universes),
+                    }
+                else:
+                    grouped_nodes[key]["universes"].update(console.universes)
+
+            new_state = []
+            for info in grouped_nodes.values():
+                universes = ", ".join(map(str, sorted(info["universes"])))
+                new_state.append([info["name"], info["ip"], info["type"], universes])
+
+            # Add phantom loopback node
+            phantom_shown = False
+            for sender in current_backend.artnet.senders.values():
+                if ((0, 0, 0, 0, 0, 0), 0) in sender.nodes:
+                    phantom_shown = True
+                    break
+
+            if phantom_shown:
+                all_senders = current_backend.artnet.senders.keys()
+                univs = ", ".join(str(u) for u in sorted(all_senders))
+                new_state.append(
+                    ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
+                )
+
+            # Update UI only if data has actually changed
+            type_prio = {"Virtual": 0, "Node": 1, "Controller": 2}
+            new_state.sort(key=lambda x: (type_prio.get(x[2], 99), x[1], x[0]))
+            if self._last_artnet_state != new_state:
+                self.liststore_artnet.clear()
+                for row in new_state:
+                    self.liststore_artnet.append(row)
+                self._last_artnet_state = new_state
+
+        return True
+
     def _on_change_percent(self, widget: Gtk.SpinButton) -> None:
         lvl = widget.get_value_as_int()
         App().settings.set_value("percent-level", GLib.Variant("i", lvl))
@@ -263,11 +383,11 @@ class SettingsTab(Gtk.Box):
         time = widget.get_value()
         App().settings.set_value("default-time", GLib.Variant("d", time))
 
-    def _on_change_go_back_time(self, widget) -> None:
+    def _on_change_go_back_time(self, widget: Gtk.Widget) -> None:
         time = widget.get_value()
         App().settings.set_value("go-back-time", GLib.Variant("d", time))
 
-    def _update_ui_percent(self, _widget, state):
+    def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> None:
         """Change levels view (0-100) or (0-255)
 
         Args:
@@ -290,7 +410,7 @@ class SettingsTab(Gtk.Box):
         if App().tabs.tabs["memories"]:
             App().tabs.tabs["memories"].channels_view.update()
 
-    def _switch_osc(self, _widget, state):
+    def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
         App().settings.set_value("osc", GLib.Variant("b", state))
         if state:
             App().osc = Osc()

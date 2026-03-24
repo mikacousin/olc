@@ -13,12 +13,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+import typing
 from typing import Any, Optional
 
 from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
+
+if typing.TYPE_CHECKING:
+    from .backends import DmxBackend
 
 
 class Dmx:
@@ -32,7 +36,7 @@ class Dmx:
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
 
-    def __init__(self, backend):
+    def __init__(self, backend: DmxBackend) -> None:
         self.backend = backend
         self.patch = App().lightshow.patch
         self.main_fader = MainFader()
@@ -66,8 +70,10 @@ class Dmx:
             # Sequence
             level = self.levels["sequence"][channel]
             # User
-            if not App(
-            ).lightshow.main_playback.on_go and self.levels["user"][channel] != -1:
+            if (
+                not App().lightshow.main_playback.on_go
+                and self.levels["user"][channel] != -1
+            ):
                 level = self.levels["user"][channel]
             # Faders
             if self.levels["faders"][channel] > level:
@@ -85,8 +91,8 @@ class Dmx:
                     level = curve.values.get(level, 0)
                 # Main Fader
                 level = round(level * self.main_fader.value)
-                # Update output level
                 index = UNIVERSES.index(universe)
+                # Update output level
                 self.frame[index][output - 1] = level
 
     def send(self) -> None:

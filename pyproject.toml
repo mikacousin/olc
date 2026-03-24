@@ -1,0 +1,13 @@
+[tool.ruff]
+# Enable basic checks
+lint.select = ["E", "F", "I", "B", "ANN"]
+line-length = 88
+# Exclude directories
+exclude = [
+  ".git",
+  ".mypy_cache",
+  ".ruff_cache",
+  "venv",
+  "__pycache__",
+]
+target-version = "py314"

@@ -90,18 +90,20 @@ class Application(Gtk.Application):
             ord("b"),
             GLib.OptionFlags.NONE,
             GLib.OptionArg.STRING,
-            "The backend to use (sacn or ola). Defaults to sacn",
+            "The backend to use (sacn, artnet or ola). Defaults to sacn",
             "<backend>",
         )
 
         css_provider_file = Gio.File.new_for_uri(
-            "resource://com/github/mikacousin/olc/application.css")
+            "resource://com/github/mikacousin/olc/application.css"
+        )
         css_provider = Gtk.CssProvider()
         css_provider.load_from_file(css_provider_file)
         screen = Gdk.Screen.get_default()
         style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(screen, css_provider,
-                                              Gtk.STYLE_PROVIDER_PRIORITY_USER)
+        style_context.add_provider_for_screen(
+            screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
+        )
 
         # Change to dark theme
         settings = Gtk.Settings.get_default()
@@ -194,7 +196,9 @@ class Application(Gtk.Application):
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
         if "version" in options:
-            print(self.version)
+            print(
+                f"{self.version}, Active backend: {self.settings.get_string('backend')}"
+            )
             sys.exit()
         self.backend = select_backend(options, self.settings, self.lightshow.patch)
         if not self.backend:
@@ -355,7 +359,8 @@ class Application(Gtk.Application):
         if response == Gtk.ResponseType.ACCEPT:
             filename = open_dialog.get_filename()
             extension = "".join(
-                [s for s in pathlib.Path(filename).suffixes if " " not in s]).lower()
+                [s for s in pathlib.Path(filename).suffixes if " " not in s]
+            ).lower()
             if extension == ".asc":
                 file_type = FileType.ASCII
             elif extension == ".olc":
@@ -369,9 +374,13 @@ class Application(Gtk.Application):
         open_dialog.destroy()
 
     def _export_ascii(self, _action, _parameter) -> None:
-        dialog = Gtk.FileChooserNative.new(_("Export ASCII File"), self.window,
-                                           Gtk.FileChooserAction.SAVE, _("Export"),
-                                           _("Cancel"))
+        dialog = Gtk.FileChooserNative.new(
+            _("Export ASCII File"),
+            self.window,
+            Gtk.FileChooserAction.SAVE,
+            _("Export"),
+            _("Cancel"),
+        )
         dialog.set_do_overwrite_confirmation(True)
         dialog.set_modal(True)
         dialog.set_current_name("Untitled.asc")
@@ -430,13 +439,15 @@ class Application(Gtk.Application):
 
     def patch_outputs(self, _action, _parameter):
         """Create Patch Outputs Tab"""
-        self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs",
-                       self.lightshow.patch)
+        self.tabs.open(
+            "patch_outputs", PatchOutputsTab, "Patch Outputs", self.lightshow.patch
+        )
 
     def _patch_channels(self, _action, _parameter):
         """Create Patch Channels Tab"""
-        self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels",
-                       self.lightshow.patch)
+        self.tabs.open(
+            "patch_channels", PatchChannelsTab, "Patch Channels", self.lightshow.patch
+        )
 
     def track_channels(self, _action, _parameter):
         """Create Track Channels Tab"""

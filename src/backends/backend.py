@@ -12,9 +12,16 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
 from typing import Any
 
 from gi.repository import GLib
+
+from .artnet_backend import ArtnetBackend
+
+ARTNET = True
 
 try:
     import sacn  # noqa: F401, pylint: disable=W0611
@@ -31,8 +38,15 @@ else:
     OLA = True
     from .ola import Ola
 
+if typing.TYPE_CHECKING:
+    from gi.repository import Gtk
 
-def select_backend(options, settings, patch) -> Any:
+    from ..patch import DMXPatch
+
+
+def select_backend(
+    options: GLib.VariantDict, settings: Gtk.Settings, patch: DMXPatch
+) -> None | Ola | ArtnetBackend | Sacn:
     """Select and create DMX backend
 
     Args:
@@ -43,28 +57,32 @@ def select_backend(options, settings, patch) -> Any:
     Returns:
         Backend or None
     """
-    backend = settings.get_string("backend")
-    if "backend" in options:
-        backend = options["backend"]
-    if "ola" in backend:
-        if OLA:
-            olad_port = 9090
-            if "http-port" in options:
-                olad_port = options["http-port"]
-            settings.set_value("backend", GLib.Variant("s", backend))
-            return Ola(patch, olad_port=olad_port)
-        print("Can't find ola python module")
-        return None
-    if "sacn" in backend:
-        if SACN:
-            settings.set_value("backend", GLib.Variant("s", backend))
-            return Sacn(patch)
-        print("Can't find sACN python module")
-        return None
-    if backend:
+    backend = options.get("backend", settings.get_string("backend"))
+    backend_instance: Any = None
+
+    if "ola" in backend and OLA:
+        olad_port = options.get("http-port", 9090)
+        backend_instance = Ola(patch, olad_port=olad_port)
+    elif "artnet" in backend and ARTNET:
+        backend_instance = ArtnetBackend(patch)
+    elif "sacn" in backend and SACN:
+        backend_instance = Sacn(patch)
+    elif backend:
         print(f"{backend} is not supported. Fallback to sACN")
+        backend = "sacn"
         if SACN:
-            settings.set_value("backend", GLib.Variant("s", backend))
-            return Sacn(patch)
-    print("Can't find sACN python module")
-    return None
+            backend_instance = Sacn(patch)
+
+    # Handle case where a backend module is missing
+    if not backend_instance:
+        missing_module = None
+        if "ola" in backend and not OLA:
+            missing_module = "ola"
+
+        elif "sacn" in backend and not SACN:
+            missing_module = "sACN"
+        if missing_module:
+            print(f"Can't find {missing_module} python module.")
+
+    settings.set_value("backend", GLib.Variant("s", backend))
+    return backend_instance
