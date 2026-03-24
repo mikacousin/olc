@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,13 +49,14 @@ from olc.virtual_console import VirtualConsoleWindow  # noqa: E402
 from olc.window import Window  # noqa: E402
 
 
+# pylint: disable=too-many-instance-attributes
 class Application(Gtk.Application):
     """Application Class"""
 
     backend: Any
     version: str
 
-    def __init__(self, version, *args, **kwargs):
+    def __init__(self, version: str, *args: object, **kwargs: object) -> None:
         self.backend = None
         self.version = version
         super().__init__(
@@ -128,7 +129,7 @@ class Application(Gtk.Application):
         # Light show initialization
         self.lightshow = LightShow()
 
-    def do_activate(self):
+    def do_activate(self) -> None:
         # Create Main Window
         self.window = Window()
         self.window.show_all()
@@ -170,7 +171,7 @@ class Application(Gtk.Application):
         if self.settings.get_boolean("osc"):
             self.osc = Osc()
 
-    def do_startup(self):
+    def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
 
         # General shortcuts
@@ -213,7 +214,7 @@ class Application(Gtk.Application):
             imported.parse()
         return False
 
-    def setup_app_menu(self):
+    def setup_app_menu(self) -> None:
         """Setup application menu
 
         Returns:
@@ -251,7 +252,7 @@ class Application(Gtk.Application):
             self.add_action(action)
         return menu
 
-    def _new(self, _action, _parameter):
+    def _new(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """New show"""
         # Stop Chasers
         for chaser in self.lightshow.chasers:
@@ -287,7 +288,7 @@ class Application(Gtk.Application):
 
         self.window.live_view.channels_view.last_selected_channel = ""
 
-    def _open(self, _action, _parameter):
+    def _open(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """create a file chooser dialog to open:
         the arguments are: title of the window, parent_window, action,
         (buttons, response)
@@ -332,7 +333,9 @@ class Application(Gtk.Application):
             self.backend.dmx.levels["user"][channel] = -1
         self.backend.dmx.set_levels()
 
-    def _import_file(self, _action, _parameter) -> None:
+    def _import_file(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         open_dialog = Gtk.FileChooserNative.new(
             _("Import File"),
             self.window,
@@ -373,7 +376,9 @@ class Application(Gtk.Application):
             imported.parse()
         open_dialog.destroy()
 
-    def _export_ascii(self, _action, _parameter) -> None:
+    def _export_ascii(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         dialog = Gtk.FileChooserNative.new(
             _("Export ASCII File"),
             self.window,
@@ -391,7 +396,7 @@ class Application(Gtk.Application):
             exported.write()
         dialog.destroy()
 
-    def _save(self, _action, _parameter):
+    def _save(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """Save"""
         if self.lightshow.file is not None:
             exported = ExportFile(self.lightshow.file, "olc")
@@ -399,7 +404,9 @@ class Application(Gtk.Application):
         else:
             self._saveas(_action, _parameter)
 
-    def _saveas(self, _action, _parameter):
+    def _saveas(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Save as"""
         save_dialog = Gtk.FileChooserNative.new(
             _("Save file"),
@@ -437,35 +444,47 @@ class Application(Gtk.Application):
         # destroy the FileChooserNative
         save_dialog.destroy()
 
-    def patch_outputs(self, _action, _parameter):
+    def patch_outputs(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Patch Outputs Tab"""
         self.tabs.open(
             "patch_outputs", PatchOutputsTab, "Patch Outputs", self.lightshow.patch
         )
 
-    def _patch_channels(self, _action, _parameter):
+    def _patch_channels(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Patch Channels Tab"""
         self.tabs.open(
             "patch_channels", PatchChannelsTab, "Patch Channels", self.lightshow.patch
         )
 
-    def track_channels(self, _action, _parameter):
+    def track_channels(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Track Channels Tab"""
         self.tabs.open("track_channels", TrackChannelsTab, "Track Channels")
 
-    def memories_cb(self, _action, _parameter):
+    def memories_cb(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Memories Tab"""
         self.tabs.open("memories", CuesEditionTab, "Memories")
 
-    def groups_cb(self, _action, _parameter):
+    def groups_cb(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Groups Tab"""
         self.tabs.open("groups", GroupTab, "Groups")
 
-    def sequences(self, _action, _parameter):
+    def sequences(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Sequences Tab"""
         self.tabs.open("sequences", SequenceTab, "Sequences")
 
-    def channeltime(self, sequence, step):
+    def channeltime(self, sequence: int, step: int) -> None:
         """Create Channel Time Tab
 
         Args:
@@ -474,30 +493,42 @@ class Application(Gtk.Application):
         """
         self.tabs.open("channel_time", ChanneltimeTab, "Channel Time", sequence, step)
 
-    def _curves(self, _action, _parameter):
+    def _curves(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Curves Edition Tab"""
         self.tabs.open("curves", CurvesTab, "Curves")
 
-    def _faders(self, _action, _parameter):
+    def _faders(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Faders Tab"""
         self.tabs.open("faders", FaderTab, "Faders", self.lightshow.fader_bank)
 
-    def _independents(self, _action, _parameter):
+    def _independents(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Independents Tab"""
         self.tabs.open("indes", IndependentsTab, "Independents")
 
-    def _virtual_console(self, _action, _parameter):
+    def _virtual_console(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Virtual Console Window"""
         if not self.virtual_console:
             self.virtual_console = VirtualConsoleWindow()
             self.virtual_console.show_all()
             self.add_window(self.virtual_console)
 
-    def _settings(self, _action, _parameter):
+    def _settings(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Settings"""
         self.tabs.open("settings", SettingsTab, "Settings")
 
-    def _shortcuts(self, _action, _parameter):
+    def _shortcuts(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Create Shortcuts Window"""
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/gtk/help-overlay.ui")
@@ -505,7 +536,9 @@ class Application(Gtk.Application):
         self.shortcuts.set_transient_for(self.window)
         self.shortcuts.show()
 
-    def _about(self, _action, _parameter):
+    def _about(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> None:
         """Setup about dialog
         @param action as Gio.SimpleAction
         @param param as GLib.Variant
@@ -520,7 +553,7 @@ class Application(Gtk.Application):
         else:
             self.about_window.present()
 
-    def _about_response(self, dialog, _response):
+    def _about_response(self, dialog: Gtk.Dialog, _response: int) -> None:
         """Destroy about dialog when closed
 
         Args:
@@ -530,7 +563,9 @@ class Application(Gtk.Application):
         dialog.destroy()
         self.about_window = None
 
-    def exit(self, _action, _parameter) -> Optional[bool]:
+    def exit(
+        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+    ) -> Optional[bool]:
         """Exit application
 
         Returns:
@@ -559,7 +594,7 @@ class Application(Gtk.Application):
 class DialogQuit(Gtk.Dialog):
     """Ask user if he try to quit with an unsaved file"""
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.ApplicationWindow) -> None:
         super().__init__(title=_("Save file ?"), transient_for=parent, flags=0)
         self.add_buttons(
             _("Save"),
