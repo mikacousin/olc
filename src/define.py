@@ -15,7 +15,6 @@
 """Some defines for olc project."""
 
 import unicodedata
-from typing import Any
 
 from gi.repository import Gio
 
@@ -29,13 +28,13 @@ MAX_CHANNELS = min(MAX_CHANNELS, NB_UNIVERSES * 512)
 MAX_FADER_PAGE = 10
 MAX_FADER_PER_PAGE = 10
 
-App = Gio.Application.get_default
+App = Gio.Application.get_default  # pylint: disable=invalid-name
 
 # Send DMX every DMX_INTERVAL (milliseconds)
 DMX_INTERVAL = 25
 
 
-def is_float(element: Any) -> bool:
+def is_float(element: str | float | int) -> bool:
     """Test if argument is a float
 
     Args:
@@ -51,7 +50,7 @@ def is_float(element: Any) -> bool:
         return False
 
 
-def is_non_nul_float(element: Any) -> bool:
+def is_non_nul_float(element: str | float | int) -> bool:
     """Test if argument is a float and non null
 
     Args:
@@ -63,7 +62,7 @@ def is_non_nul_float(element: Any) -> bool:
     return bool(float(element)) if is_float(element) else False
 
 
-def is_int(element: Any) -> bool:
+def is_int(element: str | float | int) -> bool:
     """Test if argument is an integer
 
     Args:
@@ -79,7 +78,7 @@ def is_int(element: Any) -> bool:
         return False
 
 
-def is_non_nul_int(element: Any) -> bool:
+def is_non_nul_int(element: str | float | int) -> bool:
     """Test if argument is an integer and non null
 
     Args:
