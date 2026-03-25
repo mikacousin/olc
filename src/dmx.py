@@ -25,6 +25,7 @@ if typing.TYPE_CHECKING:
     from .backends import DmxBackend
 
 
+# pylint: disable=too-many-instance-attributes
 class Dmx:
     """Send levels to backend"""
 
