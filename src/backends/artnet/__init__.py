@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2025 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import time
 from collections.abc import Callable
 
 from ...timer import RepeatedTimer
+from .merge import ArtDmxMerger, MergeMode
 from .network import Network, get_ip_and_mac
 from .protocol import (
     PORT,
@@ -467,9 +468,6 @@ class Listener:
         return artdmx
 
 
-from .merge import ArtDmxMerger, MergeMode
-
-
 class Listeners:
     """ArtDmx listeners."""
 
@@ -510,7 +508,7 @@ class Listeners:
         if artdmx := listener.get_artdmx(univ):
             try:
                 artdmx.decode(data)
-            except (ArtNetDecodeError, ArtNetSequenceError):
+            except ArtNetDecodeError, ArtNetSequenceError:
                 return
 
             self.merger.update(artdmx.universe, addr[0], artdmx.data)
