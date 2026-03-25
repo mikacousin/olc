@@ -25,7 +25,7 @@ def rounded_rectangle_fill(cr: cairo.Context, area: tuple[int], radius: float) -
     Args:
         cr: cairo context
         area: coordinates (top, bottom, left, right)
-        radius: arc's radius
+        radius: arc radius
     """
     a, b, c, d = area
     cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))
@@ -42,7 +42,7 @@ def rounded_rectangle(cr: cairo.Context, area: tuple[int], radius: float) -> Non
     Args:
         cr: cairo context
         area: coordinates (top, bottom, left, right)
-        radius: arc's radius
+        radius: arc radius
     """
     a, b, c, d = area
     cr.arc(a + radius, c + radius, radius, 2 * (math.pi / 2), 3 * (math.pi / 2))

@@ -74,14 +74,18 @@ class ChannelWidget(Gtk.DrawingArea):
         """
         self.width = 80 * self.scale
         self.set_size_request(self.width, self.width)
-
+        allocation = self.get_allocation()
         percent_level = App().settings.get_boolean("percent")
 
-        allocation = self.get_allocation()
+        self._draw_background(cr, allocation)
+        self._draw_channel_number(cr)
+        self._draw_level(cr, percent_level)
+        self._draw_level_bar(cr, allocation)
+        self._draw_next_level(cr, percent_level)
 
+    def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
+        """Draw background"""
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-
-        # Paint background
         if self.get_parent().is_selected():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
@@ -95,7 +99,6 @@ class ChannelWidget(Gtk.DrawingArea):
         cr.stroke()
         # Draw background
         background = Gdk.RGBA()
-        # TODO: Get background color
         background.parse("#33393B")
         cr.set_source_rgba(*list(background))
         cr.rectangle(4, 4, allocation.width - 8, self.width - 8)
@@ -108,20 +111,23 @@ class ChannelWidget(Gtk.DrawingArea):
             cr.set_source_rgb(0.2, 0.2, 0.2)
         cr.rectangle(4, 4, allocation.width - 8, 18 * self.scale)
         cr.fill()
-        # Draw channel number
-        # Default color
+
+    def _draw_channel_number(self, cr: cairo.Context) -> None:
+        """Draw channel number"""
         cr.set_source_rgb(0.9, 0.6, 0.2)
-        # Independent color
+        # Independent
         if int(self.channel) in App().lightshow.independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
-        # Not patched color
+        # Not patched
         if not App().lightshow.patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
         cr.move_to(50 * self.scale, 15 * self.scale)
         cr.show_text(self.channel)
-        # Draw level
+
+    def _draw_level(self, cr: cairo.Context, percent_level: bool) -> None:
+        """Draw level"""
         cr.set_source_rgb(
             self.color_level.get("red"),
             self.color_level.get("green"),
@@ -136,11 +142,14 @@ class ChannelWidget(Gtk.DrawingArea):
                 if self.level == 255:
                     cr.show_text("F")
                 else:
-                    # Level in %
+                    # Level %
                     cr.show_text(str(round((self.level / 256) * 100)))
             else:
-                cr.show_text(str(self.level))  # Level in 0 to 255 value
-        # Draw level bar
+                # Level 0 to 255 value
+                cr.show_text(str(self.level))
+
+    def _draw_level_bar(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
+        """Draw level bar"""
         cr.rectangle(
             allocation.width - 9,
             self.width - 4,
@@ -149,65 +158,67 @@ class ChannelWidget(Gtk.DrawingArea):
         )
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.fill()
-        # Don't draw next level if channel is in an independent
+
+    def _draw_next_level(self, cr: cairo.Context, percent_level: bool) -> None:
+        """Draw next level indicator"""
+        # Don't draw next level if channel is in a independent
         if int(self.channel) in App().lightshow.independents.get_channels():
             return
-        # Draw down icon
         if self.next_level < self.level:
-            offset_x = 6 * self.scale
-            offset_y = -6 * self.scale
-            cr.move_to(
-                offset_x + 11 * self.scale,
-                offset_y + self.width - 6 * self.scale,
-            )
-            cr.line_to(
-                offset_x + 6 * self.scale,
-                offset_y + self.width - 16 * self.scale,
-            )
-            cr.line_to(
-                offset_x + 16 * self.scale,
-                offset_y + self.width - 16 * self.scale,
-            )
-            cr.close_path()
-            cr.set_source_rgb(0.5, 0.5, 0.9)
-            cr.fill()
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
-            )
-            cr.set_font_size(10 * self.scale)
-            cr.move_to(
-                offset_x + (24 * self.scale),
-                offset_y + self.width - (6 * self.scale),
-            )
-            if percent_level:
-                if self.next_level == 255:
-                    cr.show_text("F")
-                else:
-                    # Level in %
-                    cr.show_text(str(int(round((self.next_level / 255) * 100))))
-            else:
-                cr.show_text(str(self.next_level))  # Level in 0 to 255 value
-        # Draw up icon
+            self._draw_down_icon(cr, percent_level)
         if self.next_level > self.level:
-            offset_x = 6 * self.scale
-            offset_y = 15 * self.scale
-            cr.move_to(offset_x + 11 * self.scale, offset_y + 6 * self.scale)
-            cr.line_to(offset_x + 6 * self.scale, offset_y + 16 * self.scale)
-            cr.line_to(offset_x + 16 * self.scale, offset_y + 16 * self.scale)
-            cr.close_path()
-            cr.set_source_rgb(0.9, 0.5, 0.5)
-            cr.fill()
-            # cr.set_source_rgb(0.5, 0.5, 0.9)
-            cr.select_font_face(
-                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
-            )
-            cr.set_font_size(10 * self.scale)
-            cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
-            if percent_level:
-                if self.next_level == 255:
-                    cr.show_text("F")
-                else:
-                    # Level in %
-                    cr.show_text(str(int(round((self.next_level / 255) * 100))))
+            self._draw_up_icon(cr, percent_level)
+
+    def _draw_down_icon(self, cr: cairo.Context, percent_level: bool) -> None:
+        """Draw down icon"""
+        offset_x = 6 * self.scale
+        offset_y = -6 * self.scale
+        cr.move_to(
+            offset_x + 11 * self.scale,
+            offset_y + self.width - 6 * self.scale,
+        )
+        cr.line_to(
+            offset_x + 6 * self.scale,
+            offset_y + self.width - 16 * self.scale,
+        )
+        cr.line_to(
+            offset_x + 16 * self.scale,
+            offset_y + self.width - 16 * self.scale,
+        )
+        cr.close_path()
+        cr.set_source_rgb(0.5, 0.5, 0.9)
+        cr.fill()
+
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL)
+        cr.set_font_size(10 * self.scale)
+        cr.move_to(
+            offset_x + (24 * self.scale),
+            offset_y + self.width - (6 * self.scale),
+        )
+        self._draw_next_level_text(cr, percent_level)
+
+    def _draw_up_icon(self, cr: cairo.Context, percent_level: bool) -> None:
+        """Draw up icon"""
+        offset_x = 6 * self.scale
+        offset_y = 15 * self.scale
+        cr.move_to(offset_x + 11 * self.scale, offset_y + 6 * self.scale)
+        cr.line_to(offset_x + 6 * self.scale, offset_y + 16 * self.scale)
+        cr.line_to(offset_x + 16 * self.scale, offset_y + 16 * self.scale)
+        cr.close_path()
+        cr.set_source_rgb(0.9, 0.5, 0.5)
+        cr.fill()
+
+        cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL)
+        cr.set_font_size(10 * self.scale)
+        cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
+        self._draw_next_level_text(cr, percent_level)
+
+    def _draw_next_level_text(self, cr: cairo.Context, percent_level: bool) -> None:
+        """Draw text for next level"""
+        if percent_level:
+            if self.next_level == 255:
+                cr.show_text("F")
             else:
-                cr.show_text(str(self.next_level))  # Level in 0 to 255 value
+                cr.show_text(str(int(round((self.next_level / 255) * 100))))
+        else:
+            cr.show_text(str(self.next_level))

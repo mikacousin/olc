@@ -214,7 +214,7 @@ class PatchWidget(Gtk.DrawingArea):
             number = App().lightshow.patch.outputs[self.universe][self.output][1]
             curve = App().lightshow.curves.get_curve(number)
             if curve.is_all_zero():
-                # Level's output blocked at 0
+                # Level output blocked at 0
                 if self.get_parent().is_selected():
                     cr.set_source_rgb(0.8, 0.1, 0.1)
                 else:
