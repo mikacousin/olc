@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,10 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from gi.repository import Gtk
-from olc.define import App
+import typing
 
+from gi.repository import Gtk
+
+from ..define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    import cairo
 
 
 class ToggleWidget(Gtk.ToggleButton):
@@ -23,7 +28,7 @@ class ToggleWidget(Gtk.ToggleButton):
 
     __gtype_name__ = "ToggleWidget"
 
-    def __init__(self, text="None"):
+    def __init__(self, text: str = "None") -> None:
         Gtk.ToggleButton.__init__(self)
 
         self.width = 50
@@ -31,7 +36,7 @@ class ToggleWidget(Gtk.ToggleButton):
         self.radius = 5
         self.text = text
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Toggle button
 
         Args:

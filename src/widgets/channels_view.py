@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App, is_int, is_non_nul_int
@@ -34,7 +34,7 @@ class ChannelsView(Gtk.Box):
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, orientation=Gtk.Orientation.VERTICAL, **kwargs)
 
         self.view_mode = VIEW_MODES.get("All")
@@ -64,7 +64,7 @@ class ChannelsView(Gtk.Box):
         self.pack_start(self.scrolled, True, True, 0)
         self.combo.set_active(0)
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> Any:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> object:
         """Display channels
 
         Args:
@@ -184,7 +184,8 @@ class ChannelsView(Gtk.Box):
         """Select next channel"""
         self.flowbox.unselect_all()
         if self.last_selected_channel and not is_non_nul_int(
-                self.last_selected_channel):
+            self.last_selected_channel
+        ):
             return
         if self.view_mode == VIEW_MODES["Patched"]:
             self._next_patched()
@@ -194,8 +195,9 @@ class ChannelsView(Gtk.Box):
             return
         # Default mode: All channels
         selected_channel = ""
-        channel_index = (int(self.last_selected_channel)
-                         if self.last_selected_channel else 0)
+        channel_index = (
+            int(self.last_selected_channel) if self.last_selected_channel else 0
+        )
 
         if channel_index > MAX_CHANNELS - 1:
             channel_index = 0
@@ -210,8 +212,11 @@ class ChannelsView(Gtk.Box):
         """Select next channel in Active mode view"""
         selected_channel = ""
         children = self.flowbox.get_children()
-        start = (int(self.last_selected_channel)
-                 if self.last_selected_channel else self.__get_first_active_channel())
+        start = (
+            int(self.last_selected_channel)
+            if self.last_selected_channel
+            else self.__get_first_active_channel()
+        )
 
         for child in children:
             channel_index = child.get_index()
@@ -228,8 +233,11 @@ class ChannelsView(Gtk.Box):
 
     def _next_patched(self) -> None:
         """Select next channel in Patched mode view"""
-        start = (int(self.last_selected_channel) if self.last_selected_channel else
-                 App().lightshow.patch.get_first_patched_channel() - 1)
+        start = (
+            int(self.last_selected_channel)
+            if self.last_selected_channel
+            else App().lightshow.patch.get_first_patched_channel() - 1
+        )
 
         for channel_index in range(start, MAX_CHANNELS):
             if App().lightshow.patch.is_patched(channel_index + 1):
@@ -247,7 +255,8 @@ class ChannelsView(Gtk.Box):
         """Select previous channel"""
         self.flowbox.unselect_all()
         if self.last_selected_channel and not is_non_nul_int(
-                self.last_selected_channel):
+            self.last_selected_channel
+        ):
             return
         if self.view_mode == VIEW_MODES["Patched"]:
             self._previous_patched()
@@ -257,8 +266,9 @@ class ChannelsView(Gtk.Box):
             return
         # Default mode: All channels
         selected_channel = ""
-        channel_index = (int(self.last_selected_channel) -
-                         2 if self.last_selected_channel else 0)
+        channel_index = (
+            int(self.last_selected_channel) - 2 if self.last_selected_channel else 0
+        )
 
         if channel_index < 0:
             channel_index = MAX_CHANNELS - 1
@@ -272,9 +282,11 @@ class ChannelsView(Gtk.Box):
     def _previous_active(self) -> None:
         """Select previous channel in Active mode view"""
         selected_channel = ""
-        start = (int(self.last_selected_channel) -
-                 2 if self.last_selected_channel else self.__get_last_active_channel() +
-                 1)
+        start = (
+            int(self.last_selected_channel) - 2
+            if self.last_selected_channel
+            else self.__get_last_active_channel() + 1
+        )
 
         children = self.flowbox.get_children()
         children.reverse()
@@ -293,8 +305,11 @@ class ChannelsView(Gtk.Box):
 
     def _previous_patched(self) -> None:
         """Select previous channel in Patched mode view"""
-        start = (int(self.last_selected_channel) - 2 if self.last_selected_channel else
-                 App().lightshow.patch.get_last_patched_channel())
+        start = (
+            int(self.last_selected_channel) - 2
+            if self.last_selected_channel
+            else App().lightshow.patch.get_last_patched_channel()
+        )
 
         for channel_index in range(start, 0, -1):
             if App().lightshow.patch.is_patched(channel_index + 1):
@@ -434,7 +449,7 @@ class ChannelsView(Gtk.Box):
         elif parent:
             parent.get_parent().grab_focus()
 
-    def on_key_press(self, keyname: str) -> Any:
+    def on_key_press(self, keyname: str) -> Callable | None:
         """Processes common keyboard methods of Channels View
 
         Args:
@@ -444,17 +459,17 @@ class ChannelsView(Gtk.Box):
             method or None
         """
         if keyname in {
-                "f",
-                "Page_Up",
-                "Page_Down",
-                "a",
-                "c",
-                "KP_Divide",
-                "greater",
-                "KP_Add",
-                "plus",
-                "KP_Subtract",
-                "minus",
+            "f",
+            "Page_Up",
+            "Page_Down",
+            "a",
+            "c",
+            "KP_Divide",
+            "greater",
+            "KP_Add",
+            "plus",
+            "KP_Subtract",
+            "minus",
         }:
             if func := getattr(self, f"_keypress_{keyname.lower()}", None):
                 return func()
@@ -488,7 +503,7 @@ class ChannelsView(Gtk.Box):
         self.grab_focus()
         App().window.commandline.set_string("")
 
-    def _keypress_kp_divide(self):
+    def _keypress_kp_divide(self) -> None:
         self._keypress_greater()
 
     def _keypress_greater(self) -> None:
@@ -497,7 +512,7 @@ class ChannelsView(Gtk.Box):
         self.grab_focus()
         App().window.commandline.set_string("")
 
-    def _keypress_kp_add(self):
+    def _keypress_kp_add(self) -> None:
         self._keypress_plus()
 
     def _keypress_plus(self) -> None:
@@ -506,7 +521,7 @@ class ChannelsView(Gtk.Box):
         self.grab_focus()
         App().window.commandline.set_string("")
 
-    def _keypress_kp_subtract(self):
+    def _keypress_kp_subtract(self) -> None:
         self._keypress_minus()
 
     def _keypress_minus(self) -> None:

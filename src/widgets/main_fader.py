@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ class MainFaderWidget(Gtk.Widget):
 
     __gtype_name__ = "MainFaderWidget"
 
-    def __init__(self):
+    def __init__(self) -> None:
         Gtk.Widget.__init__(self)
 
         self.width = 100
@@ -34,7 +34,7 @@ class MainFaderWidget(Gtk.Widget):
 
         self.set_size_request(self.width, self.height)
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Main Fader widget
 
         Args:
@@ -46,17 +46,19 @@ class MainFaderWidget(Gtk.Widget):
             area = (1, self.width - 2, 1, self.height - 2)
             rounded_rectangle(cr, area, self.radius)
             # Draw Text
-            self.label = (f"Main Fader "
-                          f"{round(App().backend.dmx.main_fader.value * 100)}%")
+            self.label = (
+                f"Main Fader {round(App().backend.dmx.main_fader.value * 100)}%"
+            )
             cr.set_source_rgb(0.8, 0.3, 0.3)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(11)
             (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-            cr.move_to(self.width / 2 - w / 2,
-                       self.height / 2 - (h - (self.radius * 2)) / 2)
+            cr.move_to(
+                self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
+            )
             cr.show_text(self.label)
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -66,10 +68,12 @@ class MainFaderWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

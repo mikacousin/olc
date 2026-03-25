@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,9 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import math
+import typing
+
+if typing.TYPE_CHECKING:
+    import cairo
 
 
-def rounded_rectangle_fill(cr, area, radius):
+def rounded_rectangle_fill(cr: cairo.Context, area: tuple[int], radius: float) -> None:
     """Draw a filled rounded box
 
     Args:
@@ -32,7 +36,7 @@ def rounded_rectangle_fill(cr, area, radius):
     cr.fill()
 
 
-def rounded_rectangle(cr, area, radius):
+def rounded_rectangle(cr: cairo.Context, area: tuple[int], radius: float) -> None:
     """Draw a rounded box
 
     Args:

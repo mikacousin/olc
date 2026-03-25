@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,10 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import math
+import typing
 from dataclasses import dataclass
 
 from gi.repository import Gdk, GObject, Gtk
-from olc.define import App
+
+from ..define import App
+
+if typing.TYPE_CHECKING:
+    import cairo
+
+    from ..curve import Curve
 
 
 @dataclass
@@ -34,7 +41,9 @@ class CurvePointWidget(Gtk.DrawingArea):
 
     __gsignals__ = {"toggled": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
-    def __init__(self, *args, number=0, curve=None, **kwds):
+    def __init__(
+        self, *args: object, number: int = 0, curve: Curve | None = None, **kwds: object
+    ) -> None:
         super().__init__(*args, **kwds)
         self.active = False
         self.number = number
@@ -47,7 +56,7 @@ class CurvePointWidget(Gtk.DrawingArea):
         self.prev = Point()
         self.max = Point()
 
-    def button_pressed(self, widget, event):
+    def button_pressed(self, widget: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Button pressed
 
         Args:
@@ -80,10 +89,11 @@ class CurvePointWidget(Gtk.DrawingArea):
             edit_wgt_height = tab.curve_edition.edit_curve.height
             x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
             y_curve = round(
-                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255)
+                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
+            )
             tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
-    def motion_notify(self, widget, event):
+    def motion_notify(self, widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Button moved
 
         Args:
@@ -104,7 +114,8 @@ class CurvePointWidget(Gtk.DrawingArea):
             edit_wgt_height = tab.curve_edition.edit_curve.height
             x_curve = round(((x - 20 + 4) / (edit_wgt_width - 40)) * 255)
             y_curve = round(
-                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255)
+                ((edit_wgt_height - y - 20 - 4) / (edit_wgt_height - 40)) * 255
+            )
             # First point
             if self.number == 0:
                 tab.curve_edition.label.set_label(f"0, {y_curve}")
@@ -116,8 +127,10 @@ class CurvePointWidget(Gtk.DrawingArea):
                 self.curve.points[self.number] = (255, y_curve)
                 fixed.move(widget, 976, y)
             # Don't move before/after previous/next point
-            elif (not x_curve <= self.curve.points[self.number - 1][0]
-                  and not x_curve >= self.curve.points[self.number + 1][0]):
+            elif (
+                not x_curve <= self.curve.points[self.number - 1][0]
+                and not x_curve >= self.curve.points[self.number + 1][0]
+            ):
                 tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
                 if any(x_curve in point for point in self.curve.points):
                     if self.curve.points[self.number][0] == x_curve:
@@ -141,7 +154,7 @@ class CurvePointWidget(Gtk.DrawingArea):
             return True
         return False
 
-    def set_active(self, active: bool):
+    def set_active(self, active: bool) -> None:
         """Set activate status
 
         Args:
@@ -150,7 +163,7 @@ class CurvePointWidget(Gtk.DrawingArea):
         self.active = active
         self.queue_draw()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Curve Point Widget
 
         Args:

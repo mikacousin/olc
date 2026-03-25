@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,9 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import math
+import typing
 
 from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
+
+if typing.TYPE_CHECKING:
+    import cairo
 
 
 class KnobWidget(Gtk.DrawingArea):
@@ -28,7 +32,7 @@ class KnobWidget(Gtk.DrawingArea):
         "changed": (GObject.SignalFlags.ACTION, None, ()),
     }
 
-    def __init__(self, text="None"):
+    def __init__(self, text: str = "None") -> None:
         Gtk.DrawingArea.__init__(self)
 
         self.value = 0
@@ -49,7 +53,7 @@ class KnobWidget(Gtk.DrawingArea):
         self.add_events(Gdk.EventMask.BUTTON1_MOTION_MASK)
         self.connect("motion-notify-event", self.on_motion)
 
-    def on_press(self, _tgt, event):
+    def on_press(self, _tgt: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Mouse button pressed
 
         Args:
@@ -59,12 +63,12 @@ class KnobWidget(Gtk.DrawingArea):
         self.y1 = event.y
         self.old_value = self.value
 
-    def on_release(self, _tgt, _ev):
+    def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Mouse button released"""
         self.old_angle = 0
         self.emit("clicked")
 
-    def on_motion(self, _tgt, event):
+    def on_motion(self, _tgt: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Track mouse to rotate knob
 
         Args:
@@ -87,8 +91,9 @@ class KnobWidget(Gtk.DrawingArea):
             angle = angle + math.pi / 2
             self.x1 = x2
             self.y1 = y2
-        self.value = self.old_value + ((self.old_angle + angle) * (180 * 255) /
-                                       (300 * math.pi))
+        self.value = self.old_value + (
+            (self.old_angle + angle) * (180 * 255) / (300 * math.pi)
+        )
         if self.value < 0:
             self.value = 0
         elif self.value > 255:
@@ -96,14 +101,14 @@ class KnobWidget(Gtk.DrawingArea):
         self.emit("changed")
         self.queue_draw()
 
-    def get_value(self):
+    def get_value(self) -> float:
         """
         Returns:
             value (0-255)
         """
         return self.value
 
-    def on_scroll(self, _widget, event):
+    def on_scroll(self, _widget: Gtk.Widget, event: Gdk.EventScroll) -> None:
         """On mouse wheel event
 
         Args:
@@ -123,7 +128,7 @@ class KnobWidget(Gtk.DrawingArea):
         self.emit("changed")
         self.queue_draw()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Knob
 
         Args:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,11 +12,16 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
 
+from ..define import App
 from .common import rounded_rectangle, rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    from ..patch import DMXPatch
 
 
 # pylint: disable=R0903
@@ -25,7 +30,7 @@ class PatchChannelHeader(Gtk.Misc):
 
     __gtype_name__ = "PatchChannelHeader"
 
-    def __init__(self):
+    def __init__(self) -> None:
         Gtk.Misc.__init__(self)
 
         self.width = 600
@@ -36,7 +41,7 @@ class PatchChannelHeader(Gtk.Misc):
 
         self.set_size_request(self.width, self.height)
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Header widget
 
         Args:
@@ -89,7 +94,7 @@ class PatchChannelWidget(Gtk.Widget):
 
     __gtype_name__ = "PatchChannelWidget"
 
-    def __init__(self, channel, patch):
+    def __init__(self, channel: int, patch: DMXPatch) -> None:
         Gtk.Widget.__init__(self)
 
         self.channel = channel
@@ -102,7 +107,7 @@ class PatchChannelWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, _tgt, event):
+    def on_click(self, _tgt: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Widget clicked
 
         Args:
@@ -115,12 +120,15 @@ class PatchChannelWidget(Gtk.Widget):
             App().tabs.tabs["patch_channels"].thru()
         else:
             App().tabs.tabs["patch_channels"].flowbox.unselect_all()
-            child = (App().tabs.tabs["patch_channels"].flowbox.get_child_at_index(
-                self.channel - 1))
+            child = (
+                App()
+                .tabs.tabs["patch_channels"]
+                .flowbox.get_child_at_index(self.channel - 1)
+            )
             App().tabs.tabs["patch_channels"].flowbox.select_child(child)
             App().tabs.tabs["patch_channels"].last_chan_selected = str(self.channel - 1)
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw widget
 
         Args:
@@ -148,7 +156,7 @@ class PatchChannelWidget(Gtk.Widget):
         # Draw patched outputs
         self._draw_output_boxes(cr)
 
-    def _draw_channel_number(self, cr):
+    def _draw_channel_number(self, cr: cairo.Context) -> None:
         """Draw Channel number
 
         Args:
@@ -161,7 +169,7 @@ class PatchChannelWidget(Gtk.Widget):
         cr.move_to(60 / 2 - w / 2, self.height / 2 - (h - 20) / 2)
         cr.show_text(str(self.channel))
 
-    def _draw_output_boxes(self, cr):
+    def _draw_output_boxes(self, cr: cairo.Context) -> None:
         """Draw outputs boxes
 
         Args:
@@ -177,7 +185,7 @@ class PatchChannelWidget(Gtk.Widget):
         else:
             self._draw_two_lines(cr)
 
-    def _draw_one_line(self, cr):
+    def _draw_one_line(self, cr: cairo.Context) -> None:
         """Draw Outputs on a single line
 
         Args:
@@ -196,16 +204,18 @@ class PatchChannelWidget(Gtk.Widget):
 
                 # Draw Output number
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
-                                    cairo.FontWeight.BOLD)
+                cr.select_font_face(
+                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                )
                 cr.set_font_size(12)
                 univ = item[1]
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{output}.{univ}")
-                cr.move_to(65 + (i * 65) + (60 / 2) - w / 2,
-                           self.height / 2 - (h - 20) / 2)
+                cr.move_to(
+                    65 + (i * 65) + (60 / 2) - w / 2, self.height / 2 - (h - 20) / 2
+                )
                 cr.show_text(f"{output}.{univ}")
 
-    def _draw_two_lines(self, cr):
+    def _draw_two_lines(self, cr: cairo.Context) -> None:
         """Draw Outputs on two lines
 
         Args:
@@ -238,8 +248,9 @@ class PatchChannelWidget(Gtk.Widget):
 
                     # Draw Output number
                     cr.set_source_rgb(0.9, 0.9, 0.9)
-                    cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
-                                        cairo.FontWeight.BOLD)
+                    cr.select_font_face(
+                        "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                    )
                     cr.set_font_size(10)
                     if i == 31:
                         # Draw '...' in the last box
@@ -258,7 +269,9 @@ class PatchChannelWidget(Gtk.Widget):
 
                 cr.show_text(f"{output}.{univ}")
 
-    def _draw_first_line(self, cr, i, output, univ):
+    def _draw_first_line(
+        self, cr: cairo.Context, i: int, output: int, univ: int
+    ) -> None:
         """Draw First line of outputs
 
         Args:
@@ -276,10 +289,11 @@ class PatchChannelWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(f"{output}.{univ}")
-        cr.move_to(65 + (i * 32) + (30 / 2) - w / 2,
-                   (self.height / 2) / 2 - (h - 20) / 2)
+        cr.move_to(
+            65 + (i * 32) + (30 / 2) - w / 2, (self.height / 2) / 2 - (h - 20) / 2
+        )
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -289,10 +303,12 @@ class PatchChannelWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

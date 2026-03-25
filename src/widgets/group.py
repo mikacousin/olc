@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ class GroupWidget(Gtk.Widget):
 
     __gtype_name__ = "GroupWidget"
 
-    def __init__(self, number, name):
+    def __init__(self, number: float, name: str) -> None:
         self.number = number
         self.name = name
 
@@ -73,7 +73,7 @@ class GroupWidget(Gtk.Widget):
         self.popover.popdown()
         App().lightshow.set_modified()
 
-    def on_click(self, _tgt, _ev):
+    def on_click(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Group clicked"""
         child = self.get_parent()
         if not child.is_selected():
@@ -84,7 +84,7 @@ class GroupWidget(Gtk.Widget):
         else:
             self.popover.popup()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Group widget
 
         Args:
@@ -124,7 +124,7 @@ class GroupWidget(Gtk.Widget):
         else:
             cr.show_text(self.name)
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -134,10 +134,12 @@ class GroupWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

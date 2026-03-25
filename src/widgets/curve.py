@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,10 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 from gi.repository import Gtk
 from olc.define import App
 
 from .common import rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    import cairo
 
 
 class CurveWidget(Gtk.Button):
@@ -23,14 +28,14 @@ class CurveWidget(Gtk.Button):
 
     __gtype_name__ = "CurveWidget"
 
-    def __init__(self, curve: int):
+    def __init__(self, curve: int) -> None:
         super().__init__()
         self.curve_nb = curve
         self.curve = App().lightshow.curves.get_curve(curve)
 
         self.connect("clicked", self.on_click)
 
-    def on_click(self, _button) -> None:
+    def on_click(self, _button: Gtk.Button) -> None:
         """Button clicked
 
         Raises:
@@ -38,7 +43,7 @@ class CurveWidget(Gtk.Button):
         """
         raise NotImplementedError
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw curve
 
         Args:

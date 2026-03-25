@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ class GoWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, *args: object, **kwds: object) -> None:
         super().__init__(*args, **kwds)
 
         self.width = 100
@@ -42,20 +42,20 @@ class GoWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
 
-    def on_press(self, _tgt, _ev):
+    def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go pressed"""
         App().midi.messages.notes.send("go", 127)
         self.pressed = True
         self.queue_draw()
 
-    def on_release(self, _tgt, _ev):
+    def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go released"""
         App().midi.messages.notes.send("go", 0)
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Go button
 
         Args:
@@ -80,11 +80,12 @@ class GoWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(10)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Go")
-        cr.move_to(self.width / 2 - w / 2,
-                   self.height / 2 - (h - (self.radius * 2)) / 2)
+        cr.move_to(
+            self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
+        )
         cr.show_text("Go")
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -94,10 +95,12 @@ class GoWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

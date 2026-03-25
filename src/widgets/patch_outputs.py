@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,11 +24,11 @@ from .common import rounded_rectangle, rounded_rectangle_fill
 class CurvePatchOutputWidget(CurveWidget):
     """Curve Widget"""
 
-    def __init__(self, curve: int, widget):
+    def __init__(self, curve: int, widget: PatchWidget) -> None:
         self.parent_widget = widget
         super().__init__(curve)
 
-    def on_click(self, _button) -> None:
+    def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""
         self.parent_widget.popover.popdown()
         tab = App().tabs.tabs["patch_outputs"]
@@ -36,8 +36,10 @@ class CurvePatchOutputWidget(CurveWidget):
         for output in outputs:
             out = output[0]
             univ = output[1]
-            if (univ in App().lightshow.patch.outputs
-                    and out in App().lightshow.patch.outputs[univ]):
+            if (
+                univ in App().lightshow.patch.outputs
+                and out in App().lightshow.patch.outputs[univ]
+            ):
                 App().lightshow.patch.outputs[univ][out][1] = self.curve_nb
         tab.refresh()
         App().lightshow.set_modified()
@@ -48,7 +50,7 @@ class PatchWidget(Gtk.DrawingArea):
 
     __gtype_name__ = "PatchWidget"
 
-    def __init__(self, universe, output):
+    def __init__(self, universe: int, output: int) -> None:
         self.universe = universe
         self.output = output
 
@@ -64,7 +66,7 @@ class PatchWidget(Gtk.DrawingArea):
         self.popover = None
         self.stack = None
 
-    def on_click(self, _tgt, event: Gdk.Event) -> None:
+    def on_click(self, _tgt: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Widget clicked
 
         Args:
@@ -79,8 +81,11 @@ class PatchWidget(Gtk.DrawingArea):
             App().lightshow.patch.by_outputs.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
-            child = (App().tabs.tabs["patch_outputs"].flowbox.get_child_at_index(
-                widget_index))
+            child = (
+                App()
+                .tabs.tabs["patch_outputs"]
+                .flowbox.get_child_at_index(widget_index)
+            )
             if self.get_parent().is_selected():
                 App().tabs.tabs["patch_outputs"].flowbox.unselect_child(child)
                 App().window.commandline.set_string(f"{self.output}.{self.universe}")
@@ -90,13 +95,18 @@ class PatchWidget(Gtk.DrawingArea):
                 App().window.commandline.set_string(f"{self.output}.{self.universe}")
                 App().lightshow.patch.by_outputs.add_output()
         else:
-            child = (App().tabs.tabs["patch_outputs"].flowbox.get_child_at_index(
-                widget_index))
+            child = (
+                App()
+                .tabs.tabs["patch_outputs"]
+                .flowbox.get_child_at_index(widget_index)
+            )
             if not child.is_selected():
                 App().window.commandline.set_string(f"{self.output}.{self.universe}")
                 App().lightshow.patch.by_outputs.select_output()
-            elif (self.universe in App().lightshow.patch.outputs
-                  and self.output in App().lightshow.patch.outputs[self.universe]):
+            elif (
+                self.universe in App().lightshow.patch.outputs
+                and self.output in App().lightshow.patch.outputs[self.universe]
+            ):
                 # Change curve only on patched outputs
                 self.open_popup()
 
@@ -148,30 +158,28 @@ class PatchWidget(Gtk.DrawingArea):
             button: Button clicked
         """
         label = button.get_label()
+        curve_nb = int(self.stack.get_visible_child_name())
+        curves_list = list(App().lightshow.curves.curves.keys())
+
+        try:
+            idx = curves_list.index(curve_nb)
+        except ValueError:
+            idx = 0
+
         if label in ">":
-            curve_nb = int(self.stack.get_visible_child_name())
-            keys = iter(App().lightshow.curves.curves)
-            curve_nb in keys  # pylint: disable=W0104
-            next_curve = next(keys, False)
-            if not next_curve:
-                next_curve = 0
-            child = self.stack.get_child_by_name(str(next_curve))
-            child.show()
-            self.stack.set_visible_child(child)
+            if idx + 1 < len(curves_list):
+                target_curve = curves_list[idx + 1]
+            else:
+                target_curve = 0
         else:
-            curve_nb = int(self.stack.get_visible_child_name())
-            keys = iter(App().lightshow.curves.curves)
-            curves_list = list(App().lightshow.curves.curves.keys())
-            i = 0
-            for i, number in enumerate(curves_list):
-                if number == curve_nb:
-                    break
-            prev_curve = curves_list[i - 1]
-            child = self.stack.get_child_by_name(str(prev_curve))
+            target_curve = curves_list[idx - 1]
+
+        child = self.stack.get_child_by_name(str(target_curve))
+        if child:
             child.show()
             self.stack.set_visible_child(child)
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw widget
 
         Args:
@@ -191,7 +199,7 @@ class PatchWidget(Gtk.DrawingArea):
         # Draw Curve
         self._draw_curve(cr, allocation)
 
-    def _draw_background(self, cr, allocation):
+    def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw background
 
         Args:
@@ -199,8 +207,10 @@ class PatchWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
-        if (self.universe in App().lightshow.patch.outputs
-                and self.output in App().lightshow.patch.outputs[self.universe]):
+        if (
+            self.universe in App().lightshow.patch.outputs
+            and self.output in App().lightshow.patch.outputs[self.universe]
+        ):
             number = App().lightshow.patch.outputs[self.universe][self.output][1]
             curve = App().lightshow.curves.get_curve(number)
             if curve.is_all_zero():
@@ -225,12 +235,13 @@ class PatchWidget(Gtk.DrawingArea):
         if App().backend.dmx.frame[index][self.output - 1]:
             level = App().backend.dmx.frame[index][self.output - 1]
             # cr.move_to(0, 0)
-            cr.set_source_rgba(0.3 + (0.2 / 255 * level), 0.3,
-                               0.3 - (0.3 / 255 * level), 0.6)
+            cr.set_source_rgba(
+                0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
+            )
             area = (1, allocation.width - 2, 1, allocation.height - 2)
             rounded_rectangle_fill(cr, area, 10)
 
-    def _draw_output_number(self, cr, allocation):
+    def _draw_output_number(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output number
 
         Args:
@@ -242,11 +253,14 @@ class PatchWidget(Gtk.DrawingArea):
         cr.set_font_size(11 * self.scale)
         text = f"{self.output}.{self.universe}"
         (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-        cr.move_to(allocation.width / 2 - width / 2,
-                   allocation.height / 4 - (height - 20) / 4)
+        cr.move_to(
+            allocation.width / 2 - width / 2, allocation.height / 4 - (height - 20) / 4
+        )
         cr.show_text(text)
 
-    def _draw_channel_number(self, cr, allocation):
+    def _draw_channel_number(
+        self, cr: cairo.Context, allocation: Gdk.Rectangle
+    ) -> None:
         """Draw Channel number
 
         Args:
@@ -256,8 +270,10 @@ class PatchWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
-        if (self.universe in App().lightshow.patch.outputs
-                and self.output in App().lightshow.patch.outputs[self.universe]):
+        if (
+            self.universe in App().lightshow.patch.outputs
+            and self.output in App().lightshow.patch.outputs[self.universe]
+        ):
             text = str(App().lightshow.patch.outputs[self.universe][self.output][0])
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
             if App().lightshow.patch.outputs[self.universe][self.output][0] > 0:
@@ -267,7 +283,7 @@ class PatchWidget(Gtk.DrawingArea):
                 )
                 cr.show_text(text)
 
-    def _draw_output_level(self, cr, allocation):
+    def _draw_output_level(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output level
 
         Args:
@@ -288,15 +304,17 @@ class PatchWidget(Gtk.DrawingArea):
             )
             cr.show_text(text)
 
-    def _draw_curve(self, cr, allocation):
+    def _draw_curve(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Dimmer Curve
 
         Args:
             cr: Cairo context
             allocation: Widget allocation
         """
-        if (self.universe in App().lightshow.patch.outputs
-                and self.output in App().lightshow.patch.outputs[self.universe]):
+        if (
+            self.universe in App().lightshow.patch.outputs
+            and self.output in App().lightshow.patch.outputs[self.universe]
+        ):
             number = App().lightshow.patch.outputs[self.universe][self.output][1]
             # Don't draw linear curve
             if number:
@@ -307,7 +325,7 @@ class PatchWidget(Gtk.DrawingArea):
                 for x, y in curve.values.items():
                     cr.line_to(
                         10 + (x / 255) * (allocation.width - 20),
-                        (allocation.height - 10) - ((y / 255) *
-                                                    (allocation.height - 20)),
+                        (allocation.height - 10)
+                        - ((y / 255) * (allocation.height - 20)),
                     )
                 cr.stroke()

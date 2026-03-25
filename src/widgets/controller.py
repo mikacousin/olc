@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,9 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import math
+import typing
 
 from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
+
+if typing.TYPE_CHECKING:
+    import cairo
 
 
 class ControllerWidget(Gtk.DrawingArea):
@@ -40,7 +44,7 @@ class ControllerWidget(Gtk.DrawingArea):
         "clicked": (GObject.SignalFlags.ACTION, None, ()),
     }
 
-    def __init__(self, text="None"):
+    def __init__(self, text: str = "None") -> None:
         Gtk.DrawingArea.__init__(self)
 
         self.angle = 0
@@ -61,7 +65,7 @@ class ControllerWidget(Gtk.DrawingArea):
         self.add_events(Gdk.EventMask.BUTTON1_MOTION_MASK)
         self.connect("motion-notify-event", self.on_motion)
 
-    def on_press(self, _tgt, event):
+    def on_press(self, _tgt: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Mouse button pressed
 
         Args:
@@ -71,12 +75,12 @@ class ControllerWidget(Gtk.DrawingArea):
         self.y1 = event.y
         self.old_angle = math.radians(self.angle)
 
-    def on_release(self, _tgt, _ev):
+    def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Mouse button released"""
         self.old_angle = 0
         self.emit("clicked")
 
-    def on_motion(self, _tgt, event):
+    def on_motion(self, _tgt: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Track mouse to rotate controller
 
         Args:
@@ -109,7 +113,7 @@ class ControllerWidget(Gtk.DrawingArea):
         else:
             self.emit("moved", Gdk.ScrollDirection.DOWN, step)
 
-    def on_scroll(self, _widget, event):
+    def on_scroll(self, _widget: Gtk.Widget, event: Gdk.EventScroll) -> None:
         """On scroll wheel event
 
         Args:
@@ -124,7 +128,7 @@ class ControllerWidget(Gtk.DrawingArea):
             elif direction == Gdk.ScrollDirection.DOWN:
                 self.emit("moved", Gdk.ScrollDirection.DOWN, step)
 
-    def do_moved(self, direction, step):
+    def do_moved(self, direction: Gdk.ScrollDirection, step: int) -> None:
         """On 'moved' signal
 
         Args:
@@ -141,7 +145,7 @@ class ControllerWidget(Gtk.DrawingArea):
             self.angle += 360
         self.queue_draw()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Controller
 
         Args:

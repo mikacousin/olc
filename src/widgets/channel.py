@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@ class ChannelWidget(Gtk.DrawingArea):
 
     __gtype_name__ = "ChannelWidget"
 
-    def __init__(self, channel, level, next_level):
+    def __init__(self, channel: int, level: int, next_level: int) -> None:
         super().__init__()
 
         self.channel = str(channel)
@@ -39,7 +39,7 @@ class ChannelWidget(Gtk.DrawingArea):
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
-    def on_click(self, target, event):
+    def on_click(self, target: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Select clicked widget
 
         Args:
@@ -60,11 +60,13 @@ class ChannelWidget(Gtk.DrawingArea):
             flowbox.select_child(flowboxchild)
             channels_view.last_selected_channel = self.channel
         # If Main channels view, update Track Channels if opened
-        if (channels_view is App().window.live_view.channels_view
-                and App().tabs.tabs["track_channels"]):
+        if (
+            channels_view is App().window.live_view.channels_view
+            and App().tabs.tabs["track_channels"]
+        ):
             App().tabs.tabs["track_channels"].update_display()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw widget
 
         Args:
@@ -169,8 +171,9 @@ class ChannelWidget(Gtk.DrawingArea):
             cr.close_path()
             cr.set_source_rgb(0.5, 0.5, 0.9)
             cr.fill()
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
-                                cairo.FontWeight.NORMAL)
+            cr.select_font_face(
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+            )
             cr.set_font_size(10 * self.scale)
             cr.move_to(
                 offset_x + (24 * self.scale),
@@ -195,8 +198,9 @@ class ChannelWidget(Gtk.DrawingArea):
             cr.set_source_rgb(0.9, 0.5, 0.5)
             cr.fill()
             # cr.set_source_rgb(0.5, 0.5, 0.9)
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
-                                cairo.FontWeight.NORMAL)
+            cr.select_font_face(
+                "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.NORMAL
+            )
             cr.set_font_size(10 * self.scale)
             cr.move_to(offset_x + (24 * self.scale), offset_y + (16 * self.scale))
             if percent_level:

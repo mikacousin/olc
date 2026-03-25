@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ class FlashWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, label="", text="None"):
+    def __init__(self, label: str = "", text: str = "None") -> None:
         Gtk.Widget.__init__(self)
 
         self.width = 40
@@ -45,18 +45,18 @@ class FlashWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
 
-    def on_press(self, _tgt, _ev):
+    def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Flash button pressed"""
         self.pressed = True
         self.queue_draw()
 
-    def on_release(self, _tgt, _ev):
+    def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Flash button released"""
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Flash button
 
         Args:
@@ -94,7 +94,7 @@ class FlashWidget(Gtk.Widget):
         cr.move_to(self.width / 2 - w / 2, (self.height / 3) * 2)
         cr.show_text(self.label[6:12])
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -104,10 +104,12 @@ class FlashWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

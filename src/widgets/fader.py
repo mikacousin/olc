@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,10 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 from gi.repository import Gdk, GObject, Gtk
 from olc.define import App
 
 from .common import rounded_rectangle, rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    import cairo
 
 
 class FaderWidget(Gtk.Scale):
@@ -25,7 +30,15 @@ class FaderWidget(Gtk.Scale):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, *args, text="None", red=0.2, green=0.2, blue=0.2, **kwds):
+    def __init__(
+        self,
+        *args: object,
+        text: str = "None",
+        red: float = 0.2,
+        green: float = 0.2,
+        blue: float = 0.2,
+        **kwds: object,
+    ) -> None:
         super().__init__(*args, **kwds)
 
         self.red = red
@@ -40,7 +53,7 @@ class FaderWidget(Gtk.Scale):
         self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
         self.connect("button-release-event", self.on_release)
 
-    def on_press(self, _tgt, _ev):
+    def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Fader pressed"""
         self.pressed = True
         self.queue_draw()
@@ -48,13 +61,13 @@ class FaderWidget(Gtk.Scale):
         if self in (App().virtual_console.scale_a, App().virtual_console.scale_b):
             App().crossfade.manual = True
 
-    def on_release(self, _tgt, _ev):
+    def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Fader released"""
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Fader
 
         Args:
@@ -81,8 +94,12 @@ class FaderWidget(Gtk.Scale):
         if self.get_inverted():
             h = height - (((height - layout_h - 10 - (20 / 2)) / 255) * value)
         else:
-            h = (layout_h + 10 + (20 / 2) + (((height - layout_h - 10 -
-                                               (20 / 2)) / 255) * value))
+            h = (
+                layout_h
+                + 10
+                + (20 / 2)
+                + (((height - layout_h - 10 - (20 / 2)) / 255) * value)
+            )
 
         # Draw LED
         if self.led:

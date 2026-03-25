@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ class ButtonWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, label="", text="None"):
+    def __init__(self, label: str = "", text: str = "None") -> None:
         Gtk.Widget.__init__(self)
 
         self.width = 50
@@ -45,18 +45,18 @@ class ButtonWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
 
-    def on_press(self, _tgt, _ev):
+    def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button pressed"""
         self.pressed = True
         self.queue_draw()
         self.emit("clicked")
 
-    def on_release(self, _tgt, _ev):
+    def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button released"""
         self.pressed = False
         self.queue_draw()
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw button
 
         Args:
@@ -86,11 +86,12 @@ class ButtonWidget(Gtk.Widget):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(self.font_size)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
-        cr.move_to(self.width / 2 - w / 2,
-                   self.height / 2 - (h - (self.radius * 2)) / 2)
+        cr.move_to(
+            self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
+        )
         cr.show_text(self.label)
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -100,10 +101,12 @@ class ButtonWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

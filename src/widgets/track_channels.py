@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ class TrackChannelsHeader(Gtk.Widget):
 
     __gtype_name__ = "TrackChannelsHeader"
 
-    def __init__(self, channels):
+    def __init__(self, channels: list[int]) -> None:
         Gtk.Widget.__init__(self)
 
         self.channels = channels
@@ -34,7 +34,7 @@ class TrackChannelsHeader(Gtk.Widget):
 
         self.set_size_request(self.width, self.height)
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw header
 
         Args:
@@ -96,7 +96,7 @@ class TrackChannelsHeader(Gtk.Widget):
             cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
             cr.show_text(str(channel + 1))
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -106,10 +106,12 @@ class TrackChannelsHeader(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 
@@ -126,7 +128,7 @@ class TrackChannelsWidget(Gtk.Widget):
 
     __gtype_name__ = "TrackChannelsWidget"
 
-    def __init__(self, step, memory, text, levels):
+    def __init__(self, step: int, memory: float, text: str, levels: list[int]) -> None:
         Gtk.Widget.__init__(self)
 
         self.step = step
@@ -141,7 +143,7 @@ class TrackChannelsWidget(Gtk.Widget):
         self.connect("button-press-event", self.on_click)
         self.connect("touch-event", self.on_click)
 
-    def on_click(self, _tgt, event):
+    def on_click(self, _tgt: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Widget clicked
 
         Args:
@@ -155,7 +157,7 @@ class TrackChannelsWidget(Gtk.Widget):
         if 0 <= chan < len(self.levels):
             App().tabs.tabs["track_channels"].channel_selected = chan
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw widget
 
         Args:
@@ -178,7 +180,7 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw level boxes
         self._draw_level_boxes(cr)
 
-    def _draw_step_box(self, cr):
+    def _draw_step_box(self, cr: cairo.Context) -> None:
         """Draw Step box
 
         Args:
@@ -199,7 +201,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.step))
 
-    def _draw_cue_box(self, cr):
+    def _draw_cue_box(self, cr: cairo.Context) -> None:
         """Draw cue box
 
         Args:
@@ -221,7 +223,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
         cr.show_text(str(self.memory))
 
-    def _draw_text_box(self, cr):
+    def _draw_text_box(self, cr: cairo.Context) -> None:
         """Draw text box
 
         Args:
@@ -243,7 +245,7 @@ class TrackChannelsWidget(Gtk.Widget):
         cr.move_to(135, 60 / 2 - (h - 20) / 2)
         cr.show_text(self.text)
 
-    def _draw_level_boxes(self, cr):
+    def _draw_level_boxes(self, cr: cairo.Context) -> None:
         """Draw Level boxes
 
         Args:
@@ -253,8 +255,10 @@ class TrackChannelsWidget(Gtk.Widget):
             # Draw boxes
             cr.move_to(535 + (i * 65), 0)
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
-            if (self.get_parent().is_selected()
-                    and i == App().tabs.tabs["track_channels"].channel_selected):
+            if (
+                self.get_parent().is_selected()
+                and i == App().tabs.tabs["track_channels"].channel_selected
+            ):
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -262,19 +266,22 @@ class TrackChannelsWidget(Gtk.Widget):
 
             # Draw Level number
             if lvl:
-                level = (str(int(round(
-                    ((lvl / 255) *
-                     100)))) if App().settings.get_boolean("percent") else str(lvl))
+                level = (
+                    str(int(round(((lvl / 255) * 100))))
+                    if App().settings.get_boolean("percent")
+                    else str(lvl)
+                )
 
                 cr.set_source_rgb(0.9, 0.9, 0.9)
-                cr.select_font_face("Monaco", cairo.FontSlant.NORMAL,
-                                    cairo.FontWeight.BOLD)
+                cr.select_font_face(
+                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                )
                 cr.set_font_size(12)
                 (_x, _y, w, h, _dx, _dy) = cr.text_extents(level)
                 cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
                 cr.show_text(level)
 
-    def do_realize(self):
+    def do_realize(self) -> None:
         """Realize widget"""
         allocation = self.get_allocation()
         attr = Gdk.WindowAttr()
@@ -284,10 +291,12 @@ class TrackChannelsWidget(Gtk.Widget):
         attr.width = allocation.width
         attr.height = allocation.height
         attr.visual = self.get_visual()
-        attr.event_mask = (self.get_events()
-                           | Gdk.EventMask.EXPOSURE_MASK
-                           | Gdk.EventMask.BUTTON_PRESS_MASK
-                           | Gdk.EventMask.TOUCH_MASK)
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
         wat = Gdk.WindowAttributesType
         mask = wat.X | wat.Y | wat.VISUAL
 

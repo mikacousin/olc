@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ class EditCurveWidget(Gtk.DrawingArea):
 
     __gtype_name__ = "EditCurveWidget"
 
-    def __init__(self, curve: int):
+    def __init__(self, curve: int) -> None:
         super().__init__()
         self.delta = 20
         self.width = 1000
@@ -40,7 +40,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
             self.connect("button-press-event", self.on_press)
 
-    def on_press(self, _tgt, event):
+    def on_press(self, _tgt: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Mouse button pressed
 
         Args:
@@ -48,9 +48,11 @@ class EditCurveWidget(Gtk.DrawingArea):
         """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         # Create new point with mouse click + Shift
-        if (event.button == 1
-                and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
-                and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))):
+        if (
+            event.button == 1
+            and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
+            and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))
+        ):
             x_curve = round(((event.x - 20) / (self.width - 40)) * 255)
             y_curve = round(((self.height - event.y - 20) / (self.height - 40)) * 255)
             x_curve = max(min(x_curve, 255), 0)
@@ -66,7 +68,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             if App().tabs.tabs["patch_outputs"]:
                 App().tabs.tabs["patch_outputs"].refresh()
 
-    def on_mouse_move(self, _widget, event: Gdk.Event) -> None:
+    def on_mouse_move(self, _widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Update pointer coordinates
 
         Args:
@@ -79,7 +81,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         y_curve = max(min(y_curve, 255), 0)
         tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
-    def do_draw(self, cr):
+    def do_draw(self, cr: cairo.Context) -> None:
         """Draw Edit Curve Widget
 
         Args:
@@ -102,7 +104,8 @@ class EditCurveWidget(Gtk.DrawingArea):
         for x in range(0, 256, 10):
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
             cr.move_to(
-                round((x / 255) * (width - (self.delta * 2))) + self.delta, self.delta)
+                round((x / 255) * (width - (self.delta * 2))) + self.delta, self.delta
+            )
             cr.line_to(
                 round((x / 255) * (width - (self.delta * 2))) + self.delta,
                 height - self.delta,
@@ -120,15 +123,18 @@ class EditCurveWidget(Gtk.DrawingArea):
             text = str(x)
             (_x, _y, t_width, t_height, _dx, _dy) = cr.text_extents(text)
             cr.move_to(
-                round((x / 255) * (width - (self.delta * 2))) + self.delta -
-                (t_width / 2),
+                round((x / 255) * (width - (self.delta * 2)))
+                + self.delta
+                - (t_width / 2),
                 height - 8,
             )
             cr.show_text(text)
             cr.move_to(
                 2,
-                height - self.delta - round(
-                    (x / 255) * (height - (self.delta * 2))) + (t_height / 2),
+                height
+                - self.delta
+                - round((x / 255) * (height - (self.delta * 2)))
+                + (t_height / 2),
             )
             cr.show_text(text)
         cr.set_line_width(2)
