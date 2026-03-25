@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ class ShowFile:
     modified: bool
     recent_manager: Gtk.RecentManager
 
-    def __init__(self, file):
+    def __init__(self, file: Gio.File) -> None:
         self.file = file
         self.basename = self.file.get_basename() if file else ""
         self.modified = False
@@ -77,6 +77,7 @@ class ShowFile:
         App().window.header.set_title(self.basename)
 
 
+# pylint: disable=too-many-instance-attributes
 class LightShow(ShowFile):
     """Light show data"""
 
@@ -89,7 +90,7 @@ class LightShow(ShowFile):
     independents: Independents
     patch: DMXPatch
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(None)
         # Curves
         self.curves = Curves()
