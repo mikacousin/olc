@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -105,16 +105,16 @@ class CuesEditionTab(Gtk.Paned):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-                "KP_1",
-                "KP_2",
-                "KP_3",
-                "KP_4",
-                "KP_5",
-                "KP_6",
-                "KP_7",
-                "KP_8",
-                "KP_9",
-                "KP_0",
+            "KP_1",
+            "KP_2",
+            "KP_3",
+            "KP_4",
+            "KP_5",
+            "KP_6",
+            "KP_7",
+            "KP_8",
+            "KP_9",
+            "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -174,11 +174,18 @@ class CuesEditionTab(Gtk.Paned):
             treeiter = self.liststore.get_iter(row)
             self.liststore.set_value(treeiter, 2, nb_chan)
             # Update Live View
-            if App().lightshow.main_playback.steps[
-                    App().lightshow.main_playback.position + 1].cue == cue:
+            if (
+                App()
+                .lightshow.main_playback.steps[
+                    App().lightshow.main_playback.position + 1
+                ]
+                .cue
+                == cue
+            ):
                 for channel in channels:
                     widget = App().window.live_view.channels_view.get_channel_widget(
-                        channel)
+                        channel
+                    )
                     widget.next_level = channels.get(channel)
                     widget.queue_draw()
             # Tag filename as modified
@@ -194,7 +201,8 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
             # Confirm Delete
             dialog = ConfirmationDialog(
-                f"Delete memory {App().lightshow.cues[row].memory} ?")
+                f"Delete memory {App().lightshow.cues[row].memory} ?"
+            )
             response = dialog.run()
             if response == Gtk.ResponseType.CANCEL:
                 dialog.destroy()
@@ -202,9 +210,10 @@ class CuesEditionTab(Gtk.Paned):
             dialog.destroy()
             # Find Steps using selected memory
             steps = [
-                i for i, _ in enumerate(App().lightshow.main_playback.steps)
-                if App().lightshow.main_playback.steps[i].cue.memory ==
-                App().lightshow.cues[row].memory
+                i
+                for i, _ in enumerate(App().lightshow.main_playback.steps)
+                if App().lightshow.main_playback.steps[i].cue.memory
+                == App().lightshow.cues[row].memory
             ]
             # Delete Steps
             for step in steps:
@@ -224,16 +233,20 @@ class CuesEditionTab(Gtk.Paned):
             # Update Sequence Edition Tab if exist
             if App().tabs.tabs["sequences"]:
                 App().tabs.tabs["sequences"].liststore1.clear()
-                App().tabs.tabs["sequences"].liststore1.append([
-                    App().lightshow.main_playback.index,
-                    App().lightshow.main_playback.type_seq,
-                    App().lightshow.main_playback.text,
-                ])
+                App().tabs.tabs["sequences"].liststore1.append(
+                    [
+                        App().lightshow.main_playback.index,
+                        App().lightshow.main_playback.type_seq,
+                        App().lightshow.main_playback.text,
+                    ]
+                )
                 for chaser in App().lightshow.chasers:
                     App().tabs.tabs["sequences"].liststore1.append(
-                        [chaser.index, chaser.type_seq, chaser.text])
+                        [chaser.index, chaser.type_seq, chaser.text]
+                    )
                 App().tabs.tabs["sequences"].treeview1.set_model(
-                    App().tabs.tabs["sequences"].liststore1)
+                    App().tabs.tabs["sequences"].liststore1
+                )
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
@@ -258,8 +271,9 @@ class CuesEditionTab(Gtk.Paned):
                 if path:
                     row = path.get_indices()[0]
                     # Copy channels
-                    App().lightshow.cues[i].channels = App(
-                    ).lightshow.cues[row].channels.copy()
+                    App().lightshow.cues[i].channels = (
+                        App().lightshow.cues[row].channels.copy()
+                    )
                     # Count channels
                     nb_chan = len(App().lightshow.cues[i].channels)
                     App().lightshow.main_playback.update_channels()
@@ -270,8 +284,9 @@ class CuesEditionTab(Gtk.Paned):
                         for channel in range(MAX_CHANNELS):
                             flowbox = App().window.live_view.channels_view.flowbox
                             widget = flowbox.get_child_at_index(channel).get_child()
-                            widget.next_level = App(
-                            ).lightshow.cues[i].channels[channel]
+                            widget.next_level = (
+                                App().lightshow.cues[i].channels[channel]
+                            )
                             widget.queue_draw()
                     # Tag filename as modified
                     App().lightshow.set_modified()
@@ -364,8 +379,11 @@ class CuesEditionTab(Gtk.Paned):
         # Find Next free number
         if len(App().lightshow.cues) > 1:
             for i, _ in enumerate(App().lightshow.cues[:-1]):
-                if (int(App().lightshow.cues[i + 1].memory) -
-                        int(App().lightshow.cues[i].memory) > 1):
+                if (
+                    int(App().lightshow.cues[i + 1].memory)
+                    - int(App().lightshow.cues[i].memory)
+                    > 1
+                ):
                     cue_nb = App().lightshow.cues[i].memory + 1
                     break
         elif len(App().lightshow.cues) == 1:

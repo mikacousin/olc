@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,10 +37,14 @@ def update_channel_display(channel: int) -> None:
     Args:
         channel: Channel number (from 1 to MAX_CHANNELS)
     """
-    seq_level = (App().lightshow.main_playback.steps[
-        App().lightshow.main_playback.position].cue.channels.get(channel, 0))
+    seq_level = (
+        App()
+        .lightshow.main_playback.steps[App().lightshow.main_playback.position]
+        .cue.channels.get(channel, 0)
+    )
     seq_next_level = App().lightshow.main_playback.get_next_channel_level(
-        channel, seq_level)
+        channel, seq_level
+    )
     GLib.idle_add(App().window.live_view.update_channel_widget, channel, seq_next_level)
 
 
@@ -105,7 +109,8 @@ class Fader:
         self.set_level(self.old_level)
         if App().virtual_console:
             App().virtual_console.faders[self.index - 1].set_value(
-                round(self.old_level * 255))
+                round(self.old_level * 255)
+            )
 
     def level_changed(self):
         """Fader level has changed"""
@@ -379,8 +384,11 @@ class ThreadChaser(threading.Thread):
         # Only fader channels
         for channel in self.fader.channels:
             old_level = chaser.steps[position].cue.channels.get(channel, 0)
-            seq_level = App().lightshow.main_playback.steps[
-                App().lightshow.main_playback.position].cue.channels.get(channel, 0)
+            seq_level = (
+                App()
+                .lightshow.main_playback.steps[App().lightshow.main_playback.position]
+                .cue.channels.get(channel, 0)
+            )
             old_level = max(old_level, seq_level)
             # Loop on cues
             if position < chaser.last - 1:
@@ -396,7 +404,8 @@ class ThreadChaser(threading.Thread):
             # If level decreases, use time out
             elif next_level < old_level and i < delay_out:
                 level = old_level - abs(
-                    int(((next_level - old_level - 1) / delay_out) * i))
+                    int(((next_level - old_level - 1) / delay_out) * i)
+                )
             # Else, level is already good
             else:
                 level = next_level

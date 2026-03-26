@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -414,7 +414,7 @@ class MainPlaybackView(Gtk.Notebook):
 
     def _hex_to_rgb(self, color: str) -> tuple[int, ...]:
         color = color.lstrip("#")
-        return tuple(int(color[i: i + 2], 16) for i in (0, 2, 4))
+        return tuple(int(color[i : i + 2], 16) for i in (0, 2, 4))
 
     def _rgb_to_hex(self, rgb: tuple[int, ...]) -> str:
         return f"#{int(rgb[0]):02x}{int(rgb[1]):02x}{int(rgb[2]):02x}"

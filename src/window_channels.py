@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,8 +43,10 @@ class LiveView(Gtk.Notebook):
         channel -= 1
         widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
         level = App().backend.dmx.levels["sequence"][channel]
-        if not App().lightshow.main_playback.on_go and App(
-        ).backend.dmx.levels["user"][channel] != -1:
+        if (
+            not App().lightshow.main_playback.on_go
+            and App().backend.dmx.levels["user"][channel] != -1
+        ):
             level = App().backend.dmx.levels["user"][channel]
         if App().backend.dmx.levels["faders"][channel] > level:
             level = App().backend.dmx.levels["faders"][channel]
@@ -98,8 +100,9 @@ class LiveChannelsView(ChannelsView):
         channel = child.get_index() + 1
         channel_widget.next_level = self.get_next_level(channel, channel_widget)
         if self.view_mode == VIEW_MODES["Active"]:
-            visible = bool(channel_widget.level or channel_widget.next_level
-                           or child.is_selected())
+            visible = bool(
+                channel_widget.level or channel_widget.next_level or child.is_selected()
+            )
             child.set_visible(visible)
             return visible
 
@@ -123,16 +126,21 @@ class LiveChannelsView(ChannelsView):
             Channel next level (0 - 255)
         """
         position = App().lightshow.main_playback.position
-        if (App().lightshow.main_playback.last > 1
-                and position < App().lightshow.main_playback.last - 1
-                and App().lightshow.main_playback.last <= len(
-                    App().lightshow.main_playback.steps)):
-            next_level = App().lightshow.main_playback.steps[position +
-                                                             1].cue.channels.get(
-                                                                 channel, 0)
+        if (
+            App().lightshow.main_playback.last > 1
+            and position < App().lightshow.main_playback.last - 1
+            and App().lightshow.main_playback.last
+            <= len(App().lightshow.main_playback.steps)
+        ):
+            next_level = (
+                App()
+                .lightshow.main_playback.steps[position + 1]
+                .cue.channels.get(channel, 0)
+            )
         elif App().lightshow.main_playback.last:
-            next_level = App().lightshow.main_playback.steps[0].cue.channels.get(
-                channel, 0)
+            next_level = (
+                App().lightshow.main_playback.steps[0].cue.channels.get(channel, 0)
+            )
         else:
             next_level = channel_widget.level
         return next_level
@@ -168,10 +176,12 @@ class LiveChannelsView(ChannelsView):
                 level = App().backend.dmx.frame[index][out - 1]
                 if direction == Gdk.ScrollDirection.UP:
                     App().backend.dmx.levels["user"][channel - 1] = min(
-                        level + step, 255)
+                        level + step, 255
+                    )
                 elif direction == Gdk.ScrollDirection.DOWN:
                     App().backend.dmx.levels["user"][channel - 1] = max(level - step, 0)
             next_level = App().lightshow.main_playback.get_next_channel_level(
-                channel, level)
+                channel, level
+            )
             App().window.live_view.update_channel_widget(channel, next_level)
         App().backend.dmx.set_levels(set(channels))

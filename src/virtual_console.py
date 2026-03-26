@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -366,7 +366,8 @@ class VirtualConsoleWindow(Gtk.Window):
                     text=f"fader_{i + 1}",
                     orientation=Gtk.Orientation.VERTICAL,
                     adjustment=adjustment,
-                ))
+                )
+            )
             self.faders[i].set_vexpand(True)
             self.faders[i].set_draw_value(False)
             self.faders[i].set_inverted(True)
@@ -956,11 +957,11 @@ class VirtualConsoleWindow(Gtk.Window):
         if child == App().window.live_view.channels_view:
             channels_view = child
         elif child in (
-                App().tabs.tabs["groups"],
-                App().tabs.tabs["indes"],
-                App().tabs.tabs["faders"],
-                App().tabs.tabs["memories"],
-                App().tabs.tabs["sequences"],
+            App().tabs.tabs["groups"],
+            App().tabs.tabs["indes"],
+            App().tabs.tabs["faders"],
+            App().tabs.tabs["memories"],
+            App().tabs.tabs["sequences"],
         ):
             channels_view = child.channels_view
         if channels_view:

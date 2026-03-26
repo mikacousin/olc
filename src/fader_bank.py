@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,15 @@
 from typing import Any
 
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE, App
-from olc.fader import (Fader, FaderChannels, FaderGroup, FaderMain, FaderPreset,
-                       FaderSequence, FaderType)
+from olc.fader import (
+    Fader,
+    FaderChannels,
+    FaderGroup,
+    FaderMain,
+    FaderPreset,
+    FaderSequence,
+    FaderType,
+)
 
 
 class FaderBank:
@@ -84,11 +91,9 @@ class FaderBank:
             return FaderType.MAIN
         return FaderType.NONE
 
-    def set_fader(self,
-                  page: int,
-                  index: int,
-                  fader_type: FaderType,
-                  contents: Any = None) -> None:
+    def set_fader(
+        self, page: int, index: int, fader_type: FaderType, contents: Any = None
+    ) -> None:
         """Assign a fader
 
         Args:
@@ -102,8 +107,9 @@ class FaderBank:
         else:
             self._set_fader_type(page, index, fader_type, contents)
 
-    def _set_fader_type(self, page: int, index: int, fader_type: FaderType,
-                        contents: Any) -> None:
+    def _set_fader_type(
+        self, page: int, index: int, fader_type: FaderType, contents: Any
+    ) -> None:
         if fader_type == FaderType.NONE:
             self.faders[page][index] = Fader(index, self)
             self.faders[page][index].set_level(0)
@@ -132,8 +138,9 @@ class FaderBank:
             self.faders[page][index].set_level(0)
         self._refresh_faders_display(page, index)
 
-    def _set_fader_contents(self, page: int, index: int, fader_type: FaderType,
-                            contents: Any) -> None:
+    def _set_fader_contents(
+        self, page: int, index: int, fader_type: FaderType, contents: Any
+    ) -> None:
         if fader_type == FaderType.GROUP:
             if group := App().lightshow.get_group(contents):
                 self.faders[page][index].set_contents(group)
@@ -151,31 +158,37 @@ class FaderBank:
             App().midi.update_fader(self.faders[page][index])
             # Refresh Virtual Console
             if App().virtual_console:
-                widget = App().virtual_console.faders[self.faders[page][index].index -
-                                                      1]
+                widget = App().virtual_console.faders[
+                    self.faders[page][index].index - 1
+                ]
                 level = self.faders[page][index].level * 255
                 widget.set_value(level)
                 App().virtual_console.fader_moved(widget)
-                App().virtual_console.flashes[self.faders[page][index].index -
-                                              1].label = self.faders[page][index].text
-                App().virtual_console.flashes[self.faders[page][index].index -
-                                              1].queue_draw()
+                App().virtual_console.flashes[
+                    self.faders[page][index].index - 1
+                ].label = self.faders[page][index].text
+                App().virtual_console.flashes[
+                    self.faders[page][index].index - 1
+                ].queue_draw()
             # Refresh OSC
             if App().osc:
                 App().osc.client.send("/olc/fader/page", ("i", page))
-                App().osc.client.send(f"/olc/fader/1/{index}/label",
-                                      ("s", self.faders[page][index].text))
+                App().osc.client.send(
+                    f"/olc/fader/1/{index}/label", ("s", self.faders[page][index].text)
+                )
                 App().osc.client.send(
                     f"olc/fader/1/{index}/level",
-                    ("i", round(self.faders[page][index].level * 255)))
+                    ("i", round(self.faders[page][index].level * 255)),
+                )
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""
         self.active_faders = set()
         for page in self.faders.values():
             for fader in page.values():
-                if isinstance(fader,
-                              (FaderGroup, FaderPreset, FaderChannels, FaderSequence)):
+                if isinstance(
+                    fader, (FaderGroup, FaderPreset, FaderChannels, FaderSequence)
+                ):
                     self.active_faders.add(fader)
                     self.channels = self.channels | fader.channels
 

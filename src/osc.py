@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -92,8 +92,9 @@ class OscServer(liblo.ServerThread):
 
     @liblo.make_method("/olc/command_line", None)
     def _commandline(self, _path, _args, _types):
-        App().osc.client.send("/olc/command_line",
-                              ("s", App().window.commandline.get_string()))
+        App().osc.client.send(
+            "/olc/command_line", ("s", App().window.commandline.get_string())
+        )
 
     @liblo.make_method("/olc/key/go", None)
     def _go(self, _path, _args, _types):
@@ -226,8 +227,9 @@ class OscServer(liblo.ServerThread):
         fader_bank = App().lightshow.fader_bank
         App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
         for fader in fader_bank.faders[fader_bank.active_page].values():
-            App().osc.client.send(f"/olc/fader/1/{fader.index}/label",
-                                  ("s", fader.text))
+            App().osc.client.send(
+                f"/olc/fader/1/{fader.index}/label", ("s", fader.text)
+            )
 
     @liblo.make_method("/olc/fader/page+", None)
     def _fader_page_plus(self, _path, _args, _types):
@@ -244,10 +246,12 @@ class OscServer(liblo.ServerThread):
             App().midi.update_faders()
         App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
         for fader in fader_bank.faders[fader_bank.active_page].values():
-            App().osc.client.send(f"/olc/fader/1/{fader.index}/label",
-                                  ("s", fader.text))
-            App().osc.client.send(f"/olc/fader/1/{fader.index}/level",
-                                  ("i", round(fader.level * 255)))
+            App().osc.client.send(
+                f"/olc/fader/1/{fader.index}/label", ("s", fader.text)
+            )
+            App().osc.client.send(
+                f"/olc/fader/1/{fader.index}/level", ("i", round(fader.level * 255))
+            )
 
     @liblo.make_method("/olc/fader/page-", None)
     def _fader_page_minus(self, _path, _args, _types):
@@ -264,10 +268,12 @@ class OscServer(liblo.ServerThread):
             App().midi.update_faders()
         App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
         for fader in fader_bank.faders[fader_bank.active_page].values():
-            App().osc.client.send(f"/olc/fader/1/{fader.index}/label",
-                                  ("s", fader.text))
-            App().osc.client.send(f"/olc/fader/1/{fader.index}/level",
-                                  ("i", round(fader.level * 255)))
+            App().osc.client.send(
+                f"/olc/fader/1/{fader.index}/label", ("s", fader.text)
+            )
+            App().osc.client.send(
+                f"/olc/fader/1/{fader.index}/level", ("i", round(fader.level * 255))
+            )
 
     @liblo.make_method("/olc/fader/1/1/level", "i")
     @liblo.make_method("/olc/fader/1/2/level", "i")
@@ -283,8 +289,9 @@ class OscServer(liblo.ServerThread):
         fader_index = int(path.split("/")[4])
         level = args[0]
         if App().virtual_console:
-            GLib.idle_add(App().virtual_console.faders[fader_index - 1].set_value,
-                          level)
+            GLib.idle_add(
+                App().virtual_console.faders[fader_index - 1].set_value, level
+            )
             GLib.idle_add(
                 App().virtual_console.fader_moved,
                 App().virtual_console.faders[fader_index - 1],

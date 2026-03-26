@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -176,8 +176,9 @@ class PatchByOutputs:
             self.outputs = []
             self.last = 0
         if App().osc:
-            App().osc.client.send("/olc/patch/selected_outputs",
-                                  ("s", self.get_selected()))
+            App().osc.client.send(
+                "/olc/patch/selected_outputs", ("s", self.get_selected())
+            )
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -195,8 +196,9 @@ class PatchByOutputs:
                     self.outputs.append(out)
             self.last = output_index
         if App().osc:
-            App().osc.client.send("/olc/patch/selected_outputs",
-                                  ("s", self.get_selected()))
+            App().osc.client.send(
+                "/olc/patch/selected_outputs", ("s", self.get_selected())
+            )
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -209,8 +211,9 @@ class PatchByOutputs:
             self.outputs.append(output_index)
             self.last = output_index
         if App().osc:
-            App().osc.client.send("/olc/patch/selected_outputs",
-                                  ("s", self.get_selected()))
+            App().osc.client.send(
+                "/olc/patch/selected_outputs", ("s", self.get_selected())
+            )
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -223,8 +226,9 @@ class PatchByOutputs:
             self.outputs.remove(output_index)
             self.last = output_index
         if App().osc:
-            App().osc.client.send("/olc/patch/selected_outputs",
-                                  ("s", self.get_selected()))
+            App().osc.client.send(
+                "/olc/patch/selected_outputs", ("s", self.get_selected())
+            )
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
@@ -242,8 +246,9 @@ class PatchByOutputs:
         self.__for_each_output(channel, several)
         App().window.live_view.channels_view.update()
         if App().osc:
-            App().osc.client.send("/olc/patch/selected_outputs",
-                                  ("s", self.get_selected()))
+            App().osc.client.send(
+                "/olc/patch/selected_outputs", ("s", self.get_selected())
+            )
         if App().tabs.tabs["patch_outputs"]:
             App().tabs.tabs["patch_outputs"].refresh()
             # Select next output
@@ -265,8 +270,10 @@ class PatchByOutputs:
                     self.__unpatch(output, univ)
                 else:
                     old_channel = None
-                    if (univ in self.patch.outputs
-                            and output in self.patch.outputs[univ]):
+                    if (
+                        univ in self.patch.outputs
+                        and output in self.patch.outputs[univ]
+                    ):
                         old_channel = self.patch.outputs[univ][output][0]
                     # Unpatch old value if exist
                     if old_channel:
@@ -282,7 +289,8 @@ class PatchByOutputs:
                     index = UNIVERSES.index(univ)
                     level = App().backend.dmx.frame[index][output - 1]
                     widget = App().window.live_view.channels_view.get_channel_widget(
-                        channel)
+                        channel
+                    )
                     widget.level = level
                     widget.queue_draw()
 
@@ -308,8 +316,9 @@ class PatchByOutputs:
             output = out - (univ_index * 512)
         return (output, universe)
 
-    def _get_output_index(self, out: Optional[int],
-                          univ: Optional[int]) -> Optional[int]:
+    def _get_output_index(
+        self, out: Optional[int], univ: Optional[int]
+    ) -> Optional[int]:
         output = None
         if out is None or univ is None:
             return None

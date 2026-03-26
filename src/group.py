@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -201,8 +201,10 @@ class GroupTab(Gtk.Paned):
         # Add groups to FlowBox
         for i, _ in enumerate(App().lightshow.groups):
             self.flowbox.add(
-                GroupWidget(App().lightshow.groups[i].index,
-                            App().lightshow.groups[i].text))
+                GroupWidget(
+                    App().lightshow.groups[i].index, App().lightshow.groups[i].text
+                )
+            )
         self.scrolled.add(self.flowbox)
 
     def refresh(self) -> None:
@@ -235,16 +237,16 @@ class GroupTab(Gtk.Paned):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-                "KP_1",
-                "KP_2",
-                "KP_3",
-                "KP_4",
-                "KP_5",
-                "KP_6",
-                "KP_7",
-                "KP_8",
-                "KP_9",
-                "KP_0",
+            "KP_1",
+            "KP_2",
+            "KP_3",
+            "KP_4",
+            "KP_5",
+            "KP_6",
+            "KP_7",
+            "KP_8",
+            "KP_9",
+            "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -283,7 +285,8 @@ class GroupTab(Gtk.Paned):
                 self.channels_view.update()
                 self.flowbox.invalidate_filter()
         elif child := self.flowbox.get_child_at_index(
-                int(self.last_group_selected) + 1):
+            int(self.last_group_selected) + 1
+        ):
             self.flowbox.select_child(child)
             App().window.set_focus(child)
             self.channels_view.flowbox.unselect_all()
@@ -323,8 +326,9 @@ class GroupTab(Gtk.Paned):
         else:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
-            if child := self.flowbox.get_child_at_pos(allocation.x,
-                                                      allocation.y + allocation.height):
+            if child := self.flowbox.get_child_at_pos(
+                allocation.x, allocation.y + allocation.height
+            ):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
@@ -348,7 +352,8 @@ class GroupTab(Gtk.Paned):
             child = self.flowbox.get_child_at_index(int(self.last_group_selected))
             allocation = child.get_allocation()
             if child := self.flowbox.get_child_at_pos(
-                    allocation.x, allocation.y - allocation.height / 2):
+                allocation.x, allocation.y - allocation.height / 2
+            ):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
@@ -421,8 +426,11 @@ class GroupTab(Gtk.Paned):
         keystring = App().window.commandline.get_string()
         # If no group number, use the next one
         if keystring == "":
-            group_nb = 1.0 if len(
-                App().lightshow.groups) == 0 else App().lightshow.groups[-1].index + 1.0
+            group_nb = (
+                1.0
+                if len(App().lightshow.groups) == 0
+                else App().lightshow.groups[-1].index + 1.0
+            )
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
         else:
@@ -446,8 +454,11 @@ class GroupTab(Gtk.Paned):
                 i = child.get_index()
                 break
         self.flowbox.insert(
-            GroupWidget(App().lightshow.groups[-1].index,
-                        App().lightshow.groups[-1].text), i)
+            GroupWidget(
+                App().lightshow.groups[-1].index, App().lightshow.groups[-1].text
+            ),
+            i,
+        )
         flowboxchild = self.flowbox.get_child_at_index(i)
         flowboxchild.show_all()
         self.flowbox.select_child(flowboxchild)

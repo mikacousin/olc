@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,9 +37,13 @@ class FaderEdit(Gtk.Box):
 
         self.label = Gtk.Label()
 
-        fader_type = [[FaderType.NONE, ""], [FaderType.PRESET, "Preset"],
-                      [FaderType.SEQUENCE, "Sequence"], [FaderType.GROUP, "Group"],
-                      [FaderType.MAIN, "Main Fader"]]
+        fader_type = [
+            [FaderType.NONE, ""],
+            [FaderType.PRESET, "Preset"],
+            [FaderType.SEQUENCE, "Sequence"],
+            [FaderType.GROUP, "Group"],
+            [FaderType.MAIN, "Main Fader"],
+        ]
         self.type_button = Gtk.MenuButton()
         popover = Gtk.Popover()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
@@ -97,8 +101,9 @@ class FaderEdit(Gtk.Box):
         for group in App().lightshow.groups:
             button = Gtk.ModelButton()
             button.set_label(f"{group.index:g} : {group.text}")
-            button.connect("clicked", self._on_contents_changed, FaderType.GROUP,
-                           group.index)
+            button.connect(
+                "clicked", self._on_contents_changed, FaderType.GROUP, group.index
+            )
             vbox.add(button)
             if group is fader.contents:
                 self.contents_button.set_label(f"{group.index:g} : {group.text}")
@@ -116,8 +121,9 @@ class FaderEdit(Gtk.Box):
         for chaser in App().lightshow.chasers:
             button = Gtk.ModelButton()
             button.set_label(f"{chaser.index:g} : {chaser.text}")
-            button.connect("clicked", self._on_contents_changed, FaderType.SEQUENCE,
-                           chaser.index)
+            button.connect(
+                "clicked", self._on_contents_changed, FaderType.SEQUENCE, chaser.index
+            )
             vbox.add(button)
             if chaser is fader.contents:
                 self.contents_button.set_label(f"{chaser.index:g} : {chaser.text}")
@@ -135,8 +141,9 @@ class FaderEdit(Gtk.Box):
         for cue in App().lightshow.cues:
             button = Gtk.ModelButton()
             button.set_label(f"{cue.memory} : {cue.text}")
-            button.connect("clicked", self._on_contents_changed, FaderType.PRESET,
-                           cue.memory)
+            button.connect(
+                "clicked", self._on_contents_changed, FaderType.PRESET, cue.memory
+            )
             vbox.add(button)
             if cue is fader.contents:
                 self.contents_button.set_label(f"{cue.memory} : {cue.text}")
@@ -160,8 +167,9 @@ class FaderEdit(Gtk.Box):
         self.add(self.contents_button)
         self.show_all()
 
-    def _on_contents_changed(self, widget: Gtk.ModelButton, fader_type: FaderType,
-                             contents: Any) -> None:
+    def _on_contents_changed(
+        self, widget: Gtk.ModelButton, fader_type: FaderType, contents: Any
+    ) -> None:
         """Fader contents has been changed
 
         Args:
@@ -172,8 +180,9 @@ class FaderEdit(Gtk.Box):
         if self.contents_button:
             # Max label size: 30 characters
             self.contents_button.set_label(f"{widget.get_label():<.30}")
-        App().lightshow.fader_bank.set_fader(self.page, self.index, fader_type,
-                                             contents)
+        App().lightshow.fader_bank.set_fader(
+            self.page, self.index, fader_type, contents
+        )
 
     def _contents_popup(self, vbox: Gtk.Box) -> None:
         """Create contents popover

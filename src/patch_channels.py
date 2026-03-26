@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -79,16 +79,16 @@ class PatchChannelsTab(Gtk.Box):
             App().window.commandline.add_string(keyname)
 
         if keyname in (
-                "KP_1",
-                "KP_2",
-                "KP_3",
-                "KP_4",
-                "KP_5",
-                "KP_6",
-                "KP_7",
-                "KP_8",
-                "KP_9",
-                "KP_0",
+            "KP_1",
+            "KP_2",
+            "KP_3",
+            "KP_4",
+            "KP_5",
+            "KP_6",
+            "KP_7",
+            "KP_8",
+            "KP_9",
+            "KP_0",
         ):
             App().window.commandline.add_string(keyname[3:])
 
@@ -281,7 +281,8 @@ class PatchChannelsTab(Gtk.Box):
 
                 # Update list of channels
                 widget = App().window.live_view.channels_view.get_channel_widget(
-                    channel)
+                    channel
+                )
                 widget.queue_draw()
                 App().window.live_view.channels_view.update()
 
