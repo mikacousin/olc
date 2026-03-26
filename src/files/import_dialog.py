@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,10 +14,14 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import typing
 from enum import Enum, auto
 from gettext import gettext as _
 
 from gi.repository import Gtk
+
+if typing.TYPE_CHECKING:
+    from olc.files.parsed_data import ParsedData
 
 
 class Action(Enum):
@@ -33,13 +37,16 @@ class DialogData(Gtk.Dialog):
 
     actions: dict
 
-    def __init__(self, parent, data, actions):
+    def __init__(
+        self, parent: Gtk.Window, data: ParsedData, actions: dict[str, Action]
+    ) -> None:
         super().__init__(title=_("Data to import"), transient_for=parent, flags=0)
 
         self.actions = actions
 
-        self.add_buttons(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK,
-                         Gtk.ResponseType.OK)
+        self.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
+        )
         box = self.get_content_area()
         box.set_spacing(6)
         # If you change actions order, you have to modify combo callbacks
@@ -133,7 +140,7 @@ class DialogData(Gtk.Dialog):
         hbox.add(combo)
         box.add(hbox)
 
-    def _on_patch_changed(self, widget):
+    def _on_patch_changed(self, widget: Gtk.Widget) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["patch"] = Action.REPLACE
@@ -142,7 +149,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["patch"] = Action.IGNORE
 
-    def _on_seq_changed(self, widget, sequence):
+    def _on_seq_changed(self, widget: Gtk.Widget, sequence: int) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["sequences"][sequence] = Action.REPLACE
@@ -151,7 +158,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["sequences"][sequence] = Action.IGNORE
 
-    def _on_groups_changed(self, widget):
+    def _on_groups_changed(self, widget: Gtk.Widget) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["groups"] = Action.REPLACE
@@ -160,7 +167,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["groups"] = Action.IGNORE
 
-    def _on_faders_changed(self, widget):
+    def _on_faders_changed(self, widget: Gtk.widget) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["faders"] = Action.REPLACE
@@ -169,7 +176,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["faders"] = Action.IGNORE
 
-    def _on_independents_changed(self, widget):
+    def _on_independents_changed(self, widget: Gtk.Widget) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["independents"] = Action.REPLACE

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,8 @@ class AsciiWriter(WriteFile):
 
     def _main_playback(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Main sequence\n\n", "ascii"))
         self.stream.write(bytes("$SEQUENCE 1 0\n\n", "ascii"))
         for step in App().lightshow.main_playback.steps:
@@ -71,7 +72,8 @@ class AsciiWriter(WriteFile):
 
     def _chasers(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Additional Sequences\n\n", "ascii"))
         for chaser in App().lightshow.chasers:
             self.stream.write(bytes(f"$SEQUENCE {chaser.index}\n", "ascii"))
@@ -87,7 +89,8 @@ class AsciiWriter(WriteFile):
                 delay_in = self._float_to_str(step.delay_in)
                 wait = self._float_to_str(step.wait)
                 self.stream.write(
-                    bytes(f"$CUE {chaser.index} {step.cue.memory}\n", "ascii"))
+                    bytes(f"$CUE {chaser.index} {step.cue.memory}\n", "ascii")
+                )
                 self.stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "ascii"))
                 self.stream.write(bytes(f"UP {time_in} {delay_in}\n", "ascii"))
                 self.stream.write(bytes(f"$$WAIT {wait}\n", "ascii"))
@@ -99,13 +102,15 @@ class AsciiWriter(WriteFile):
 
     def _groups(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Groups (presets not in sequence)\n", "ascii"))
         self.stream.write(bytes("! GROUP  Standard ASCII Light Cues\n", "ascii"))
         self.stream.write(bytes("! CHAN   Standard ASCII Light Cues\n", "ascii"))
         self.stream.write(bytes("! TEXT   Standard ASCII Light Cues\n", "ascii"))
         self.stream.write(
-            bytes("! $$TEXT Unicode encoded version of the same text\n\n", "ascii"))
+            bytes("! $$TEXT Unicode encoded version of the same text\n\n", "ascii")
+        )
         for group in App().lightshow.groups:
             self.stream.write(bytes(f"GROUP {group.index}\n", "ascii"))
             self._ascii_text(group.text)
@@ -115,13 +120,15 @@ class AsciiWriter(WriteFile):
 
     def _cobalt_groups(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Congo Groups\n", "ascii"))
         self.stream.write(bytes("! $GROUP  Group number\n", "ascii"))
         self.stream.write(bytes("! CHAN    Standard ASCII Light Cues\n", "ascii"))
         self.stream.write(bytes("! TEXT    Standard ASCII Light Cues\n", "ascii"))
         self.stream.write(
-            bytes("! $$TEXT  Unicode encoded version of the same text\n", "ascii"))
+            bytes("! $$TEXT  Unicode encoded version of the same text\n", "ascii")
+        )
         self.stream.write(bytes("CLEAR $GROUP\n\n", "ascii"))
         for group in App().lightshow.groups:
             self.stream.write(bytes(f"$GROUP {group.index}\n", "ascii"))
@@ -132,24 +139,31 @@ class AsciiWriter(WriteFile):
 
     def _masters(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Master Pages\n", "ascii"))
         self.stream.write(bytes("! $MASTPAGE     Master page number\n", "ascii"))
         self.stream.write(bytes("! TEXT          Master page text\n", "ascii"))
         self.stream.write(
-            bytes("! $TEXT         Unicode encoded version of the same text\n",
-                  "ascii"))
+            bytes("! $TEXT         Unicode encoded version of the same text\n", "ascii")
+        )
         self.stream.write(
-            bytes("! $MASTPAGEITEM Page number, Master number,\n", "ascii"))
+            bytes("! $MASTPAGEITEM Page number, Master number,\n", "ascii")
+        )
         self.stream.write(
-            bytes("!               Content type (1=Preset, 2=Channels,\n", "ascii"))
+            bytes("!               Content type (1=Preset, 2=Channels,\n", "ascii")
+        )
         self.stream.write(
-            bytes("!               3=Chaser, 13=Group, 99=Main Fader),\n", "ascii"))
+            bytes("!               3=Chaser, 13=Group, 99=Main Fader),\n", "ascii")
+        )
         self.stream.write(
-            bytes("!               Content value (Preset#, Chaser#, Group#),\n",
-                  "ascii"))
+            bytes(
+                "!               Content value (Preset#, Chaser#, Group#),\n", "ascii"
+            )
+        )
         self.stream.write(
-            bytes("!               Time In, Wait time, Time Out,\n", "ascii"))
+            bytes("!               Time In, Wait time, Time Out,\n", "ascii")
+        )
         self.stream.write(bytes("!               Flash level (0-255)\n", "ascii"))
         self.stream.write(bytes("CLEAR $MASTPAGE\n", "ascii"))
         for page, faders in App().lightshow.fader_bank.faders.items():
@@ -167,12 +181,16 @@ class AsciiWriter(WriteFile):
                     self.stream.write(
                         bytes(
                             f"$MASTPAGEITEM {page} {index} {content_type} "
-                            f"{contents} 5 0 5 255\n", "ascii"))
+                            f"{contents} 5 0 5 255\n",
+                            "ascii",
+                        )
+                    )
         self.stream.write(bytes("\n", "ascii"))
 
     def _patch(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Patch\n", "ascii"))
         self.stream.write(bytes("CLEAR PATCH\n\n", "ascii"))
         i = 1
@@ -201,7 +219,8 @@ class AsciiWriter(WriteFile):
 
     def _independents(self) -> None:
         self.stream.write(
-            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii"))
+            bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
+        )
         self.stream.write(bytes("! Independents\n\n", "ascii"))
         for inde in App().lightshow.independents.independents:
             self.stream.write(bytes(f"$SPECIALFUNCTION {inde.number} 0 0\n", "ascii"))
@@ -240,8 +259,10 @@ class AsciiWriter(WriteFile):
             text: Text to write
         """
         self.stream.write(
-            bytes(f"TEXT {strip_accents(text)}\n",
-                  "utf8").decode("utf8").encode("ascii"))
+            bytes(f"TEXT {strip_accents(text)}\n", "utf8")
+            .decode("utf8")
+            .encode("ascii")
+        )
 
     def _float_to_str(self, number: float) -> str:
-        return (str(int(number)) if number.is_integer() else str(number))
+        return str(int(number)) if number.is_integer() else str(number)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ class OlcParser(ReadFile):
 
     data: ParsedData
 
-    def __init__(self, imported: ImportFile, importation: bool = False):
+    def __init__(self, imported: ImportFile, importation: bool = False) -> None:
         super().__init__(imported, compressed=True, importation=importation)
         self.data = imported.data.data
 
@@ -50,12 +50,12 @@ class OlcParser(ReadFile):
         self.data["independents"] = contents.get("independents")
         self.data["midi"] = contents.get("midi_mapping")
 
-    def _int_float_str(self, key):
+    def _int_float_str(self, key: int | float | str) -> int | float | str:
         if is_int(key):
             return int(key)
         if is_float(key):
             return float(key)
         return key
 
-    def _key_to_number(self, obj):
+    def _key_to_number(self, obj: dict) -> dict:
         return {self._int_float_str(k): v for k, v in obj.items()}

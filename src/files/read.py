@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,16 +37,17 @@ class ReadFile:
     compressed: bool
     contents: str
 
-    def __init__(self,
-                 imported: ImportFile,
-                 compressed: bool = False,
-                 importation: bool = False):
+    def __init__(
+        self, imported: ImportFile, compressed: bool = False, importation: bool = False
+    ) -> None:
         self.imported = imported
         self.compressed = compressed
         self.importation = importation
         self.contents = ""
 
-    def _load_cb(self, file: Gio.File, result: Gio.AsyncResult, user_data=None) -> None:
+    def _load_cb(
+        self, file: Gio.File, result: Gio.AsyncResult, user_data: object = None
+    ) -> None:
         try:
             _success, data, _etag = file.load_contents_finish(result)
         except GLib.GError as error:
@@ -80,8 +81,12 @@ class ReadFile:
 
     def _error_dialog(self, message: str) -> None:
         dialog = Gtk.MessageDialog(
-            App().window, Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-            Gtk.MessageType.ERROR, Gtk.ButtonsType.OK, message)
+            App().window,
+            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
+            Gtk.MessageType.ERROR,
+            Gtk.ButtonsType.OK,
+            message,
+        )
         dialog.set_title(_("Error"))
         dialog.run()
         dialog.destroy()

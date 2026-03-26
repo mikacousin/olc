@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,9 @@ class ImportFile:
     actions: dict
     parser: AsciiParser
 
-    def __init__(self, file: Gio.File, file_type: FileType, importation: bool = False):
+    def __init__(
+        self, file: Gio.File, file_type: FileType, importation: bool = False
+    ) -> None:
         self.file = file
         self.file_type = file_type
         self.data = ParsedData()
@@ -44,7 +46,7 @@ class ImportFile:
             "groups": Action.REPLACE,
             "independents": Action.REPLACE,
             "faders": Action.REPLACE,
-            "midi": Action.REPLACE
+            "midi": Action.REPLACE,
         }
 
         if self.file_type is FileType.ASCII:
@@ -77,7 +79,7 @@ class ImportFile:
             self._do_import()
             App().lightshow.set_modified()
 
-    def _do_import(self):
+    def _do_import(self) -> None:
         self._do_import_curves()
         self._do_import_patch()
         self._do_import_sequences()
@@ -139,8 +141,9 @@ class ImportFile:
                 self._clear_sequence(sequence)
             # Import sequence
             if sequence == 1:
-                self.data.import_main_playback(sequence,
-                                               self.actions["sequences"][sequence])
+                self.data.import_main_playback(
+                    sequence, self.actions["sequences"][sequence]
+                )
                 # Add empty step at the end
                 cue = Cue(0, 0.0)
                 step = Step(sequence, cue=cue)
@@ -173,9 +176,11 @@ class ImportFile:
     def _update_ui(self) -> None:
         App().window.live_view.channels_view.update()
         App().tabs.refresh_all()
-        subtitle = (f"Mem. : 0.0 - "
-                    f"Next Mem. : {App().lightshow.main_playback.steps[1].cue.memory} "
-                    f"{App().lightshow.main_playback.steps[1].cue.text}")
+        subtitle = (
+            f"Mem. : 0.0 - "
+            f"Next Mem. : {App().lightshow.main_playback.steps[1].cue.memory} "
+            f"{App().lightshow.main_playback.steps[1].cue.text}"
+        )
         App().window.header.set_subtitle(subtitle)
         App().window.playback.update_xfade_display(0)
         App().window.playback.update_sequence_display()

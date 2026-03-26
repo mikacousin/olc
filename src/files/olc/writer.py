@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import typing
-from typing import Any
 
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.define import App
@@ -31,9 +30,9 @@ if typing.TYPE_CHECKING:
 class OlcWriter(WriteFile):
     """Write olc file"""
 
-    data: dict[str, Any]
+    data: dict[str, object]
 
-    def __init__(self, file: Gio.File):
+    def __init__(self, file: Gio.File) -> None:
         super().__init__(file, compressed=True)
         self.data = {}
         self.data = {"application": "olc", "version": "0.8.5.beta"}
@@ -63,16 +62,16 @@ class OlcWriter(WriteFile):
                 univ = outputs[1]
                 curve_num = App().lightshow.patch.outputs[univ][output][1]
                 if curve_num:
-                    self.data["patch"][channel].append({
-                        "output": output,
-                        "universe": univ,
-                        "curve": curve_num
-                    })
+                    self.data["patch"][channel].append(
+                        {"output": output, "universe": univ, "curve": curve_num}
+                    )
                 else:
-                    self.data["patch"][channel].append({
-                        "output": output,
-                        "universe": univ,
-                    })
+                    self.data["patch"][channel].append(
+                        {
+                            "output": output,
+                            "universe": univ,
+                        }
+                    )
         if not self.data["patch"]:
             del self.data["patch"]
 
@@ -87,7 +86,7 @@ class OlcWriter(WriteFile):
         self.data["sequences"][seq_index] = {
             "label": sequence.text,
             "steps": {},
-            "cues": {}
+            "cues": {},
         }
         for index, step in enumerate(sequence.steps):
             if step.cue.memory == 0:
@@ -98,26 +97,26 @@ class OlcWriter(WriteFile):
                 "time_out": step.time_out,
             }
             if step.delay_in:
-                self.data["sequences"][seq_index]["steps"][index][
-                    "delay_in"] = step.delay_in
+                self.data["sequences"][seq_index]["steps"][index]["delay_in"] = (
+                    step.delay_in
+                )
             if step.delay_out:
-                self.data["sequences"][seq_index]["steps"][index][
-                    "delay_out"] = step.delay_out
+                self.data["sequences"][seq_index]["steps"][index]["delay_out"] = (
+                    step.delay_out
+                )
             if step.wait:
                 self.data["sequences"][seq_index]["steps"][index]["wait"] = step.wait
             if step.channel_time:
                 self.data["sequences"][seq_index]["steps"][index]["channel_time"] = {}
                 for channel, times in step.channel_time.items():
                     self.data["sequences"][seq_index]["steps"][index]["channel_time"][
-                        channel] = {
-                            "delay": times.delay,
-                            "time": times.time
-                        }
+                        channel
+                    ] = {"delay": times.delay, "time": times.time}
             if step.text:
                 self.data["sequences"][seq_index]["steps"][index]["label"] = step.text
             self.data["sequences"][seq_index]["cues"][step.cue.memory] = {
                 "label": step.cue.text,
-                "channels": step.cue.channels
+                "channels": step.cue.channels,
             }
 
     def _cues(self) -> None:
@@ -125,7 +124,7 @@ class OlcWriter(WriteFile):
         for cue in App().lightshow.cues:
             self.data["cues"][cue.memory] = {
                 "label": cue.text,
-                "channels": cue.channels
+                "channels": cue.channels,
             }
 
     def _groups(self) -> None:
@@ -133,7 +132,7 @@ class OlcWriter(WriteFile):
         for group in App().lightshow.groups:
             self.data["groups"][group.index] = {
                 "label": group.text,
-                "channels": group.channels
+                "channels": group.channels,
             }
         if not self.data["groups"]:
             del self.data["groups"]
@@ -150,7 +149,7 @@ class OlcWriter(WriteFile):
                         "number": index,
                         "type": content_type,
                         "contents": fader.contents.index,
-                        "text": fader.text
+                        "text": fader.text,
                     }
                 elif content_type == FaderType.SEQUENCE:
                     self.data["faders"][number] = {
@@ -158,7 +157,7 @@ class OlcWriter(WriteFile):
                         "number": index,
                         "type": content_type,
                         "contents": fader.contents.index,
-                        "text": fader.text
+                        "text": fader.text,
                     }
                 elif content_type == FaderType.PRESET:
                     self.data["faders"][number] = {
@@ -166,14 +165,14 @@ class OlcWriter(WriteFile):
                         "number": index,
                         "type": content_type,
                         "contents": fader.contents.memory,
-                        "text": fader.text
+                        "text": fader.text,
                     }
                 elif content_type == FaderType.MAIN:
                     self.data["faders"][number] = {
                         "page": page,
                         "number": index,
                         "type": content_type,
-                        "text": fader.text
+                        "text": fader.text,
                     }
         if not self.data["faders"]:
             del self.data["faders"]
@@ -184,7 +183,7 @@ class OlcWriter(WriteFile):
             self.data["independents"][inde.number] = {
                 "type": inde.inde_type,
                 "label": inde.text,
-                "channels": inde.levels
+                "channels": inde.levels,
             }
 
     def _curves(self) -> None:
@@ -196,13 +195,13 @@ class OlcWriter(WriteFile):
                     self.data["curves"][key] = {
                         "type": curve_type,
                         "limit": curve.limit,
-                        "label": curve.name
+                        "label": curve.name,
                     }
                 elif isinstance(curve, (SegmentsCurve, InterpolateCurve)):
                     self.data["curves"][key] = {
                         "type": curve_type,
                         "points": curve.points,
-                        "label": curve.name
+                        "label": curve.name,
                     }
         if not self.data["curves"]:
             del self.data["curves"]

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@ from __future__ import annotations
 import re
 import typing
 from enum import Enum, auto
-from typing import Any
 
 from olc.curve import LimitCurve
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App, string_to_time
@@ -55,16 +54,28 @@ class AsciiParser(ReadFile):
     state: State
     keyword: str
     args: list[str]
-    current: dict[str, Any]
+    current: dict[str, object]
 
-    def __init__(self, imported: ImportFile, default_time, importation: bool = True):
+    def __init__(
+        self, imported: ImportFile, default_time: float, importation: bool = True
+    ) -> None:
         super().__init__(imported, importation=importation)
         self.data = imported.data.data
         self.default_time = default_time
         self.tokens = {
             "basic": ("clear", "console", "ident", "manufacturer", "patch", "set"),
-            "cue": ("chan", "down", "followon", "link", "part", "text", "up", "$$wait",
-                    "$$parttime", "$$parttimechan")
+            "cue": (
+                "chan",
+                "down",
+                "followon",
+                "link",
+                "part",
+                "text",
+                "up",
+                "$$wait",
+                "$$parttime",
+                "$$parttimechan",
+            ),
         }
         self.state = State.START
         self.keyword = ""
@@ -77,7 +88,7 @@ class AsciiParser(ReadFile):
             "group": 0.0,
             "independent": 0,
             "preset": 0.0,
-            "fader": 0
+            "fader": 0,
         }
 
     def parse(self) -> None:
@@ -115,7 +126,7 @@ class AsciiParser(ReadFile):
                 idx = arg.rfind("!")
                 if idx >= 0:
                     self.args[num] = self.args[num][:idx]
-                    self.args = self.args[:num + 1]
+                    self.args = self.args[: num + 1]
             self.args = [arg.lower() for arg in self.args if arg != ""]
         else:
             # Remove empty args
@@ -172,7 +183,7 @@ class AsciiParser(ReadFile):
     def _do_patch(self) -> None:
         # self.args[0] is Page Patch, not used
         for index in range(1, len(self.args), 3):
-            channel, dimmer, lvl = self.args[index:index + 3]
+            channel, dimmer, lvl = self.args[index : index + 3]
             level = self._get_level(lvl)
             self._add_patch(int(channel), int(dimmer), level)
 
@@ -196,20 +207,16 @@ class AsciiParser(ReadFile):
                         curve_nb = App().lightshow.curves.add_curve(LimitCurve(level))
                     self.data["curves"][curve_nb] = {
                         "type": "LimitCurve",
-                        "limit": level
+                        "limit": level,
                     }
                 if channel not in self.data["patch"]:
-                    self.data["patch"][channel] = [{
-                        "output": address,
-                        "universe": univ,
-                        "curve": curve_nb
-                    }]
+                    self.data["patch"][channel] = [
+                        {"output": address, "universe": univ, "curve": curve_nb}
+                    ]
                 else:
-                    self.data["patch"][channel].append({
-                        "output": address,
-                        "universe": univ,
-                        "curve": curve_nb
-                    })
+                    self.data["patch"][channel].append(
+                        {"output": address, "universe": univ, "curve": curve_nb}
+                    )
 
     def _new_mprimary(self) -> None:
         if self.keyword == "$sequence":
@@ -252,8 +259,9 @@ class AsciiParser(ReadFile):
             for index in range(0, len(self.args), 2):
                 channel = int(self.args[index])
                 level = self._get_level(self.args[index + 1])
-                self.data["independents"][
-                    self.current["independent"]]["channels"][channel] = level
+                self.data["independents"][self.current["independent"]]["channels"][
+                    channel
+                ] = level
 
     def _new_cue(self) -> None:
         if self.keyword == "cue":
@@ -272,11 +280,11 @@ class AsciiParser(ReadFile):
             "delay_out": 0.0,
             "wait": 0.0,
             "channel_time": {},
-            "label": ""
+            "label": "",
         }
         self.data["sequences"][self.current["sequence"]]["cues"][cue_number] = {
             "label": "",
-            "channels": {}
+            "channels": {},
         }
         self.current["cue"] = cue_number
         self.state = State.IN_CUE
@@ -320,7 +328,7 @@ class AsciiParser(ReadFile):
             for arg in self.args:
                 steps[self.current["step"]]["channel_time"][int(arg)] = {
                     "delay": self.current["channel_time"][0],
-                    "time": self.current["channel_time"][1]
+                    "time": self.current["channel_time"][1],
                 }
 
     def _new_preset(self) -> None:
@@ -369,7 +377,7 @@ class AsciiParser(ReadFile):
                 "page": page,
                 "number": number,
                 "type": fader_type,
-                "contents": {}
+                "contents": {},
             }
             self.current["fader"] = index
             self.state = State.IN_FADER
@@ -378,7 +386,7 @@ class AsciiParser(ReadFile):
                 "page": page,
                 "number": number,
                 "type": fader_type,
-                "contents": contents
+                "contents": contents,
             }
             self.state = State.NO_PRIMARY
 
@@ -401,25 +409,33 @@ class AsciiParser(ReadFile):
             self.state = State.NEW_MPRIMARY
         elif self.keyword in ("cue", "$cue"):
             self.state = State.NEW_CUE
-        elif self.keyword == "$group" or (self.keyword == "group"
-                                          and not self._is_console("avab", "congo")):
+        elif self.keyword == "$group" or (
+            self.keyword == "group" and not self._is_console("avab", "congo")
+        ):
             self.state = State.NEW_GROUP
-        elif (self.keyword == "$preset" and
-              (self._is_console("nicobats", "dlight") or self._is_console(
-                  "avab", "vlc"))) or (self.keyword == "group"
-                                       and self._is_console("avab", "congo")):
+        elif (
+            self.keyword == "$preset"
+            and (
+                self._is_console("nicobats", "dlight")
+                or self._is_console("avab", "vlc")
+            )
+        ) or (self.keyword == "group" and self._is_console("avab", "congo")):
             self.state = State.NEW_PRESET
         elif self.keyword == "$mastpageitem":
             self.state = State.NEW_FADER
         elif self.keyword == "sub":
             self.state = State.NEW_SUB
-        elif (self.state in (State.START, State.NO_PRIMARY)
-              and self.keyword in self.tokens["cue"]):
+        elif (
+            self.state in (State.START, State.NO_PRIMARY)
+            and self.keyword in self.tokens["cue"]
+        ):
             # print(f"{self.keyword} before a primary keyword, skipping")
             self.state = State.NO_PRIMARY
 
     def _is_console(self, manufacturer: str, console: str) -> bool:
-        if (manufacturer == self.data["console"]["manufacturer"]
-                and console == self.data["console"]["console"]):
+        if (
+            manufacturer == self.data["console"]["manufacturer"]
+            and console == self.data["console"]["console"]
+        ):
             return True
         return False
