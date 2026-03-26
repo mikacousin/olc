@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,15 +13,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
-from olc.define import App
 
+from ..define import App
 from .fader import MIDIFader
 
 
 class MidiXFade:
     """MIDI manual Crossfade"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.fader_in = MIDIFader()
         self.fader_out = MIDIFader()
         self.inverted = True
@@ -41,7 +41,7 @@ class MidiXFade:
         """
         self.inverted = invert
 
-    def moved(self, msg: mido.Message, midi_fader) -> None:
+    def moved(self, msg: mido.Message, midi_fader: MIDIFader) -> None:
         """Fader moved
 
         Args:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,19 +12,23 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List, Tuple
+import typing
 
 import mido
 from gi.repository import Gdk, GLib
-from olc.define import App
+
+from ..define import App
+
+if typing.TYPE_CHECKING:
+    from ..independent import Independent
 
 
 class MidiControlChanges:
     """MIDI control change messages from controllers"""
 
-    control_change: Dict[str, List[int]]
+    control_change: dict[str, list[int]]
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Default MIDI control change values : "action": Channel, CC
         self.control_change = {
             "wheel": [0, 60],
@@ -66,11 +70,13 @@ class MidiControlChanges:
                 elif key[:5] == "inde_":
                     GLib.idle_add(_function_inde, port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
-                    GLib.idle_add(App().midi.xfade.moved, msg,
-                                  App().midi.xfade.fader_out)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
+                    )
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(App().midi.xfade.moved, msg,
-                                  App().midi.xfade.fader_in)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
+                    )
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
 
@@ -108,8 +114,9 @@ class MidiControlChanges:
                 # Learn new values
                 self.control_change.update({learning: [msg.channel, msg.control]})
 
-    def __get_step(self, msg: mido.Message,
-                   port: str) -> Tuple[int, Gdk.ScrollDirection]:
+    def __get_step(
+        self, msg: mido.Message, port: str
+    ) -> tuple[int, Gdk.ScrollDirection | None]:
         """Return direction and step value
 
         Args:
@@ -120,6 +127,8 @@ class MidiControlChanges:
             step: Step value
             direction: Up or Down
         """
+        step = 0
+        direction = None
         relative1 = App().settings.get_strv("relative1")
         relative2 = App().settings.get_strv("relative2")
         makies = App().settings.get_strv("makie")
@@ -167,11 +176,11 @@ class MidiControlChanges:
             if tab == App().window.live_view.channels_view:
                 channels_view = tab
             elif tab in (
-                    App().tabs.tabs["groups"],
-                    App().tabs.tabs["indes"],
-                    App().tabs.tabs["faders"],
-                    App().tabs.tabs["memories"],
-                    App().tabs.tabs["sequences"],
+                App().tabs.tabs["groups"],
+                App().tabs.tabs["indes"],
+                App().tabs.tabs["faders"],
+                App().tabs.tabs["memories"],
+                App().tabs.tabs["sequences"],
             ):
                 channels_view = tab.channels_view
             if channels_view:
@@ -197,7 +206,7 @@ def _function_fader(msg: mido.Message, fader_index: int) -> None:
         GLib.idle_add(fader.set_level, val)
 
 
-def _function_inde(port: str, msg: mido.Message, independent: int):
+def _function_inde(port: str, msg: mido.Message, independent: int) -> None:
     """Change independent knob level
 
     Args:
@@ -211,6 +220,7 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
     absolutes = App().settings.get_strv("absolute")
     if port in relative1:
         # Relative1 mode (value: 1-64 positive, 127-65 negative)
+        step = 0
         if msg.value > 64:
             step = msg.value - 128
         elif msg.value < 65:
@@ -240,7 +250,7 @@ def _function_inde(port: str, msg: mido.Message, independent: int):
         _update_inde(independent, inde, val)
 
 
-def _new_inde_value(independent: int, step: int) -> Tuple[Any, int]:
+def _new_inde_value(independent: int, step: int) -> tuple[Independent | None, int]:
     inde = None
     for inde in App().lightshow.independents.independents:
         if inde.number == independent:
@@ -253,8 +263,9 @@ def _new_inde_value(independent: int, step: int) -> Tuple[Any, int]:
     return inde, val
 
 
-def _update_inde(independent: int, inde, val: int) -> None:
+def _update_inde(independent: int, inde: Independent, val: int) -> None:
     if App().virtual_console:
+        widget = None
         if independent == 1:
             widget = App().virtual_console.independent1
         elif independent == 2:
@@ -267,8 +278,9 @@ def _update_inde(independent: int, inde, val: int) -> None:
             widget = App().virtual_console.independent5
         elif independent == 6:
             widget = App().virtual_console.independent6
-        widget.value = val
-        widget.emit("changed")
-        widget.queue_draw()
+        if widget:
+            widget.value = val
+            widget.emit("changed")
+            widget.queue_draw()
     else:
         inde.set_level(val)

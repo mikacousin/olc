@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,16 +17,17 @@ from __future__ import annotations
 import typing
 
 import mido
-from olc.define import App, strip_accents
+
+from ..define import App, strip_accents
 
 if typing.TYPE_CHECKING:
-    from olc.fader import Fader
+    from ..fader import Fader
 
 
 class MackieLCD:
     """To display on LCD of Mackie Control"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def send(self, text: str, line: int) -> None:

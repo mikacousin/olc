@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,9 @@ from collections import deque
 from dataclasses import dataclass
 
 import mido
-from olc.define import App
-from olc.timer import RepeatedTimer
 
+from ..define import App
+from ..timer import RepeatedTimer
 from .control_change import MidiControlChanges
 from .fader import MIDIFader
 from .lcd import MackieLCD
@@ -38,17 +38,17 @@ if typing.TYPE_CHECKING:
 class Queue:
     """Queue implementation based on deque"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._elements = deque()
 
-    def __len__(self):
+    def __len__(self) -> None:
         return len(self._elements)
 
-    def __iter__(self):
+    def __iter__(self) -> None:
         while len(self) > 0:
             yield self.dequeue()
 
-    def enqueue(self, element):
+    def enqueue(self, element: mido.Message) -> None:
         """Add a element
 
         Args:
@@ -56,7 +56,7 @@ class Queue:
         """
         self._elements.append(element)
 
-    def dequeue(self):
+    def dequeue(self) -> None:
         """Remove first element
 
         Returns:
@@ -74,7 +74,7 @@ class MidiMessages:
     pitchwheel: MidiPitchWheel
     lcd: MackieLCD
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.notes = MidiNotes()
         self.control_change = MidiControlChanges()
         self.pitchwheel = MidiPitchWheel()
@@ -88,7 +88,7 @@ class MidiFaders:
     faders: list[MIDIFader]
     inde_faders: list[MIDIFader]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.faders = []
         for _ in range(10):
             self.faders.append(MIDIFader())
@@ -104,7 +104,7 @@ class MidiSend:  # pylint: disable=R0903
     queue: Queue
     thread: RepeatedTimer
 
-    def __init__(self, ports):
+    def __init__(self, ports: MidiPorts) -> None:
         self.ports = ports
         # Send MIDI messages every 25 milliseconds
         self.queue = Queue()
@@ -127,7 +127,7 @@ class Midi:
     ports: MidiPorts
     send: MidiSend
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.learning = ""
         self.messages = MidiMessages()
         self.faders = MidiFaders()
@@ -192,21 +192,17 @@ class Midi:
                 msg = mido.Message("pitchwheel", channel=i, pitch=-8192, time=0)
                 port.port.send(msg)
             for i in range(48, 56):
-                msg = mido.Message("control_change",
-                                   channel=0,
-                                   control=i,
-                                   value=0,
-                                   time=0)
+                msg = mido.Message(
+                    "control_change", channel=0, control=i, value=0, time=0
+                )
                 port.port.send(msg)
             # Light off buttons
             for values in self.messages.notes.notes.values():
                 channel, note = values
                 if note != -1:
-                    msg = mido.Message("note_on",
-                                       channel=channel,
-                                       note=note,
-                                       velocity=0,
-                                       time=0)
+                    msg = mido.Message(
+                        "note_on", channel=channel, note=note, velocity=0, time=0
+                    )
                     port.port.send(msg)
             port.port.reset()
 

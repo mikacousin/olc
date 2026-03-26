@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,19 +12,18 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Dict
-
 import mido
 from gi.repository import GLib
-from olc.define import App
+
+from ..define import App
 
 
 class MidiPitchWheel:
     """MIDI pitchwheel messages from controllers"""
 
-    pitchwheel: Dict[str, int]
+    pitchwheel: dict[str, int]
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Default MIDI pitchwheel values : "action": Channel
         self.pitchwheel = {
             "crossfade_out": -1,
@@ -51,11 +50,13 @@ class MidiPitchWheel:
                     _update_fader(msg, int(key[6:]) - 1)
                     break
                 if key[:13] == "crossfade_out":
-                    GLib.idle_add(App().midi.xfade.moved, msg,
-                                  App().midi.xfade.fader_out)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
+                    )
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(App().midi.xfade.moved, msg,
-                                  App().midi.xfade.fader_in)
+                    GLib.idle_add(
+                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
+                    )
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, None, msg)
 
@@ -89,8 +90,9 @@ def _update_fader(msg: mido.Message, index: int) -> None:
     val = (msg.pitch + 8192) / 16383
     if App().virtual_console:
         GLib.idle_add(App().virtual_console.faders[index].set_value, val * 255)
-        GLib.idle_add(App().virtual_console.fader_moved,
-                      App().virtual_console.faders[index])
+        GLib.idle_add(
+            App().virtual_console.fader_moved, App().virtual_console.faders[index]
+        )
     else:
         number = index + 1
         fader = App().lightshow.fader_bank.get_fader(number)

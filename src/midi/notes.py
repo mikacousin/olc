@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,25 +15,93 @@
 from __future__ import annotations
 
 import typing
-from typing import Dict, List
 
 import mido
 from gi.repository import Gdk, GLib
-from olc.define import MAX_FADER_PAGE, App
-from olc.zoom import zoom
+
+from ..define import MAX_FADER_PAGE, App
+from ..zoom import zoom
 
 if typing.TYPE_CHECKING:
-    from olc.independent import Independent
-    from olc.widgets.button import ButtonWidget
+    from ..independent import Independent
+
+
+# Mapping for simple actions to avoid duplicating methods.
+# Format: "action_name": ("virtual_console_widget_name",
+#                         Gdk.KEY_*, "command_line_string")
+# - virtual_console_widget_name: The attribute name in App().virtual_console to emit
+# button events.
+# - Gdk.KEY_*: The GDK keyval to simulate if the virtual console is not present.
+# - command_line_string: A character to add directly to the command line
+# (for numbers/dot).
+SIMPLE_ACTION_MAPPING = {
+    "at": ("at_level", Gdk.KEY_equal, None),
+    "percent_plus": ("percent_plus", Gdk.KEY_exclam, None),
+    "percent_minus": ("percent_minus", Gdk.KEY_colon, None),
+    "time": ("time", Gdk.KEY_T, None),
+    "delay": ("delay", Gdk.KEY_D, None),
+    "ch": ("channel", Gdk.KEY_c, None),
+    "thru": ("thru", Gdk.KEY_greater, None),
+    "plus": ("plus", Gdk.KEY_plus, None),
+    "minus": ("minus", Gdk.KEY_minus, None),
+    "all": ("all", Gdk.KEY_a, None),
+    "right": ("right", Gdk.KEY_Right, None),
+    "left": ("left", Gdk.KEY_Left, None),
+    "up": ("up", Gdk.KEY_Up, None),
+    "down": ("down", Gdk.KEY_Down, None),
+    "clear": ("clear", Gdk.KEY_BackSpace, None),
+    "update": ("update", Gdk.KEY_U, None),
+    "record": ("record", Gdk.KEY_R, None),
+    "number_0": ("zero", None, "0"),
+    "number_1": ("one", None, "1"),
+    "number_2": ("two", None, "2"),
+    "number_3": ("three", None, "3"),
+    "number_4": ("four", None, "4"),
+    "number_5": ("five", None, "5"),
+    "number_6": ("six", None, "6"),
+    "number_7": ("seven", None, "7"),
+    "number_8": ("eight", None, "8"),
+    "number_9": ("nine", None, "9"),
+    "dot": ("dot", None, "."),
+}
+
+
+def _execute_midi_action(action: str, msg: mido.Message) -> None:
+    """Execute generic MIDI action for buttons and keys."""
+    mapping = SIMPLE_ACTION_MAPPING.get(action)
+    if not mapping:
+        return
+
+    vc_attr, keyval, string_to_add = mapping
+
+    if msg.velocity == 0:
+        vc = App().virtual_console
+        if vc and hasattr(vc, vc_attr):
+            widget = getattr(vc, vc_attr)
+            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
+            widget.emit("button-release-event", event)
+    elif msg.velocity == 127:
+        vc = App().virtual_console
+        if vc and hasattr(vc, vc_attr):
+            widget = getattr(vc, vc_attr)
+            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
+            widget.emit("button-press-event", event)
+        else:
+            if string_to_add is not None:
+                App().window.commandline.add_string(string_to_add)
+            elif keyval is not None:
+                event = Gdk.EventKey()
+                event.keyval = keyval
+                App().window.on_key_press_event(None, event)
 
 
 class MidiNotes:
     """MIDI messages from controllers"""
 
-    notes: Dict[str, List[int]]
+    notes: dict[str, list[int]]
     zoom: bool
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.zoom = False
         # Default MIDI notes values : "action": Channel, Note
         self.notes = {
@@ -126,6 +194,8 @@ class MidiNotes:
                     GLib.idle_add(self._zoom_plus, msg)
                 elif key[:7] == "h_minus" or key[:7] == "v_minus":
                     GLib.idle_add(self._zoom_minus, msg)
+                elif key in SIMPLE_ACTION_MAPPING:
+                    GLib.idle_add(_execute_midi_action, key, msg)
                 else:
                     GLib.idle_add(globals()[f"_function_{key}"], msg)
 
@@ -138,11 +208,9 @@ class MidiNotes:
         """
         channel, note = self.notes[midi_name]
         if note != -1:
-            msg = mido.Message("note_on",
-                               channel=channel,
-                               note=note,
-                               velocity=value,
-                               time=0)
+            msg = mido.Message(
+                "note_on", channel=channel, note=note, velocity=value, time=0
+            )
             App().midi.enqueue(msg)
 
     def learn(self, msg: mido.Message, learning: str) -> None:
@@ -193,6 +261,8 @@ class MidiNotes:
             msg: MIDI message
             independent: Independent number
         """
+        inde = None
+        widget = None
         if independent == 7:
             inde = App().lightshow.independents.independents[6]
             if App().virtual_console:
@@ -205,14 +275,15 @@ class MidiNotes:
             inde = App().lightshow.independents.independents[8]
             if App().virtual_console:
                 widget = App().virtual_console.independent9
-        if msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 127
-                                      and inde.level == 255):
-            if App().virtual_console:
+        if msg.type == "note_off" or (
+            msg.type == "note_on" and msg.velocity == 127 and inde and inde.level == 255
+        ):
+            if App().virtual_console and widget:
                 widget.set_active(False)
             else:
                 self._update_inde_button(inde, independent, 0)
-        elif msg.type == "note_on" and msg.velocity == 127 and inde.level == 0:
-            if App().virtual_console:
+        elif msg.type == "note_on" and msg.velocity == 127 and inde and inde.level == 0:
+            if App().virtual_console and widget:
                 widget.set_active(True)
             else:
                 self._update_inde_button(inde, independent, 255)
@@ -251,8 +322,9 @@ def _function_fader(msg: mido.Message, fader_index: int) -> None:
         fader = App().lightshow.fader_bank.get_fader(fader_index)
 
         App().midi.messages.control_change.send(midi_name, round(fader.level * 127))
-        App().midi.messages.pitchwheel.send(midi_name,
-                                            round(((fader.level * 16383) - 8192)))
+        App().midi.messages.pitchwheel.send(
+            midi_name, round(((fader.level * 16383) - 8192))
+        )
 
 
 def _function_flash(msg: mido.Message, fader_index: int) -> None:
@@ -292,467 +364,6 @@ def _function_go(msg: mido.Message) -> None:
             App().lightshow.main_playback.do_go(None, None)
 
 
-def _function_at(msg: mido.Message) -> None:
-    """At level
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.at_level.emit("button-release-event", event)
-        else:
-            App().midi.enqueue(msg)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.at_level.emit("button-press-event", event)
-        else:
-            App().midi.enqueue(msg)
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_equal
-            App().window.on_key_press_event(None, event)
-
-
-def _function_percent_plus(msg: mido.Message) -> None:
-    """% +
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.percent_plus.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.percent_plus.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_exclam
-            App().window.on_key_press_event(None, event)
-
-
-def _function_percent_minus(msg: mido.Message) -> None:
-    """% -
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.percent_minus.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.percent_minus.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_colon
-            App().window.on_key_press_event(None, event)
-
-
-def _function_time(msg: mido.Message) -> None:
-    """Time
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.time.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.time.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_T
-            App().window.on_key_press_event(None, event)
-
-
-def _function_delay(msg: mido.Message) -> None:
-    """Delay
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.delay.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.delay.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_D
-            App().window.on_key_press_event(None, event)
-
-
-def _function_ch(msg: mido.Message) -> None:
-    """Channel
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.channel.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.channel.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_c
-            App().window.on_key_press_event(None, event)
-
-
-def _function_thru(msg: mido.Message) -> None:
-    """Thru
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.thru.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.thru.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_greater
-            App().window.on_key_press_event(None, event)
-
-
-def _function_plus(msg: mido.Message) -> None:
-    """Channel +
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.plus.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.plus.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_plus
-            App().window.on_key_press_event(None, event)
-
-
-def _function_minus(msg: mido.Message) -> None:
-    """Channel -
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.minus.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.minus.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_minus
-            App().window.on_key_press_event(None, event)
-
-
-def _function_all(msg: mido.Message) -> None:
-    """All Channels
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.all.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.all.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_a
-            App().window.on_key_press_event(None, event)
-
-
-def _function_right(msg: mido.Message) -> None:
-    """Right
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.right.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.right.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Right
-            App().window.on_key_press_event(None, event)
-
-
-def _function_left(msg: mido.Message) -> None:
-    """Left
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.left.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.left.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Left
-            App().window.on_key_press_event(None, event)
-
-
-def _function_up(msg: mido.Message) -> None:
-    """Up
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.up.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.up.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Up
-            App().window.on_key_press_event(None, event)
-
-
-def _function_down(msg: mido.Message) -> None:
-    """Down
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.down.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.down.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Down
-            App().window.on_key_press_event(None, event)
-
-
-def _function_clear(msg: mido.Message) -> None:
-    """Clear keyboard
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.clear.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.clear.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_BackSpace
-            App().window.on_key_press_event(None, event)
-
-
-def _function_number_0(msg: mido.Message) -> None:
-    """0
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.zero.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.zero.emit("button-press-event", event)
-        else:
-            App().window.commandline.add_string("0")
-
-
-def do_numbers(msg: mido.Message, widget: ButtonWidget, keystring: str) -> None:
-    """Action for numbers
-
-    Args:
-        msg: MIDI message
-        widget: Number widget
-        keystring: String to add to buffer
-    """
-    if msg.velocity == 0:
-        if widget:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            widget.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if widget:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            widget.emit("button-press-event", event)
-        else:
-            App().window.commandline.add_string(keystring)
-
-
-def _function_number_1(msg: mido.Message) -> None:
-    """1
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.one, "1")
-    else:
-        do_numbers(msg, None, "1")
-
-
-def _function_number_2(msg: mido.Message) -> None:
-    """2
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.two, "2")
-    else:
-        do_numbers(msg, None, "2")
-
-
-def _function_number_3(msg: mido.Message) -> None:
-    """3
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.three, "3")
-    else:
-        do_numbers(msg, None, "3")
-
-
-def _function_number_4(msg: mido.Message) -> None:
-    """4
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.four, "4")
-    else:
-        do_numbers(msg, None, "4")
-
-
-def _function_number_5(msg: mido.Message) -> None:
-    """5
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.five, "5")
-    else:
-        do_numbers(msg, None, "5")
-
-
-def _function_number_6(msg: mido.Message) -> None:
-    """6
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.six, "6")
-    else:
-        do_numbers(msg, None, "6")
-
-
-def _function_number_7(msg: mido.Message) -> None:
-    """7
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.seven, "7")
-    else:
-        do_numbers(msg, None, "7")
-
-
-def _function_number_8(msg: mido.Message) -> None:
-    """8
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.eight, "8")
-    else:
-        do_numbers(msg, None, "8")
-
-
-def _function_number_9(msg: mido.Message) -> None:
-    """9
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.nine, "9")
-    else:
-        do_numbers(msg, None, "9")
-
-
-def _function_dot(msg: mido.Message) -> None:
-    """Dot
-
-    Args:
-        msg: MIDI message
-    """
-    if App().virtual_console:
-        do_numbers(msg, App().virtual_console.dot, ".")
-    else:
-        do_numbers(msg, None, ".")
-
-
 def _function_pause(msg: mido.Message) -> None:
     """Pause
 
@@ -773,18 +384,14 @@ def _function_pause(msg: mido.Message) -> None:
 
     if App().lightshow.main_playback.on_go and App().lightshow.main_playback.thread:
         if App().lightshow.main_playback.thread.pause.is_set():
-            message = mido.Message("note_on",
-                                   channel=msg.channel,
-                                   note=msg.note,
-                                   velocity=0,
-                                   time=0)
+            message = mido.Message(
+                "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
+            )
             App().midi.enqueue(message)
         else:
-            message = mido.Message("note_on",
-                                   channel=msg.channel,
-                                   note=msg.note,
-                                   velocity=127,
-                                   time=0)
+            message = mido.Message(
+                "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
+            )
             App().midi.enqueue(message)
 
 
@@ -957,46 +564,6 @@ def _function_track(msg: mido.Message) -> None:
             App().virtual_console.track.emit("button-press-event", event)
         else:
             App().track_channels(None, None)
-
-
-def _function_update(msg: mido.Message) -> None:
-    """Update Cue
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.update.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.update.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_U
-            App().window.on_key_press_event(None, event)
-
-
-def _function_record(msg: mido.Message) -> None:
-    """Record Cue
-
-    Args:
-        msg: MIDI message
-    """
-    if msg.velocity == 0:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-            App().virtual_console.record.emit("button-release-event", event)
-    elif msg.velocity == 127:
-        if App().virtual_console:
-            event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-            App().virtual_console.record.emit("button-press-event", event)
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_R
-            App().window.on_key_press_event(None, event)
 
 
 def _function_page_plus(msg: mido.Message) -> None:

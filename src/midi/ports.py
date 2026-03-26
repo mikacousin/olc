@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # Open Lighting Console
-# Copyright (c) 2015-2024 Mika Cousin <mika.cousin@gmail.com>
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,9 @@ from typing import Optional
 
 import mido
 from gi.repository import GLib
-from olc.define import App
-from olc.timer import RepeatedTimer
+
+from ..define import App
+from ..timer import RepeatedTimer
 
 
 class MidiIO:
@@ -64,7 +65,7 @@ class MidiPorts:
 
     ports: list[MidiIO]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.ports = []
         self.mido_ports = None
 
