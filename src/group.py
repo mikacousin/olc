@@ -262,7 +262,7 @@ class GroupTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_backSpace(self) -> None:
+    def _keypress_backspace(self) -> None:
         App().window.commandline.set_string("")
 
     def _keypress_escape(self) -> None:
