@@ -12,15 +12,21 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+from typing import Callable
+
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, UNIVERSES, App
 from olc.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
+
+if typing.TYPE_CHECKING:
+    from olc.patch import DMXPatch
 
 
 class PatchChannelsTab(Gtk.Box):
     """Tab to patch by channels"""
 
-    def __init__(self, patch):
+    def __init__(self, patch: DMXPatch) -> None:
         self.patch = patch
         self.last_chan_selected = ""
 
@@ -55,11 +61,13 @@ class PatchChannelsTab(Gtk.Box):
         """Refresh display"""
         self.flowbox.queue_draw()
 
-    def on_close_icon(self, _widget):
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         App().tabs.close("patch_channels")
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | False:
         """Key press events
 
         Args:
@@ -95,18 +103,18 @@ class PatchChannelsTab(Gtk.Box):
         if keyname == "period":
             App().window.commandline.add_string(".")
 
-        if func := getattr(self, f"_keypress_{keyname}", None):
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
-    def _keypress_Escape(self):  # pylint: disable=C0103
+    def _keypress_escape(self) -> None:
         """Close Tab"""
         App().tabs.close("patch_channels")
 
-    def _keypress_BackSpace(self):  # pylint: disable=C0103
+    def _keypress_backspace(self) -> None:
         App().window.commandline.set_string("")
 
-    def _keypress_Down(self):  # pylint: disable=C0103
+    def _keypress_down(self) -> None:
         """Select Next Channel"""
 
         if self.last_chan_selected == "":
@@ -121,7 +129,7 @@ class PatchChannelsTab(Gtk.Box):
 
         App().window.commandline.set_string("")
 
-    def _keypress_Up(self):  # pylint: disable=C0103
+    def _keypress_up(self) -> None:
         """Select Previous Channel"""
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
@@ -135,7 +143,7 @@ class PatchChannelsTab(Gtk.Box):
 
         App().window.commandline.set_string("")
 
-    def _keypress_c(self):
+    def _keypress_c(self) -> None:
         """Select Channel"""
         self.flowbox.unselect_all()
 
@@ -149,15 +157,15 @@ class PatchChannelsTab(Gtk.Box):
 
         App().window.commandline.set_string("")
 
-    def _keypress_KP_Divide(self):  # pylint: disable=C0103
+    def _keypress_kp_divide(self) -> None:
         """Thru"""
         self.thru()
 
-    def _keypress_greater(self):
+    def _keypress_greater(self) -> None:
         """Thru"""
         self.thru()
 
-    def thru(self):
+    def thru(self) -> None:
         """Thru"""
         # If one channel is selected, start from it
         selected = self.flowbox.get_selected_children()
@@ -183,7 +191,7 @@ class PatchChannelsTab(Gtk.Box):
 
         App().window.commandline.set_string("")
 
-    def _keypress_m(self):
+    def _keypress_m(self) -> None:
         """Modify Output"""
         sel = self.flowbox.get_selected_children()
         several = len(sel) > 1
@@ -245,7 +253,7 @@ class PatchChannelsTab(Gtk.Box):
 
         App().window.commandline.set_string("")
 
-    def _keypress_i(self):
+    def _keypress_i(self) -> None:
         """Insert Output"""
         keystring = App().window.commandline.get_string()
         if keystring in ["", "0"]:
@@ -288,7 +296,7 @@ class PatchChannelsTab(Gtk.Box):
 
         App().window.commandline.set_string("")
 
-    def _keypress_r(self):
+    def _keypress_r(self) -> None:
         """Remove Output"""
         keystring = App().window.commandline.get_string()
         if keystring in ["", "0"]:
