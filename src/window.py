@@ -12,6 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+from typing import Callable
+
 from gi.repository import Gdk, Gio, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, UNIVERSES, App, string_to_time, time_to_string
@@ -20,11 +23,14 @@ from olc.widgets.main_fader import MainFaderWidget
 from olc.window_channels import LiveView
 from olc.window_playback import MainPlaybackView
 
+if typing.TYPE_CHECKING:
+    from gi.repository import GLib
+
 
 class CommandLine:
     """Display keyboard entries"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.keystring = ""
 
         self.statusbar = Gtk.Statusbar()
@@ -70,7 +76,7 @@ class CommandLine:
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Full screen
         self.full = False
 
@@ -141,7 +147,9 @@ class Window(Gtk.ApplicationWindow):
         else:
             self.live_view.grab_focus()
 
-    def fullscreen_toggle(self, _action, _param):
+    def fullscreen_toggle(
+        self, _action: Gio.SimpleAction, _param: GLib.Variant | None
+    ) -> None:
         """Toggle full screen"""
         if self.full:
             self.unfullscreen()
@@ -165,7 +173,7 @@ class Window(Gtk.ApplicationWindow):
             self.live_view.append_page(child, label)
             self.live_view.set_current_page(-1)
 
-    def update_channels_display(self, step):
+    def update_channels_display(self, step: int) -> None:
         """Update Channels levels display
 
         Args:
@@ -185,7 +193,9 @@ class Window(Gtk.ApplicationWindow):
             widget.next_level = next_level
             widget.queue_draw()
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | False:
         """Executed on key press event
 
         Args:
@@ -219,54 +229,54 @@ class Window(Gtk.ApplicationWindow):
         # Channels View
         self.live_view.channels_view.on_key_press(keyname)
 
-        if func := getattr(self, f"_keypress_{keyname}", None):
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
-    def _keypress_exclam(self):
+    def _keypress_exclam(self) -> None:
         """Level + (% level) of selected channels"""
         self.live_view.channels_view.level_plus()
 
-    def _keypress_colon(self):
+    def _keypress_colon(self) -> None:
         """Level - (% level) of selected channels"""
         self.live_view.channels_view.level_minus()
 
-    def _keypress_KP_Enter(self):  # pylint: disable=C0103
+    def _keypress_kp_enter(self) -> None:
         """@ Level"""
         self._keypress_equal()
 
-    def _keypress_equal(self):
+    def _keypress_equal(self) -> None:
         """@ Level"""
         self.live_view.channels_view.at_level()
         self.commandline.set_string("")
 
-    def _keypress_BackSpace(self):  # pylint: disable=C0103
+    def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
         self.commandline.set_string("")
 
-    def _keypress_Escape(self):  # pylint: disable=C0103
+    def _keypress_escape(self) -> None:
         """Deselect all channels"""
         self.live_view.channels_view.flowbox.unselect_all()
         self.live_view.channels_view.last_selected_channel = ""
         if App().tabs.tabs["track_channels"]:
             App().tabs.tabs["track_channels"].update_display()
 
-    def _keypress_q(self):
+    def _keypress_q(self) -> None:
         """Seq -"""
         App().lightshow.main_playback.sequence_minus()
         self.commandline.set_string("")
 
-    def _keypress_w(self):
+    def _keypress_w(self) -> None:
         """Seq +"""
         App().lightshow.main_playback.sequence_plus()
         self.commandline.set_string("")
 
-    def _keypress_G(self):  # pylint: disable=C0103
+    def _keypress_g(self) -> None:
         """Goto"""
         App().lightshow.main_playback.goto(self.commandline.get_string())
         self.commandline.set_string("")
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_r(self) -> None:
         """Record new Step and new Preset"""
         found = False
         keystring = self.commandline.get_string()
@@ -357,7 +367,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_u(self) -> None:
         """Update Cue"""
         position = App().lightshow.main_playback.position
         memory = App().lightshow.main_playback.steps[position].cue.memory
@@ -384,7 +394,7 @@ class Window(Gtk.ApplicationWindow):
 
         dialog.destroy()
 
-    def _keypress_T(self):  # pylint: disable=C0103
+    def _keypress_t(self) -> None:
         """Change Time In and Time Out of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -414,7 +424,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_I(self):  # pylint: disable=C0103
+    def _keypress_i(self) -> None:
         """Change Time In of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -440,7 +450,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_O(self):  # pylint: disable=C0103
+    def _keypress_o(self) -> None:
         """Change Time Out of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -466,7 +476,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_W(self):  # pylint: disable=C0103
+    def _keypress_x(self) -> None:
         """Change Wait Time of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -492,7 +502,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_D(self):  # pylint: disable=C0103
+    def _keypress_d(self) -> None:
         """Change Delay In and Out of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -522,7 +532,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_K(self):  # pylint: disable=C0103
+    def _keypress_k(self) -> None:
         """Change Delay In of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -548,7 +558,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.commandline.set_string("")
 
-    def _keypress_L(self):  # pylint: disable=C0103
+    def _keypress_l(self) -> None:
         """Change Delay Out of next step"""
         keystring = self.commandline.get_string()
         if keystring == "":
@@ -578,7 +588,7 @@ class Window(Gtk.ApplicationWindow):
 class Dialog(Gtk.Dialog):
     """Confirmation dialog when update Cue"""
 
-    def __init__(self, parent, memory):
+    def __init__(self, parent: Gtk.Window, memory: float) -> None:
         Gtk.Dialog.__init__(
             self,
             "",
