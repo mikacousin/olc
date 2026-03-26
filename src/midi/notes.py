@@ -18,12 +18,11 @@ import typing
 
 import mido
 from gi.repository import Gdk, GLib
-
-from ..define import MAX_FADER_PAGE, App
-from ..zoom import zoom
+from olc.define import MAX_FADER_PAGE, App
+from olc.zoom import zoom
 
 if typing.TYPE_CHECKING:
-    from ..independent import Independent
+    from olc.independent import Independent
 
 
 # Mapping for simple actions to avoid duplicating methods.

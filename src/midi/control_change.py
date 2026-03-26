@@ -16,11 +16,10 @@ import typing
 
 import mido
 from gi.repository import Gdk, GLib
-
-from ..define import App
+from olc.define import App
 
 if typing.TYPE_CHECKING:
-    from ..independent import Independent
+    from olc.independent import Independent
 
 
 class MidiControlChanges:

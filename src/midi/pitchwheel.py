@@ -14,8 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
 from gi.repository import GLib
-
-from ..define import App
+from olc.define import App
 
 
 class MidiPitchWheel:

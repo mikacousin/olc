@@ -17,11 +17,10 @@ from __future__ import annotations
 import typing
 
 import mido
-
-from ..define import App, strip_accents
+from olc.define import App, strip_accents
 
 if typing.TYPE_CHECKING:
-    from ..fader import Fader
+    from olc.fader import Fader
 
 
 class MackieLCD:

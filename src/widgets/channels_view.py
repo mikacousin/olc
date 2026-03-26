@@ -16,8 +16,7 @@ from typing import Callable, Dict, List, Optional
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App, is_int, is_non_nul_int
-
-from .channel import ChannelWidget
+from olc.widgets.channel import ChannelWidget
 
 VIEW_MODES: Dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
 

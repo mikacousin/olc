@@ -22,7 +22,7 @@ from olc.backends import DMXBackend
 from olc.define import NB_UNIVERSES, UNIVERSES, App
 
 if typing.TYPE_CHECKING:
-    from ..patch import DMXPatch
+    from olc.patch import DMXPatch
 
 
 class Sacn(DMXBackend):

@@ -20,16 +20,15 @@ from collections import deque
 from dataclasses import dataclass
 
 import mido
-
-from ..define import App
-from ..timer import RepeatedTimer
-from .control_change import MidiControlChanges
-from .fader import MIDIFader
-from .lcd import MackieLCD
-from .notes import MidiNotes
-from .pitchwheel import MidiPitchWheel
-from .ports import MidiPorts
-from .xfade import MidiXFade
+from olc.define import App
+from olc.midi.control_change import MidiControlChanges
+from olc.midi.fader import MIDIFader
+from olc.midi.lcd import MackieLCD
+from olc.midi.notes import MidiNotes
+from olc.midi.pitchwheel import MidiPitchWheel
+from olc.midi.ports import MidiPorts
+from olc.midi.xfade import MidiXFade
+from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
     from olc.fader import Fader

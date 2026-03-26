@@ -18,8 +18,7 @@ import typing
 from typing import Any
 
 from gi.repository import GLib
-
-from .artnet_backend import ArtnetBackend
+from olc.backends.artnet_backend import ArtnetBackend
 
 ARTNET = True
 
@@ -29,19 +28,18 @@ except ImportError:
     SACN = False
 else:
     SACN = True
-    from .sacn import Sacn
+    from olc.backends.sacn import Sacn
 try:
     import ola  # noqa: F401, pylint: disable=W0611
 except ImportError:
     OLA = False
 else:
     OLA = True
-    from .ola import Ola
+    from olc.backends.ola import Ola
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gtk
-
-    from ..patch import DMXPatch
+    from olc.patch import DMXPatch
 
 
 def select_backend(

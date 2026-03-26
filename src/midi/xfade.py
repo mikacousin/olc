@@ -13,9 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import mido
-
-from ..define import App
-from .fader import MIDIFader
+from olc.define import App
+from olc.midi.fader import MIDIFader
 
 
 class MidiXFade:

@@ -22,7 +22,7 @@ from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from .backends import DmxBackend
+    from olc.backends import DmxBackend
 
 
 # pylint: disable=too-many-instance-attributes

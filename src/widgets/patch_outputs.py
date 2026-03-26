@@ -16,9 +16,8 @@ import cairo
 from gi.repository import Gdk, Gtk
 from olc.curve import LimitCurve
 from olc.define import UNIVERSES, App
+from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 from olc.widgets.curve import CurveWidget
-
-from .common import rounded_rectangle, rounded_rectangle_fill
 
 
 class CurvePatchOutputWidget(CurveWidget):

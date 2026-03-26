@@ -17,15 +17,14 @@ from __future__ import annotations
 import typing
 
 from gi.repository import Gio, GLib
-
-from ..backends import DMXBackend
-from ..define import UNIVERSES, App
-from .artnet import Artnet
+from olc.backends import DMXBackend
+from olc.backends.artnet import Artnet
+from olc.define import UNIVERSES, App
 
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
 
-    from ..patch import DMXPatch
+    from olc.patch import DMXPatch
 
 
 # pylint: disable=too-few-public-methods

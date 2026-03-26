@@ -18,10 +18,9 @@ import ipaddress
 import time
 from collections.abc import Callable
 
-from ...timer import RepeatedTimer
-from .merge import ArtDmxMerger, MergeMode
-from .network import Network, get_ip_and_mac
-from .protocol import (
+from olc.backends.artnet.merge import ArtDmxMerger, MergeMode
+from olc.backends.artnet.network import Network, get_ip_and_mac
+from olc.backends.artnet.protocol import (
     PORT,
     ArtDmx,
     ArtNetDecodeError,
@@ -33,6 +32,7 @@ from .protocol import (
     get_opcode,
     get_universe,
 )
+from olc.timer import RepeatedTimer
 
 PORT_TYPES = {
     0: "DMX512",

@@ -22,12 +22,11 @@ from socket import AF_INET, SO_BROADCAST, SO_REUSEADDR, SOCK_DGRAM, SOL_SOCKET, 
 from struct import pack
 
 import ifaddr
-
-from ...timer import RepeatedTimer
-from .protocol import PORT
+from olc.backends.artnet.protocol import PORT
+from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from . import Artnet
+    from olc.backends.artnet import Artnet
 
 
 def get_ip_and_mac(addr: tuple[str, int]) -> tuple[str | None, tuple[int, ...] | None]:

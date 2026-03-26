@@ -16,9 +16,8 @@ from typing import Optional
 
 import mido
 from gi.repository import GLib
-
-from ..define import App
-from ..timer import RepeatedTimer
+from olc.define import App
+from olc.timer import RepeatedTimer
 
 
 class MidiIO:

@@ -15,8 +15,7 @@
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.define import App
-
-from .common import rounded_rectangle
+from olc.widgets.common import rounded_rectangle
 
 
 class MainFaderWidget(Gtk.Widget):

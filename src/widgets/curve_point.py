@@ -17,13 +17,11 @@ import typing
 from dataclasses import dataclass
 
 from gi.repository import Gdk, GObject, Gtk
-
-from ..define import App
+from olc.define import App
 
 if typing.TYPE_CHECKING:
     import cairo
-
-    from ..curve import Curve
+    from olc.curve import Curve
 
 
 @dataclass

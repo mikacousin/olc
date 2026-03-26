@@ -15,9 +15,8 @@
 import typing
 
 from gi.repository import Gtk
-
-from ..define import App
-from .common import rounded_rectangle, rounded_rectangle_fill
+from olc.define import App
+from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     import cairo
