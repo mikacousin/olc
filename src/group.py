@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.define import App, is_non_nul_float
@@ -33,14 +33,14 @@ class Group:
     """
 
     index: float
-    channels: Dict[int, int]
+    channels: dict[int, int]
     text: str = ""
 
 
 class GroupChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def set_channel_level(self, channel: int, level: int) -> None:
@@ -75,7 +75,7 @@ class GroupChannelsView(ChannelsView):
         self.update()
         App().lightshow.set_modified()
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Select channels to display
 
         Args:
@@ -174,7 +174,7 @@ class GroupTab(Gtk.Paned):
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.last_group_selected = ""
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -218,11 +218,13 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         App().window.show_all()
 
-    def on_close_icon(self, _widget) -> None:
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab with the icon clicked"""
         App().tabs.close("groups")
 
-    def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.Event
+    ) -> Callable | False:
         """Key has been pressed
 
         Args:
@@ -256,14 +258,14 @@ class GroupTab(Gtk.Paned):
         # Channels View
         self.channels_view.on_key_press(keyname)
 
-        if func := getattr(self, f"_keypress_{keyname}", None):
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
-    def _keypress_BackSpace(self) -> None:  # pylint: disable=C0103
+    def _keypress_backSpace(self) -> None:
         App().window.commandline.set_string("")
 
-    def _keypress_Escape(self) -> None:  # pylint: disable=C0103
+    def _keypress_escape(self) -> None:
         """Close Tab"""
         App().tabs.close("groups")
 
@@ -274,7 +276,7 @@ class GroupTab(Gtk.Paned):
             flowboxchild.get_child().popover.popup()
         App().window.commandline.set_string("")
 
-    def _keypress_Right(self) -> None:  # pylint: disable=C0103
+    def _keypress_right(self) -> None:
         """Next Group"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -294,7 +296,7 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = str(int(self.last_group_selected) + 1)
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Left(self) -> None:  # pylint: disable=C0103
+    def _keypress_left(self) -> None:
         """Previous Group"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -313,7 +315,7 @@ class GroupTab(Gtk.Paned):
             self.last_group_selected = str(int(self.last_group_selected) - 1)
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Down(self) -> None:  # pylint: disable=C0103
+    def _keypress_down(self) -> None:
         """Group on Next Line"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -338,7 +340,7 @@ class GroupTab(Gtk.Paned):
                 self.last_group_selected = str(index)
         self.channels_view.last_selected_channel = ""
 
-    def _keypress_Up(self) -> None:  # pylint: disable=C0103
+    def _keypress_up(self) -> None:
         """Group on Previous Line"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
@@ -421,7 +423,7 @@ class GroupTab(Gtk.Paned):
         self._update_fader_level()
         App().window.commandline.set_string("")
 
-    def _keypress_N(self) -> None:  # pylint: disable=C0103
+    def _keypress_n(self) -> None:
         """New Group"""
         keystring = App().window.commandline.get_string()
         # If no group number, use the next one
@@ -442,7 +444,7 @@ class GroupTab(Gtk.Paned):
                 App().window.commandline.set_string("")
                 return
 
-        channels: Dict[int, int] = {}
+        channels: dict[int, int] = {}
         txt = str(group_nb)
         App().lightshow.groups.append(Group(group_nb, channels, txt))
         # Insert group widget
@@ -470,7 +472,7 @@ class GroupTab(Gtk.Paned):
         App().window.commandline.set_string("")
         App().lightshow.set_modified()
 
-    def _keypress_Delete(self) -> None:  # pylint: disable=C0103
+    def _keypress_delete(self) -> None:
         """Delete selected group"""
         if not (selected := self.flowbox.get_selected_children()):
             return
