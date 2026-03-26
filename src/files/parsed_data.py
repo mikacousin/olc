@@ -126,15 +126,11 @@ class ParsedData:
         for group_number, values in self.data["groups"].items():
             channels = values.get("channels")
             label = values.get("label")
-            found = False
             for group in App().lightshow.groups:
                 if group_number == group.index:
-                    found = True
+                    group.text = label
+                    group.channels = channels
                     break
-            if found:
-                # If group exist, update it
-                group.text = label
-                group.channels = channels
             else:
                 # Create new group
                 App().lightshow.groups.append(Group(group_number, channels, label))
@@ -168,29 +164,23 @@ class ParsedData:
         for inde_number, values in self.data["independents"].items():
             channels = values.get("channels")
             label = values.get("label")
-            found = False
             for inde in App().lightshow.independents.independents:
                 if inde_number == inde.number:
-                    found = True
+                    inde.text = label
+                    inde.levels = channels
+                    App().lightshow.independents.update(inde)
                     break
-            if found:
-                inde.text = label
-                inde.levels = channels
-                App().lightshow.independents.update(inde)
 
     def import_presets(self) -> None:
         """Import presets data"""
         for preset_number, values in self.data["cues"].items():
             channels = values.get("channels")
             label = values.get("label")
-            found = False
             for cue in App().lightshow.cues:
                 if cue.memory == preset_number:
-                    found = True
+                    cue.channels = channels
+                    cue.text = label
                     break
-            if found:
-                cue.channels = channels
-                cue.text = label
             else:
                 cue = Cue(0, preset_number, channels, label)
                 self._insert_cue(cue)
@@ -214,15 +204,12 @@ class ParsedData:
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            found = False
             for cue in App().lightshow.cues:
                 if cue.memory == cue_number:
-                    found = True
+                    # If cue exist, update it
+                    cue.channels = cue_channels
+                    cue.text = cue_text
                     break
-            if found:
-                # If cue exist, update it
-                cue.channels = cue_channels
-                cue.text = cue_text
             else:
                 # Else, create it
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
@@ -294,23 +281,20 @@ class ParsedData:
             action: Action type
         """
         label = self.data["sequences"][sequence]["label"]
-        chaser = None
-        for _index, chsr in enumerate(App().lightshow.chasers):
+        for index, chsr in enumerate(App().lightshow.chasers):
             if chsr.index == sequence:
-                chaser = chsr
+                App().lightshow.chasers[index].text = label
                 break
-        if not chaser:
+        else:
             App().lightshow.chasers.append(
                 Sequence(sequence, type_seq="Chaser", text=label)
             )
-            _index = -1
-            del App().lightshow.chasers[_index].steps[1:]
-        else:
-            App().lightshow.chasers[_index].text = label
+            index = -1
+            del App().lightshow.chasers[index].steps[1:]
         if action is Action.REPLACE:
-            self._replace_chaser(sequence, _index)
+            self._replace_chaser(sequence, index)
         elif action is Action.MERGE:
-            self._merge_chaser(sequence, _index)
+            self._merge_chaser(sequence, index)
 
     def _merge_chaser(self, sequence: int, index: int) -> None:
         for step, values in self.data["sequences"][sequence]["steps"].items():
@@ -356,15 +340,12 @@ class ParsedData:
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            found = False
             for cue in App().lightshow.chasers[index].cues:
                 if cue.memory == cue_number:
-                    found = True
+                    # If cue exist, update it
+                    cue.channels = cue_channels
+                    cue.text = cue_text
                     break
-            if found:
-                # If cue exist, update it
-                cue.channels = cue_channels
-                cue.text = cue_text
             else:
                 # Else, create it
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
