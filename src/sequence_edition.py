@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
-from typing import Optional
+from typing import Callable, Optional
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
@@ -27,7 +27,7 @@ from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # To stock user modification on channels
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -177,7 +177,9 @@ class SequenceTab(Gtk.Grid):
         model, treeiter = tree_selection.get_selected()
         return int(model[treeiter][0]) if treeiter else None
 
-    def on_row_activated(self, _treeview, path, column):
+    def on_row_activated(
+        self, _treeview: Gtk.TreeView, path: Gtk.TreePath, column: Gtk.TreeViewColumn
+    ) -> None:
         """Open Channel Time Edition if double clicked
 
         Args:
@@ -231,7 +233,9 @@ class SequenceTab(Gtk.Grid):
             )
             step.total_time = max(step.total_time, t)
 
-    def wait_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
+    def wait_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
         """Wait edited
 
         Args:
@@ -263,7 +267,9 @@ class SequenceTab(Gtk.Grid):
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def out_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
+    def out_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
         """Time Out edited
 
         Args:
@@ -295,7 +301,9 @@ class SequenceTab(Gtk.Grid):
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def in_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
+    def in_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
         """Time in edited
 
         Args:
@@ -327,7 +335,9 @@ class SequenceTab(Gtk.Grid):
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def delay_out_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
+    def delay_out_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
         """Delay Out edited
 
         Args:
@@ -359,7 +369,9 @@ class SequenceTab(Gtk.Grid):
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def delay_in_edited(self, _widget, path: Gtk.TreePath, text: str) -> None:
+    def delay_in_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
         """Delay In edited
 
         Args:
@@ -391,8 +403,10 @@ class SequenceTab(Gtk.Grid):
                 ].total_time
                 App().window.playback.sequential.queue_draw()
 
-    def text_edited(self, _widget, path, text):
-        """Step's Text edited
+    def text_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
+        """Step Text edited
 
         Args:
             path: Gtk.TreePath
@@ -429,22 +443,24 @@ class SequenceTab(Gtk.Grid):
                 )
                 App().window.header.set_subtitle(subtitle)
 
-    def on_memory_changed(self, _treeview):
+    def on_memory_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select cue"""
         self.channels_view.update()
 
-    def on_sequence_changed(self, _selection=None):
+    def on_sequence_changed(self, _selection: Gtk.TreeSelection = None) -> None:
         """Select Sequence"""
         # Empty ListStore
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
         # Display Sequence
         self.populate_liststore(1)
 
-    def on_close_icon(self, _widget):
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         App().tabs.close("sequences")
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | False:
         """Receive keyboard event
 
         Args:
@@ -483,19 +499,19 @@ class SequenceTab(Gtk.Grid):
         # Channels View
         self.channels_view.on_key_press(keyname)
 
-        if func := getattr(self, f"_keypress_{keyname}", None):
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
-    def _keypress_Escape(self):  # pylint: disable=C0103
+    def _keypress_escape(self) -> None:
         """Close Tab"""
         App().tabs.close("sequences")
 
-    def _keypress_BackSpace(self):  # pylint: disable=C0103
+    def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
         App().window.commandline.set_string("")
 
-    def _keypress_Q(self):  # pylint: disable=C0103
+    def _keypress_s(self) -> None:
         """Cycle Sequences"""
         path, _focus_column = self.treeview1.get_cursor()
         if path:
@@ -508,7 +524,7 @@ class SequenceTab(Gtk.Grid):
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
-    def _keypress_q(self):
+    def _keypress_q(self) -> None:
         """Previous Cue"""
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -521,7 +537,7 @@ class SequenceTab(Gtk.Grid):
             path = Gtk.TreePath.new_first()
             self.treeview2.set_cursor(path)
 
-    def _keypress_w(self):
+    def _keypress_w(self) -> None:
         """Next Cue"""
         # Reset user modifications
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -534,23 +550,23 @@ class SequenceTab(Gtk.Grid):
 
         self.treeview2.set_cursor(path)
 
-    def _keypress_equal(self):
+    def _keypress_equal(self) -> None:
         """@ Level"""
         self.channels_view.at_level()
         self.channels_view.update()
         App().window.commandline.set_string("")
 
-    def _keypress_colon(self):
+    def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
 
-    def _keypress_exclam(self):
+    def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_u(self) -> None:
         """Update Cue"""
         # Find selected sequence
         sequence = self.get_selected_sequence()
@@ -590,7 +606,7 @@ class SequenceTab(Gtk.Grid):
             # Reset user modifications
             self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
-    def _keypress_Delete(self):  # pylint: disable=C0103
+    def _keypress_delete(self) -> None:
         """Delete selected Step"""
         # Find selected sequence
         sequence = self.get_selected_sequence()
@@ -604,7 +620,7 @@ class SequenceTab(Gtk.Grid):
             # Update Main Playback
             App().window.playback.update_sequence_display()
 
-    def _keypress_N(self):  # pylint: disable=C0103
+    def _keypress_n(self) -> None:
         """New Chaser"""
         # Use the next free index
         # 1 is for Main Playback, Chasers start at 2
@@ -630,7 +646,7 @@ class SequenceTab(Gtk.Grid):
         # Tag filename as modified
         App().lightshow.set_modified()
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_r(self) -> None:
         """New Step and new Cue"""
         found = False
         # Find selected Step
@@ -729,7 +745,7 @@ class SequenceTab(Gtk.Grid):
                         widget.queue_draw()
             dialog.destroy()
 
-    def add_step_to_liststore(self, step):
+    def add_step_to_liststore(self, step: int) -> None:
         """Add Step to the list
 
         Args:
@@ -759,7 +775,7 @@ class SequenceTab(Gtk.Grid):
             ],
         )
 
-    def populate_liststore(self, step):
+    def populate_liststore(self, step: int) -> None:
         """Populate liststore with steps
 
         Args:
@@ -778,7 +794,7 @@ class SequenceTab(Gtk.Grid):
             path = Gtk.TreePath.new_from_indices([step - 1])
             self.treeview2.set_cursor(path, None, False)
 
-    def update_sequence_display(self, step):
+    def update_sequence_display(self, step: int) -> None:
         """Update Sequence display
 
         Args:
@@ -811,7 +827,7 @@ class SequenceTab(Gtk.Grid):
 class SeqChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def set_channel_level(self, channel: int, level: int) -> None:
@@ -843,7 +859,7 @@ class SeqChannelsView(ChannelsView):
             channel_widget.queue_draw()
             self.set_channel_level(channel, level)
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
         Args:
