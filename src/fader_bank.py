@@ -13,8 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 # from olc.define import MAX_FADER_PAGE
-from typing import Any
-
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE, App
 from olc.fader import (
     Fader,
@@ -36,7 +34,7 @@ class FaderBank:
     active_faders: set
     max_fader_per_page: int
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.active_page = 1
         self.faders = {}
         self.max_fader_per_page = MAX_FADER_PER_PAGE
@@ -92,7 +90,7 @@ class FaderBank:
         return FaderType.NONE
 
     def set_fader(
-        self, page: int, index: int, fader_type: FaderType, contents: Any = None
+        self, page: int, index: int, fader_type: FaderType, contents: object = None
     ) -> None:
         """Assign a fader
 
@@ -108,7 +106,7 @@ class FaderBank:
             self._set_fader_type(page, index, fader_type, contents)
 
     def _set_fader_type(
-        self, page: int, index: int, fader_type: FaderType, contents: Any
+        self, page: int, index: int, fader_type: FaderType, contents: object
     ) -> None:
         if fader_type == FaderType.NONE:
             self.faders[page][index] = Fader(index, self)
@@ -139,7 +137,7 @@ class FaderBank:
         self._refresh_faders_display(page, index)
 
     def _set_fader_contents(
-        self, page: int, index: int, fader_type: FaderType, contents: Any
+        self, page: int, index: int, fader_type: FaderType, contents: object
     ) -> None:
         if fader_type == FaderType.GROUP:
             if group := App().lightshow.get_group(contents):

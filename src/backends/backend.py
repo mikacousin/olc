@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import typing
-from typing import Any
 
 from gi.repository import GLib
 from olc.backends.artnet_backend import ArtnetBackend
@@ -56,7 +55,7 @@ def select_backend(
         Backend or None
     """
     backend = options.get("backend", settings.get_string("backend"))
-    backend_instance: Any = None
+    backend_instance: object = None
 
     if "ola" in backend and OLA:
         olad_port = options.get("http-port", 9090)

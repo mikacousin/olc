@@ -15,7 +15,7 @@
 import pathlib
 import sys
 from gettext import gettext as _
-from typing import Any, Optional
+from typing import Optional
 
 import gi
 
@@ -53,7 +53,7 @@ from olc.window import Window  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
-    backend: Any
+    backend: object
     version: str
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:

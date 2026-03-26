@@ -13,7 +13,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gettext import gettext as _
-from typing import Any, Dict, List
 
 from olc.define import App
 from scipy.interpolate import PchipInterpolator
@@ -24,7 +23,7 @@ class Curve:
 
     name: str  # Curve name
     editable: bool  # Editable Curve or not
-    values: Dict[int, int]  # To store values
+    values: dict[int, int]  # To store values
 
     def __init__(self, name: str = "", editable: bool = False) -> None:
         self.name = name
@@ -108,9 +107,9 @@ class LimitCurve(Curve):
 class PointsCurve(Curve):
     """Curve defined by points"""
 
-    points: List[tuple]
+    points: list[tuple]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         self.points = [(0, 0), (255, 255)]
         super().__init__(*args, **kwargs)
 
@@ -202,7 +201,7 @@ class Curves:
     Curve numbers from 0 to 9 are reserved
     """
 
-    curves: Dict[int, Any]
+    curves: dict[int, object]
 
     def __init__(self) -> None:
         self.curves = {

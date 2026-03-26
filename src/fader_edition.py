@@ -12,11 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any
+import typing
+from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.define import App
 from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
+
+if typing.TYPE_CHECKING:
+    from olc.fader_bank import FaderBank
 
 
 class FaderEdit(Gtk.Box):
@@ -28,7 +32,7 @@ class FaderEdit(Gtk.Box):
     type_button: Gtk.MenuButton
     contents_button: Gtk.MenuButton
 
-    def __init__(self, page: int, index: int):
+    def __init__(self, page: int, index: int) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.page = page
         self.index = index
@@ -168,7 +172,7 @@ class FaderEdit(Gtk.Box):
         self.show_all()
 
     def _on_contents_changed(
-        self, widget: Gtk.ModelButton, fader_type: FaderType, contents: Any
+        self, widget: Gtk.ModelButton, fader_type: FaderType, contents: object
     ) -> None:
         """Fader contents has been changed
 
@@ -207,7 +211,7 @@ class FaderEdit(Gtk.Box):
 class FaderTab(Gtk.Box):
     """Fader edition"""
 
-    def __init__(self, fader_bank):
+    def __init__(self, fader_bank: FaderBank) -> None:
         super().__init__()
         self.fader_bank = fader_bank
 
@@ -235,7 +239,7 @@ class FaderTab(Gtk.Box):
         self._populate_faders()
         self.show_all()
 
-    def on_close_icon(self, _widget) -> None:
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         App().tabs.close("faders")
 
@@ -258,7 +262,9 @@ class FaderTab(Gtk.Box):
             vbox.add(hbox2)
             self.stack.add_titled(vbox, str(page), f"Page {page}")
 
-    def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.Event
+    ) -> Callable | False:
         """Key has been pressed
 
         Args:

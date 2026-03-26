@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from gettext import gettext as _
-from typing import Any, List, Optional
+from typing import Callable, Optional
 
 import cairo
 from gi.repository import Gdk, Gtk
@@ -27,11 +27,11 @@ from olc.widgets.edit_curve import EditCurveWidget
 class CurveValues(Gtk.DrawingArea):
     """Display Curve values"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.connect("draw", self.on_draw)
 
-    def on_draw(self, _area, cr):
+    def on_draw(self, _area: Gtk.Widget, cr: cairo.Context) -> None:
         """Draw grid
 
         Args:
@@ -80,9 +80,9 @@ class CurveEdition(Gtk.Box):
     """Edition Widget"""
 
     curve_nb: int  # Curve number
-    points: List[CurvePointWidget]  # Points widgets
+    points: list[CurvePointWidget]  # Points widgets
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.curve_nb = None
         self.points = []
@@ -171,7 +171,7 @@ class CurveEdition(Gtk.Box):
             self.fixed.put(self.points[-1], x - 4, y - 4)
         self.show_all()
 
-    def on_del_curve(self, _widget) -> None:
+    def on_del_curve(self, _widget: Gtk.Widget) -> None:
         """Delete selected curve"""
         tab = App().tabs.tabs["curves"]
         if selected := tab.flowbox.get_selected_children():
@@ -204,7 +204,7 @@ class CurveEdition(Gtk.Box):
         self.header.set_title(text)
         App().lightshow.set_modified()
 
-    def on_toggled(self, button, _name) -> None:
+    def on_toggled(self, button: Gtk.Widget, _name: object) -> None:
         """Curve point clicked
 
         Args:
@@ -237,7 +237,7 @@ class CurveEdition(Gtk.Box):
 class CurveButton(CurveWidget):
     """Curve Widget"""
 
-    def __init__(self, curve: int):
+    def __init__(self, curve: int) -> None:
         super().__init__(curve)
         self.popover = Gtk.Popover()
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -263,7 +263,7 @@ class CurveButton(CurveWidget):
         self.popover.popdown()
         App().lightshow.set_modified()
 
-    def on_click(self, _button) -> None:
+    def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""
         child = self.get_parent()
         if not child.is_selected():
@@ -278,7 +278,7 @@ class CurveButton(CurveWidget):
 class CurvesTab(Gtk.Paned):
     """Tab to display and edit curves"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
 
@@ -309,7 +309,7 @@ class CurvesTab(Gtk.Paned):
         box.set_child_packing(self.scrolled, True, True, 0, Gtk.PackType.START)
         self.add2(box)
 
-    def on_new_curve(self, widget) -> None:
+    def on_new_curve(self, widget: Gtk.Widget) -> None:
         """Create new curve
 
         Args:
@@ -354,11 +354,13 @@ class CurvesTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         App().window.show_all()
 
-    def on_close_icon(self, _widget) -> None:
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on clicked icon"""
         App().tabs.close("curves")
 
-    def on_key_press_event(self, _widget, event: Gdk.Event) -> Any:
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | False:
         """Key has been pressed
 
         Args:

@@ -19,7 +19,7 @@ from olc.define import App
 class ConfirmationDialog(Gtk.Dialog):
     """Confirmation dialog"""
 
-    def __init__(self, text: str):
+    def __init__(self, text: str) -> None:
         super().__init__(title="Confirmation", transient_for=App().window, flags=0)
         self.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK

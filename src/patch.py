@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App, is_int
 
@@ -31,11 +31,11 @@ class DMXPatch:
         universes: List of universes to use
     """
 
-    universes: List[int]
-    channels: Dict[int, List[List[Optional[int]]]]
-    outputs: Dict[int, Dict[int, List[int]]]
+    universes: list[int]
+    channels: dict[int, list[list[Optional[int]]]]
+    outputs: dict[int, dict[int, list[int]]]
 
-    def __init__(self, universes: List[int]):
+    def __init__(self, universes: list[int]) -> None:
         self.universes = universes
         self.channels = {}
         self.outputs = {}
@@ -147,7 +147,7 @@ class DMXPatch:
 class PatchByOutputs:
     """Manipulate Patch using Outputs order"""
 
-    def __init__(self, patch):
+    def __init__(self, patch: DMXPatch) -> None:
         self.outputs = []
         self.last = 0
         self.patch = patch
@@ -233,7 +233,7 @@ class PatchByOutputs:
             App().tabs.tabs["patch_outputs"].select_outputs()
         App().window.commandline.set_string("")
 
-    def patch_channel(self, several) -> None:
+    def patch_channel(self, several: bool) -> None:
         """Patch
 
         Args:
@@ -261,7 +261,7 @@ class PatchByOutputs:
         App().lightshow.set_modified()
         App().window.commandline.set_string("")
 
-    def __for_each_output(self, channel, several) -> None:
+    def __for_each_output(self, channel: int, several: bool) -> None:
         for i, output_index in enumerate(self.outputs):
             output, univ = self.get_output_universe(output_index)
             if output and univ:
@@ -294,12 +294,12 @@ class PatchByOutputs:
                     widget.level = level
                     widget.queue_draw()
 
-    def __unpatch(self, output, univ) -> None:
+    def __unpatch(self, output: int, univ: int) -> None:
         if univ in self.patch.outputs and output in self.patch.outputs[univ]:
             chan = self.patch.outputs[univ][output][0]
             self.patch.unpatch(chan, output, univ)
 
-    def get_output_universe(self, out: int) -> Tuple[Optional[int], Optional[int]]:
+    def get_output_universe(self, out: int) -> tuple[Optional[int], Optional[int]]:
         """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)
 
         Args:
@@ -327,7 +327,7 @@ class PatchByOutputs:
             output = out + (univ_index * 512)
         return output
 
-    def _string_to_output(self) -> Tuple[Optional[int], Optional[int]]:
+    def _string_to_output(self) -> tuple[Optional[int], Optional[int]]:
         output = None
         universe = None
         keystring = App().window.commandline.get_string()

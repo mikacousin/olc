@@ -12,13 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Optional
 
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, App, is_int, is_non_nul_int
 from olc.widgets.channel import ChannelWidget
 
-VIEW_MODES: Dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
+VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
 
 
 class ChannelsView(Gtk.Box):
@@ -400,7 +400,7 @@ class ChannelsView(Gtk.Box):
                     new_level = max(level - step_level, 0)
                 self.set_channel_level(channel, new_level)
 
-    def get_selected_channels(self) -> List[int]:
+    def get_selected_channels(self) -> list[int]:
         """Return selected channels
 
         Returns:

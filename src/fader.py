@@ -19,13 +19,13 @@ import threading
 import time
 import typing
 from enum import IntEnum
-from typing import Any
 
 from gi.repository import GLib
 from olc.define import MAX_CHANNELS, App
 
 if typing.TYPE_CHECKING:
     from olc.cue import Cue
+    from olc.fader_bank import FaderBank
     from olc.group import Group
     from olc.main_fader import MainFader
     from olc.sequence import Sequence
@@ -66,9 +66,9 @@ class Fader:
     text: str
     level: float
     old_level: float
-    contents: Any
+    contents: object
 
-    def __init__(self, index: int, fader_bank):
+    def __init__(self, index: int, fader_bank: FaderBank) -> None:
         self.index = index
         self.fader_bank = fader_bank
         self.text = ""
@@ -112,7 +112,7 @@ class Fader:
                 round(self.old_level * 255)
             )
 
-    def level_changed(self):
+    def level_changed(self) -> None:
         """Fader level has changed"""
 
 
@@ -121,7 +121,7 @@ class FaderMain(Fader):
 
     contents: MainFader
 
-    def __init__(self, index: int, fader_bank):
+    def __init__(self, index: int, fader_bank: FaderBank) -> None:
         super().__init__(index, fader_bank)
         self.contents = App().backend.dmx.main_fader
         self.text = "Main Fader"
@@ -140,7 +140,7 @@ class FaderGroup(Fader):
     dmx: array.array
     channels: set
 
-    def __init__(self, index: int, fader_bank, group: Group = None):
+    def __init__(self, index: int, fader_bank: FaderBank, group: Group = None) -> None:
         super().__init__(index, fader_bank)
         self.contents = group
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
@@ -185,7 +185,7 @@ class FaderPreset(Fader):
     dmx: array.array
     channels: set
 
-    def __init__(self, index: int, fader_bank, cue: Cue = None):
+    def __init__(self, index: int, fader_bank: FaderBank, cue: Cue = None) -> None:
         super().__init__(index, fader_bank)
         self.contents = cue
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
@@ -230,7 +230,9 @@ class FaderChannels(Fader):
     dmx: array.array
     channels: set
 
-    def __init__(self, index: int, fader_bank, channels: dict[int, int] | None = None):
+    def __init__(
+        self, index: int, fader_bank: FaderBank, channels: dict[int, int] | None = None
+    ) -> None:
         super().__init__(index, fader_bank)
         self.contents = channels
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
@@ -281,7 +283,9 @@ class FaderSequence(Fader):
     dmx: array.array
     channels: set
 
-    def __init__(self, index: int, fader_bank, chaser: Sequence = None):
+    def __init__(
+        self, index: int, fader_bank: FaderBank, chaser: Sequence = None
+    ) -> None:
         super().__init__(index, fader_bank)
         self.contents = chaser
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
@@ -336,7 +340,7 @@ class FaderSequence(Fader):
 class ThreadChaser(threading.Thread):
     """Thread for chasers"""
 
-    def __init__(self, fader):
+    def __init__(self, fader: FaderSequence) -> None:
         super().__init__()
         self.fader = fader
         self._stopevent = threading.Event()
@@ -371,7 +375,9 @@ class ThreadChaser(threading.Thread):
         """Stop thread"""
         self._stopevent.set()
 
-    def update_levels(self, delay_in, delay_out, i, position):
+    def update_levels(
+        self, delay_in: float, delay_out: float, i: float, position: int
+    ) -> None:
         """Update levels
 
         Args:

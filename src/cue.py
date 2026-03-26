@@ -12,8 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Dict
-
 from olc.define import MAX_CHANNELS
 
 
@@ -25,14 +23,14 @@ class Cue:
 
     sequence: int  # Sequence number (0 for Preset)
     memory: float  # Cue number
-    channels: Dict[int, int]  # Channels levels
+    channels: dict[int, int]  # Channels levels
     text: str  # Cue text
 
     def __init__(
         self,
         sequence: int,
         memory: float,
-        channels: Dict[int, int] | None = None,
+        channels: dict[int, int] | None = None,
         text: str = "",
     ) -> None:
         self.sequence = sequence

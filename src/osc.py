@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional, Tuple
+from typing import Optional
 
 import pyliblo3 as liblo
 from gi.repository import Gdk, GLib
@@ -23,7 +23,7 @@ from olc.midi.fader import FaderState
 class Osc:
     """OSC"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = OscClient()
         self.server = OscServer()
 
@@ -42,7 +42,7 @@ class Osc:
 class OscClient:
     """OSC client"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Port to send data to the client
         self.port = App().settings.get_int("osc-client-port")
         # client's IP address
@@ -69,7 +69,7 @@ class OscClient:
         except liblo.AddressError as err:
             print(err)
 
-    def send(self, path, *args):
+    def send(self, path: str, *args: object) -> None:
         """Send OSC message to the client
 
         Args:
@@ -82,7 +82,7 @@ class OscClient:
 class OscServer(liblo.ServerThread):
     """OSC server"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Port to listen data from the client
         self.serv_port = App().settings.get_int("osc-server-port")
         # Create Thread server
@@ -351,10 +351,10 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method(None, None)
     def _fallback(self, path, args, types, src):
         print(f"Got unknown message '{path}' from '{src.url}'")
-        for a, t in zip(args, types):
+        for a, t in zip(args, types, strict=True):
             print(f"received argument {a} of type {t}")
 
-    def _string_to_output(self) -> Tuple[Optional[int], Optional[int]]:
+    def _string_to_output(self) -> tuple[Optional[int], Optional[int]]:
         output = None
         universe = None
         keystring = App().window.commandline.get_string()

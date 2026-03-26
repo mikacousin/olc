@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from gi.repository import Gtk
 from olc.define import App
@@ -25,7 +25,7 @@ class Tabs:
         tabs: Tabs defined by a unique name and widgets
     """
 
-    tabs: Dict[str, Optional[Any]]
+    tabs: dict[str, Optional[object]]
 
     def __init__(self) -> None:
         self.tabs = {
@@ -42,7 +42,9 @@ class Tabs:
             "track_channels": None,
         }
 
-    def open(self, tab_name: str, widget: Any, label: str, *args) -> None:
+    def open(
+        self, tab_name: str, widget: Gtk.Widget, label: str, *args: object
+    ) -> None:
         """Open tab
 
         Args:

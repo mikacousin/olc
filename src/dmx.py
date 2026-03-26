@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
 import typing
-from typing import Any, Optional
+from typing import Optional
 
 from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App
 from olc.main_fader import MainFader
@@ -29,7 +29,7 @@ if typing.TYPE_CHECKING:
 class Dmx:
     """Send levels to backend"""
 
-    backend: Any
+    backend: object
     patch: DMXPatch
     main_fader: MainFader
     levels: dict[str, array.array]

@@ -12,17 +12,21 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import List, Tuple
+import typing
+from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.define import NB_UNIVERSES, UNIVERSES, App, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
 
+if typing.TYPE_CHECKING:
+    from olc.patch import DMXPatch
+
 
 class PatchOutputsTab(Gtk.Box):
     """Tab to Patch by outputs"""
 
-    def __init__(self, patch):
+    def __init__(self, patch: DMXPatch) -> None:
         self.patch = patch
         self.test = False
 
@@ -66,7 +70,7 @@ class PatchOutputsTab(Gtk.Box):
         self.pack_start(header, False, False, 0)
         self.pack_start(scrolled, True, True, 0)
 
-    def on_button_clicked(self, widget):
+    def on_button_clicked(self, widget: Gtk.Widget) -> None:
         """On buttons clicked
 
         Args:
@@ -100,7 +104,7 @@ class PatchOutputsTab(Gtk.Box):
         """Refresh display"""
         self.flowbox.queue_draw()
 
-    def on_close_icon(self, _widget):
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         if self.test:
             self._stop_test()
@@ -115,7 +119,9 @@ class PatchOutputsTab(Gtk.Box):
             self.flowbox.select_child(child)
             App().window.set_focus(child)
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | False:
         """On key press event
 
         Args:
@@ -310,7 +316,7 @@ class PatchOutputsTab(Gtk.Box):
         App().backend.dmx.user_outputs.clear()
         self.test = False
 
-    def get_selected_outputs(self) -> List[Tuple[int, int]]:
+    def get_selected_outputs(self) -> list[tuple[int, int]]:
         """Return selected outputs
 
         Returns:
@@ -379,7 +385,7 @@ class PatchOutputsTab(Gtk.Box):
 class SeveralOutputsDialog(Gtk.Dialog):
     """Several Outputs Dialog"""
 
-    def __init__(self, parent, channel, out):
+    def __init__(self, parent: Gtk.Window, channel: int, out: int) -> None:
         Gtk.Dialog.__init__(
             self,
             "Patch confirmation",

@@ -18,7 +18,7 @@ import array
 import threading
 import time
 import typing
-from typing import Optional, Tuple
+from typing import Optional
 
 from gi.repository import GLib, Pango
 from olc.cue import Cue
@@ -40,7 +40,7 @@ def update_ui(position: int, subtitle: str) -> None:
     # Update Sequential Tab
     App().window.playback.update_active_cues_display()
     App().window.playback.grid.queue_draw()
-    # Cue's times
+    # Cue times
     App().window.playback.display_times()
     # Update Main Window's Subtitle
     App().window.header.set_subtitle(subtitle)
@@ -160,7 +160,7 @@ class Sequence:
         for channel in step.cue.channels:
             self.channels.add(channel)
 
-    def get_step(self, cue: Optional[float] = None) -> Tuple[bool, int]:
+    def get_step(self, cue: Optional[float] = None) -> tuple[bool, int]:
         """Get Cue Step
 
         Args:
@@ -196,7 +196,7 @@ class Sequence:
         """Get next free Cue
 
         Args:
-            step: Actual Cue's Step number
+            step: Actual Cue Step number
 
         Returns:
             Cue number
