@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
@@ -24,7 +25,7 @@ from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 class CuesEditionTab(Gtk.Paned):
     """Cues edition"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
@@ -63,7 +64,7 @@ class CuesEditionTab(Gtk.Paned):
 
         self.add(self.scrollable)
 
-    def on_cue_changed(self, _treeview):
+    def on_cue_changed(self, _treeview: Gtk.Treeview) -> None:
         """Selected Cue"""
         self.channels_view.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -77,11 +78,11 @@ class CuesEditionTab(Gtk.Paned):
             self.liststore.append([str(mem.memory), mem.text, channels])
         self.channels_view.update()
 
-    def on_close_icon(self, _widget):
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
         App().tabs.close("memories")
 
-    def _text_edited(self, _widget, path: str, text: str) -> None:
+    def _text_edited(self, _widget: Gtk.CellRendererText, path: str, text: str) -> None:
         # Update user interface
         self.liststore[path][1] = text
         # Update cue
@@ -90,7 +91,9 @@ class CuesEditionTab(Gtk.Paned):
         # Tag filename as modified
         App().lightshow.set_modified()
 
-    def on_key_press_event(self, _widget, event):
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | False:
         """Key has been pressed
 
         Args:
@@ -124,34 +127,34 @@ class CuesEditionTab(Gtk.Paned):
         # Channels View
         self.channels_view.on_key_press(keyname)
 
-        if func := getattr(self, f"_keypress_{keyname}", None):
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
-    def _keypress_Escape(self):  # pylint: disable=C0103
+    def _keypress_escape(self) -> None:
         """Close Tab"""
         App().tabs.close("memories")
 
-    def _keypress_BackSpace(self):  # pylint: disable=C0103
+    def _keypress_backspace(self) -> None:
         App().window.commandline.set_string("")
 
-    def _keypress_equal(self):
+    def _keypress_equal(self) -> None:
         """@ level"""
         self.channels_view.at_level()
         self.channels_view.update()
         App().window.commandline.set_string("")
 
-    def _keypress_colon(self):
+    def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
 
-    def _keypress_exclam(self):
+    def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
 
-    def _keypress_U(self):  # pylint: disable=C0103
+    def _keypress_u(self) -> None:
         """Update Memory"""
         self.channels_view.flowbox.unselect_all()
 
@@ -191,7 +194,7 @@ class CuesEditionTab(Gtk.Paned):
             # Tag filename as modified
             App().lightshow.set_modified()
 
-    def _keypress_Delete(self):  # pylint: disable=C0103
+    def _keypress_delete(self) -> None:
         """Deletes selected Memory"""
         self.channels_view.flowbox.unselect_all()
 
@@ -250,7 +253,7 @@ class CuesEditionTab(Gtk.Paned):
                 pth = Gtk.TreePath.new()
                 App().window.playback.treeview1.set_cursor(pth, None, False)
 
-    def _keypress_R(self):  # pylint: disable=C0103
+    def _keypress_r(self) -> bool:
         """Records a copy of the current Memory with a new number
 
         Returns:
@@ -318,7 +321,7 @@ class CuesEditionTab(Gtk.Paned):
         App().window.commandline.set_string("")
         return True
 
-    def _keypress_Insert(self):  # pylint: disable=C0103
+    def _keypress_insert(self) -> bool:
         """Insert a new Memory
 
         Returns:
@@ -418,7 +421,7 @@ class CuesEditionTab(Gtk.Paned):
 class CueChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
     def set_channel_level(self, channel: int, level: int) -> None:
@@ -450,7 +453,7 @@ class CueChannelsView(ChannelsView):
             channel_widget.queue_draw()
             self.set_channel_level(channel, level)
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
         Args:
@@ -480,7 +483,7 @@ class CueChannelsView(ChannelsView):
         child.set_visible(False)
         return False
 
-    def __filter_active(self, row, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
         user_channels = App().tabs.tabs["memories"].user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
@@ -502,7 +505,7 @@ class CueChannelsView(ChannelsView):
         channel_widget.next_level = user_channels[channel_index]
         return True
 
-    def __filter_patched(self, row, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_patched(self, row: int, child: Gtk.FlowBoxChild) -> bool:
         """Return all patched channels
 
         Args:
@@ -517,7 +520,7 @@ class CueChannelsView(ChannelsView):
             return False
         return self.__filter_all(row, child)
 
-    def __filter_all(self, row, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
         user_channels = App().tabs.tabs["memories"].user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
