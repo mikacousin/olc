@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+# pylint: disable=too-many-lines
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_FADER_PAGE, App
 from olc.widgets.button import ButtonWidget
@@ -24,9 +25,11 @@ from olc.widgets.pause import PauseWidget
 from olc.widgets.toggle import ToggleWidget
 
 
+# pylint: disable=too-many-instance-attributes
 class VirtualConsoleWindow(Gtk.Window):
     """Virtual Console Window"""
 
+    # pylint: disable=too-many-statements
     def __init__(self) -> None:
         super().__init__(title="Virtual Console")
         self.set_default_size(400, 300)
@@ -975,50 +978,32 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Object clicked
         """
+        mapping = {
+            self.independent1: ("inde_1", None),
+            self.independent2: ("inde_2", None),
+            self.independent3: ("inde_3", None),
+            self.independent4: ("inde_4", None),
+            self.independent5: ("inde_5", None),
+            self.independent6: ("inde_6", None),
+            self.independent7: ("inde_7", 6),
+            self.independent8: ("inde_8", 7),
+            self.independent9: ("inde_9", 8),
+        }
+
+        if widget not in mapping:
+            return
+
+        name, inde_idx = mapping[widget]
+
         if App().midi.learning:
-            if widget == self.independent1:
-                App().midi.learning = "inde_1"
-            elif widget == self.independent2:
-                App().midi.learning = "inde_2"
-            elif widget == self.independent3:
-                App().midi.learning = "inde_3"
-            elif widget == self.independent4:
-                App().midi.learning = "inde_4"
-            elif widget == self.independent5:
-                App().midi.learning = "inde_5"
-            elif widget == self.independent6:
-                App().midi.learning = "inde_6"
-            elif widget == self.independent7:
-                App().midi.learning = "inde_7"
-                widget.set_active(False)
-            elif widget == self.independent8:
-                App().midi.learning = "inde_8"
-                widget.set_active(False)
-            elif widget == self.independent9:
-                App().midi.learning = "inde_9"
+            App().midi.learning = name
+            if widget in (self.independent7, self.independent8, self.independent9):
                 widget.set_active(False)
             self.queue_draw()
-        else:
-            if widget == self.independent7 and widget.get_active():
-                App().lightshow.independents.independents[6].level = 255
-                App().lightshow.independents.independents[6].update_dmx()
-            elif widget == self.independent7 and not widget.get_active():
-                App().lightshow.independents.independents[6].level = 0
-                App().lightshow.independents.independents[6].update_dmx()
-            if widget == self.independent8:
-                if widget.get_active():
-                    App().lightshow.independents.independents[7].level = 255
-                    App().lightshow.independents.independents[7].update_dmx()
-                elif not widget.get_active():
-                    App().lightshow.independents.independents[7].level = 0
-                    App().lightshow.independents.independents[7].update_dmx()
-            if widget == self.independent9:
-                if widget.get_active():
-                    App().lightshow.independents.independents[8].level = 255
-                    App().lightshow.independents.independents[8].update_dmx()
-                elif not widget.get_active():
-                    App().lightshow.independents.independents[8].level = 0
-                    App().lightshow.independents.independents[8].update_dmx()
+        elif inde_idx is not None:
+            level = 255 if widget.get_active() else 0
+            App().lightshow.independents.independents[inde_idx].level = level
+            App().lightshow.independents.independents[inde_idx].update_dmx()
 
     def _inde_changed(self, widget: Gtk.Widget) -> None:
         """Independent value changed
