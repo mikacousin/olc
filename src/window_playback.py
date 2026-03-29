@@ -75,109 +75,9 @@ class MainPlaybackView(Gtk.Notebook):
         Gtk.Notebook.__init__(self)
         self.set_group_name("olc")
 
-        # Sequential part of the window
-        if App().lightshow.main_playback.last > 1:
-            position = App().lightshow.main_playback.position
-            t_total = App().lightshow.main_playback.steps[position].total_time
-            t_in = App().lightshow.main_playback.steps[position].time_in
-            t_out = App().lightshow.main_playback.steps[position].time_out
-            d_in = App().lightshow.main_playback.steps[position].delay_in
-            d_out = App().lightshow.main_playback.steps[position].delay_out
-            t_wait = App().lightshow.main_playback.steps[position].wait
-            channel_time = App().lightshow.main_playback.steps[position].channel_time
-        else:
-            position = 0
-            t_total = 5.0
-            t_in = 5.0
-            t_out = 5.0
-            d_in = 0.0
-            d_out = 0.0
-            t_wait = 0.0
-            channel_time = {}
-        # Crossfade widget
-        self.sequential = SequentialWidget(
-            t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
-        )
-        # Main Playback
-        self.cues_liststore1 = Gtk.ListStore(
-            str, str, str, str, str, str, str, str, str, str, int, int
-        )
-        # Filters
-        self.step_filter1 = self.cues_liststore1.filter_new()
-        self.step_filter1.set_visible_func(step_filter_func1)
-        self.step_filter2 = self.cues_liststore1.filter_new()
-        self.step_filter2.set_visible_func(step_filter_func2)
-        # Lists
-        self.treeview1 = Gtk.TreeView(model=self.step_filter1)
-        self.treeview1.set_enable_search(False)
-        sel = self.treeview1.get_selection()
-        sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(
-            [
-                "Step",
-                "Cue",
-                "Text",
-                "Wait",
-                "Delay Out",
-                "Out",
-                "Delay In",
-                "In",
-                "Channel Time",
-            ]
-        ):
-            renderer = Gtk.CellRendererText()
-            # Change background color one column out of two
-            if i % 2 == 0:
-                renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(
-                column_title, renderer, text=i, background=9, weight=10
-            )
-            if i == 2:
-                column.set_min_width(400)
-                column.set_resizable(True)
-            self.treeview1.append_column(column)
-        self.treeview2 = Gtk.TreeView(model=self.step_filter2)
-        self.treeview2.set_enable_search(False)
-        sel = self.treeview2.get_selection()
-        sel.set_mode(Gtk.SelectionMode.NONE)
-        for i, column_title in enumerate(
-            [
-                "Step",
-                "Cue",
-                "Text",
-                "Wait",
-                "Delay Out",
-                "Out",
-                "Delay In",
-                "In",
-                "Channel Time",
-            ]
-        ):
-            renderer = Gtk.CellRendererText()
-            # Change background color one column out of two
-            if i % 2 == 0:
-                renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
-            if i == 2:
-                column.set_min_width(400)
-                column.set_resizable(True)
-            self.treeview2.append_column(column)
-        # Put Cues List in a scrolled window
-        scrollable2 = Gtk.ScrolledWindow()
-        scrollable2.set_vexpand(True)
-        scrollable2.set_hexpand(True)
-        scrollable2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
-        scrollable2.add(self.treeview2)
-        # Put Cues lists and sequential in a grid
-        self.grid = Gtk.Grid()
-        self.grid.set_row_homogeneous(False)
-        self.grid.attach(self.treeview1, 0, 0, 1, 1)
-        self.grid.attach_next_to(
-            self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1
-        )
-        self.grid.attach_next_to(
-            scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
-        )
+        self._setup_sequential()
+        self._setup_treeviews()
+        self._setup_layout()
 
         self.populate_sequence()
 
@@ -191,6 +91,91 @@ class MainPlaybackView(Gtk.Notebook):
         self.set_tab_detachable(self.grid, True)
 
         self.connect("key_press_event", self.on_key_press_event)
+
+    def _setup_sequential(self) -> None:
+        """Setup the Sequential Widget parameters"""
+        if App().lightshow.main_playback.last > 1:
+            position = App().lightshow.main_playback.position
+            t_total = App().lightshow.main_playback.steps[position].total_time
+            t_in = App().lightshow.main_playback.steps[position].time_in
+            t_out = App().lightshow.main_playback.steps[position].time_out
+            d_in = App().lightshow.main_playback.steps[position].delay_in
+            d_out = App().lightshow.main_playback.steps[position].delay_out
+            t_wait = App().lightshow.main_playback.steps[position].wait
+            channel_time = App().lightshow.main_playback.steps[position].channel_time
+        else:
+            t_total, t_in, t_out, d_in, d_out, t_wait = 5.0, 5.0, 5.0, 0.0, 0.0, 0.0
+            channel_time = {}
+        # Crossfade widget
+        self.sequential = SequentialWidget(
+            t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
+        )
+
+    def _setup_treeviews(self) -> None:
+        """Init ListStores and TreeViews"""
+        self.cues_liststore1 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str, str, int, int
+        )
+        self.step_filter1 = self.cues_liststore1.filter_new()
+        self.step_filter1.set_visible_func(step_filter_func1)
+        self.step_filter2 = self.cues_liststore1.filter_new()
+        self.step_filter2.set_visible_func(step_filter_func2)
+
+        self.treeview1 = self._create_treeview(self.step_filter1, is_main=True)
+        self.treeview2 = self._create_treeview(self.step_filter2, is_main=False)
+
+    def _create_treeview(self, model: Gtk.TreeModel, is_main: bool) -> Gtk.TreeView:
+        """Factory method for TreeViews to avoid repetition"""
+        treeview = Gtk.TreeView(model=model)
+        treeview.set_enable_search(False)
+        treeview.get_selection().set_mode(Gtk.SelectionMode.NONE)
+
+        columns = [
+            "Step",
+            "Cue",
+            "Text",
+            "Wait",
+            "Delay Out",
+            "Out",
+            "Delay In",
+            "In",
+            "Channel Time",
+        ]
+        for i, column_title in enumerate(columns):
+            renderer = Gtk.CellRendererText()
+            if i % 2 == 0:
+                renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
+
+            if is_main:
+                column = Gtk.TreeViewColumn(
+                    column_title, renderer, text=i, background=9, weight=10
+                )
+            else:
+                column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+
+            if i == 2:
+                column.set_min_width(400)
+                column.set_resizable(True)
+            treeview.append_column(column)
+
+        return treeview
+
+    def _setup_layout(self) -> None:
+        """Arrange components within the Grid layout"""
+        scrollable2 = Gtk.ScrolledWindow()
+        scrollable2.set_vexpand(True)
+        scrollable2.set_hexpand(True)
+        scrollable2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.EXTERNAL)
+        scrollable2.add(self.treeview2)
+
+        self.grid = Gtk.Grid(row_homogeneous=False)
+        self.grid.attach(self.treeview1, 0, 0, 1, 1)
+        self.grid.attach_next_to(
+            self.sequential, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1
+        )
+        self.grid.attach_next_to(
+            scrollable2, self.sequential, Gtk.PositionType.BOTTOM, 1, 1
+        )
 
     def update_sequence_display(self) -> None:
         """Update Sequence display"""
