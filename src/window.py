@@ -291,66 +291,9 @@ class Window(Gtk.ApplicationWindow):
             found, step = App().lightshow.main_playback.get_step(cue=mem)
 
         if not found:
-            # Create Preset
-            channels = {}
-            for channel, outputs in App().lightshow.patch.channels.items():
-                if not App().lightshow.patch.is_patched(channel):
-                    continue
-                for values in outputs:
-                    output = values[0]
-                    univ = values[1]
-                    index = UNIVERSES.index(univ)
-                    if level := App().backend.dmx.frame[index][output - 1]:
-                        channels[channel] = level
-            cue = Cue(1, mem, channels)
-            App().lightshow.cues.insert(step - 1, cue)
-
-            # Update Presets Tab if exist
-            if App().tabs.tabs["memories"]:
-                nb_chan = len(channels)
-                App().tabs.tabs["memories"].liststore.insert(
-                    step - 1, [str(mem), "", nb_chan]
-                )
-
-            App().lightshow.main_playback.position = step
-
-            # Create Step
-            step_object = Step(1, cue=cue)
-            App().lightshow.main_playback.insert_step(step, step_object)
-
-            # Update Main Playback
-            self.playback.update_sequence_display()
-            self.playback.update_xfade_display(step)
-            self.update_channels_display(step)
+            self._create_preset(mem, step)
         else:  # Update Preset
-            # Find Preset position
-            found = False
-            i = 0
-            for item in App().lightshow.cues:
-                if item.memory > mem:
-                    found = True
-                    break
-                i += 1
-            i -= 1
-
-            for univ in UNIVERSES:
-                for output in range(512):
-                    channel = App().lightshow.patch.outputs[univ][output + 1][0]
-                    index = UNIVERSES.index(univ)
-                    level = App().backend.dmx.frame[index][output]
-
-                    App().lightshow.cues[i].channels[channel - 1] = level
-
-            # Update Presets Tab if exist
-            if App().tabs.tabs["memories"]:
-                nb_chan = sum(
-                    bool(App().lightshow.cues[i].channels[chan])
-                    for chan in range(MAX_CHANNELS)
-                )
-
-                treeiter = App().tabs.tabs["memories"].liststore.get_iter(i)
-                App().tabs.tabs["memories"].liststore.set_value(treeiter, 2, nb_chan)
-                App().tabs.tabs["memories"].channels_view.update()
+            self._update_preset(mem)
 
         # Update Sequential edition Tabs
         if App().tabs.tabs["sequences"]:
@@ -367,6 +310,68 @@ class Window(Gtk.ApplicationWindow):
         App().lightshow.set_modified()
 
         self.commandline.set_string("")
+
+    def _create_preset(self, mem: float, step: int) -> None:
+        """Create new Preset component"""
+        channels = {}
+        for channel, outputs in App().lightshow.patch.channels.items():
+            if not App().lightshow.patch.is_patched(channel):
+                continue
+            for values in outputs:
+                output = values[0]
+                univ = values[1]
+                index = UNIVERSES.index(univ)
+                if level := App().backend.dmx.frame[index][output - 1]:
+                    channels[channel] = level
+        cue = Cue(1, mem, channels)
+        App().lightshow.cues.insert(step - 1, cue)
+
+        # Update Presets Tab if exist
+        if App().tabs.tabs["memories"]:
+            nb_chan = len(channels)
+            App().tabs.tabs["memories"].liststore.insert(
+                step - 1, [str(mem), "", nb_chan]
+            )
+
+        App().lightshow.main_playback.position = step
+
+        # Create Step
+        step_object = Step(1, cue=cue)
+        App().lightshow.main_playback.insert_step(step, step_object)
+
+        # Update Main Playback
+        self.playback.update_sequence_display()
+        self.playback.update_xfade_display(step)
+        self.update_channels_display(step)
+
+    def _update_preset(self, mem: float) -> None:
+        """Update existing Preset component"""
+        # Find Preset position
+        i = 0
+        for item in App().lightshow.cues:
+            if item.memory > mem:
+                break
+            i += 1
+        i -= 1
+
+        for univ in UNIVERSES:
+            for output in range(512):
+                channel = App().lightshow.patch.outputs[univ][output + 1][0]
+                index = UNIVERSES.index(univ)
+                level = App().backend.dmx.frame[index][output]
+
+                App().lightshow.cues[i].channels[channel - 1] = level
+
+        # Update Presets Tab if exist
+        if App().tabs.tabs["memories"]:
+            nb_chan = sum(
+                bool(App().lightshow.cues[i].channels[chan])
+                for chan in range(MAX_CHANNELS)
+            )
+
+            treeiter = App().tabs.tabs["memories"].liststore.get_iter(i)
+            App().tabs.tabs["memories"].liststore.set_value(treeiter, 2, nb_chan)
+            App().tabs.tabs["memories"].channels_view.update()
 
     def _keypress_u(self) -> None:
         """Update Cue"""
