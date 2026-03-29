@@ -76,6 +76,7 @@ class CurveValues(Gtk.DrawingArea):
                 x += 1
 
 
+# pylint: disable=too-many-instance-attributes
 class CurveEdition(Gtk.Box):
     """Edition Widget"""
 

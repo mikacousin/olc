@@ -59,7 +59,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.attach(scrollable, 0, 0, 1, 1)
 
     def populate_steps(self) -> None:
-        """Main Playback's Steps"""
+        """Main Playback Steps"""
         # Clear flowbox
         for child in self.flowbox.get_children():
             self.flowbox.remove(child)

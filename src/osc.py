@@ -79,6 +79,7 @@ class OscClient:
         liblo.send(self.target, path, *args)
 
 
+# pylint: disable=too-few-public-methods
 class OscServer(liblo.ServerThread):
     """OSC server"""
 
