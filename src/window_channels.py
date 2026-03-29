@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from typing import Callable
+
 from gi.repository import Gdk, Gtk
 from olc.define import UNIVERSES, App
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
@@ -20,7 +22,7 @@ from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 class LiveView(Gtk.Notebook):
     """Live Channels View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         Gtk.Notebook.__init__(self)
         self.set_group_name("olc")
 
@@ -58,7 +60,7 @@ class LiveView(Gtk.Notebook):
         widget.next_level = next_level
         widget.queue_draw()
 
-    def on_key_press_event(self, widget, event):
+    def on_key_press_event(self, widget: Gtk.Widget, event: Gdk.EventKey) -> Callable:
         """On key press event
 
         Args:
@@ -84,10 +86,10 @@ class LiveView(Gtk.Notebook):
 class LiveChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
         Args:
@@ -115,7 +117,7 @@ class LiveChannelsView(ChannelsView):
         child.set_visible(True)
         return True
 
-    def get_next_level(self, channel: int, channel_widget) -> int:
+    def get_next_level(self, channel: int, channel_widget: Gtk.Widget) -> int:
         """Get Channel next level
 
         Args:

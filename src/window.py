@@ -326,10 +326,11 @@ class Window(Gtk.ApplicationWindow):
             # Find Preset position
             found = False
             i = 0
-            for i, item in enumerate(App().lightshow.cues):
+            for item in App().lightshow.cues:
                 if item.memory > mem:
                     found = True
                     break
+                i += 1
             i -= 1
 
             for univ in UNIVERSES:

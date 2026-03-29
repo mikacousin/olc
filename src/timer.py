@@ -14,12 +14,15 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import threading
 import time
+from typing import Callable
 
 
 class RepeatedTimer:
     """Call a function every 'interval' seconds"""
 
-    def __init__(self, interval, function, *args, **kwargs):
+    def __init__(
+        self, interval: float, function: Callable, *args: object, **kwargs: object
+    ) -> None:
         self._timer = None
         self.interval = interval
         self.function = function

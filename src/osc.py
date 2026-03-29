@@ -91,99 +91,99 @@ class OscServer(liblo.ServerThread):
         self.start()
 
     @liblo.make_method("/olc/command_line", None)
-    def _commandline(self, _path, _args, _types):
+    def _commandline(self, _path: str | None, _args: list, _types: str) -> None:
         App().osc.client.send(
             "/olc/command_line", ("s", App().window.commandline.get_string())
         )
 
     @liblo.make_method("/olc/key/go", None)
-    def _go(self, _path, _args, _types):
+    def _go(self, _path: str | None, _args: list, _types: str) -> None:
         GLib.idle_add(App().lightshow.main_playback.do_go, None, None)
 
     @liblo.make_method("/olc/key/pause", None)
-    def _pause(self, _path, _args, _types):
+    def _pause(self, _path: str | None, _args: list, _types: str) -> None:
         GLib.idle_add(App().lightshow.main_playback.pause, None, None)
 
     @liblo.make_method("/olc/key/goback", None)
-    def _goback(self, _path, _args, _types):
+    def _goback(self, _path: str | None, _args: list, _types: str) -> None:
         GLib.idle_add(App().lightshow.main_playback.go_back, None, None)
 
     @liblo.make_method("/olc/key/seq+", None)
-    def _seq_plus(self, _path, _args, _types):
+    def _seq_plus(self, _path: str | None, _args: list, _types: str) -> None:
         GLib.idle_add(App().lightshow.main_playback.sequence_plus)
 
     @liblo.make_method("/olc/key/seq-", None)
-    def _seq_minus(self, _path, _args, _types):
+    def _seq_minus(self, _path: str | None, _args: list, _types: str) -> None:
         GLib.idle_add(App().lightshow.main_playback.sequence_minus)
 
     @liblo.make_method("/olc/key/clear", None)
-    def _clear(self, _path, _args, _types):
+    def _clear(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.set_string("")
 
     @liblo.make_method("/olc/key/1", None)
-    def _1(self, _path, _args, _types):
+    def _1(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("1")
 
     @liblo.make_method("/olc/key/2", None)
-    def _2(self, _path, _args, _types):
+    def _2(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("2")
 
     @liblo.make_method("/olc/key/3", None)
-    def _3(self, _path, _args, _types):
+    def _3(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("3")
 
     @liblo.make_method("/olc/key/4", None)
-    def _4(self, _path, _args, _types):
+    def _4(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("4")
 
     @liblo.make_method("/olc/key/5", None)
-    def _5(self, _path, _args, _types):
+    def _5(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("5")
 
     @liblo.make_method("/olc/key/6", None)
-    def _6(self, _path, _args, _types):
+    def _6(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("6")
 
     @liblo.make_method("/olc/key/7", None)
-    def _7(self, _path, _args, _types):
+    def _7(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("7")
 
     @liblo.make_method("/olc/key/8", None)
-    def _8(self, _path, _args, _types):
+    def _8(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("8")
 
     @liblo.make_method("/olc/key/9", None)
-    def _9(self, _path, _args, _types):
+    def _9(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("9")
 
     @liblo.make_method("/olc/key/0", None)
-    def _0(self, _path, _args, _types):
+    def _0(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string("0")
 
     @liblo.make_method("/olc/key/.", None)
-    def _period(self, _path, _args, _types):
+    def _period(self, _path: str | None, _args: list, _types: str) -> None:
         App().window.commandline.add_string(".")
 
     @liblo.make_method("/olc/key/channel", None)
-    def _channel(self, _path, _args, _types):
+    def _channel(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_c
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/all", None)
-    def _all(self, _path, _args, _types):
+    def _all(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_a
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/level", None)
-    def _level(self, _path, _args, _types):
+    def _level(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_equal
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/full", None)
-    def _full(self, _path, _args, _types):
+    def _full(self, _path: str | None, _args: list, _types: str) -> None:
         if App().settings.get_boolean("percent"):
             App().window.commandline.set_string("100")
         else:
@@ -193,37 +193,37 @@ class OscServer(liblo.ServerThread):
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/thru", None)
-    def _thru(self, _path, _args, _types):
+    def _thru(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_greater
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/+", None)
-    def _plus(self, _path, _args, _types):
+    def _plus(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_plus
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/-", None)
-    def _minus(self, _path, _args, _types):
+    def _minus(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_minus
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/+%", None)
-    def _pluspercent(self, _path, _args, _types):
+    def _pluspercent(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_exclam
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/key/-%", None)
-    def _minuspercent(self, _path, _args, _types):
+    def _minuspercent(self, _path: str | None, _args: list, _types: str) -> None:
         event = Gdk.EventKey()
         event.keyval = Gdk.KEY_colon
         App().window.on_key_press_event(None, event)
 
     @liblo.make_method("/olc/fader/pageupdate", None)
-    def _sub_launch(self, _path, _args, _types):
+    def _sub_launch(self, _path: str | None, _args: list, _types: str) -> None:
         fader_bank = App().lightshow.fader_bank
         App().osc.client.send("/olc/fader/page", ("i", fader_bank.active_page))
         for fader in fader_bank.faders[fader_bank.active_page].values():
@@ -232,7 +232,7 @@ class OscServer(liblo.ServerThread):
             )
 
     @liblo.make_method("/olc/fader/page+", None)
-    def _fader_page_plus(self, _path, _args, _types):
+    def _fader_page_plus(self, _path: str | None, _args: list, _types: str) -> None:
         fader_bank = App().lightshow.fader_bank
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
@@ -254,7 +254,7 @@ class OscServer(liblo.ServerThread):
             )
 
     @liblo.make_method("/olc/fader/page-", None)
-    def _fader_page_minus(self, _path, _args, _types):
+    def _fader_page_minus(self, _path: str | None, _args: list, _types: str) -> None:
         fader_bank = App().lightshow.fader_bank
         if App().virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
@@ -285,7 +285,7 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method("/olc/fader/1/8/level", "i")
     @liblo.make_method("/olc/fader/1/9/level", "i")
     @liblo.make_method("/olc/fader/1/10/level", "i")
-    def _fader_level(self, path, args, _types):
+    def _fader_level(self, path: str | None, args: list, _types: str) -> None:
         fader_index = int(path.split("/")[4])
         level = args[0]
         if App().virtual_console:
@@ -319,7 +319,7 @@ class OscServer(liblo.ServerThread):
     @liblo.make_method("/olc/fader/1/8/flash", "i")
     @liblo.make_method("/olc/fader/1/9/flash", "i")
     @liblo.make_method("/olc/fader/1/10/flash", "i")
-    def _fader_flash(self, path, args, _types):
+    def _fader_flash(self, path: str | None, args: list, _types: str) -> None:
         pressed = args[0]
         fader_index = int(path.split("/")[4])
         fader = App().lightshow.fader_bank.get_fader(fader_index)
@@ -329,30 +329,35 @@ class OscServer(liblo.ServerThread):
             fader.flash_off()
 
     @liblo.make_method("/olc/patch/channel", None)
-    def _patch_channel(self, _path, _args, _types):
+    def _patch_channel(self, _path: str | None, _args: list, _types: str) -> None:
         App().lightshow.patch.by_outputs.patch_channel(True)
 
     @liblo.make_method("/olc/patch/output", None)
-    def _patch_output(self, _path, _args, _types):
+    def _patch_output(self, _path: str | None, _args: list, _types: str) -> None:
         App().lightshow.patch.by_outputs.select_output()
 
     @liblo.make_method("/olc/patch/thru", None)
-    def _patch_thru(self, _path, _args, _types):
+    def _patch_thru(self, _path: str | None, _args: list, _types: str) -> None:
         App().lightshow.patch.by_outputs.thru()
 
     @liblo.make_method("/olc/patch/+", None)
-    def _patch_plus(self, _path, _args, _types):
+    def _patch_plus(self, _path: str | None, _args: list, _types: str) -> None:
         App().lightshow.patch.by_outputs.add_output()
 
     @liblo.make_method("/olc/patch/-", None)
-    def _patch_minus(self, _path, _args, _types):
+    def _patch_minus(self, _path: str | None, _args: list, _types: str) -> None:
         App().lightshow.patch.by_outputs.del_output()
 
     @liblo.make_method(None, None)
-    def _fallback(self, path, args, types, src):
+    def _fallback(
+        self, path: str | None, args: list, types: str, src: liblo.Address
+    ) -> None:
         print(f"Got unknown message '{path}' from '{src.url}'")
+        print(type(path), type(src))
+        print(f"args {type(args)} types {type(types)}")
         for a, t in zip(args, types, strict=True):
             print(f"received argument {a} of type {t}")
+            print(f"a {type(a)}")
 
     def _string_to_output(self) -> tuple[Optional[int], Optional[int]]:
         output = None

@@ -19,7 +19,7 @@ class MainFader:
 
     value: float
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.value = 1.0
 
     def set_level(self, value: float) -> None:

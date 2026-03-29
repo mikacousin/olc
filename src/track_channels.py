@@ -81,7 +81,7 @@ class TrackChannelsTab(Gtk.Grid):
             self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
             self.flowbox.add(self.steps[step])
 
-    def filter_func(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+    def filter_func(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Step filter
 
         Args:

@@ -33,11 +33,11 @@ class Independent:
 
     def __init__(
         self,
-        number,
-        text="",
-        levels=None,
-        inde_type="knob",
-    ):
+        number: int,
+        text: str = "",
+        levels: dict[int, int] | None = None,
+        inde_type: str = "knob",
+    ) -> None:
         self.number = number
         self.level = 0
         self.channels = set()
@@ -48,13 +48,13 @@ class Independent:
 
         self.update_channels()
 
-    def update_channels(self):
+    def update_channels(self) -> None:
         """Update set of channels"""
         for channel, level in self.levels.items():
             if level:
                 self.channels.add(channel)
 
-    def set_levels(self, levels):
+    def set_levels(self, levels: dict[int, int]) -> None:
         """Define channels and levels
 
         Args:
@@ -76,7 +76,7 @@ class Independent:
         self.level = value
         self.update_dmx()
 
-    def update_dmx(self):
+    def update_dmx(self) -> None:
         """Update DMX levels"""
         for channel, level in self.levels.items():
             dmx_lvl = round(level * (self.level / 255))
@@ -93,7 +93,7 @@ class Independents:
         channels (set): list of channels present in independents
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.independents = []
         self.channels = set()
         self.dmx = array.array("B", [0] * MAX_CHANNELS)
@@ -104,7 +104,7 @@ class Independents:
         for i in range(6, 9):
             self.add(Independent(i + 1, inde_type="button"))
 
-    def update_dmx(self):
+    def update_dmx(self) -> None:
         """Update DMX levels"""
         for channel in self.channels:
             channel -= 1
@@ -119,7 +119,7 @@ class Independents:
                 )
                 App().window.live_view.update_channel_widget(channel + 1, next_level)
 
-    def add(self, independent):
+    def add(self, independent: Independent) -> bool:
         """Add an independent
 
         Args:
@@ -137,7 +137,7 @@ class Independents:
         self.update_channels()
         return True
 
-    def update(self, independent):
+    def update(self, independent: Independent) -> None:
         """Update independent
 
         Args:
@@ -150,14 +150,14 @@ class Independents:
         self.independents[number - 1].set_levels(levels)
         self.update_channels()
 
-    def get_channels(self):
+    def get_channels(self) -> set[int]:
         """
         Returns:
             (set) channels presents in all independent
         """
         return self.channels
 
-    def update_channels(self):
+    def update_channels(self) -> None:
         """Update set of channels present in all independents"""
         self.channels = set()
         for inde in self.independents:

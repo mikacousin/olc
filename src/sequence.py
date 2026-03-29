@@ -172,19 +172,21 @@ class Sequence:
         found = False
         step = 0
         # Cue already exist ?
-        for step, item in enumerate(self.steps):
+        for item in self.steps:
             if item.cue.memory == cue:
                 found = True
                 break
+            step += 1
         step -= 1
         # If new Cue, find step index
         if not found:
             exist = False
             step = 0
-            for step, item in enumerate(self.steps):
+            for item in self.steps:
                 if item.cue.memory > cue:
                     exist = True
                     break
+                step += 1
             if not exist:
                 step += 1
         elif step:

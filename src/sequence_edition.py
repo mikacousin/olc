@@ -189,9 +189,10 @@ class SequenceTab(Gtk.Grid):
         # Find double clicked cell
         columns = self.treeview2.get_columns()
         col_nb = 0
-        for col_nb, col in enumerate(columns):
+        for col in columns:
             if col == column:
                 break
+            col_nb += 1
         # Double click on Channel Time
         if col_nb == 8:
             sequence = self.get_selected_sequence()

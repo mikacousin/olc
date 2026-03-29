@@ -204,7 +204,7 @@ class IndeChannelsView(ChannelsView):
             channel_widget.queue_draw()
             self.set_channel_level(channel, level)
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data) -> bool:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
 
         Args:
