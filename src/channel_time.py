@@ -94,25 +94,8 @@ class ChanneltimeTab(Gtk.Paned):
         self.liststore = Gtk.ListStore(int, str, str)
 
         self.step = self.sequence.steps[int(position)]
-
-        for channel in self.step.channel_time.keys():
-            delay = (
-                str(int(self.step.channel_time[channel].delay))
-                if self.step.channel_time[channel].delay.is_integer()
-                else str(self.step.channel_time[channel].delay)
-            )
-            if delay == "0":
-                delay = ""
-            time = (
-                str(int(self.step.channel_time[channel].time))
-                if self.step.channel_time[channel].time.is_integer()
-                else str(self.step.channel_time[channel].time)
-            )
-            if time == "0":
-                time = ""
-            self.liststore.append([channel, delay, time])
-
         self.treeview = Gtk.TreeView(model=self.liststore)
+        self._repopulate_liststore()
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_channeltime_changed)
 
@@ -136,6 +119,54 @@ class ChanneltimeTab(Gtk.Paned):
         self.liststore.clear()
         self.channels_view.update()
 
+    def _repopulate_liststore(self) -> None:
+        """Clear and repopulate the liststore data"""
+        self.liststore.clear()
+        for channel, ct in self.step.channel_time.items():
+            delay = str(int(ct.delay)) if ct.delay.is_integer() else str(ct.delay)
+            if delay == "0":
+                delay = ""
+            time = str(int(ct.time)) if ct.time.is_integer() else str(ct.time)
+            if time == "0":
+                time = ""
+            self.liststore.append([channel, delay, time])
+
+    def _update_sequence_tab(self) -> None:
+        """Update Sequence Tab if open on the active sequence"""
+        sequences_tab = App().tabs.tabs["sequences"]
+        if sequences_tab:
+            seq_path, _ = sequences_tab.treeview1.get_cursor()
+            if not seq_path:
+                return
+            selected = seq_path.get_indices()
+            sequence = sequences_tab.liststore1[selected][0]
+            if sequence == self.sequence.index:
+                path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
+                ct_nb = len(self.step.channel_time)
+                sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
+
+    def _update_total_time(self) -> None:
+        """Recalculate total time for the step"""
+        if self.step.time_in > self.step.time_out:
+            self.step.total_time = self.step.time_in + self.step.wait
+        else:
+            self.step.total_time = self.step.time_out + self.step.wait
+        for ct in self.step.channel_time.values():
+            t = ct.delay + ct.time + self.step.wait
+            self.step.total_time = max(self.step.total_time, t)
+
+    def _update_main_playback(self) -> None:
+        """Redraw Main Playback metrics if necessary"""
+        if self.sequence == App().lightshow.main_playback:
+            path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
+            ct_nb = len(self.step.channel_time)
+            App().window.playback.cues_liststore1[path1][8] = (
+                "" if ct_nb == 0 else str(ct_nb)
+            )
+            if App().lightshow.main_playback.position + 1 == int(self.position):
+                App().window.playback.sequential.total_time = self.step.total_time
+                App().window.playback.sequential.queue_draw()
+
     def delay_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
         """Delay changed
 
@@ -147,75 +178,19 @@ class ChanneltimeTab(Gtk.Paned):
             text = "0"
         if text.replace(".", "", 1).isdigit():
             self.liststore[path_to_cell][1] = "" if text == "0" else text
-        # Find selected Channel Time
+
         path, _focus_column = self.treeview.get_cursor()
         if path:
-            selected = path.get_indices()[0]
-            channel = self.liststore[selected][0]
-            # Delete Channel Time if Delay and Time are 0
+            channel = self.liststore[path.get_indices()[0]][0]
             if self.step.channel_time[channel].time == 0 and text == "0":
                 del self.step.channel_time[channel]
-                # Redraw list of Channel Time
-                self.liststore.clear()
-                for channel in self.step.channel_time.keys():
-                    delay = (
-                        str(int(self.step.channel_time[channel].delay))
-                        if self.step.channel_time[channel].delay.is_integer()
-                        else str(self.step.channel_time[channel].delay)
-                    )
-                    if delay == "0":
-                        delay = ""
-                    time = (
-                        str(int(self.step.channel_time[channel].time))
-                        if self.step.channel_time[channel].time.is_integer()
-                        else str(self.step.channel_time[channel].time)
-                    )
-                    if time == "0":
-                        time = ""
-                    self.liststore.append([channel, delay, time])
-                    self.treeview.set_model(self.liststore)
+                self._repopulate_liststore()
             else:
-                # Update Delay value
                 self.step.channel_time[channel].delay = float(text)
-            # Update Sequence Tab if Open on the good sequence
-            if App().tabs.tabs["sequences"]:
-                # Start to find the selected sequence
-                seq_path, _focus_column = (
-                    App().tabs.tabs["sequences"].treeview1.get_cursor()
-                )
-                selected = seq_path.get_indices()
-                sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
-                # If the same sequence is selected
-                if sequence == self.sequence.index:
-                    path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
-                    ct_nb = len(self.step.channel_time)
-                    App().tabs.tabs["sequences"].liststore2[path][8] = (
-                        "" if ct_nb == 0 else str(ct_nb)
-                    )
-            # Update Total Time
-            if self.step.time_in > self.step.time_out:
-                self.step.total_time = self.step.time_in + self.step.wait
-            else:
-                self.step.total_time = self.step.time_out + self.step.wait
-            for channel in self.step.channel_time.keys():
-                t = (
-                    self.step.channel_time[channel].delay
-                    + self.step.channel_time[channel].time
-                    + self.step.wait
-                )
-                self.step.total_time = max(self.step.total_time, t)
 
-            # Redraw Main Playback
-            if self.sequence == App().lightshow.main_playback:
-                path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
-                ct_nb = len(self.step.channel_time)
-                if ct_nb == 0:
-                    App().window.playback.cues_liststore1[path1][8] = ""
-                else:
-                    App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
-                if App().lightshow.main_playback.position + 1 == int(self.position):
-                    App().window.playback.sequential.total_time = self.step.total_time
-                    App().window.playback.sequential.queue_draw()
+            self._update_sequence_tab()
+            self._update_total_time()
+            self._update_main_playback()
 
         App().window.commandline.set_string("")
 
@@ -230,75 +205,19 @@ class ChanneltimeTab(Gtk.Paned):
             text = "0"
         if text.replace(".", "", 1).isdigit():
             self.liststore[path_to_cell][2] = "" if text == "0" else text
-        # Find selected Channel Time
+
         path, _focus_column = self.treeview.get_cursor()
         if path:
-            selected = path.get_indices()[0]
-            channel = self.liststore[selected][0]
-            # Delete Channel Time if Delay and Time are 0
+            channel = self.liststore[path.get_indices()[0]][0]
             if self.step.channel_time[channel].delay == 0 and text == "0":
                 del self.step.channel_time[channel]
-                # Redraw List of Channel Time
-                self.liststore.clear()
-                for channel in self.step.channel_time.keys():
-                    delay = (
-                        str(int(self.step.channel_time[channel].delay))
-                        if self.step.channel_time[channel].delay.is_integer()
-                        else str(self.step.channel_time[channel].delay)
-                    )
-                    if delay == "0":
-                        delay = ""
-                    time = (
-                        str(int(self.step.channel_time[channel].time))
-                        if self.step.channel_time[channel].time.is_integer()
-                        else str(self.step.channel_time[channel].time)
-                    )
-                    if time == "0":
-                        time = ""
-                    self.liststore.append([channel, delay, time])
-                    self.treeview.set_model(self.liststore)
+                self._repopulate_liststore()
             else:
-                # Update Time value
                 self.step.channel_time[channel].time = float(text)
-            # Update Sequence Tab if Open on the good sequence
-            if App().tabs.tabs["sequences"]:
-                # Start to find the selected sequence
-                seq_path, _focus_column = (
-                    App().tabs.tabs["sequences"].treeview1.get_cursor()
-                )
-                selected = seq_path.get_indices()
-                sequence = App().tabs.tabs["sequences"].liststore1[selected][0]
-                # If the same sequence is selected
-                if sequence == self.sequence.index:
-                    path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
-                    ct_nb = len(self.step.channel_time)
-                    App().tabs.tabs["sequences"].liststore2[path][8] = (
-                        "" if ct_nb == 0 else str(ct_nb)
-                    )
-            # Update Total Time
-            if self.step.time_in > self.step.time_out:
-                self.step.total_time = self.step.time_in + self.step.wait
-            else:
-                self.step.total_time = self.step.time_out + self.step.wait
-            for channel in self.step.channel_time.keys():
-                t = (
-                    self.step.channel_time[channel].delay
-                    + self.step.channel_time[channel].time
-                    + self.step.wait
-                )
-                self.step.total_time = max(self.step.total_time, t)
 
-            # Redraw Main Playback
-            if self.sequence == App().lightshow.main_playback:
-                path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
-                ct_nb = len(self.step.channel_time)
-                if ct_nb == 0:
-                    App().window.playback.cues_liststore1[path1][8] = ""
-                else:
-                    App().window.playback.cues_liststore1[path1][8] = str(ct_nb)
-                if App().lightshow.main_playback.position + 1 == int(self.position):
-                    App().window.playback.sequential.total_time = self.step.total_time
-                    App().window.playback.sequential.queue_draw()
+            self._update_sequence_tab()
+            self._update_total_time()
+            self._update_main_playback()
 
         App().window.commandline.set_string("")
 
