@@ -24,6 +24,7 @@ from olc.step import Step
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 
+# pylint: disable=too-many-instance-attributes
 class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
 
@@ -34,9 +35,14 @@ class SequenceTab(Gtk.Grid):
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
 
-        # List of Sequences
-        self.liststore1 = Gtk.ListStore(int, str, str)
+        self._setup_sequences_list()
+        self._setup_cues_list()
+        self.attach(self.treeview1, 0, 0, 1, 1)
+        self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
+    def _setup_sequences_list(self) -> None:
+        """Setup the sequence selection list"""
+        self.liststore1 = Gtk.ListStore(int, str, str)
         self.liststore1.append(
             [
                 App().lightshow.main_playback.index,
@@ -44,30 +50,26 @@ class SequenceTab(Gtk.Grid):
                 App().lightshow.main_playback.text,
             ]
         )
-
         for chaser in App().lightshow.chasers:
             self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
 
         self.treeview1 = Gtk.TreeView(model=self.liststore1)
         self.treeview1.set_enable_search(False)
-        selection = self.treeview1.get_selection()
-        selection.connect("changed", self.on_sequence_changed)
+        self.treeview1.get_selection().connect("changed", self.on_sequence_changed)
 
         for i, column_title in enumerate(["Seq", "Type", "Name"]):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             self.treeview1.append_column(column)
 
-        self.attach(self.treeview1, 0, 0, 1, 1)
-
-        # We put channels and memories list in a paned
+    def _setup_cues_list(self) -> None:
+        """Setup the cues layout"""
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.paned.set_position(300)
 
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
-        # Channels in the selected cue
         self.channels_view = SeqChannelsView()
         self.paned.add1(self.channels_view)
 
@@ -77,59 +79,49 @@ class SequenceTab(Gtk.Grid):
         self.treeview2.connect("cursor-changed", self.on_memory_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
 
-        # Display selected sequence
-        for i, column_title in enumerate(
-            [
-                "Step",
-                "Cue",
-                "Text",
-                "Wait",
-                "Delay Out",
-                "Out",
-                "Delay In",
-                "In",
-                "Channel Time",
-            ]
-        ):
+        columns = [
+            "Step",
+            "Cue",
+            "Text",
+            "Wait",
+            "Delay Out",
+            "Out",
+            "Delay In",
+            "In",
+            "Channel Time",
+        ]
+        for i, column_title in enumerate(columns):
             renderer = Gtk.CellRendererText()
-            # Change background color one column out of two
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
-            if i == 2:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.text_edited)
-            elif i == 3:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.wait_edited)
-            elif i == 4:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.delay_out_edited)
-            elif i == 5:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.out_edited)
-            elif i == 6:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.delay_in_edited)
-            elif i == 7:
-                renderer.set_property("editable", True)
-                renderer.connect("edited", self.in_edited)
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
 
+            if i in (2, 3, 4, 5, 6, 7):
+                renderer.set_property("editable", True)
+                if i == 2:
+                    renderer.connect("edited", self.text_edited)
+                elif i == 3:
+                    renderer.connect("edited", self.wait_edited)
+                elif i == 4:
+                    renderer.connect("edited", self.delay_out_edited)
+                elif i == 5:
+                    renderer.connect("edited", self.out_edited)
+                elif i == 6:
+                    renderer.connect("edited", self.delay_in_edited)
+                elif i == 7:
+                    renderer.connect("edited", self.in_edited)
+
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
                 column.set_min_width(200)
                 column.set_resizable(True)
 
             self.treeview2.append_column(column)
 
-        # Put Cues List in a scrolled window
         self.scrollable2 = Gtk.ScrolledWindow()
         self.scrollable2.set_vexpand(True)
         self.scrollable2.set_hexpand(True)
         self.scrollable2.add(self.treeview2)
-
         self.paned.add2(self.scrollable2)
-
-        self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -451,7 +443,7 @@ class SequenceTab(Gtk.Grid):
     def on_sequence_changed(self, _selection: Gtk.TreeSelection = None) -> None:
         """Select Sequence"""
         # Empty ListStore
-        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
+        self.liststore2.clear()
         # Display Sequence
         self.populate_liststore(1)
 
@@ -616,7 +608,7 @@ class SequenceTab(Gtk.Grid):
             sequence.steps.pop(step)
             sequence.last -= 1
             sequence.update_channels()
-            self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
+            self.liststore2.clear()
             self.populate_liststore(step)
             # Update Main Playback
             App().window.playback.update_sequence_display()
@@ -650,7 +642,6 @@ class SequenceTab(Gtk.Grid):
     def _keypress_r(self) -> None:
         """New Step and new Cue"""
         found = False
-        # Find selected Step
         sequence = self.get_selected_sequence()
         if not sequence:
             return
@@ -658,93 +649,84 @@ class SequenceTab(Gtk.Grid):
         keystring = App().window.commandline.get_string()
         if keystring == "":
             if step:
-                # New Cue number
                 mem = sequence.get_next_cue(step=step)
-                # New Step
                 step += 1
             else:
                 mem = 1.0
                 step = 1
         else:
-            # Cue number given by user
             mem = float(keystring)
             found, step = sequence.get_step(cue=mem)
             App().window.commandline.set_string("")
-        if not found:  # New Cue
-            # Create Cue
-            channels = {}
-            for channel in range(MAX_CHANNELS):
-                channel_widget = self.channels_view.get_channel_widget(channel + 1)
-                if channel_widget.level:
-                    channels[channel] = channel_widget.level
-            cue = Cue(sequence.index, mem, channels)
-            # Create Step
-            step_object = Step(sequence.index, cue=cue)
-            sequence.insert_step(step, step_object)
-            # If we modify Main Sequence
-            if sequence is App().lightshow.main_playback:
-                App().lightshow.cues.insert(step, cue)
-                # Update Preset Tab if exist
-                if App().tabs.tabs["memories"]:
-                    nb_chan = len(channels)
-                    App().tabs.tabs["memories"].liststore.insert(
-                        step - 1, [str(mem), "", nb_chan]
-                    )
-            sequence.update_channels()
-            # Update Display
-            self.update_sequence_display(step)
-            # Tag filename as modified
-            App().lightshow.set_modified()
-            # Reset user modifications
-            self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
-        else:  # Update Cue
-            dialog = ConfirmationDialog(f"Update memory {mem} ?")
-            response = dialog.run()
-            if response == Gtk.ResponseType.OK:
-                # Find Preset position
-                found, step = sequence.get_step(cue=mem)
-                # Update Cue
-                channels = {}
-                for channel in range(MAX_CHANNELS):
-                    channel_widget = self.channels_view.get_channel_widget(channel + 1)
-                    if channel_widget.level:
-                        sequence.steps[step].cue.channels[channel] = (
-                            channel_widget.level
-                        )
-                sequence.update_channels()
-                # Tag filename as modified
-                App().lightshow.set_modified()
-                # Select memory modified
-                path = Gtk.TreePath.new_from_indices([step - 1])
-                self.treeview2.set_cursor(path, None, False)
-                # Update Presets Tab if exist
-                if (
-                    sequence is App().lightshow.main_playback
-                    and App().tabs.tabs["memories"]
-                ):
-                    nb_chan = len(App().lightshow.cues[step - 1].channels)
-                    treeiter = App().tabs.tabs["memories"].liststore.get_iter(step - 1)
-                    App().tabs.tabs["memories"].liststore.set_value(
-                        treeiter, 2, nb_chan
-                    )
-                    App().tabs.tabs["memories"].channels_view.update()
-                # Update Channels tab
-                if (
-                    sequence is App().lightshow.main_playback
-                    and step == App().lightshow.main_playback.position + 1
-                ):
-                    for channel in range(MAX_CHANNELS):
-                        widget = (
-                            App().window.live_view.channels_view.get_channel_widget(
-                                channel + 1
-                            )
-                        )
-                        channel_widget = self.channels_view.get_channel_widget(
-                            channel + 1
-                        )
-                        widget.next_level = channel_widget.level
-                        widget.queue_draw()
+
+        if not found:
+            self._create_cue(sequence, mem, step)
+        else:
+            self._update_cue(sequence, mem)
+
+    def _create_cue(self, sequence: Sequence, mem: float, step: int) -> None:
+        """Create new cue inside the sequence"""
+        channels = {}
+        for channel in range(MAX_CHANNELS):
+            channel_widget = self.channels_view.get_channel_widget(channel + 1)
+            if channel_widget.level:
+                channels[channel] = channel_widget.level
+        cue = Cue(sequence.index, mem, channels)
+        step_object = Step(sequence.index, cue=cue)
+        sequence.insert_step(step, step_object)
+
+        if sequence is App().lightshow.main_playback:
+            App().lightshow.cues.insert(step, cue)
+            if App().tabs.tabs["memories"]:
+                nb_chan = len(channels)
+                App().tabs.tabs["memories"].liststore.insert(
+                    step - 1, [str(mem), "", nb_chan]
+                )
+
+        sequence.update_channels()
+        self.update_sequence_display(step)
+        App().lightshow.set_modified()
+        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+
+    def _update_cue(self, sequence: Sequence, mem: float) -> None:
+        """Update existing cue inside the sequence"""
+        dialog = ConfirmationDialog(f"Update memory {mem} ?")
+        response = dialog.run()
+        if response != Gtk.ResponseType.OK:
             dialog.destroy()
+            return
+
+        _, step = sequence.get_step(cue=mem)
+        for channel in range(MAX_CHANNELS):
+            channel_widget = self.channels_view.get_channel_widget(channel + 1)
+            if channel_widget.level:
+                sequence.steps[step].cue.channels[channel] = channel_widget.level
+
+        sequence.update_channels()
+        App().lightshow.set_modified()
+
+        path = Gtk.TreePath.new_from_indices([step - 1])
+        self.treeview2.set_cursor(path, None, False)
+
+        if sequence is App().lightshow.main_playback and App().tabs.tabs["memories"]:
+            nb_chan = len(App().lightshow.cues[step - 1].channels)
+            treeiter = App().tabs.tabs["memories"].liststore.get_iter(step - 1)
+            App().tabs.tabs["memories"].liststore.set_value(treeiter, 2, nb_chan)
+            App().tabs.tabs["memories"].channels_view.update()
+
+        if (
+            sequence is App().lightshow.main_playback
+            and step == App().lightshow.main_playback.position + 1
+        ):
+            for channel in range(MAX_CHANNELS):
+                widget = App().window.live_view.channels_view.get_channel_widget(
+                    channel + 1
+                )
+                channel_widget = self.channels_view.get_channel_widget(channel + 1)
+                widget.next_level = channel_widget.level
+                widget.queue_draw()
+
+        dialog.destroy()
 
     def add_step_to_liststore(self, step: int) -> None:
         """Add Step to the list
