@@ -305,72 +305,61 @@ class SettingsTab(Gtk.Box):
 
             GLib.timeout_add_seconds(1, self._refresh_artnet)
 
+    def _collect_devices(self, devices: dict, device_type: str, grouped: dict) -> None:
+        """Helper to collect and merge devices"""
+        for device in devices.values():
+            key = (device.mac, device_type)
+            if key not in grouped:
+                grouped[key] = {
+                    "name": device.names.get("long", ""),
+                    "ip": device.ip,
+                    "type": device_type,
+                    "universes": set(device.universes),
+                }
+            else:
+                grouped[key]["universes"].update(device.universes)
+
     def _refresh_artnet(self) -> bool:
         if not App().tabs.tabs.get("settings"):
             return False
 
-        backend = App().settings.get_string("backend")
-        if "artnet" not in backend:
+        if "artnet" not in App().settings.get_string("backend"):
             return True
 
         current_backend = App().backend
-        if current_backend and hasattr(current_backend, "artnet"):
-            # Add physical discovered nodes (grouped by MAC and Type)
-            grouped_nodes = {}
+        if not current_backend or not hasattr(current_backend, "artnet"):
+            return True
 
-            nodes = current_backend.artnet.discovery.nodes
-            for node in nodes.values():
-                key = (node.mac, "Node")
-                if key not in grouped_nodes:
-                    grouped_nodes[key] = {
-                        "name": node.names.get("long", ""),
-                        "ip": node.ip,
-                        "type": "Node",
-                        "universes": set(node.universes),
-                    }
-                else:
-                    grouped_nodes[key]["universes"].update(node.universes)
+        grouped = {}
+        self._collect_devices(current_backend.artnet.discovery.nodes, "Node", grouped)
+        self._collect_devices(
+            current_backend.artnet.discovery.consoles, "Controller", grouped
+        )
 
-            consoles = current_backend.artnet.discovery.consoles
-            for console in consoles.values():
-                key = (console.mac, "Controller")
-                if key not in grouped_nodes:
-                    grouped_nodes[key] = {
-                        "name": console.names.get("long", ""),
-                        "ip": console.ip,
-                        "type": "Controller",
-                        "universes": set(console.universes),
-                    }
-                else:
-                    grouped_nodes[key]["universes"].update(console.universes)
+        new_state = [
+            [g["name"], g["ip"], g["type"], ", ".join(map(str, sorted(g["universes"])))]
+            for g in grouped.values()
+        ]
 
-            new_state = []
-            for info in grouped_nodes.values():
-                universes = ", ".join(map(str, sorted(info["universes"])))
-                new_state.append([info["name"], info["ip"], info["type"], universes])
+        if any(
+            ((0, 0, 0, 0, 0, 0), 0) in s.nodes
+            for s in current_backend.artnet.senders.values()
+        ):
+            univs = ", ".join(
+                str(u) for u in sorted(current_backend.artnet.senders.keys())
+            )
+            new_state.append(
+                ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
+            )
 
-            # Add phantom loopback node
-            phantom_shown = False
-            for sender in current_backend.artnet.senders.values():
-                if ((0, 0, 0, 0, 0, 0), 0) in sender.nodes:
-                    phantom_shown = True
-                    break
+        type_prio = {"Virtual": 0, "Node": 1, "Controller": 2}
+        new_state.sort(key=lambda x: (type_prio.get(x[2], 99), x[1], x[0]))
 
-            if phantom_shown:
-                all_senders = current_backend.artnet.senders.keys()
-                univs = ", ".join(str(u) for u in sorted(all_senders))
-                new_state.append(
-                    ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
-                )
-
-            # Update UI only if data has actually changed
-            type_prio = {"Virtual": 0, "Node": 1, "Controller": 2}
-            new_state.sort(key=lambda x: (type_prio.get(x[2], 99), x[1], x[0]))
-            if self._last_artnet_state != new_state:
-                self.liststore_artnet.clear()
-                for row in new_state:
-                    self.liststore_artnet.append(row)
-                self._last_artnet_state = new_state
+        if self._last_artnet_state != new_state:
+            self.liststore_artnet.clear()
+            for row in new_state:
+                self.liststore_artnet.append(row)
+            self._last_artnet_state = new_state
 
         return True
 
