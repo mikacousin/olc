@@ -22,6 +22,7 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+from olc.backends import DMXBackend  # noqa: E402
 from olc.backends.backend import select_backend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
@@ -53,7 +54,7 @@ from olc.window import Window  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
-    backend: object
+    backend: DMXBackend | None
     version: str
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
@@ -210,7 +211,7 @@ class Application(Gtk.Application):
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
             self.lightshow.file = command_line.create_file_for_arg(arguments[1])
-            imported = ImportFile(self.lightshow.file, "olc")
+            imported = ImportFile(self.lightshow.file, FileType.OLC)
             imported.parse()
         return False
 
@@ -261,16 +262,16 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         # All channels at 0
-        for channel in range(MAX_CHANNELS):
-            self.backend.dmx.levels["user"][channel] = -1
-        self.backend.dmx.set_levels()
+        if self.backend:
+            for channel in range(MAX_CHANNELS):
+                self.backend.dmx.levels["user"][channel] = -1
+            self.backend.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
         self.lightshow.patch.patch_1on1()
         # Reset Main Playback
         self.lightshow.main_playback = Sequence(1, "Main Playback")
         self.lightshow.main_playback.position = 0
-        self.lightshow.main_playback.window = self.window
         self.lightshow.main_playback.update_channels()
         # Delete cues, groups, chasers, faders
         del self.lightshow.cues[:]
@@ -321,17 +322,18 @@ class Application(Gtk.Application):
         if response == Gtk.ResponseType.ACCEPT:
             self.lightshow.file = open_dialog.get_file()
             # Load file
-            imported = ImportFile(self.lightshow.file, "olc")
+            imported = ImportFile(self.lightshow.file, FileType.OLC)
             imported.parse()
 
         # destroy the FileChooserNative
         open_dialog.destroy()
 
         # All channels at 0
-        for channel in range(MAX_CHANNELS):
-            self.backend.dmx.levels["sequence"][channel] = 0
-            self.backend.dmx.levels["user"][channel] = -1
-        self.backend.dmx.set_levels()
+        if self.backend:
+            for channel in range(MAX_CHANNELS):
+                self.backend.dmx.levels["sequence"][channel] = 0
+                self.backend.dmx.levels["user"][channel] = -1
+            self.backend.dmx.set_levels()
 
     def _import_file(
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
@@ -392,14 +394,14 @@ class Application(Gtk.Application):
         response = dialog.run()
 
         if response == Gtk.ResponseType.ACCEPT:
-            exported = ExportFile(dialog.get_file(), "ascii")
+            exported = ExportFile(dialog.get_file(), FileType.ASCII)
             exported.write()
         dialog.destroy()
 
     def _save(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """Save"""
         if self.lightshow.file is not None:
-            exported = ExportFile(self.lightshow.file, "olc")
+            exported = ExportFile(self.lightshow.file, FileType.OLC)
             exported.write()
         else:
             self._saveas(_action, _parameter)
@@ -437,7 +439,7 @@ class Application(Gtk.Application):
             # self.lightshow.file is the currently selected file
             self.lightshow.file = save_dialog.get_file()
             # save to file
-            exported = ExportFile(self.lightshow.file, "olc")
+            exported = ExportFile(self.lightshow.file, FileType.OLC)
             exported.write()
             # Set Main Window's title with file name
             self.lightshow.set_not_modified()
@@ -586,7 +588,8 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         self.midi.stop()
-        self.backend.stop()
+        if self.backend:
+            self.backend.stop()
         self.quit()
         return False
 
