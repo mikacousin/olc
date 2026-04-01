@@ -21,11 +21,13 @@ if typing.TYPE_CHECKING:
     from olc.cue import Cue
 
 
+# pylint: disable=too-many-instance-attributes
 class Step:
     """Step
     A Step is used to store times and a Cue in a Sequence
     """
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         sequence: int = 0,
