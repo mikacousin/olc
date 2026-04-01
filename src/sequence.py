@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import array
@@ -65,8 +66,9 @@ def update_ui(position: int, subtitle: str) -> None:
         App().window.live_view.update_channel_widget(channel, next_level)
 
 
+# pylint: disable=too-many-instance-attributes
 class Sequence:
-    """Sequence
+    """Sequence Object
     A Sequence is a collection of Steps
     """
 
@@ -504,6 +506,7 @@ class Sequence:
                 self.thread.pause.set()
 
 
+# pylint: disable=too-many-instance-attributes
 class ThreadGo(threading.Thread):
     """Thread object for Go"""
 
@@ -524,8 +527,8 @@ class ThreadGo(threading.Thread):
         self.delay_out = self.sequence.steps[next_step].delay_out * 1000
         self.goto = goto
 
-    def run(self) -> None:
-        # Levels when Go is sent
+    def _capture_start_levels(self) -> None:
+        """Capture DMX levels when Go is sent"""
         for channel, outputs in App().lightshow.patch.channels.items():
             if not App().lightshow.patch.is_patched(channel):
                 continue
@@ -545,29 +548,8 @@ class ThreadGo(threading.Thread):
                 index = UNIVERSES.index(universe)
                 self.dmxlevels[index][output - 1] = level
 
-        start_pause = None
-        pause_time = 0.0
-        start_time = time.time() * 1000  # actual time in ms
-        i = (time.time() * 1000) - start_time
-        # Loop on total time
-        while i < self.total_time and not self._stopevent.is_set():
-            # Pause
-            if not self.pause.is_set():
-                if not start_pause:
-                    start_pause = time.time() * 1000
-                self.pause.wait()
-                pause_time += (time.time() * 1000) - start_pause
-            else:
-                start_pause = None
-                i = (time.time() * 1000) - (start_time + pause_time)
-                # Update DMX levels
-                self.update_levels(i)
-                # Sleep for 50ms
-                time.sleep(0.05)
-        # Stop thread if we send stop message
-        if self._stopevent.is_set():
-            return
-        # Finish to load memory
+    def _finalize_go(self) -> None:
+        """Finish load memory after sequence transition"""
         for channel, outputs in App().lightshow.patch.channels.items():
             if not App().lightshow.patch.is_patched(channel):
                 continue
@@ -592,18 +574,36 @@ class ThreadGo(threading.Thread):
                     next_level,
                 )
         App().backend.dmx.set_levels(self.sequence.channels)
-        # Go is completed
         self.sequence.on_go = False
-        # GLib.idle_add(App().window.playback.display_times)
-        # Empty DMX user array
         App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
-        # Wait, launch next step
         if self.sequence.steps[next_step].wait:
             self.sequence.do_go(None, False)
-
         App().midi.button_off("go")
+
+    def run(self) -> None:
+        self._capture_start_levels()
+        start_pause = None
+        pause_time = 0.0
+        start_time = time.time() * 1000
+        i = (time.time() * 1000) - start_time
+        while i < self.total_time and not self._stopevent.is_set():
+            if not self.pause.is_set():
+                if not start_pause:
+                    start_pause = time.time() * 1000
+                self.pause.wait()
+                pause_time += (time.time() * 1000) - start_pause
+            else:
+                start_pause = None
+                i = (time.time() * 1000) - (start_time + pause_time)
+                self.update_levels(i)
+                time.sleep(0.05)
+
+        if self._stopevent.is_set():
+            return
+
+        self._finalize_go()
 
     def stop(self) -> None:
         """Stop"""
@@ -852,14 +852,8 @@ class ThreadGoBack(threading.Thread):
 
         self.dmxlevels = [array.array("B", [0] * 512) for _univ in range(NB_UNIVERSES)]
 
-    def run(self) -> None:
-        # If sequential is empty, just return
-        if self.sequence.last == 2:
-            return
-
-        prev_step = self.sequence.position - 1
-
-        # Levels when Go Back starts
+    def _capture_start_levels(self) -> None:
+        """Capture DMX levels when Go Back starts"""
         for channel, outputs in App().lightshow.patch.channels.items():
             for value in outputs:
                 output = value[0]
@@ -876,27 +870,9 @@ class ThreadGoBack(threading.Thread):
                 level = round(level * App().backend.dmx.main_fader.value)
                 index = UNIVERSES.index(univ)
                 self.dmxlevels[index][output - 1] = level
-        # Go Back's default time
-        go_back_time = App().settings.get_double("go-back-time") * 1000
-        pause_time = 0.0
-        # Actual time in ms
-        start_time = time.time() * 1000
-        i = (time.time() * 1000) - start_time
-        start_pause = None
-        while i < go_back_time and not self._stopevent.is_set():
-            if not self.pause.is_set():
-                if not start_pause:
-                    start_pause = time.time() * 1000
-                self.pause.wait()
-                pause_time += (time.time() * 1000) - start_pause
-            else:
-                start_pause = None
-                # Update DMX levels
-                self.update_levels(go_back_time, i, self.sequence.position)
-                # Sleep 50ms
-                time.sleep(0.05)
-                i = (time.time() * 1000) - (start_time + pause_time)
-        # Finish to load preset
+
+    def _finalize_goback(self, prev_step: int) -> None:
+        """Finish load memory after sequence transition"""
         for channel, outputs in App().lightshow.patch.channels.items():
             for values in outputs:
                 output = values[0]
@@ -915,10 +891,8 @@ class ThreadGoBack(threading.Thread):
                 )
         App().backend.dmx.set_levels(self.sequence.channels)
         self.sequence.on_go = False
-        # Reset user levels
         App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
         self.sequence.update_channels()
-        # Previous step
         self.sequence.position = prev_step
         App().window.playback.sequential.time_in = self.sequence.steps[
             prev_step + 1
@@ -941,16 +915,41 @@ class ThreadGoBack(threading.Thread):
         ].channel_time
         App().window.playback.sequential.position_a = 0
         App().window.playback.sequential.position_b = 0
-        # Main window's subtitle
+
         subtitle = (
             f"Mem. : {self.sequence.steps[prev_step].cue.memory} "
             f"{self.sequence.steps[prev_step].text} - Next Mem. : "
             f"{self.sequence.steps[prev_step + 1].cue.memory} "
             f"{self.sequence.steps[prev_step + 1].text}"
         )
-        # Update Gtk in the main thread
         GLib.idle_add(update_ui, prev_step, subtitle)
         App().midi.button_off("go_back")
+
+    def run(self) -> None:
+        if self.sequence.last == 2:
+            return
+
+        prev_step = self.sequence.position - 1
+        self._capture_start_levels()
+
+        go_back_time = App().settings.get_double("go-back-time") * 1000
+        pause_time = 0.0
+        start_time = time.time() * 1000
+        i = (time.time() * 1000) - start_time
+        start_pause = None
+        while i < go_back_time and not self._stopevent.is_set():
+            if not self.pause.is_set():
+                if not start_pause:
+                    start_pause = time.time() * 1000
+                self.pause.wait()
+                pause_time += (time.time() * 1000) - start_pause
+            else:
+                start_pause = None
+                self.update_levels(go_back_time, i, self.sequence.position)
+                time.sleep(0.05)
+                i = (time.time() * 1000) - (start_time + pause_time)
+
+        self._finalize_goback(prev_step)
 
     def stop(self) -> None:
         """Stop"""
