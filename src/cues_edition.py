@@ -93,7 +93,7 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | False:
+    ) -> Callable | bool:
         """Key has been pressed
 
         Args:
@@ -169,7 +169,7 @@ class CuesEditionTab(Gtk.Paned):
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(chan + 1)
-                if channel_widget.level:
+                if channel_widget and channel_widget.level:
                     channels[chan + 1] = channel_widget.level
                     nb_chan += 1
             App().lightshow.main_playback.update_channels()
@@ -442,16 +442,16 @@ class CueChannelsView(ChannelsView):
         """
         channels = self.get_selected_channels()
         for channel in channels:
-            channel_widget = self.get_channel_widget(channel)
-            level = channel_widget.level
-            if direction == Gdk.ScrollDirection.UP:
-                level = min(level + step, 255)
-            elif direction == Gdk.ScrollDirection.DOWN:
-                level = max(level - step, 0)
-            channel_widget.level = level
-            channel_widget.next_level = level
-            channel_widget.queue_draw()
-            self.set_channel_level(channel, level)
+            if channel_widget := self.get_channel_widget(channel):
+                level = channel_widget.level
+                if direction == Gdk.ScrollDirection.UP:
+                    level = min(level + step, 255)
+                elif direction == Gdk.ScrollDirection.DOWN:
+                    level = max(level - step, 0)
+                channel_widget.level = level
+                channel_widget.next_level = level
+                channel_widget.queue_draw()
+                self.set_channel_level(channel, level)
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display

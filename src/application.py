@@ -398,7 +398,9 @@ class Application(Gtk.Application):
             exported.write()
         dialog.destroy()
 
-    def _save(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
+    def _save(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
         """Save"""
         if self.lightshow.file is not None:
             exported = ExportFile(self.lightshow.file, FileType.OLC)
@@ -549,9 +551,10 @@ class Application(Gtk.Application):
             builder = Gtk.Builder()
             builder.add_from_resource("/com/github/mikacousin/olc/AboutDialog.ui")
             self.about_window = builder.get_object("about_dialog")
-            self.about_window.set_transient_for(self.window)
-            self.about_window.connect("response", self._about_response)
-            self.about_window.show()
+            if self.about_window:
+                self.about_window.set_transient_for(self.window)
+                self.about_window.connect("response", self._about_response)
+                self.about_window.show()
         else:
             self.about_window.present()
 
@@ -587,7 +590,8 @@ class Application(Gtk.Application):
                 chaser.run = False
                 chaser.thread.stop()
                 chaser.thread.join()
-        self.midi.stop()
+        if self.midi:
+            self.midi.stop()
         if self.backend:
             self.backend.stop()
         self.quit()
