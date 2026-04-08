@@ -22,7 +22,7 @@ from olc.backends import DMXBackend
 from olc.define import NB_UNIVERSES, UNIVERSES, App
 
 if typing.TYPE_CHECKING:
-    from olc.patch import DMXPatch
+    from olc.lightshow import LightShow
 
 
 class Sacn(DMXBackend):
@@ -32,7 +32,7 @@ class Sacn(DMXBackend):
     receiver: sacn.sACNreceiver
     old_frame: list[tuple[int]]
 
-    def __init__(self, patch: DMXPatch) -> None:
+    def __init__(self, lightshow: LightShow) -> None:
         self.sender = sacn.sACNsender()
         self.sender.start()
         self.receiver = sacn.sACNreceiver()
@@ -45,7 +45,7 @@ class Sacn(DMXBackend):
                 "universe", self.receive_packet, universe=universe
             )
         self.old_frame = [(0,) * 512 for _ in range(NB_UNIVERSES)]
-        super().__init__(patch)
+        super().__init__(lightshow)
 
     def stop(self) -> None:
         """Stop sACN backend"""

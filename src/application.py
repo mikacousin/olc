@@ -202,7 +202,7 @@ class Application(Gtk.Application):
                 f"{self.version}, Active backend: {self.settings.get_string('backend')}"
             )
             sys.exit()
-        self.backend = select_backend(options, self.settings, self.lightshow.patch)
+        self.backend = select_backend(options, self.settings, self.lightshow)
         if not self.backend:
             sys.exit()
         # Activate olc

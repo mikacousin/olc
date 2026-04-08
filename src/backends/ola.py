@@ -18,6 +18,7 @@ import subprocess
 import sys
 import threading
 import time
+import typing
 from functools import partial
 from typing import Optional
 
@@ -27,6 +28,9 @@ from ola.ClientWrapper import ClientWrapper
 from olc.backends import DMXBackend
 from olc.define import NB_UNIVERSES, UNIVERSES, App
 from olc.patch import DMXPatch
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 
 class OlaThread(threading.Thread):
@@ -120,8 +124,8 @@ class Ola(DMXBackend):
     olad_pid: Optional[subprocess.Popen]
     thread: OlaThread | None
 
-    def __init__(self, patch: DMXPatch, olad_port: int = 9090) -> None:
-        super().__init__(patch)
+    def __init__(self, lightshow: LightShow, olad_port: int = 9090) -> None:
+        super().__init__(lightshow)
         self.thread = None
         self.olad_port = olad_port
         self.olad_pid = None

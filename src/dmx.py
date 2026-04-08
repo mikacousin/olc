@@ -12,24 +12,27 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
 import array
 import typing
 from typing import Optional
 
-from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App
+from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from olc.backends import DmxBackend
+    from olc.backends import DMXBackend
+    from olc.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes
 class Dmx:
     """Send levels to backend"""
 
-    backend: object
+    backend: Optional[DMXBackend]
     patch: DMXPatch
     main_fader: MainFader
     levels: dict[str, array.array]
@@ -37,9 +40,10 @@ class Dmx:
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
 
-    def __init__(self, backend: DmxBackend) -> None:
+    def __init__(self, backend: Optional[DMXBackend], lightshow: LightShow) -> None:
         self.backend = backend
-        self.patch = App().lightshow.patch
+        self.lightshow = lightshow
+        self.patch = self.lightshow.patch
         self.main_fader = MainFader()
         # Dimmers levels
         self.levels = {
@@ -72,7 +76,7 @@ class Dmx:
             level = self.levels["sequence"][channel]
             # User
             if (
-                not App().lightshow.main_playback.on_go
+                not self.lightshow.main_playback.on_go
                 and self.levels["user"][channel] != -1
             ):
                 level = self.levels["user"][channel]
@@ -80,21 +84,23 @@ class Dmx:
             if self.levels["faders"][channel] > level:
                 level = self.levels["faders"][channel]
             # Independents
-            if App().lightshow.independents.dmx[channel] > level:
-                level = App().lightshow.independents.dmx[channel]
+            if self.lightshow.independents.dmx[channel] > level:
+                level = self.lightshow.independents.dmx[channel]
             for out in outputs:
                 output = out[0]
                 universe = out[1]
-                # Curve
-                curve_numb = self.patch.outputs[universe][output][1]
-                if curve_numb:
-                    curve = App().lightshow.curves.get_curve(curve_numb)
-                    level = curve.values.get(level, 0)
-                # Main Fader
-                level = round(level * self.main_fader.value)
-                index = UNIVERSES.index(universe)
-                # Update output level
-                self.frame[index][output - 1] = level
+                if universe and output:
+                    # Curve
+                    curve_numb = self.patch.outputs[universe][output][1]
+                    if curve_numb:
+                        curve = self.lightshow.curves.get_curve(curve_numb)
+                        if curve:
+                            level = curve.values.get(level, 0)
+                    # Main Fader
+                    level = round(level * self.main_fader.value)
+                    index = UNIVERSES.index(universe)
+                    # Update output level
+                    self.frame[index][output - 1] = level
 
     def send(self) -> None:
         """Send DMX values to Ola"""
@@ -104,9 +110,10 @@ class Dmx:
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
-        for index, universe in enumerate(UNIVERSES):
-            self.frame[index] = array.array("B", [0] * 512)
-            self.backend.send(universe, index)
+        if self.backend:
+            for index, universe in enumerate(UNIVERSES):
+                self.frame[index] = array.array("B", [0] * 512)
+                self.backend.send(universe, index)
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -121,4 +128,5 @@ class Dmx:
         self.frame[index][output - 1] = level
         if not level:
             self.user_outputs.pop((output, universe))
-        self.backend.send(universe, index)
+        if self.backend:
+            self.backend.send(universe, index)

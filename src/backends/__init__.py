@@ -12,10 +12,14 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
 from enum import Enum, auto
 
 from olc.dmx import Dmx
-from olc.patch import DMXPatch
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
+    from olc.patch import DMXPatch
 
 
 class Backend(Enum):
@@ -32,9 +36,9 @@ class DMXBackend:
     dmx: Dmx
     patch: DMXPatch
 
-    def __init__(self, patch: DMXPatch) -> None:
-        self.dmx = Dmx(self)
-        self.patch = patch
+    def __init__(self, lightshow: LightShow) -> None:
+        self.dmx = Dmx(self, lightshow)
+        self.patch = lightshow.patch
 
     def stop(self) -> None:
         """Stop backend"""

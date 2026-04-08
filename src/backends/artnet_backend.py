@@ -24,6 +24,7 @@ from olc.define import UNIVERSES, App
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
 
+    from olc.lightshow import LightShow
     from olc.patch import DMXPatch
 
 
@@ -82,13 +83,13 @@ class ArtnetBackend(DMXBackend):
 
     artnet: Artnet
 
-    def __init__(self, patch: DMXPatch) -> None:
+    def __init__(self, lightshow: LightShow) -> None:
         self.artnet = Artnet(
             universes=UNIVERSES,
             notify=self.notify,
-            on_artdmx_cb=Callback(patch).receive_packet,
+            on_artdmx_cb=Callback(lightshow.patch).receive_packet,
         )
-        super().__init__(patch)
+        super().__init__(lightshow)
 
     def stop(self) -> None:
         """Stop Art-Net backend"""

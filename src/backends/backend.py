@@ -38,18 +38,18 @@ else:
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gtk
-    from olc.patch import DMXPatch
+    from olc.lightshow import LightShow
 
 
 def select_backend(
-    options: GLib.VariantDict, settings: Gtk.Settings, patch: DMXPatch
+    options: GLib.VariantDict, settings: Gtk.Settings, lightshow: LightShow
 ) -> None | Ola | ArtnetBackend | Sacn:
     """Select and create DMX backend
 
     Args:
         options: command line options
         settings: GSettings
-        patch: DMX patch
+        lightshow: Light show data
 
     Returns:
         Backend or None
@@ -59,16 +59,16 @@ def select_backend(
 
     if "ola" in backend and OLA:
         olad_port = options.get("http-port", 9090)
-        backend_instance = Ola(patch, olad_port=olad_port)
+        backend_instance = Ola(lightshow, olad_port=olad_port)
     elif "artnet" in backend and ARTNET:
-        backend_instance = ArtnetBackend(patch)
+        backend_instance = ArtnetBackend(lightshow)
     elif "sacn" in backend and SACN:
-        backend_instance = Sacn(patch)
+        backend_instance = Sacn(lightshow)
     elif backend:
         print(f"{backend} is not supported. Fallback to sACN")
         backend = "sacn"
         if SACN:
-            backend_instance = Sacn(patch)
+            backend_instance = Sacn(lightshow)
 
     # Handle case where a backend module is missing
     if not backend_instance:
