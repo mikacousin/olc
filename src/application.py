@@ -474,7 +474,14 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
     ) -> None:
         """Create Memories Tab"""
-        self.tabs.open("memories", CuesEditionTab, "Memories")
+        self.tabs.open(
+            "memories",
+            CuesEditionTab,
+            "Memories",
+            self.lightshow,
+            self.tabs,
+            self.window,
+        )
 
     def groups_cb(
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None

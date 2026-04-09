@@ -448,7 +448,7 @@ class ChannelsView(Gtk.Box):
         elif parent:
             parent.get_parent().grab_focus()
 
-    def on_key_press(self, keyname: str) -> Callable | None:
+    def on_key_press(self, keyname: str | None) -> Callable | None:
         """Processes common keyboard methods of Channels View
 
         Args:
