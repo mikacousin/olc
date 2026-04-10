@@ -24,8 +24,10 @@ from olc.osc import Osc
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.backends import DMXBackend
+    from olc.backends.artnet_backend import ArtnetBackend
     from olc.midi import Midi
     from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
 # pylint: disable=too-many-instance-attributes
@@ -39,7 +41,7 @@ class SettingsTab(Gtk.Box):
         tabs: Tabs,
         midi: Midi,
         backnd: DMXBackend,
-        window: Gtk.Window,
+        window: Window,
         osc: Osc,
     ) -> None:
         self.settings = settings
@@ -54,7 +56,7 @@ class SettingsTab(Gtk.Box):
 
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
-        settings_dialog = builder.get_object("settings")
+        settings_dialog = typing.cast(Gtk.Notebook, builder.get_object("settings"))
 
         self._setup_appearance(builder)
         self._setup_osc(builder)
@@ -65,7 +67,7 @@ class SettingsTab(Gtk.Box):
         # Art-Net Tab Visibility
         backend = self.settings.get_string("backend")
         if "artnet" not in backend:
-            artnet_grid = builder.get_object("artnet_grid")
+            artnet_grid = typing.cast(Gtk.Widget, builder.get_object("artnet_grid"))
             if artnet_grid:
                 page_num = settings_dialog.page_num(artnet_grid)
                 if page_num >= 0:
@@ -77,49 +79,55 @@ class SettingsTab(Gtk.Box):
         self.pack_start(settings_dialog, True, True, 0)
 
     def _setup_appearance(self, builder: Gtk.Builder) -> None:
-        widget = builder.get_object("switch_percent")
-        widget.set_state(self.settings.get_boolean("percent"))
+        widget1 = typing.cast(Gtk.Switch, builder.get_object("switch_percent"))
+        widget1.set_state(self.settings.get_boolean("percent"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        widget = builder.get_object("spin_percent_level")
-        widget.set_adjustment(adjustment)
-        widget.set_value(self.settings.get_int("percent-level"))
+        widget2 = typing.cast(Gtk.SpinButton, builder.get_object("spin_percent_level"))
+        widget2.set_adjustment(adjustment)
+        widget2.set_value(self.settings.get_int("percent-level"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        widget = builder.get_object("spin_default_time")
-        widget.set_adjustment(adjustment)
-        widget.set_value(self.settings.get_double("default-time"))
+        widget3 = typing.cast(Gtk.SpinButton, builder.get_object("spin_default_time"))
+        widget3.set_adjustment(adjustment)
+        widget3.set_value(self.settings.get_double("default-time"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        widget = builder.get_object("spin_go_back_time")
-        widget.set_adjustment(adjustment)
-        widget.set_value(self.settings.get_double("go-back-time"))
+        widget4 = typing.cast(Gtk.SpinButton, builder.get_object("spin_go_back_time"))
+        widget4.set_adjustment(adjustment)
+        widget4.set_value(self.settings.get_double("go-back-time"))
 
     def _setup_osc(self, builder: Gtk.Builder) -> None:
-        widget = builder.get_object("switch_osc")
+        widget = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
         widget.set_state(self.settings.get_boolean("osc"))
 
-        self.entry_client_ip = builder.get_object("entry_client_ip")
+        self.entry_client_ip = typing.cast(
+            Gtk.Entry, builder.get_object("entry_client_ip")
+        )
         self.entry_client_ip.set_text(self.settings.get_string("osc-host"))
 
-        self.spin_client_port = builder.get_object("spin_client_port")
+        self.spin_client_port = typing.cast(
+            Gtk.SpinButton, builder.get_object("spin_client_port")
+        )
         adjustment = Gtk.Adjustment(0, 0, 65535, 1, 10, 0)
         self.spin_client_port.set_adjustment(adjustment)
         self.spin_client_port.set_value(self.settings.get_int("osc-client-port"))
 
-        self.spin_server_port = builder.get_object("spin_server_port")
+        self.spin_server_port = typing.cast(
+            Gtk.SpinButton, builder.get_object("spin_server_port")
+        )
         adjustment = Gtk.Adjustment(0, 0, 65535, 1, 10, 0)
         self.spin_server_port.set_adjustment(adjustment)
         self.spin_server_port.set_value(self.settings.get_int("osc-server-port"))
 
-        local_ip = builder.get_object("local_ip")
+        local_ip = typing.cast(Gtk.Label, builder.get_object("local_ip"))
         hostname = socket.gethostname()
         ip_addr = socket.gethostbyname(hostname)
         local_ip.set_label(ip_addr)
 
-    def _midi(self, builder: Gtk.builder) -> None:
+    def _midi(self, builder: Gtk.Builder) -> None:
         # List of MIDI Controllers
         liststore_modes = Gtk.ListStore(str)
         for item in ["Absolute", "Relative1", "Relative2", "Relative3 (Makie)"]:
             liststore_modes.append([item])
-        midi_grid = builder.get_object("midi_io_grid")
+        midi_grid = typing.cast(Gtk.Grid, builder.get_object("midi_io_grid"))
         midi_grid.set_orientation(Gtk.Orientation.VERTICAL)
         self.liststore_midi = Gtk.ListStore(str, bool, str, str)
         treeview = Gtk.TreeView(model=self.liststore_midi)
@@ -149,7 +157,7 @@ class SettingsTab(Gtk.Box):
         relative2 = self.settings.get_strv("relative2")
         makies = self.settings.get_strv("makie")
         absolutes = self.settings.get_strv("absolute")
-        for midi_port in sorted(list(set(self.midi.ports.mido_ports))):
+        for midi_port in sorted(list(set(self.midi.ports.mido_ports or []))):
             if midi_port in default:
                 if midi_port in relative1:
                     self.liststore_midi.append(
@@ -198,7 +206,7 @@ class SettingsTab(Gtk.Box):
         self.tabs.close("settings")
 
     def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.Event
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
     ) -> Callable | bool:
         """Key has been pressed
 
@@ -209,6 +217,8 @@ class SettingsTab(Gtk.Box):
             False or function
         """
         keyname = Gdk.keyval_name(event.keyval)
+        if not keyname:
+            return False
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
@@ -322,7 +332,7 @@ class SettingsTab(Gtk.Box):
         column_univ = Gtk.TreeViewColumn(_("Universes"), renderer_text_univ, text=3)
         treeview.append_column(column_univ)
 
-        artnet_grid = builder.get_object("artnet_grid")
+        artnet_grid = typing.cast(Gtk.Grid, builder.get_object("artnet_grid"))
         if artnet_grid:
             scrolled_window = Gtk.ScrolledWindow()
             scrolled_window.set_hexpand(True)
@@ -357,10 +367,12 @@ class SettingsTab(Gtk.Box):
         if not self.backend or not hasattr(self.backend, "artnet"):
             return True
 
+        artnet_backend = typing.cast("ArtnetBackend", self.backend)
+
         grouped = {}
-        self._collect_devices(self.backend.artnet.discovery.nodes, "Node", grouped)
+        self._collect_devices(artnet_backend.artnet.discovery.nodes, "Node", grouped)
         self._collect_devices(
-            self.backend.artnet.discovery.consoles, "Controller", grouped
+            artnet_backend.artnet.discovery.consoles, "Controller", grouped
         )
 
         new_state = [
@@ -370,10 +382,10 @@ class SettingsTab(Gtk.Box):
 
         if any(
             ((0, 0, 0, 0, 0, 0), 0) in s.nodes
-            for s in self.backend.artnet.senders.values()
+            for s in artnet_backend.artnet.senders.values()
         ):
             univs = ", ".join(
-                str(u) for u in sorted(self.backend.artnet.senders.keys())
+                str(u) for u in sorted(artnet_backend.artnet.senders.keys())
             )
             new_state.append(
                 ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
@@ -398,7 +410,7 @@ class SettingsTab(Gtk.Box):
         time = widget.get_value()
         self.settings.set_value("default-time", GLib.Variant("d", time))
 
-    def _on_change_go_back_time(self, widget: Gtk.Widget) -> None:
+    def _on_change_go_back_time(self, widget: Gtk.SpinButton) -> None:
         time = widget.get_value()
         self.settings.set_value("go-back-time", GLib.Variant("d", time))
 
@@ -415,40 +427,45 @@ class SettingsTab(Gtk.Box):
 
         # Redraw Sequences Tab if open
         if self.tabs.tabs["sequences"]:
-            self.tabs.tabs["sequences"].channels_view.update()
+            typing.cast(typing.Any, self.tabs.tabs["sequences"]).channels_view.update()
 
         # Redraw Groups Tab if exist
         if self.tabs.tabs["groups"]:
-            self.tabs.tabs["groups"].channels_view.update()
+            typing.cast(typing.Any, self.tabs.tabs["groups"]).channels_view.update()
 
         # Redraw Memories Tab if exist
         if self.tabs.tabs["memories"]:
-            self.tabs.tabs["memories"].channels_view.update()
+            typing.cast(typing.Any, self.tabs.tabs["memories"]).channels_view.update()
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
         self.settings.set_value("osc", GLib.Variant("b", state))
         if state:
             self.osc = Osc()
-        else:
+        elif self.osc:
             self.osc.stop()
             self.osc = None
 
     def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
         port = widget.get_value_as_int()
         self.settings.set_value("osc-client-port", GLib.Variant("i", port))
-        self.osc.client.target_changed(port=port)
+        if self.osc and self.osc.client:
+            self.osc.client.target_changed(port=port)
 
     def _server_port_changed(self, widget: Gtk.SpinButton) -> None:
         port = widget.get_value_as_int()
         self.settings.set_value("osc-server-port", GLib.Variant("i", port))
-        self.osc.restart_server()
+        if self.osc:
+            self.osc.restart_server()
 
     def _client_ip_changed(self, widget: Gtk.Entry) -> None:
         ip_addr = widget.get_text()
         if self._is_ip(ip_addr):
             self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
-            self.osc.client.target_changed(host=ip_addr)
-            self.get_parent().grab_focus()
+            if self.osc and self.osc.client:
+                self.osc.client.target_changed(host=ip_addr)
+            parent = self.get_parent()
+            if parent:
+                parent.grab_focus()
         else:
             widget.set_text(self.settings.get_string("osc-host"))
 
