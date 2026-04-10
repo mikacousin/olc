@@ -111,11 +111,11 @@ class LimitCurve(Curve):
 class PointsCurve(Curve):
     """Curve defined by points"""
 
-    points: list[tuple]
+    points: list[tuple[int, int]]
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, name: str = "", editable: bool = False) -> None:
         self.points = [(0, 0), (255, 255)]
-        super().__init__(*args, **kwargs)
+        super().__init__(name=name, editable=editable)
 
     def populate_values(self) -> None:
         """Calculate each value of curve
@@ -320,11 +320,13 @@ class Curves:
             ),
         }
         for number, curve in curves.items():
-            self.curves[number] = curve[1]()
-            self.curves[number].editable = False
-            self.curves[number].name = curve[0]
-            for point in curve[2]:
-                self.curves[number].add_point(point[0], point[1])
+            curve_obj = curve[1]()
+            curve_obj.editable = False
+            curve_obj.name = curve[0]
+            if isinstance(curve_obj, PointsCurve):
+                for point in curve[2]:
+                    curve_obj.add_point(point[0], point[1])
+            self.curves[number] = curve_obj
 
     def get_curve(self, number: int) -> Curve | None:
         """Get Curve with number
