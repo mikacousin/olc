@@ -535,7 +535,17 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
     ) -> None:
         """Settings"""
-        self.tabs.open("settings", SettingsTab, "Settings")
+        self.tabs.open(
+            "settings",
+            SettingsTab,
+            "Settings",
+            self.settings,
+            self.tabs,
+            self.midi,
+            self.backend,
+            self.window,
+            self.osc,
+        )
 
     def _shortcuts(
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
