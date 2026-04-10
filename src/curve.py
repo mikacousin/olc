@@ -13,10 +13,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 # pylint: disable=wrong-import-order
+import typing
 from gettext import gettext as _
 
-from olc.define import App
 from scipy.interpolate import PchipInterpolator
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 
 class Curve:
@@ -202,9 +205,10 @@ class Curves:
     Curve numbers from 0 to 9 are reserved
     """
 
-    curves: dict[int, object]
+    curves: dict[int, Curve]
 
-    def __init__(self) -> None:
+    def __init__(self, lightshow: LightShow) -> None:
+        self.lightshow = lightshow
         self.curves = {
             0: LinearCurve(),
             1: SquareRootCurve(),
@@ -369,7 +373,7 @@ class Curves:
             curve_nb: Curve number
         """
         # First, change each output using deleted curve to LinearCurve (0)
-        for value in App().lightshow.patch.outputs.values():
+        for value in self.lightshow.patch.outputs.values():
             for chan_dic in value.values():
                 if chan_dic[1] == curve_nb:
                     chan_dic[1] = 0

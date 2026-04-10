@@ -93,7 +93,7 @@ class LightShow(ShowFile):
     def __init__(self) -> None:
         super().__init__(None)
         # Curves
-        self.curves = Curves()
+        self.curves = Curves(self)
         # Main Playback
         self.main_playback = Sequence(1, text="Main Playback")
         # List of global memories
