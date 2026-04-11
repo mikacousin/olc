@@ -39,7 +39,7 @@ class ExportFile:
         if self.file_type is FileType.ASCII:
             self.writer = AsciiWriter(self.file, lightshow)
         else:
-            self.writer = OlcWriter(self.file)
+            self.writer = OlcWriter(self.file, lightshow)
 
     def write(self) -> None:
         """Write file"""

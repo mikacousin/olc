@@ -24,16 +24,19 @@ from olc.files.write import WriteFile
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.application import Application
+    from olc.lightshow import LightShow
     from olc.sequence import Sequence
 
 
 class OlcWriter(WriteFile):
     """Write olc file"""
 
-    data: dict[str, object]
+    data: dict[str, typing.Any]
 
-    def __init__(self, file: Gio.File) -> None:
+    def __init__(self, file: Gio.File, lightshow: LightShow) -> None:
         super().__init__(file, compressed=True)
+        self.lightshow = lightshow
         self.data = {}
         self.data = {"application": "olc", "version": "0.8.5.beta"}
 
@@ -53,14 +56,16 @@ class OlcWriter(WriteFile):
 
     def _patch(self) -> None:
         self.data["patch"] = {}
-        for channel, values in App().lightshow.patch.channels.items():
-            if not App().lightshow.patch.is_patched(channel):
+        for channel, values in self.lightshow.patch.channels.items():
+            if not self.lightshow.patch.is_patched(channel):
                 continue
             self.data["patch"][channel] = []
             for outputs in values:
                 output = outputs[0]
                 univ = outputs[1]
-                curve_num = App().lightshow.patch.outputs[univ][output][1]
+                if univ is None or output is None:
+                    continue
+                curve_num = self.lightshow.patch.outputs[univ][output][1]
                 if curve_num:
                     self.data["patch"][channel].append(
                         {"output": output, "universe": univ, "curve": curve_num}
@@ -77,8 +82,8 @@ class OlcWriter(WriteFile):
 
     def _sequences(self) -> None:
         self.data["sequences"] = {}
-        self._do_sequence(App().lightshow.main_playback)
-        for chaser in App().lightshow.chasers:
+        self._do_sequence(self.lightshow.main_playback)
+        for chaser in self.lightshow.chasers:
             self._do_sequence(chaser)
 
     def _do_sequence(self, sequence: Sequence) -> None:
@@ -89,7 +94,7 @@ class OlcWriter(WriteFile):
             "cues": {},
         }
         for index, step in enumerate(sequence.steps):
-            if step.cue.memory == 0:
+            if not step.cue or step.cue.memory == 0:
                 continue
             self.data["sequences"][seq_index]["steps"][index] = {
                 "cue": step.cue.memory,
@@ -121,7 +126,7 @@ class OlcWriter(WriteFile):
 
     def _cues(self) -> None:
         self.data["cues"] = {}
-        for cue in App().lightshow.cues:
+        for cue in self.lightshow.cues:
             self.data["cues"][cue.memory] = {
                 "label": cue.text,
                 "channels": cue.channels,
@@ -129,7 +134,7 @@ class OlcWriter(WriteFile):
 
     def _groups(self) -> None:
         self.data["groups"] = {}
-        for group in App().lightshow.groups:
+        for group in self.lightshow.groups:
             self.data["groups"][group.index] = {
                 "label": group.text,
                 "channels": group.channels,
@@ -139,9 +144,9 @@ class OlcWriter(WriteFile):
 
     def _faders(self) -> None:
         self.data["faders"] = {}
-        for page, faders in App().lightshow.fader_bank.faders.items():
+        for page, faders in self.lightshow.fader_bank.faders.items():
             for index, fader in faders.items():
-                content_type = App().lightshow.fader_bank.get_fader_type(page, index)
+                content_type = self.lightshow.fader_bank.get_fader_type(page, index)
                 number = index - 1 + ((page - 1) * 10)
                 if content_type == FaderType.GROUP:
                     self.data["faders"][number] = {
@@ -179,7 +184,7 @@ class OlcWriter(WriteFile):
 
     def _independents(self) -> None:
         self.data["independents"] = {}
-        for inde in App().lightshow.independents.independents:
+        for inde in self.lightshow.independents.independents:
             self.data["independents"][inde.number] = {
                 "type": inde.inde_type,
                 "label": inde.text,
@@ -188,7 +193,7 @@ class OlcWriter(WriteFile):
 
     def _curves(self) -> None:
         self.data["curves"] = {}
-        for key, curve in App().lightshow.curves.curves.items():
+        for key, curve in self.lightshow.curves.curves.items():
             if key >= 10:
                 curve_type = curve.__class__.__name__
                 if isinstance(curve, LimitCurve):
@@ -207,8 +212,12 @@ class OlcWriter(WriteFile):
             del self.data["curves"]
 
     def _midi(self) -> None:
+        app = typing.cast("Application", App())
+        if not app or not app.midi:
+            return
+
         self.data["midi_mapping"] = {}
-        midi = App().midi.messages
+        midi = app.midi.messages
         self.data["midi_mapping"]["note"] = midi.notes.notes
         self.data["midi_mapping"]["control_change"] = midi.control_change.control_change
         self.data["midi_mapping"]["pitchwheel"] = midi.pitchwheel.pitchwheel
