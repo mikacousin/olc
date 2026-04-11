@@ -33,14 +33,14 @@ if typing.TYPE_CHECKING:
 class ShowFile:
     """Opened file"""
 
-    file: Gio.File
+    file: Gio.File | None
     basename: str
     modified: bool
     recent_manager: Gtk.RecentManager
 
-    def __init__(self, file: Gio.File) -> None:
+    def __init__(self, file: Gio.File | None) -> None:
         self.file = file
-        self.basename = self.file.get_basename() if file else ""
+        self.basename = (self.file.get_basename() or "") if self.file else ""
         self.modified = False
         self.recent_manager = Gtk.RecentManager.get_default()
 
@@ -67,14 +67,18 @@ class ShowFile:
     def set_modified(self) -> None:
         """Set file as modified"""
         self.modified = True
-        self.basename = self.file.get_basename() if self.file else ""
-        App().window.header.set_title(f"{self.basename}*")
+        self.basename = (self.file.get_basename() or "") if self.file else ""
+        app = typing.cast(typing.Any, App())
+        if app.window:
+            app.window.header.set_title(f"{self.basename}*")
 
     def set_not_modified(self) -> None:
         """Set file as not modified"""
         self.modified = False
-        self.basename = self.file.get_basename() if self.file else ""
-        App().window.header.set_title(self.basename)
+        self.basename = (self.file.get_basename() or "") if self.file else ""
+        app = typing.cast(typing.Any, App())
+        if app.window:
+            app.window.header.set_title(self.basename)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -93,7 +97,7 @@ class LightShow(ShowFile):
     def __init__(self) -> None:
         super().__init__(None)
         # Curves
-        self.curves = Curves(self)
+        self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
         self.main_playback = Sequence(1, text="Main Playback")
         # List of global memories
