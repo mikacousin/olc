@@ -14,14 +14,25 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import typing
+
 from olc.curve import LimitCurve
-from olc.define import UNIVERSES, App, strip_accents
+from olc.define import UNIVERSES, strip_accents
 from olc.fader import FaderType
 from olc.files.write import WriteFile
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
 
 
 class AsciiWriter(WriteFile):
     """Write ASCII Light Cue file"""
+
+    def __init__(self, file: Gio.File, lightshow: LightShow) -> None:
+        super().__init__(file)
+
+        self.lightshow = lightshow
 
     def export(self) -> None:
         self._header()
@@ -46,8 +57,8 @@ class AsciiWriter(WriteFile):
         )
         self.stream.write(bytes("! Main sequence\n\n", "ascii"))
         self.stream.write(bytes("$SEQUENCE 1 0\n\n", "ascii"))
-        for step in App().lightshow.main_playback.steps:
-            if step.cue.memory == 0:
+        for step in self.lightshow.main_playback.steps:
+            if not step.cue or step.cue.memory == 0:
                 continue
             self.stream.write(bytes(f"CUE {step.cue.memory}\n", "ascii"))
             # Save integers as integers
@@ -75,12 +86,12 @@ class AsciiWriter(WriteFile):
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
         self.stream.write(bytes("! Additional Sequences\n\n", "ascii"))
-        for chaser in App().lightshow.chasers:
+        for chaser in self.lightshow.chasers:
             self.stream.write(bytes(f"$SEQUENCE {chaser.index}\n", "ascii"))
             self._ascii_text(chaser.text)
             self.stream.write(bytes(f"$$TEXT {chaser.text}\n\n", "utf8"))
             for step in chaser.steps:
-                if step.cue.memory == 0:
+                if not step.cue or step.cue.memory == 0:
                     continue
                 # Save integers as integers
                 time_out = self._float_to_str(step.time_out)
@@ -111,7 +122,7 @@ class AsciiWriter(WriteFile):
         self.stream.write(
             bytes("! $$TEXT Unicode encoded version of the same text\n\n", "ascii")
         )
-        for group in App().lightshow.groups:
+        for group in self.lightshow.groups:
             self.stream.write(bytes(f"GROUP {group.index}\n", "ascii"))
             self._ascii_text(group.text)
             self.stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
@@ -130,7 +141,7 @@ class AsciiWriter(WriteFile):
             bytes("! $$TEXT  Unicode encoded version of the same text\n", "ascii")
         )
         self.stream.write(bytes("CLEAR $GROUP\n\n", "ascii"))
-        for group in App().lightshow.groups:
+        for group in self.lightshow.groups:
             self.stream.write(bytes(f"$GROUP {group.index}\n", "ascii"))
             self._ascii_text(group.text)
             self.stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
@@ -166,11 +177,11 @@ class AsciiWriter(WriteFile):
         )
         self.stream.write(bytes("!               Flash level (0-255)\n", "ascii"))
         self.stream.write(bytes("CLEAR $MASTPAGE\n", "ascii"))
-        for page, faders in App().lightshow.fader_bank.faders.items():
+        for page, faders in self.lightshow.fader_bank.faders.items():
             self.stream.write(bytes(f"\n$MASTPAGE {page} 0 0 0\n", "ascii"))
             for index, fader in faders.items():
                 contents = "0"
-                content_type = App().lightshow.fader_bank.get_fader_type(page, index)
+                content_type = self.lightshow.fader_bank.get_fader_type(page, index)
                 if content_type == FaderType.GROUP:
                     contents = self._float_to_str(fader.contents.index)
                 elif content_type == FaderType.SEQUENCE:
@@ -195,16 +206,18 @@ class AsciiWriter(WriteFile):
         self.stream.write(bytes("CLEAR PATCH\n\n", "ascii"))
         i = 1
         patch = ""
-        for channel, outputs in App().lightshow.patch.channels.items():
-            if not App().lightshow.patch.is_patched(channel):
+        for channel, outputs in self.lightshow.patch.channels.items():
+            if not self.lightshow.patch.is_patched(channel):
                 continue
             for values in outputs:
                 output = values[0]
                 univ = values[1]
+                if univ is None or output is None:
+                    continue
                 index = UNIVERSES.index(univ)
                 limit = 255
-                curve_num = App().lightshow.patch.outputs[univ][output][1]
-                curve = App().lightshow.curves.get_curve(curve_num)
+                curve_num = self.lightshow.patch.outputs[univ][output][1]
+                curve = self.lightshow.curves.get_curve(curve_num)
                 if isinstance(curve, LimitCurve):
                     limit = curve.limit
                 level = "H" + format(limit, "02X")
@@ -222,7 +235,7 @@ class AsciiWriter(WriteFile):
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
         self.stream.write(bytes("! Independents\n\n", "ascii"))
-        for inde in App().lightshow.independents.independents:
+        for inde in self.lightshow.independents.independents:
             self.stream.write(bytes(f"$SPECIALFUNCTION {inde.number} 0 0\n", "ascii"))
             self._ascii_text(inde.text)
             self.stream.write(bytes(f"$$TEXT {inde.text}\n", "utf8"))

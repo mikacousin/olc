@@ -12,10 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 from gi.repository import Gio
 from olc.files.ascii.writer import AsciiWriter
 from olc.files.file_type import FileType
 from olc.files.olc.writer import OlcWriter
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 
 class ExportFile:
@@ -25,12 +30,14 @@ class ExportFile:
     file_type: FileType
     writer: AsciiWriter
 
-    def __init__(self, file: Gio.File, file_type: FileType) -> None:
+    def __init__(
+        self, file: Gio.File, file_type: FileType, lightshow: LightShow
+    ) -> None:
         self.file = file
         self.file_type = file_type
 
         if self.file_type is FileType.ASCII:
-            self.writer = AsciiWriter(self.file)
+            self.writer = AsciiWriter(self.file, lightshow)
         else:
             self.writer = OlcWriter(self.file)
 
