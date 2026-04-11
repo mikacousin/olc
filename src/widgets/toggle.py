@@ -28,7 +28,7 @@ class ToggleWidget(Gtk.ToggleButton):
     __gtype_name__ = "ToggleWidget"
 
     def __init__(self, text: str = "None") -> None:
-        Gtk.ToggleButton.__init__(self)
+        super().__init__()
 
         self.width = 50
         self.height = 50

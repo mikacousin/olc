@@ -49,7 +49,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.header.set_show_close_button(True)
         self.header.props.title = "Virtual Console"
         self.set_titlebar(self.header)
-        self.midi = Gtk.ToggleButton("MIDI")
+        self.midi = Gtk.ToggleButton(label="MIDI")
         self.midi.set_name("midi_toggle")
         self.midi.connect("toggled", self._on_button_toggled, "MIDI")
         self.header.pack_end(self.midi)
@@ -105,9 +105,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.delay.connect("clicked", self._on_delay)
         self.button_in = ButtonWidget("In")
         self.button_out = ButtonWidget("Out")
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.time_pad.attach(self.label, 0, 0, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.time_pad.attach(self.label, 1, 0, 1, 1)
         self.time_pad.attach(self.time, 2, 0, 1, 1)
         self.time_pad.attach(self.delay, 2, 1, 1, 1)
@@ -133,23 +133,23 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_pad.attach(self.preset, 0, 3, 1, 1)
         self.seq_pad.attach(self.group, 1, 3, 1, 1)
         self.seq_pad.attach(self.effect, 2, 3, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.seq_pad.attach(self.label, 0, 0, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.seq_pad.attach(self.label, 0, 1, 1, 1)
 
         # Output grid
         self.output_pad = Gtk.Grid()
         self.output = ButtonWidget("Output", "output")
         self.output.connect("clicked", self._on_output)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.output_pad.attach(self.label, 1, 0, 1, 1)
         self.output_pad.attach(self.output, 2, 0, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.output_pad.attach(self.label, 2, 1, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.output_pad.attach(self.label, 2, 2, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.output_pad.attach(self.label, 2, 3, 1, 1)
 
         # Update, Record, Track
@@ -165,11 +165,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.rec_pad.attach(self.update, 0, 0, 1, 1)
         self.rec_pad.attach(self.record, 2, 0, 1, 1)
         self.rec_pad.attach(self.track, 0, 2, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.rec_pad.attach(self.label, 0, 1, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.rec_pad.attach(self.label, 0, 3, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.rec_pad.attach(self.label, 1, 3, 1, 1)
 
         # Thru, Channel, +, -, All, @, +%, -%
@@ -200,11 +200,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.thru_pad.attach(self.at_level, 2, 0, 1, 1)
         self.thru_pad.attach(self.percent_plus, 2, 1, 1, 1)
         self.thru_pad.attach(self.percent_minus, 2, 2, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.thru_pad.attach(self.label, 1, 0, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.thru_pad.attach(self.label, 2, 3, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.thru_pad.attach(self.label, 2, 4, 1, 1)
 
         # Insert, Delete, Escape, Modify, Up, Down, Left, Right
@@ -231,7 +231,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.modify_pad.attach(self.down, 1, 3, 1, 1)
         self.modify_pad.attach(self.left, 0, 3, 1, 1)
         self.modify_pad.attach(self.right, 2, 3, 1, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.modify_pad.attach(self.label, 0, 1, 1, 1)
 
         # Controller for channels level
@@ -291,7 +291,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.crossfade_pad.attach(self.b, 2, 1, 1, 1)
         self.crossfade_pad.attach(self.scale_a, 1, 2, 1, 6)
         self.crossfade_pad.attach(self.scale_b, 2, 2, 1, 6)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.crossfade_pad.attach(self.label, 0, 7, 1, 1)
 
         # Independents
@@ -326,15 +326,12 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent7.connect("clicked", self._inde_clicked)
         if self.app.lightshow.independents.independents[6].level:
             self.independent7.set_active(True)
-            self.independent7.value = 255
         self.independent8.connect("clicked", self._inde_clicked)
         if self.app.lightshow.independents.independents[7].level:
             self.independent8.set_active(True)
-            self.independent8.value = 255
         self.independent9.connect("clicked", self._inde_clicked)
         if self.app.lightshow.independents.independents[8].level:
             self.independent9.set_active(True)
-            self.independent9.value = 255
         self.independents.attach(self.independent1, 0, 0, 1, 1)
         self.independents.attach(self.independent2, 1, 0, 1, 1)
         self.independents.attach(self.independent3, 2, 0, 1, 1)
@@ -362,7 +359,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_pad.attach(self.pause, 0, 1, 1, 1)
         self.go_pad.attach(self.goback, 1, 1, 1, 1)
         self.go_pad.attach(self.go_button, 0, 2, 2, 1)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.go_pad.attach(self.label, 2, 3, 1, 1)
 
         # Faders
@@ -403,7 +400,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.fader_page_plus.connect("clicked", self._on_fader_page)
         self.fader_page_minus = ButtonWidget("Page-", "page_minus")
         self.fader_page_minus.connect("clicked", self._on_fader_page)
-        self.page_number = Gtk.Label(str(fader_bank.active_page))
+        self.page_number = Gtk.Label(label=str(fader_bank.active_page))
         self.fader_pages.attach(self.fader_page_plus, 0, 0, 1, 1)
         self.fader_pages.attach(self.page_number, 0, 1, 1, 1)
         self.fader_pages.attach(self.fader_page_minus, 0, 2, 1, 1)
@@ -431,7 +428,10 @@ class VirtualConsoleWindow(Gtk.Window):
         self.add(self.grid)
 
         # Send keyboard events to a dispatch function
-        self.connect("key_press_event", self.app.window.live_view.on_key_press_event)
+        if self.app.window and self.app.window.live_view:
+            self.connect(
+                "key_press_event", self.app.window.live_view.on_key_press_event
+            )
 
     def _close(self, _widget: Gtk.Widget, _event: Gdk.Event) -> bool:
         """Mark Window as closed
@@ -442,7 +442,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.app.virtual_console = None
         return False
 
-    def _on_button_toggled(self, button: Gtk.Widget, name: str) -> None:
+    def _on_button_toggled(self, button: Gtk.ToggleButton, name: str) -> None:
         """MIDI learn On / Off
 
         Args:
@@ -450,10 +450,13 @@ class VirtualConsoleWindow(Gtk.Window):
             name: Name of the button
         """
         if button.get_active() and name == "MIDI":
-            self.app.midi.learning = " "
+            if self.app.midi:
+                self.app.midi.learning = " "
         elif name == "MIDI":
-            self.app.midi.learning = ""
-            self.app.virtual_console.queue_draw()
+            if self.app.midi:
+                self.app.midi.learning = ""
+            if self.app.virtual_console:
+                self.app.virtual_console.queue_draw()
 
     def _on_fader_page(self, widget: Gtk.Widget) -> None:
         """Change fader page
@@ -461,7 +464,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: clicked button
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             if widget is self.fader_page_plus:
                 self.app.midi.learning = "page_plus"
             elif widget is self.fader_page_minus:
@@ -486,39 +489,42 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.faders[fader.index - 1].set_value(val)
                 self.flashes[fader.index - 1].label = fader.text
                 self.flashes[fader.index - 1].queue_draw()
-            self.app.midi.messages.lcd.show_faders()
+            if self.app.midi:
+                self.app.midi.messages.lcd.show_faders()
 
     def _on_time(self, _widget: Gtk.Widget) -> None:
         """Time button"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "time"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_T
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_delay(self, _widget: Gtk.Widget) -> None:
         """Delay button"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "delay"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_D
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_go(self, _widget: Gtk.Widget) -> None:
         """Go"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "go"
             self.queue_draw()
         else:
-            self.app.lightshow.main_playback.do_go(None, None)
+            self.app.lightshow.main_playback.do_go(None, False)
 
     def _on_go_back(self, _widget: Gtk.Widget) -> None:
         """Go back"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "go_back"
             self.queue_draw()
         else:
@@ -526,7 +532,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def _on_pause(self, _widget: Gtk.Widget) -> None:
         """Pause"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "pause"
             self.queue_draw()
         else:
@@ -534,7 +540,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def _on_seq_plus(self, _widget: Gtk.Widget) -> None:
         """Sequence +"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "seq_plus"
             self.queue_draw()
         else:
@@ -542,7 +548,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def _on_seq_minus(self, _widget: Gtk.Widget) -> None:
         """Sequence -"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "seq_minus"
             self.queue_draw()
         else:
@@ -550,292 +556,319 @@ class VirtualConsoleWindow(Gtk.Window):
 
     def _on_output(self, _widget: Gtk.Widget) -> None:
         """Output"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "output"
             self.queue_draw()
         else:
-            self.app.patch_outputs(None, None)
+            self.app.patch_outputs(typing.cast(typing.Any, None), None)
 
     def _on_seq(self, _widget: Gtk.Widget) -> None:
         """Seq"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "seq"
             self.queue_draw()
         else:
-            self.app.lightshow.main_playback(None, None)
+            self.app.sequences(typing.cast(typing.Any, None), None)
 
     def _on_preset(self, _widget: Gtk.Widget) -> None:
         """Preset"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "preset"
             self.queue_draw()
         else:
-            self.app.memories_cb(None, None)
+            self.app.memories_cb(typing.cast(typing.Any, None), None)
 
     def _on_group(self, _widget: Gtk.Widget) -> None:
         """Group"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "group"
             self.queue_draw()
         else:
-            self.app.groups_cb(None, None)
+            self.app.groups_cb(typing.cast(typing.Any, None), None)
 
     def _on_track(self, _widget: Gtk.Widget) -> None:
         """Track channels"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "track"
             self.queue_draw()
         else:
-            self.app.track_channels(None, None)
+            self.app.track_channels(typing.cast(typing.Any, None), None)
 
     def _on_goto(self, _widget: Gtk.Widget) -> None:
         """Goto"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "goto"
             self.queue_draw()
         else:
-            self.app.lightshow.main_playback.goto(
-                self.app.window.commandline.get_string()
-            )
-            self.app.window.commandline.set_string("")
+            if self.app.window:
+                self.app.lightshow.main_playback.goto(
+                    self.app.window.commandline.get_string()
+                )
+                self.app.window.commandline.set_string("")
 
     def _on_channel(self, _widget: Gtk.Widget) -> None:
         """Channel button"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "ch"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_c
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_thru(self, _widget: Gtk.Widget) -> None:
         """Thru"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "thru"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_greater
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_plus(self, _widget: Gtk.Widget) -> None:
         """+ button"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "plus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_plus
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_minus(self, _widget: Gtk.Widget) -> None:
         """- button"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "minus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_minus
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_all(self, _widget: Gtk.Widget) -> None:
         """All"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "all"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_a
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_at(self, _widget: Gtk.Widget) -> None:
         """At level"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "at"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_equal
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_percent_plus(self, _widget: Gtk.Widget) -> None:
         """% +"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "percent_plus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_exclam
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_percent_minus(self, _widget: Gtk.Widget) -> None:
         """% -"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "percent_minus"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_colon
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_update(self, _widget: Gtk.Widget) -> None:
         """Update"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "update"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_U
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_record(self, _widget: Gtk.Widget) -> None:
         """Record"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "record"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_R
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_right(self, _widget: Gtk.Widget) -> None:
         """Right arrow"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "right"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Right
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_left(self, _widget: Gtk.Widget) -> None:
         """Left arrow"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "left"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Left
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_up(self, _widget: Gtk.Widget) -> None:
         """Up arrow"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "up"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Up
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_down(self, _widget: Gtk.Widget) -> None:
         """Down arrow"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "down"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_Down
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_clear(self, _widget: Gtk.Widget) -> None:
         """Clear"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "clear"
             self.queue_draw()
         else:
             event = Gdk.EventKey()
             event.keyval = Gdk.KEY_BackSpace
-            self.app.window.on_key_press_event(None, event)
+            if self.app.window:
+                self.app.window.on_key_press_event(self, event)
 
     def _on_zero(self, _widget: Gtk.Widget) -> None:
         """0"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_0"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("0")
+            if self.app.window:
+                self.app.window.commandline.add_string("0")
 
     def _on_1(self, _widget: Gtk.Widget) -> None:
         """1"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_1"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("1")
+            if self.app.window:
+                self.app.window.commandline.add_string("1")
 
     def _on_2(self, _widget: Gtk.Widget) -> None:
         """2"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_2"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("2")
+            if self.app.window:
+                self.app.window.commandline.add_string("2")
 
     def _on_3(self, _widget: Gtk.Widget) -> None:
         """3"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_3"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("3")
+            if self.app.window:
+                self.app.window.commandline.add_string("3")
 
     def _on_4(self, _widget: Gtk.Widget) -> None:
         """4"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_4"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("4")
+            if self.app.window:
+                self.app.window.commandline.add_string("4")
 
     def _on_5(self, _widget: Gtk.Widget) -> None:
         """5"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_5"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("5")
+            if self.app.window:
+                self.app.window.commandline.add_string("5")
 
     def _on_6(self, _widget: Gtk.Widget) -> None:
         """6"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_6"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("6")
+            if self.app.window:
+                self.app.window.commandline.add_string("6")
 
     def _on_7(self, _widget: Gtk.Widget) -> None:
         """7"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_7"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("7")
+            if self.app.window:
+                self.app.window.commandline.add_string("7")
 
     def _on_8(self, _widget: Gtk.Widget) -> None:
         """8"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_8"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("8")
+            if self.app.window:
+                self.app.window.commandline.add_string("8")
 
     def _on_9(self, _widget: Gtk.Widget) -> None:
         """9"""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "number_9"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string("9")
+            if self.app.window:
+                self.app.window.commandline.add_string("9")
 
     def _on_dot(self, _widget: Gtk.Widget) -> None:
         """."""
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = "dot"
             self.queue_draw()
         else:
-            self.app.window.commandline.add_string(".")
+            if self.app.window:
+                self.app.window.commandline.add_string(".")
 
     def _flash_on(self, widget: Gtk.Widget, _event: Gdk.Event) -> None:
         """Flash button pressed
@@ -843,7 +876,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Button clicked
         """
-        if not self.app.midi.learning:
+        if self.app.midi and not self.app.midi.learning:
             for index, flash in enumerate(self.flashes):
                 if flash == widget:
                     fader_bank = self.app.lightshow.fader_bank
@@ -855,7 +888,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Button clicked
         """
-        if not self.app.midi.learning:
+        if self.app.midi and not self.app.midi.learning:
             for index, flash in enumerate(self.flashes):
                 if flash == widget:
                     fader_bank = self.app.lightshow.fader_bank
@@ -867,7 +900,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Button clicked
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             index = self.flashes.index(widget) + 1
             text = f"flash_{index}"
             self.app.midi.learning = text
@@ -879,7 +912,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             fader: FaderWidget
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             index = self.faders.index(fader) + 1
             text = f"fader_{index}"
             self.app.midi.learning = text
@@ -889,8 +922,9 @@ class VirtualConsoleWindow(Gtk.Window):
             index = self.faders.index(fader) + 1
             fader_bank = self.app.lightshow.fader_bank
             fader_bank.faders[fader_bank.active_page][index].set_level(value / 255)
-            midi_fader = self.app.midi.faders.faders[self.faders.index(fader)]
-            midi_fader.set_state(value)
+            if self.app.midi:
+                midi_fader = self.app.midi.faders.faders[self.faders.index(fader)]
+                midi_fader.set_state(int(value))
 
     def _fader_clicked(self, fader: FaderWidget) -> None:
         """Fader clicked
@@ -898,7 +932,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             fader: FaderWidget
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             index = self.faders.index(fader) + 1
             text = f"fader_{index}"
             self.app.midi.learning = text
@@ -910,7 +944,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             scale (FaderWidget): crossfade fader
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             if scale == self.scale_a:
                 self.app.midi.learning = "crossfade_out"
             elif scale == self.scale_b:
@@ -919,16 +953,20 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             value = scale.get_value()
 
+            if not self.app.crossfade:
+                return
             if scale == self.scale_a:
-                self.app.crossfade.scale_a.set_value(value)
-                midi_fader = self.app.midi.xfade.fader_out
-                midi_fader.set_state(value)
+                self.app.crossfade.scale_a.set_value(int(value))
+                if self.app.midi:
+                    midi_fader = self.app.midi.xfade.fader_out
+                    midi_fader.set_state(int(value))
                 if self.app.crossfade.manual:
                     self.app.crossfade.scale_moved(self.app.crossfade.scale_a)
             elif scale == self.scale_b:
-                self.app.crossfade.scale_b.set_value(value)
-                midi_fader = self.app.midi.xfade.fader_in
-                midi_fader.set_state(value)
+                self.app.crossfade.scale_b.set_value(int(value))
+                if self.app.midi:
+                    midi_fader = self.app.midi.xfade.fader_in
+                    midi_fader.set_state(int(value))
                 if self.app.crossfade.manual:
                     self.app.crossfade.scale_moved(self.app.crossfade.scale_b)
 
@@ -938,7 +976,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             scale: FaderWidget
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             if scale == self.scale_a:
                 self.app.midi.learning = "crossfade_out"
             elif scale == self.scale_b:
@@ -951,7 +989,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Object clicked
         """
-        if self.app.midi.learning and widget == self.wheel:
+        if self.app.midi and self.app.midi.learning and widget == self.wheel:
             self.app.midi.learning = "wheel"
         self.queue_draw()
 
@@ -964,11 +1002,16 @@ class VirtualConsoleWindow(Gtk.Window):
             direction : Up or down
             step : increment or decrement step size
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
+            return
+        if not self.app.window:
             return
         child = self.app.window.get_active_tab()
         channels_view = None
-        if child == self.app.window.live_view.channels_view:
+        if (
+            self.app.window.live_view
+            and child == self.app.window.live_view.channels_view
+        ):
             channels_view = child
         elif child in (
             self.app.tabs.tabs["groups"],
@@ -977,9 +1020,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.tabs.tabs["memories"],
             self.app.tabs.tabs["sequences"],
         ):
-            channels_view = child.channels_view
+            channels_view = typing.cast(typing.Any, child).channels_view
         if channels_view:
-            channels_view.wheel_level(step, direction)
+            typing.cast(typing.Any, channels_view).wheel_level(step, direction)
 
     def _inde_clicked(self, widget: Gtk.Widget) -> None:
         """Independent clicked
@@ -1004,13 +1047,13 @@ class VirtualConsoleWindow(Gtk.Window):
 
         name, inde_idx = mapping[widget]
 
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             self.app.midi.learning = name
             if widget in (self.independent7, self.independent8, self.independent9):
-                widget.set_active(False)
+                typing.cast(typing.Any, widget).set_active(False)
             self.queue_draw()
         elif inde_idx is not None:
-            level = 255 if widget.get_active() else 0
+            level = 255 if typing.cast(typing.Any, widget).get_active() else 0
             self.app.lightshow.independents.independents[inde_idx].level = level
             self.app.lightshow.independents.independents[inde_idx].update_dmx()
 
@@ -1020,7 +1063,7 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Object changed
         """
-        if self.app.midi.learning:
+        if self.app.midi and self.app.midi.learning:
             return
         if widget == self.independent1:
             index = 0
@@ -1036,8 +1079,9 @@ class VirtualConsoleWindow(Gtk.Window):
             index = 5
         else:
             return
-        value = widget.value
+        value = typing.cast(typing.Any, widget).value
         inde = self.app.lightshow.independents.independents[index]
-        midi_fader = self.app.midi.faders.inde_faders[index]
         inde.set_level(value)
-        midi_fader.set_state(value)
+        if self.app.midi:
+            midi_fader = self.app.midi.faders.inde_faders[index]
+            midi_fader.set_state(int(value))
