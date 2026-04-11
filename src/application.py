@@ -529,7 +529,7 @@ class Application(Gtk.Application):
     ) -> None:
         """Virtual Console Window"""
         if not self.virtual_console:
-            self.virtual_console = VirtualConsoleWindow()
+            self.virtual_console = VirtualConsoleWindow(self)
             self.virtual_console.show_all()
             self.add_window(self.virtual_console)
 
