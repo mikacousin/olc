@@ -217,7 +217,7 @@ class CuesEditionTab(Gtk.Paned):
             row = path.get_indices()[0]
             # Confirm Delete
             dialog = ConfirmationDialog(
-                f"Delete memory {self.lightshow.cues[row].memory} ?"
+                f"Delete memory {self.lightshow.cues[row].memory} ?", self.window
             )
             response = dialog.run()
             if response == Gtk.ResponseType.CANCEL:

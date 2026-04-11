@@ -12,15 +12,19 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 from gi.repository import Gtk
-from olc.define import App
+
+if typing.TYPE_CHECKING:
+    from olc.window import Window
 
 
 class ConfirmationDialog(Gtk.Dialog):
     """Confirmation dialog"""
 
-    def __init__(self, text: str) -> None:
-        super().__init__(title="Confirmation", transient_for=App().window, flags=0)
+    def __init__(self, text: str, window: Window) -> None:
+        super().__init__(title="Confirmation", transient_for=window)
         self.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
         )

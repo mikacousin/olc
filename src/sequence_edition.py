@@ -569,7 +569,7 @@ class SequenceTab(Gtk.Grid):
             channels = sequence.steps[step].cue.channels
             memory = sequence.steps[step].cue.memory
             # Dialog to confirm Update
-            dialog = ConfirmationDialog(f"Update memory {memory} ?")
+            dialog = ConfirmationDialog(f"Update memory {memory} ?", App().window)
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 # Update levels in the cue
