@@ -19,12 +19,13 @@ import typing
 from enum import Enum, auto
 
 from olc.curve import LimitCurve
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App, string_to_time
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, string_to_time
 from olc.fader import FaderType
 from olc.files.read import ReadFile
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile
+    from olc.lightshow import LightShow
 
 
 class State(Enum):
@@ -47,6 +48,7 @@ class State(Enum):
     IN_FADER = auto()
 
 
+# pylint: disable=too-many-instance-attributes
 class AsciiParser(ReadFile):
     """To Parse ASCII Light Cue files"""
 
@@ -57,9 +59,14 @@ class AsciiParser(ReadFile):
     current: dict[str, object]
 
     def __init__(
-        self, imported: ImportFile, default_time: float, importation: bool = True
+        self,
+        imported: ImportFile,
+        lightshow: LightShow,
+        default_time: float,
+        importation: bool = True,
     ) -> None:
         super().__init__(imported, importation=importation)
+        self.lightshow = lightshow
         self.data = imported.data.data
         self.default_time = default_time
         self.tokens = {
@@ -202,9 +209,9 @@ class AsciiParser(ReadFile):
                 address = dimmer - (512 * univ_index)
                 curve_nb = 0
                 if level != 255:
-                    curve_nb = App().lightshow.curves.find_limit_curve(level)
+                    curve_nb = self.lightshow.curves.find_limit_curve(level)
                     if not curve_nb:
-                        curve_nb = App().lightshow.curves.add_curve(LimitCurve(level))
+                        curve_nb = self.lightshow.curves.add_curve(LimitCurve(level))
                     self.data["curves"][curve_nb] = {
                         "type": "LimitCurve",
                         "limit": level,

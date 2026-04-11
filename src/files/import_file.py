@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 from gi.repository import Gio, Gtk
 from olc.cue import Cue
 from olc.define import App
@@ -22,6 +24,9 @@ from olc.files.olc.parser import OlcParser
 from olc.files.parsed_data import ParsedData
 from olc.independent import Independents
 from olc.step import Step
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 
 class ImportFile:
@@ -34,8 +39,13 @@ class ImportFile:
     parser: AsciiParser
 
     def __init__(
-        self, file: Gio.File, file_type: FileType, importation: bool = False
+        self,
+        lightshow: LightShow,
+        file: Gio.File,
+        file_type: FileType,
+        importation: bool = False,
     ) -> None:
+        self.lightshow = lightshow
         self.file = file
         self.file_type = file_type
         self.data = ParsedData()
@@ -54,7 +64,9 @@ class ImportFile:
                 default_time = App().settings.get_double("default-time")
             else:
                 default_time = 5.0
-            self.parser = AsciiParser(self, default_time, importation=importation)
+            self.parser = AsciiParser(
+                self, self.lightshow, default_time, importation=importation
+            )
         else:
             self.parser = OlcParser(self, importation=importation)
 

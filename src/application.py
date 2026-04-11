@@ -211,7 +211,7 @@ class Application(Gtk.Application):
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
             self.lightshow.file = command_line.create_file_for_arg(arguments[1])
-            imported = ImportFile(self.lightshow.file, FileType.OLC)
+            imported = ImportFile(self.lightshow, self.lightshow.file, FileType.OLC)
             imported.parse()
         return False
 
@@ -322,7 +322,7 @@ class Application(Gtk.Application):
         if response == Gtk.ResponseType.ACCEPT:
             self.lightshow.file = open_dialog.get_file()
             # Load file
-            imported = ImportFile(self.lightshow.file, FileType.OLC)
+            imported = ImportFile(self.lightshow, self.lightshow.file, FileType.OLC)
             imported.parse()
 
         # destroy the FileChooserNative
@@ -374,7 +374,9 @@ class Application(Gtk.Application):
                 print("Extension non connue")
                 open_dialog.destroy()
                 return
-            imported = ImportFile(open_dialog.get_file(), file_type, importation=True)
+            imported = ImportFile(
+                self.lightshow, open_dialog.get_file(), file_type, importation=True
+            )
             imported.parse()
         open_dialog.destroy()
 
