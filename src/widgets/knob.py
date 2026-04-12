@@ -16,10 +16,10 @@ import math
 import typing
 
 from gi.repository import Gdk, GObject, Gtk
-from olc.define import App
 
 if typing.TYPE_CHECKING:
     import cairo
+    from olc.midi import Midi
 
 
 class KnobWidget(Gtk.DrawingArea):
@@ -32,8 +32,9 @@ class KnobWidget(Gtk.DrawingArea):
         "changed": (GObject.SignalFlags.ACTION, None, ()),
     }
 
-    def __init__(self, text: str = "None") -> None:
+    def __init__(self, midi: Midi | None, text: str = "None") -> None:
         Gtk.DrawingArea.__init__(self)
+        self.midi = midi
 
         self.value = 0
         self.text = text
@@ -135,7 +136,7 @@ class KnobWidget(Gtk.DrawingArea):
             cr: Cairo context
         """
         scale = 1.5
-        self.set_size_request(34 * scale, 34 * scale)
+        self.set_size_request(round(34 * scale), round(34 * scale))
         width = self.get_allocation().width
         height = self.get_allocation().height
 
@@ -148,7 +149,7 @@ class KnobWidget(Gtk.DrawingArea):
         cr.set_source_rgba(0.1, 0.1, 0.1, 1.0)
         cr.arc(0, 0, 10, 0, math.radians(360))
         cr.stroke()
-        if App().midi.learning == self.text:
+        if self.midi and self.midi.learning == self.text:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)

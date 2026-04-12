@@ -296,27 +296,27 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Independents
         self.independents = Gtk.Grid()
-        self.independent1 = KnobWidget(text="inde_1")
+        self.independent1 = KnobWidget(self.app.midi, text="inde_1")
         self.independent1.connect("clicked", self._inde_clicked)
         self.independent1.connect("changed", self._inde_changed)
         self.independent1.value = self.app.lightshow.independents.independents[0].level
-        self.independent2 = KnobWidget(text="inde_2")
+        self.independent2 = KnobWidget(self.app.midi, text="inde_2")
         self.independent2.connect("clicked", self._inde_clicked)
         self.independent2.connect("changed", self._inde_changed)
         self.independent2.value = self.app.lightshow.independents.independents[1].level
-        self.independent3 = KnobWidget(text="inde_3")
+        self.independent3 = KnobWidget(self.app.midi, text="inde_3")
         self.independent3.connect("clicked", self._inde_clicked)
         self.independent3.connect("changed", self._inde_changed)
         self.independent3.value = self.app.lightshow.independents.independents[2].level
-        self.independent4 = KnobWidget(text="inde_4")
+        self.independent4 = KnobWidget(self.app.midi, text="inde_4")
         self.independent4.connect("clicked", self._inde_clicked)
         self.independent4.connect("changed", self._inde_changed)
         self.independent4.value = self.app.lightshow.independents.independents[3].level
-        self.independent5 = KnobWidget(text="inde_5")
+        self.independent5 = KnobWidget(self.app.midi, text="inde_5")
         self.independent5.connect("clicked", self._inde_clicked)
         self.independent5.connect("changed", self._inde_changed)
         self.independent5.value = self.app.lightshow.independents.independents[4].level
-        self.independent6 = KnobWidget(text="inde_6")
+        self.independent6 = KnobWidget(self.app.midi, text="inde_6")
         self.independent6.connect("clicked", self._inde_clicked)
         self.independent6.connect("changed", self._inde_changed)
         self.independent6.value = self.app.lightshow.independents.independents[5].level
