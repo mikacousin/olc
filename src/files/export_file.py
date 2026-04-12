@@ -28,7 +28,7 @@ class ExportFile:
 
     file: Gio.File
     file_type: FileType
-    writer: AsciiWriter
+    writer: AsciiWriter | OlcWriter
 
     def __init__(
         self, file: Gio.File, file_type: FileType, lightshow: LightShow
@@ -45,7 +45,7 @@ class ExportFile:
         """Write file"""
         self.writer.write()
 
-    def get_file_type(self) -> str:
+    def get_file_type(self) -> FileType:
         """Get file type
 
         Returns:
