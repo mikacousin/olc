@@ -12,10 +12,14 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, GObject, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    from olc.midi import Midi
 
 
 class ButtonWidget(Gtk.Widget):
@@ -25,8 +29,11 @@ class ButtonWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, label: str = "", text: str = "None") -> None:
+    def __init__(
+        self, label: str = "", text: str = "None", midi: Midi | None = None
+    ) -> None:
         Gtk.Widget.__init__(self)
+        self.midi = midi
 
         self.width = 50
         self.height = 50
@@ -65,11 +72,11 @@ class ButtonWidget(Gtk.Widget):
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         elif self.pressed:
-            if App().midi.learning == self.text:
+            if self.midi and self.midi.learning == self.text:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif App().midi.learning == self.text:
+        elif self.midi and self.midi.learning == self.text:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
