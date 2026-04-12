@@ -30,7 +30,7 @@ class AsciiWriter(WriteFile):
     """Write ASCII Light Cue file"""
 
     def __init__(self, file: Gio.File, lightshow: LightShow) -> None:
-        super().__init__(file)
+        super().__init__(file, lightshow)
 
         self.lightshow = lightshow
 

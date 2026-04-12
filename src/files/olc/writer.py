@@ -35,7 +35,7 @@ class OlcWriter(WriteFile):
     data: dict[str, typing.Any]
 
     def __init__(self, file: Gio.File, lightshow: LightShow) -> None:
-        super().__init__(file, compressed=True)
+        super().__init__(file, lightshow, compressed=True)
         self.lightshow = lightshow
         self.data = {}
         self.data = {"application": "olc", "version": "0.8.5.beta"}

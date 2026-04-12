@@ -12,8 +12,12 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 from gi.repository import Gio
-from olc.define import App
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 
 class WriteFile:
@@ -24,12 +28,15 @@ class WriteFile:
 
     file: Gio.File
     compressed: bool
-    stream: Gio.FileOutputStream
+    stream: Gio.FileOutputStream | Gio.ConverterOutputStream | None
 
-    def __init__(self, file: Gio.File, compressed: bool = False) -> None:
+    def __init__(
+        self, file: Gio.File, lightshow: LightShow, compressed: bool = False
+    ) -> None:
         self.file = file
         self.compressed = compressed
         self.stream = None
+        self.lightshow = lightshow
 
     def write(self) -> None:
         """Write file"""
@@ -42,8 +49,8 @@ class WriteFile:
         # Write data
         self.export()
         self.stream.close()
-        App().lightshow.set_not_modified()
-        App().lightshow.add_recent_file()
+        self.lightshow.set_not_modified()
+        self.lightshow.add_recent_file()
 
     def export(self) -> None:
         """Export file
