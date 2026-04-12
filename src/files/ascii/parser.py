@@ -56,7 +56,7 @@ class AsciiParser(ReadFile):
     state: State
     keyword: str
     args: list[str]
-    current: dict[str, object]
+    current: dict[str, typing.Any]
 
     def __init__(
         self,
@@ -90,7 +90,7 @@ class AsciiParser(ReadFile):
         self.current = {
             "step": 0,
             "cue": 0.0,
-            "channel_time": (0, 0),
+            "channel_time": (0.0, 0.0),
             "sequence": 1,
             "group": 0.0,
             "independent": 0,
