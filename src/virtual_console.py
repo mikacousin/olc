@@ -344,7 +344,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
-        self.go_button = GoWidget()
+        self.go_button = GoWidget(self.app.midi)
         self.go_button.connect("clicked", self._on_go)
         self.seq_plus = ButtonWidget("Next Cue", "seq_plus")
         self.seq_plus.connect("clicked", self._on_seq_plus)
