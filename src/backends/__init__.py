@@ -37,7 +37,7 @@ class DMXBackend:
     patch: DMXPatch
 
     def __init__(self, lightshow: LightShow) -> None:
-        self.dmx = Dmx(self, lightshow)
+        self.dmx = Dmx(typing.cast(typing.Any, self), lightshow)
         self.patch = lightshow.patch
 
     def stop(self) -> None:
