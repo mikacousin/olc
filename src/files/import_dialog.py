@@ -20,9 +20,6 @@ from gettext import gettext as _
 
 from gi.repository import Gtk
 
-if typing.TYPE_CHECKING:
-    from olc.files.parsed_data import ParsedData
-
 
 class Action(Enum):
     """Action type"""
@@ -35,12 +32,15 @@ class Action(Enum):
 class DialogData(Gtk.Dialog):
     """Dialog to choose data to import"""
 
-    actions: dict
+    actions: dict[str, typing.Any]
 
     def __init__(
-        self, parent: Gtk.Window, data: ParsedData, actions: dict[str, Action]
+        self,
+        parent: Gtk.Window,
+        data: dict[str, typing.Any],
+        actions: dict[str, typing.Any],
     ) -> None:
-        super().__init__(title=_("Data to import"), transient_for=parent, flags=0)
+        super().__init__(title=_("Data to import"), transient_for=parent)
 
         self.actions = actions
 
@@ -50,22 +50,22 @@ class DialogData(Gtk.Dialog):
         box = self.get_content_area()
         box.set_spacing(6)
         # If you change actions order, you have to modify combo callbacks
-        actions = ["Replace", "Merge", "Ignore"]
+        act = ["Replace", "Merge", "Ignore"]
         if data["patch"]:
-            self._patch(actions, box)
+            self._patch(act, box)
         if data["sequences"]:
-            self._sequences(actions, box, data)
+            self._sequences(act, box, data)
         if data["groups"]:
-            self._groups(actions, box)
+            self._groups(act, box)
         if data["independents"]:
-            self._independents(actions, box)
+            self._independents(act, box)
         if data["faders"]:
-            self._faders(actions, box)
+            self._faders(act, box)
         self.show_all()
 
     def _patch(self, actions: list, box: Gtk.Box) -> None:
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        label = Gtk.Label("Patch:")
+        label = Gtk.Label(label="Patch:")
         combo = Gtk.ComboBoxText()
         combo.connect("changed", self._on_patch_changed)
         for action in actions:
@@ -78,7 +78,7 @@ class DialogData(Gtk.Dialog):
     def _sequences(self, actions: list, box: Gtk.Box, data: dict) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        label = Gtk.Label("Sequences:")
+        label = Gtk.Label(label="Sequences:")
         hbox.pack_start(label, False, True, 0)
         box.add(hbox)
         combos = {}
@@ -91,7 +91,7 @@ class DialogData(Gtk.Dialog):
                 name = data["sequences"][sequence]["label"]
             else:
                 name = str(sequence)
-            label = Gtk.Label(name)
+            label = Gtk.Label(label=name)
             combos[sequence] = Gtk.ComboBoxText()
             combos[sequence].connect("changed", self._on_seq_changed, sequence)
             for action in actions:
@@ -104,7 +104,7 @@ class DialogData(Gtk.Dialog):
     def _groups(self, actions: list, box: Gtk.Box) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        label = Gtk.Label("Groups:")
+        label = Gtk.Label(label="Groups:")
         combo = Gtk.ComboBoxText()
         combo.connect("changed", self._on_groups_changed)
         for action in actions:
@@ -117,7 +117,7 @@ class DialogData(Gtk.Dialog):
     def _faders(self, actions: list, box: Gtk.Box) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        label = Gtk.Label("Faders:")
+        label = Gtk.Label(label="Faders:")
         combo = Gtk.ComboBoxText()
         combo.connect("changed", self._on_faders_changed)
         for action in actions:
@@ -130,7 +130,7 @@ class DialogData(Gtk.Dialog):
     def _independents(self, actions: list, box: Gtk.Box) -> None:
         box.add(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
         hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        label = Gtk.Label("Independents:")
+        label = Gtk.Label(label="Independents:")
         combo = Gtk.ComboBoxText()
         combo.connect("changed", self._on_independents_changed)
         for action in actions:
@@ -140,7 +140,7 @@ class DialogData(Gtk.Dialog):
         hbox.add(combo)
         box.add(hbox)
 
-    def _on_patch_changed(self, widget: Gtk.Widget) -> None:
+    def _on_patch_changed(self, widget: Gtk.ComboBoxText) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["patch"] = Action.REPLACE
@@ -149,7 +149,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["patch"] = Action.IGNORE
 
-    def _on_seq_changed(self, widget: Gtk.Widget, sequence: int) -> None:
+    def _on_seq_changed(self, widget: Gtk.ComboBoxText, sequence: int) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["sequences"][sequence] = Action.REPLACE
@@ -158,7 +158,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["sequences"][sequence] = Action.IGNORE
 
-    def _on_groups_changed(self, widget: Gtk.Widget) -> None:
+    def _on_groups_changed(self, widget: Gtk.ComboBoxText) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["groups"] = Action.REPLACE
@@ -167,7 +167,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["groups"] = Action.IGNORE
 
-    def _on_faders_changed(self, widget: Gtk.widget) -> None:
+    def _on_faders_changed(self, widget: Gtk.ComboBoxText) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["faders"] = Action.REPLACE
@@ -176,7 +176,7 @@ class DialogData(Gtk.Dialog):
         elif active == 2:
             self.actions["faders"] = Action.IGNORE
 
-    def _on_independents_changed(self, widget: Gtk.Widget) -> None:
+    def _on_independents_changed(self, widget: Gtk.ComboBoxText) -> None:
         active = widget.get_active()
         if active == 0:
             self.actions["independents"] = Action.REPLACE
