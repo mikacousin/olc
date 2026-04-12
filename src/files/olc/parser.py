@@ -22,13 +22,12 @@ from olc.files.read import ReadFile
 
 if typing.TYPE_CHECKING:
     from olc.files.import_file import ImportFile
-    from olc.files.parsed_data import ParsedData
 
 
 class OlcParser(ReadFile):
     """Parse olc files"""
 
-    data: ParsedData
+    data: dict[str, typing.Any]
 
     def __init__(self, imported: ImportFile, importation: bool = False) -> None:
         super().__init__(imported, compressed=True, importation=importation)
