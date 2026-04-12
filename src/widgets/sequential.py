@@ -19,10 +19,10 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App, time_to_string
+from olc.define import MAX_CHANNELS, time_to_string
 
 if typing.TYPE_CHECKING:
-    from olc.channel_time import ChannelTime
+    from olc.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes
@@ -34,21 +34,28 @@ class SequentialWidget(Gtk.Widget):
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
-        total_time: float,
-        time_in: float,
-        time_out: float,
-        delay_in: float,
-        delay_out: float,
-        wait: float,
-        channel_time: dict[int, ChannelTime],
+        lightshow: LightShow,
     ) -> None:
-        self.total_time = total_time
-        self.time_in = time_in
-        self.time_out = time_out
-        self.delay_in = delay_in
-        self.delay_out = delay_out
-        self.wait = wait
-        self.channel_time = channel_time
+        self.lightshow = lightshow
+        if self.lightshow.main_playback.last > 1:
+            position = self.lightshow.main_playback.position
+            self.total_time = self.lightshow.main_playback.steps[position].total_time
+            self.time_in = self.lightshow.main_playback.steps[position].time_in
+            self.time_out = self.lightshow.main_playback.steps[position].time_out
+            self.delay_in = self.lightshow.main_playback.steps[position].delay_in
+            self.delay_out = self.lightshow.main_playback.steps[position].delay_out
+            self.wait = self.lightshow.main_playback.steps[position].wait
+            self.channel_time = self.lightshow.main_playback.steps[
+                position
+            ].channel_time
+        else:
+            self.total_time = 5.0
+            self.time_in = 5.0
+            self.time_out = 5.0
+            self.delay_in = 0.0
+            self.delay_out = 0.0
+            self.wait = 0.0
+            self.channel_time = {}
 
         self.position_a = 0
         self.position_b = 0
@@ -298,14 +305,12 @@ class SequentialWidget(Gtk.Widget):
         delay: float,
         time: float,
     ) -> None:
-        position = App().lightshow.main_playback.position
-        old_level = (
-            App().lightshow.main_playback.steps[position].cue.channels.get(channel, 0)
+        position = self.lightshow.main_playback.position
+        old_level = self.lightshow.main_playback.steps[position].cue.channels.get(
+            channel, 0
         )
-        next_level = (
-            App()
-            .lightshow.main_playback.steps[position + 1]
-            .cue.channels.get(channel, 0)
+        next_level = self.lightshow.main_playback.steps[position + 1].cue.channels.get(
+            channel, 0
         )
 
         pos_time = self.position_a if next_level < old_level else self.position_b

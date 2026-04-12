@@ -94,22 +94,8 @@ class MainPlaybackView(Gtk.Notebook):
 
     def _setup_sequential(self) -> None:
         """Setup the Sequential Widget parameters"""
-        if App().lightshow.main_playback.last > 1:
-            position = App().lightshow.main_playback.position
-            t_total = App().lightshow.main_playback.steps[position].total_time
-            t_in = App().lightshow.main_playback.steps[position].time_in
-            t_out = App().lightshow.main_playback.steps[position].time_out
-            d_in = App().lightshow.main_playback.steps[position].delay_in
-            d_out = App().lightshow.main_playback.steps[position].delay_out
-            t_wait = App().lightshow.main_playback.steps[position].wait
-            channel_time = App().lightshow.main_playback.steps[position].channel_time
-        else:
-            t_total, t_in, t_out, d_in, d_out, t_wait = 5.0, 5.0, 5.0, 0.0, 0.0, 0.0
-            channel_time = {}
         # Crossfade widget
-        self.sequential = SequentialWidget(
-            t_total, t_in, t_out, d_in, d_out, t_wait, channel_time
-        )
+        self.sequential = SequentialWidget(App().lightshow)
 
     def _setup_treeviews(self) -> None:
         """Init ListStores and TreeViews"""

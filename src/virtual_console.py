@@ -320,9 +320,9 @@ class VirtualConsoleWindow(Gtk.Window):
         self.independent6.connect("clicked", self._inde_clicked)
         self.independent6.connect("changed", self._inde_changed)
         self.independent6.value = self.app.lightshow.independents.independents[5].level
-        self.independent7 = ToggleWidget(text="inde_7")
-        self.independent8 = ToggleWidget(text="inde_8")
-        self.independent9 = ToggleWidget(text="inde_9")
+        self.independent7 = ToggleWidget(self.app.midi, text="inde_7")
+        self.independent8 = ToggleWidget(self.app.midi, text="inde_8")
+        self.independent9 = ToggleWidget(self.app.midi, text="inde_9")
         self.independent7.connect("clicked", self._inde_clicked)
         if self.app.lightshow.independents.independents[6].level:
             self.independent7.set_active(True)

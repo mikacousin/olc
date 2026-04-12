@@ -55,6 +55,7 @@ class Application(Gtk.Application):
     """Application Class"""
 
     backend: DMXBackend | None
+    midi: Midi
     version: str
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
