@@ -91,7 +91,7 @@ class Window(Gtk.ApplicationWindow):
         self.header.props.show_close_button = True
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         # Main Fader viewer
-        self.main_fader = MainFaderWidget()
+        self.main_fader = MainFaderWidget(App().backend)
         box.add(self.main_fader)
         # Menu button
         button = Gtk.MenuButton()

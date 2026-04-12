@@ -12,10 +12,14 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle
+
+if typing.TYPE_CHECKING:
+    from olc.backends import DMXBackend
 
 
 class MainFaderWidget(Gtk.Widget):
@@ -23,8 +27,9 @@ class MainFaderWidget(Gtk.Widget):
 
     __gtype_name__ = "MainFaderWidget"
 
-    def __init__(self) -> None:
+    def __init__(self, backend: DMXBackend | None) -> None:
         Gtk.Widget.__init__(self)
+        self.backend = backend
 
         self.width = 100
         self.height = 30
@@ -39,15 +44,13 @@ class MainFaderWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
-        if App().backend.dmx.main_fader.value != 1:
+        if self.backend and self.backend.dmx.main_fader.value != 1:
             # Draw rounded box
             cr.set_source_rgb(0.7, 0.2, 0.2)
             area = (1, self.width - 2, 1, self.height - 2)
             rounded_rectangle(cr, area, self.radius)
             # Draw Text
-            self.label = (
-                f"Main Fader {round(App().backend.dmx.main_fader.value * 100)}%"
-            )
+            self.label = f"Main Fader {round(self.backend.dmx.main_fader.value * 100)}%"
             cr.set_source_rgb(0.8, 0.3, 0.3)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(11)
