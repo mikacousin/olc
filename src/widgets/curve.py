@@ -42,7 +42,7 @@ class CurveWidget(Gtk.Button):
         """
         raise NotImplementedError
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw curve
 
         Args:
@@ -70,3 +70,4 @@ class CurveWidget(Gtk.Button):
         for x, y in self.curve.values.items():
             cr.line_to((x / 255) * width, height - ((y / 255) * height))
         cr.stroke()
+        return False

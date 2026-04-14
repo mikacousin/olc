@@ -66,7 +66,7 @@ class ChannelWidget(Gtk.DrawingArea):
         ):
             App().tabs.tabs["track_channels"].update_display()
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
 
         Args:
@@ -82,6 +82,7 @@ class ChannelWidget(Gtk.DrawingArea):
         self._draw_level(cr, percent_level)
         self._draw_level_bar(cr, allocation)
         self._draw_next_level(cr, percent_level)
+        return False
 
     def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw background"""

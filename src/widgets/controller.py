@@ -145,7 +145,7 @@ class ControllerWidget(Gtk.DrawingArea):
             self.angle += 360
         self.queue_draw()
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Controller
 
         Args:
@@ -188,3 +188,4 @@ class ControllerWidget(Gtk.DrawingArea):
         cr.move_to(x1, y1)
         cr.line_to(x2, y2)
         cr.stroke()
+        return False

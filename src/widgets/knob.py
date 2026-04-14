@@ -129,7 +129,7 @@ class KnobWidget(Gtk.DrawingArea):
         self.emit("changed")
         self.queue_draw()
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Knob
 
         Args:
@@ -176,3 +176,4 @@ class KnobWidget(Gtk.DrawingArea):
         cr.move_to(x1, y1)
         cr.line_to(x2, y2)
         cr.stroke()
+        return False

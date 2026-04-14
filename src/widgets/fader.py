@@ -66,7 +66,7 @@ class FaderWidget(Gtk.Scale):
         self.queue_draw()
         self.emit("clicked")
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Fader
 
         Args:
@@ -121,3 +121,4 @@ class FaderWidget(Gtk.Scale):
         rounded_rectangle_fill(cr, area, radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, radius)
+        return False

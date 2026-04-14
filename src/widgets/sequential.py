@@ -77,7 +77,7 @@ class SequentialWidget(Gtk.Widget):
         return time_max, time_min
 
     # pylint: disable=too-many-locals
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw crossfade widget
 
         Args:
@@ -130,6 +130,8 @@ class SequentialWidget(Gtk.Widget):
         )
 
         self._draw_times_number(cr, allocation, inter, time_max, time_min)
+
+        return False
 
     def _draw_background_frame(
         self, cr: cairo.Context, allocation: Gdk.Rectangle

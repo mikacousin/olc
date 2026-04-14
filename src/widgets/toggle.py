@@ -36,7 +36,7 @@ class ToggleWidget(Gtk.ToggleButton):
         self.text = text
         self.midi = midi
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Toggle button
 
         Args:
@@ -58,3 +58,4 @@ class ToggleWidget(Gtk.ToggleButton):
         rounded_rectangle_fill(cr, area, self.radius)
         cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.radius)
+        return False

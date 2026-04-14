@@ -40,7 +40,7 @@ class PatchChannelHeader(Gtk.Misc):
 
         self.set_size_request(self.width, self.height)
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Header widget
 
         Args:
@@ -86,6 +86,7 @@ class PatchChannelHeader(Gtk.Misc):
         (_x, _y, w, h, _dx, _dy) = cr.text_extents("Text")
         cr.move_to(605 + (200 / 2) - w / 2, self.height / 2 - (h - 20) / 2)
         cr.show_text("Text")
+        return False
 
 
 class PatchChannelWidget(Gtk.Widget):
@@ -127,7 +128,7 @@ class PatchChannelWidget(Gtk.Widget):
             App().tabs.tabs["patch_channels"].flowbox.select_child(child)
             App().tabs.tabs["patch_channels"].last_chan_selected = str(self.channel - 1)
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
 
         Args:
@@ -154,6 +155,7 @@ class PatchChannelWidget(Gtk.Widget):
         rounded_rectangle(cr, area, self.radius)
         # Draw patched outputs
         self._draw_output_boxes(cr)
+        return False
 
     def _draw_channel_number(self, cr: cairo.Context) -> None:
         """Draw Channel number

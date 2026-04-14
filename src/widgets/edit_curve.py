@@ -81,7 +81,7 @@ class EditCurveWidget(Gtk.DrawingArea):
         y_curve = max(min(y_curve, 255), 0)
         tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Edit Curve Widget
 
         Args:
@@ -146,3 +146,4 @@ class EditCurveWidget(Gtk.DrawingArea):
                 height - self.delta - ((y / 255) * (height - (self.delta * 2))),
             )
         cr.stroke()
+        return False

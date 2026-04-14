@@ -67,7 +67,7 @@ class PauseWidget(Gtk.Button):
             self.pressed = False
             App().midi.messages.notes.send(self.text, 0)
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Pause button
 
         Args:
@@ -100,3 +100,4 @@ class PauseWidget(Gtk.Button):
             self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
         )
         cr.show_text(self.label)
+        return False

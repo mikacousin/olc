@@ -62,7 +62,7 @@ class ButtonWidget(Gtk.Widget):
         self.pressed = False
         self.queue_draw()
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw button
 
         Args:
@@ -96,6 +96,7 @@ class ButtonWidget(Gtk.Widget):
             self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
         )
         cr.show_text(self.label)
+        return False
 
     def do_realize(self) -> None:
         """Realize widget"""

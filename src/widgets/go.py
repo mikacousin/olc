@@ -59,7 +59,7 @@ class GoWidget(Gtk.Widget):
         self.queue_draw()
         self.emit("clicked")
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Go button
 
         Args:
@@ -88,6 +88,7 @@ class GoWidget(Gtk.Widget):
             self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
         )
         cr.show_text("Go")
+        return False
 
     def do_realize(self) -> None:
         """Realize widget"""

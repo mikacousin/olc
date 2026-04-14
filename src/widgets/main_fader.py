@@ -38,7 +38,7 @@ class MainFaderWidget(Gtk.Widget):
 
         self.set_size_request(self.width, self.height)
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Main Fader widget
 
         Args:
@@ -59,6 +59,7 @@ class MainFaderWidget(Gtk.Widget):
                 self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
             )
             cr.show_text(self.label)
+        return False
 
     def do_realize(self) -> None:
         """Realize widget"""

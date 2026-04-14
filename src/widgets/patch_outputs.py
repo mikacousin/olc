@@ -178,7 +178,7 @@ class PatchWidget(Gtk.DrawingArea):
             child.show()
             self.stack.set_visible_child(child)
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
 
         Args:
@@ -197,6 +197,7 @@ class PatchWidget(Gtk.DrawingArea):
         self._draw_output_level(cr, allocation)
         # Draw Curve
         self._draw_curve(cr, allocation)
+        return False
 
     def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw background

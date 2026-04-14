@@ -83,7 +83,7 @@ class GroupWidget(Gtk.Widget):
         else:
             self.popover.popup()
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Group widget
 
         Args:
@@ -122,6 +122,7 @@ class GroupWidget(Gtk.Widget):
             cr.show_text(self.name[10:])
         else:
             cr.show_text(self.name)
+        return False
 
     def do_realize(self) -> None:
         """Realize widget"""

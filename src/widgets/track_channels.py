@@ -33,7 +33,7 @@ class TrackChannelsHeader(Gtk.Widget):
 
         self.set_size_request(self.width, self.height)
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw header
 
         Args:
@@ -94,6 +94,8 @@ class TrackChannelsHeader(Gtk.Widget):
             (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(channel + 1))
             cr.move_to(535 + (i * 65) + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
             cr.show_text(str(channel + 1))
+
+        return False
 
     def do_realize(self) -> None:
         """Realize widget"""
@@ -156,7 +158,7 @@ class TrackChannelsWidget(Gtk.Widget):
         if 0 <= chan < len(self.levels):
             App().tabs.tabs["track_channels"].channel_selected = chan
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
 
         Args:
@@ -178,6 +180,8 @@ class TrackChannelsWidget(Gtk.Widget):
         self._draw_text_box(cr)
         # Draw level boxes
         self._draw_level_boxes(cr)
+
+        return False
 
     def _draw_step_box(self, cr: cairo.Context) -> None:
         """Draw Step box

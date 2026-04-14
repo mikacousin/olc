@@ -161,7 +161,7 @@ class CurvePointWidget(Gtk.DrawingArea):
         self.active = active
         self.queue_draw()
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Curve Point Widget
 
         Args:
@@ -175,3 +175,4 @@ class CurvePointWidget(Gtk.DrawingArea):
             cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
         cr.arc(4, 4, 4, 0, 2 * math.pi)
         cr.fill()
+        return False
