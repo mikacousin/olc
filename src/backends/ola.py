@@ -26,7 +26,7 @@ from gi.repository import GLib
 from ola import OlaClient
 from ola.ClientWrapper import ClientWrapper
 from olc.backends import DMXBackend
-from olc.define import NB_UNIVERSES, UNIVERSES, App
+from olc.define import NB_UNIVERSES, UNIVERSES
 from olc.patch import DMXPatch
 
 if typing.TYPE_CHECKING:
@@ -81,44 +81,7 @@ class OlaThread(threading.Thread):
         # Save DMX frame for next call
         self.old_frame[idx] = dmxframe
 
-    def fetch_dmx(
-        self, status: OlaClient.RequestStatus, univ: int, dmxframe: array.array
-    ) -> None:
-        """Fetch DMX
 
-        Args:
-            status: RequestStatus
-            univ: DMX universe
-            dmxframe: DMX data
-        """
-        if not status.Succeeded() or not dmxframe:
-            return
-        index = UNIVERSES.index(univ)
-        self.old_frame[index] = dmxframe
-        for output, level in enumerate(dmxframe):
-            if univ in self.patch.outputs and output + 1 in self.patch.outputs[univ]:
-                channel_list = self.patch.outputs.get(univ)
-                if not channel_list:
-                    continue
-                channel_entry = channel_list.get(output + 1)
-                if not channel_entry:
-                    continue
-                channel = channel_entry[0]
-                app = typing.cast(typing.Any, App())
-                if (
-                    app
-                    and app.backend
-                    and app.lightshow
-                    and app.window
-                    and app.window.live_view
-                ):
-                    app.backend.dmx.frame[index][output] = level
-                    next_level = app.lightshow.main_playback.get_next_channel_level(
-                        channel, level
-                    )
-                    app.window.live_view.update_channel_widget(channel, next_level)
-                if self.dmx:
-                    GLib.idle_add(self.dmx.trigger_output_callbacks, univ, [output])
 
 
 class Ola(DMXBackend):
