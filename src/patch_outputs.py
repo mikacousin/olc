@@ -70,6 +70,9 @@ class PatchOutputsTab(Gtk.Box):
         self.pack_start(header, False, False, 0)
         self.pack_start(scrolled, True, True, 0)
 
+        # Register callback for network DMX updates
+        App().backend.dmx.add_output_callback(self.on_network_dmx_changed)
+
     def on_button_clicked(self, widget: Gtk.Widget) -> None:
         """On buttons clicked
 
@@ -108,6 +111,7 @@ class PatchOutputsTab(Gtk.Box):
         """Close Tab on close clicked"""
         if self.test:
             self._stop_test()
+        App().backend.dmx.remove_output_callback(self.on_network_dmx_changed)
         App().tabs.close("patch_outputs")
 
     def select_outputs(self) -> None:
@@ -160,6 +164,7 @@ class PatchOutputsTab(Gtk.Box):
         """Close Tab"""
         if self.test:
             self._stop_test()
+        App().backend.dmx.remove_output_callback(self.on_network_dmx_changed)
         App().tabs.close("patch_outputs")
 
     def _keypress_backspace(self) -> None:
@@ -381,28 +386,38 @@ class PatchOutputsTab(Gtk.Box):
         App().lightshow.set_modified()
         App().window.commandline.set_string("")
 
+    def on_network_dmx_changed(self, universe: int, outputs: list[int]) -> None:
+        """Called when a network backend updates DMX levels.
+
+        Args:
+            universe: Universe number
+            outputs: List of changed output indices
+        """
+        idx = UNIVERSES.index(universe)
+        for output in outputs:
+            if self.patch.outputs.get(universe) and self.patch.outputs[universe].get(
+                output + 1
+            ):
+                self.outputs[output + (idx * 512)].queue_draw()
+
 
 class SeveralOutputsDialog(Gtk.Dialog):
     """Several Outputs Dialog"""
 
     def __init__(self, parent: Gtk.Window, channel: int, out: int) -> None:
-        Gtk.Dialog.__init__(
-            self,
-            "Patch confirmation",
-            parent,
-            0,
-            (
-                f"Patch to channel {channel}",
-                Gtk.ResponseType.CANCEL,
-                f"Patch to {out} channels starting at {channel}",
-                Gtk.ResponseType.OK,
-            ),
+        super().__init__(title="Patch confirmation", transient_for=parent)
+        self.add_buttons(
+            f"Patch to channel {channel}",
+            Gtk.ResponseType.CANCEL,
+            f"Patch to {out} channels starting at {channel}",
+            Gtk.ResponseType.OK,
         )
 
         self.set_default_size(150, 100)
 
         label = Gtk.Label(
-            f"Do you want to patch {out} selected outputs to one or several channels ?"
+            label=f"Do you want to patch {out} selected outputs"
+            f" to one or several channels ?"
         )
 
         box = self.get_content_area()

@@ -19,7 +19,7 @@ import typing
 import sacn
 from gi.repository import GLib
 from olc.backends import DMXBackend
-from olc.define import NB_UNIVERSES, UNIVERSES, App
+from olc.define import NB_UNIVERSES, UNIVERSES
 
 if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
@@ -30,7 +30,7 @@ class Sacn(DMXBackend):
 
     sender: sacn.sACNsender
     receiver: sacn.sACNreceiver
-    old_frame: list[tuple[int]]
+    old_frame: list[tuple[int, ...]]
 
     def __init__(self, lightshow: LightShow) -> None:
         self.sender = sacn.sACNsender()
@@ -39,7 +39,8 @@ class Sacn(DMXBackend):
         self.receiver.start()
         for universe in UNIVERSES:
             self.sender.activate_output(universe)
-            self.sender[universe].multicast = True
+            if sender := self.sender[universe]:
+                sender.multicast = True
             self.receiver.join_multicast(universe)
             self.receiver.register_listener(
                 "universe", self.receive_packet, universe=universe
@@ -62,7 +63,8 @@ class Sacn(DMXBackend):
             universe: one in UNIVERSES
             index: Index of universe
         """
-        self.sender[universe].dmx_data = tuple(self.dmx.frame[index])
+        if sender := self.sender[universe]:
+            sender.dmx_data = tuple(self.dmx.frame[index])
 
     def receive_packet(self, packet: sacn.DataPacket) -> None:
         """Callback when receive sACN packets
@@ -72,25 +74,16 @@ class Sacn(DMXBackend):
         """
         univ = packet.universe
         idx = UNIVERSES.index(univ)
-        if App().tabs.tabs["patch_outputs"]:
-            # Find diff between old and new DMX frames
-            outputs = [
-                index
-                for index, (e1, e2) in enumerate(
-                    zip(packet.dmxData, self.old_frame[idx], strict=True)
-                )
-                if e1 != e2
-            ]
-            # Loop on outputs with different level
-            for output in outputs:
-                if self.patch.outputs.get(univ) and self.patch.outputs[univ].get(
-                    output + 1
-                ):
-                    GLib.idle_add(
-                        App()
-                        .tabs.tabs["patch_outputs"]
-                        .outputs[output + (idx * 512)]
-                        .queue_draw
-                    )
+        # Find diff between old and new DMX frames
+        outputs = [
+            index
+            for index, (e1, e2) in enumerate(
+                zip(packet.dmxData, self.old_frame[idx], strict=True)
+            )
+            if e1 != e2
+        ]
+        if outputs:
+            dmx = typing.cast(typing.Any, self.dmx)
+            GLib.idle_add(dmx.trigger_output_callbacks, univ, outputs)
         # Save DMX frame for next call
         self.old_frame[idx] = packet.dmxData

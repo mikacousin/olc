@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from typing import Callable
 
 from gi.repository import Gio, GLib
 from olc.backends import DMXBackend
@@ -22,8 +23,7 @@ from olc.backends.artnet import Artnet
 from olc.define import UNIVERSES, App
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from olc.dmx import Dmx
     from olc.lightshow import LightShow
     from olc.patch import DMXPatch
 
@@ -35,8 +35,9 @@ class Callback:
     patch: DMXPatch
     old_frame: dict[int, list[int]]
 
-    def __init__(self, patch: DMXPatch) -> None:
+    def __init__(self, patch: DMXPatch, dmx: Dmx | None = None) -> None:
         self.patch = patch
+        self.dmx = dmx
         self.old_frame = {}
         for universe in UNIVERSES:
             self.old_frame[universe] = [0] * 512
@@ -48,32 +49,18 @@ class Callback:
             universe: ArtDmx packet universe
             packet: Art-Net data
         """
-        try:
-            idx = UNIVERSES.index(universe)
-        except ValueError:
-            # If received packet for a universe we don't use
-            return
+        # Find diff between old and new DMX frames
+        outputs = [
+            index
+            for index, (e1, e2) in enumerate(
+                zip(packet, self.old_frame[universe], strict=True)
+            )
+            if e1 != e2
+        ]
 
-        if App().tabs.tabs["patch_outputs"]:
-            # Find diff between old and new DMX frames
-            outputs = [
-                index
-                for index, (e1, e2) in enumerate(
-                    zip(packet, self.old_frame[universe], strict=True)
-                )
-                if e1 != e2
-            ]
-            # Loop on outputs with different level
-            for output in outputs:
-                if self.patch.outputs.get(universe) and self.patch.outputs[
-                    universe
-                ].get(output + 1):
-                    GLib.idle_add(
-                        App()
-                        .tabs.tabs["patch_outputs"]
-                        .outputs[output + (idx * 512)]
-                        .queue_draw
-                    )
+        if outputs and self.dmx:
+            GLib.idle_add(self.dmx.trigger_output_callbacks, universe, outputs)
+
         # Save DMX frame for next call
         self.old_frame[universe] = packet
 
@@ -84,12 +71,12 @@ class ArtnetBackend(DMXBackend):
     artnet: Artnet
 
     def __init__(self, lightshow: LightShow) -> None:
+        super().__init__(lightshow)
         self.artnet = Artnet(
             universes=UNIVERSES,
             notify=self.notify,
-            on_artdmx_cb=Callback(lightshow.patch).receive_packet,
+            on_artdmx_cb=Callback(lightshow.patch, self.dmx).receive_packet,
         )
-        super().__init__(lightshow)
 
     def stop(self) -> None:
         """Stop Art-Net backend"""
@@ -103,7 +90,7 @@ class ArtnetBackend(DMXBackend):
             universe: one in UNIVERSES
             index: Index of universe
         """
-        self.artnet.send(universe, self.dmx.frame[index])
+        self.artnet.send(universe, bytearray(self.dmx.frame[index]))
 
     def notify(self, action: str, *args: str | int, **kwargs: str) -> None | Callable:
         """Dispatch Notifications
@@ -133,13 +120,15 @@ class ArtnetBackend(DMXBackend):
         notification = Gio.Notification()
         notification.set_title("New Node detected")
         notification.set_body(f"Send Universe {universe} to Node at {ip}.")
-        App().send_notification(None, notification)
+        if app := App():
+            app.send_notification(None, notification)
 
     def _del_node(self, ip: str) -> None:
         notification = Gio.Notification()
         notification.set_title("Node deconnected")
         notification.set_body(f"Lost Node at {ip}.")
-        App().send_notification(None, notification)
+        if app := App():
+            app.send_notification(None, notification)
 
     def _node_modified(self, name: str, attribute: str, old: int, new: int) -> None:
         notification = Gio.Notification()
@@ -147,16 +136,19 @@ class ArtnetBackend(DMXBackend):
         notification.set_body(
             f"Art-Net Node {name}: {attribute} updated from {old} to {new}."
         )
-        App().send_notification(None, notification)
+        if app := App():
+            app.send_notification(None, notification)
 
     def _add_console(self, ip: str, _universe: int) -> None:
         notification = Gio.Notification()
         notification.set_title("New Console detected")
         notification.set_body(f"Art-Net Console detected at {ip}.")
-        App().send_notification(None, notification)
+        if app := App():
+            app.send_notification(None, notification)
 
     def _del_console(self, ip: str) -> None:
         notification = Gio.Notification()
         notification.set_title("Console deconnected")
         notification.set_body(f"Lost Console at {ip}.")
-        App().send_notification(None, notification)
+        if app := App():
+            app.send_notification(None, notification)

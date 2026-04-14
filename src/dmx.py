@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import array
 import typing
-from typing import Optional
+from typing import Callable, Optional
 
 from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES
 from olc.main_fader import MainFader
@@ -39,6 +39,7 @@ class Dmx:
     frame: list[array.array]
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
+    output_callbacks: list[Callable[[int, list[int]], None]]
 
     def __init__(self, backend: Optional[DMXBackend], lightshow: LightShow) -> None:
         self.backend = backend
@@ -56,6 +57,8 @@ class Dmx:
         self._old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
         # To test outputs
         self.user_outputs = {}
+        # Callbacks for UI updates
+        self.output_callbacks = []
         # Thread to send DMX every DMX_INTERVAL ms
         self.thread = RepeatedTimer(DMX_INTERVAL / 1000, self.send)
 
@@ -130,3 +133,25 @@ class Dmx:
             self.user_outputs.pop((output, universe))
         if self.backend:
             self.backend.send(universe, index)
+
+    def add_output_callback(self, callback: Callable[[int, list[int]], None]) -> None:
+        """Register a callback for output level changes."""
+        if callback not in self.output_callbacks:
+            self.output_callbacks.append(callback)
+
+    def remove_output_callback(
+        self, callback: Callable[[int, list[int]], None]
+    ) -> None:
+        """Remove a callback for output level changes."""
+        if callback in self.output_callbacks:
+            self.output_callbacks.remove(callback)
+
+    def trigger_output_callbacks(self, universe: int, outputs: list[int]) -> None:
+        """Trigger registered callbacks.
+
+        Args:
+            universe: Universe number
+            outputs: List of changed output indices
+        """
+        for callback in self.output_callbacks:
+            callback(universe, outputs)
