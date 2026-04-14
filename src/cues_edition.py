@@ -505,7 +505,7 @@ class CueChannelsView(ChannelsView):
     def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
         user_channels = self.tabs.tabs["memories"].user_channels
         channel_index = child.get_index()
-        channel_widget: ChannelWidget = child.get_child()
+        channel_widget = child.get_child()
         # Channels in Cue
         channels = self.lightshow.cues[row].channels
         if channels.get(channel_index + 1) or child.is_selected():

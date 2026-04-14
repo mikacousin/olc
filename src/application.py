@@ -622,7 +622,7 @@ class DialogQuit(Gtk.Dialog):
     """Ask user if he try to quit with an unsaved file"""
 
     def __init__(self, parent: Gtk.ApplicationWindow) -> None:
-        super().__init__(title=_("Save file ?"), transient_for=parent, flags=0)
+        super().__init__(title=_("Save file ?"), transient_for=parent)
         self.add_buttons(
             _("Save"),
             1,
