@@ -36,14 +36,14 @@ class KnobWidget(Gtk.DrawingArea):
         Gtk.DrawingArea.__init__(self)
         self.midi = midi
 
-        self.value = 0
+        self.value = 0.0
         self.text = text
 
         # Mouse position when button clicked
-        self.x1 = 0
-        self.y1 = 0
-        self.old_angle = 0
-        self.old_value = 0
+        self.x1 = 0.0
+        self.y1 = 0.0
+        self.old_angle = 0.0
+        self.old_value = 0.0
 
         self.add_events(Gdk.EventMask.SCROLL_MASK)
         self.connect("scroll-event", self.on_scroll)

@@ -25,6 +25,7 @@ from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
+    from olc.widgets.channel import ChannelWidget
     from olc.window import Window
 
 
@@ -75,7 +76,7 @@ class CuesEditionTab(Gtk.Paned):
 
         self.add(self.scrollable)
 
-    def on_cue_changed(self, _treeview: Gtk.Treeview) -> None:
+    def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Selected Cue"""
         self.channels_view.flowbox.unselect_all()
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -188,7 +189,7 @@ class CuesEditionTab(Gtk.Paned):
                     nb_chan += 1
             self.lightshow.main_playback.update_channels()
             # Update Display
-            treeiter = self.liststore.get_iter(row)
+            treeiter = self.liststore.get_iter(path)
             self.liststore.set_value(treeiter, 2, nb_chan)
             # Update Live View
             if (
@@ -504,7 +505,7 @@ class CueChannelsView(ChannelsView):
     def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
         user_channels = self.tabs.tabs["memories"].user_channels
         channel_index = child.get_index()
-        channel_widget = child.get_child()
+        channel_widget: ChannelWidget = child.get_child()
         # Channels in Cue
         channels = self.lightshow.cues[row].channels
         if channels.get(channel_index + 1) or child.is_selected():
