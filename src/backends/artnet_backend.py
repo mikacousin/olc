@@ -17,10 +17,10 @@ from __future__ import annotations
 import typing
 from typing import Callable
 
-from gi.repository import Gio, GLib
+from gi.repository import GLib
 from olc.backends import DMXBackend
 from olc.backends.artnet import Artnet
-from olc.define import UNIVERSES, App
+from olc.define import UNIVERSES
 
 if typing.TYPE_CHECKING:
     from olc.dmx import Dmx
@@ -117,38 +117,30 @@ class ArtnetBackend(DMXBackend):
         return None
 
     def _add_node(self, ip: str, universe: int) -> None:
-        notification = Gio.Notification()
-        notification.set_title("New Node detected")
-        notification.set_body(f"Send Universe {universe} to Node at {ip}.")
-        if app := App():
-            app.send_notification(None, notification)
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "New Node detected", f"Send Universe {universe} to Node at {ip}."
+            )
 
     def _del_node(self, ip: str) -> None:
-        notification = Gio.Notification()
-        notification.set_title("Node deconnected")
-        notification.set_body(f"Lost Node at {ip}.")
-        if app := App():
-            app.send_notification(None, notification)
+        if self.dmx:
+            self.dmx.trigger_notification("Node deconnected", f"Lost Node at {ip}.")
 
     def _node_modified(self, name: str, attribute: str, old: int, new: int) -> None:
-        notification = Gio.Notification()
-        notification.set_title("Node modified")
-        notification.set_body(
-            f"Art-Net Node {name}: {attribute} updated from {old} to {new}."
-        )
-        if app := App():
-            app.send_notification(None, notification)
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "Node modified",
+                f"Art-Net Node {name}: {attribute} updated from {old} to {new}.",
+            )
 
     def _add_console(self, ip: str, _universe: int) -> None:
-        notification = Gio.Notification()
-        notification.set_title("New Console detected")
-        notification.set_body(f"Art-Net Console detected at {ip}.")
-        if app := App():
-            app.send_notification(None, notification)
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "New Console detected", f"Art-Net Console detected at {ip}."
+            )
 
     def _del_console(self, ip: str) -> None:
-        notification = Gio.Notification()
-        notification.set_title("Console deconnected")
-        notification.set_body(f"Lost Console at {ip}.")
-        if app := App():
-            app.send_notification(None, notification)
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "Console deconnected", f"Lost Console at {ip}."
+            )

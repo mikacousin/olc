@@ -40,6 +40,7 @@ class Dmx:
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
     output_callbacks: list[Callable[[int, list[int]], None]]
+    notification_callbacks: list[Callable[[str, str], None]]
 
     def __init__(self, backend: Optional[DMXBackend], lightshow: LightShow) -> None:
         self.backend = backend
@@ -59,6 +60,8 @@ class Dmx:
         self.user_outputs = {}
         # Callbacks for UI updates
         self.output_callbacks = []
+        # Callbacks for notifications
+        self.notification_callbacks = []
         # Thread to send DMX every DMX_INTERVAL ms
         self.thread = RepeatedTimer(DMX_INTERVAL / 1000, self.send)
 
@@ -155,3 +158,18 @@ class Dmx:
         """
         for callback in self.output_callbacks:
             callback(universe, outputs)
+
+    def add_notification_callback(self, callback: Callable[[str, str], None]) -> None:
+        """Register a callback for notifications."""
+        if callback not in self.notification_callbacks:
+            self.notification_callbacks.append(callback)
+
+    def trigger_notification(self, title: str, body: str) -> None:
+        """Trigger registered notification callbacks.
+
+        Args:
+            title: Notification title
+            body: Notification body text
+        """
+        for callback in self.notification_callbacks:
+            callback(title, body)

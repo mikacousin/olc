@@ -206,6 +206,7 @@ class Application(Gtk.Application):
         self.backend = select_backend(options, self.settings, self.lightshow)
         if not self.backend:
             sys.exit()
+        self.backend.dmx.add_notification_callback(self.on_backend_notification)
         # Activate olc
         self.activate()
         # Arguments (one olc file to open)
@@ -215,6 +216,13 @@ class Application(Gtk.Application):
             imported = ImportFile(self.lightshow, self.lightshow.file, FileType.OLC)
             imported.parse()
         return False
+
+    def on_backend_notification(self, title: str, body: str) -> None:
+        """Handle notifications triggered by backend (Dmx)."""
+        notification = Gio.Notification()
+        notification.set_title(title)
+        notification.set_body(body)
+        self.send_notification(None, notification)
 
     def setup_app_menu(self) -> None:
         """Setup application menu
