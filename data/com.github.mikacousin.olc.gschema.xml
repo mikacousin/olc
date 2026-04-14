@@ -2,9 +2,9 @@
 <schemalist>
   <schema id="com.github.mikacousin.olc" path="/com/github/mikacousin/olc/" gettext-domain="olc">
     <key name="backend" type="s">
-      <default>"sacn"</default>
+      <default>"artnet"</default>
       <summary>DMX backend</summary>
-      <description>"sacn" or "ola"</description>
+      <description>"artnet", "sacn" or "ola"</description>
     </key>
     <key name="percent" type="b">
       <default>true</default>

@@ -93,7 +93,7 @@ class Application(Gtk.Application):
             ord("b"),
             GLib.OptionFlags.NONE,
             GLib.OptionArg.STRING,
-            "The backend to use (sacn, artnet or ola). Defaults to sacn",
+            "The backend to use (artnet, sacn or ola). Defaults to artnet",
             "<backend>",
         )
 

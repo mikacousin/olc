@@ -65,10 +65,9 @@ def select_backend(
     elif "sacn" in backend and SACN:
         backend_instance = Sacn(lightshow)
     elif backend:
-        print(f"{backend} is not supported. Fallback to sACN")
-        backend = "sacn"
-        if SACN:
-            backend_instance = Sacn(lightshow)
+        print(f"{backend} is not supported. Fallback to ArtNet")
+        backend = "artnet"
+        backend_instance = ArtnetBackend(lightshow)
 
     # Handle case where a backend module is missing
     if not backend_instance:
