@@ -31,7 +31,7 @@ from olc.midi.xfade import MidiXFade
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from olc.fader import Fader
+    from olc.fader import Fader, FaderBank
 
 
 class Queue:
@@ -73,11 +73,15 @@ class MidiMessages:
     pitchwheel: MidiPitchWheel
     lcd: MackieLCD
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        enqueue_cb: typing.Callable[[mido.Message], None],
+        fader_bank: FaderBank,
+    ) -> None:
         self.notes = MidiNotes()
         self.control_change = MidiControlChanges()
         self.pitchwheel = MidiPitchWheel()
-        self.lcd = MackieLCD()
+        self.lcd = MackieLCD(enqueue_cb, fader_bank)
 
 
 @dataclass
@@ -126,16 +130,16 @@ class Midi:
     ports: MidiPorts
     send: MidiSend
 
-    def __init__(self) -> None:
+    def __init__(self, fader_bank: FaderBank) -> None:
         self.learning = ""
-        self.messages = MidiMessages()
         self.faders = MidiFaders()
         # Create crossfade Faders
         self.xfade = MidiXFade()
         # Create and Open MIDI ports
         self.ports = MidiPorts()
-        self.controler_reset()
         self.send = MidiSend(self.ports)
+        self.messages = MidiMessages(self.enqueue, fader_bank)
+        self.controler_reset()
 
     def stop(self) -> None:
         """Stop MIDI"""

@@ -17,17 +17,20 @@ from __future__ import annotations
 import typing
 
 import mido
-from olc.define import App, strip_accents
+from olc.define import strip_accents
 
 if typing.TYPE_CHECKING:
-    from olc.fader import Fader
+    from olc.fader import Fader, FaderBank
 
 
 class MackieLCD:
     """To display on LCD of Mackie Control"""
 
-    def __init__(self) -> None:
-        pass
+    def __init__(
+        self, enqueue_cb: typing.Callable[[mido.Message], None], fader_bank: FaderBank
+    ) -> None:
+        self.enqueue_cb = enqueue_cb
+        self.fader_bank = fader_bank
 
     def send(self, text: str, line: int) -> None:
         """Send text to LCD
@@ -43,7 +46,7 @@ class MackieLCD:
         start = line * 56
         data = [0, 0, 102, 20, 18, start] + chars
         msg = mido.Message("sysex", data=data)
-        App().midi.enqueue(msg)
+        self.enqueue_cb(msg)
 
     def send_to_strip(self, text: str, line: int, strip: int) -> None:
         """Send text to LCD
@@ -62,7 +65,7 @@ class MackieLCD:
         start = (line * 56) + (strip * 7)
         data = [0, 0, 102, 20, 18, start] + chars
         msg = mido.Message("sysex", data=data)
-        App().midi.enqueue(msg)
+        self.enqueue_cb(msg)
 
     def clear(self) -> None:
         """Clear LCD"""
@@ -72,7 +75,7 @@ class MackieLCD:
 
     def show_faders(self) -> None:
         """Show faders name"""
-        fader_bank = App().lightshow.fader_bank
+        fader_bank = self.fader_bank
         for fader in fader_bank.faders[fader_bank.active_page].values():
             if fader.index <= 8:
                 text = fader.text[:7]
@@ -95,9 +98,9 @@ class MackieLCD:
         """Show fader page number"""
         text = 56 * " "
         self.send(text, 1)
-        text = f"Page {App().lightshow.fader_bank.active_page}"
+        text = f"Page {self.fader_bank.active_page}"
         chars = [ord(c) for c in text]
         start = 56 + int((56 - len(text)) / 2)
         data = [0, 0, 102, 20, 18, start] + chars
         msg = mido.Message("sysex", data=data)
-        App().midi.enqueue(msg)
+        self.enqueue_cb(msg)
