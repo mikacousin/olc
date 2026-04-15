@@ -170,7 +170,7 @@ class Application(Gtk.Application):
             if self.tabs.tabs.get("settings"):
                 self.tabs.tabs["settings"].refresh()
 
-        self.midi = Midi(self.lightshow, self.settings, refresh_settings)
+        self.midi = Midi(self, refresh_settings)
         self.midi.messages.lcd.show_faders()
 
         # Create and launch OSC server
@@ -464,7 +464,7 @@ class Application(Gtk.Application):
         save_dialog.destroy()
 
     def patch_outputs(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Outputs Tab"""
         self.tabs.open(
@@ -472,7 +472,7 @@ class Application(Gtk.Application):
         )
 
     def _patch_channels(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Channels Tab"""
         self.tabs.open(
@@ -480,13 +480,13 @@ class Application(Gtk.Application):
         )
 
     def track_channels(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Track Channels Tab"""
         self.tabs.open("track_channels", TrackChannelsTab, "Track Channels")
 
     def memories_cb(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Memories Tab"""
         self.tabs.open(
@@ -499,13 +499,13 @@ class Application(Gtk.Application):
         )
 
     def groups_cb(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Groups Tab"""
         self.tabs.open("groups", GroupTab, "Groups")
 
     def sequences(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Sequences Tab"""
         self.tabs.open("sequences", SequenceTab, "Sequences")
@@ -520,25 +520,25 @@ class Application(Gtk.Application):
         self.tabs.open("channel_time", ChanneltimeTab, "Channel Time", sequence, step)
 
     def _curves(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Curves Edition Tab"""
         self.tabs.open("curves", CurvesTab, "Curves")
 
     def _faders(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Faders Tab"""
         self.tabs.open("faders", FaderTab, "Faders", self.lightshow.fader_bank)
 
     def _independents(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Independents Tab"""
         self.tabs.open("indes", IndependentsTab, "Independents")
 
     def _virtual_console(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Virtual Console Window"""
         if not self.virtual_console:
@@ -547,7 +547,7 @@ class Application(Gtk.Application):
             self.add_window(self.virtual_console)
 
     def _settings(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Settings"""
         self.tabs.open(
@@ -563,7 +563,7 @@ class Application(Gtk.Application):
         )
 
     def _shortcuts(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Shortcuts Window"""
         builder = Gtk.Builder()
@@ -573,7 +573,7 @@ class Application(Gtk.Application):
         self.shortcuts.show()
 
     def _about(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Setup about dialog
         @param action as Gio.SimpleAction

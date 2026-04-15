@@ -194,7 +194,7 @@ class Window(Gtk.ApplicationWindow):
             widget.queue_draw()
 
     def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
+        self, _widget: Gtk.Widget | None, event: Gdk.EventKey
     ) -> Callable | False:
         """Executed on key press event
 

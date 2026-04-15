@@ -30,9 +30,8 @@ from olc.midi.xfade import MidiXFade
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
+    from olc.application import Application
     from olc.fader import Fader, FaderBank
-    from olc.lightshow import LightShow
 
 
 class Queue:
@@ -78,10 +77,12 @@ class MidiMessages:
 
     def __init__(
         self,
+        midi: Midi,
+        app_delegate: Application,
         enqueue_cb: typing.Callable[[mido.Message], None],
         fader_bank: FaderBank,
     ) -> None:
-        self.notes = MidiNotes()
+        self.notes = MidiNotes(midi, app_delegate)
         self.control_change = MidiControlChanges()
         self.pitchwheel = MidiPitchWheel()
         self.lcd = MackieLCD(enqueue_cb, fader_bank)
@@ -135,19 +136,20 @@ class Midi:
 
     def __init__(
         self,
-        lightshow: LightShow,
-        settings: Gio.Settings,
+        app_delegate: Application,
         on_ports_changed: typing.Callable[[], None] | None = None,
     ) -> None:
-        self.lightshow = lightshow
+        self.lightshow = app_delegate.lightshow
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
         self.xfade = MidiXFade()
         # Create and Open MIDI ports
-        self.ports = MidiPorts(self, settings, on_ports_changed)
+        self.ports = MidiPorts(self, app_delegate.settings, on_ports_changed)
         self.send = MidiSend(self.ports)
-        self.messages = MidiMessages(self.enqueue, self.lightshow.fader_bank)
+        self.messages = MidiMessages(
+            self, app_delegate, self.enqueue, self.lightshow.fader_bank
+        )
         self.controler_reset()
 
     def stop(self) -> None:
