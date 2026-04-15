@@ -30,6 +30,7 @@ from olc.midi.xfade import MidiXFade
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gio
     from olc.fader import Fader, FaderBank
     from olc.lightshow import LightShow
 
@@ -37,13 +38,15 @@ if typing.TYPE_CHECKING:
 class Queue:
     """Queue implementation based on deque"""
 
+    _elements: mido.Message
+
     def __init__(self) -> None:
         self._elements = deque()
 
-    def __len__(self) -> None:
+    def __len__(self) -> int:
         return len(self._elements)
 
-    def __iter__(self) -> None:
+    def __iter__(self) -> typing.Iterator:
         while len(self) > 0:
             yield self.dequeue()
 
@@ -55,7 +58,7 @@ class Queue:
         """
         self._elements.append(element)
 
-    def dequeue(self) -> None:
+    def dequeue(self) -> mido.Message:
         """Remove first element
 
         Returns:
@@ -130,14 +133,19 @@ class Midi:
     ports: MidiPorts
     send: MidiSend
 
-    def __init__(self, lightshow: LightShow) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        settings: Gio.Settings,
+        on_ports_changed: typing.Callable[[], None] | None = None,
+    ) -> None:
         self.lightshow = lightshow
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
         self.xfade = MidiXFade()
         # Create and Open MIDI ports
-        self.ports = MidiPorts()
+        self.ports = MidiPorts(self, settings, on_ports_changed)
         self.send = MidiSend(self.ports)
         self.messages = MidiMessages(self.enqueue, self.lightshow.fader_bank)
         self.controler_reset()

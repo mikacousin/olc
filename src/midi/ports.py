@@ -12,12 +12,16 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Optional
+import typing
+from typing import Callable, Optional
 
 import mido
 from gi.repository import GLib
-from olc.define import App
 from olc.timer import RepeatedTimer
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.midi import Midi
 
 
 class MidiIO:
@@ -26,7 +30,8 @@ class MidiIO:
     name: Optional[str]  # The port name
     port: mido.ports.BaseInput  # The port itself
 
-    def __init__(self, name: Optional[str] = None) -> None:
+    def __init__(self, midi: Midi, name: Optional[str] = None) -> None:
+        self.midi = midi
         self.name = name
         self.port = mido.open_ioport(name=self.name, callback=self.receive_callback)
 
@@ -47,16 +52,16 @@ class MidiIO:
             msg: MIDI message
         """
         # print(self.name, msg)
-        if App().midi.learning:
-            App().midi.learn(msg)
+        if self.midi.learning:
+            self.midi.learn(msg)
 
         # Find action
         if msg.type in ("note_on", "note_off"):
-            App().midi.messages.notes.scan(msg)
+            self.midi.messages.notes.scan(msg)
         elif msg.type == "control_change":
-            App().midi.messages.control_change.scan(self.name, msg)
+            self.midi.messages.control_change.scan(self.name, msg)
         elif msg.type == "pitchwheel":
-            App().midi.messages.pitchwheel.scan(msg)
+            self.midi.messages.pitchwheel.scan(msg)
 
 
 class MidiPorts:
@@ -64,11 +69,20 @@ class MidiPorts:
 
     ports: list[MidiIO]
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        midi: Midi,
+        settings: Gio.Settings,
+        on_ports_changed: Callable[[], None] | None = None,
+    ) -> None:
+        self.midi = midi
+        self.settings = settings
+        self.on_ports_changed = on_ports_changed
+
         self.ports = []
         self.mido_ports = None
 
-        ports = App().settings.get_strv("midi-ports")
+        ports = self.settings.get_strv("midi-ports")
         self.mido_ports = mido.get_ioport_names()
         self.open(ports)
 
@@ -79,10 +93,10 @@ class MidiPorts:
         port_names = mido.get_ioport_names()
         if port_names != self.mido_ports:
             self.mido_ports = port_names
-            self.open(App().settings.get_strv("midi-ports"))
-            App().midi.update_faders()
-            if App().tabs.tabs["settings"]:
-                GLib.idle_add(App().tabs.tabs["settings"].refresh)
+            self.open(self.settings.get_strv("midi-ports"))
+            self.midi.update_faders()
+            if self.on_ports_changed:
+                GLib.idle_add(self.on_ports_changed)
 
     def open(self, ports: list[str]) -> None:
         """Open MIDI IO
@@ -91,8 +105,8 @@ class MidiPorts:
             ports: MIDI ports to open
         """
         for port in ports:
-            if port in self.mido_ports:
-                ioport = MidiIO(port)
+            if self.mido_ports and port in self.mido_ports:
+                ioport = MidiIO(self.midi, port)
                 self.ports.append(ioport)
 
     def close(self) -> None:
