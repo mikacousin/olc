@@ -84,7 +84,7 @@ class MidiMessages:
     ) -> None:
         self.notes = MidiNotes(midi, app_delegate)
         self.control_change = MidiControlChanges()
-        self.pitchwheel = MidiPitchWheel()
+        self.pitchwheel = MidiPitchWheel(midi, app_delegate)
         self.lcd = MackieLCD(enqueue_cb, fader_bank)
 
 
