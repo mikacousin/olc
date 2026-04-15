@@ -20,7 +20,6 @@ from collections import deque
 from dataclasses import dataclass
 
 import mido
-from olc.define import App
 from olc.midi.control_change import MidiControlChanges
 from olc.midi.fader import MIDIFader
 from olc.midi.lcd import MackieLCD
@@ -32,6 +31,7 @@ from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
     from olc.fader import Fader, FaderBank
+    from olc.lightshow import LightShow
 
 
 class Queue:
@@ -130,7 +130,8 @@ class Midi:
     ports: MidiPorts
     send: MidiSend
 
-    def __init__(self, fader_bank: FaderBank) -> None:
+    def __init__(self, lightshow: LightShow) -> None:
+        self.lightshow = lightshow
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
@@ -138,7 +139,7 @@ class Midi:
         # Create and Open MIDI ports
         self.ports = MidiPorts()
         self.send = MidiSend(self.ports)
-        self.messages = MidiMessages(self.enqueue, fader_bank)
+        self.messages = MidiMessages(self.enqueue, self.lightshow.fader_bank)
         self.controler_reset()
 
     def stop(self) -> None:
@@ -171,7 +172,7 @@ class Midi:
         elif msg.type == "pitchwheel":
             self.messages.pitchwheel.learn(msg, self.learning)
         # Tag filename as modified
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
 
     def reset_messages(self) -> None:
         """Remove all MIDI messages"""
@@ -211,7 +212,7 @@ class Midi:
 
     def update_faders(self) -> None:
         """Send faders value and update LCD display"""
-        fader_bank = App().lightshow.fader_bank
+        fader_bank = self.lightshow.fader_bank
         for fader in fader_bank.faders[fader_bank.active_page].values():
             midi_name = f"fader_{fader.index}"
             channel, control = self.messages.control_change.control_change[midi_name]

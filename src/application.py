@@ -166,7 +166,7 @@ class Application(Gtk.Application):
         self.crossfade = CrossFade()
 
         # Open MIDI Inputs and Outputs
-        self.midi = Midi(self.lightshow.fader_bank)
+        self.midi = Midi(self.lightshow)
         self.midi.messages.lcd.show_faders()
 
         # Create and launch OSC server
