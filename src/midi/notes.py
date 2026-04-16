@@ -153,13 +153,13 @@ class MidiNotes:
                     page = int((fader_index - 1) / 10)
                     fader = int(fader_index - (page * 10))
                     if page + 1 == self.app_delegate.lightshow.fader_bank.active_page:
-                        GLib.idle_add(self._function_flash, msg, fader)
+                        GLib.idle_add(self.flash, msg, fader)
                 elif key[:6] == "fader_":
                     fader_index = int(key[6:])
                     page = int((fader_index - 1) / 10)
                     fader = int(fader_index - (page * 10))
                     if page + 1 == self.app_delegate.lightshow.fader_bank.active_page:
-                        GLib.idle_add(self._function_fader, msg, fader)
+                        GLib.idle_add(self.fader, msg, fader)
                 elif key[:5] == "inde_":
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
                 elif key[:4] == "zoom":

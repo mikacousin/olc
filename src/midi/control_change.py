@@ -218,34 +218,31 @@ class MidiControlChanges:
         relative2 = self.app_delegate.settings.get_strv("relative2")
         makies = self.app_delegate.settings.get_strv("makie")
         absolutes = self.app_delegate.settings.get_strv("absolute")
-        if port in relative1:
-            # Relative1 mode (value: 1-64 positive, 127-65 negative)
-            step = 0
-            if msg.value > 64:
-                step = msg.value - 128
-            elif msg.value < 65:
-                step = msg.value
-            inde, val = self._new_inde_value(independent, step)
-            self._update_inde(independent, inde, val)
-        elif port in relative2:
-            # Relative2 mode (value: 65-127 positive, 63-0 negative)
-            step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
-            inde, val = self._new_inde_value(independent, step)
-            self._update_inde(independent, inde, val)
-        elif port in makies:
-            # Mackie mode (value: 0-64 positive, 65-127 negative)
-            if msg.value > 64:
-                step = -(msg.value - 64)
-            elif msg.value < 65:
-                step = msg.value
-            inde, val = self._new_inde_value(independent, step)
-            self._update_inde(independent, inde, val)
-        elif port in absolutes:
+        if port in absolutes:
             # Absolute mode (value: 0-127)
             inde, _ = self._new_inde_value(independent, 0)
+            if inde is None:
+                return
             val = round((msg.value / 127) * 255)
             fader = self.midi.faders.inde_faders[independent - 1]
             if not fader.is_valid(val, inde.level):
+                return
+            self._update_inde(independent, inde, val)
+        else:
+            if port in relative1:
+                # Relative1 mode (value: 1-64 positive, 127-65 negative)
+                step = msg.value - 128 if msg.value > 64 else msg.value
+            elif port in relative2:
+                # Relative2 mode (value: 65-127 positive, 63-0 negative)
+                step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
+            elif port in makies:
+                # Mackie mode (value: 0-64 positive, 65-127 negative)
+                step = -(msg.value - 64) if msg.value > 64 else msg.value
+            else:
+                return
+
+            inde, val = self._new_inde_value(independent, step)
+            if inde is None:
                 return
             self._update_inde(independent, inde, val)
 
