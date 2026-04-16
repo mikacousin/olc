@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
 import typing
 
 from gi.repository import Gio
@@ -21,6 +23,7 @@ from olc.files.olc.writer import OlcWriter
 
 if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
+    from olc.midi import Midi
 
 
 class ExportFile:
@@ -31,7 +34,11 @@ class ExportFile:
     writer: AsciiWriter | OlcWriter
 
     def __init__(
-        self, file: Gio.File, file_type: FileType, lightshow: LightShow
+        self,
+        file: Gio.File,
+        file_type: FileType,
+        lightshow: LightShow,
+        midi: Midi | None = None,
     ) -> None:
         self.file = file
         self.file_type = file_type
@@ -39,7 +46,7 @@ class ExportFile:
         if self.file_type is FileType.ASCII:
             self.writer = AsciiWriter(self.file, lightshow)
         else:
-            self.writer = OlcWriter(self.file, lightshow)
+            self.writer = OlcWriter(self.file, lightshow, midi)
 
     def write(self) -> None:
         """Write file"""

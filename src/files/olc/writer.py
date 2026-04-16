@@ -18,14 +18,13 @@ import json
 import typing
 
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.define import App
 from olc.fader import FaderType
 from olc.files.write import WriteFile
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
-    from olc.application import Application
     from olc.lightshow import LightShow
+    from olc.midi import Midi
     from olc.sequence import Sequence
 
 
@@ -33,10 +32,14 @@ class OlcWriter(WriteFile):
     """Write olc file"""
 
     data: dict[str, typing.Any]
+    midi: Midi | None
 
-    def __init__(self, file: Gio.File, lightshow: LightShow) -> None:
+    def __init__(
+        self, file: Gio.File, lightshow: LightShow, midi: Midi | None = None
+    ) -> None:
         super().__init__(file, lightshow, compressed=True)
         self.lightshow = lightshow
+        self.midi = midi
         self.data = {}
         self.data = {"application": "olc", "version": "0.8.5.beta"}
 
@@ -212,12 +215,11 @@ class OlcWriter(WriteFile):
             del self.data["curves"]
 
     def _midi(self) -> None:
-        app = typing.cast("Application", App())
-        if not app or not app.midi:
+        if not self.midi:
             return
 
         self.data["midi_mapping"] = {}
-        midi = app.midi.messages
+        midi = self.midi.messages
         self.data["midi_mapping"]["note"] = midi.notes.notes
         self.data["midi_mapping"]["control_change"] = midi.control_change.control_change
         self.data["midi_mapping"]["pitchwheel"] = midi.pitchwheel.pitchwheel

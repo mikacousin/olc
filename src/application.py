@@ -418,7 +418,9 @@ class Application(Gtk.Application):
     ) -> None:
         """Save"""
         if self.lightshow.file is not None:
-            exported = ExportFile(self.lightshow.file, FileType.OLC, self.lightshow)
+            exported = ExportFile(
+                self.lightshow.file, FileType.OLC, self.lightshow, midi=self.midi
+            )
             exported.write()
         else:
             self._saveas(_action, _parameter)
@@ -456,7 +458,9 @@ class Application(Gtk.Application):
             # self.lightshow.file is the currently selected file
             self.lightshow.file = save_dialog.get_file()
             # save to file
-            exported = ExportFile(self.lightshow.file, FileType.OLC, self.lightshow)
+            exported = ExportFile(
+                self.lightshow.file, FileType.OLC, self.lightshow, midi=self.midi
+            )
             exported.write()
             # Set Main Window's title with file name
             self.lightshow.set_not_modified()
