@@ -16,10 +16,11 @@ import typing
 
 import mido
 from gi.repository import Gdk, GLib
-from olc.define import App
 
 if typing.TYPE_CHECKING:
+    from olc.application import Application
     from olc.independent import Independent
+    from olc.midi import Midi
 
 
 class MidiControlChanges:
@@ -27,7 +28,9 @@ class MidiControlChanges:
 
     control_change: dict[str, list[int]]
 
-    def __init__(self) -> None:
+    def __init__(self, midi: Midi, app_delegate: Application) -> None:
+        self.midi = midi
+        self.app_delegate = app_delegate
         # Default MIDI control change values : "action": Channel, CC
         self.control_change = {
             "wheel": [0, 60],
@@ -65,17 +68,13 @@ class MidiControlChanges:
             if msg.channel == value[0] and msg.control == value[1]:
                 if key[:6] == "fader_":
                     # We need to pass fader number to faders function
-                    GLib.idle_add(_function_fader, msg, int(key[6:]))
+                    GLib.idle_add(self._function_fader, msg, int(key[6:]))
                 elif key[:5] == "inde_":
-                    GLib.idle_add(_function_inde, port, msg, int(key[5:]))
+                    GLib.idle_add(self._function_inde, port, msg, int(key[5:]))
                 elif key[:13] == "crossfade_out":
-                    GLib.idle_add(
-                        App().midi.xfade.moved, msg, App().midi.xfade.fader_out
-                    )
+                    GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_out)
                 elif key[:12] == "crossfade_in":
-                    GLib.idle_add(
-                        App().midi.xfade.moved, msg, App().midi.xfade.fader_in
-                    )
+                    GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_in)
                 elif func := getattr(self, f"_function_{key}", None):
                     GLib.idle_add(func, port, msg)
 
@@ -95,7 +94,7 @@ class MidiControlChanges:
                 value=value,
                 time=0,
             )
-            App().midi.enqueue(msg)
+            self.midi.enqueue(msg)
 
     def learn(self, msg: mido.Message, learning: str) -> None:
         """Learn new MIDI Control Change control
@@ -128,10 +127,10 @@ class MidiControlChanges:
         """
         step = 0
         direction = None
-        relative1 = App().settings.get_strv("relative1")
-        relative2 = App().settings.get_strv("relative2")
-        makies = App().settings.get_strv("makie")
-        absolutes = App().settings.get_strv("absolute")
+        relative1 = self.app_delegate.settings.get_strv("relative1")
+        relative2 = self.app_delegate.settings.get_strv("relative2")
+        makies = self.app_delegate.settings.get_strv("makie")
+        absolutes = self.app_delegate.settings.get_strv("absolute")
         if port in relative1:
             if msg.value > 64:
                 direction = Gdk.ScrollDirection.DOWN
@@ -167,119 +166,121 @@ class MidiControlChanges:
             msg: MIDI message
         """
         step, direction = self.__get_step(msg, port)
-        if App().virtual_console:
-            App().virtual_console.wheel.emit("moved", direction, step)
-        else:
-            tab = App().window.get_active_tab()
+        if self.app_delegate.virtual_console:
+            self.app_delegate.virtual_console.wheel.emit("moved", direction, step)
+        elif self.app_delegate.window:
+            tab = self.app_delegate.window.get_active_tab()
             channels_view = None
-            if tab == App().window.live_view.channels_view:
+            if tab == self.app_delegate.window.live_view.channels_view:
                 channels_view = tab
             elif tab in (
-                App().tabs.tabs["groups"],
-                App().tabs.tabs["indes"],
-                App().tabs.tabs["faders"],
-                App().tabs.tabs["memories"],
-                App().tabs.tabs["sequences"],
+                self.app_delegate.tabs.tabs["groups"],
+                self.app_delegate.tabs.tabs["indes"],
+                self.app_delegate.tabs.tabs["faders"],
+                self.app_delegate.tabs.tabs["memories"],
+                self.app_delegate.tabs.tabs["sequences"],
             ):
                 channels_view = tab.channels_view
             if channels_view:
                 channels_view.wheel_level(step, direction)
 
+    def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
+        """Faders
 
-def _function_fader(msg: mido.Message, fader_index: int) -> None:
-    """Faders
-
-    Args:
-        msg: MIDI message
-        fader_index: Fader number
-    """
-    val = msg.value / 127
-    midi_fader = App().midi.faders.faders[fader_index - 1]
-    fader = App().lightshow.fader_bank.get_fader(fader_index)
-    if not midi_fader.is_valid(val, fader.value):
-        return
-    if App().virtual_console:
-        App().virtual_console.faders[fader_index - 1].set_value(val * 255)
-        App().virtual_console.fader_moved(App().virtual_console.faders[fader_index - 1])
-    else:
-        GLib.idle_add(fader.set_level, val)
-
-
-def _function_inde(port: str, msg: mido.Message, independent: int) -> None:
-    """Change independent knob level
-
-    Args:
-        port: MIDI port name
-        msg: MIDI message
-        independent: Independent number
-    """
-    relative1 = App().settings.get_strv("relative1")
-    relative2 = App().settings.get_strv("relative2")
-    makies = App().settings.get_strv("makie")
-    absolutes = App().settings.get_strv("absolute")
-    if port in relative1:
-        # Relative1 mode (value: 1-64 positive, 127-65 negative)
-        step = 0
-        if msg.value > 64:
-            step = msg.value - 128
-        elif msg.value < 65:
-            step = msg.value
-        inde, val = _new_inde_value(independent, step)
-        _update_inde(independent, inde, val)
-    elif port in relative2:
-        # Relative2 mode (value: 65-127 positive, 63-0 negative)
-        step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
-        inde, val = _new_inde_value(independent, step)
-        _update_inde(independent, inde, val)
-    elif port in makies:
-        # Mackie mode (value: 0-64 positive, 65-127 negative)
-        if msg.value > 64:
-            step = -(msg.value - 64)
-        elif msg.value < 65:
-            step = msg.value
-        inde, val = _new_inde_value(independent, step)
-        _update_inde(independent, inde, val)
-    elif port in absolutes:
-        # Absolute mode (value: 0-127)
-        inde, _ = _new_inde_value(independent, 0)
-        val = round((msg.value / 127) * 255)
-        fader = App().midi.faders.inde_faders[independent - 1]
-        if not fader.is_valid(val, inde.level):
+        Args:
+            msg: MIDI message
+            fader_index: Fader number
+        """
+        val = msg.value / 127
+        midi_fader = self.midi.faders.faders[fader_index - 1]
+        fader = self.app_delegate.lightshow.fader_bank.get_fader(fader_index)
+        if not midi_fader.is_valid(val, fader.value):
             return
-        _update_inde(independent, inde, val)
+        if self.app_delegate.virtual_console:
+            self.app_delegate.virtual_console.faders[fader_index - 1].set_value(
+                val * 255
+            )
+            self.app_delegate.virtual_console.fader_moved(
+                self.app_delegate.virtual_console.faders[fader_index - 1]
+            )
+        else:
+            GLib.idle_add(fader.set_level, val)
 
+    def _function_inde(self, port: str, msg: mido.Message, independent: int) -> None:
+        """Change independent knob level
 
-def _new_inde_value(independent: int, step: int) -> tuple[Independent | None, int]:
-    inde = None
-    for inde in App().lightshow.independents.independents:
-        if inde.number == independent:
-            val = inde.level + step
-            if val < 0:
-                val = 0
-            elif val > 255:
-                val = 255
-            break
-    return inde, val
+        Args:
+            port: MIDI port name
+            msg: MIDI message
+            independent: Independent number
+        """
+        relative1 = self.app_delegate.settings.get_strv("relative1")
+        relative2 = self.app_delegate.settings.get_strv("relative2")
+        makies = self.app_delegate.settings.get_strv("makie")
+        absolutes = self.app_delegate.settings.get_strv("absolute")
+        if port in relative1:
+            # Relative1 mode (value: 1-64 positive, 127-65 negative)
+            step = 0
+            if msg.value > 64:
+                step = msg.value - 128
+            elif msg.value < 65:
+                step = msg.value
+            inde, val = self._new_inde_value(independent, step)
+            self._update_inde(independent, inde, val)
+        elif port in relative2:
+            # Relative2 mode (value: 65-127 positive, 63-0 negative)
+            step = msg.value - 64 if msg.value > 64 else -(64 - msg.value)
+            inde, val = self._new_inde_value(independent, step)
+            self._update_inde(independent, inde, val)
+        elif port in makies:
+            # Mackie mode (value: 0-64 positive, 65-127 negative)
+            if msg.value > 64:
+                step = -(msg.value - 64)
+            elif msg.value < 65:
+                step = msg.value
+            inde, val = self._new_inde_value(independent, step)
+            self._update_inde(independent, inde, val)
+        elif port in absolutes:
+            # Absolute mode (value: 0-127)
+            inde, _ = self._new_inde_value(independent, 0)
+            val = round((msg.value / 127) * 255)
+            fader = self.midi.faders.inde_faders[independent - 1]
+            if not fader.is_valid(val, inde.level):
+                return
+            self._update_inde(independent, inde, val)
 
+    def _new_inde_value(
+        self, independent: int, step: int
+    ) -> tuple[Independent | None, int]:
+        inde = None
+        for inde in self.app_delegate.lightshow.independents.independents:
+            if inde.number == independent:
+                val = inde.level + step
+                if val < 0:
+                    val = 0
+                elif val > 255:
+                    val = 255
+                break
+        return inde, val
 
-def _update_inde(independent: int, inde: Independent, val: int) -> None:
-    if App().virtual_console:
-        widget = None
-        if independent == 1:
-            widget = App().virtual_console.independent1
-        elif independent == 2:
-            widget = App().virtual_console.independent2
-        elif independent == 3:
-            widget = App().virtual_console.independent3
-        elif independent == 4:
-            widget = App().virtual_console.independent4
-        elif independent == 5:
-            widget = App().virtual_console.independent5
-        elif independent == 6:
-            widget = App().virtual_console.independent6
-        if widget:
-            widget.value = val
-            widget.emit("changed")
-            widget.queue_draw()
-    else:
-        inde.set_level(val)
+    def _update_inde(self, independent: int, inde: Independent, val: int) -> None:
+        if self.app_delegate.virtual_console:
+            widget = None
+            if independent == 1:
+                widget = self.app_delegate.virtual_console.independent1
+            elif independent == 2:
+                widget = self.app_delegate.virtual_console.independent2
+            elif independent == 3:
+                widget = self.app_delegate.virtual_console.independent3
+            elif independent == 4:
+                widget = self.app_delegate.virtual_console.independent4
+            elif independent == 5:
+                widget = self.app_delegate.virtual_console.independent5
+            elif independent == 6:
+                widget = self.app_delegate.virtual_console.independent6
+            if widget:
+                widget.value = val
+                widget.emit("changed")
+                widget.queue_draw()
+        else:
+            inde.set_level(val)
