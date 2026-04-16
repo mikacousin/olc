@@ -213,11 +213,12 @@ class Application(Gtk.Application):
         self.backend.dmx.add_notification_callback(self.on_backend_notification)
         # Activate olc
         self.activate()
-        # Arguments (one olc file to open)
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
             self.lightshow.file = command_line.create_file_for_arg(arguments[1])
-            imported = ImportFile(self.lightshow, self.lightshow.file, FileType.OLC)
+            imported = ImportFile(
+                self.lightshow, self.lightshow.file, FileType.OLC, window=self.window
+            )
             imported.parse()
         return False
 
@@ -331,11 +332,12 @@ class Application(Gtk.Application):
         # show the dialog
         response = open_dialog.run()
 
-        # if response is "ACCEPT" (the button "Open" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
             self.lightshow.file = open_dialog.get_file()
             # Load file
-            imported = ImportFile(self.lightshow, self.lightshow.file, FileType.OLC)
+            imported = ImportFile(
+                self.lightshow, self.lightshow.file, FileType.OLC, window=self.window
+            )
             imported.parse()
 
         # destroy the FileChooserNative
@@ -388,7 +390,11 @@ class Application(Gtk.Application):
                 open_dialog.destroy()
                 return
             imported = ImportFile(
-                self.lightshow, open_dialog.get_file(), file_type, importation=True
+                self.lightshow,
+                open_dialog.get_file(),
+                file_type,
+                window=self.window,
+                importation=True,
             )
             imported.parse()
         open_dialog.destroy()

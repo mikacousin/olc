@@ -21,6 +21,7 @@ from olc.define import is_float, is_int
 from olc.files.read import ReadFile
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gtk
     from olc.files.import_file import ImportFile
 
 
@@ -29,8 +30,15 @@ class OlcParser(ReadFile):
 
     data: dict[str, typing.Any]
 
-    def __init__(self, imported: ImportFile, importation: bool = False) -> None:
-        super().__init__(imported, compressed=True, importation=importation)
+    def __init__(
+        self,
+        imported: ImportFile,
+        window: Gtk.Window | None = None,
+        importation: bool = False,
+    ) -> None:
+        super().__init__(
+            imported, window=window, compressed=True, importation=importation
+        )
         self.data = imported.data.data
 
     def parse(self) -> None:

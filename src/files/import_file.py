@@ -36,18 +36,21 @@ class ImportFile:
     file_type: FileType
     data = ParsedData
     actions: dict
-    parser: AsciiParser
+    parser: AsciiParser | OlcParser
+    window: Gtk.Window | None
 
     def __init__(
         self,
         lightshow: LightShow,
         file: Gio.File,
         file_type: FileType,
+        window: Gtk.Window | None = None,
         importation: bool = False,
     ) -> None:
         self.lightshow = lightshow
         self.file = file
         self.file_type = file_type
+        self.window = window
         self.data = ParsedData()
         self.actions = {
             "curves": Action.REPLACE,
@@ -65,10 +68,14 @@ class ImportFile:
             else:
                 default_time = 5.0
             self.parser = AsciiParser(
-                self, self.lightshow, default_time, importation=importation
+                self,
+                self.lightshow,
+                default_time,
+                window=self.window,
+                importation=importation,
             )
         else:
-            self.parser = OlcParser(self, importation=importation)
+            self.parser = OlcParser(self, window=self.window, importation=importation)
 
     def parse(self) -> None:
         """Start reading file"""

@@ -20,7 +20,6 @@ from gettext import gettext as _
 
 from charset_normalizer import from_bytes
 from gi.repository import GLib, Gtk
-from olc.define import App
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -33,14 +32,20 @@ class ReadFile:
     This class must be sub-classed and parse implemented
     """
 
+    window: Gtk.Window | None
     imported: ImportFile
     compressed: bool
     contents: str
 
     def __init__(
-        self, imported: ImportFile, compressed: bool = False, importation: bool = False
+        self,
+        imported: ImportFile,
+        window: Gtk.Window | None = None,
+        compressed: bool = False,
+        importation: bool = False,
     ) -> None:
         self.imported = imported
+        self.window = window
         self.compressed = compressed
         self.importation = importation
         self.contents = ""
@@ -81,7 +86,7 @@ class ReadFile:
 
     def _error_dialog(self, message: str) -> None:
         dialog = Gtk.MessageDialog(
-            App().window,
+            self.window,
             Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
             Gtk.MessageType.ERROR,
             Gtk.ButtonsType.OK,

@@ -24,6 +24,7 @@ from olc.fader import FaderType
 from olc.files.read import ReadFile
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gtk
     from olc.files.import_file import ImportFile
     from olc.lightshow import LightShow
 
@@ -63,9 +64,10 @@ class AsciiParser(ReadFile):
         imported: ImportFile,
         lightshow: LightShow,
         default_time: float,
+        window: Gtk.Window | None = None,
         importation: bool = True,
     ) -> None:
-        super().__init__(imported, importation=importation)
+        super().__init__(imported, window=window, importation=importation)
         self.lightshow = lightshow
         self.data = imported.data.data
         self.default_time = default_time
