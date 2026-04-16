@@ -143,7 +143,7 @@ class Midi:
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
-        self.xfade = MidiXFade()
+        self.xfade = MidiXFade(self, app_delegate)
         # Create and Open MIDI ports
         self.ports = MidiPorts(self, app_delegate.settings, on_ports_changed)
         self.send = MidiSend(self.ports)

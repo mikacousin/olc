@@ -12,15 +12,22 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import mido
-from olc.define import App
 from olc.midi.fader import MIDIFader
+
+if typing.TYPE_CHECKING:
+    from olc.application import Application
+    from olc.midi import Midi
 
 
 class MidiXFade:
     """MIDI manual Crossfade"""
 
-    def __init__(self) -> None:
+    def __init__(self, midi: Midi, app_delegate: Application) -> None:
+        self.midi = midi
+        self.app_delegate = app_delegate
         self.fader_in = MIDIFader()
         self.fader_out = MIDIFader()
         self.inverted = True
@@ -47,11 +54,11 @@ class MidiXFade:
             msg: MIDI message
             midi_fader: Crossfade MIDI fader
         """
-        App().midi.enqueue(msg)
+        self.midi.enqueue(msg)
         if midi_fader is self.fader_in:
-            xfade_val = App().crossfade.scale_b.value
+            xfade_val = self.app_delegate.crossfade.scale_b.value
         else:
-            xfade_val = App().crossfade.scale_a.value
+            xfade_val = self.app_delegate.crossfade.scale_a.value
         if msg.type == "pitchwheel":
             val = (msg.pitch + 8192) / 16383
         elif msg.type == "control_change":
@@ -71,7 +78,7 @@ class MidiXFade:
             fader : In or Out
             value : fader value (0 - 255)
         """
-        App().crossfade.manual = True
+        self.app_delegate.crossfade.manual = True
 
         if self.fader_out.get_value() == 255 and self.fader_in.get_value() == 255:
             if self.get_inverted():
@@ -84,14 +91,18 @@ class MidiXFade:
             self.fader_in.value = 0
 
         if fader == self.fader_out:
-            if App().virtual_console:
-                App().virtual_console.scale_a.set_value(value)
+            if self.app_delegate.virtual_console:
+                self.app_delegate.virtual_console.scale_a.set_value(value)
             else:
-                App().crossfade.scale_a.set_value(value)
-                App().crossfade.scale_moved(App().crossfade.scale_a)
+                self.app_delegate.crossfade.scale_a.set_value(value)
+                self.app_delegate.crossfade.scale_moved(
+                    self.app_delegate.crossfade.scale_a
+                )
         elif fader == self.fader_in:
-            if App().virtual_console:
-                App().virtual_console.scale_b.set_value(value)
+            if self.app_delegate.virtual_console:
+                self.app_delegate.virtual_console.scale_b.set_value(value)
             else:
-                App().crossfade.scale_b.set_value(value)
-                App().crossfade.scale_moved(App().crossfade.scale_b)
+                self.app_delegate.crossfade.scale_b.set_value(value)
+                self.app_delegate.crossfade.scale_moved(
+                    self.app_delegate.crossfade.scale_b
+                )
