@@ -54,13 +54,16 @@ class PatchWidget(Gtk.DrawingArea):
 
     __gtype_name__ = "PatchWidget"
 
+    stack: Gtk.Stack | None
+    popover: Gtk.Popover | None
+
     def __init__(self, universe: int, output: int) -> None:
         self.universe = universe
         self.output = output
 
         super().__init__()
         self.scale = 1.0
-        self.width = 70 * self.scale
+        self.width = round(70 * self.scale)
         self.set_size_request(self.width, self.width)
         self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
         self.connect("button-press-event", self.on_click)
@@ -123,12 +126,12 @@ class PatchWidget(Gtk.DrawingArea):
             self.popover.set_relative_to(self)
             self.popover.set_position(Gtk.PositionType.BOTTOM)
         else:
-            hbox = self.popover.get_children()[0]
+            hbox = typing.cast("Gtk.Box", self.popover.get_children()[0])
         children = hbox.get_children()
         # Delete old curves widgets
         if children:
-            for child in children:
-                child.destroy()
+            for chld in children:
+                chld.destroy()
         button = Gtk.Button.new_with_label("<")
         button.connect("clicked", self.curve_change)
         hbox.pack_start(button, False, False, 10)
@@ -148,8 +151,9 @@ class PatchWidget(Gtk.DrawingArea):
             self.stack.add_named(box, str(number))
         curve_nb = App().lightshow.patch.outputs[self.universe][self.output][1]
         child = self.stack.get_child_by_name(str(curve_nb))
-        child.show()
-        self.stack.set_visible_child(child)
+        if child:
+            child.show()
+            self.stack.set_visible_child(child)
         hbox.pack_start(self.stack, False, False, 10)
         button = Gtk.Button.new_with_label(">")
         button.connect("clicked", self.curve_change)
@@ -191,7 +195,7 @@ class PatchWidget(Gtk.DrawingArea):
         Args:
             cr: Cairo context
         """
-        self.width = 70 * self.scale
+        self.width = round(70 * self.scale)
         self.set_size_request(self.width, self.width)
         allocation = self.get_allocation()
         # Draw background
