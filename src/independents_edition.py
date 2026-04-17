@@ -100,6 +100,9 @@ class IndependentsTab(Gtk.Paned):
 
         keyname = Gdk.keyval_name(event.keyval)
 
+        if keyname is None:
+            return False
+
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             App().window.commandline.add_string(keyname)
         if keyname in (

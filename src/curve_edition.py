@@ -80,8 +80,10 @@ class CurveValues(Gtk.DrawingArea):
 class CurveEdition(Gtk.Box):
     """Edition Widget"""
 
-    curve_nb: int  # Curve number
+    curve_nb: int | None  # Curve number
     points: list[CurvePointWidget]  # Points widgets
+    fixed: Gtk.Fixed | None
+    label: Gtk.Label | None
 
     def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
@@ -119,7 +121,7 @@ class CurveEdition(Gtk.Box):
             child.destroy()
         if curve.editable:
             box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-            button = Gtk.Button(_("Remove curve"))
+            button = Gtk.Button(label=_("Remove curve"))
             button.connect("clicked", self.on_del_curve)
             box.add(button)
             self.header.pack_end(box)
@@ -127,9 +129,11 @@ class CurveEdition(Gtk.Box):
         for child in self.hbox.get_children():
             child.destroy()
         self.fixed = Gtk.Fixed()
+        if self.fixed is None:
+            return
         self.edit_curve = EditCurveWidget(self.curve_nb)
         self.fixed.put(self.edit_curve, 0, 0)
-        self.label = Gtk.Label("")
+        self.label = Gtk.Label(label="")
         self.fixed.put(self.label, 0, 0)
         if isinstance(curve, (SegmentsCurve, InterpolateCurve)) and curve.editable:
             self.points_curve()
@@ -205,7 +209,7 @@ class CurveEdition(Gtk.Box):
         self.header.set_title(text)
         App().lightshow.set_modified()
 
-    def on_toggled(self, button: Gtk.Widget, _name: object) -> None:
+    def on_toggled(self, button: CurvePointWidget, _name: object) -> None:
         """Curve point clicked
 
         Args:
@@ -279,6 +283,8 @@ class CurveButton(CurveWidget):
 class CurvesTab(Gtk.Paned):
     """Tab to display and edit curves"""
 
+    flowbox: Gtk.FlowBox | None
+
     def __init__(self) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
@@ -291,13 +297,13 @@ class CurvesTab(Gtk.Paned):
         self.header = Gtk.HeaderBar()
         header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.buttons = {}
-        self.buttons["limit"] = Gtk.Button(_("New Limit curve"))
+        self.buttons["limit"] = Gtk.Button(label=_("New Limit curve"))
         self.buttons["limit"].connect("clicked", self.on_new_curve)
         header_box.add(self.buttons["limit"])
-        self.buttons["segments"] = Gtk.Button(_("New Segments curve"))
+        self.buttons["segments"] = Gtk.Button(label=_("New Segments curve"))
         self.buttons["segments"].connect("clicked", self.on_new_curve)
         header_box.add(self.buttons["segments"])
-        self.buttons["interpolate"] = Gtk.Button(_("New Interpolate curve"))
+        self.buttons["interpolate"] = Gtk.Button(label=_("New Interpolate curve"))
         self.buttons["interpolate"].connect("clicked", self.on_new_curve)
         header_box.add(self.buttons["interpolate"])
         self.header.pack_end(header_box)
@@ -349,11 +355,12 @@ class CurvesTab(Gtk.Paned):
 
     def refresh(self) -> None:
         """Refresh display"""
-        self.scrolled.remove(self.flowbox)
-        self.flowbox.destroy()
-        self.populate_curves()
-        self.flowbox.invalidate_filter()
-        App().window.show_all()
+        if self.flowbox:
+            self.scrolled.remove(self.flowbox)
+            self.flowbox.destroy()
+            self.populate_curves()
+            self.flowbox.invalidate_filter()
+            App().window.show_all()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on clicked icon"""
@@ -361,7 +368,7 @@ class CurvesTab(Gtk.Paned):
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | False:
+    ) -> Callable | bool:
         """Key has been pressed
 
         Args:
@@ -371,6 +378,9 @@ class CurvesTab(Gtk.Paned):
             False or function
         """
         keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname is None:
+            return False
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()

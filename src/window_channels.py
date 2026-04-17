@@ -28,7 +28,7 @@ class LiveView(Gtk.Notebook):
 
         self.channels_view = LiveChannelsView()
 
-        self.append_page(self.channels_view, Gtk.Label("Channels"))
+        self.append_page(self.channels_view, Gtk.Label(label="Channels"))
         self.set_tab_reorderable(self.channels_view, True)
         self.set_tab_detachable(self.channels_view, True)
 
@@ -42,6 +42,8 @@ class LiveView(Gtk.Notebook):
             next_level: Channel next level (from 0 to 255)
         """
         widget = self.channels_view.get_channel_widget(channel)
+        if not widget:
+            return
         channel -= 1
         widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
         level = App().backend.dmx.levels["sequence"][channel]

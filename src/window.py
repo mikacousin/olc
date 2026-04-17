@@ -36,7 +36,7 @@ class CommandLine:
         self.statusbar = Gtk.Statusbar()
         self.context_id = self.statusbar.get_context_id("keypress")
         self.widget = Gtk.Grid()
-        label = Gtk.Label("Input : ")
+        label = Gtk.Label(label="Input : ")
         self.widget.add(label)
         self.widget.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
 
@@ -195,7 +195,7 @@ class Window(Gtk.ApplicationWindow):
 
     def on_key_press_event(
         self, _widget: Gtk.Widget | None, event: Gdk.EventKey
-    ) -> Callable | False:
+    ) -> Callable | bool:
         """Executed on key press event
 
         Args:
@@ -205,7 +205,10 @@ class Window(Gtk.ApplicationWindow):
             function() or False
         """
         keyname = Gdk.keyval_name(event.keyval)
-        # print(keyname)
+
+        if keyname is None:
+            return False
+
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             self.commandline.add_string(keyname)
 

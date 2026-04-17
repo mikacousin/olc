@@ -223,8 +223,8 @@ class GroupTab(Gtk.Paned):
         App().tabs.close("groups")
 
     def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.Event
-    ) -> Callable | False:
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | bool:
         """Key has been pressed
 
         Args:
@@ -234,6 +234,9 @@ class GroupTab(Gtk.Paned):
             False or function
         """
         keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname is None:
+            return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             App().window.commandline.add_string(keyname)

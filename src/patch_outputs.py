@@ -36,10 +36,10 @@ class PatchOutputsTab(Gtk.Box):
         header = Gtk.HeaderBar()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         button = Gtk.Button()
-        button = Gtk.Button("Patch 1:1")
+        button = Gtk.Button(label="Patch 1:1")
         button.connect("clicked", self.on_button_clicked)
         box.add(button)
-        button = Gtk.Button("Unpatch all")
+        button = Gtk.Button(label="Unpatch all")
         button.connect("clicked", self.on_button_clicked)
         box.add(button)
         header.pack_end(box)
@@ -125,7 +125,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | False:
+    ) -> Callable | bool:
         """On key press event
 
         Args:
@@ -135,6 +135,9 @@ class PatchOutputsTab(Gtk.Box):
             function() or False
         """
         keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname is None:
+            return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             App().window.commandline.add_string(keyname)

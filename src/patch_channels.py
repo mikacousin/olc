@@ -67,7 +67,7 @@ class PatchChannelsTab(Gtk.Box):
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | False:
+    ) -> Callable | bool:
         """Key press events
 
         Args:
@@ -82,6 +82,9 @@ class PatchChannelsTab(Gtk.Box):
             return False
 
         keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname is None:
+            return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
             App().window.commandline.add_string(keyname)

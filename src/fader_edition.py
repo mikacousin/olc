@@ -263,8 +263,8 @@ class FaderTab(Gtk.Box):
             self.stack.add_titled(vbox, str(page), f"Page {page}")
 
     def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.Event
-    ) -> Callable | False:
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | bool:
         """Key has been pressed
 
         Args:
@@ -274,6 +274,9 @@ class FaderTab(Gtk.Box):
             False or function
         """
         keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname is None:
+            return False
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()

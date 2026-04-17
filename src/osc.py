@@ -23,19 +23,24 @@ from olc.midi.fader import FaderState
 class Osc:
     """OSC"""
 
+    client: OscClient | None
+    server: OscServer | None
+
     def __init__(self) -> None:
         self.client = OscClient()
         self.server = OscServer()
 
     def restart_server(self) -> None:
         """Restart OSC server"""
-        self.server.free()
+        if self.server:
+            self.server.free()
         self.server = OscServer()
 
     def stop(self) -> None:
         """Stop OSC"""
         self.client = None
-        self.server.free()
+        if self.server:
+            self.server.free()
         self.server = None
 
 
