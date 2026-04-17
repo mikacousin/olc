@@ -14,9 +14,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import typing
 
-from gi.repository import Gio, Gtk
+from gi.repository import Gtk
 from olc.cue import Cue
-from olc.define import App
 from olc.files.ascii.parser import AsciiParser
 from olc.files.file_type import FileType
 from olc.files.import_dialog import Action, DialogData
@@ -26,32 +25,46 @@ from olc.independent import Independents
 from olc.step import Step
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gio
     from olc.lightshow import LightShow
+    from olc.midi import Midi
+    from olc.tabs_manager import Tabs
 
 
+# pylint: disable=too-many-instance-attributes
 class ImportFile:
     """Import file"""
 
     file: Gio.File
     file_type: FileType
-    data = ParsedData
+    data: ParsedData
     actions: dict
     parser: AsciiParser | OlcParser
     window: Gtk.Window | None
+    midi: Midi | None
+    settings: Gio.Settings | None
+    tabs: Tabs | None
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         lightshow: LightShow,
         file: Gio.File,
         file_type: FileType,
         window: Gtk.Window | None = None,
+        midi: Midi | None = None,
+        settings: Gio.Settings | None = None,
+        tabs: Tabs | None = None,
         importation: bool = False,
     ) -> None:
         self.lightshow = lightshow
         self.file = file
         self.file_type = file_type
         self.window = window
-        self.data = ParsedData()
+        self.midi = midi
+        self.settings = settings
+        self.tabs = tabs
+        self.data = ParsedData(self.lightshow, self.midi)
         self.actions = {
             "curves": Action.REPLACE,
             "patch": Action.REPLACE,
@@ -63,8 +76,8 @@ class ImportFile:
         }
 
         if self.file_type is FileType.ASCII:
-            if App():
-                default_time = App().settings.get_double("default-time")
+            if self.settings:
+                default_time = self.settings.get_double("default-time")
             else:
                 default_time = 5.0
             self.parser = AsciiParser(
@@ -80,23 +93,24 @@ class ImportFile:
     def parse(self) -> None:
         """Start reading file"""
         self.parser.read()
-        App().lightshow.add_recent_file()
+        self.lightshow.add_recent_file()
 
     def load_all(self) -> None:
         """Load all file"""
         for sequence in self.data.data["sequences"]:
             self.actions["sequences"][sequence] = Action.REPLACE
         self._do_import()
-        App().lightshow.set_not_modified()
+        self.lightshow.set_not_modified()
 
     def select_data(self) -> None:
         """Select data to import"""
-        dialog = DialogData(App().window, self.data.data, self.actions)
-        response = dialog.run()
-        dialog.destroy()
-        if response == Gtk.ResponseType.OK:
-            self._do_import()
-            App().lightshow.set_modified()
+        if self.window:
+            dialog = DialogData(self.window, self.data.data, self.actions)
+            response = dialog.run()
+            dialog.destroy()
+            if response == Gtk.ResponseType.OK:
+                self._do_import()
+                self.lightshow.set_modified()
 
     def _do_import(self) -> None:
         self._do_import_curves()
@@ -114,14 +128,14 @@ class ImportFile:
         if self.actions["curves"] is Action.IGNORE:
             return
         if self.actions["curves"] is Action.REPLACE:
-            App().lightshow.curves.reset()
+            self.lightshow.curves.reset()
         self.data.import_curves()
 
     def _do_import_patch(self) -> None:
         if self.actions["patch"] is Action.IGNORE:
             return
         if self.actions["patch"] is Action.REPLACE:
-            App().lightshow.patch.patch_empty()
+            self.lightshow.patch.patch_empty()
         # Import patch
         self.data.import_patch()
 
@@ -129,21 +143,21 @@ class ImportFile:
         if self.actions["groups"] is Action.IGNORE:
             return
         if self.actions["groups"] is Action.REPLACE:
-            del App().lightshow.groups[:]
+            del self.lightshow.groups[:]
         self.data.import_groups()
 
     def _do_import_faders(self) -> None:
         if self.actions["faders"] is Action.IGNORE:
             return
         if self.actions["faders"] is Action.REPLACE:
-            App().lightshow.fader_bank.reset_faders()
+            self.lightshow.fader_bank.reset_faders()
         self.data.import_faders(self.actions)
 
     def _do_import_independents(self) -> None:
         if self.actions["independents"] is Action.IGNORE:
             return
         if self.actions["independents"] is Action.REPLACE:
-            App().lightshow.independents = Independents()
+            self.lightshow.independents = Independents()
         self.data.import_independents()
 
     def _do_import_presets(self) -> None:
@@ -166,42 +180,48 @@ class ImportFile:
                 # Add empty step at the end
                 cue = Cue(0, 0.0)
                 step = Step(sequence, cue=cue)
-                App().lightshow.main_playback.add_step(step)
+                self.lightshow.main_playback.add_step(step)
                 # Main playback at start
-                App().lightshow.main_playback.position = 0
+                self.lightshow.main_playback.position = 0
             else:
                 self.data.import_chaser(sequence, self.actions["sequences"][sequence])
 
     def _clear_sequence(self, sequence: int) -> None:
         if sequence == 1:
-            del App().lightshow.cues[:]
-            del App().lightshow.main_playback.steps[1:]
+            del self.lightshow.cues[:]
+            del self.lightshow.main_playback.steps[1:]
         else:
             chaser = None
-            for chsr in App().lightshow.chasers:
+            for chsr in self.lightshow.chasers:
                 if chsr.index == sequence:
                     chaser = chsr
                     break
                 if chaser:
-                    App().lightshow.chasers.remove(chaser)
+                    self.lightshow.chasers.remove(chaser)
 
     def _do_import_midi(self) -> None:
         if self.actions["midi"] is Action.IGNORE:
             return
         if self.actions["midi"] is Action.REPLACE:
-            App().midi.reset_messages()
+            if self.midi:
+                self.midi.reset_messages()
         self.data.import_midi()
 
     def _update_ui(self) -> None:
-        App().window.live_view.channels_view.update()
-        App().tabs.refresh_all()
-        subtitle = (
-            f"Mem. : 0.0 - "
-            f"Next Mem. : {App().lightshow.main_playback.steps[1].cue.memory} "
-            f"{App().lightshow.main_playback.steps[1].cue.text}"
-        )
-        App().window.header.set_subtitle(subtitle)
-        App().window.playback.update_xfade_display(0)
-        App().window.playback.update_sequence_display()
+        if self.window and self.window.live_view:
+            self.window.live_view.channels_view.update()
+        if self.tabs:
+            self.tabs.refresh_all()
+        if self.window and self.window.header:
+            subtitle = (
+                f"Mem. : 0.0 - "
+                f"Next Mem. : {self.lightshow.main_playback.steps[1].cue.memory} "
+                f"{self.lightshow.main_playback.steps[1].cue.text}"
+            )
+            self.window.header.set_subtitle(subtitle)
+        if self.window and self.window.playback:
+            self.window.playback.update_xfade_display(0)
+            self.window.playback.update_sequence_display()
         # Redraw Mackie LCD
-        App().midi.messages.lcd.show_faders()
+        if self.midi and self.midi.messages and self.midi.messages.lcd:
+            self.midi.messages.lcd.show_faders()

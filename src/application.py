@@ -217,7 +217,13 @@ class Application(Gtk.Application):
         if len(arguments) > 1:
             self.lightshow.file = command_line.create_file_for_arg(arguments[1])
             imported = ImportFile(
-                self.lightshow, self.lightshow.file, FileType.OLC, window=self.window
+                self.lightshow,
+                self.lightshow.file,
+                FileType.OLC,
+                window=self.window,
+                midi=self.midi,
+                settings=self.settings,
+                tabs=self.tabs,
             )
             imported.parse()
         return False
@@ -336,7 +342,13 @@ class Application(Gtk.Application):
             self.lightshow.file = open_dialog.get_file()
             # Load file
             imported = ImportFile(
-                self.lightshow, self.lightshow.file, FileType.OLC, window=self.window
+                self.lightshow,
+                self.lightshow.file,
+                FileType.OLC,
+                window=self.window,
+                midi=self.midi,
+                settings=self.settings,
+                tabs=self.tabs,
             )
             imported.parse()
 
@@ -394,6 +406,9 @@ class Application(Gtk.Application):
                 open_dialog.get_file(),
                 file_type,
                 window=self.window,
+                midi=self.midi,
+                settings=self.settings,
+                tabs=self.tabs,
                 importation=True,
             )
             imported.parse()

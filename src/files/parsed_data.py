@@ -12,15 +12,23 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+
 from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.define import MAX_FADER_PER_PAGE, App
+from olc.define import MAX_FADER_PER_PAGE
 from olc.fader import FaderType
 from olc.files.import_dialog import Action
 from olc.group import Group
 from olc.sequence import Sequence
 from olc.step import Step
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
+    from olc.midi import Midi
 
 
 class ParsedData:
@@ -29,8 +37,12 @@ class ParsedData:
     patch: dict[int, list]
     sequence: dict
     data: dict
+    lightshow: LightShow
+    midi: Midi | None
 
-    def __init__(self) -> None:
+    def __init__(self, lightshow: LightShow, midi: Midi | None = None) -> None:
+        self.lightshow = lightshow
+        self.midi = midi
         self.data = {
             "console": {"console": "", "manufacturer": ""},
             "curves": {},
@@ -73,17 +85,17 @@ class ParsedData:
 
     def import_midi(self) -> None:
         """Import MIDI mapping"""
-        if not self.data["midi"]:
+        if not self.data["midi"] or not self.midi:
             return
         for action, value in self.data["midi"]["note"].items():
             if value != [0, -1]:
-                App().midi.messages.notes.notes[action] = value
+                self.midi.messages.notes.notes[action] = value
         for action, value in self.data["midi"]["control_change"].items():
             if value != [0, -1]:
-                App().midi.messages.control_change.control_change[action] = value
+                self.midi.messages.control_change.control_change[action] = value
         for action, value in self.data["midi"]["pitchwheel"].items():
             if value != -1:
-                App().midi.messages.pitchwheel.pitchwheel[action] = value
+                self.midi.messages.pitchwheel.pitchwheel[action] = value
 
     def import_curves(self) -> None:
         """Import curves data"""
@@ -101,13 +113,14 @@ class ParsedData:
                 curve = InterpolateCurve()
             if not curve:
                 return
-            App().lightshow.curves.curves[curve_nb] = curve
+            self.lightshow.curves.curves[curve_nb] = curve
             if curve_type in ("SegmentsCurve", "InterpolateCurve"):
                 points = values["points"]
                 for point in points:
-                    App().lightshow.curves.curves[curve_nb].add_point(
-                        point[0], point[1]
-                    )
+                    if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
+                        curve.add_point(
+                            point[0], point[1]
+                        )
             label = values.get("label")
             if label:
                 curve.name = label
@@ -119,23 +132,23 @@ class ParsedData:
                 output = out["output"]
                 universe = out["universe"]
                 curve_nb = out.get("curve", 0)
-                App().lightshow.patch.add_output(channel, output, universe, curve_nb)
+                self.lightshow.patch.add_output(channel, output, universe, curve_nb)
 
     def import_groups(self) -> None:
         """Import groups data"""
         for group_number, values in self.data["groups"].items():
             channels = values.get("channels")
             label = values.get("label")
-            for group in App().lightshow.groups:
+            for group in self.lightshow.groups:
                 if group_number == group.index:
                     group.text = label
                     group.channels = channels
                     break
             else:
                 # Create new group
-                App().lightshow.groups.append(Group(group_number, channels, label))
+                self.lightshow.groups.append(Group(group_number, channels, label))
 
-    def import_faders(self, actions: dict[str, Action]) -> None:
+    def import_faders(self, actions: dict[str, typing.Any]) -> None:
         """Import faders data
 
         Args:
@@ -157,18 +170,18 @@ class ParsedData:
             if fader_type == FaderType.GROUP and actions["groups"] is Action.IGNORE:
                 continue
             if number <= MAX_FADER_PER_PAGE:
-                App().lightshow.fader_bank.set_fader(page, number, fader_type, contents)
+                self.lightshow.fader_bank.set_fader(page, number, fader_type, contents)
 
     def import_independents(self) -> None:
         """Import independents data"""
         for inde_number, values in self.data["independents"].items():
             channels = values.get("channels")
             label = values.get("label")
-            for inde in App().lightshow.independents.independents:
+            for inde in self.lightshow.independents.independents:
                 if inde_number == inde.number:
                     inde.text = label
                     inde.levels = channels
-                    App().lightshow.independents.update(inde)
+                    self.lightshow.independents.update(inde)
                     break
 
     def import_presets(self) -> None:
@@ -176,7 +189,7 @@ class ParsedData:
         for preset_number, values in self.data["cues"].items():
             channels = values.get("channels")
             label = values.get("label")
-            for cue in App().lightshow.cues:
+            for cue in self.lightshow.cues:
                 if cue.memory == preset_number:
                     cue.channels = channels
                     cue.text = label
@@ -204,7 +217,7 @@ class ParsedData:
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            for cue in App().lightshow.cues:
+            for cue in self.lightshow.cues:
                 if cue.memory == cue_number:
                     # If cue exist, update it
                     cue.channels = cue_channels
@@ -213,7 +226,7 @@ class ParsedData:
             else:
                 # Else, create it
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
-                App().lightshow.cues.append(cue)
+                self.lightshow.cues.append(cue)
             channel_time = {}
             if values.get("channel_time"):
                 for channel, times in values.get("channel_time").items():
@@ -232,23 +245,24 @@ class ParsedData:
                 channel_time=channel_time,
                 text=values.get("label", ""),
             )
-            App().lightshow.main_playback.add_step(step)
+            self.lightshow.main_playback.add_step(step)
 
     def _merge_main_playback(self, sequence: int) -> None:
-        del App().lightshow.main_playback.steps[-1]
+        del self.lightshow.main_playback.steps[-1]
         for step, values in self.data["sequences"][sequence]["steps"].items():
             cue_number = values.get("cue")
             cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            found, step_nb = App().lightshow.main_playback.get_step(cue_number)
+            found, step_nb = self.lightshow.main_playback.get_step(cue_number)
             if found:
                 # If cue exist, update it
-                cue = App().lightshow.main_playback.steps[step_nb - 1].cue
-                cue.channels = cue_channels
-                cue.text = cue_text
-                App().lightshow.main_playback.steps[step_nb - 1].text = values.get(
+                cue = self.lightshow.main_playback.steps[step_nb - 1].cue
+                if cue:
+                    cue.channels = cue_channels
+                    cue.text = cue_text
+                self.lightshow.main_playback.steps[step_nb - 1].text = values.get(
                     "label"
                 )
             else:
@@ -271,7 +285,7 @@ class ParsedData:
                     channel_time=channel_time,
                     text=values.get("label", ""),
                 )
-                App().lightshow.main_playback.insert_step(step_nb, step)
+                self.lightshow.main_playback.insert_step(step_nb, step)
 
     def import_chaser(self, sequence: int, action: Action) -> None:
         """Import Chaser
@@ -281,16 +295,16 @@ class ParsedData:
             action: Action type
         """
         label = self.data["sequences"][sequence]["label"]
-        for index, chsr in enumerate(App().lightshow.chasers):
+        for index, chsr in enumerate(self.lightshow.chasers):
             if chsr.index == sequence:
-                App().lightshow.chasers[index].text = label
+                self.lightshow.chasers[index].text = label
                 break
         else:
-            App().lightshow.chasers.append(
+            self.lightshow.chasers.append(
                 Sequence(sequence, type_seq="Chaser", text=label)
             )
             index = -1
-            del App().lightshow.chasers[index].steps[1:]
+            del self.lightshow.chasers[index].steps[1:]
         if action is Action.REPLACE:
             self._replace_chaser(sequence, index)
         elif action is Action.MERGE:
@@ -303,17 +317,18 @@ class ParsedData:
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            found, step_nb = App().lightshow.chasers[index].get_step(cue_number)
+            found, step_nb = self.lightshow.chasers[index].get_step(cue_number)
             if found:
-                cue = App().lightshow.chasers[index].steps[step_nb - 1].cue
-                cue.channels = cue_channels
-                cue.text = cue_text
-                App().lightshow.chasers[index].steps[step_nb - 1].text = values.get(
+                cue = self.lightshow.chasers[index].steps[step_nb - 1].cue
+                if cue:
+                    cue.channels = cue_channels
+                    cue.text = cue_text
+                self.lightshow.chasers[index].steps[step_nb - 1].text = values.get(
                     "label"
                 )
             else:
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
-                App().lightshow.chasers[index].cues.add(cue)
+                self.lightshow.chasers[index].cues.add(cue)
                 channel_time = {}
                 if values.get("channel_time"):
                     for channel, times in values.get("channel_time").items():
@@ -331,7 +346,7 @@ class ParsedData:
                     channel_time=channel_time,
                     text=values.get("label", ""),
                 )
-                App().lightshow.chasers[index].insert_step(step_nb, step)
+                self.lightshow.chasers[index].insert_step(step_nb, step)
 
     def _replace_chaser(self, sequence: int, index: int) -> None:
         for step, values in self.data["sequences"][sequence]["steps"].items():
@@ -340,7 +355,7 @@ class ParsedData:
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            for cue in App().lightshow.chasers[index].cues:
+            for cue in self.lightshow.chasers[index].cues:
                 if cue.memory == cue_number:
                     # If cue exist, update it
                     cue.channels = cue_channels
@@ -349,7 +364,7 @@ class ParsedData:
             else:
                 # Else, create it
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
-                App().lightshow.chasers[index].cues.add(cue)
+                self.lightshow.chasers[index].cues.add(cue)
             channel_time = {}
             if values.get("channel_time"):
                 for channel, times in values.get("channel_time").items():
@@ -368,7 +383,7 @@ class ParsedData:
                 channel_time=channel_time,
                 text=values.get("label", ""),
             )
-            App().lightshow.chasers[index].add_step(step)
+            self.lightshow.chasers[index].add_step(step)
 
     def _insert_cue(self, cue: Cue) -> None:
         """Insert cue in list cues
@@ -380,7 +395,7 @@ class ParsedData:
         # Find cue position
         found = False
         _index = 0
-        for _index, cue_seq in enumerate(App().lightshow.cues):
+        for _index, cue_seq in enumerate(self.lightshow.cues):
             if cue_seq.memory > cue_number:
                 found = True
                 break
@@ -388,5 +403,5 @@ class ParsedData:
             # Cue is at the end
             _index += 1
         # Insert cue
-        App().lightshow.cues.insert(_index, cue)
-        App().lightshow.main_playback.update_channels()
+        self.lightshow.cues.insert(_index, cue)
+        self.lightshow.main_playback.update_channels()
