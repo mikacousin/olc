@@ -15,11 +15,11 @@
 import typing
 
 from gi.repository import Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     import cairo
+    from olc.lightshow import LightShow
 
 
 class CurveWidget(Gtk.Button):
@@ -27,10 +27,11 @@ class CurveWidget(Gtk.Button):
 
     __gtype_name__ = "CurveWidget"
 
-    def __init__(self, curve: int) -> None:
+    def __init__(self, curve: int, lightshow: "LightShow") -> None:
         super().__init__()
         self.curve_nb = curve
-        self.curve = App().lightshow.curves.get_curve(curve)
+        self.lightshow = lightshow
+        self.curve = self.lightshow.curves.get_curve(curve)
 
         self.connect("clicked", self.on_click)
 
@@ -51,8 +52,9 @@ class CurveWidget(Gtk.Button):
         self.set_size_request(80, 80)
         width = self.get_allocation().width
         height = self.get_allocation().height
-        if isinstance(self.get_parent(), Gtk.FlowBoxChild):
-            if self.get_parent().is_selected():
+        parent = self.get_parent()
+        if isinstance(parent, Gtk.FlowBoxChild):
+            if parent.is_selected():
                 cr.set_source_rgba(0.6, 0.4, 0.1, 1.0)
             else:
                 cr.set_source_rgba(0.3, 0.3, 0.3, 1.0)
@@ -66,8 +68,9 @@ class CurveWidget(Gtk.Button):
         rounded_rectangle_fill(cr, area, 10)
         cr.set_line_width(2)
         cr.set_source_rgba(0.0, 0.0, 0.0, 1.0)
-        cr.move_to(0, height - self.curve.values[0])
-        for x, y in self.curve.values.items():
-            cr.line_to((x / 255) * width, height - ((y / 255) * height))
+        if self.curve:
+            cr.move_to(0, height - self.curve.values[0])
+            for x, y in self.curve.values.items():
+                cr.line_to((x / 255) * width, height - ((y / 255) * height))
         cr.stroke()
         return False

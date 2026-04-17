@@ -12,8 +12,12 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
 from gettext import gettext as _
 from typing import Callable, Optional
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 import cairo
 from gi.repository import Gdk, Gtk
@@ -242,8 +246,8 @@ class CurveEdition(Gtk.Box):
 class CurveButton(CurveWidget):
     """Curve Widget"""
 
-    def __init__(self, curve: int) -> None:
-        super().__init__(curve)
+    def __init__(self, curve: int, lightshow: "LightShow") -> None:
+        super().__init__(curve, lightshow)
         self.popover = Gtk.Popover()
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         entry = Gtk.Entry()
@@ -350,7 +354,7 @@ class CurvesTab(Gtk.Paned):
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add curves to Flowbox
         for number in App().lightshow.curves.curves:
-            self.flowbox.add(CurveButton(number))
+            self.flowbox.add(CurveButton(number, App().lightshow))
         self.scrolled.add(self.flowbox)
 
     def refresh(self) -> None:

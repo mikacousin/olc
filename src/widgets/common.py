@@ -19,7 +19,9 @@ if typing.TYPE_CHECKING:
     import cairo
 
 
-def rounded_rectangle_fill(cr: cairo.Context, area: tuple[int], radius: float) -> None:
+def rounded_rectangle_fill(
+    cr: cairo.Context, area: tuple[float, float, float, float], radius: float
+) -> None:
     """Draw a filled rounded box
 
     Args:
@@ -36,7 +38,9 @@ def rounded_rectangle_fill(cr: cairo.Context, area: tuple[int], radius: float) -
     cr.fill()
 
 
-def rounded_rectangle(cr: cairo.Context, area: tuple[int], radius: float) -> None:
+def rounded_rectangle(
+    cr: cairo.Context, area: tuple[float, float, float, float], radius: float
+) -> None:
     """Draw a rounded box
 
     Args:

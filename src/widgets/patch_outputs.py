@@ -12,8 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 from olc.curve import LimitCurve
 from olc.define import UNIVERSES, App
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
@@ -23,9 +28,9 @@ from olc.widgets.curve import CurveWidget
 class CurvePatchOutputWidget(CurveWidget):
     """Curve Widget"""
 
-    def __init__(self, curve: int, widget: PatchWidget) -> None:
+    def __init__(self, curve: int, lightshow: "LightShow", widget: PatchWidget) -> None:
         self.parent_widget = widget
-        super().__init__(curve)
+        super().__init__(curve, lightshow)
 
     def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""
@@ -137,7 +142,9 @@ class PatchWidget(Gtk.DrawingArea):
             if isinstance(curve, LimitCurve):
                 label += f" {round((curve.limit / 255) * 100)}%"
             box.pack_start(Gtk.Label(label=label), False, False, 10)
-            box.pack_start(CurvePatchOutputWidget(number, self), False, False, 10)
+            box.pack_start(
+                CurvePatchOutputWidget(number, App().lightshow, self), False, False, 10
+            )
             self.stack.add_named(box, str(number))
         curve_nb = App().lightshow.patch.outputs[self.universe][self.output][1]
         child = self.stack.get_child_by_name(str(curve_nb))
