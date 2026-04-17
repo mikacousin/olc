@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import ipaddress
 import time
+import typing
 from collections.abc import Callable
 
 from olc.backends.artnet.merge import ArtDmxMerger, MergeMode
@@ -51,17 +52,17 @@ class NodeUniverses:
     _types: tuple[int, ...]
     _net: int
     _sub: int
-    _out: tuple[int, int, int, int]
-    _in: tuple[int, int, int, int]
+    _out: tuple[int, ...]
+    _in: tuple[int, ...]
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
-        types: tuple[int, int, int, int] = (0, 0, 0, 0),
+        types: tuple[int, ...] = (0, 0, 0, 0),
         net: int = 0,
         sub: int = 0,
-        out_sw: tuple[int, int, int, int] = (0, 0, 0, 0),
-        in_sw: tuple[int, int, int, int] = (0, 0, 0, 0),
+        out_sw: tuple[int, ...] = (0, 0, 0, 0),
+        in_sw: tuple[int, ...] = (0, 0, 0, 0),
     ) -> None:
         self._types = types
         self._net = net
@@ -107,11 +108,11 @@ class NodeUniverses:
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def set_universes(
         self,
-        types: tuple[int, int, int, int],
+        types: tuple[int, ...],
         net: int,
         sub: int,
-        out_sw: tuple[int, int, int, int],
-        in_sw: tuple[int, int, int, int],
+        out_sw: tuple[int, ...],
+        in_sw: tuple[int, ...],
     ) -> None:
         """Store internal routing universes values.
 
@@ -310,7 +311,7 @@ class Discovery:
         self.artpollreply = ArtPollReply(universes)
         self.monitor_thread = RepeatedTimer(2.5, self.send_artpoll)
         self.nodes = {}
-        self.consoles = {}
+        self.consoles: dict[tuple[tuple[int, int, int, int, int, int], int], Node] = {}
         self.notify = notify
 
     def stop(self) -> None:
@@ -557,7 +558,7 @@ class Artnet:
         elif opcode == OpCodes.OP_DMX:
             self.listeners.on_artdmx(data, addr)
 
-    def send(self, universe: int, packet: bytearray) -> None:
+    def send(self, universe: int, packet: bytes) -> None:
         """Send Art-Net universe to nodes.
 
         Args:

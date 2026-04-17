@@ -90,7 +90,7 @@ class ArtnetBackend(DMXBackend):
             universe: one in UNIVERSES
             index: Index of universe
         """
-        self.artnet.send(universe, bytearray(self.dmx.frame[index]))
+        self.artnet.send(universe, bytes(self.dmx.frame[index]))
 
     def notify(self, action: str, *args: str | int, **kwargs: str) -> None | Callable:
         """Dispatch Notifications
