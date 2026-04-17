@@ -38,10 +38,15 @@ class Sacn(DMXBackend):
         self.receiver = sacn.sACNreceiver()
         self.receiver.start()
         for universe in UNIVERSES:
+            try:
+                self.receiver.join_multicast(universe)
+            except OSError as error:
+                print(f"sACN Network error, starting in offline mode: {error}")
+                break
+
             self.sender.activate_output(universe)
             if sender := self.sender[universe]:
                 sender.multicast = True
-            self.receiver.join_multicast(universe)
             self.receiver.register_listener(
                 "universe", self.receive_packet, universe=universe
             )
