@@ -126,7 +126,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.set_icon_name("olc")
 
-    def get_active_tab(self) -> Gtk.Widget:
+    def get_active_tab(self) -> Gtk.Paned:
         """Get active tab
 
         Returns:

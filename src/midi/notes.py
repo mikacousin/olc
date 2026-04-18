@@ -276,12 +276,12 @@ class MidiNotes:
     def _zoom_plus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
         if self.zoom:
-            zoom("in")
+            zoom("in", self.app_delegate.window)
 
     def _zoom_minus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
         if self.zoom:
-            zoom("out")
+            zoom("out", self.app_delegate.window)
 
     def fader(self, msg: mido.Message, fader_index: int) -> None:
         """Send Fader position when released

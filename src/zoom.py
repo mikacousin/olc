@@ -12,33 +12,40 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from olc.define import App
+import typing
+
 from olc.patch_outputs import PatchOutputsTab
+from olc.widgets.channel import ChannelWidget
 from olc.widgets.channels_view import ChannelsView
 
+if typing.TYPE_CHECKING:
+    from gi.repository import Gtk
+    from olc.window import Window
 
-def zoom(direction: str) -> None:
+
+def zoom(direction: str, window: Window) -> None:
     """Zoom in/out widgets
     FlowBox child needs a 'scale' attribute
 
     Args:
         direction: "in" or "out"
     """
-    tab = App().window.get_active_tab()
+    tab = window.get_active_tab()
     children = tab.get_children()
 
     view = None
     if isinstance(tab, (ChannelsView, PatchOutputsTab)):
         view = tab
     else:
-        for child in children:
-            if isinstance(child, ChannelsView):
-                view = child
+        for chld in children:
+            if isinstance(chld, ChannelsView):
+                view = chld
     if view:
         for flowboxchild in view.flowbox.get_children():
-            child = flowboxchild.get_child()
-            if direction == "in" and child.scale < 2:
-                child.scale += 0.01
-            elif direction == "out" and child.scale >= 1:
-                child.scale -= 0.01
-            flowboxchild.queue_draw()
+            child = typing.cast("Gtk.FlowBoxChild", flowboxchild).get_child()
+            if child and isinstance(child, ChannelWidget):
+                if direction == "in" and child.scale < 2:
+                    child.scale += 0.01
+                elif direction == "out" and child.scale >= 1:
+                    child.scale -= 0.01
+                flowboxchild.queue_draw()
