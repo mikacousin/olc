@@ -36,7 +36,7 @@ class ChannelsView(Gtk.Box):
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, orientation=Gtk.Orientation.VERTICAL, **kwargs)
 
-        self.view_mode = VIEW_MODES.get("All")
+        self.view_mode = VIEW_MODES.get("All", 0)
         self.last_selected_channel = ""
 
         header = Gtk.HeaderBar()
