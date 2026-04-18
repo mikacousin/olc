@@ -55,8 +55,9 @@ class Application(Gtk.Application):
     """Application Class"""
 
     backend: DMXBackend | None
-    midi: Midi
+    midi: Midi | None
     version: str
+    tabs: Tabs | None
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
         self.backend = None
@@ -121,9 +122,7 @@ class Application(Gtk.Application):
         self.virtual_console = None
         self.shortcuts = None
 
-        # For Tabs
-        self.tabs = Tabs()
-
+        self.tabs = None
         self.crossfade = None
         self.midi = None
         self.osc = None
@@ -134,6 +133,7 @@ class Application(Gtk.Application):
     def do_activate(self) -> None:
         # Create Main Window
         self.window = Window()
+        self.tabs = Tabs(self.window)
         self.window.show_all()
         # No selected channel on startup
         self.window.live_view.channels_view.flowbox.unselect_all()
