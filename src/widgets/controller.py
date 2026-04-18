@@ -16,10 +16,10 @@ import math
 import typing
 
 from gi.repository import Gdk, GObject, Gtk
-from olc.define import App
 
 if typing.TYPE_CHECKING:
     import cairo
+    from olc.midi import Midi
 
 
 class ControllerWidget(Gtk.DrawingArea):
@@ -44,17 +44,18 @@ class ControllerWidget(Gtk.DrawingArea):
         "clicked": (GObject.SignalFlags.ACTION, None, ()),
     }
 
-    def __init__(self, text: str = "None") -> None:
+    def __init__(self, text: str = "None", midi: Midi | None = None) -> None:
         Gtk.DrawingArea.__init__(self)
+        self.midi = midi
 
-        self.angle = 0
+        self.angle = 0.0
         self.led = False
         self.text = text
 
         # Mouse position when button clicked
-        self.x1 = 0
-        self.y1 = 0
-        self.old_angle = 0
+        self.x1 = 0.0
+        self.y1 = 0.0
+        self.old_angle = 0.0
 
         self.add_events(Gdk.EventMask.SCROLL_MASK)
         self.connect("scroll-event", self.on_scroll)
@@ -164,7 +165,7 @@ class ControllerWidget(Gtk.DrawingArea):
         cr.set_source_rgba(0.1, 0.1, 0.1, 1.0)
         cr.arc(0, 0, 20, 0, math.radians(360))
         cr.stroke()
-        if App().midi.learning == self.text:
+        if self.midi and self.midi.learning == self.text:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
