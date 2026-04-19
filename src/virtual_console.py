@@ -360,7 +360,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_minus.connect("clicked", self._on_seq_minus)
         self.goback = ButtonWidget(label="Go Back", text="go_back", midi=self.app.midi)
         self.goback.connect("clicked", self._on_go_back)
-        self.pause = PauseWidget("Pause", "pause")
+        self.pause = PauseWidget("Pause", "pause", midi=self.app.midi)
         self.pause.connect("clicked", self._on_pause)
         self.go_pad.attach(self.seq_minus, 0, 0, 1, 1)
         self.go_pad.attach(self.seq_plus, 1, 0, 1, 1)

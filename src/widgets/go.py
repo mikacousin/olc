@@ -29,7 +29,7 @@ class GoWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
-    def __init__(self, midi: Midi, *args: object, **kwds: object) -> None:
+    def __init__(self, midi: Midi | None, *args: object, **kwds: object) -> None:
         super().__init__(*args, **kwds)
         self.midi = midi
 
@@ -48,13 +48,15 @@ class GoWidget(Gtk.Widget):
 
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go pressed"""
-        self.midi.messages.notes.send("go", 127)
+        if self.midi:
+            self.midi.messages.notes.send("go", 127)
         self.pressed = True
         self.queue_draw()
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go released"""
-        self.midi.messages.notes.send("go", 0)
+        if self.midi:
+            self.midi.messages.notes.send("go", 0)
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
@@ -67,11 +69,11 @@ class GoWidget(Gtk.Widget):
         """
         # Draw rounded box
         if self.pressed:
-            if self.midi.learning == "go":
+            if self.midi and self.midi.learning == "go":
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif self.midi.learning == "go":
+        elif self.midi and self.midi.learning == "go":
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
