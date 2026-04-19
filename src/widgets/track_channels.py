@@ -12,10 +12,15 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.track_channels import TrackChannelsTab
 
 
 class TrackChannelsHeader(Gtk.Widget):
@@ -124,13 +129,23 @@ class TrackChannelsHeader(Gtk.Widget):
         window.set_background_pattern(None)
 
 
+# pylint: disable=too-many-instance-attributes
 class TrackChannelsWidget(Gtk.Widget):
     """Track Channel widget"""
 
     __gtype_name__ = "TrackChannelsWidget"
 
-    def __init__(self, step: int, memory: float, text: str, levels: list[int]) -> None:
-        Gtk.Widget.__init__(self)
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        step: int,
+        memory: float,
+        text: str,
+        levels: list[int],
+        tab: TrackChannelsTab,
+        settings: Gio.Settings,
+    ) -> None:
+        super().__init__()
 
         self.step = step
         self.memory = memory
@@ -139,6 +154,9 @@ class TrackChannelsWidget(Gtk.Widget):
         self.width = 535 + (len(self.levels) * 65)
         self.height = 60
         self.radius = 10
+
+        self.tab = tab
+        self.settings = settings
 
         self.set_size_request(self.width, self.height)
         self.connect("button-press-event", self.on_click)
@@ -150,13 +168,14 @@ class TrackChannelsWidget(Gtk.Widget):
         Args:
             event: Gdk.Event
         """
-        App().tabs.tabs["track_channels"].flowbox.unselect_all()
-        child = App().tabs.tabs["track_channels"].flowbox.get_child_at_index(self.step)
-        App().tabs.tabs["track_channels"].flowbox.select_child(child)
-        App().tabs.tabs["track_channels"].last_step_selected = str(self.step)
+        self.tab.flowbox.unselect_all()
+        child = self.tab.flowbox.get_child_at_index(self.step)
+        if child:
+            self.tab.flowbox.select_child(child)
+        self.tab.last_step_selected = str(self.step)
         chan = int((event.x - 535) / 65)
         if 0 <= chan < len(self.levels):
-            App().tabs.tabs["track_channels"].channel_selected = chan
+            self.tab.channel_selected = chan
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
@@ -191,7 +210,10 @@ class TrackChannelsWidget(Gtk.Widget):
         """
         # Draw box
         area = (0, 60, 0, 60)
-        if self.get_parent().is_selected():
+        parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+        if not parent:
+            return
+        if parent.is_selected():
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -213,7 +235,10 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw box
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
-        if self.get_parent().is_selected():
+        parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+        if not parent:
+            return
+        if parent.is_selected():
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -235,7 +260,10 @@ class TrackChannelsWidget(Gtk.Widget):
         # Draw box
         cr.move_to(130, 0)
         area = (130, 530, 0, 60)
-        if self.get_parent().is_selected():
+        parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+        if not parent:
+            return
+        if parent.is_selected():
             cr.set_source_rgb(0.5, 0.3, 0.0)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -258,10 +286,10 @@ class TrackChannelsWidget(Gtk.Widget):
             # Draw boxes
             cr.move_to(535 + (i * 65), 0)
             area = (535 + (i * 65), 595 + (i * 65), 0, 60)
-            if (
-                self.get_parent().is_selected()
-                and i == App().tabs.tabs["track_channels"].channel_selected
-            ):
+            parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+            if not parent:
+                return
+            if parent.is_selected() and i == self.tab.channel_selected:
                 cr.set_source_rgb(0.6, 0.4, 0.1)
             else:
                 cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -271,7 +299,7 @@ class TrackChannelsWidget(Gtk.Widget):
             if lvl:
                 level = (
                     str(int(round(((lvl / 255) * 100))))
-                    if App().settings.get_boolean("percent")
+                    if self.settings.get_boolean("percent")
                     else str(lvl)
                 )
 

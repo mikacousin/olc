@@ -78,7 +78,11 @@ class TrackChannelsTab(Gtk.Grid):
                     .cue.channels.get(channel + 1, 0)
                 )
                 levels[step].append(level)
-            self.steps.append(TrackChannelsWidget(step, memory, text, levels[step]))
+            self.steps.append(
+                TrackChannelsWidget(
+                    step, memory, text, levels[step], self, App().settings
+                )
+            )
             self.flowbox.add(self.steps[step])
 
     def filter_func(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
