@@ -109,7 +109,7 @@ class Window(Gtk.ApplicationWindow):
         paned.set_position(800)
 
         # Channels
-        self.live_view = LiveView()
+        self.live_view = LiveView(self)
         paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         paned_chan.set_position(1100)
         paned_chan.pack1(self.live_view, resize=True, shrink=False)

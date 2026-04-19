@@ -41,7 +41,9 @@ class GroupChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(
+            lightshow=App().lightshow, window=App().window, settings=App().settings
+        )
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level

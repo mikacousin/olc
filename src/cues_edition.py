@@ -18,14 +18,13 @@ from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, is_float
+from olc.define import MAX_CHANNELS, App, is_float
 from olc.dialog import ConfirmationDialog
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
-    from olc.widgets.channel import ChannelWidget
     from olc.window import Window
 
 
@@ -44,7 +43,7 @@ class CuesEditionTab(Gtk.Paned):
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(500)
 
-        self.channels_view = CueChannelsView(self.lightshow, self.tabs)
+        self.channels_view = CueChannelsView(self.lightshow, self.tabs, self.window)
         self.add(self.channels_view)
 
         # List of Cues
@@ -438,10 +437,11 @@ class CuesEditionTab(Gtk.Paned):
 class CueChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self, lightshow: LightShow, tabs: Tabs) -> None:
+    def __init__(self, lightshow: LightShow, tabs: Tabs, window: Window) -> None:
         self.lightshow = lightshow
         self.tabs = tabs
-        super().__init__()
+        self.window = window
+        super().__init__(lightshow=lightshow, window=window, settings=App().settings)
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set level channel

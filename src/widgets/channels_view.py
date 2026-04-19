@@ -12,15 +12,22 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from typing import Callable, Optional
+import typing
+from typing import Any, Callable, Optional
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App, is_int, is_non_nul_int
+from olc.define import MAX_CHANNELS, is_int, is_non_nul_int
 from olc.widgets.channel import ChannelWidget
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
+    from olc.window import Window
 
 VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
 
 
+# pylint: disable=too-many-instance-attributes
 class ChannelsView(Gtk.Box):
     """Channels view
 
@@ -33,8 +40,18 @@ class ChannelsView(Gtk.Box):
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(
+        self,
+        *args: Any,  # noqa: ANN401
+        lightshow: LightShow | None = None,
+        window: Window | None = None,
+        settings: Gio.Settings | None = None,
+        **kwargs: Any,  # noqa: ANN401
+    ) -> None:
         super().__init__(*args, orientation=Gtk.Orientation.VERTICAL, **kwargs)
+        self.window = window
+        self.lightshow = lightshow
+        self.settings = settings
 
         self.view_mode = VIEW_MODES.get("All", 0)
         self.last_selected_channel = ""
@@ -63,7 +80,7 @@ class ChannelsView(Gtk.Box):
         self.pack_start(self.scrolled, True, True, 0)
         self.combo.set_active(0)
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> object:
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Display channels
 
         Args:
@@ -113,7 +130,9 @@ class ChannelsView(Gtk.Box):
         """
         if 0 < channel <= MAX_CHANNELS:
             flowboxchild = self.flowbox.get_child_at_index(channel - 1)
-            return flowboxchild.get_child()
+            if flowboxchild:
+                channelwidget = typing.cast("ChannelWidget", flowboxchild.get_child())
+                return channelwidget
         return None
 
     def on_view_mode_changed(self, combo: Gtk.ComboBoxText) -> None:
@@ -139,48 +158,56 @@ class ChannelsView(Gtk.Box):
     def select_channel(self) -> None:
         """Select one channel"""
         string = ""
-        keystring = App().window.commandline.get_string()
+        if not self.window:
+            return
+        keystring = self.window.commandline.get_string()
         self.flowbox.unselect_all()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
-                flowboxchild = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.select_child(flowboxchild)
-                App().window.set_focus(flowboxchild)
-                string = keystring
+                if flowboxchild := self.flowbox.get_child_at_index(channel - 1):
+                    self.flowbox.select_child(flowboxchild)
+                    self.window.set_focus(flowboxchild)
+                    string = keystring
         self.flowbox.invalidate_filter()
         self.last_selected_channel = string
 
     def select_plus(self) -> None:
         """Add channel to selection"""
         string = ""
-        keystring = App().window.commandline.get_string()
+        if not self.window:
+            return
+        keystring = self.window.commandline.get_string()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
-                flowboxchild = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.select_child(flowboxchild)
-                App().window.set_focus(flowboxchild)
-                string = keystring
+                if flowboxchild := self.flowbox.get_child_at_index(channel - 1):
+                    self.flowbox.select_child(flowboxchild)
+                    self.window.set_focus(flowboxchild)
+                    string = keystring
         self.flowbox.invalidate_filter()
         self.last_selected_channel = string
 
     def select_minus(self) -> None:
         """Remove channel from selection"""
         string = ""
-        keystring = App().window.commandline.get_string()
+        if not self.window:
+            return
+        keystring = self.window.commandline.get_string()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
-                flowboxchild = self.flowbox.get_child_at_index(channel - 1)
-                self.flowbox.unselect_child(flowboxchild)
-                App().window.set_focus(flowboxchild)
-                string = keystring
+                if flowboxchild := self.flowbox.get_child_at_index(channel - 1):
+                    self.flowbox.unselect_child(flowboxchild)
+                    self.window.set_focus(flowboxchild)
+                    string = keystring
         self.flowbox.invalidate_filter()
         self.last_selected_channel = string
 
     def select_next(self) -> None:
         """Select next channel"""
+        if not self.window:
+            return
         self.flowbox.unselect_all()
         if self.last_selected_channel and not is_non_nul_int(
             self.last_selected_channel
@@ -193,23 +220,23 @@ class ChannelsView(Gtk.Box):
             self._next_active()
             return
         # Default mode: All channels
-        selected_channel = ""
         channel_index = (
             int(self.last_selected_channel) if self.last_selected_channel else 0
         )
 
         if channel_index > MAX_CHANNELS - 1:
             channel_index = 0
-        flowboxchild = self.flowbox.get_child_at_index(channel_index)
-        self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
-        selected_channel = str(channel_index + 1)
-        self.flowbox.invalidate_filter()
-        self.last_selected_channel = selected_channel
+        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+            self.flowbox.select_child(flowboxchild)
+            self.window.set_focus(flowboxchild)
+            selected_channel = str(channel_index + 1)
+            self.flowbox.invalidate_filter()
+            self.last_selected_channel = selected_channel
 
     def _next_active(self) -> None:
         """Select next channel in Active mode view"""
-        selected_channel = ""
+        if not self.window:
+            return
         children = self.flowbox.get_children()
         start = (
             int(self.last_selected_channel)
@@ -224,34 +251,38 @@ class ChannelsView(Gtk.Box):
         if channel_index + 1 >= MAX_CHANNELS:
             channel_index = self.__get_first_active_channel()
         selected_channel = str(channel_index + 1)
-        flowboxchild = self.flowbox.get_child_at_index(channel_index)
-        self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
-        self.flowbox.invalidate_filter()
-        self.last_selected_channel = selected_channel
+        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+            self.flowbox.select_child(flowboxchild)
+            self.window.set_focus(flowboxchild)
+            self.flowbox.invalidate_filter()
+            self.last_selected_channel = selected_channel
 
     def _next_patched(self) -> None:
         """Select next channel in Patched mode view"""
+        if not self.window or not self.lightshow:
+            return
         start = (
             int(self.last_selected_channel)
             if self.last_selected_channel
-            else App().lightshow.patch.get_first_patched_channel() - 1
+            else self.lightshow.patch.get_first_patched_channel() - 1
         )
 
         for channel_index in range(start, MAX_CHANNELS):
-            if App().lightshow.patch.is_patched(channel_index + 1):
+            if self.lightshow.patch.is_patched(channel_index + 1):
                 break
         if channel_index + 1 >= MAX_CHANNELS:
-            channel_index = App().lightshow.patch.get_first_patched_channel() - 1
-        flowboxchild = self.flowbox.get_child_at_index(channel_index)
-        self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
-        selected_channel = str(channel_index + 1)
-        self.flowbox.invalidate_filter()
-        self.last_selected_channel = selected_channel
+            channel_index = self.lightshow.patch.get_first_patched_channel() - 1
+        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+            self.flowbox.select_child(flowboxchild)
+            self.window.set_focus(flowboxchild)
+            selected_channel = str(channel_index + 1)
+            self.flowbox.invalidate_filter()
+            self.last_selected_channel = selected_channel
 
     def select_previous(self) -> None:
         """Select previous channel"""
+        if not self.window:
+            return
         self.flowbox.unselect_all()
         if self.last_selected_channel and not is_non_nul_int(
             self.last_selected_channel
@@ -264,23 +295,23 @@ class ChannelsView(Gtk.Box):
             self._previous_active()
             return
         # Default mode: All channels
-        selected_channel = ""
         channel_index = (
             int(self.last_selected_channel) - 2 if self.last_selected_channel else 0
         )
 
         if channel_index < 0:
             channel_index = MAX_CHANNELS - 1
-        flowboxchild = self.flowbox.get_child_at_index(channel_index)
-        self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
-        selected_channel = str(channel_index + 1)
-        self.flowbox.invalidate_filter()
-        self.last_selected_channel = selected_channel
+        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+            self.flowbox.select_child(flowboxchild)
+            self.window.set_focus(flowboxchild)
+            selected_channel = str(channel_index + 1)
+            self.flowbox.invalidate_filter()
+            self.last_selected_channel = selected_channel
 
     def _previous_active(self) -> None:
         """Select previous channel in Active mode view"""
-        selected_channel = ""
+        if not self.window:
+            return
         start = (
             int(self.last_selected_channel) - 2
             if self.last_selected_channel
@@ -296,74 +327,79 @@ class ChannelsView(Gtk.Box):
         if channel_index < self.__get_first_active_channel() or start < 0:
             channel_index = self.__get_last_active_channel()
         selected_channel = str(channel_index + 1)
-        flowboxchild = self.flowbox.get_child_at_index(channel_index)
-        self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
-        self.flowbox.invalidate_filter()
-        self.last_selected_channel = selected_channel
+        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+            self.flowbox.select_child(flowboxchild)
+            self.window.set_focus(flowboxchild)
+            self.flowbox.invalidate_filter()
+            self.last_selected_channel = selected_channel
 
     def _previous_patched(self) -> None:
         """Select previous channel in Patched mode view"""
+        if not self.window or not self.lightshow:
+            return
         start = (
             int(self.last_selected_channel) - 2
             if self.last_selected_channel
-            else App().lightshow.patch.get_last_patched_channel()
+            else self.lightshow.patch.get_last_patched_channel()
         )
 
         for channel_index in range(start, 0, -1):
-            if App().lightshow.patch.is_patched(channel_index + 1):
+            if self.lightshow.patch.is_patched(channel_index + 1):
                 break
-        if channel_index < App().lightshow.patch.get_first_patched_channel() - 1:
-            channel_index = App().lightshow.patch.get_last_patched_channel() - 1
-        flowboxchild = self.flowbox.get_child_at_index(channel_index)
-        self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
-        selected_channel = str(channel_index + 1)
-        self.flowbox.invalidate_filter()
-        self.last_selected_channel = selected_channel
+        if channel_index < self.lightshow.patch.get_first_patched_channel() - 1:
+            channel_index = self.lightshow.patch.get_last_patched_channel() - 1
+        if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+            self.flowbox.select_child(flowboxchild)
+            self.window.set_focus(flowboxchild)
+            selected_channel = str(channel_index + 1)
+            self.flowbox.invalidate_filter()
+            self.last_selected_channel = selected_channel
 
     def select_all(self) -> None:
         """Select all channel with a level > 0"""
         self.flowbox.unselect_all()
         for channel_index in range(MAX_CHANNELS):
-            flowboxchild = self.flowbox.get_child_at_index(channel_index)
-            channel_widget = flowboxchild.get_child()
-            level = channel_widget.level
-            if level:
-                self.flowbox.select_child(flowboxchild)
+            if flowboxchild := self.flowbox.get_child_at_index(channel_index):
+                channel_widget = typing.cast("ChannelWidget", flowboxchild.get_child())
+                if channel_widget and channel_widget.level:
+                    self.flowbox.select_child(flowboxchild)
 
     def select_thru(self) -> None:
         """Select Channel Thru"""
+        if not self.window:
+            return
         last_chan = self.last_selected_channel
         string = last_chan
-        keystring = App().window.commandline.get_string()
+        keystring = self.window.commandline.get_string()
         if is_non_nul_int(keystring) and last_chan:
             from_chan = int(last_chan)
             to_chan = int(keystring)
             if to_chan > from_chan:
                 for channel in range(from_chan - 1, to_chan):
                     if 0 <= channel < MAX_CHANNELS:
-                        flowboxchild = self.flowbox.get_child_at_index(channel)
-                        self.flowbox.select_child(flowboxchild)
+                        if flowboxchild := self.flowbox.get_child_at_index(channel):
+                            self.flowbox.select_child(flowboxchild)
             else:
                 for channel in range(to_chan - 1, from_chan):
                     if 0 <= channel < MAX_CHANNELS:
-                        flowboxchild = self.flowbox.get_child_at_index(channel)
-                        self.flowbox.select_child(flowboxchild)
+                        if flowboxchild := self.flowbox.get_child_at_index(channel):
+                            self.flowbox.select_child(flowboxchild)
             if flowboxchild:
-                App().window.set_focus(flowboxchild)
+                self.window.set_focus(flowboxchild)
             self.flowbox.invalidate_filter()
             string = keystring
         self.last_selected_channel = string
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def at_level(self) -> None:
         """Channels at level"""
-        keystring = App().window.commandline.get_string()
+        if not self.window or not self.settings:
+            return
+        keystring = self.window.commandline.get_string()
         if not is_int(keystring):
             return
         level = int(keystring)
-        if App().settings.get_boolean("percent"):
+        if self.settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
         channels = self.get_selected_channels()
@@ -372,13 +408,15 @@ class ChannelsView(Gtk.Box):
 
     def level_plus(self) -> None:
         """Channels +%"""
-        step_level = App().settings.get_int("percent-level")
+        if not self.settings:
+            return
+        step_level = self.settings.get_int("percent-level")
         channels = self.get_selected_channels()
         for channel in channels:
             channel_widget = self.get_channel_widget(channel)
             if channel_widget:
                 level = channel_widget.level
-                if App().settings.get_boolean("percent"):
+                if self.settings.get_boolean("percent"):
                     percent_level = round((level / 256) * 100) + step_level
                     new_level = min(round((percent_level / 100) * 256), 255)
                 else:
@@ -387,13 +425,15 @@ class ChannelsView(Gtk.Box):
 
     def level_minus(self) -> None:
         """Channels -%"""
-        step_level = App().settings.get_int("percent-level")
+        if not self.settings:
+            return
+        step_level = self.settings.get_int("percent-level")
         channels = self.get_selected_channels()
         for channel in channels:
             channel_widget = self.get_channel_widget(channel)
             if channel_widget:
                 level = channel_widget.level
-                if App().settings.get_boolean("percent"):
+                if self.settings.get_boolean("percent"):
                     percent_level = round((level / 256) * 100) - step_level
                     new_level = max(round((percent_level / 100) * 256), 0)
                 else:
@@ -443,7 +483,9 @@ class ChannelsView(Gtk.Box):
     def grab_focus(self) -> None:
         """Grab focus to active Tab"""
         parent = self.get_parent()
-        if App().window and parent in (App().window.live_view, App().window.playback):
+        if not self.window or not parent:
+            return
+        if self.window and parent in (self.window.live_view, self.window.playback):
             parent.grab_focus()
         elif parent:
             parent.get_parent().grab_focus()
@@ -488,19 +530,22 @@ class ChannelsView(Gtk.Box):
         """Next Channel"""
         self.select_next()
         self.grab_focus()
-        App().window.commandline.set_string("")
+        if self.window:
+            self.window.commandline.set_string("")
 
     def _keypress_page_down(self) -> None:
         """Previous Channel"""
         self.select_previous()
         self.grab_focus()
-        App().window.commandline.set_string("")
+        if self.window:
+            self.window.commandline.set_string("")
 
     def _keypress_c(self) -> None:
         """Channel"""
         self.select_channel()
         self.grab_focus()
-        App().window.commandline.set_string("")
+        if self.window:
+            self.window.commandline.set_string("")
 
     def _keypress_kp_divide(self) -> None:
         self._keypress_greater()
@@ -509,7 +554,8 @@ class ChannelsView(Gtk.Box):
         """Channel Thru"""
         self.select_thru()
         self.grab_focus()
-        App().window.commandline.set_string("")
+        if self.window:
+            self.window.commandline.set_string("")
 
     def _keypress_kp_add(self) -> None:
         self._keypress_plus()
@@ -518,7 +564,8 @@ class ChannelsView(Gtk.Box):
         """Channel +"""
         self.select_plus()
         self.grab_focus()
-        App().window.commandline.set_string("")
+        if self.window:
+            self.window.commandline.set_string("")
 
     def _keypress_kp_subtract(self) -> None:
         self._keypress_minus()
@@ -527,4 +574,5 @@ class ChannelsView(Gtk.Box):
         """Channel -"""
         self.select_minus()
         self.grab_focus()
-        App().window.commandline.set_string("")
+        if self.window:
+            self.window.commandline.set_string("")

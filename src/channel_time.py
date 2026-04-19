@@ -342,7 +342,9 @@ class CTChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(
+            lightshow=App().lihgtshow, window=App().window, settings=App().settings
+        )
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
