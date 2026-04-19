@@ -63,7 +63,6 @@ class PauseWidget(Gtk.Button):
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button released"""
-        # channel, note = App().midi.messages.notes.notes[self.text]
         if self.lightshow and self.lightshow.main_playback.on_go:
             if (
                 self.lightshow.main_playback.thread
