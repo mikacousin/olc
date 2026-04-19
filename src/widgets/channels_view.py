@@ -245,8 +245,9 @@ class ChannelsView(Gtk.Box):
         )
 
         for child in children:
-            channel_index = child.get_index()
-            if child.get_visible() and channel_index >= start:
+            flowboxchild = typing.cast(Gtk.FlowBoxChild, child)
+            channel_index = flowboxchild.get_index()
+            if flowboxchild.get_visible() and channel_index >= start:
                 break
         if channel_index + 1 >= MAX_CHANNELS:
             channel_index = self.__get_first_active_channel()
@@ -321,8 +322,9 @@ class ChannelsView(Gtk.Box):
         children = self.flowbox.get_children()
         children.reverse()
         for child in children:
-            channel_index = child.get_index()
-            if child.get_visible() and channel_index <= start:
+            flowboxchild = typing.cast(Gtk.FlowBoxChild, child)
+            channel_index = flowboxchild.get_index()
+            if flowboxchild.get_visible() and channel_index <= start:
                 break
         if channel_index < self.__get_first_active_channel() or start < 0:
             channel_index = self.__get_last_active_channel()
@@ -449,7 +451,8 @@ class ChannelsView(Gtk.Box):
         channels = []
         selected = self.flowbox.get_selected_children()
         for flowboxchild in selected:
-            channel = int(flowboxchild.get_child().channel)
+            channel_widget = typing.cast(ChannelWidget, flowboxchild.get_child())
+            channel = int(channel_widget.channel)
             channels.append(channel)
         return channels
 
@@ -464,7 +467,9 @@ class ChannelsView(Gtk.Box):
         for child in children:
             if child.get_visible():
                 break
-        return child.get_index()
+        if child is not None:
+            return typing.cast(Gtk.FlowBoxChild, child).get_index()
+        return 0
 
     def __get_last_active_channel(self) -> int:
         """Return last active channel index
@@ -478,7 +483,9 @@ class ChannelsView(Gtk.Box):
         for child in children:
             if child.get_visible():
                 break
-        return child.get_index()
+        if child is not None:
+            return typing.cast(Gtk.FlowBoxChild, child).get_index()
+        return 0
 
     def grab_focus(self) -> None:
         """Grab focus to active Tab"""
@@ -488,7 +495,8 @@ class ChannelsView(Gtk.Box):
         if self.window and parent in (self.window.live_view, self.window.playback):
             parent.grab_focus()
         elif parent:
-            parent.get_parent().grab_focus()
+            if grandparent := parent.get_parent():
+                grandparent.grab_focus()
 
     def on_key_press(self, keyname: str | None) -> Callable | None:
         """Processes common keyboard methods of Channels View
