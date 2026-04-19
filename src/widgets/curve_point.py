@@ -45,12 +45,12 @@ class CurvePointWidget(Gtk.DrawingArea):
 
     def __init__(
         self,
-        *args: object,
+        *args: typing.Any,  # noqa: ANN401
         number: int = 0,
         curve: PointsCurve | None = None,
         lightshow: LightShow | None = None,
         tabs: Tabs | None = None,
-        **kwds: object,
+        **kwds: typing.Any,  # noqa: ANN401
     ) -> None:
         super().__init__(*args, **kwds)
         self.lightshow = lightshow
@@ -91,9 +91,11 @@ class CurvePointWidget(Gtk.DrawingArea):
             if not window:
                 return
             self.offset.x, self.offset.y = window.get_root_origin()
-            x, y = parent.translate_coordinates(self.get_toplevel(), 0, 0)
-            self.offset.x += x
-            self.offset.y += y
+            coords = parent.translate_coordinates(self.get_toplevel(), 0, 0)
+            if coords:
+                x, y = coords
+                self.offset.x += x
+                self.offset.y += y
             self.offset.x += int(event.x)
             self.offset.y += int(event.y)
             self.max.x = parent.get_allocation().width - widget.get_allocation().width
