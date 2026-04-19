@@ -16,39 +16,52 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
-
-if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
 from olc.curve import LimitCurve
-from olc.define import UNIVERSES, App
+from olc.define import UNIVERSES
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 from olc.widgets.curve import CurveWidget
+
+if typing.TYPE_CHECKING:
+    from olc.backends import DMXBackend
+    from olc.lightshow import LightShow
+    from olc.patch_outputs import PatchOutputsTab
+    from olc.window import CommandLine
 
 
 class CurvePatchOutputWidget(CurveWidget):
     """Curve Widget"""
 
-    def __init__(self, curve: int, lightshow: "LightShow", widget: PatchWidget) -> None:
-        self.parent_widget = widget
+    def __init__(
+        self,
+        curve: int,
+        lightshow: LightShow,
+        widget: PatchWidget,
+        tab: PatchOutputsTab,
+    ) -> None:
         super().__init__(curve, lightshow)
+        self.parent_widget = widget
+        self.lightshow = lightshow
+        self.tab = tab
 
     def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""
+        if not self.parent_widget.popover:
+            return
         self.parent_widget.popover.popdown()
-        tab = App().tabs.tabs["patch_outputs"]
-        outputs = tab.get_selected_outputs()
+        outputs = self.tab.get_selected_outputs()
         for output in outputs:
             out = output[0]
             univ = output[1]
             if (
-                univ in App().lightshow.patch.outputs
-                and out in App().lightshow.patch.outputs[univ]
+                univ in self.lightshow.patch.outputs
+                and out in self.lightshow.patch.outputs[univ]
             ):
-                App().lightshow.patch.outputs[univ][out][1] = self.curve_nb
-        tab.refresh()
-        App().lightshow.set_modified()
+                self.lightshow.patch.outputs[univ][out][1] = self.curve_nb
+        self.tab.refresh()
+        self.lightshow.set_modified()
 
 
+# pylint: disable=too-many-instance-attributes
 class PatchWidget(Gtk.DrawingArea):
     """Patch output widget"""
 
@@ -57,9 +70,22 @@ class PatchWidget(Gtk.DrawingArea):
     stack: Gtk.Stack | None
     popover: Gtk.Popover | None
 
-    def __init__(self, universe: int, output: int) -> None:
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        universe: int,
+        output: int,
+        lightshow: LightShow,
+        tab: PatchOutputsTab,
+        commandline: CommandLine,
+        backend: DMXBackend,
+    ) -> None:
         self.universe = universe
         self.output = output
+        self.lightshow = lightshow
+        self.tab = tab
+        self.commandline = commandline
+        self.backend = backend
 
         super().__init__()
         self.scale = 1.0
@@ -84,35 +110,32 @@ class PatchWidget(Gtk.DrawingArea):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Shift pressed: Thru
-            App().window.commandline.set_string(f"{self.output}.{self.universe}")
-            App().lightshow.patch.by_outputs.thru()
+            self.commandline.set_string(f"{self.output}.{self.universe}")
+            self.lightshow.patch.by_outputs.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
-            child = (
-                App()
-                .tabs.tabs["patch_outputs"]
-                .flowbox.get_child_at_index(widget_index)
-            )
-            if self.get_parent().is_selected():
-                App().tabs.tabs["patch_outputs"].flowbox.unselect_child(child)
-                App().window.commandline.set_string(f"{self.output}.{self.universe}")
-                App().lightshow.patch.by_outputs.del_output()
+            child = self.tab.flowbox.get_child_at_index(widget_index)
+            if not child:
+                return
+            parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+            if parent.is_selected():
+                self.tab.flowbox.unselect_child(child)
+                self.commandline.set_string(f"{self.output}.{self.universe}")
+                self.lightshow.patch.by_outputs.del_output()
             else:
-                App().tabs.tabs["patch_outputs"].flowbox.select_child(child)
-                App().window.commandline.set_string(f"{self.output}.{self.universe}")
-                App().lightshow.patch.by_outputs.add_output()
+                self.tab.flowbox.select_child(child)
+                self.commandline.set_string(f"{self.output}.{self.universe}")
+                self.lightshow.patch.by_outputs.add_output()
         else:
-            child = (
-                App()
-                .tabs.tabs["patch_outputs"]
-                .flowbox.get_child_at_index(widget_index)
-            )
+            child = self.tab.flowbox.get_child_at_index(widget_index)
+            if not child:
+                return
             if not child.is_selected():
-                App().window.commandline.set_string(f"{self.output}.{self.universe}")
-                App().lightshow.patch.by_outputs.select_output()
+                self.commandline.set_string(f"{self.output}.{self.universe}")
+                self.lightshow.patch.by_outputs.select_output()
             elif (
-                self.universe in App().lightshow.patch.outputs
-                and self.output in App().lightshow.patch.outputs[self.universe]
+                self.universe in self.lightshow.patch.outputs
+                and self.output in self.lightshow.patch.outputs[self.universe]
             ):
                 # Change curve only on patched outputs
                 self.open_popup()
@@ -139,17 +162,20 @@ class PatchWidget(Gtk.DrawingArea):
         self.stack = Gtk.Stack()
         self.stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
         self.stack.set_transition_duration(500)
-        for number, curve in App().lightshow.curves.curves.items():
+        for number, curve in self.lightshow.curves.curves.items():
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
             label = curve.name
             if isinstance(curve, LimitCurve):
                 label += f" {round((curve.limit / 255) * 100)}%"
             box.pack_start(Gtk.Label(label=label), False, False, 10)
             box.pack_start(
-                CurvePatchOutputWidget(number, App().lightshow, self), False, False, 10
+                CurvePatchOutputWidget(number, self.lightshow, self, self.tab),
+                False,
+                False,
+                10,
             )
             self.stack.add_named(box, str(number))
-        curve_nb = App().lightshow.patch.outputs[self.universe][self.output][1]
+        curve_nb = self.lightshow.patch.outputs[self.universe][self.output][1]
         child = self.stack.get_child_by_name(str(curve_nb))
         if child:
             child.show()
@@ -167,9 +193,17 @@ class PatchWidget(Gtk.DrawingArea):
         Args:
             button: Button clicked
         """
+        if not self.stack:
+            return
+
         label = button.get_label()
-        curve_nb = int(self.stack.get_visible_child_name())
-        curves_list = list(App().lightshow.curves.curves.keys())
+
+        number = self.stack.get_visible_child_name()
+        if not number:
+            return
+        curve_nb = int(number)
+
+        curves_list = list(self.lightshow.curves.curves.keys())
 
         try:
             idx = curves_list.index(curve_nb)
@@ -218,33 +252,34 @@ class PatchWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
+        parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
         if (
-            self.universe in App().lightshow.patch.outputs
-            and self.output in App().lightshow.patch.outputs[self.universe]
+            self.universe in self.lightshow.patch.outputs
+            and self.output in self.lightshow.patch.outputs[self.universe]
         ):
-            number = App().lightshow.patch.outputs[self.universe][self.output][1]
-            curve = App().lightshow.curves.get_curve(number)
-            if curve.is_all_zero():
+            number = self.lightshow.patch.outputs[self.universe][self.output][1]
+            curve = self.lightshow.curves.get_curve(number)
+            if curve and curve.is_all_zero():
                 # Level output blocked at 0
-                if self.get_parent().is_selected():
+                if parent.is_selected():
                     cr.set_source_rgb(0.8, 0.1, 0.1)
                 else:
                     cr.set_source_rgb(0.5, 0.1, 0.1)
                 rounded_rectangle_fill(cr, area, 10)
-            elif App().lightshow.patch.outputs[self.universe][self.output][0] != 0:
+            elif self.lightshow.patch.outputs[self.universe][self.output][0] != 0:
                 # Patch output
                 cr.set_source_rgb(0.3, 0.3, 0.3)
                 rounded_rectangle_fill(cr, area, 10)
-                if self.get_parent().is_selected():
+                if parent.is_selected():
                     cr.set_source_rgb(0.6, 0.4, 0.1)
                     rounded_rectangle(cr, area, 10)
-        elif self.get_parent().is_selected():
+        elif parent.is_selected():
             # Unpatched output
             cr.set_source_rgb(0.6, 0.4, 0.1)
             rounded_rectangle(cr, area, 10)
         index = UNIVERSES.index(self.universe)
-        if App().backend.dmx.frame[index][self.output - 1]:
-            level = App().backend.dmx.frame[index][self.output - 1]
+        if self.backend.dmx.frame[index][self.output - 1]:
+            level = self.backend.dmx.frame[index][self.output - 1]
             # cr.move_to(0, 0)
             cr.set_source_rgba(
                 0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
@@ -282,12 +317,12 @@ class PatchWidget(Gtk.DrawingArea):
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
         if (
-            self.universe in App().lightshow.patch.outputs
-            and self.output in App().lightshow.patch.outputs[self.universe]
+            self.universe in self.lightshow.patch.outputs
+            and self.output in self.lightshow.patch.outputs[self.universe]
         ):
-            text = str(App().lightshow.patch.outputs[self.universe][self.output][0])
+            text = str(self.lightshow.patch.outputs[self.universe][self.output][0])
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-            if App().lightshow.patch.outputs[self.universe][self.output][0] > 0:
+            if self.lightshow.patch.outputs[self.universe][self.output][0] > 0:
                 cr.move_to(
                     allocation.width / 2 - width / 2,
                     3 * (allocation.height / 4 - (height - 20) / 4),
@@ -302,11 +337,11 @@ class PatchWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         index = UNIVERSES.index(self.universe)
-        if App().backend.dmx.frame[index][self.output - 1]:
+        if self.backend.dmx.frame[index][self.output - 1]:
             cr.set_source_rgb(0.7, 0.7, 0.7)
             cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
             cr.set_font_size(10 * self.scale)
-            level = App().backend.dmx.frame[index][self.output - 1]
+            level = self.backend.dmx.frame[index][self.output - 1]
             text = str(level)
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
             cr.move_to(
@@ -323,13 +358,15 @@ class PatchWidget(Gtk.DrawingArea):
             allocation: Widget allocation
         """
         if (
-            self.universe in App().lightshow.patch.outputs
-            and self.output in App().lightshow.patch.outputs[self.universe]
+            self.universe in self.lightshow.patch.outputs
+            and self.output in self.lightshow.patch.outputs[self.universe]
         ):
-            number = App().lightshow.patch.outputs[self.universe][self.output][1]
+            number = self.lightshow.patch.outputs[self.universe][self.output][1]
             # Don't draw linear curve
             if number:
-                curve = App().lightshow.curves.get_curve(number)
+                curve = self.lightshow.curves.get_curve(number)
+                if not curve:
+                    return
                 cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
                 cr.set_line_width(1)
                 cr.move_to(10, allocation.height - curve.values[0] - 10)

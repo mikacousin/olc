@@ -35,7 +35,6 @@ class PatchOutputsTab(Gtk.Box):
         # Header bar with buttons
         header = Gtk.HeaderBar()
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
-        button = Gtk.Button()
         button = Gtk.Button(label="Patch 1:1")
         button.connect("clicked", self.on_button_clicked)
         box.add(button)
@@ -57,7 +56,14 @@ class PatchOutputsTab(Gtk.Box):
 
         for universe in UNIVERSES:
             for out in range(1, 513):
-                output = PatchWidget(universe, out)
+                output = PatchWidget(
+                    universe,
+                    out,
+                    App().lightshow,
+                    self,
+                    App().window.commandline,
+                    App().backend,
+                )
                 self.outputs.extend([output])
                 self.flowbox.add(output)
 
