@@ -16,9 +16,6 @@ import typing
 from gettext import gettext as _
 from typing import Callable, Optional
 
-if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
-
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
@@ -26,6 +23,9 @@ from olc.define import App
 from olc.widgets.curve import CurveWidget
 from olc.widgets.curve_point import CurvePointWidget
 from olc.widgets.edit_curve import EditCurveWidget
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
 
 
 class CurveValues(Gtk.DrawingArea):
@@ -175,7 +175,14 @@ class CurveEdition(Gtk.Box):
                 - self.edit_curve.delta
                 - round((y / 255) * (height - (self.edit_curve.delta * 2)))
             )
-            self.points.append(CurvePointWidget(number=number, curve=curve))
+            self.points.append(
+                CurvePointWidget(
+                    number=number,
+                    curve=curve,
+                    lightshow=App().lightshow,
+                    tabs=App().tabs,
+                )
+            )
             self.points[-1].connect("toggled", self.on_toggled, None)
             self.fixed.put(self.points[-1], x - 4, y - 4)
         self.show_all()
