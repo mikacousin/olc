@@ -388,7 +388,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.faders[i].set_inverted(True)
             self.faders[i].connect("value-changed", self.fader_moved)
             self.faders[i].connect("clicked", self._fader_clicked)
-            self.flashes.append(FlashWidget(""))
+            self.flashes.append(FlashWidget("", midi=self.app.midi))
             self.flashes[i].connect("button-press-event", self._flash_on)
             self.flashes[i].connect("button-release-event", self._flash_off)
             self.flashes[i].connect("clicked", self._on_flash)

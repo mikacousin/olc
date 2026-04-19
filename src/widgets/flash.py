@@ -12,12 +12,17 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, GObject, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
+if typing.TYPE_CHECKING:
+    from olc.midi import Midi
 
+
+# pylint: disable=too-many-instance-attributes
 class FlashWidget(Gtk.Widget):
     """Flash widget"""
 
@@ -25,8 +30,11 @@ class FlashWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
-    def __init__(self, label: str = "", text: str = "None") -> None:
-        Gtk.Widget.__init__(self)
+    def __init__(
+        self, label: str = "", text: str = "None", midi: Midi | None = None
+    ) -> None:
+        super().__init__()
+        self.midi = midi
 
         self.width = 40
         self.height = 40
@@ -55,7 +63,7 @@ class FlashWidget(Gtk.Widget):
         self.queue_draw()
         self.emit("clicked")
 
-    def do_draw(self, cr: cairo.Context) -> None:
+    def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Flash button
 
         Args:
@@ -65,11 +73,11 @@ class FlashWidget(Gtk.Widget):
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         elif self.pressed:
-            if App().midi.learning == self.text:
+            if self.midi and self.midi.learning == self.text:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif App().midi.learning == self.text:
+        elif self.midi and self.midi.learning == self.text:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
@@ -92,6 +100,7 @@ class FlashWidget(Gtk.Widget):
         (_x, _y, w, _h, _dx, _dy) = cr.text_extents(self.label[6:12])
         cr.move_to(self.width / 2 - w / 2, (self.height / 3) * 2)
         cr.show_text(self.label[6:12])
+        return False
 
     def do_realize(self) -> None:
         """Realize widget"""
