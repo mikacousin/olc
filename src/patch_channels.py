@@ -43,7 +43,15 @@ class PatchChannelsTab(Gtk.Box):
         self.channels = []
 
         for channel in range(MAX_CHANNELS):
-            self.channels.append(PatchChannelWidget(channel + 1, self.patch))
+            self.channels.append(
+                PatchChannelWidget(
+                    channel + 1,
+                    self.patch,
+                    App().lightshow,
+                    self,
+                    App().window.commandline,
+                )
+            )
             self.flowbox.add(self.channels[channel])
 
         self.scrollable = Gtk.ScrolledWindow()

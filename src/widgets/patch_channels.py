@@ -16,11 +16,13 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
     from olc.patch import DMXPatch
+    from olc.patch_channels import PatchChannelsTab
+    from olc.window import CommandLine
 
 
 # pylint: disable=R0903
@@ -89,13 +91,25 @@ class PatchChannelHeader(Gtk.Misc):
         return False
 
 
+# pylint: disable=too-many-instance-attributes
 class PatchChannelWidget(Gtk.Widget):
     """Patch Channel widget"""
 
     __gtype_name__ = "PatchChannelWidget"
 
-    def __init__(self, channel: int, patch: DMXPatch) -> None:
-        Gtk.Widget.__init__(self)
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        channel: int,
+        patch: DMXPatch,
+        lightshow: LightShow,
+        tab: PatchChannelsTab,
+        commandline: CommandLine,
+    ) -> None:
+        super().__init__()
+        self.lightshow = lightshow
+        self.tab = tab
+        self.commandline = commandline
 
         self.channel = channel
         self.patch = patch
@@ -116,17 +130,14 @@ class PatchChannelWidget(Gtk.Widget):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Thru
-            App().tabs.tabs["patch_channels"].keystring = str(self.channel)
-            App().tabs.tabs["patch_channels"].thru()
+            self.commandline.set_string(str(self.channel))
+            self.tab.thru()
         else:
-            App().tabs.tabs["patch_channels"].flowbox.unselect_all()
-            child = (
-                App()
-                .tabs.tabs["patch_channels"]
-                .flowbox.get_child_at_index(self.channel - 1)
-            )
-            App().tabs.tabs["patch_channels"].flowbox.select_child(child)
-            App().tabs.tabs["patch_channels"].last_chan_selected = str(self.channel - 1)
+            self.tab.flowbox.unselect_all()
+            child = self.tab.flowbox.get_child_at_index(self.channel - 1)
+            if child:
+                self.tab.flowbox.select_child(child)
+            self.tab.last_chan_selected = str(self.channel - 1)
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
@@ -135,13 +146,14 @@ class PatchChannelWidget(Gtk.Widget):
             cr: Cairo context
         """
         # Draw Grey background if selected
-        if self.get_parent().is_selected():
+        parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+        if parent.is_selected():
             cr.set_source_rgb(0.2, 0.2, 0.2)
             area = (0, 800, 0, self.height)
             rounded_rectangle_fill(cr, area, self.radius)
         # Draw channel box
         area = (0, 60, 0, self.height)
-        if self.get_parent().is_selected():
+        if parent.is_selected():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
@@ -177,8 +189,8 @@ class PatchChannelWidget(Gtk.Widget):
             cr: Cairo context
         """
         nb_outputs = 0
-        if self.channel in App().lightshow.patch.channels:
-            if App().lightshow.patch.channels[self.channel] == [[None, None]]:
+        if self.channel in self.lightshow.patch.channels:
+            if self.lightshow.patch.channels[self.channel] == [[None, None]]:
                 return
 
         if nb_outputs <= 8:
@@ -192,11 +204,12 @@ class PatchChannelWidget(Gtk.Widget):
         Args:
             cr: Cairo context
         """
-        for i, item in enumerate(App().lightshow.patch.channels[self.channel]):
+        for i, item in enumerate(self.lightshow.patch.channels[self.channel]):
             output = item[0]
             if output != 0:
                 area = (65 + (i * 65), 125 + (i * 65), 0, self.height)
-                if self.get_parent().is_selected():
+                parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+                if parent.is_selected():
                     cr.set_source_rgb(0.4, 0.5, 0.4)
                 else:
                     cr.set_source_rgb(0.3, 0.4, 0.3)
@@ -216,6 +229,7 @@ class PatchChannelWidget(Gtk.Widget):
                 )
                 cr.show_text(f"{output}.{univ}")
 
+    # pylint: disable=too-many-locals
     def _draw_two_lines(self, cr: cairo.Context) -> None:
         """Draw Outputs on two lines
 
@@ -223,17 +237,18 @@ class PatchChannelWidget(Gtk.Widget):
             cr: Cairo context
         """
         two_lines = False
-        for i, item in enumerate(App().lightshow.patch.channels[self.channel]):
+        for i, item in enumerate(self.lightshow.patch.channels[self.channel]):
             if i > 15:
                 two_lines = True
             output = item[0]
             if output != 0:
-                if self.get_parent().is_selected():
+                parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+                if parent.is_selected():
                     cr.set_source_rgb(0.4, 0.5, 0.4)
                 else:
                     cr.set_source_rgb(0.3, 0.4, 0.3)
                 univ = item[1]
-                if not two_lines:
+                if output and univ and not two_lines:
                     self._draw_first_line(cr, i, output, univ)
                 else:
                     # Second line
