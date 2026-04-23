@@ -12,10 +12,16 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle_fill
+
+if typing.TYPE_CHECKING:
+    from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
 class GroupWidget(Gtk.Widget):
@@ -23,7 +29,19 @@ class GroupWidget(Gtk.Widget):
 
     __gtype_name__ = "GroupWidget"
 
-    def __init__(self, number: float, name: str) -> None:
+    # pylint: disable=too-many-arguments
+    def __init__(
+        self,
+        number: float,
+        name: str,
+        *,
+        lightshow: "LightShow",
+        tabs: "Tabs",
+        window: "Window",
+    ) -> None:
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
         self.number = number
         self.name = name
 
@@ -55,31 +73,35 @@ class GroupWidget(Gtk.Widget):
         self.name = text
         self.queue_draw()
         # Update group text
-        flowboxchild = self.get_parent()
+        flowboxchild = typing.cast(Gtk.FlowBoxChild, self.get_parent())
         index = flowboxchild.get_index()
-        group = App().lightshow.groups[index]
+        group = self.lightshow.groups[index]
         group.text = text
-        fader_bank = App().lightshow.fader_bank
+        fader_bank = self.lightshow.fader_bank
+
+        app = typing.cast(typing.Any, self.window.get_application())
         # Update Fader text
         for page, faders in fader_bank.faders.items():
             for fader in faders.values():
                 if fader.contents is group:
                     fader.text = text
                     # Update Virtual Console
-                    if App().virtual_console and page == fader_bank.active_page:
-                        App().virtual_console.flashes[fader.index - 1].label = text
-        App().midi.messages.lcd.show_faders()
+                    if app.virtual_console and page == fader_bank.active_page:
+                        app.virtual_console.flashes[fader.index - 1].label = text
+        if app.midi:
+            app.midi.messages.lcd.show_faders()
         self.popover.popdown()
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
 
     def on_click(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Group clicked"""
-        child = self.get_parent()
+        child = typing.cast(Gtk.FlowBoxChild, self.get_parent())
         if not child.is_selected():
-            App().tabs.tabs["groups"].flowbox.unselect_all()
-            App().tabs.tabs["groups"].flowbox.select_child(child)
-            App().tabs.tabs["groups"].last_group_selected = str(child.get_index())
-            App().tabs.tabs["groups"].channels_view.update()
+            groups_tab = typing.cast(typing.Any, self.tabs.tabs["groups"])
+            groups_tab.flowbox.unselect_all()
+            groups_tab.flowbox.select_child(child)
+            groups_tab.last_group_selected = str(child.get_index())
+            groups_tab.channels_view.update()
         else:
             self.popover.popup()
 
@@ -93,12 +115,12 @@ class GroupWidget(Gtk.Widget):
 
         # paint background
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
+        cr.set_source_rgba(bg_color.red, bg_color.green, bg_color.blue, bg_color.alpha)
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
 
         # draw rectangle
-        if self.get_parent().is_selected():
+        if typing.cast(Gtk.FlowBoxChild, self.get_parent()).is_selected():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)

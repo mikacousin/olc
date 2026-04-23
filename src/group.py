@@ -244,8 +244,12 @@ class GroupTab(Gtk.Paned):
         # Add groups to FlowBox
         for i, _ in enumerate(self.lightshow.groups):
             self.flowbox.add(
-                GroupWidget(
-                    self.lightshow.groups[i].index, self.lightshow.groups[i].text
+                GroupWidget(  # pylint: disable=unexpected-keyword-arg
+                    self.lightshow.groups[i].index,
+                    self.lightshow.groups[i].text,
+                    lightshow=self.lightshow,
+                    tabs=self.tabs,
+                    window=self.window,
                 )
             )
         self.scrolled.add(self.flowbox)
@@ -502,8 +506,12 @@ class GroupTab(Gtk.Paned):
                 i = child.get_index()
                 break
         self.flowbox.insert(
-            GroupWidget(
-                self.lightshow.groups[-1].index, self.lightshow.groups[-1].text
+            GroupWidget(  # pylint: disable=unexpected-keyword-arg
+                self.lightshow.groups[-1].index,
+                self.lightshow.groups[-1].text,
+                lightshow=self.lightshow,
+                tabs=self.tabs,
+                window=self.window,
             ),
             i,
         )
