@@ -15,13 +15,15 @@
 import typing
 
 from gi.repository import Gdk, GObject, Gtk
-from olc.define import App
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     import cairo
+    from olc.crossfade import CrossFade
+    from olc.midi import Midi
 
 
+# pylint: disable=too-many-instance-attributes
 class FaderWidget(Gtk.Scale):
     """Fader widget, inherits from Gtk.scale"""
 
@@ -29,16 +31,23 @@ class FaderWidget(Gtk.Scale):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
-        *args: object,
+        *args: typing.Any,  # noqa: ANN401
         text: str = "None",
         red: float = 0.2,
         green: float = 0.2,
         blue: float = 0.2,
-        **kwds: object,
+        midi: "Midi | None" = None,
+        crossfade: "CrossFade | None" = None,
+        is_crossfade: bool = False,
+        **kwds: typing.Any,  # noqa: ANN401
     ) -> None:
         super().__init__(*args, **kwds)
+        self.midi = midi
+        self.crossfade = crossfade
+        self.is_crossfade = is_crossfade
 
         self.red = red
         self.green = green
@@ -57,8 +66,8 @@ class FaderWidget(Gtk.Scale):
         self.pressed = True
         self.queue_draw()
 
-        if self in (App().virtual_console.scale_a, App().virtual_console.scale_b):
-            App().crossfade.manual = True
+        if self.is_crossfade and self.crossfade:
+            self.crossfade.manual = True
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Fader released"""
@@ -78,7 +87,7 @@ class FaderWidget(Gtk.Scale):
         radius = 10
 
         layout = self.get_layout()
-        layout_h = layout.get_pixel_size().height if layout else 0
+        layout_h = layout.get_pixel_size()[1] if layout else 0
 
         # Draw vertical box
         cr.set_source_rgb(self.red, self.green, self.blue)
@@ -109,7 +118,7 @@ class FaderWidget(Gtk.Scale):
         # Draw Cursor
         area = ((width / 2) - 19, (width / 2) + 19, h - 20, h)
 
-        if App().midi.learning == self.text:
+        if self.midi and self.midi.learning == self.text:
             if self.pressed:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:

@@ -263,6 +263,9 @@ class VirtualConsoleWindow(Gtk.Window):
             blue=0.7,
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=adjustment,
+            midi=self.app.midi,
+            crossfade=self.app.crossfade,
+            is_crossfade=True,
         )
         self.scale_a.led = False
         self.scale_a.connect("clicked", self._scale_clicked)
@@ -279,6 +282,9 @@ class VirtualConsoleWindow(Gtk.Window):
             blue=0.2,
             orientation=Gtk.Orientation.VERTICAL,
             adjustment=adjustment,
+            midi=self.app.midi,
+            crossfade=self.app.crossfade,
+            is_crossfade=True,
         )
         self.scale_b.led = False
         self.scale_b.connect("clicked", self._scale_clicked)
@@ -381,6 +387,7 @@ class VirtualConsoleWindow(Gtk.Window):
                     text=f"fader_{i + 1}",
                     orientation=Gtk.Orientation.VERTICAL,
                     adjustment=adjustment,
+                    midi=self.app.midi,
                 )
             )
             self.faders[i].set_vexpand(True)
