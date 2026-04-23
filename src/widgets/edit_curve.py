@@ -12,29 +12,39 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.curve import InterpolateCurve, SegmentsCurve
-from olc.define import App
+
+if typing.TYPE_CHECKING:
+    from olc.curve_edition import CurvesTab
+    from olc.lightshow import LightShow
+    from olc.patch_outputs import PatchOutputsTab
+    from olc.tabs_manager import Tabs
 
 
+# pylint: disable=too-many-instance-attributes
 class EditCurveWidget(Gtk.DrawingArea):
     """Curve edition widget"""
 
     __gtype_name__ = "EditCurveWidget"
 
-    def __init__(self, curve: int) -> None:
+    def __init__(self, curve: int, lightshow: "LightShow", tabs: "Tabs") -> None:
         super().__init__()
+        self.lightshow = lightshow
+        self.tabs = tabs
         self.delta = 20
         self.width = 1000
         self.height = 300
         self.curve_nb = curve
-        self.curve = App().lightshow.curves.get_curve(curve)
+        self.curve = self.lightshow.curves.get_curve(curve)
         self.set_size_request(self.width, self.height)
 
         self.offsetx = 0
         self.offsety = 0
-        if self.curve.editable:
+        if self.curve and self.curve.editable:
             self.add_events(Gdk.EventMask.POINTER_MOTION_MASK)
             self.connect("motion-notify-event", self.on_mouse_move)
             self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
@@ -49,7 +59,8 @@ class EditCurveWidget(Gtk.DrawingArea):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         # Create new point with mouse click + Shift
         if (
-            event.button == 1
+            self.curve
+            and event.button == 1
             and event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK
             and isinstance(self.curve, (SegmentsCurve, InterpolateCurve))
         ):
@@ -59,14 +70,17 @@ class EditCurveWidget(Gtk.DrawingArea):
             y_curve = max(min(y_curve, 255), 0)
             self.curve.add_point(x_curve, y_curve)
             self.queue_draw()
-            tab = App().tabs.tabs["curves"]
+            tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
             tab.curve_edition.points_curve()
             idx = self.curve.points.index((x_curve, y_curve))
-            App().tabs.tabs["curves"].curve_edition.points[idx].set_active(True)
-            App().tabs.tabs["curves"].curve_edition.points[idx].queue_draw()
-            App().lightshow.set_modified()
-            if App().tabs.tabs["patch_outputs"]:
-                App().tabs.tabs["patch_outputs"].refresh()
+            tab.curve_edition.points[idx].set_active(True)
+            tab.curve_edition.points[idx].queue_draw()
+            self.lightshow.set_modified()
+            if self.tabs.tabs["patch_outputs"]:
+                patch_tab = typing.cast(
+                    "PatchOutputsTab", self.tabs.tabs["patch_outputs"]
+                )
+                patch_tab.refresh()
 
     def on_mouse_move(self, _widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Update pointer coordinates
@@ -74,12 +88,13 @@ class EditCurveWidget(Gtk.DrawingArea):
         Args:
             event: Event with coordinates
         """
-        tab = App().tabs.tabs["curves"]
+        tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
         x_curve = round(((event.x - 20) / (self.width - 40)) * 255)
         y_curve = round(((self.height - event.y - 20) / (self.height - 40)) * 255)
         x_curve = max(min(x_curve, 255), 0)
         y_curve = max(min(y_curve, 255), 0)
-        tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
+        if tab.curve_edition.label:
+            tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Edit Curve Widget
@@ -137,6 +152,9 @@ class EditCurveWidget(Gtk.DrawingArea):
                 + (t_height / 2),
             )
             cr.show_text(text)
+        if not self.curve:
+            return False
+
         cr.set_line_width(2)
         cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
         cr.move_to(self.delta, height - self.delta - self.curve.values[0])

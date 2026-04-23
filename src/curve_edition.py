@@ -148,7 +148,9 @@ class CurveEdition(Gtk.Box):
         self.fixed = Gtk.Fixed()
         if self.fixed is None:
             return
-        self.edit_curve = EditCurveWidget(self.curve_nb)
+        self.edit_curve = EditCurveWidget(
+            self.curve_nb, lightshow=self.lightshow, tabs=self.tabs
+        )
         self.fixed.put(self.edit_curve, 0, 0)
         self.label = Gtk.Label(label="")
         self.fixed.put(self.label, 0, 0)
