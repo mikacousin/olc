@@ -18,7 +18,7 @@ import typing
 
 from gi.repository import GLib, Gtk
 from olc.curve import Curves
-from olc.define import UNIVERSES, App
+from olc.define import UNIVERSES
 from olc.fader_bank import FaderBank
 from olc.independent import Independents
 from olc.patch import DMXPatch
@@ -43,6 +43,7 @@ class ShowFile:
         self.basename = (self.file.get_basename() or "") if self.file else ""
         self.modified = False
         self.recent_manager = Gtk.RecentManager.get_default()
+        self.on_modified_changed: typing.Callable[[str], None] | None = None
 
     def add_recent_file(self) -> None:
         """Add to Recent files
@@ -68,17 +69,15 @@ class ShowFile:
         """Set file as modified"""
         self.modified = True
         self.basename = (self.file.get_basename() or "") if self.file else ""
-        app = typing.cast(typing.Any, App())
-        if app.window:
-            app.window.header.set_title(f"{self.basename}*")
+        if self.on_modified_changed:
+            self.on_modified_changed(f"{self.basename}*")
 
     def set_not_modified(self) -> None:
         """Set file as not modified"""
         self.modified = False
         self.basename = (self.file.get_basename() or "") if self.file else ""
-        app = typing.cast(typing.Any, App())
-        if app.window:
-            app.window.header.set_title(self.basename)
+        if self.on_modified_changed:
+            self.on_modified_changed(self.basename)
 
 
 # pylint: disable=too-many-instance-attributes

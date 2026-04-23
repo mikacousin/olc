@@ -136,6 +136,7 @@ class Application(Gtk.Application):
         self.window = Window(self.tabs)
         self.tabs.window = self.window
         self.window.show_all()
+        self.lightshow.on_modified_changed = self.window.header.set_title
         # No selected channel on startup
         self.window.live_view.channels_view.flowbox.unselect_all()
 
