@@ -13,29 +13,53 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import array
+import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
+
+# pylint: disable=too-many-instance-attributes
 class IndependentsTab(Gtk.Paned):
     """Tab to edit independents"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         # Channels modified by user
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
+
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
 
-        self.channels_view = IndeChannelsView()
+        self.channels_view = IndeChannelsView(
+            lightshow=self.lightshow,
+            window=self.window,
+            settings=self.settings,
+            tabs=self.tabs,
+        )
         self.add(self.channels_view)
 
         # List of independents
         self.liststore = Gtk.ListStore(int, str, str)
-        for inde in App().lightshow.independents.independents:
+        for inde in self.lightshow.independents.independents:
             self.liststore.append([inde.number, inde.inde_type, inde.text])
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
@@ -62,14 +86,14 @@ class IndependentsTab(Gtk.Paned):
     def refresh(self) -> None:
         """Refresh display"""
         self.liststore.clear()
-        for inde in App().lightshow.independents.independents:
+        for inde in self.lightshow.independents.independents:
             self.liststore.append([inde.number, inde.inde_type, inde.text])
         path = Gtk.TreePath.new_first()
         self.treeview.set_cursor(path, None, False)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
-        App().tabs.close("indes")
+        self.tabs.close("indes")
 
     def text_edited(self, _widget: Gtk.Widget, path: int, text: str) -> None:
         """Independent text edited
@@ -80,7 +104,7 @@ class IndependentsTab(Gtk.Paned):
         """
         self.liststore[path][2] = text
         number = self.liststore[path][0]
-        App().lightshow.independents.independents[number - 1].text = text
+        self.lightshow.independents.independents[number - 1].text = text
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -94,7 +118,7 @@ class IndependentsTab(Gtk.Paned):
             function() or False
         """
         # Hack to know if user is editing something
-        widget = App().window.get_focus()
+        widget = self.window.get_focus()
         if widget and widget.get_path().is_type(Gtk.Entry):
             return False
 
@@ -104,7 +128,7 @@ class IndependentsTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            App().window.commandline.add_string(keyname)
+            self.window.commandline.add_string(keyname)
         if keyname in (
             "KP_1",
             "KP_2",
@@ -117,9 +141,9 @@ class IndependentsTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            App().window.commandline.add_string(keyname[3:])
+            self.window.commandline.add_string(keyname[3:])
         if keyname == "period":
-            App().window.commandline.add_string(".")
+            self.window.commandline.add_string(".")
         # Channels View
         self.channels_view.on_key_press(keyname)
 
@@ -129,16 +153,16 @@ class IndependentsTab(Gtk.Paned):
 
     def _keypress_escape(self) -> None:
         """Close Tab"""
-        App().tabs.close("indes")
+        self.tabs.close("indes")
 
     def _keypress_backspace(self) -> None:
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_equal(self) -> None:
         """@ level"""
         self.channels_view.at_level()
         self.channels_view.update()
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
@@ -162,10 +186,10 @@ class IndependentsTab(Gtk.Paned):
             for channel in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(channel + 1)
                 channels[channel + 1] = channel_widget.level
-            App().lightshow.independents.independents[number - 1].set_levels(channels)
-            App().lightshow.independents.update_channels()
-            App().lightshow.independents.independents[number - 1].update_dmx()
-            App().window.live_view.channels_view.flowbox.queue_draw()
+            self.lightshow.independents.independents[number - 1].set_levels(channels)
+            self.lightshow.independents.update_channels()
+            self.lightshow.independents.independents[number - 1].update_dmx()
+            self.window.live_view.channels_view.flowbox.queue_draw()
             self.channels_view.update()
 
             # Reset user modifications
@@ -175,10 +199,17 @@ class IndependentsTab(Gtk.Paned):
 class IndeChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        window: Window,
+        settings: Gio.Settings,
+        tabs: Tabs,
+    ) -> None:
         super().__init__(
-            lightshow=App().lightshow, window=App().window, settings=App().settings
+            lightshow=lightshow, window=window, settings=settings, tabs=tabs
         )
+        self.tabs = tabs
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level
@@ -187,7 +218,9 @@ class IndeChannelsView(ChannelsView):
             channel: Channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        App().tabs.tabs["indes"].user_channels[channel - 1] = level
+        typing.cast(IndependentsTab, self.tabs.tabs["indes"]).user_channels[
+            channel - 1
+        ] = level
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -219,13 +252,16 @@ class IndeChannelsView(ChannelsView):
             True or False
         """
         if (
-            not App().lightshow.independents.independents
-            or not App().tabs.tabs["indes"]
+            not self.lightshow.independents.independents
+            or not self.tabs
+            or not self.tabs.tabs["indes"]
         ):
             child.set_visible(False)
             return False
         # Find selected independent
-        path, _focus_column = App().tabs.tabs["indes"].treeview.get_cursor()
+        path, _focus_column = typing.cast(
+            IndependentsTab, self.tabs.tabs["indes"]
+        ).treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if self.view_mode == VIEW_MODES["Active"]:
@@ -248,8 +284,10 @@ class IndeChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = App().tabs.tabs["indes"].user_channels
-        channels = App().lightshow.independents.independents[row].levels
+        user_channels = typing.cast(
+            IndependentsTab, self.tabs.tabs["indes"]
+        ).user_channels
+        channels = self.lightshow.independents.independents[row].levels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)
@@ -281,7 +319,7 @@ class IndeChannelsView(ChannelsView):
         """
         # Return all patched channels
         channel = child.get_index() + 1
-        if not App().lightshow.patch.is_patched(channel):
+        if not self.lightshow.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self._filter_all(row, child)
@@ -298,8 +336,10 @@ class IndeChannelsView(ChannelsView):
         """
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = App().tabs.tabs["indes"].user_channels
-        channels = App().lightshow.independents.independents[row].levels
+        user_channels = typing.cast(
+            IndependentsTab, self.tabs.tabs["indes"]
+        ).user_channels
+        channels = self.lightshow.independents.independents[row].levels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 channel_widget.level = channels.get(channel_index + 1, 0)

@@ -16,13 +16,16 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import App
 from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
 
 if typing.TYPE_CHECKING:
-    from olc.fader_bank import FaderBank
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
+# pylint: disable=too-many-instance-attributes
 class FaderEdit(Gtk.Box):
     """Fader edition widget"""
 
@@ -32,12 +35,25 @@ class FaderEdit(Gtk.Box):
     type_button: Gtk.MenuButton
     contents_button: Gtk.MenuButton
 
-    def __init__(self, page: int, index: int) -> None:
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def __init__(
+        self,
+        page: int,
+        index: int,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.page = page
         self.index = index
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
 
-        fader = App().lightshow.fader_bank.faders[page][index]
+        fader = self.lightshow.fader_bank.faders[page][index]
 
         self.label = Gtk.Label()
 
@@ -95,14 +111,14 @@ class FaderEdit(Gtk.Box):
 
     def _fader_group(self) -> None:
         """Create edition of group fader"""
-        fader = App().lightshow.fader_bank.faders[self.page][self.index]
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
         self.set_name("fader_box")
         self.type_button.set_label("Group")
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
         vbox.set_border_width(5)
-        for group in App().lightshow.groups:
+        for group in self.lightshow.groups:
             button = Gtk.ModelButton()
             button.set_label(f"{group.index:g} : {group.text}")
             button.connect(
@@ -115,14 +131,14 @@ class FaderEdit(Gtk.Box):
 
     def _fader_sequence(self) -> None:
         """Create edition of sequence fader"""
-        fader = App().lightshow.fader_bank.faders[self.page][self.index]
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
         self.set_name("fader_box")
         self.type_button.set_label("Sequence")
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
         vbox.set_border_width(5)
-        for chaser in App().lightshow.chasers:
+        for chaser in self.lightshow.chasers:
             button = Gtk.ModelButton()
             button.set_label(f"{chaser.index:g} : {chaser.text}")
             button.connect(
@@ -135,14 +151,14 @@ class FaderEdit(Gtk.Box):
 
     def _fader_preset(self) -> None:
         """Create edition of preset fader"""
-        fader = App().lightshow.fader_bank.faders[self.page][self.index]
+        fader = self.lightshow.fader_bank.faders[self.page][self.index]
         self.label.set_markup(f"<span foreground='#e59933'>Fader {self.index}</span>")
         self.set_name("fader_box")
         self.type_button.set_label("Preset")
         self.contents_button = Gtk.MenuButton()
         vbox = Gtk.Box(spacing=1, orientation=Gtk.Orientation.VERTICAL)
         vbox.set_border_width(5)
-        for cue in App().lightshow.cues:
+        for cue in self.lightshow.cues:
             button = Gtk.ModelButton()
             button.set_label(f"{cue.memory} : {cue.text}")
             button.connect(
@@ -154,7 +170,7 @@ class FaderEdit(Gtk.Box):
         self._contents_popup(vbox)
 
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:
-        App().lightshow.fader_bank.set_fader(self.page, self.index, fader_type)
+        self.lightshow.fader_bank.set_fader(self.page, self.index, fader_type)
 
         self.remove(self.contents_button)
 
@@ -184,9 +200,7 @@ class FaderEdit(Gtk.Box):
         if self.contents_button:
             # Max label size: 30 characters
             self.contents_button.set_label(f"{widget.get_label():<.30}")
-        App().lightshow.fader_bank.set_fader(
-            self.page, self.index, fader_type, contents
-        )
+        self.lightshow.fader_bank.set_fader(self.page, self.index, fader_type, contents)
 
     def _contents_popup(self, vbox: Gtk.Box) -> None:
         """Create contents popover
@@ -211,9 +225,19 @@ class FaderEdit(Gtk.Box):
 class FaderTab(Gtk.Box):
     """Fader edition"""
 
-    def __init__(self, fader_bank: FaderBank) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         super().__init__()
-        self.fader_bank = fader_bank
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
+        self.fader_bank = self.lightshow.fader_bank
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.stack = Gtk.Stack()
@@ -241,7 +265,7 @@ class FaderTab(Gtk.Box):
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
-        App().tabs.close("faders")
+        self.tabs.close("faders")
 
     def _populate_faders(self) -> None:
         """Add faders to tab"""
@@ -252,7 +276,14 @@ class FaderTab(Gtk.Box):
             hbox2 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
             hbox2.set_homogeneous(True)
             for index in faders.keys():
-                fader_edit = FaderEdit(page, index)
+                fader_edit = FaderEdit(
+                    page,
+                    index,
+                    lightshow=self.lightshow,
+                    tabs=self.tabs,
+                    window=self.window,
+                    settings=self.settings,
+                )
                 # Display faders on 2 lines
                 if index <= self.fader_bank.max_fader_per_page / 2:
                     hbox1.add(fader_edit)
@@ -284,4 +315,4 @@ class FaderTab(Gtk.Box):
 
     def _keypress_escape(self) -> None:
         """Close Tab"""
-        App().tabs.close("faders")
+        self.tabs.close("faders")

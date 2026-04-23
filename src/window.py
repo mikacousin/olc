@@ -25,6 +25,7 @@ from olc.window_playback import MainPlaybackView
 
 if typing.TYPE_CHECKING:
     from gi.repository import GLib
+    from olc.tabs_manager import Tabs
 
 
 class CommandLine:
@@ -76,9 +77,10 @@ class CommandLine:
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
-    def __init__(self) -> None:
+    def __init__(self, tabs: Tabs) -> None:
         # Full screen
         self.full = False
+        self.tabs_manager = tabs
 
         super().__init__(title="Open Lighting Console", application=App())
         self.set_default_size(1400, 1080)
@@ -109,7 +111,7 @@ class Window(Gtk.ApplicationWindow):
         paned.set_position(800)
 
         # Channels
-        self.live_view = LiveView(self)
+        self.live_view = LiveView(self, self.tabs_manager)
         paned_chan = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         paned_chan.set_position(1100)
         paned_chan.pack1(self.live_view, resize=True, shrink=False)

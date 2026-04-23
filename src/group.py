@@ -12,14 +12,22 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
 from dataclasses import dataclass
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import App, is_non_nul_float
+from olc.define import is_non_nul_float
 from olc.fader import FaderType
+from olc.fader_edition import FaderTab
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.widgets.group import GroupWidget
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
 @dataclass
@@ -40,10 +48,17 @@ class Group:
 class GroupChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        window: Window,
+        settings: Gio.Settings,
+        tabs: Tabs,
+    ) -> None:
         super().__init__(
-            lightshow=App().lightshow, window=App().window, settings=App().settings
+            lightshow=lightshow, window=window, settings=settings, tabs=tabs
         )
+        self.tabs = tabs
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level
@@ -52,10 +67,14 @@ class GroupChannelsView(ChannelsView):
             channel: Channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
+        if not self.tabs or not self.lightshow:
+            return
+        selected_group = typing.cast(
+            GroupTab, self.tabs.tabs["groups"]
+        ).flowbox.get_selected_children()[0]
         index = selected_group.get_index()
-        App().lightshow.groups[index].channels[channel] = level
-        App().lightshow.set_modified()
+        self.lightshow.groups[index].channels[channel] = level
+        self.lightshow.set_modified()
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -64,18 +83,22 @@ class GroupChannelsView(ChannelsView):
             step: Step level
             direction: Up or Down
         """
+        if not self.tabs or not self.lightshow:
+            return
         channels = self.get_selected_channels()
-        selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()[0]
+        selected_group = typing.cast(
+            GroupTab, self.tabs.tabs["groups"]
+        ).flowbox.get_selected_children()[0]
         index = selected_group.get_index()
         for channel in channels:
-            level = App().lightshow.groups[index].channels.get(channel, 0)
+            level = self.lightshow.groups[index].channels.get(channel, 0)
             if direction == Gdk.ScrollDirection.UP:
                 level = min(level + step, 255)
             elif direction == Gdk.ScrollDirection.DOWN:
                 level = max(level - step, 0)
-            App().lightshow.groups[index].channels[channel] = level
+            self.lightshow.groups[index].channels[channel] = level
         self.update()
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Select channels to display
@@ -88,12 +111,14 @@ class GroupChannelsView(ChannelsView):
         """
         # Find selected group
         selected_group = None
-        if App().tabs.tabs["groups"]:
-            selected_group = App().tabs.tabs["groups"].flowbox.get_selected_children()
+        if self.tabs and self.tabs.tabs["groups"]:
+            selected_group = typing.cast(
+                GroupTab, self.tabs.tabs["groups"]
+            ).flowbox.get_selected_children()
         if selected_group:
             group_number = selected_group[0].get_child().number
             group = None
-            for group in App().lightshow.groups:
+            for group in self.lightshow.groups:
                 if group.index == group_number:
                     break
             if not group:
@@ -142,7 +167,7 @@ class GroupChannelsView(ChannelsView):
             True (visible) or False (not visible)
         """
         channel = child.get_index() + 1
-        if not App().lightshow.patch.is_patched(channel):
+        if self.lightshow and not self.lightshow.patch.is_patched(channel):
             child.set_visible(False)
             return False
         return self.__filter_all(group, child)
@@ -168,6 +193,7 @@ class GroupChannelsView(ChannelsView):
         return False
 
 
+# pylint: disable=too-many-instance-attributes
 class GroupTab(Gtk.Paned):
     """Groups edition"""
 
@@ -176,13 +202,28 @@ class GroupTab(Gtk.Paned):
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         self.last_group_selected = ""
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
 
-        self.channels_view = GroupChannelsView()
+        self.channels_view = GroupChannelsView(
+            lightshow=self.lightshow,
+            window=self.window,
+            settings=self.settings,
+            tabs=self.tabs,
+        )
         self.add1(self.channels_view)
 
         self.scrolled = Gtk.ScrolledWindow()
@@ -201,10 +242,10 @@ class GroupTab(Gtk.Paned):
         self.flowbox.set_activate_on_single_click(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add groups to FlowBox
-        for i, _ in enumerate(App().lightshow.groups):
+        for i, _ in enumerate(self.lightshow.groups):
             self.flowbox.add(
                 GroupWidget(
-                    App().lightshow.groups[i].index, App().lightshow.groups[i].text
+                    self.lightshow.groups[i].index, self.lightshow.groups[i].text
                 )
             )
         self.scrolled.add(self.flowbox)
@@ -218,11 +259,11 @@ class GroupTab(Gtk.Paned):
         self.populate_tab()
         self.channels_view.update()
         self.flowbox.invalidate_filter()
-        App().window.show_all()
+        self.window.show_all()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab with the icon clicked"""
-        App().tabs.close("groups")
+        self.tabs.close("groups")
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -241,7 +282,7 @@ class GroupTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            App().window.commandline.add_string(keyname)
+            self.window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -255,10 +296,10 @@ class GroupTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            App().window.commandline.add_string(keyname[3:])
+            self.window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            App().window.commandline.add_string(".")
+            self.window.commandline.add_string(".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -268,25 +309,25 @@ class GroupTab(Gtk.Paned):
         return False
 
     def _keypress_backspace(self) -> None:
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_escape(self) -> None:
         """Close Tab"""
-        App().tabs.close("groups")
+        self.tabs.close("groups")
 
     def _keypress_l(self) -> None:
         """Open Popover to change label group"""
         if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             flowboxchild.get_child().popover.popup()
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_right(self) -> None:
         """Next Group"""
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
-                App().window.set_focus(child)
+                self.window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
@@ -295,7 +336,7 @@ class GroupTab(Gtk.Paned):
             int(self.last_group_selected) + 1
         ):
             self.flowbox.select_child(child)
-            App().window.set_focus(child)
+            self.window.set_focus(child)
             self.channels_view.flowbox.unselect_all()
             self.channels_view.update()
             self.last_group_selected = str(int(self.last_group_selected) + 1)
@@ -306,7 +347,7 @@ class GroupTab(Gtk.Paned):
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
-                App().window.set_focus(child)
+                self.window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
@@ -314,7 +355,7 @@ class GroupTab(Gtk.Paned):
         elif int(self.last_group_selected) > 0:
             child = self.flowbox.get_child_at_index(int(self.last_group_selected) - 1)
             self.flowbox.select_child(child)
-            App().window.set_focus(child)
+            self.window.set_focus(child)
             self.channels_view.flowbox.unselect_all()
             self.channels_view.update()
             self.last_group_selected = str(int(self.last_group_selected) - 1)
@@ -325,7 +366,7 @@ class GroupTab(Gtk.Paned):
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
-                App().window.set_focus(child)
+                self.window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
@@ -339,7 +380,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
-                App().window.set_focus(child)
+                self.window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
                 self.last_group_selected = str(index)
@@ -350,7 +391,7 @@ class GroupTab(Gtk.Paned):
         if self.last_group_selected == "":
             if child := self.flowbox.get_child_at_index(0):
                 self.flowbox.select_child(child)
-                App().window.set_focus(child)
+                self.window.set_focus(child)
                 self.last_group_selected = "0"
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
@@ -364,7 +405,7 @@ class GroupTab(Gtk.Paned):
                 self.flowbox.unselect_all()
                 index = child.get_index()
                 self.flowbox.select_child(child)
-                App().window.set_focus(child)
+                self.window.set_focus(child)
                 self.channels_view.flowbox.unselect_all()
                 self.channels_view.update()
                 self.last_group_selected = str(index)
@@ -374,7 +415,7 @@ class GroupTab(Gtk.Paned):
         """Select Group"""
         self.flowbox.unselect_all()
 
-        keystring = App().window.commandline.get_string()
+        keystring = self.window.commandline.get_string()
         if keystring != "":
             group = float(keystring)
             flowbox_children = self.flowbox.get_children()
@@ -383,7 +424,7 @@ class GroupTab(Gtk.Paned):
                 if group_widget.number == group:
                     index = flowbox_child.get_index()
                     self.flowbox.select_child(flowbox_child)
-                    App().window.set_focus(flowbox_child)
+                    self.window.set_focus(flowbox_child)
                     self.last_group_selected = str(index)
                     break
         # Deselect all channels
@@ -393,15 +434,15 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.channels_view.last_selected_channel = ""
 
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _update_fader_level(self) -> None:
         """Update selected fader channels levels"""
         if selected := self.flowbox.get_selected_children():
             flowboxchild = selected[0]
             index = flowboxchild.get_index()
-            group = App().lightshow.groups[index]
-            for page in App().lightshow.fader_bank.faders.values():
+            group = self.lightshow.groups[index]
+            for page in self.lightshow.fader_bank.faders.values():
                 for fader in page.values():
                     if fader.contents is group:
                         fader.set_level(fader.level)
@@ -412,46 +453,46 @@ class GroupTab(Gtk.Paned):
         self.channels_view.at_level()
         self.channels_view.update()
         self._update_fader_level()
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
         self._update_fader_level()
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
         self._update_fader_level()
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_n(self) -> None:
         """New Group"""
-        keystring = App().window.commandline.get_string()
+        keystring = self.window.commandline.get_string()
         # If no group number, use the next one
         if keystring == "":
             group_nb = (
                 1.0
-                if len(App().lightshow.groups) == 0
-                else App().lightshow.groups[-1].index + 1.0
+                if len(self.lightshow.groups) == 0
+                else self.lightshow.groups[-1].index + 1.0
             )
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
         else:
-            App().window.commandline.set_string("")
+            self.window.commandline.set_string("")
             return
 
-        for group in App().lightshow.groups:
+        for group in self.lightshow.groups:
             if group.index == group_nb:
-                App().window.commandline.set_string("")
+                self.window.commandline.set_string("")
                 return
 
         channels: dict[int, int] = {}
         txt = str(group_nb)
-        App().lightshow.groups.append(Group(group_nb, channels, txt))
+        self.lightshow.groups.append(Group(group_nb, channels, txt))
         # Insert group widget
         flowbox_children = self.flowbox.get_children()
         i = len(flowbox_children)
@@ -462,20 +503,20 @@ class GroupTab(Gtk.Paned):
                 break
         self.flowbox.insert(
             GroupWidget(
-                App().lightshow.groups[-1].index, App().lightshow.groups[-1].text
+                self.lightshow.groups[-1].index, self.lightshow.groups[-1].text
             ),
             i,
         )
         flowboxchild = self.flowbox.get_child_at_index(i)
         flowboxchild.show_all()
         self.flowbox.select_child(flowboxchild)
-        App().window.set_focus(flowboxchild)
+        self.window.set_focus(flowboxchild)
         self.last_group_selected = str(i)
         self.channels_view.flowbox.unselect_all()
         self.channels_view.update()
 
-        App().window.commandline.set_string("")
-        App().lightshow.set_modified()
+        self.window.commandline.set_string("")
+        self.lightshow.set_modified()
 
     def _keypress_delete(self) -> None:
         """Delete selected group"""
@@ -485,7 +526,7 @@ class GroupTab(Gtk.Paned):
         flowboxchild = selected[0]
         index = flowboxchild.get_index()
         flowboxchild.destroy()
-        if index + 1 == len(App().lightshow.groups):
+        if index + 1 == len(self.lightshow.groups):
             flowboxchild = self.flowbox.get_child_at_index(index - 1)
             self.last_group_selected = str(index - 1)
         else:
@@ -494,21 +535,17 @@ class GroupTab(Gtk.Paned):
             self.flowbox.select_child(flowboxchild)
         self.channels_view.update()
         # Update faders
-        group = App().lightshow.groups[index]
-        fader_bank = App().lightshow.fader_bank
+        group = self.lightshow.groups[index]
+        fader_bank = self.lightshow.fader_bank
         for page, faders in fader_bank.faders.items():
             for fader in faders.values():
                 if fader.contents is group:
                     fader_bank.set_fader(page, fader.index, FaderType.NONE, None)
-                    if App().tabs.tabs["faders"]:
-                        App().tabs.tabs["faders"].channels_view.update()
-                        liststore = App().tabs.tabs["faders"].liststores[page - 1]
-                        treeiter = liststore.get_iter(fader.index - 1)
-                        liststore.set_value(treeiter, 1, "")
-                        liststore.set_value(treeiter, 2, "")
-                        liststore.set_value(treeiter, 3, "")
+                    fader_tab = typing.cast(FaderTab, self.tabs.tabs["faders"])
+                    if fader_tab:
+                        fader_tab.refresh()
         # Remove group
-        App().lightshow.groups.pop(index)
-        if not App().lightshow.groups:
+        self.lightshow.groups.pop(index)
+        if not self.lightshow.groups:
             self.last_group_selected = ""
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()

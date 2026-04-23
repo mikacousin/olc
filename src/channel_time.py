@@ -18,11 +18,15 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import App
 from olc.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
     from olc.sequence import Sequence
+    from olc.sequence_edition import SequenceTab
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
 class ChannelTime:
@@ -72,17 +76,36 @@ class ChannelTime:
             self.time = time
 
 
+# pylint: disable=too-many-instance-attributes
 class ChanneltimeTab(Gtk.Paned):
     """Channels time edition"""
 
-    def __init__(self, sequence: Sequence, position: int) -> None:
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def __init__(
+        self,
+        sequence: Sequence,
+        position: int,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         self.sequence = sequence
         self.position = position
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
-        self.channels_view = CTChannelsView()
+        self.channels_view = CTChannelsView(
+            lightshow=self.lightshow,
+            window=self.window,
+            settings=self.settings,
+            tabs=self.tabs,
+        )
         self.add1(self.channels_view)
 
         self.scrolled2 = Gtk.ScrolledWindow()
@@ -133,7 +156,7 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _update_sequence_tab(self) -> None:
         """Update Sequence Tab if open on the active sequence"""
-        sequences_tab = App().tabs.tabs["sequences"]
+        sequences_tab = typing.cast("SequenceTab", self.tabs.tabs["sequences"])
         if sequences_tab:
             seq_path, _ = sequences_tab.treeview1.get_cursor()
             if not seq_path:
@@ -157,15 +180,15 @@ class ChanneltimeTab(Gtk.Paned):
 
     def _update_main_playback(self) -> None:
         """Redraw Main Playback metrics if necessary"""
-        if self.sequence == App().lightshow.main_playback:
+        if self.sequence == self.lightshow.main_playback:
             path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
             ct_nb = len(self.step.channel_time)
-            App().window.playback.cues_liststore1[path1][8] = (
+            self.window.playback.cues_liststore1[path1][8] = (
                 "" if ct_nb == 0 else str(ct_nb)
             )
-            if App().lightshow.main_playback.position + 1 == int(self.position):
-                App().window.playback.sequential.total_time = self.step.total_time
-                App().window.playback.sequential.queue_draw()
+            if self.lightshow.main_playback.position + 1 == int(self.position):
+                self.window.playback.sequential.total_time = self.step.total_time
+                self.window.playback.sequential.queue_draw()
 
     def delay_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
         """Delay changed
@@ -192,7 +215,7 @@ class ChanneltimeTab(Gtk.Paned):
             self._update_total_time()
             self._update_main_playback()
 
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def time_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
         """Time changed
@@ -219,7 +242,7 @@ class ChanneltimeTab(Gtk.Paned):
             self._update_total_time()
             self._update_main_playback()
 
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def on_channeltime_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select a Channel Time"""
@@ -234,7 +257,7 @@ class ChanneltimeTab(Gtk.Paned):
             time = self.step.channel_time[channel].time
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
-        App().tabs.close("channel_time")
+        self.tabs.close("channel_time")
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -253,7 +276,7 @@ class ChanneltimeTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            App().window.commandline.add_string(keyname)
+            self.window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -267,10 +290,10 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            App().window.commandline.add_string(keyname[3:])
+            self.window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            App().window.commandline.add_string(".")
+            self.window.commandline.add_string(".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -288,10 +311,10 @@ class ChanneltimeTab(Gtk.Paned):
             time = self.step.channel_time[channel].time
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
-        App().tabs.close("channel_time")
+        self.tabs.close("channel_time")
 
     def _keypress_backspace(self) -> None:
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_q(self) -> None:
         """Previous Channel Time"""
@@ -341,10 +364,17 @@ class ChanneltimeTab(Gtk.Paned):
 class CTChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        window: Window,
+        settings: Gio.Settings,
+        tabs: Tabs,
+    ) -> None:
         super().__init__(
-            lightshow=App().lihgtshow, window=App().window, settings=App().settings
+            lightshow=lightshow, window=window, settings=settings, tabs=tabs
         )
+        self.tabs = tabs
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -364,23 +394,25 @@ class CTChannelsView(ChannelsView):
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
-
         Args:
             child: Parent of Channel Widget
-
         Returns:
             True or False
         """
-        if not App().tabs.tabs["channel_time"]:
+        if not self.tabs or not self.tabs.tabs["channel_time"]:
             return False
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        step = App().tabs.tabs["channel_time"].step
+        step = typing.cast(ChanneltimeTab, self.tabs.tabs["channel_time"]).step
         channels = step.cue.channels
-        path, _focus_column = App().tabs.tabs["channel_time"].treeview.get_cursor()
+        path, _focus_column = typing.cast(
+            ChanneltimeTab, self.tabs.tabs["channel_time"]
+        ).treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-            channel = App().tabs.tabs["channel_time"].liststore[row][0]
+            channel = typing.cast(
+                ChanneltimeTab, self.tabs.tabs["channel_time"]
+            ).liststore[row][0]
             if channel - 1 == channel_index or child.is_selected():
                 channel_widget.level = channels.get(channel_index, 0)
                 channel_widget.next_level = channels.get(channel_index, 0)

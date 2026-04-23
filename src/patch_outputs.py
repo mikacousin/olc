@@ -16,18 +16,38 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import NB_UNIVERSES, UNIVERSES, App, is_int, is_non_nul_int
+from olc.define import NB_UNIVERSES, UNIVERSES, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.backends import DMXBackend
+    from olc.lightshow import LightShow
     from olc.patch import DMXPatch
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
+# pylint: disable=too-many-instance-attributes
 class PatchOutputsTab(Gtk.Box):
     """Tab to Patch by outputs"""
 
-    def __init__(self, patch: DMXPatch) -> None:
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def __init__(
+        self,
+        patch: DMXPatch,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+        backend: DMXBackend,
+    ) -> None:
         self.patch = patch
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
+        self.backend = backend
         self.test = False
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -59,10 +79,10 @@ class PatchOutputsTab(Gtk.Box):
                 output = PatchWidget(
                     universe,
                     out,
-                    App().lightshow,
+                    self.lightshow,
                     self,
-                    App().window.commandline,
-                    App().backend,
+                    self.window.commandline,
+                    self.backend,
                 )
                 self.outputs.extend([output])
                 self.flowbox.add(output)
@@ -77,7 +97,7 @@ class PatchOutputsTab(Gtk.Box):
         self.pack_start(scrolled, True, True, 0)
 
         # Register callback for network DMX updates
-        App().backend.dmx.add_output_callback(self.on_network_dmx_changed)
+        self.backend.dmx.add_output_callback(self.on_network_dmx_changed)
 
     def on_button_clicked(self, widget: Gtk.Widget) -> None:
         """On buttons clicked
@@ -90,9 +110,9 @@ class PatchOutputsTab(Gtk.Box):
         if button_label == "Unpatch all":
             self.patch.patch_empty()
             self.flowbox.queue_draw()
-            App().window.live_view.channels_view.update()
-            App().backend.dmx.user_outputs.clear()
-            App().backend.dmx.all_outputs_at_zero()
+            self.window.live_view.channels_view.update()
+            self.backend.dmx.user_outputs.clear()
+            self.backend.dmx.all_outputs_at_zero()
 
         elif button_label == "Patch 1:1":
             self.patch.patch_1on1()
@@ -100,14 +120,14 @@ class PatchOutputsTab(Gtk.Box):
 
             for univ in range(NB_UNIVERSES):
                 for channel in range(512):
-                    level = App().backend.dmx.frame[univ][channel]
-                    widget = App().window.live_view.channels_view.get_channel_widget(
+                    level = self.backend.dmx.frame[univ][channel]
+                    widget = self.window.live_view.channels_view.get_channel_widget(
                         channel + 1
                     )
                     widget.level = level
                     widget.queue_draw()
-            App().window.live_view.channels_view.update()
-        App().lightshow.set_modified()
+            self.window.live_view.channels_view.update()
+        self.lightshow.set_modified()
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -117,8 +137,8 @@ class PatchOutputsTab(Gtk.Box):
         """Close Tab on close clicked"""
         if self.test:
             self._stop_test()
-        App().backend.dmx.remove_output_callback(self.on_network_dmx_changed)
-        App().tabs.close("patch_outputs")
+        self.backend.dmx.remove_output_callback(self.on_network_dmx_changed)
+        self.tabs.close("patch_outputs")
 
     def select_outputs(self) -> None:
         """Select Outputs"""
@@ -127,7 +147,7 @@ class PatchOutputsTab(Gtk.Box):
             output_index -= 1
             child = self.flowbox.get_child_at_index(output_index)
             self.flowbox.select_child(child)
-            App().window.set_focus(child)
+            self.window.set_focus(child)
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -146,7 +166,7 @@ class PatchOutputsTab(Gtk.Box):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            App().window.commandline.add_string(keyname)
+            self.window.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -160,10 +180,10 @@ class PatchOutputsTab(Gtk.Box):
             "KP_9",
             "KP_0",
         ):
-            App().window.commandline.add_string(keyname[3:])
+            self.window.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            App().window.commandline.add_string(".")
+            self.window.commandline.add_string(".")
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
@@ -173,12 +193,12 @@ class PatchOutputsTab(Gtk.Box):
         """Close Tab"""
         if self.test:
             self._stop_test()
-        App().backend.dmx.remove_output_callback(self.on_network_dmx_changed)
-        App().tabs.close("patch_outputs")
+        self.backend.dmx.remove_output_callback(self.on_network_dmx_changed)
+        self.tabs.close("patch_outputs")
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _change_test_output(self, old: int, new: int) -> None:
         """Test a new output
@@ -191,14 +211,14 @@ class PatchOutputsTab(Gtk.Box):
         child = self.flowbox.get_child_at_index(old)
         output = child.get_child().output
         universe = child.get_child().universe
-        level = App().backend.dmx.user_outputs.get((output, universe))
+        level = self.backend.dmx.user_outputs.get((output, universe))
         # Old output at 0
-        App().backend.dmx.send_user_output(output, universe, 0)
+        self.backend.dmx.send_user_output(output, universe, 0)
         # New output at old output level
         child = self.flowbox.get_child_at_index(new)
         output = child.get_child().output
         universe = child.get_child().universe
-        App().backend.dmx.send_user_output(output, universe, level)
+        self.backend.dmx.send_user_output(output, universe, level)
 
     def _keypress_right(self) -> None:
         """Next Output"""
@@ -206,13 +226,13 @@ class PatchOutputsTab(Gtk.Box):
         if self.patch.by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
-            App().window.commandline.set_string("1")
+            self.window.commandline.set_string("1")
             self.patch.by_outputs.select_output()
         elif self.patch.by_outputs.last < (NB_UNIVERSES * 512):
             old_output = self.patch.by_outputs.last
             new_output = old_output + 1
             output, universe = self.patch.by_outputs.get_output_universe(new_output)
-            App().window.commandline.set_string(f"{output}.{universe}")
+            self.window.commandline.set_string(f"{output}.{universe}")
             self.patch.by_outputs.select_output()
             if self.test:
                 self._change_test_output(old_output, new_output)
@@ -223,13 +243,13 @@ class PatchOutputsTab(Gtk.Box):
         if self.patch.by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
-            App().window.commandline.set_string("1")
+            self.window.commandline.set_string("1")
             self.patch.by_outputs.select_output()
         elif self.patch.by_outputs.last > 1:
             old_output = self.patch.by_outputs.last
             new_output = old_output - 1
             output, universe = self.patch.by_outputs.get_output_universe(new_output)
-            App().window.commandline.set_string(f"{output}.{universe}")
+            self.window.commandline.set_string(f"{output}.{universe}")
             self.patch.by_outputs.select_output()
             if self.test:
                 self._change_test_output(old_output, new_output)
@@ -240,7 +260,7 @@ class PatchOutputsTab(Gtk.Box):
         if self.patch.by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
-            App().window.commandline.set_string("1")
+            self.window.commandline.set_string("1")
             self.patch.by_outputs.select_output()
         else:
             old_output = self.patch.by_outputs.last
@@ -252,7 +272,7 @@ class PatchOutputsTab(Gtk.Box):
                 index = child.get_index()
                 new_output = index + 1
                 output, universe = self.patch.by_outputs.get_output_universe(new_output)
-                App().window.commandline.set_string(f"{output}.{universe}")
+                self.window.commandline.set_string(f"{output}.{universe}")
                 self.patch.by_outputs.select_output()
                 if self.test:
                     self._change_test_output(old_output, new_output)
@@ -263,7 +283,7 @@ class PatchOutputsTab(Gtk.Box):
         if self.patch.by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
-            App().window.commandline.set_string("1")
+            self.window.commandline.set_string("1")
             self.patch.by_outputs.select_output()
         else:
             old_output = self.patch.by_outputs.last
@@ -275,7 +295,7 @@ class PatchOutputsTab(Gtk.Box):
                 index = child.get_index()
                 new_output = index + 1
                 output, universe = self.patch.by_outputs.get_output_universe(new_output)
-                App().window.commandline.set_string(f"{output}.{universe}")
+                self.window.commandline.set_string(f"{output}.{universe}")
                 self.patch.by_outputs.select_output()
                 if self.test:
                     self._change_test_output(old_output, new_output)
@@ -286,32 +306,33 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_equal(self) -> None:
         """Output @ level"""
-        keystring = App().window.commandline.get_string()
+        keystring = self.window.commandline.get_string()
         if not is_int(keystring):
             return
         level = int(keystring)
-        if App().settings.get_boolean("percent"):
+        if self.settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
         outputs = self.get_selected_outputs()
         for output in outputs:
             out = output[0]
             univ = output[1]
-            App().backend.dmx.send_user_output(out, univ, level)
+            self.backend.dmx.send_user_output(out, univ, level)
+
             index = UNIVERSES.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _keypress_t(self) -> None:
         """Test Output @ level"""
         if self.test:
             self._stop_test()
             return
-        keystring = App().window.commandline.get_string()
+        keystring = self.window.commandline.get_string()
         if not is_int(keystring):
             return
         level = int(keystring)
-        if App().settings.get_boolean("percent"):
+        if self.settings.get_boolean("percent"):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
         selected_outputs = self.get_selected_outputs()
@@ -319,15 +340,16 @@ class PatchOutputsTab(Gtk.Box):
             output = selected_outputs[0]
             out = output[0]
             univ = output[1]
-            App().backend.dmx.send_user_output(out, univ, level)
+            self.backend.dmx.send_user_output(out, univ, level)
+
             index = UNIVERSES.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
         self.test = True
-        App().window.commandline.set_string("")
+        self.window.commandline.set_string("")
 
     def _stop_test(self) -> None:
         """Stop test mode"""
-        App().backend.dmx.user_outputs.clear()
+        self.backend.dmx.user_outputs.clear()
         self.test = False
 
     def get_selected_outputs(self) -> list[tuple[int, int]]:
@@ -378,13 +400,13 @@ class PatchOutputsTab(Gtk.Box):
         several = False
         # Find Selected Outputs
         sel = self.flowbox.get_selected_children()
-        keystring = App().window.commandline.get_string()
+        keystring = self.window.commandline.get_string()
         if keystring and (not sel or not is_int(keystring)):
-            App().window.commandline.set_string("")
+            self.window.commandline.set_string("")
             return
         # If several outputs: choose how to patch
         if len(sel) > 1 and is_non_nul_int(keystring):
-            dialog = SeveralOutputsDialog(App().window, int(keystring), len(sel))
+            dialog = SeveralOutputsDialog(self.window, int(keystring), len(sel))
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 several = True
@@ -392,8 +414,8 @@ class PatchOutputsTab(Gtk.Box):
 
         self.patch.by_outputs.patch_channel(several)
 
-        App().lightshow.set_modified()
-        App().window.commandline.set_string("")
+        self.lightshow.set_modified()
+        self.window.commandline.set_string("")
 
     def on_network_dmx_changed(self, universe: int, outputs: list[int]) -> None:
         """Called when a network backend updates DMX levels.
@@ -402,11 +424,11 @@ class PatchOutputsTab(Gtk.Box):
             universe: Universe number
             outputs: List of changed output indices
         """
-        idx = UNIVERSES.index(universe)
         for output in outputs:
             if self.patch.outputs.get(universe) and self.patch.outputs[universe].get(
                 output + 1
             ):
+                idx = UNIVERSES.index(universe)
                 self.outputs[output + (idx * 512)].queue_draw()
 
 

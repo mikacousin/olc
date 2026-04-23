@@ -46,7 +46,13 @@ class Tabs:
             "track_channels": None,
         }
 
-    def open(self, tab_name: str, widget: Gtk.Paned, label: str, *args: object) -> None:
+    def open(
+        self,
+        tab_name: str,
+        widget: typing.Any,  # noqa: ANN401
+        label: str,
+        *args: object,
+    ) -> None:
         """Open tab
 
         Args:

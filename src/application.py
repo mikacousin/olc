@@ -103,15 +103,15 @@ class Application(Gtk.Application):
         )
         css_provider = Gtk.CssProvider()
         css_provider.load_from_file(css_provider_file)
-        screen = Gdk.Screen.get_default()
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(
-            screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
-        )
+        if screen := Gdk.Screen.get_default():
+            style_context = Gtk.StyleContext()
+            style_context.add_provider_for_screen(
+                screen, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_USER
+            )
 
         # Change to dark theme
-        settings = Gtk.Settings.get_default()
-        settings.set_property("gtk-application-prefer-dark-theme", True)
+        if settings := Gtk.Settings.get_default():
+            settings.set_property("gtk-application-prefer-dark-theme", True)
 
         # To store settings
         self.settings = Gio.Settings.new("com.github.mikacousin.olc")
@@ -132,8 +132,9 @@ class Application(Gtk.Application):
 
     def do_activate(self) -> None:
         # Create Main Window
-        self.window = Window()
-        self.tabs = Tabs(self.window)
+        self.tabs = Tabs(None)
+        self.window = Window(self.tabs)
+        self.tabs.window = self.window
         self.window.show_all()
         # No selected channel on startup
         self.window.live_view.channels_view.flowbox.unselect_all()
@@ -492,48 +493,95 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Outputs Tab"""
-        self.tabs.open(
-            "patch_outputs", PatchOutputsTab, "Patch Outputs", self.lightshow.patch
-        )
+        if self.tabs:
+            self.tabs.open(
+                "patch_outputs",
+                PatchOutputsTab,
+                "Patch Outputs",
+                self.lightshow.patch,
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+                self.backend,
+            )
 
     def _patch_channels(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Channels Tab"""
-        self.tabs.open(
-            "patch_channels", PatchChannelsTab, "Patch Channels", self.lightshow.patch
-        )
+        if self.tabs:
+            self.tabs.open(
+                "patch_channels",
+                PatchChannelsTab,
+                "Patch Channels",
+                self.lightshow.patch,
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+                self.backend,
+            )
 
     def track_channels(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Track Channels Tab"""
-        self.tabs.open("track_channels", TrackChannelsTab, "Track Channels")
+        if self.tabs:
+            self.tabs.open(
+                "track_channels",
+                TrackChannelsTab,
+                "Track Channels",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def memories_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Memories Tab"""
-        self.tabs.open(
-            "memories",
-            CuesEditionTab,
-            "Memories",
-            self.lightshow,
-            self.tabs,
-            self.window,
-        )
+        if self.tabs:
+            self.tabs.open(
+                "memories",
+                CuesEditionTab,
+                "Memories",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def groups_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Groups Tab"""
-        self.tabs.open("groups", GroupTab, "Groups")
+        if self.tabs:
+            self.tabs.open(
+                "groups",
+                GroupTab,
+                "Groups",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def sequences(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Sequences Tab"""
-        self.tabs.open("sequences", SequenceTab, "Sequences")
+        if self.tabs:
+            self.tabs.open(
+                "sequences",
+                SequenceTab,
+                "Sequences",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def channeltime(self, sequence: int, step: int) -> None:
         """Create Channel Time Tab
@@ -542,25 +590,63 @@ class Application(Gtk.Application):
             sequence: Sequence number
             step: Position in sequence
         """
-        self.tabs.open("channel_time", ChanneltimeTab, "Channel Time", sequence, step)
+        if self.tabs:
+            self.tabs.open(
+                "channel_time",
+                ChanneltimeTab,
+                "Channel Time",
+                sequence,
+                step,
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def _curves(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Curves Edition Tab"""
-        self.tabs.open("curves", CurvesTab, "Curves")
+        if self.tabs:
+            self.tabs.open(
+                "curves",
+                CurvesTab,
+                "Curves",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def _faders(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Faders Tab"""
-        self.tabs.open("faders", FaderTab, "Faders", self.lightshow.fader_bank)
+        if self.tabs:
+            self.tabs.open(
+                "faders",
+                FaderTab,
+                "Faders",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def _independents(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Independents Tab"""
-        self.tabs.open("indes", IndependentsTab, "Independents")
+        if self.tabs:
+            self.tabs.open(
+                "indes",
+                IndependentsTab,
+                "Independents",
+                self.lightshow,
+                self.tabs,
+                self.window,
+                self.settings,
+            )
 
     def _virtual_console(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
@@ -575,17 +661,18 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Settings"""
-        self.tabs.open(
-            "settings",
-            SettingsTab,
-            "Settings",
-            self.settings,
-            self.tabs,
-            self.midi,
-            self.backend,
-            self.window,
-            self.osc,
-        )
+        if self.tabs:
+            self.tabs.open(
+                "settings",
+                SettingsTab,
+                "Settings",
+                self.settings,
+                self.tabs,
+                self.midi,
+                self.backend,
+                self.window,
+                self.osc,
+            )
 
     def _shortcuts(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

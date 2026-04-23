@@ -20,17 +20,18 @@ from olc.define import UNIVERSES, App
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
+    from olc.tabs_manager import Tabs
     from olc.window import Window
 
 
 class LiveView(Gtk.Notebook):
     """Live Channels View"""
 
-    def __init__(self, window: Window) -> None:
+    def __init__(self, window: Window, tabs: Tabs) -> None:
         super().__init__()
         self.set_group_name("olc")
 
-        self.channels_view = LiveChannelsView(window)
+        self.channels_view = LiveChannelsView(window, tabs)
 
         self.append_page(self.channels_view, Gtk.Label(label="Channels"))
         self.set_tab_reorderable(self.channels_view, True)
@@ -92,9 +93,12 @@ class LiveView(Gtk.Notebook):
 class LiveChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self, window: Window) -> None:
+    def __init__(self, window: Window, tabs: Tabs) -> None:
         super().__init__(
-            lightshow=App().lightshow, window=window, settings=App().settings
+            lightshow=App().lightshow,
+            window=window,
+            settings=App().settings,
+            tabs=tabs,
         )
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:

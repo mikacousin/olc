@@ -12,18 +12,22 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
 import array
 import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, App, is_float
+from olc.define import MAX_CHANNELS, is_float
 from olc.dialog import ConfirmationDialog
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gio
     from olc.lightshow import LightShow
+    from olc.sequence_edition import SequenceTab
     from olc.tabs_manager import Tabs
     from olc.window import Window
 
@@ -32,10 +36,17 @@ if typing.TYPE_CHECKING:
 class CuesEditionTab(Gtk.Paned):
     """Cues edition"""
 
-    def __init__(self, lightshow: LightShow, tabs: Tabs, window: Window) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         self.lightshow = lightshow
         self.tabs = tabs
         self.window = window
+        self.settings = settings
 
         # Channels modified by user
         self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
@@ -43,7 +54,9 @@ class CuesEditionTab(Gtk.Paned):
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(500)
 
-        self.channels_view = CueChannelsView(self.lightshow, self.tabs, self.window)
+        self.channels_view = CueChannelsView(
+            self.lightshow, self.tabs, self.window, self.settings
+        )
         self.add(self.channels_view)
 
         # List of Cues
@@ -248,8 +261,9 @@ class CuesEditionTab(Gtk.Paned):
             self.window.playback.update_sequence_display()
             # Update Sequence Edition Tab if exist
             if self.tabs.tabs["sequences"]:
-                self.tabs.tabs["sequences"].liststore1.clear()
-                self.tabs.tabs["sequences"].liststore1.append(
+                tab_sequences = typing.cast("SequenceTab", self.tabs.tabs["sequences"])
+                tab_sequences.liststore1.clear()
+                tab_sequences.liststore1.append(
                     [
                         self.lightshow.main_playback.index,
                         self.lightshow.main_playback.type_seq,
@@ -257,12 +271,10 @@ class CuesEditionTab(Gtk.Paned):
                     ]
                 )
                 for chaser in self.lightshow.chasers:
-                    self.tabs.tabs["sequences"].liststore1.append(
+                    tab_sequences.liststore1.append(
                         [chaser.index, chaser.type_seq, chaser.text]
                     )
-                self.tabs.tabs["sequences"].treeview1.set_model(
-                    self.tabs.tabs["sequences"].liststore1
-                )
+                tab_sequences.treeview1.set_model(tab_sequences.liststore1)
                 pth = Gtk.TreePath.new()
                 self.window.playback.treeview1.set_cursor(pth, None, False)
 
@@ -437,11 +449,19 @@ class CuesEditionTab(Gtk.Paned):
 class CueChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(self, lightshow: LightShow, tabs: Tabs, window: Window) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
         self.lightshow = lightshow
         self.tabs = tabs
         self.window = window
-        super().__init__(lightshow=lightshow, window=window, settings=App().settings)
+        super().__init__(
+            lightshow=lightshow, window=window, settings=settings, tabs=tabs
+        )
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set level channel
@@ -450,7 +470,8 @@ class CueChannelsView(ChannelsView):
             channel: Channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        self.tabs.tabs["memories"].user_channels[channel - 1] = level
+        tab = typing.cast(CuesEditionTab, self.tabs.tabs["memories"])
+        tab.user_channels[channel - 1] = level
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -485,7 +506,8 @@ class CueChannelsView(ChannelsView):
             child.set_visible(False)
             return False
         # Find selected row
-        path, _focus_column = self.tabs.tabs["memories"].treeview.get_cursor()
+        tab = typing.cast(CuesEditionTab, self.tabs.tabs["memories"])
+        path, _focus_column = tab.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if self.view_mode == VIEW_MODES["Active"]:
@@ -503,7 +525,9 @@ class CueChannelsView(ChannelsView):
         return False
 
     def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        user_channels = self.tabs.tabs["memories"].user_channels
+        user_channels = typing.cast(
+            CuesEditionTab, self.tabs.tabs["memories"]
+        ).user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
         # Channels in Cue
@@ -540,7 +564,9 @@ class CueChannelsView(ChannelsView):
         return self.__filter_all(row, child)
 
     def __filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
-        user_channels = self.tabs.tabs["memories"].user_channels
+        user_channels = typing.cast(
+            CuesEditionTab, self.tabs.tabs["memories"]
+        ).user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
         # Channels in Cue

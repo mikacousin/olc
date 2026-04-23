@@ -12,18 +12,41 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.define import App
+from olc.track_channels import TrackChannelsTab
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
+# pylint: disable=too-many-instance-attributes
 class ChannelWidget(Gtk.DrawingArea):
     """Channel widget"""
 
     __gtype_name__ = "ChannelWidget"
 
-    def __init__(self, channel: int, level: int, next_level: int) -> None:
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def __init__(
+        self,
+        channel: int,
+        level: int,
+        next_level: int,
+        lightshow: LightShow,
+        settings: Gio.Settings,
+        window: Window,
+        tabs: Tabs,
+    ) -> None:
         super().__init__()
+        self.lightshow = lightshow
+        self.settings = settings
+        self.window = window
+        self.tabs = tabs
 
         self.channel = str(channel)
         self.level = level
@@ -52,7 +75,7 @@ class ChannelWidget(Gtk.DrawingArea):
         channels_view = flowbox.get_parent().get_parent().get_parent()
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            App().window.commandline.set_string(str(self.channel))
+            self.window.commandline.set_string(str(self.channel))
             channels_view.select_thru()
         elif flowboxchild.is_selected():
             flowbox.unselect_child(flowboxchild)
@@ -61,10 +84,13 @@ class ChannelWidget(Gtk.DrawingArea):
             channels_view.last_selected_channel = self.channel
         # If Main channels view, update Track Channels if opened
         if (
-            channels_view is App().window.live_view.channels_view
-            and App().tabs.tabs["track_channels"]
+            channels_view is self.window.live_view.channels_view
+            and self.tabs.tabs["track_channels"]
         ):
-            App().tabs.tabs["track_channels"].update_display()
+            track_channels = typing.cast(
+                TrackChannelsTab, self.tabs.tabs["track_channels"]
+            )  # Avoid circular import
+            track_channels.update_display()
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
@@ -75,7 +101,7 @@ class ChannelWidget(Gtk.DrawingArea):
         self.width = 80 * self.scale
         self.set_size_request(self.width, self.width)
         allocation = self.get_allocation()
-        percent_level = App().settings.get_boolean("percent")
+        percent_level = self.settings.get_boolean("percent")
 
         self._draw_background(cr, allocation)
         self._draw_channel_number(cr)
@@ -117,10 +143,10 @@ class ChannelWidget(Gtk.DrawingArea):
         """Draw channel number"""
         cr.set_source_rgb(0.9, 0.6, 0.2)
         # Independent
-        if int(self.channel) in App().lightshow.independents.get_channels():
+        if int(self.channel) in self.lightshow.independents.get_channels():
             cr.set_source_rgb(0.5, 0.5, 0.8)
         # Not patched
-        if not App().lightshow.patch.is_patched(int(self.channel)):
+        if not self.lightshow.patch.is_patched(int(self.channel)):
             cr.set_source_rgb(0.5, 0.5, 0.5)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12 * self.scale)
@@ -163,7 +189,7 @@ class ChannelWidget(Gtk.DrawingArea):
     def _draw_next_level(self, cr: cairo.Context, percent_level: bool) -> None:
         """Draw next level indicator"""
         # Don't draw next level if channel is in a independent
-        if int(self.channel) in App().lightshow.independents.get_channels():
+        if int(self.channel) in self.lightshow.independents.get_channels():
             return
         if self.next_level < self.level:
             self._draw_down_icon(cr, percent_level)

@@ -22,6 +22,7 @@ from olc.widgets.channel import ChannelWidget
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
     from olc.window import Window
 
 VIEW_MODES: dict[str, int] = {"All": 0, "Patched": 1, "Active": 2}
@@ -46,12 +47,14 @@ class ChannelsView(Gtk.Box):
         lightshow: LightShow | None = None,
         window: Window | None = None,
         settings: Gio.Settings | None = None,
+        tabs: Tabs | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
         super().__init__(*args, orientation=Gtk.Orientation.VERTICAL, **kwargs)
         self.window = window
         self.lightshow = lightshow
         self.settings = settings
+        self.tabs = tabs
 
         self.view_mode = VIEW_MODES.get("All", 0)
         self.last_selected_channel = ""
@@ -73,8 +76,19 @@ class ChannelsView(Gtk.Box):
         self.flowbox.set_max_children_per_line(20)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.MULTIPLE)
         self.flowbox.set_filter_func(self.filter_channels, None)
-        for i in range(MAX_CHANNELS):
-            self.flowbox.add(ChannelWidget(i + 1, 0, 0))
+        if self.lightshow and self.settings and self.window and self.tabs:
+            for i in range(MAX_CHANNELS):
+                self.flowbox.add(
+                    ChannelWidget(
+                        i + 1,
+                        0,
+                        0,
+                        self.lightshow,
+                        self.settings,
+                        self.window,
+                        self.tabs,
+                    )
+                )
         self.scrolled.add(self.flowbox)
 
         self.pack_start(self.scrolled, True, True, 0)

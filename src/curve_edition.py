@@ -19,20 +19,25 @@ from typing import Callable, Optional
 import cairo
 from gi.repository import Gdk, Gtk
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
-from olc.define import App
+from olc.patch_outputs import PatchOutputsTab
 from olc.widgets.curve import CurveWidget
 from olc.widgets.curve_point import CurvePointWidget
 from olc.widgets.edit_curve import EditCurveWidget
 
 if typing.TYPE_CHECKING:
+    from gi.repository import Gio
     from olc.lightshow import LightShow
+    from olc.tabs_manager import Tabs
+    from olc.window import Window
 
 
 class CurveValues(Gtk.DrawingArea):
     """Display Curve values"""
 
-    def __init__(self) -> None:
+    def __init__(self, lightshow: LightShow, tabs: Tabs) -> None:
         super().__init__()
+        self.lightshow = lightshow
+        self.tabs = tabs
         self.connect("draw", self.on_draw)
 
     def on_draw(self, _area: Gtk.Widget, cr: cairo.Context) -> None:
@@ -41,11 +46,16 @@ class CurveValues(Gtk.DrawingArea):
         Args:
             cr: Cairo context
         """
-        if App().tabs.tabs["curves"].curve_edition.curve_nb is None:
+        if (
+            typing.cast(CurvesTab, self.tabs.tabs["curves"]).curve_edition.curve_nb
+            is None
+        ):
             return
         self.set_size_request(1000, 240)
-        curve_nb = App().tabs.tabs["curves"].curve_edition.curve_nb
-        curve = App().lightshow.curves.get_curve(curve_nb)
+        curve_nb = typing.cast(
+            CurvesTab, self.tabs.tabs["curves"]
+        ).curve_edition.curve_nb
+        curve = self.lightshow.curves.get_curve(curve_nb)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(8)
         x = 0
@@ -67,7 +77,8 @@ class CurveValues(Gtk.DrawingArea):
                     and (x, curve.values[x]) in curve.points
                 ):
                     idx = curve.points.index((x, curve.values[x]))
-                    if App().tabs.tabs["curves"].curve_edition.points[idx].get_active():
+                    tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
+                    if tab.curve_edition.points[idx].get_active():
                         cr.set_source_rgb(1, 0.7, 0.3)
                     else:
                         cr.set_source_rgb(0.8, 0.5, 0.1)
@@ -89,8 +100,10 @@ class CurveEdition(Gtk.Box):
     fixed: Gtk.Fixed | None
     label: Gtk.Label | None
 
-    def __init__(self) -> None:
+    def __init__(self, lightshow: LightShow, tabs: Tabs) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
+        self.lightshow = lightshow
+        self.tabs = tabs
         self.curve_nb = None
         self.points = []
         self.fixed = None
@@ -104,7 +117,7 @@ class CurveEdition(Gtk.Box):
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         vbox.add(self.hbox)
-        self.values = CurveValues()
+        self.values = CurveValues(lightshow=self.lightshow, tabs=self.tabs)
         vbox.add(self.values)
         self.add(vbox)
 
@@ -116,7 +129,7 @@ class CurveEdition(Gtk.Box):
         """
         # HeaderBar
         self.curve_nb = curve_nb
-        curve = App().lightshow.curves.get_curve(curve_nb)
+        curve = self.lightshow.curves.get_curve(curve_nb)
         text = curve.name
         if isinstance(curve, LimitCurve):
             text += f" {round((curve.limit / 255) * 100)}%"
@@ -159,7 +172,7 @@ class CurveEdition(Gtk.Box):
             for point in self.points:
                 point.destroy()
         self.points.clear()
-        curve = App().lightshow.curves.get_curve(self.curve_nb)
+        curve = self.lightshow.curves.get_curve(self.curve_nb)
         for number, point in enumerate(curve.points):
             x = point[0]
             y = point[1]
@@ -179,8 +192,8 @@ class CurveEdition(Gtk.Box):
                 CurvePointWidget(
                     number=number,
                     curve=curve,
-                    lightshow=App().lightshow,
-                    tabs=App().tabs,
+                    lightshow=self.lightshow,
+                    tabs=self.tabs,
                 )
             )
             self.points[-1].connect("toggled", self.on_toggled, None)
@@ -189,12 +202,12 @@ class CurveEdition(Gtk.Box):
 
     def on_del_curve(self, _widget: Gtk.Widget) -> None:
         """Delete selected curve"""
-        tab = App().tabs.tabs["curves"]
+        tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
         if selected := tab.flowbox.get_selected_children():
             flowboxchild = selected[0]
             curvebutton = flowboxchild.get_child()
             curve_nb = curvebutton.curve_nb
-            App().lightshow.curves.del_curve(curve_nb)
+            self.lightshow.curves.del_curve(curve_nb)
             self.change_curve(0)
             curve_nb = 0
             tab.refresh()
@@ -204,7 +217,7 @@ class CurveEdition(Gtk.Box):
                     break
             if flowboxchild:
                 tab.flowbox.select_child(flowboxchild)
-            App().lightshow.set_modified()
+            self.lightshow.set_modified()
 
     def limit_changed(self, widget: Gtk.Scale) -> None:
         """LimitCurve value has been changed
@@ -212,13 +225,13 @@ class CurveEdition(Gtk.Box):
         Args:
             widget: Scale
         """
-        curve = App().lightshow.curves.get_curve(self.curve_nb)
+        curve = self.lightshow.curves.get_curve(self.curve_nb)
         curve.limit = int(widget.get_value())
         curve.populate_values()
         text = curve.name
         text += f" {round((curve.limit / 255) * 100)}%"
         self.header.set_title(text)
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
 
     def on_toggled(self, button: CurvePointWidget, _name: object) -> None:
         """Curve point clicked
@@ -253,8 +266,9 @@ class CurveEdition(Gtk.Box):
 class CurveButton(CurveWidget):
     """Curve Widget"""
 
-    def __init__(self, curve: int, lightshow: "LightShow") -> None:
+    def __init__(self, curve: int, lightshow: LightShow, tabs: Tabs) -> None:
         super().__init__(curve, lightshow)
+        self.tabs = tabs
         self.popover = Gtk.Popover()
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         entry = Gtk.Entry()
@@ -275,15 +289,16 @@ class CurveButton(CurveWidget):
         """
         text = widget.get_text()
         self.curve.name = text
-        App().tabs.tabs["curves"].curve_edition.header.set_title(text)
+        tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
+        tab.curve_edition.header.set_title(text)
         self.popover.popdown()
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
 
     def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""
         child = self.get_parent()
         if not child.is_selected():
-            tab = App().tabs.tabs["curves"]
+            tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
             tab.curve_edition.change_curve(self.curve_nb)
             tab.flowbox.unselect_all()
             tab.flowbox.select_child(child)
@@ -296,11 +311,22 @@ class CurvesTab(Gtk.Paned):
 
     flowbox: Gtk.FlowBox | None
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
+
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
 
-        self.curve_edition = CurveEdition()
+        self.curve_edition = CurveEdition(lightshow=self.lightshow, tabs=self.tabs)
         self.add1(self.curve_edition)
 
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -334,12 +360,12 @@ class CurvesTab(Gtk.Paned):
             widget: button clicked
         """
         if widget is self.buttons["limit"]:
-            curve_nb = App().lightshow.curves.add_curve(LimitCurve(255))
+            curve_nb = self.lightshow.curves.add_curve(LimitCurve(255))
         elif widget is self.buttons["segments"]:
-            curve_nb = App().lightshow.curves.add_curve(SegmentsCurve())
+            curve_nb = self.lightshow.curves.add_curve(SegmentsCurve())
         elif widget is self.buttons["interpolate"]:
-            curve_nb = App().lightshow.curves.add_curve(InterpolateCurve())
-            App().lightshow.curves.curves[curve_nb].add_point(70, 40)
+            curve_nb = self.lightshow.curves.add_curve(InterpolateCurve())
+            self.lightshow.curves.curves[curve_nb].add_point(70, 40)
         self.curve_edition.change_curve(curve_nb)
         self.refresh()
         flowboxchild = None
@@ -348,7 +374,7 @@ class CurvesTab(Gtk.Paned):
                 break
         if flowboxchild:
             self.flowbox.select_child(flowboxchild)
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
 
     def populate_curves(self) -> None:
         """Add curves to tab"""
@@ -360,8 +386,8 @@ class CurvesTab(Gtk.Paned):
         self.flowbox.set_activate_on_single_click(True)
         self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
         # Add curves to Flowbox
-        for number in App().lightshow.curves.curves:
-            self.flowbox.add(CurveButton(number, App().lightshow))
+        for number in self.lightshow.curves.curves:
+            self.flowbox.add(CurveButton(number, self.lightshow, self.tabs))
         self.scrolled.add(self.flowbox)
 
     def refresh(self) -> None:
@@ -371,11 +397,11 @@ class CurvesTab(Gtk.Paned):
             self.flowbox.destroy()
             self.populate_curves()
             self.flowbox.invalidate_filter()
-            App().window.show_all()
+            self.window.show_all()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on clicked icon"""
-        App().tabs.close("curves")
+        self.tabs.close("curves")
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -399,22 +425,24 @@ class CurvesTab(Gtk.Paned):
 
     def _keypress_escape(self) -> None:
         """Close Tab"""
-        App().tabs.close("curves")
+        self.tabs.close("curves")
 
     def _keypress_delete(self) -> None:
         """Delete selected point"""
         if not self.curve_edition.curve_nb:
             return
-        curve = App().lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
         if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
             for toggle in self.curve_edition.points:
                 if toggle.get_active():
                     curve.del_point(toggle.number)
                     self.curve_edition.points_curve()
                     self.curve_edition.queue_draw()
-                    App().lightshow.set_modified()
-                    if App().tabs.tabs["patch_outputs"]:
-                        App().tabs.tabs["patch_outputs"].refresh()
+                    self.lightshow.set_modified()
+                    if self.tabs.tabs["patch_outputs"]:
+                        typing.cast(
+                            PatchOutputsTab, self.tabs.tabs["patch_outputs"]
+                        ).refresh()
                     break
 
     def _keypress_page_up(self) -> None:
@@ -477,7 +505,7 @@ class CurvesTab(Gtk.Paned):
             self.__update_point(index, x, y)
 
     def __update_point(self, index: int, x: int, y: int) -> None:
-        curve = App().lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
         curve.set_point(index, x, y)
         self.curve_edition.queue_draw()
         width = self.curve_edition.edit_curve.get_size_request()[0]
@@ -494,4 +522,4 @@ class CurvesTab(Gtk.Paned):
         self.curve_edition.fixed.move(
             self.curve_edition.points[index], x_wgt - 4, y_wgt - 4
         )
-        App().lightshow.set_modified()
+        self.lightshow.set_modified()
