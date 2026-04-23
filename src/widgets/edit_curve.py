@@ -72,9 +72,10 @@ class EditCurveWidget(Gtk.DrawingArea):
             self.queue_draw()
             tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
             tab.curve_edition.points_curve()
-            idx = self.curve.points.index((x_curve, y_curve))
-            tab.curve_edition.points[idx].set_active(True)
-            tab.curve_edition.points[idx].queue_draw()
+            if (x_curve, y_curve) in self.curve.points:
+                idx = self.curve.points.index((x_curve, y_curve))
+                tab.curve_edition.points[idx].set_active(True)
+                tab.curve_edition.points[idx].queue_draw()
             self.lightshow.set_modified()
             if self.tabs.tabs["patch_outputs"]:
                 patch_tab = typing.cast(
