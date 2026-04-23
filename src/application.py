@@ -165,7 +165,7 @@ class Application(Gtk.Application):
         self.add_action(action)
 
         # For Manual crossfade
-        self.crossfade = CrossFade()
+        self.crossfade = CrossFade(self)
 
         # Open MIDI Inputs and Outputs
         def refresh_settings() -> None:
