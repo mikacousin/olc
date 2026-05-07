@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import ipaddress
 import time
-import typing
 from collections.abc import Callable
 
 from olc.backends.artnet.merge import ArtDmxMerger, MergeMode
