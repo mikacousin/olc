@@ -37,12 +37,12 @@ else:
     from olc.backends.ola import Ola
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gtk
+    from gi.repository import Gio
     from olc.lightshow import LightShow
 
 
 def select_backend(
-    options: GLib.VariantDict, settings: Gtk.Settings, lightshow: LightShow
+    options: dict[str, typing.Any], settings: Gio.Settings, lightshow: LightShow
 ) -> None | Ola | ArtnetBackend | Sacn:
     """Select and create DMX backend
 
