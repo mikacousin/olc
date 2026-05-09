@@ -23,7 +23,7 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.backends import DMXBackend
     from olc.lightshow import LightShow
-    from olc.patch import DMXPatch
+    from olc.patch import DMXPatch, PatchByOutputs
     from olc.tabs_manager import Tabs
     from olc.window import Window
 
@@ -32,7 +32,7 @@ if typing.TYPE_CHECKING:
 class PatchOutputsTab(Gtk.Box):
     """Tab to Patch by outputs"""
 
-    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
     def __init__(
         self,
         patch: DMXPatch,
@@ -41,6 +41,7 @@ class PatchOutputsTab(Gtk.Box):
         window: Window,
         settings: Gio.Settings,
         backend: DMXBackend,
+        patch_by_outputs: PatchByOutputs,
     ) -> None:
         self.patch = patch
         self.lightshow = lightshow
@@ -48,6 +49,7 @@ class PatchOutputsTab(Gtk.Box):
         self.window = window
         self.settings = settings
         self.backend = backend
+        self.patch_by_outputs = patch_by_outputs
         self.test = False
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -143,7 +145,7 @@ class PatchOutputsTab(Gtk.Box):
     def select_outputs(self) -> None:
         """Select Outputs"""
         self.flowbox.unselect_all()
-        for output_index in self.patch.by_outputs.outputs:
+        for output_index in self.patch_by_outputs.outputs:
             output_index -= 1
             child = self.flowbox.get_child_at_index(output_index)
             self.flowbox.select_child(child)
@@ -223,47 +225,47 @@ class PatchOutputsTab(Gtk.Box):
     def _keypress_right(self) -> None:
         """Next Output"""
 
-        if self.patch.by_outputs.get_selected() == "":
+        if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
             self.window.commandline.set_string("1")
-            self.patch.by_outputs.select_output()
-        elif self.patch.by_outputs.last < (NB_UNIVERSES * 512):
-            old_output = self.patch.by_outputs.last
+            self.patch_by_outputs.select_output()
+        elif self.patch_by_outputs.last < (NB_UNIVERSES * 512):
+            old_output = self.patch_by_outputs.last
             new_output = old_output + 1
-            output, universe = self.patch.by_outputs.get_output_universe(new_output)
+            output, universe = self.patch_by_outputs.get_output_universe(new_output)
             self.window.commandline.set_string(f"{output}.{universe}")
-            self.patch.by_outputs.select_output()
+            self.patch_by_outputs.select_output()
             if self.test:
                 self._change_test_output(old_output, new_output)
 
     def _keypress_left(self) -> None:
         """Previous Output"""
 
-        if self.patch.by_outputs.get_selected() == "":
+        if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
             self.window.commandline.set_string("1")
-            self.patch.by_outputs.select_output()
-        elif self.patch.by_outputs.last > 1:
-            old_output = self.patch.by_outputs.last
+            self.patch_by_outputs.select_output()
+        elif self.patch_by_outputs.last > 1:
+            old_output = self.patch_by_outputs.last
             new_output = old_output - 1
-            output, universe = self.patch.by_outputs.get_output_universe(new_output)
+            output, universe = self.patch_by_outputs.get_output_universe(new_output)
             self.window.commandline.set_string(f"{output}.{universe}")
-            self.patch.by_outputs.select_output()
+            self.patch_by_outputs.select_output()
             if self.test:
                 self._change_test_output(old_output, new_output)
 
     def _keypress_down(self) -> None:
         """Next Line"""
 
-        if self.patch.by_outputs.get_selected() == "":
+        if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
             self.window.commandline.set_string("1")
-            self.patch.by_outputs.select_output()
+            self.patch_by_outputs.select_output()
         else:
-            old_output = self.patch.by_outputs.last
+            old_output = self.patch_by_outputs.last
             child = self.flowbox.get_child_at_index(old_output - 1)
             allocation = child.get_allocation()
             if child := self.flowbox.get_child_at_pos(
@@ -271,22 +273,22 @@ class PatchOutputsTab(Gtk.Box):
             ):
                 index = child.get_index()
                 new_output = index + 1
-                output, universe = self.patch.by_outputs.get_output_universe(new_output)
+                output, universe = self.patch_by_outputs.get_output_universe(new_output)
                 self.window.commandline.set_string(f"{output}.{universe}")
-                self.patch.by_outputs.select_output()
+                self.patch_by_outputs.select_output()
                 if self.test:
                     self._change_test_output(old_output, new_output)
 
     def _keypress_up(self) -> None:
         """Previous Line"""
 
-        if self.patch.by_outputs.get_selected() == "":
+        if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
             self.flowbox.select_child(child)
             self.window.commandline.set_string("1")
-            self.patch.by_outputs.select_output()
+            self.patch_by_outputs.select_output()
         else:
-            old_output = self.patch.by_outputs.last
+            old_output = self.patch_by_outputs.last
             child = self.flowbox.get_child_at_index(old_output - 1)
             allocation = child.get_allocation()
             if child := self.flowbox.get_child_at_pos(
@@ -294,15 +296,15 @@ class PatchOutputsTab(Gtk.Box):
             ):
                 index = child.get_index()
                 new_output = index + 1
-                output, universe = self.patch.by_outputs.get_output_universe(new_output)
+                output, universe = self.patch_by_outputs.get_output_universe(new_output)
                 self.window.commandline.set_string(f"{output}.{universe}")
-                self.patch.by_outputs.select_output()
+                self.patch_by_outputs.select_output()
                 if self.test:
                     self._change_test_output(old_output, new_output)
 
     def _keypress_o(self) -> None:
         """Select Output"""
-        self.patch.by_outputs.select_output()
+        self.patch_by_outputs.select_output()
 
     def _keypress_equal(self) -> None:
         """Output @ level"""
@@ -377,7 +379,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def thru(self) -> None:
         """Output Thru"""
-        self.patch.by_outputs.thru()
+        self.patch_by_outputs.thru()
 
     def _keypress_kp_add(self) -> None:
         """+"""
@@ -385,7 +387,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_plus(self) -> None:
         """+"""
-        self.patch.by_outputs.add_output()
+        self.patch_by_outputs.add_output()
 
     def _keypress_kp_subtract(self) -> None:
         """-"""
@@ -393,7 +395,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_minus(self) -> None:
         """-"""
-        self.patch.by_outputs.del_output()
+        self.patch_by_outputs.del_output()
 
     def _keypress_c(self) -> None:
         """Patch Channel(s)"""
@@ -412,7 +414,7 @@ class PatchOutputsTab(Gtk.Box):
                 several = True
             dialog.destroy()
 
-        self.patch.by_outputs.patch_channel(several)
+        self.patch_by_outputs.patch_channel(several)
 
         self.lightshow.set_modified()
         self.window.commandline.set_string("")

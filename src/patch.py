@@ -12,9 +12,13 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
 from typing import Optional
 
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App, is_int
+from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
+
+if typing.TYPE_CHECKING:
+    from olc.application import Application
 
 
 class DMXPatch:
@@ -39,25 +43,10 @@ class DMXPatch:
         self.universes = universes
         self.channels = {}
         self.outputs = {}
-        self.by_outputs = PatchByOutputs(self)
+        self.on_patch_empty_cb: typing.Callable[[], None] | None = None
+        self.on_unpatch_cb: typing.Callable[[int, int], None] | None = None
 
         self.patch_1on1()
-
-        # for channel, chan_list in self.channels.items():
-        #     for out in chan_list:
-        #         print("Channel", channel, "Output", out[0], "Universe", out[1])
-        # for key, value in self.outputs.items():
-        #     for output, chan_dic in value.items():
-        #         print(
-        #             "Universe",
-        #             key,
-        #             "Output",
-        #             output,
-        #             "Channel",
-        #             chan_dic[0],
-        #             "Curve",
-        #             App().lightshow.curves.get_curve(chan_dic[1]).name,
-        #         )
 
     def is_patched(self, channel: int) -> bool:
         """Test if channel is patched
@@ -74,8 +63,8 @@ class DMXPatch:
 
     def patch_empty(self) -> None:
         """Set Dimmers patch to Zero"""
-        if App().backend:
-            App().backend.dmx.all_outputs_at_zero()
+        if self.on_patch_empty_cb:
+            self.on_patch_empty_cb()
         self.outputs = {}
         for channel in range(1, MAX_CHANNELS + 1):
             self.channels[channel] = [[None, None]]
@@ -119,7 +108,8 @@ class DMXPatch:
         if not self.channels[channel]:
             self.channels[channel] = [[None, None]]
         index = self.universes.index(univ)
-        App().backend.dmx.frame[index][output - 1] = 0
+        if self.on_unpatch_cb:
+            self.on_unpatch_cb(index, output - 1)
 
     def get_first_patched_channel(self) -> int:
         """Return first patched channel
@@ -147,7 +137,8 @@ class DMXPatch:
 class PatchByOutputs:
     """Manipulate Patch using Outputs order"""
 
-    def __init__(self, patch: DMXPatch) -> None:
+    def __init__(self, app: Application, patch: DMXPatch) -> None:
+        self.app = app
         self.outputs = []
         self.last = 0
         self.patch = patch
@@ -175,13 +166,13 @@ class PatchByOutputs:
         else:
             self.outputs = []
             self.last = 0
-        if App().osc:
-            App().osc.client.send(
+        if self.app.osc:
+            self.app.osc.client.send(
                 "/olc/patch/selected_outputs", ("s", self.get_selected())
             )
-        if App().tabs.tabs["patch_outputs"]:
-            App().tabs.tabs["patch_outputs"].select_outputs()
-        App().window.commandline.set_string("")
+        if self.app.tabs.tabs["patch_outputs"]:
+            self.app.tabs.tabs["patch_outputs"].select_outputs()
+        self.app.window.commandline.set_string("")
 
     def thru(self) -> None:
         """Thru output"""
@@ -195,13 +186,13 @@ class PatchByOutputs:
                 for out in range(self.last - 1, output_index - 1, -1):
                     self.outputs.append(out)
             self.last = output_index
-        if App().osc:
-            App().osc.client.send(
+        if self.app.osc:
+            self.app.osc.client.send(
                 "/olc/patch/selected_outputs", ("s", self.get_selected())
             )
-        if App().tabs.tabs["patch_outputs"]:
-            App().tabs.tabs["patch_outputs"].select_outputs()
-        App().window.commandline.set_string("")
+        if self.app.tabs.tabs["patch_outputs"]:
+            self.app.tabs.tabs["patch_outputs"].select_outputs()
+        self.app.window.commandline.set_string("")
 
     def add_output(self) -> None:
         """Add an output to selection"""
@@ -210,13 +201,13 @@ class PatchByOutputs:
         if output_index:
             self.outputs.append(output_index)
             self.last = output_index
-        if App().osc:
-            App().osc.client.send(
+        if self.app.osc:
+            self.app.osc.client.send(
                 "/olc/patch/selected_outputs", ("s", self.get_selected())
             )
-        if App().tabs.tabs["patch_outputs"]:
-            App().tabs.tabs["patch_outputs"].select_outputs()
-        App().window.commandline.set_string("")
+        if self.app.tabs.tabs["patch_outputs"]:
+            self.app.tabs.tabs["patch_outputs"].select_outputs()
+        self.app.window.commandline.set_string("")
 
     def del_output(self) -> None:
         """Remove an output to selection"""
@@ -225,13 +216,13 @@ class PatchByOutputs:
         if output_index:
             self.outputs.remove(output_index)
             self.last = output_index
-        if App().osc:
-            App().osc.client.send(
+        if self.app.osc:
+            self.app.osc.client.send(
                 "/olc/patch/selected_outputs", ("s", self.get_selected())
             )
-        if App().tabs.tabs["patch_outputs"]:
-            App().tabs.tabs["patch_outputs"].select_outputs()
-        App().window.commandline.set_string("")
+        if self.app.tabs.tabs["patch_outputs"]:
+            self.app.tabs.tabs["patch_outputs"].select_outputs()
+        self.app.window.commandline.set_string("")
 
     def patch_channel(self, several: bool) -> None:
         """Patch
@@ -244,22 +235,22 @@ class PatchByOutputs:
         if channel is None:
             return
         self.__for_each_output(channel, several)
-        App().window.live_view.channels_view.update()
-        if App().osc:
-            App().osc.client.send(
+        self.app.window.live_view.channels_view.update()
+        if self.app.osc:
+            self.app.osc.client.send(
                 "/olc/patch/selected_outputs", ("s", self.get_selected())
             )
-        if App().tabs.tabs["patch_outputs"]:
-            App().tabs.tabs["patch_outputs"].refresh()
+        if self.app.tabs.tabs["patch_outputs"]:
+            self.app.tabs.tabs["patch_outputs"].refresh()
             # Select next output
             output_index = self.last
             if output_index < NB_UNIVERSES * 512:
                 output_index += 1
             output, universe = self.get_output_universe(output_index)
-            App().window.commandline.set_string(f"{output}.{universe}")
+            self.app.window.commandline.set_string(f"{output}.{universe}")
             self.select_output()
-        App().lightshow.set_modified()
-        App().window.commandline.set_string("")
+        self.app.lightshow.set_modified()
+        self.app.window.commandline.set_string("")
 
     def __for_each_output(self, channel: int, several: bool) -> None:
         for i, output_index in enumerate(self.outputs):
@@ -287,8 +278,8 @@ class PatchByOutputs:
                 # Refresh LiveView
                 if 0 < channel <= MAX_CHANNELS:
                     index = UNIVERSES.index(univ)
-                    level = App().backend.dmx.frame[index][output - 1]
-                    widget = App().window.live_view.channels_view.get_channel_widget(
+                    level = self.app.backend.dmx.frame[index][output - 1]
+                    widget = self.app.window.live_view.channels_view.get_channel_widget(
                         channel
                     )
                     widget.level = level
@@ -330,7 +321,7 @@ class PatchByOutputs:
     def _string_to_output(self) -> tuple[Optional[int], Optional[int]]:
         output = None
         universe = None
-        keystring = App().window.commandline.get_string()
+        keystring = self.app.window.commandline.get_string()
         if not keystring:
             keystring = "0"
         if "." in keystring:
@@ -345,7 +336,7 @@ class PatchByOutputs:
         return (output, universe)
 
     def _string_to_channel(self) -> Optional[int]:
-        keystring = App().window.commandline.get_string()
+        keystring = self.app.window.commandline.get_string()
         if not keystring:
             keystring = "0"
         if not is_int(keystring):

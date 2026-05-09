@@ -111,7 +111,7 @@ class PatchWidget(Gtk.DrawingArea):
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Shift pressed: Thru
             self.commandline.set_string(f"{self.output}.{self.universe}")
-            self.lightshow.patch.by_outputs.thru()
+            self.tab.patch_by_outputs.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
             child = self.tab.flowbox.get_child_at_index(widget_index)
@@ -121,18 +121,18 @@ class PatchWidget(Gtk.DrawingArea):
             if parent.is_selected():
                 self.tab.flowbox.unselect_child(child)
                 self.commandline.set_string(f"{self.output}.{self.universe}")
-                self.lightshow.patch.by_outputs.del_output()
+                self.tab.patch_by_outputs.del_output()
             else:
                 self.tab.flowbox.select_child(child)
                 self.commandline.set_string(f"{self.output}.{self.universe}")
-                self.lightshow.patch.by_outputs.add_output()
+                self.tab.patch_by_outputs.add_output()
         else:
             child = self.tab.flowbox.get_child_at_index(widget_index)
             if not child:
                 return
             if not child.is_selected():
                 self.commandline.set_string(f"{self.output}.{self.universe}")
-                self.lightshow.patch.by_outputs.select_output()
+                self.tab.patch_by_outputs.select_output()
             elif (
                 self.universe in self.lightshow.patch.outputs
                 and self.output in self.lightshow.patch.outputs[self.universe]

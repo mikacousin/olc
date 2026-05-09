@@ -39,6 +39,7 @@ from olc.independents_edition import IndependentsTab  # noqa: E402
 from olc.lightshow import LightShow  # noqa: E402
 from olc.midi import Midi  # noqa: E402
 from olc.osc import Osc  # noqa: E402
+from olc.patch import PatchByOutputs  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
@@ -130,6 +131,8 @@ class Application(Gtk.Application):
         # Light show initialization
         self.lightshow = LightShow()
 
+        self.patch_by_outputs = PatchByOutputs(self, self.lightshow.patch)
+
     def do_activate(self) -> None:
         # Create Main Window
         self.tabs = Tabs(None)
@@ -212,6 +215,18 @@ class Application(Gtk.Application):
         self.backend = select_backend(options, self.settings, self.lightshow)
         if not self.backend:
             sys.exit()
+
+        def on_patch_empty_cb() -> None:
+            if self.backend:
+                self.backend.dmx.all_outputs_at_zero()
+
+        def on_unpatch_cb(index: int, output: int) -> None:
+            if self.backend:
+                self.backend.dmx.frame[index][output] = 0
+
+        self.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
+        self.lightshow.patch.on_unpatch_cb = on_unpatch_cb
+
         self.backend.dmx.add_notification_callback(self.on_backend_notification)
         # Activate olc
         self.activate()
@@ -505,6 +520,7 @@ class Application(Gtk.Application):
                 self.window,
                 self.settings,
                 self.backend,
+                self.patch_by_outputs,
             )
 
     def _patch_channels(
