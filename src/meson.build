@@ -65,6 +65,11 @@ install_subdir(
 )
 
 install_subdir(
+  'core',
+  install_dir: join_paths(python_dir, 'olc')
+)
+
+install_subdir(
   'files',
   install_dir: join_paths(python_dir, 'olc')
 )
