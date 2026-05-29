@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Open Lighting Console Benchmarking Tool
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# pylint: disable=wrong-spelling-in-comment,wrong-spelling-in-docstring
+# pylint: disable=broad-exception-caught,too-many-locals,invalid-name,unexpected-keyword-arg
+"""Stress testing and benchmarking tool for OLC CoreEngine.
+
+Measures the maximum supported universes at a target output frequency.
+"""
+
+import argparse
+import json
+import os
+import sys
+import time
+
+# Support running both locally in source tree and when installed via meson
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(1, "@pythondir@")
+
+from olc.core.engine import CoreEngine  # noqa: E402
+from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
+
+
+def get_cpu_info() -> dict[str, str | int]:
+    """Retrieve CPU model name and core count from /proc/cpuinfo."""
+    model = "Unknown CPU"
+    cores = 0
+    try:
+        if os.path.exists("/proc/cpuinfo"):
+            with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        model = line.split(":", 1)[1].strip()
+                    elif line.startswith("processor"):
+                        cores += 1
+    except Exception:
+        pass
+    return {"model": model, "cores": cores or 1}
+
+
+def get_ram_info() -> dict[str, float]:
+    """Retrieve total RAM capacity in gigabytes from /proc/meminfo."""
+    total_gb = 0.0
+    try:
+        if os.path.exists("/proc/meminfo"):
+            with open("/proc/meminfo", "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        total_kb = int(line.split(":", 1)[1].replace("kB", "").strip())
+                        total_gb = total_kb / 1024.0 / 1024.0
+    except Exception:
+        pass
+    return {"total_gb": round(total_gb, 2)}
+
+
+def get_storage_info() -> dict[str, str]:
+    """Determine primary storage block device type (SSD or HDD)."""
+    storage_type = "HDD"
+    try:
+        block_dir = "/sys/block"
+        if os.path.exists(block_dir):
+            for dev in os.listdir(block_dir):
+                if dev.startswith(("sd", "nvme", "mmcblk")):
+                    rot_file = os.path.join(block_dir, dev, "queue", "rotational")
+                    if os.path.exists(rot_file):
+                        with open(rot_file, "r", encoding="utf-8") as f:
+                            if f.read().strip() == "0":
+                                storage_type = "SSD"
+                                break
+    except Exception:
+        pass
+    return {"type": storage_type}
+
+
+def run_stress_step(
+    num_universes: int,
+    duration: float,
+    target_hz: float = 44.0,
+    no_listen: bool = False,
+) -> dict[str, float | bool | int]:
+    """Evaluate performance metrics for a specific number of universes."""
+    universe_map = UniverseMap(num_universes)
+    for u in range(num_universes):
+        universe_map.enable_protocol(u, Protocol.ARTNET)
+        if u != 0:
+            universe_map.enable_protocol(u, Protocol.SACN)
+
+    engine = CoreEngine(
+        universe_map, hz=target_hz, no_listen=no_listen, loopback=True
+    )
+    engine.start()
+
+    for u in range(num_universes):
+        engine.add_fader(u)
+
+    start_time = time.monotonic()
+    try:
+        while time.monotonic() - start_time < duration:
+            # Active fading & output updates to stress loops and thread merging
+            for u in range(num_universes):
+                engine.set_channels(
+                    u, {i: int(time.monotonic() * 10) % 256 for i in range(16)}
+                )
+            time.sleep(0.02)
+    except Exception:
+        pass
+
+    eff_hz = engine.effective_hz
+    frames = engine.frame_count
+    engine.stop()
+
+    retention = (eff_hz / target_hz) * 100.0 if target_hz > 0 else 0.0
+    passed = retention >= 95.0
+
+    return {
+        "universes": num_universes,
+        "effective_hz": round(eff_hz, 2),
+        "frames": frames,
+        "hz_retention": round(retention, 2),
+        "passed": passed,
+    }
+
+
+def write_reports(
+    hardware: dict, results: list, max_stable: int, output_base: str
+) -> None:
+    """Save performance analysis results in Markdown and JSON formats."""
+    # Write JSON report
+    report_data = {
+        "hardware": hardware,
+        "results": results,
+        "verdict": {
+            "max_stable_universes": max_stable,
+            "recommended_max": int(max_stable * 0.8),
+        },
+    }
+    with open(f"{output_base}.json", "w", encoding="utf-8") as f:
+        json.dump(report_data, f, indent=4)
+
+    # Write Markdown report
+    with open(f"{output_base}.md", "w", encoding="utf-8") as f:
+        f.write("# OLC CoreEngine Hardware Benchmark Report\n\n")
+        f.write("## Hardware Profile\n")
+        f.write(f"- **CPU Model**: {hardware['cpu']['model']}\n")
+        f.write(f"- **CPU Cores/Threads**: {hardware['cpu']['cores']}\n")
+        f.write(f"- **Total System RAM**: {hardware['ram']['total_gb']} GB\n")
+        f.write(f"- **Storage Type**: {hardware['storage']['type']}\n\n")
+
+        f.write("## Workload Stress-Test Steps\n")
+        f.write("| Universes | Target Hz | Effective Hz | Hz Retention | Status |\n")
+        f.write("|-----------|-----------|--------------|--------------|--------|\n")
+        for r in results:
+            status = "PASS" if r["passed"] else "FAIL"
+            f.write(
+                f"| {r['universes']} | 44.0 | {r['effective_hz']} Hz | "
+                f"{r['hz_retention']}% | {status} |\n"
+            )
+        f.write("\n")
+
+        f.write("## Final Performance Verdict\n")
+        f.write(
+            f"- **Maximum Stable Universes**: **{max_stable}** "
+            "(at >= 95% target frequency retention)\n"
+        )
+        f.write(
+            f"- **Recommended Production Limit**: **{int(max_stable * 0.8)}** "
+            "(with 20% safety margin)\n"
+        )
+
+
+def main() -> None:  # pylint: disable=too-many-statements
+    """Execute incrementally larger workloads to discover hardware limit."""
+    parser = argparse.ArgumentParser(description="OLC CoreEngine Benchmark")
+    parser.add_argument(
+        "--duration",
+        type=float,
+        default=4.0,
+        help="Duration of each workload stress step in seconds (default: 4.0)",
+    )
+    parser.add_argument(
+        "--max-universes",
+        type=int,
+        default=256,
+        help="Hard cap of maximum universes to test (default: 256)",
+    )
+    parser.add_argument(
+        "--listen",
+        action="store_true",
+        help="Enable low-level DMX listening/receiver sockets during stress tests",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="olc-bench-report",
+        help="Base filename of benchmark reports (default: olc-bench-report)",
+    )
+    args = parser.parse_args()
+    args.no_listen = not args.listen
+
+    print("\033[95m\033[1m=== OLC CoreEngine Benchmark Tool ===\033[0m")
+    print("Collecting hardware specifications...")
+    cpu = get_cpu_info()
+    ram = get_ram_info()
+    storage = get_storage_info()
+    hardware = {"cpu": cpu, "ram": ram, "storage": storage}
+
+    print(f"  CPU     : {cpu['model']} ({cpu['cores']} threads)")
+    print(f"  RAM     : {ram['total_gb']} GB")
+    print(f"  Storage : {storage['type']}")
+    print("-" * 50)
+
+    results = []
+    max_stable = 0
+
+    # Incremental testing steps
+    steps = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+    steps = [s for s in steps if s <= args.max_universes]
+
+    print("\033[1mStarting incremental stress tests (target 44.0 Hz)...\033[0m")
+    for step in steps:
+        print(f"Testing workload with \033[36m{step}\033[0m universes...", end="")
+        sys.stdout.flush()
+
+        res = run_stress_step(step, args.duration, no_listen=args.no_listen)
+        results.append(res)
+
+        if res["passed"]:
+            print(
+                f" \033[92mPASS\033[0m ({res['effective_hz']} Hz, "
+                f"{res['hz_retention']}% retention)"
+            )
+            max_stable = step
+        else:
+            print(
+                f" \033[91mFAIL\033[0m ({res['effective_hz']} Hz, "
+                f"{res['hz_retention']}% retention)"
+            )
+            # Binary search to find the exact hardware limit
+            if max_stable > 0:
+                print(
+                    f"\n\033[1mFinetuning search to find the exact hardware limit "
+                    f"in range [{max_stable}, {step}]...\033[0m"
+                )
+                low = max_stable
+                high = step
+                while low + 1 < high:
+                    mid = (low + high) // 2
+                    print(f"Refining test at \033[36m{mid}\033[0m universes...", end="")
+                    sys.stdout.flush()
+
+                    sub_res = run_stress_step(
+                        mid, args.duration, no_listen=args.no_listen
+                    )
+                    results.append(sub_res)
+
+                    if sub_res["passed"]:
+                        print(
+                            f" \033[92mPASS\033[0m ({sub_res['effective_hz']} Hz, "
+                            f"{sub_res['hz_retention']}% retention)"
+                        )
+                        low = mid
+                        max_stable = mid
+                    else:
+                        print(
+                            f" \033[91mFAIL\033[0m ({sub_res['effective_hz']} Hz, "
+                            f"{sub_res['hz_retention']}% retention)"
+                        )
+                        high = mid
+                print()  # Add space after finetuning loop
+
+            print("System limits reached. Terminating benchmark.")
+            break
+
+    print("-" * 50)
+    print("\033[95m\033[1m=== Benchmark Summary ===\033[0m")
+    print(f"Maximum Stable Universes      : \033[92m{max_stable}\033[0m")
+    print(f"Recommended Production Limit  : \033[96m{int(max_stable * 0.8)}\033[0m")
+    print("-" * 50)
+
+    # Sort results by number of universes for clean final reports
+    results_sorted = sorted(results, key=lambda x: x["universes"])
+    write_reports(hardware, results_sorted, max_stable, args.output)
+    print(f"Saved JSON report to: {args.output}.json")
+    print(f"Saved Markdown report to: {args.output}.md")
+
+
+if __name__ == "__main__":
+    main()

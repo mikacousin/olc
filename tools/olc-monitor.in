@@ -1,0 +1,452 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Open Lighting Console Monitor
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# pylint: disable=invalid-name, wrong-spelling-in-docstring, wrong-spelling-in-comment
+import argparse
+import asyncio
+import dataclasses
+import json
+import time
+import typing
+
+import numpy as np
+import zmq
+import zmq.asyncio
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from textual.app import App, ComposeResult
+from textual.containers import Horizontal, Vertical
+from textual.reactive import reactive
+from textual.widgets import Footer, Header, Sparkline, Static
+
+
+def value_style(v: int) -> str:  # pylint: disable=too-many-return-statements
+    """Return the color style name for a DMX value."""
+    if v == 0:
+        return "grey23"
+    if v < 51:
+        return "dodger_blue3"
+    if v < 102:
+        return "deep_sky_blue1"
+    if v < 153:
+        return "chartreuse3"
+    if v < 204:
+        return "bold yellow"
+    if v < 255:
+        return "bold orange3"
+    return "bold bright_white on red"
+
+
+class FrequencyMonitor(Horizontal):
+    """Displays DMX frequency numeric panel and a Sparkline history."""
+
+    def __init__(self, zmq_addr: str, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self.zmq_addr = zmq_addr
+        self._frequency = 0.0
+        self._last_update = 0.0
+        self._history: list[float] = []
+        self._max_history = 100
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets for the monitor."""
+        yield Static(id="freq-status")
+        yield Sparkline(id="freq-sparkline")
+
+    def on_mount(self) -> None:
+        """Set up the periodic redraw interval."""
+        self._draw()
+        self.set_interval(0.5, self._draw)
+
+    def refresh_data(self, frequency: float) -> None:
+        """Update current frequency and sparkline data history."""
+        self._frequency = frequency
+        self._last_update = time.time()
+
+        # Revert to unrounded frequency to allow full vertical auto-scaling waveform
+        self._history.append(frequency)
+        if len(self._history) > self._max_history:
+            self._history.pop(0)
+
+        sparkline = self.query_one("#freq-sparkline", Sparkline)
+        sparkline.data = list(self._history)
+
+        # Set sparkline color dynamically based on 43Hz threshold
+        if frequency < 43.0:
+            sparkline.set_class(True, "warning")
+            sparkline.set_class(False, "nominal")
+        else:
+            sparkline.set_class(True, "nominal")
+            sparkline.set_class(False, "warning")
+
+        self._draw()
+
+    def _draw(self) -> None:
+        now = time.time()
+        freq = self._frequency
+        lu = self._last_update
+        signal_timeout = 2.0
+
+        if lu == 0.0:
+            color, icon, status = "yellow", "◌", "Waiting for signal..."
+            fs = "--.-"
+        elif now - lu > signal_timeout:
+            color, icon, status = "red", "✖", "SIGNAL LOST"
+            fs = f"{freq:.2f}"
+            self._history.clear()
+            sparkline = self.query_one("#freq-sparkline", Sparkline)
+            sparkline.data = None
+            sparkline.set_class(False, "nominal")
+            sparkline.set_class(False, "warning")
+        elif 43.0 <= freq <= 45.0:
+            color, icon, status = "green", "●", "NOMINAL"
+            fs = f"{freq:.2f}"
+        elif 40.0 <= freq <= 48.0:
+            color, icon, status = "yellow", "▲", "OUT OF TOLERANCE"
+            fs = f"{freq:.2f}"
+        else:
+            color, icon, status = "bright_red", "✖", "FREQUENCY ERROR"
+            fs = f"{freq:.2f}"
+
+        t = Text()
+        t.append(f"  {fs} Hz  ", style=f"bold {color}")
+        t.append(f"   {icon}  {status}", style=color)
+        t.append(f"   target 44 Hz · {self.zmq_addr}", style="dim")
+
+        self.query_one("#freq-status", Static).update(
+            Panel(t, border_style=color, padding=(0, 1))
+        )
+
+
+class UniversePanel(Static):
+    """
+    Displays the 512 channels of a universe in a 32 x 16 grid.
+    Each cell: decimal value (0-255) colored by its intensity.
+    """
+
+    def __init__(self, universe_id: int, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self.universe_id = universe_id
+        self._values = bytes(512)
+        self._protocols: list[str] = []
+        self._sync_active = False
+
+    def on_mount(self) -> None:
+        """Draw the initial DMX grid."""
+        self._draw()
+
+    @property
+    def protocols(self) -> list[str]:
+        """Return the active protocols for this universe."""
+        return self._protocols
+
+    def refresh_data(self, values: bytes, protocols: list[str] | None = None) -> None:
+        """Update and redraw the universe DMX values."""
+        if values == self._values and (
+            protocols is None or protocols == self._protocols
+        ):
+            return
+        self._values = values
+        if protocols is not None:
+            self._protocols = protocols
+            self._sync_active = any("(Sync)" in p for p in self._protocols)
+        self._draw()
+
+    def _draw(self) -> None:
+        table = Table(box=None, show_header=False, padding=(0, 0))
+        table.add_column("lbl", width=5, no_wrap=True)
+        for _ in range(16):
+            table.add_column(width=4, no_wrap=True)
+
+        for row in range(32):
+            first_ch = row * 16 + 1
+            cells = [Text(f"{first_ch:3d} ", style="grey42")]
+            for col in range(16):
+                idx = row * 16 + col
+                v = self._values[idx] if idx < len(self._values) else 0
+                cells.append(Text(f"{v:3d}", style=value_style(v)))
+            table.add_row(*cells)
+
+        if self._protocols:
+            protocols_str = "/".join(self._protocols)
+        else:
+            protocols_str = "offline"
+
+        border_style = "yellow" if self._sync_active else "cyan"
+
+        self.update(
+            Panel(
+                table,
+                title=f"[bold cyan]Universe {self.universe_id}[/bold cyan]  "
+                f"[dim]{protocols_str}[/dim]",
+                border_style=border_style,
+                padding=(0, 1),
+            )
+        )
+
+
+class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
+    """Textual Monitor for OpenLightingConsole CoreEngine."""
+
+    CSS = """
+    Screen {
+        background: #0d0d14;
+    }
+    Header {
+        background: #1a1a2e;
+        color: #7ec8e3;
+    }
+    Footer {
+        background: #1a1a2e;
+    }
+    FrequencyMonitor {
+        height: 3;
+        width: 1fr;
+        margin: 0 0 1 0;
+    }
+    #freq-status {
+        width: 2fr;
+        height: 3;
+    }
+    #freq-sparkline {
+        width: 1fr;
+        height: 3;
+        border: round $primary;
+        padding: 0 1;
+    }
+    Sparkline.nominal > .sparkline--max-color {
+        color: #31b53e;
+    }
+    Sparkline.nominal > .sparkline--min-color {
+        color: #31b53e 30%;
+    }
+    Sparkline.warning > .sparkline--max-color {
+        color: #f7a01b;
+    }
+    Sparkline.warning > .sparkline--min-color {
+        color: #f7a01b 30%;
+    }
+    #universes {
+        height: 1fr;
+        width: 1fr;
+        overflow-x: auto;
+        overflow-y: auto;
+    }
+    UniversePanel {
+        width: auto;
+        margin: 0 1 0 0;
+    }
+    #placeholder {
+        width: 1fr;
+        height: 1fr;
+        content-align: center middle;
+        color: grey;
+    }
+    """
+
+    BINDINGS = [
+        ("q", "quit", "Quit"),
+        ("v", "toggle_offline", "Hide Offline"),
+        ("right,n", "next_universe", "Next Univ"),
+        ("left,p", "prev_universe", "Prev Univ"),
+    ]
+
+    status_text = reactive("Waiting for olcd...")
+    show_offline = reactive(True)
+
+    def __init__(self, fps: float = 15.0, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        super().__init__(**kwargs)
+        self.fps = fps
+        self.zmq_addr = "tcp://127.0.0.1:5555"
+        self.update_task: asyncio.Task | None = None
+        self.zmq_sock: zmq.asyncio.Socket | None = None
+        self._universe_panels: dict[int, UniversePanel] = {}
+        self._placeholder_active = True
+        self.last_hz = 0.0
+        self.last_frames = 0
+        self._dmx_cache: dict[int, bytes] = {}
+        self._protocols_cache: dict[int, list[str]] = {}
+        self._frequency_monitor: FrequencyMonitor | None = None
+        self._universes_container: Horizontal | None = None
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets for the app."""
+        yield Header(show_clock=True)
+        yield Vertical(
+            FrequencyMonitor(zmq_addr=self.zmq_addr, id="freq-bar"),
+            Horizontal(
+                Static("Waiting for DMX data...", id="placeholder"),
+                id="universes",
+            ),
+        )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        """Initialize the app state and start the background task."""
+        self.title = "OLC Monitor"
+        self.sub_title = self.status_text
+        self._frequency_monitor = self.query_one(FrequencyMonitor)
+        self._universes_container = self.query_one("#universes", Horizontal)
+        self.update_task = asyncio.create_task(self._listen_zmq())
+        self.set_interval(1.0 / self.fps, self._render_cached_data)
+
+    def watch_status_text(self, status_text: str) -> None:
+        """Update subtitle when status_text changes."""
+        self.sub_title = status_text
+
+    def action_next_universe(self) -> None:
+        """Scroll to the right to see the next universe."""
+        self.query_one("#universes").scroll_relative(x=72, animate=True)
+
+    def action_prev_universe(self) -> None:
+        """Scroll to the left to see the previous universe."""
+        self.query_one("#universes").scroll_relative(x=-72, animate=True)
+
+    def action_toggle_offline(self) -> None:
+        """Toggle showing offline universes."""
+        self.show_offline = not self.show_offline
+
+        # Update footer binding description
+        desc = "Show Offline" if not self.show_offline else "Hide Offline"
+        if "v" in self._bindings.key_to_bindings:
+            self._bindings.key_to_bindings["v"] = [
+                dataclasses.replace(b, description=desc)
+                for b in self._bindings.key_to_bindings["v"]
+            ]
+
+        try:
+            self.query_one(Footer).refresh()
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
+
+        # Update display of all existing panels
+        for panel in self._universe_panels.values():
+            if not panel.protocols:
+                panel.display = self.show_offline
+
+        self._update_status_text()
+
+    def _update_status_text(self) -> None:
+        """Update the status bar text reflecting visible universes and toggles."""
+        if self.show_offline:
+            active_count = len(self._universe_panels)
+            suffix = ""
+        else:
+            active_count = sum(1 for p in self._universe_panels.values() if p.protocols)
+            suffix = " (offline hidden)"
+
+        self.status_text = (
+            f"Active universes: {active_count} | {self.last_hz:.1f} Hz | "
+            f"{self.last_frames} frames{suffix}"
+        )
+
+    async def _listen_zmq(self) -> None:  # pylint: disable=too-many-locals
+        ctx = zmq.asyncio.Context()
+        self.zmq_sock = sock = ctx.socket(zmq.SUB)
+        sock.connect(self.zmq_addr)
+
+        # Subscribe to all universes
+        sock.setsockopt(zmq.SUBSCRIBE, b"")
+
+        try:
+            while True:
+                # Parts: [Topic, Metadata JSON, Raw DMX Bytes]
+                parts = await sock.recv_multipart()
+                if len(parts) != 3:
+                    continue
+
+                topic = parts[0].decode("ascii")
+                if not topic.startswith("universe:"):
+                    continue
+                uid = int(topic.split(":")[1])
+
+                metadata = json.loads(parts[1].decode("utf-8"))
+                self.last_hz = metadata.get("hz", 0.0)
+                self.last_frames = metadata.get("frames", 0)
+
+                # Decode DMX data
+                data = np.frombuffer(parts[2], dtype=np.uint8)
+                protocols = metadata.get("protocols", [])
+
+                # Update cache
+                self._dmx_cache[uid] = bytes(data)
+                self._protocols_cache[uid] = protocols
+
+        except asyncio.CancelledError:
+            sock.close()
+            ctx.term()
+
+    async def _render_cached_data(self) -> None:
+        """Periodic UI render task pulling from ZMQ cache."""
+        if not self._dmx_cache:
+            return
+
+        # Frequency Monitor
+        if self._frequency_monitor is not None:
+            self._frequency_monitor.refresh_data(self.last_hz)
+
+        # Remove placeholder on first packet
+        if self._placeholder_active:
+            try:
+                self.query_one("#placeholder").remove()
+                self._placeholder_active = False
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
+        # Create or update universe panels
+        # Copy cached state to avoid mutation during rendering
+        cached_dmx = list(self._dmx_cache.items())
+        for uid, data in sorted(cached_dmx):
+            protocols = self._protocols_cache.get(uid, [])
+
+            if uid not in self._universe_panels:
+                panel = UniversePanel(uid)
+                # Find the first mounted panel with a larger ID to insert before it
+                larger_uids = [k for k in self._universe_panels if k > uid]
+                if larger_uids and self._universes_container is not None:
+                    first_larger_uid = min(larger_uids)
+                    await self._universes_container.mount(
+                        panel, before=self._universe_panels[first_larger_uid]
+                    )
+                elif self._universes_container is not None:
+                    await self._universes_container.mount(panel)
+                self._universe_panels[uid] = panel
+
+            panel = self._universe_panels[uid]
+            panel.refresh_data(data, protocols)
+
+            # Set display visibility based on offline status
+            if not panel.protocols:
+                panel.display = self.show_offline
+            else:
+                panel.display = True
+
+        self._update_status_text()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="OLC Textual Monitor")
+    parser.add_argument(
+        "--fps",
+        type=float,
+        default=15.0,
+        help="UI refresh rate in frames per second (default: 15.0)",
+    )
+    args = parser.parse_args()
+
+    app = OLCMonitor(fps=args.fps)
+    app.run()

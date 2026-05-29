@@ -53,6 +53,7 @@ class ParsedData:
             "cues": {},
             "faders": {},
             "midi": {},
+            "universes": {},
         }
 
     def clean(self) -> None:
@@ -118,9 +119,7 @@ class ParsedData:
                 points = values["points"]
                 for point in points:
                     if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
-                        curve.add_point(
-                            point[0], point[1]
-                        )
+                        curve.add_point(point[0], point[1])
             label = values.get("label")
             if label:
                 curve.name = label
@@ -211,7 +210,7 @@ class ParsedData:
             self._merge_main_playback(sequence)
 
     def _replace_main_playback(self, sequence: int) -> None:
-        for step, values in self.data["sequences"][sequence]["steps"].items():
+        for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
                 "channels"
@@ -249,7 +248,7 @@ class ParsedData:
 
     def _merge_main_playback(self, sequence: int) -> None:
         del self.lightshow.main_playback.steps[-1]
-        for step, values in self.data["sequences"][sequence]["steps"].items():
+        for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
                 "channels"
@@ -311,7 +310,7 @@ class ParsedData:
             self._merge_chaser(sequence, index)
 
     def _merge_chaser(self, sequence: int, index: int) -> None:
-        for step, values in self.data["sequences"][sequence]["steps"].items():
+        for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
                 "channels"
@@ -349,7 +348,7 @@ class ParsedData:
                 self.lightshow.chasers[index].insert_step(step_nb, step)
 
     def _replace_chaser(self, sequence: int, index: int) -> None:
-        for step, values in self.data["sequences"][sequence]["steps"].items():
+        for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
             cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
                 "channels"

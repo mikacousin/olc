@@ -1,5 +1,5 @@
 project('olc',
-  version: '0.9.2.beta',
+  version: '0.10.beta',
   meson_version: '>= 0.50.0',
 )
 
@@ -33,6 +33,7 @@ conf.set('pythondir', python_dir)
 
 subdir('data')
 subdir('src')
+subdir('tools')
 subdir('po')
 
 meson.add_install_script('build-aux/meson/postinstall.py')

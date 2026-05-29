@@ -14,13 +14,15 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import time
-from collections.abc import Callable
+import typing
+from typing import Callable
 
-from olc.backends.artnet.merge import ArtDmxMerger, MergeMode
-from olc.backends.artnet.network import Network, get_ip_and_mac
-from olc.backends.artnet.protocol import (
+from olc.core.backends.artnet.merge import ArtDmxMerger, MergeMode
+from olc.core.backends.artnet.network import Network, get_ip_and_mac
+from olc.core.backends.artnet.protocol import (
     PORT,
     ArtDmx,
     ArtNetDecodeError,
@@ -32,7 +34,7 @@ from olc.backends.artnet.protocol import (
     get_opcode,
     get_universe,
 )
-from olc.timer import RepeatedTimer
+from olc.core.backends.network_utils import get_local_ips
 
 PORT_TYPES = {
     0: "DMX512",
@@ -293,7 +295,7 @@ class Discovery:
     universes: list[int]
     senders: dict[int, Sender]
     artpollreply: ArtPollReply
-    monitor_thread: RepeatedTimer
+    monitor_task: asyncio.Task | None
     nodes: dict[tuple[tuple[int, int, int, int, int, int], int], Node]
     notify: Callable | None
 
@@ -308,14 +310,59 @@ class Discovery:
         self.universes = universes
         self.senders = senders
         self.artpollreply = ArtPollReply(universes)
-        self.monitor_thread = RepeatedTimer(2.5, self.send_artpoll)
+        self.is_running = False
+        self.monitor_task = None
         self.nodes = {}
         self.consoles: dict[tuple[tuple[int, int, int, int, int, int], int], Node] = {}
         self.notify = notify
 
+    def start(self) -> None:
+        """Start active polling timer asynchronously."""
+        if not self.is_running:
+            self.is_running = True
+            loop = self.network.artnet.loop
+            if loop and loop.is_running() and self.monitor_task is None:
+                asyncio.run_coroutine_threadsafe(
+                    self._start_monitor_loop(), loop
+                ).result()
+
+    async def _start_monitor_loop(self) -> None:
+        """Launch the monitor loop task inside the event loop thread."""
+        self.monitor_task = asyncio.create_task(self._monitor_loop())
+
+    async def _monitor_loop(self) -> None:
+        """Periodic loop sending ArtPoll every 2.5s."""
+        while self.is_running:
+            await asyncio.sleep(2.5)
+            try:
+                self.send_artpoll()
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                print(f"[Art-Net] Error in discovery: {e}")
+
     def stop(self) -> None:
         """Stop discovery of Art-Net devices."""
-        self.monitor_thread.stop()
+        self.is_running = False
+        loop = self.network.artnet.loop
+        if loop and loop.is_running():
+            try:
+                asyncio.run_coroutine_threadsafe(
+                    self._async_stop_monitor(), loop
+                ).result(timeout=2.0)
+            except Exception:  # pylint: disable=broad-exception-caught
+                pass
+
+        if self.monitor_task:
+            self.monitor_task = None
+
+    async def _async_stop_monitor(self) -> None:
+        """Cancel monitor task asynchronously."""
+        if self.monitor_task:
+            self.monitor_task.cancel()
+            try:
+                await self.monitor_task
+            except asyncio.CancelledError:
+                pass
+            self.monitor_task = None
 
     def send_artpoll(self) -> None:
         """Broadcast ArtPoll packet to discover Controllers and Nodes
@@ -475,12 +522,14 @@ class Listeners:
     callback: Callable | None
     listeners: dict[tuple[str, int], Listener]
     merger: ArtDmxMerger
+    local_ips: set[str]
 
     def __init__(self, universes: list[int], callback: Callable | None) -> None:
         self.universes = universes
         self.callback = callback
         self.listeners = {}
         self.merger = ArtDmxMerger(mode=MergeMode.HTP, callback=callback)
+        self.local_ips = set(get_local_ips())
 
     def get_listener(self, addr: tuple[str, int]) -> Listener:
         """Return existing listener or a new one.
@@ -503,12 +552,14 @@ class Listeners:
             data: Raw data
             addr: Sender IP/port
         """
+        if addr[0] in self.local_ips:
+            return
         univ = get_universe(data)
         listener = self.get_listener(addr)
         if artdmx := listener.get_artdmx(univ):
             try:
                 artdmx.decode(data)
-            except ArtNetDecodeError, ArtNetSequenceError:
+            except (ArtNetDecodeError, ArtNetSequenceError):
                 return
 
             self.merger.update(artdmx.universe, addr[0], artdmx.data)
@@ -521,6 +572,7 @@ class Artnet:
     senders: dict[int, Sender]
     network: Network
     discovery: Discovery
+    loop: asyncio.AbstractEventLoop | None
 
     def __init__(
         self,
@@ -528,14 +580,20 @@ class Artnet:
         notify: Callable | None = None,
         on_artdmx_cb: Callable | None = None,
     ) -> None:
+        self.loop = None
         if universes is None:
             universes = []
         self.listeners = Listeners(universes, on_artdmx_cb)
         self.senders = {}
         for universe in universes:
             self.senders[universe] = Sender(universe, notify)
-        self.network = Network(self)
+        self.network = Network(typing.cast(typing.Any, self))
         self.discovery = Discovery(self.network, universes, self.senders, notify)
+
+    def start(self) -> None:
+        """Start Art-Net backend threads."""
+        self.network.start()
+        self.discovery.start()
 
     def stop(self) -> None:
         """Stop Art-Net backend"""

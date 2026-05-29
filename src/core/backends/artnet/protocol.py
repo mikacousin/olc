@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import ipaddress
 import itertools
+import typing
 from enum import IntEnum
 from struct import pack, unpack
 
@@ -249,6 +250,8 @@ class ArtCommon:
         Returns:
             True if valid, else False
         """
+        if len(packet) < 10:
+            return False
         header, opcode = unpack("<8sH", packet[0:10])
         if header != HEADER or opcode != self.opcode:
             return False
@@ -260,7 +263,7 @@ class ArtCommon:
 class ArtDmx(ArtCommon):
     """ArtDmx packet"""
 
-    sequence: itertools.cycle
+    sequence: typing.Any
     universe: int
     data: list[int]
     tracker: PacketTracker
@@ -515,7 +518,7 @@ class ArtPollReply(ArtCommon):
             # Enttec Open DMX Ethernet sends LongName with a length of 20 instead of 64
             # And fill NodeReport with garbage...
             self.long_name = unpack("20s", packet[44:64])[0].decode()
-            self.node_report = unpack("64s", packet[64:128])[0]
+            self.node_report = unpack("64s", packet[64:128])[0].decode(errors="ignore")
         else:
             self.long_name = unpack("64s", packet[44:108])[0].decode()
             self.node_report = unpack("64s", packet[108:172])[0].decode()

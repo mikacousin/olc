@@ -84,6 +84,7 @@ class ShowFile:
 class LightShow(ShowFile):
     """Light show data"""
 
+    app: typing.Any
     curves: Curves
     main_playback: Sequence
     cues: list

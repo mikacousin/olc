@@ -14,15 +14,19 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import typing
 
-from gi.repository import Gtk
-from olc.cue import Cue
-from olc.files.ascii.parser import AsciiParser
-from olc.files.file_type import FileType
-from olc.files.import_dialog import Action, DialogData
-from olc.files.olc.parser import OlcParser
-from olc.files.parsed_data import ParsedData
-from olc.independent import Independents
-from olc.step import Step
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+from olc.core.universe_config import Protocol  # noqa: E402
+from olc.cue import Cue  # noqa: E402
+from olc.files.ascii.parser import AsciiParser  # noqa: E402
+from olc.files.file_type import FileType  # noqa: E402
+from olc.files.import_dialog import Action, DialogData  # noqa: E402
+from olc.files.olc.parser import OlcParser  # noqa: E402
+from olc.files.parsed_data import ParsedData  # noqa: E402
+from olc.independent import Independents  # noqa: E402
+from olc.step import Step  # noqa: E402
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -122,6 +126,7 @@ class ImportFile:
         self._do_import_faders()
         if self.file_type is FileType.OLC:
             self._do_import_midi()
+            self._do_import_universes()
         self._update_ui()
 
     def _do_import_curves(self) -> None:
@@ -207,19 +212,61 @@ class ImportFile:
                 self.midi.reset_messages()
         self.data.import_midi()
 
+    def _do_import_universes(self) -> None:
+        universes_data = self.data.data.get("universes")
+        if not universes_data:
+            return
+
+        if self.lightshow.app is None:
+            return
+        engine = self.lightshow.app.engine
+        if engine is None:
+            return
+
+        for u_str, val in universes_data.items():
+            try:
+                u = int(u_str)
+            except ValueError:
+                continue
+            if u not in engine.universe_map:
+                continue
+
+            config = engine.universe_map[u]
+            protocols_set = set()
+            for p_name in val.get("protocols", []):
+                if p_name == "ARTNET":
+                    protocols_set.add(Protocol.ARTNET)
+                elif p_name == "SACN" and u != 0:
+                    protocols_set.add(Protocol.SACN)
+            config.set_protocols(protocols_set)
+
+            if "artnet" in val:
+                artnet_val = val["artnet"]
+                config.artnet.net = artnet_val.get("net", 0)
+                config.artnet.sub = artnet_val.get("sub", 0)
+                config.artnet.sync_active = artnet_val.get("sync_active", False)
+
+            if "sacn" in val:
+                sacn_val = val["sacn"]
+                config.sacn.priority = sacn_val.get("priority", 100)
+                config.sacn.sync_address = sacn_val.get("sync_address", 0)
+
+            # Hot-reload sender registry for this universe
+            engine.reload_universe(u)
+
     def _update_ui(self) -> None:
-        if self.window and self.window.live_view:
+        if self.window is not None and self.window.live_view is not None:
             self.window.live_view.channels_view.update()
         if self.tabs:
             self.tabs.refresh_all()
-        if self.window and self.window.header:
+        if self.window is not None and self.window.header is not None:
             subtitle = (
                 f"Mem. : 0.0 - "
                 f"Next Mem. : {self.lightshow.main_playback.steps[1].cue.memory} "
                 f"{self.lightshow.main_playback.steps[1].cue.text}"
             )
             self.window.header.set_subtitle(subtitle)
-        if self.window and self.window.playback:
+        if self.window is not None and self.window.playback is not None:
             self.window.playback.update_xfade_display(0)
             self.window.playback.update_sequence_display()
         # Redraw Mackie LCD

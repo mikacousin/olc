@@ -52,10 +52,12 @@ class OlcWriter(WriteFile):
         self._faders()
         self._independents()
         self._midi()
+        self._universes()
 
         json_str = json.dumps(self.data, indent=2, ensure_ascii=False, sort_keys=False)
 
-        self.stream.write(bytes(json_str, "utf-8"))
+        if self.stream:
+            self.stream.write(bytes(json_str, "utf-8"))
 
     def _patch(self) -> None:
         self.data["patch"] = {}
@@ -223,3 +225,29 @@ class OlcWriter(WriteFile):
         self.data["midi_mapping"]["note"] = midi.notes.notes
         self.data["midi_mapping"]["control_change"] = midi.control_change.control_change
         self.data["midi_mapping"]["pitchwheel"] = midi.pitchwheel.pitchwheel
+
+    def _universes(self) -> None:
+        app = self.lightshow.app
+        if app is None or app.engine is None:
+            return
+
+        self.data["universes"] = {}
+        engine = app.engine
+        for config in engine.universe_map:
+            u = config.universe_id
+            # We only serialize configured universes (like 1 to 4)
+            if u == 0:
+                continue
+            protocols = [p.name for p in config.protocols]
+            self.data["universes"][str(u)] = {
+                "protocols": protocols,
+                "artnet": {
+                    "net": config.artnet.net,
+                    "sub": config.artnet.sub,
+                    "sync_active": config.artnet.sync_active,
+                },
+                "sacn": {
+                    "priority": config.sacn.priority,
+                    "sync_address": config.sacn.sync_address,
+                },
+            }

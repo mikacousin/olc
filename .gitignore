@@ -16,3 +16,5 @@ po/POTFILES
 __pycache__
 pyproject.toml
 .pylintrc
+/.agents
+/doc

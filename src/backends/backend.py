@@ -15,70 +15,99 @@
 from __future__ import annotations
 
 import typing
+from typing import Callable
 
-from gi.repository import GLib
-from olc.backends.artnet_backend import ArtnetBackend
-
-ARTNET = True
-
-try:
-    import sacn  # noqa: F401, pylint: disable=W0611
-except ImportError:
-    SACN = False
-else:
-    SACN = True
-    from olc.backends.sacn import Sacn
-try:
-    import ola  # noqa: F401, pylint: disable=W0611
-except ImportError:
-    OLA = False
-else:
-    OLA = True
-    from olc.backends.ola import Ola
+from olc.backends import DMXBackend
+from olc.core.backends.artnet import ArtNetManager
+from olc.core.backends.sacn import SacnManager
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
     from olc.lightshow import LightShow
 
 
-def select_backend(
-    options: dict[str, typing.Any], settings: Gio.Settings, lightshow: LightShow
-) -> None | Ola | ArtnetBackend | Sacn:
-    """Select and create DMX backend
+class MultiProtocolBackend(DMXBackend):
+    """Unified DMX Backend coordinating multiple active protocols from CoreEngine."""
 
-    Args:
-        options: command line options
-        settings: GSettings
-        lightshow: Light show data
+    artnet: ArtNetManager | None
+    sacn: SacnManager | None
 
-    Returns:
-        Backend or None
-    """
-    backend = options.get("backend", settings.get_string("backend"))
-    backend_instance: object = None
+    def __init__(self, lightshow: LightShow) -> None:
+        super().__init__(lightshow)
+        self.artnet = getattr(lightshow.app.engine, "_artnet_manager", None)
+        self.sacn = getattr(lightshow.app.engine, "_sacn_manager", None)
 
-    if "ola" in backend and OLA:
-        olad_port = options.get("http-port", 9090)
-        backend_instance = Ola(lightshow, olad_port=olad_port)
-    elif "artnet" in backend and ARTNET:
-        backend_instance = ArtnetBackend(lightshow)
-    elif "sacn" in backend and SACN:
-        backend_instance = Sacn(lightshow)
-    elif backend:
-        print(f"{backend} is not supported. Fallback to ArtNet")
-        backend = "artnet"
-        backend_instance = ArtnetBackend(lightshow)
+        # Wire up callbacks on active managers
+        if self.artnet is not None:
+            self.artnet.notify = self.notify_artnet
 
-    # Handle case where a backend module is missing
-    if not backend_instance:
-        missing_module = None
-        if "ola" in backend and not OLA:
-            missing_module = "ola"
+        if self.sacn is not None:
+            self.sacn.notify = self.notify_sacn
 
-        elif "sacn" in backend and not SACN:
-            missing_module = "sACN"
-        if missing_module:
-            print(f"Can't find {missing_module} python module.")
+    def send(self, universe: int, index: int) -> None:
+        """Send DMX data (handled natively by CoreEngine's DMXLoop)."""
 
-    settings.set_value("backend", GLib.Variant("s", backend))
-    return backend_instance
+    def notify_artnet(
+        self, action: str, *args: str | int, **kwargs: str
+    ) -> None | Callable:
+        """Dispatch Art-Net notifications to UI."""
+        return self.notify(f"artnet-{action}", *args, **kwargs)
+
+    def notify_sacn(
+        self, action: str, *args: str | int, **kwargs: str
+    ) -> None | Callable:
+        """Dispatch sACN notifications to UI."""
+        return self.notify(f"sacn-{action}", *args, **kwargs)
+
+    def notify(self, action: str, *args: str | int, **kwargs: str) -> None | Callable:
+        """Dispatch unified notifications to GTK UI."""
+        actions = {
+            "artnet-add-node": "_artnet_add_node",
+            "artnet-del-node": "_artnet_del_node",
+            "artnet-add-console": "_artnet_add_console",
+            "artnet-del-console": "_artnet_del_console",
+            "sacn-add-node": "_sacn_add_node",
+            "sacn-del-node": "_sacn_del_node",
+        }
+        attr = actions.get(action, None)
+        if attr:
+            if func := getattr(self, f"{attr}", None):
+                return func(*args, **kwargs)
+        return None
+
+    def _artnet_add_node(self, ip: str, universe: int) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "New Art-Net Node detected",
+                f"Send Universe {universe} to Node at {ip}.",
+            )
+
+    def _artnet_del_node(self, ip: str) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "Art-Net Node disconnected", f"Lost Node at {ip}."
+            )
+
+    def _artnet_add_console(self, ip: str, _universe: int) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "New Art-Net Console detected", f"Art-Net Console detected at {ip}."
+            )
+
+    def _artnet_del_console(self, ip: str) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "Art-Net Console disconnected", f"Lost Console at {ip}."
+            )
+
+    def _sacn_add_node(self, ip: str, universe: int) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "New sACN Source detected",
+                f"Source at {ip} is sending Universe {universe}.",
+            )
+
+    def _sacn_del_node(self, ip: str) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                "sACN Source disconnected", f"Lost Source at {ip}."
+            )

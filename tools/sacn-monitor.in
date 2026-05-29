@@ -1,0 +1,396 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Open Lighting Console sACN Monitor
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+# pylint: disable=invalid-name,too-many-instance-attributes,too-many-locals
+# pylint: disable=wrong-spelling-in-comment,wrong-spelling-in-docstring
+# pylint: disable=no-name-in-module,no-member,protected-access
+# pylint: disable=too-many-statements,too-many-branches
+"""sACN network and universe visualization tool using GTK4.
+
+Provides passive packet monitoring, source tracking, and intensity grid rendering.
+"""
+
+import os
+import sys
+
+# Support running both locally in source tree and when installed via meson
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+sys.path.insert(1, "@pythondir@")
+
+import gi  # noqa: E402
+
+gi.require_version('Gtk', '4.0')
+gi.require_version('Adw', '1')
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+from olc.core.engine import CoreEngine  # noqa: E402
+from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
+
+CSS_DATA = """
+.dmx-grid {
+    padding: 12px;
+    background-color: #1e1e1e;
+    border-radius: 8px;
+}
+.dmx-label {
+    font-family: monospace;
+    font-size: 11pt;
+    padding: 6px;
+    min-width: 32px;
+    text-align: center;
+    border-radius: 4px;
+    margin: 1px;
+}
+.dmx-zero {
+    color: #6c757d;
+}
+.dmx-low {
+    color: #1e90ff;
+    background-color: rgba(30, 144, 255, 0.12);
+}
+.dmx-mid-low {
+    color: #00bfff;
+    background-color: rgba(0, 191, 255, 0.18);
+}
+.dmx-mid-high {
+    color: #2ec4b6;
+    background-color: rgba(46, 196, 182, 0.24);
+}
+.dmx-high {
+    color: #ff9f1c;
+    font-weight: bold;
+    background-color: rgba(255, 159, 28, 0.3);
+}
+.dmx-full {
+    color: #ffffff;
+    background-color: #e71d36;
+    font-weight: bold;
+}
+.channel-header {
+    font-family: monospace;
+    font-size: 10pt;
+    color: #888888;
+    padding-right: 12px;
+    text-align: right;
+}
+.sidebar-panel {
+    background-color: #242424;
+}
+.dim-label {
+    color: #888888;
+}
+"""
+
+
+def get_style_class(v: int) -> str:
+    """Determine CSS style class based on DMX intensity level."""
+    if v == 0:
+        return "dmx-zero"
+    if v < 51:
+        return "dmx-low"
+    if v < 102:
+        return "dmx-mid-low"
+    if v < 153:
+        return "dmx-mid-high"
+    if v < 204:
+        return "dmx-high"
+    return "dmx-full"
+
+
+class SacnMonitorWindow(Adw.ApplicationWindow):
+    """Main window for the sACN monitor tool using GTK4 and Adwaita components."""
+
+    def __init__(self, app: Adw.Application, engine: CoreEngine) -> None:
+        super().__init__(application=app)
+        self.engine = engine
+        self.selected_universe = 1
+        self.dmx_labels: list[Gtk.Label] = []
+        self.current_dmx_values = [-1] * 512
+        self.source_rows: dict[bytes, Adw.ActionRow] = {}
+
+        # Load Custom Styling
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_data(CSS_DATA)
+        if display := Gdk.Display.get_default():
+            Gtk.StyleContext.add_provider_for_display(
+                display, css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+            )
+
+        # Set window properties
+        self.set_title("sACN Monitor")
+        self.set_default_size(1020, 640)
+
+        # Root vertical layout container
+        root_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.set_content(root_box)
+
+        # GNOME-style title bar
+        header_bar = Adw.HeaderBar()
+        root_box.append(header_bar)
+
+        # Universe Selector dropdown
+        self.universe_store = Gtk.StringList.new(
+            [f"Univers {u}" for u in range(1, 257)]
+        )
+        self.dropdown = Gtk.DropDown.new(model=self.universe_store, expression=None)
+        self.dropdown.connect("notify::selected", self.on_universe_changed)
+
+        title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        title_label = Gtk.Label(label="Univers :")
+        title_label.add_css_class("dim-label")
+        title_box.append(title_label)
+        title_box.append(self.dropdown)
+        header_bar.set_title_widget(title_box)
+
+        # Main splitter layout separating sidebar list and grid area
+        paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        paned.set_position(320)
+        paned.set_resize_start_child(False)
+        paned.set_resize_end_child(True)
+        paned.set_shrink_start_child(False)
+        paned.set_shrink_end_child(False)
+        root_box.append(paned)
+
+        # Left pane: active sACN sources list with a clean stack transition
+        self.sidebar_stack = Gtk.Stack()
+        self.sidebar_stack.set_transition_type(Gtk.StackTransitionType.CROSSFADE)
+        self.sidebar_stack.set_hexpand(False)
+        self.sidebar_stack.set_size_request(320, -1)
+
+        # Empty status page placeholder
+        self.status_page = Adw.StatusPage()
+        self.status_page.set_title("En attente de signal sACN...")
+        self.status_page.set_description("Écoute active des émetteurs sur le réseau...")
+        self.status_page.set_icon_name("network-wired-symbolic")
+        self.sidebar_stack.add_child(self.status_page)
+
+        # Active sources scrolled list view
+        self.sources_scroll = Gtk.ScrolledWindow()
+        self.sources_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        sources_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        sources_box.set_margin_start(12)
+        sources_box.set_margin_end(12)
+        sources_box.set_margin_top(12)
+        sources_box.set_margin_bottom(12)
+
+        self.pref_group = Adw.PreferencesGroup()
+        self.pref_group.set_title("Sources Détectées")
+        self.pref_group.set_description("Émetteurs sACN diffusant sur cet univers")
+        sources_box.append(self.pref_group)
+        self.sources_scroll.set_child(sources_box)
+        self.sidebar_stack.add_child(self.sources_scroll)
+
+        paned.set_start_child(self.sidebar_stack)
+
+        # Right pane: visual DMX intensity grid display
+        grid_scrolled = Gtk.ScrolledWindow()
+        grid_scrolled.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        grid_scrolled.set_hexpand(True)
+        grid_scrolled.set_vexpand(True)
+
+        grid_wrapper = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        grid_wrapper.set_margin_start(18)
+        grid_wrapper.set_margin_end(18)
+        grid_wrapper.set_margin_top(18)
+        grid_wrapper.set_margin_bottom(18)
+
+        # Render 32 x 16 DMX value label cells
+        self.grid = Gtk.Grid()
+        self.grid.set_row_spacing(2)
+        self.grid.set_column_spacing(2)
+        self.grid.add_css_class("dmx-grid")
+
+        for row_idx in range(32):
+            start_ch = row_idx * 16 + 1
+            row_header = Gtk.Label(label=f"{start_ch:03d}")
+            row_header.add_css_class("channel-header")
+            self.grid.attach(row_header, 0, row_idx, 1, 1)
+
+            for col_idx in range(16):
+                lbl = Gtk.Label(label="0")
+                lbl.add_css_class("dmx-label")
+                lbl.add_css_class("dmx-zero")
+                self.grid.attach(lbl, col_idx + 1, row_idx, 1, 1)
+                self.dmx_labels.append(lbl)
+
+        grid_center = Gtk.CenterBox()
+        grid_center.set_center_widget(self.grid)
+        grid_wrapper.append(grid_center)
+        grid_scrolled.set_child(grid_wrapper)
+
+        paned.set_end_child(grid_scrolled)
+
+        # Elegant footer bar presenting stats
+        bottom_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        bottom_bar.set_margin_start(16)
+        bottom_bar.set_margin_end(16)
+        bottom_bar.set_margin_top(8)
+        bottom_bar.set_margin_bottom(8)
+        root_box.append(bottom_bar)
+
+        self.status_label = Gtk.Label(label="Écoute active sur le réseau...")
+        self.status_label.add_css_class("dim-label")
+        bottom_bar.append(self.status_label)
+
+        self.info_label = Gtk.Label(label="OLC sACN Monitor")
+        self.info_label.add_css_class("dim-label")
+        self.info_label.set_hexpand(True)
+        self.info_label.set_halign(Gtk.Align.END)
+        bottom_bar.append(self.info_label)
+
+        # Hook window teardown callback and register GLib timer loop
+        self.connect("destroy", self.on_destroy)
+        GLib.timeout_add(100, self.tick)
+
+    def on_universe_changed(self, dropdown: Gtk.DropDown, _: object) -> None:
+        """Triggered upon selecting a different active universe ID."""
+        selected_idx = dropdown.get_selected()
+        new_universe = selected_idx + 1
+        old_universe = self.selected_universe
+
+        if old_universe != new_universe:
+            # Disable sACN on the old universe and trigger reload
+            self.engine.universe_map.disable_protocol(old_universe, Protocol.SACN)
+            self.engine.reload_universe(old_universe)
+
+            # Enable sACN on the new universe and trigger reload
+            self.engine.universe_map.enable_protocol(new_universe, Protocol.SACN)
+            self.engine.reload_universe(new_universe)
+
+            self.selected_universe = new_universe
+
+        # Invalidate local DMX cache to force redrawing entire grid
+        self.current_dmx_values = [-1] * 512
+
+        # Reset active sources sidebar
+        for row in list(self.source_rows.values()):
+            self.pref_group.remove(row)
+        self.source_rows.clear()
+
+    def tick(self) -> bool:
+        """Periodic real-time callback processing DMX merges and source updates."""
+        merger = self.engine.sacn_manager.mergers.get(self.selected_universe)
+        active_sources = merger.sources if merger else {}
+
+        # 1. Update active source sidebar widgets
+        if not active_sources:
+            if self.sidebar_stack.get_visible_child() != self.status_page:
+                self.sidebar_stack.set_visible_child(self.status_page)
+            for row in list(self.source_rows.values()):
+                self.pref_group.remove(row)
+            self.source_rows.clear()
+            self.status_label.set_text("Aucun signal détecté sur le réseau.")
+        else:
+            if self.sidebar_stack.get_visible_child() != self.sources_scroll:
+                self.sidebar_stack.set_visible_child(self.sources_scroll)
+
+            # Remove timed out sources from UI
+            for cid in list(self.source_rows.keys()):
+                if cid not in active_sources:
+                    row = self.source_rows.pop(cid)
+                    self.pref_group.remove(row)
+
+            # Insert or update rows
+            for cid, src in active_sources.items():
+                if cid not in self.source_rows:
+                    row = Adw.ActionRow.new()
+                    row.add_prefix(Gtk.Image.new_from_icon_name("network-wired-symbolic"))
+                    self.pref_group.add(row)
+                    self.source_rows[cid] = row
+
+                row = self.source_rows[cid]
+                row.set_title(src.name)
+                ip_str = src.ip or "Inconnue"
+                row.set_subtitle(f"IP: {ip_str} | Priorité: {src.priority}")
+
+            num_srcs = len(active_sources)
+            s_suf = "s" if num_srcs > 1 else ""
+            self.status_label.set_text(
+                f"{num_srcs} émetteur{s_suf} actif{s_suf} détecté{s_suf}."
+            )
+
+        # 2. Update DMX intensities grid differentially
+        dmx_data = merger._last_merged if merger else [0] * 512
+        for i in range(512):
+            val = dmx_data[i]
+            if val != self.current_dmx_values[i]:
+                self.current_dmx_values[i] = val
+                lbl = self.dmx_labels[i]
+                lbl.set_text(str(val))
+
+                # Apply modern color styles
+                for style_cls in (
+                    "dmx-zero", "dmx-low", "dmx-mid-low",
+                    "dmx-mid-high", "dmx-high", "dmx-full"
+                ):
+                    lbl.remove_css_class(style_cls)
+                lbl.add_css_class(get_style_class(val))
+
+        return True
+
+    def on_destroy(self, *_: object) -> None:
+        """Teardown method to stop active network background threads and engines."""
+        self.engine.stop()
+
+
+class SacnMonitorApplication(Adw.Application):
+    """GTK4 application orchestrating the background CoreEngine."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            application_id="org.openlightingconsole.sacn-monitor",
+            flags=Gio.ApplicationFlags.FLAGS_NONE,
+        )
+        self.engine: CoreEngine | None = None
+
+    def do_activate(self) -> None:
+        """Prepare engine, join default multicast groups and present the main window."""
+        # Create a "quit" action for Ctrl+Q
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", lambda *_: self.quit())
+        self.add_action(quit_action)
+        self.set_accels_for_action("app.quit", ["<Ctrl>q"])
+
+        if not self.engine:
+            # Set up UniverseMap for CoreEngine
+            universe_map = UniverseMap(257)
+            # Only enable sACN on universe 1 at startup to avoid IGMP limits
+            universe_map.enable_protocol(1, Protocol.SACN)
+            self.engine = CoreEngine(universe_map, no_transmit=True)
+            self.engine.start()
+
+        # Prefer dark theme system-wide if supported by desktop settings
+        if gtk_settings := Gtk.Settings.get_default():
+            gtk_settings.set_property("gtk-application-prefer-dark-theme", True)
+
+        window = SacnMonitorWindow(self, self.engine)
+        window.present()
+
+    def do_shutdown(self) -> None:
+        """Shutdown routine ensuring background threads terminate completely."""
+        if self.engine:
+            self.engine.stop()
+            self.engine = None
+        Adw.Application.do_shutdown(self)
+
+
+def main() -> None:
+    """Application entrypoint."""
+    app = SacnMonitorApplication()
+    app.run(sys.argv)
+
+
+if __name__ == "__main__":
+    main()

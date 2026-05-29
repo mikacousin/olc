@@ -19,12 +19,13 @@ from gettext import gettext as _
 from typing import Callable
 
 from gi.repository import Gdk, GLib, Gtk
+from olc.core.universe_config import Protocol
 from olc.osc import Osc
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.backends import DMXBackend
-    from olc.backends.artnet_backend import ArtnetBackend
+    from olc.backends.backend import MultiProtocolBackend
     from olc.midi import Midi
     from olc.tabs_manager import Tabs
     from olc.window import Window
@@ -64,16 +65,12 @@ class SettingsTab(Gtk.Box):
         # MIDI
         self._midi(builder)
 
-        # Art-Net Tab Visibility
-        backend = self.settings.get_string("backend")
-        if "artnet" not in backend:
-            artnet_grid = typing.cast(Gtk.Widget, builder.get_object("artnet_grid"))
-            if artnet_grid:
-                page_num = settings_dialog.page_num(artnet_grid)
-                if page_num >= 0:
-                    settings_dialog.remove_page(page_num)
-        else:
-            self._artnet(builder)
+        # Art-Net Discovery Page
+        self._artnet(builder)
+
+        # Universes Tab
+        universes_tab = self._create_universes_tab()
+        settings_dialog.append_page(universes_tab, Gtk.Label(label=_("Universes")))
 
         builder.connect_signals(self)
         self.pack_start(settings_dialog, True, True, 0)
@@ -313,6 +310,7 @@ class SettingsTab(Gtk.Box):
         self.midi.update_faders()
 
     def _artnet(self, builder: Gtk.Builder) -> None:
+        # pylint: disable=too-many-locals,protected-access
         self.liststore_artnet = Gtk.ListStore(str, str, str, str)
         treeview = Gtk.TreeView(model=self.liststore_artnet)
 
@@ -364,15 +362,19 @@ class SettingsTab(Gtk.Box):
         if "artnet" not in self.settings.get_string("backend"):
             return True
 
-        if not self.backend or not hasattr(self.backend, "artnet"):
+        if not self.backend:
             return True
 
-        artnet_backend = typing.cast("ArtnetBackend", self.backend)
+        artnet = getattr(self.backend, "artnet", None)
+        if artnet is None:
+            return True
+
+        multi_backend = typing.cast("MultiProtocolBackend", self.backend)
 
         grouped = {}
-        self._collect_devices(artnet_backend.artnet.discovery.nodes, "Node", grouped)
+        self._collect_devices(multi_backend.artnet.discovery.nodes, "Node", grouped)
         self._collect_devices(
-            artnet_backend.artnet.discovery.consoles, "Controller", grouped
+            multi_backend.artnet.discovery.consoles, "Controller", grouped
         )
 
         new_state = [
@@ -382,10 +384,10 @@ class SettingsTab(Gtk.Box):
 
         if any(
             ((0, 0, 0, 0, 0, 0), 0) in s.nodes
-            for s in artnet_backend.artnet.senders.values()
+            for s in multi_backend.artnet.senders.values()
         ):
             univs = ", ".join(
-                str(u) for u in sorted(artnet_backend.artnet.senders.keys())
+                str(u) for u in sorted(multi_backend.artnet.senders.keys())
             )
             new_state.append(
                 ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
@@ -475,3 +477,218 @@ class SettingsTab(Gtk.Box):
             return True
         except ValueError:
             return False
+
+
+
+    def _create_universes_tab(self) -> Gtk.Box:
+        # pylint: disable=too-many-locals,too-many-statements
+        app = self.window.get_application()
+        engine = getattr(app, "engine", None)
+
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        main_box.set_margin_start(15)
+        main_box.set_margin_end(15)
+        main_box.set_margin_top(15)
+        main_box.set_margin_bottom(15)
+
+        # We wrap everything in a ScrolledWindow
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scrolled.add(main_box)
+
+        for u in [1, 2, 3, 4]:
+            frame = Gtk.Frame()
+            frame.set_label(_("Universe {universe}").format(universe=u))
+            frame_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
+            frame_box.set_margin_start(10)
+            frame_box.set_margin_end(10)
+            frame_box.set_margin_top(10)
+            frame_box.set_margin_bottom(10)
+            frame.add(frame_box)
+            main_box.pack_start(frame, False, False, 0)
+
+            config = engine.universe_map[u] if engine is not None else None
+
+            # --- Column 1: Art-Net ---
+            artnet_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            artnet_box.set_hexpand(True)
+            frame_box.pack_start(artnet_box, True, True, 0)
+
+            artnet_check = Gtk.CheckButton(label=_("Enable Art-Net"))
+            artnet_box.pack_start(artnet_check, False, False, 0)
+
+            artnet_params = Gtk.Grid()
+            artnet_params.set_column_spacing(10)
+            artnet_params.set_row_spacing(6)
+            artnet_box.pack_start(artnet_params, False, False, 0)
+
+            # Net
+            net_label = Gtk.Label(label=_("Net:"))
+            net_label.set_halign(Gtk.Align.START)
+            artnet_params.attach(net_label, 0, 0, 1, 1)
+            net_adj = Gtk.Adjustment(0, 0, 127, 1, 10, 0)
+            net_spin = Gtk.SpinButton()
+            net_spin.set_adjustment(net_adj)
+            artnet_params.attach(net_spin, 1, 0, 1, 1)
+
+            # Sub
+            sub_label = Gtk.Label(label=_("Sub:"))
+            sub_label.set_halign(Gtk.Align.START)
+            artnet_params.attach(sub_label, 2, 0, 1, 1)
+            sub_adj = Gtk.Adjustment(0, 0, 15, 1, 5, 0)
+            sub_spin = Gtk.SpinButton()
+            sub_spin.set_adjustment(sub_adj)
+            artnet_params.attach(sub_spin, 3, 0, 1, 1)
+
+            # Sync
+            sync_label = Gtk.Label(label=_("ArtSync:"))
+            sync_label.set_halign(Gtk.Align.START)
+            artnet_params.attach(sync_label, 0, 1, 1, 1)
+            sync_switch = Gtk.Switch()
+            sync_switch.set_halign(Gtk.Align.START)
+            artnet_params.attach(sync_switch, 1, 1, 1, 1)
+
+            # --- Column 2: sACN ---
+            sacn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            sacn_box.set_hexpand(True)
+            frame_box.pack_start(sacn_box, True, True, 0)
+
+            sacn_check = Gtk.CheckButton(label=_("Enable sACN"))
+            sacn_box.pack_start(sacn_check, False, False, 0)
+
+            sacn_params = Gtk.Grid()
+            sacn_params.set_column_spacing(10)
+            sacn_params.set_row_spacing(6)
+            sacn_box.pack_start(sacn_params, False, False, 0)
+
+            # Priority
+            prio_label = Gtk.Label(label=_("Priority:"))
+            prio_label.set_halign(Gtk.Align.START)
+            sacn_params.attach(prio_label, 0, 0, 1, 1)
+            prio_adj = Gtk.Adjustment(100, 1, 200, 1, 10, 0)
+            prio_spin = Gtk.SpinButton()
+            prio_spin.set_adjustment(prio_adj)
+            sacn_params.attach(prio_spin, 1, 0, 1, 1)
+
+            # Sync Address
+            sacn_sync_label = Gtk.Label(label=_("Sync Address:"))
+            sacn_sync_label.set_halign(Gtk.Align.START)
+            sacn_params.attach(sacn_sync_label, 0, 1, 1, 1)
+            sacn_sync_adj = Gtk.Adjustment(0, 0, 63999, 1, 10, 0)
+            sacn_sync_spin = Gtk.SpinButton()
+            sacn_sync_spin.set_adjustment(sacn_sync_adj)
+            sacn_params.attach(sacn_sync_spin, 1, 1, 1, 1)
+
+            # Populate initial values
+            if config is not None:
+                artnet_check.set_active(Protocol.ARTNET in config.protocols)
+                net_spin.set_value(config.artnet.net)
+                sub_spin.set_value(config.artnet.sub)
+                sync_switch.set_active(config.artnet.sync_active)
+
+                sacn_check.set_active(Protocol.SACN in config.protocols)
+                prio_spin.set_value(config.sacn.priority)
+                sacn_sync_spin.set_value(config.sacn.sync_address)
+
+            # Bind sensitiveness
+            artnet_check.bind_property("active", net_spin, "sensitive", 1)
+            artnet_check.bind_property("active", sub_spin, "sensitive", 1)
+            artnet_check.bind_property("active", sync_switch, "sensitive", 1)
+
+            sacn_check.bind_property("active", prio_spin, "sensitive", 1)
+            sacn_check.bind_property("active", sacn_sync_spin, "sensitive", 1)
+
+            # Bind callbacks
+            args = (
+                u,
+                artnet_check,
+                net_spin,
+                sub_spin,
+                sync_switch,
+                sacn_check,
+                prio_spin,
+                sacn_sync_spin,
+            )
+            cb = self._on_universe_settings_changed
+            scb = self._on_universe_switch_changed
+            artnet_check.connect("toggled", cb, *args)
+            net_spin.connect("value-changed", cb, *args)
+            sub_spin.connect("value-changed", cb, *args)
+            sync_switch.connect("state-set", scb, *args)
+            sacn_check.connect("toggled", cb, *args)
+            prio_spin.connect("value-changed", cb, *args)
+            sacn_sync_spin.connect("value-changed", cb, *args)
+
+        scrolled.show_all()
+        container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        container.pack_start(scrolled, True, True, 0)
+        container.show_all()
+        return container
+
+    def _on_universe_settings_changed(
+        self,
+        _widget: Gtk.Widget,
+        universe: int,
+        artnet_check: Gtk.CheckButton,
+        net_spin: Gtk.SpinButton,
+        sub_spin: Gtk.SpinButton,
+        sync_switch: Gtk.Switch,
+        sacn_check: Gtk.CheckButton,
+        prio_spin: Gtk.SpinButton,
+        sacn_sync_spin: Gtk.SpinButton,
+    ) -> None:
+        app = self.window.get_application()
+        engine = getattr(app, "engine", None)
+        if engine is None:
+            return
+
+        config = engine.universe_map[universe]
+
+        # 1. Update protocols
+        protocols = set()
+        if artnet_check.get_active():
+            protocols.add(Protocol.ARTNET)
+        if sacn_check.get_active():
+            protocols.add(Protocol.SACN)
+        config.set_protocols(protocols)
+
+        # 2. Update Art-Net parameters
+        config.artnet.net = int(net_spin.get_value())
+        config.artnet.sub = int(sub_spin.get_value())
+        config.artnet.sync_active = sync_switch.get_active()
+
+        # 3. Update sACN parameters
+        config.sacn.priority = int(prio_spin.get_value())
+        config.sacn.sync_address = int(sacn_sync_spin.get_value())
+
+        # 4. Hot-reload engine senders/listeners
+        engine.reload_universe(universe)
+
+        # 5. Mark show file as modified
+        app.lightshow.set_modified()
+
+    def _on_universe_switch_changed(
+        self,
+        _widget: Gtk.Switch,
+        _state: bool,
+        universe: int,
+        artnet_check: Gtk.CheckButton,
+        net_spin: Gtk.SpinButton,
+        sub_spin: Gtk.SpinButton,
+        sync_switch: Gtk.Switch,
+        sacn_check: Gtk.CheckButton,
+        prio_spin: Gtk.SpinButton,
+        sacn_sync_spin: Gtk.SpinButton,
+    ) -> bool:
+        self._on_universe_settings_changed(
+            sync_switch,
+            universe,
+            artnet_check,
+            net_spin,
+            sub_spin,
+            sync_switch,
+            sacn_check,
+            prio_spin,
+            sacn_sync_spin,
+        )
+        return False

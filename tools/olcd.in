@@ -1,0 +1,55 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# Open Lighting Console Daemon
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Headless version of Open Lighting Console.
+
+Currently used to run tests on the CoreEngine.
+"""
+
+import sys
+import time
+
+import numpy as np
+
+sys.path.insert(1, "@pythondir@")
+
+from olc.core import CoreEngine
+from olc.core.universe_config import Protocol, UniverseMap
+
+universe_map = UniverseMap(8)
+universe_map.enable_protocol(0, Protocol.ARTNET)
+universe_map.set_protocols(1, {Protocol.SACN, Protocol.ARTNET})
+universe_map.enable_protocol(3, Protocol.SACN)
+engine = CoreEngine(
+    universe_map, hz=44.0, monitor_port=5555, monitor_fps=15.0, no_listen=True
+)
+engine.set_channels(0, {k: 0 for k in range(10)})
+engine.set_channels(1, {k: 0 for k in range(10)})
+engine.set_channels(3, {k: 0 for k in range(10)})
+engine.add_fader(0)
+engine.add_fader(1)
+engine.add_fader(3)
+target = np.full(512, 255, dtype=np.uint8)
+engine.fade_to(0, target, duration=60)
+engine.fade_to(1, target, duration=30)
+engine.fade_to(3, target, duration=40)
+engine.start()
+
+try:
+    while True:
+        time.sleep(1.0)
+except KeyboardInterrupt:
+    print("\nStopping olcd...")
+    engine.stop()

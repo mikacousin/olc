@@ -18,6 +18,7 @@ import array
 import typing
 from typing import Callable, Optional
 
+from gi.repository import GLib
 from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
@@ -109,17 +110,29 @@ class Dmx:
                     self.frame[index][output - 1] = level
 
     def send(self) -> None:
-        """Send DMX values to Ola"""
-        if self.backend:
+        """Send DMX values to CoreEngine"""
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            engine = self.lightshow.app.engine
             for index, universe in enumerate(UNIVERSES):
-                self.backend.send(universe, index)
+                current_frame = self.frame[index]
+                old_frame = self._old_frame[index]
+                if current_frame != old_frame:
+                    changed_outputs = [
+                        ch for ch in range(512) if current_frame[ch] != old_frame[ch]
+                    ]
+                    if changed_outputs:
+                        GLib.idle_add(
+                            self.trigger_output_callbacks, universe, changed_outputs
+                        )
+                    self._old_frame[index] = array.array("B", current_frame)
+                engine.universe(universe).array[:] = list(current_frame)
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
-        if self.backend:
-            for index, universe in enumerate(UNIVERSES):
-                self.frame[index] = array.array("B", [0] * 512)
-                self.backend.send(universe, index)
+        for index, universe in enumerate(UNIVERSES):
+            self.frame[index] = array.array("B", [0] * 512)
+            if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+                self.lightshow.app.engine.universe(universe).array[:] = [0] * 512
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
@@ -134,8 +147,8 @@ class Dmx:
         self.frame[index][output - 1] = level
         if not level:
             self.user_outputs.pop((output, universe))
-        if self.backend:
-            self.backend.send(universe, index)
+        if self.lightshow.app is not None and self.lightshow.app.engine is not None:
+            self.lightshow.app.engine.universe(universe).array[output - 1] = level
 
     def add_output_callback(self, callback: Callable[[int, list[int]], None]) -> None:
         """Register a callback for output level changes."""

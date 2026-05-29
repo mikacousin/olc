@@ -56,6 +56,7 @@ class OlcParser(ReadFile):
         self.data["faders"] = contents.get("faders")
         self.data["independents"] = contents.get("independents")
         self.data["midi"] = contents.get("midi_mapping")
+        self.data["universes"] = contents.get("universes")
 
     def _int_float_str(self, key: int | float | str) -> int | float | str:
         if is_int(key):

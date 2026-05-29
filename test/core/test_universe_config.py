@@ -1,6 +1,5 @@
 import pytest
-
-from core.universe import (
+from olc.core.universe_config import (
     ArtNetSettings,
     Protocol,
     SacnSettings,
@@ -84,17 +83,17 @@ class TestUniverseConfig:
     def test_enable_disable_protocols(self) -> None:
         """Test enabling and disabling protocols"""
         config = UniverseConfig(1)
-        config.enable(Protocol.ARNET, Protocol.SACN)
-        assert config.protocols == {Protocol.ARNET, Protocol.SACN}
+        config.enable(Protocol.ARTNET, Protocol.SACN)
+        assert config.protocols == {Protocol.ARTNET, Protocol.SACN}
 
-        config.disable(Protocol.ARNET)
+        config.disable(Protocol.ARTNET)
         assert config.protocols == {Protocol.SACN}
 
     def test_set_protocols(self) -> None:
         """Test replacing protocol sets"""
         config = UniverseConfig(1)
-        config.set_protocols({Protocol.ARNET})
-        assert config.protocols == {Protocol.ARNET}
+        config.set_protocols({Protocol.ARTNET})
+        assert config.protocols == {Protocol.ARTNET}
 
         config.set_protocols({Protocol.SACN})
         assert config.protocols == {Protocol.SACN}
@@ -102,7 +101,7 @@ class TestUniverseConfig:
     def test_disable_all(self) -> None:
         """Test disabling all protocols"""
         config = UniverseConfig(1)
-        config.enable(Protocol.ARNET, Protocol.SACN)
+        config.enable(Protocol.ARTNET, Protocol.SACN)
         config.disable_all()
         assert config.protocols == set()
 
@@ -117,8 +116,8 @@ class TestUniverseConfig:
             config.set_protocols({Protocol.SACN})
 
         # ArtNet should be fine on universe 0
-        config.enable(Protocol.ARNET)
-        assert config.protocols == {Protocol.ARNET}
+        config.enable(Protocol.ARTNET)
+        assert config.protocols == {Protocol.ARTNET}
 
 
 class TestUniverseMap:
@@ -145,15 +144,15 @@ class TestUniverseMap:
         assert umap[1].protocols == {Protocol.SACN}
 
         # Test set_protocols
-        umap.set_protocols(1, {Protocol.ARNET})
-        assert umap[1].protocols == {Protocol.ARNET}
+        umap.set_protocols(1, {Protocol.ARTNET})
+        assert umap[1].protocols == {Protocol.ARTNET}
 
         # Test disable_protocol
-        umap.disable_protocol(1, Protocol.ARNET)
+        umap.disable_protocol(1, Protocol.ARTNET)
         assert umap[1].protocols == set()
 
         # Test disable_universe
-        umap.enable_protocol(0, Protocol.ARNET)
+        umap.enable_protocol(0, Protocol.ARTNET)
         umap.disable_universe(0)
         assert umap[0].protocols == set()
 

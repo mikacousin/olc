@@ -22,13 +22,14 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
-from olc.backends import DMXBackend  # noqa: E402
-from olc.backends.backend import select_backend  # noqa: E402
+from olc.backends.backend import MultiProtocolBackend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
+from olc.core.engine import CoreEngine  # noqa: E402
+from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
-from olc.define import MAX_CHANNELS  # noqa: E402
+from olc.define import MAX_CHANNELS, UNIVERSES  # noqa: E402
 from olc.fader_edition import FaderTab  # noqa: E402
 from olc.files.export_file import ExportFile  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
@@ -55,13 +56,15 @@ from olc.window import Window  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
-    backend: DMXBackend | None
+    backend: MultiProtocolBackend | None
+    engine: CoreEngine | None
     midi: Midi | None
     version: str
     tabs: Tabs | None
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
         self.backend = None
+        self.engine = None
         self.version = version
         super().__init__(
             *args,
@@ -88,15 +91,6 @@ class Application(Gtk.Application):
             GLib.OptionArg.INT,
             "The port to run the Ola HTTP server on. Defaults to 9090",
             None,
-        )
-
-        self.add_main_option(
-            "backend",
-            ord("b"),
-            GLib.OptionFlags.NONE,
-            GLib.OptionArg.STRING,
-            "The backend to use (artnet, sacn or ola). Defaults to artnet",
-            "<backend>",
         )
 
         css_provider_file = Gio.File.new_for_uri(
@@ -130,6 +124,7 @@ class Application(Gtk.Application):
 
         # Light show initialization
         self.lightshow = LightShow()
+        self.lightshow.app = self
 
         self.patch_by_outputs = PatchByOutputs(self, self.lightshow.patch)
 
@@ -172,7 +167,7 @@ class Application(Gtk.Application):
 
         # Open MIDI Inputs and Outputs
         def refresh_settings() -> None:
-            if self.tabs.tabs.get("settings"):
+            if self.tabs and self.tabs.tabs.get("settings"):
                 self.tabs.tabs["settings"].refresh()
 
         self.midi = Midi(self, refresh_settings)
@@ -208,13 +203,18 @@ class Application(Gtk.Application):
         # convert GVariantDict -> GVariant -> dict
         options = options.end().unpack()
         if "version" in options:
-            print(
-                f"{self.version}, Active backend: {self.settings.get_string('backend')}"
-            )
+            print(f"{self.version}")
             sys.exit()
-        self.backend = select_backend(options, self.settings, self.lightshow)
-        if not self.backend:
-            sys.exit()
+        # Set up UniverseMap for CoreEngine
+        universe_map = UniverseMap(max(UNIVERSES) + 1)
+        for u in range(1, 5):
+            universe_map.enable_protocol(u, Protocol.ARTNET)
+
+        self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
+
+        self.backend = MultiProtocolBackend(self.lightshow)
+
+        self.engine.start()
 
         def on_patch_empty_cb() -> None:
             if self.backend:
@@ -755,6 +755,8 @@ class Application(Gtk.Application):
             self.midi.stop()
         if self.backend:
             self.backend.stop()
+        if self.engine is not None:
+            self.engine.stop()
         self.quit()
         return False
 

@@ -20,7 +20,7 @@ from typing import Iterator
 class Protocol(Enum):
     """Output protocol."""
 
-    ARNET = auto()
+    ARTNET = auto()
     SACN = auto()
 
 
@@ -29,23 +29,34 @@ _UNIVERSE_0_FORBIDDEN: frozenset[Protocol] = frozenset({Protocol.SACN})
 
 @dataclass
 class ArtNetSettings:
+    """ArtNet universe configuration"""
+
     net: int = 0  # 0-127
     sub: int = 0  # 0-15
+    sync_active: bool = False  # Enable ArtSync synchronization
 
     def __post_init__(self) -> None:
-        if not (0 <= self.net <= 127):
+        if not 0 <= self.net <= 127:
             raise ValueError(f"ArtNet net must be 0-127, got {self.net}")
-        if not (0 <= self.sub <= 15):
+        if not 0 <= self.sub <= 15:
             raise ValueError(f"ArtNet sub must be 0-15, got {self.sub}")
 
 
 @dataclass
 class SacnSettings:
+    """sACN universe configuration"""
+
     priority: int = 100  # 1-200
+    sync_address: int = 0  # 0 to 63999 (0 means disabled)
 
     def __post_init__(self) -> None:
-        if not (1 <= self.priority <= 200):
+        if not 1 <= self.priority <= 200:
             raise ValueError(f"sACN priority must be 1-200, got {self.priority}")
+        if not 0 <= self.sync_address <= 63999:
+            raise ValueError(
+                f"sACN sync_address must be 0-63999, got {self.sync_address}"
+            )
+
 
 
 class UniverseConfig:
@@ -68,10 +79,12 @@ class UniverseConfig:
 
     @property
     def universe_id(self) -> int:
+        """Universe number (0 based)"""
         return self._id
 
     @property
     def protocols(self) -> frozenset[Protocol]:
+        """Protocols used by this universe"""
         return frozenset(self._protocols)
 
     def enable(self, *protocols: Protocol) -> None:
@@ -124,15 +137,19 @@ class UniverseMap:
         return len(self._universes)
 
     def set_protocols(self, universe_id: int, protocols: set[Protocol]) -> None:
+        """Replace the active protocol set entirely"""
         self._universes[universe_id].set_protocols(protocols)
 
     def enable_protocol(self, universe_id: int, protocol: Protocol) -> None:
+        """Add one protocol to this universe"""
         self._universes[universe_id].enable(protocol)
 
     def disable_protocol(self, universe_id: int, protocol: Protocol) -> None:
+        """Remove one protocol to this universe"""
         self._universes[universe_id].disable(protocol)
 
     def disable_universe(self, universe_id: int) -> None:
+        """Silence this universe (remove all protocols)"""
         self._universes[universe_id].disable_all()
 
     def _check_exists(self, universe_id: int) -> None:
