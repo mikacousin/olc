@@ -133,9 +133,36 @@ class TestSACNSender:  # pylint: disable=too-few-public-methods
             args = mock_sock.sendto.call_args[0]
             assert args[1] == ("127.0.0.1", SACN_PORT)
 
+    def test_send_multicast_multiple_interfaces(self) -> None:
+        """send() must transmit data on all physical interfaces via IP_MULTICAST_IF."""
+        with patch("olc.core.backends.network_utils.get_local_ips") as mock_get_ips:
+            mock_get_ips.return_value = [
+                "0.0.0.0",
+                "127.0.0.1",
+                "192.168.1.50",
+                "10.0.0.5",
+            ]
+
+            with patch("socket.socket") as mock_sock_class:
+                mock_socks = [MagicMock(), MagicMock()]
+                mock_sock_class.side_effect = mock_socks
+
+                sender = SACNSender(universe=1, multicast=True)
+                assert len(sender._socks) == 2
+
+                univ = DMXUniverse()
+                with patch("olc.core.senders._HAS_SENDMSG", False):
+                    sender.send(univ)
+
+                for mock_sock in mock_socks:
+                    mock_sock.sendto.assert_called_once()
+                    args = mock_sock.sendto.call_args[0]
+                    assert args[1] == ("239.255.0.1", SACN_PORT)
+
 
 # Run send-msg path only on non-Windows platforms
 if sys.platform != "win32":
+
     class TestSendmsgPath:  # pylint: disable=too-few-public-methods
         """Test the send-msg (zero-copy) path on Linux/macOS."""
 

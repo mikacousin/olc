@@ -209,6 +209,7 @@ class Application(Gtk.Application):
         universe_map = UniverseMap(max(UNIVERSES) + 1)
         for u in range(1, 5):
             universe_map.enable_protocol(u, Protocol.ARTNET)
+            universe_map.enable_protocol(u, Protocol.SACN)
 
         self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
 

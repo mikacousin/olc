@@ -18,6 +18,7 @@ import sys
 import typing
 import uuid
 
+from olc.core.backends.network_utils import get_local_ips
 from olc.core.universe_data import NUM_CHANNELS, DMXUniverse
 
 if typing.TYPE_CHECKING:
@@ -201,21 +202,61 @@ class SACNSender:
         self._sequence = 0
         self._cid = uuid.uuid4().bytes
         self._sync_address = sync_address
-
-        self._sock = socket.socket(
-            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+        self._dest = (
+            (_sacn_multicast_ip(universe), SACN_PORT) if multicast else (ip, SACN_PORT)
         )
-        self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 20)
-        try:
-            self._sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
-        except OSError:
-            pass
-        self._sock.setblocking(False)
+
+        self._socks: list[socket.socket] = []
 
         if multicast:
-            self._dest = (_sacn_multicast_ip(universe), SACN_PORT)
-        else:
-            self._dest = (ip, SACN_PORT)
+            try:
+                local_ips = get_local_ips()
+            except ImportError:
+                local_ips = ["0.0.0.0", "127.0.0.1"]
+
+            physical_ips = [
+                ip_addr
+                for ip_addr in local_ips
+                if ip_addr not in ("0.0.0.0", "127.0.0.1")
+            ]
+
+            if physical_ips:
+                for ip_addr in physical_ips:
+                    try:
+                        sock = socket.socket(
+                            socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP
+                        )
+                        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 20)
+                        try:
+                            sock.setsockopt(
+                                socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1
+                            )
+                        except OSError:
+                            pass
+                        sock.setsockopt(
+                            socket.IPPROTO_IP,
+                            socket.IP_MULTICAST_IF,
+                            socket.inet_aton(ip_addr),
+                        )
+                        sock.setblocking(False)
+                        self._socks.append(sock)
+                    except OSError as err:
+                        print(
+                            f"[sACN] Warning: Failed to set multicast interface "
+                            f"to {ip_addr}: {err}"
+                        )
+
+        # Fallback to single default socket if not multicast,
+        # or if no physical interfaces found
+        if not self._socks:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+            sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 20)
+            try:
+                sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_LOOP, 1)
+            except OSError:
+                pass
+            sock.setblocking(False)
+            self._socks.append(sock)
 
     def send(self, dmx_universe: DMXUniverse) -> None:
         """Send one DMX frame."""
@@ -229,14 +270,25 @@ class SACNSender:
             payload=dmx_universe.view,
             sync_address=self._sync_address,
         )
-        if _HAS_SENDMSG and sys.platform != "win32":
-            self._sock.sendmsg(buffers, [], 0, self._dest)
-        else:
-            self._sock.sendto(
-                b"".join(b if isinstance(b, bytes) else bytes(b) for b in buffers),
-                self._dest,
-            )
+
+        for sock in self._socks:
+            if _HAS_SENDMSG and sys.platform != "win32":
+                try:
+                    sock.sendmsg(buffers, [], 0, self._dest)
+                except OSError:
+                    pass
+            else:
+                try:
+                    sock.sendto(
+                        b"".join(
+                            b if isinstance(b, bytes) else bytes(b) for b in buffers
+                        ),
+                        self._dest,
+                    )
+                except OSError:
+                    pass
 
     def close(self) -> None:
-        """Close the underlying UDP socket."""
-        self._sock.close()
+        """Close the underlying UDP sockets."""
+        for sock in self._socks:
+            sock.close()
