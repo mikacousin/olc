@@ -135,8 +135,15 @@ class TestSACNSender:  # pylint: disable=too-few-public-methods
 
     def test_send_multicast_multiple_interfaces(self) -> None:
         """send() must transmit data on all physical interfaces via IP_MULTICAST_IF."""
-        with patch("olc.core.backends.network_utils.get_local_ips") as mock_get_ips:
-            mock_get_ips.return_value = [
+        with patch("olc.core.senders.get_local_ips") as mock_get_ips_1, \
+             patch("core.senders.get_local_ips", create=True) as mock_get_ips_2:
+            mock_get_ips_1.return_value = [
+                "0.0.0.0",
+                "127.0.0.1",
+                "192.168.1.50",
+                "10.0.0.5",
+            ]
+            mock_get_ips_2.return_value = [
                 "0.0.0.0",
                 "127.0.0.1",
                 "192.168.1.50",
