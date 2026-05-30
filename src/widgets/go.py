@@ -1,3 +1,4 @@
+from __future__ import annotations
 # -*- coding: utf-8 -*-
 # Open Lighting Console
 # Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
