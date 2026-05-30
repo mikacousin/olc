@@ -578,7 +578,7 @@ class Listeners:
         if artdmx := listener.get_artdmx(univ):
             try:
                 artdmx.decode(data)
-            except ArtNetDecodeError, ArtNetSequenceError:
+            except (ArtNetDecodeError, ArtNetSequenceError):
                 return
 
             self.merger.update(artdmx.universe, addr[0], artdmx.data)
