@@ -1,5 +1,5 @@
 project('olc',
-  version: '0.10.1.beta',
+  version: '0.10.2.beta',
   meson_version: '>= 0.50.0',
 )
 
