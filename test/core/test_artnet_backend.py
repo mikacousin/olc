@@ -242,13 +242,43 @@ class TestArtNetDiscovery:
         # Packet reply arrives
         discovery._handle_node_reply(reply)
 
-        uid = (reply.mac, reply.bind_index)
+        uid = (reply.mac, reply.bind_index, "192.168.1.50")
         assert uid in discovery.nodes
         assert discovery.nodes[uid].ip == "192.168.1.50"
         assert uid in senders[1].nodes
 
         # Del-node notification triggered
         notify_mock.assert_called_with("add-node", "192.168.1.50", 1)
+
+    def test_node_reply_with_zero_ports(self) -> None:
+        """Verify that nodes with num_ports=0 are handled cleanly without adding
+        active ports.
+        """
+        net_mock = MagicMock()
+        senders: dict[int, Sender] = {1: Sender(1, None)}
+        notify_mock = MagicMock()
+
+        discovery = Discovery(
+            net_mock, universes=[1], senders=senders, notify=notify_mock
+        )
+
+        # Create dummy reply with num_ports=0
+        reply = ArtPollReply(universes=[1])
+        reply.ip = int(ipaddress.IPv4Address("192.168.1.50"))
+        reply.mac = (0x00, 0x11, 0x22, 0x33, 0x44, 0x55)
+        reply.port_types = (0x80, 0x80, 0x80, 0x80)  # Supposedly Output DMX
+        reply.sw_out = (1, 2, 3, 4)
+        reply.style = StyleCodes.ST_NODE
+        reply.num_ports = 0  # 0 active ports!
+
+        discovery._handle_node_reply(reply)
+
+        uid = (reply.mac, reply.bind_index, "192.168.1.50")
+        assert uid in discovery.nodes
+        assert discovery.nodes[uid].num_ports == 0
+        assert len(discovery.nodes[uid].output_universes) == 0
+        assert uid not in senders[1].nodes
+        notify_mock.assert_not_called()
 
     def test_node_inactivity_purging(self) -> None:
         """Verify inactive nodes are purged after 8 seconds of silence."""
@@ -302,9 +332,7 @@ class TestArtNetNetwork:
                 mock_sock_class.return_value = mock_sock
 
                 # Mock loop datagram endpoint creation
-                loop.create_datagram_endpoint = MagicMock(
-                    return_value=asyncio.Future()
-                )
+                loop.create_datagram_endpoint = MagicMock(return_value=asyncio.Future())
                 loop.create_datagram_endpoint.return_value.set_result(
                     (MagicMock(), MagicMock())
                 )
@@ -334,6 +362,7 @@ class TestArtNetNetwork:
         """Verify DatagramProtocol correctly forwards packet buffers."""
         artnet_mock = MagicMock()
         from olc.core.backends.artnet.network import ArtNetProtocol
+
         protocol = ArtNetProtocol(artnet_mock)
         data = b"dummy_packet"
         addr = ("192.168.1.1", 6454)
@@ -341,6 +370,7 @@ class TestArtNetNetwork:
         protocol.datagram_received(data, addr)
         # Protocol should forward payload and source IP with standard Art-Net port
         from olc.core.backends.artnet.protocol import PORT
+
         artnet_mock.read_packet.assert_called_once_with(data, ("192.168.1.1", PORT))
 
 
@@ -385,6 +415,7 @@ class TestArtNetManager:
         umap[1].artnet.sync_active = True
 
         from olc.core.engine import CoreEngine
+
         engine = CoreEngine(umap)
 
         sender = engine._slots[1].senders[0]
@@ -416,6 +447,7 @@ class TestArtNetManager:
         umap[1].artnet.sync_active = True
 
         from olc.core.engine import CoreEngine
+
         engine = CoreEngine(umap)
 
         # Mock ArtNetManager.send_sync

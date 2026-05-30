@@ -341,19 +341,28 @@ class SettingsTab(Gtk.Box):
 
             GLib.timeout_add_seconds(1, self._refresh_artnet)
 
-    def _collect_devices(self, devices: dict, device_type: str, grouped: dict) -> None:
+    def _collect_devices(
+        self,
+        devices: dict,
+        device_type: str,
+        grouped: dict,
+        active_universes: list[int] | None = None,
+    ) -> None:
         """Helper to collect and merge devices"""
         for device in devices.values():
             key = (device.mac, device_type)
+            dev_univs = set(device.universes)
+            if active_universes is not None:
+                dev_univs &= set(active_universes)
             if key not in grouped:
                 grouped[key] = {
                     "name": device.names.get("long", ""),
                     "ip": device.ip,
                     "type": device_type,
-                    "universes": set(device.universes),
+                    "universes": dev_univs,
                 }
             else:
-                grouped[key]["universes"].update(device.universes)
+                grouped[key]["universes"].update(dev_univs)
 
     def _refresh_artnet(self) -> bool:
         if not self.tabs.tabs.get("settings"):
@@ -372,9 +381,17 @@ class SettingsTab(Gtk.Box):
         multi_backend = typing.cast("MultiProtocolBackend", self.backend)
 
         grouped = {}
-        self._collect_devices(multi_backend.artnet.discovery.nodes, "Node", grouped)
         self._collect_devices(
-            multi_backend.artnet.discovery.consoles, "Controller", grouped
+            multi_backend.artnet.discovery.nodes,
+            "Node",
+            grouped,
+            multi_backend.artnet.universes,
+        )
+        self._collect_devices(
+            multi_backend.artnet.discovery.consoles,
+            "Controller",
+            grouped,
+            multi_backend.artnet.universes,
         )
 
         new_state = [
@@ -477,8 +494,6 @@ class SettingsTab(Gtk.Box):
             return True
         except ValueError:
             return False
-
-
 
     def _create_universes_tab(self) -> Gtk.Box:
         # pylint: disable=too-many-locals,too-many-statements

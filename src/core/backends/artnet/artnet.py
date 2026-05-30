@@ -70,12 +70,14 @@ class NodeUniverses:
         self._sub = sub
         self._out = out_sw
         self._in = in_sw
+        self.num_ports = 4
 
     @property
     def output_universes(self) -> list[int]:
         """Gives universes the node takes from Art-Net to DMX (Outputs)."""
         universes = []
-        for index, port in enumerate(self._types):
+        for index in range(min(len(self._types), self.num_ports)):
+            port = self._types[index]
             if port:
                 if port >> 7 & 1:
                     universe = (
@@ -90,7 +92,8 @@ class NodeUniverses:
     def input_universes(self) -> list[int]:
         """Gives universes the node sends from DMX to Art-Net (Inputs)."""
         universes = []
-        for index, port in enumerate(self._types):
+        for index in range(min(len(self._types), self.num_ports)):
+            port = self._types[index]
             if port:
                 if port >> 6 & 1:
                     universe = (
@@ -114,6 +117,7 @@ class NodeUniverses:
         sub: int,
         out_sw: tuple[int, ...],
         in_sw: tuple[int, ...],
+        num_ports: int = 4,
     ) -> None:
         """Store internal routing universes values.
 
@@ -121,8 +125,9 @@ class NodeUniverses:
             types: Port types
             net: Net switch
             sub: Sub switch
-            out: Port out switch
+            out_sw: Port out switch
             in_sw: Port in switch
+            num_ports: Number of active ports
         """
         if self._types != types:
             self._types = types
@@ -134,6 +139,8 @@ class NodeUniverses:
             self._out = out_sw
         if self._in != in_sw:
             self._in = in_sw
+        if self.num_ports != num_ports:
+            self.num_ports = num_ports
 
 
 class NodeNet:
@@ -216,6 +223,7 @@ class Node(NodeNet, NodeUniverses):
             reply.sub_switch,
             reply.sw_out,
             reply.sw_in,
+            reply.num_ports,
         )
         self.last_seen = time.time()
 
@@ -259,30 +267,35 @@ class Sender:
     """Art-Net sender."""
 
     universe: int
-    nodes: dict[tuple[tuple[int, int, int, int, int, int], int], Node]
+    nodes: dict[tuple[tuple[int, int, int, int, int, int], int, str], Node]
     artdmx: ArtDmx
 
     def __init__(self, universe: int, notify: Callable | None) -> None:
         self.universe = universe
-        self.nodes = {((0, 0, 0, 0, 0, 0), 0): Node(notify=notify)}
+        self.nodes = {((0, 0, 0, 0, 0, 0), 0, "127.0.0.1"): Node(notify=notify)}
         self.artdmx = ArtDmx()
 
     def add_node(
-        self, uid: tuple[tuple[int, int, int, int, int, int], int], node: Node
+        self,
+        uid: tuple[tuple[int, int, int, int, int, int], int, str],
+        node: Node,
     ) -> None:
         """Add node.
 
         Args:
-            uid: Node's unique identifier (MAC, BindIndex)
+            uid: Node's unique identifier (MAC, BindIndex, IP)
             node: Node to add
         """
         self.nodes[uid] = node
 
-    def del_node(self, uid: tuple[tuple[int, int, int, int, int, int], int]) -> None:
+    def del_node(
+        self,
+        uid: tuple[tuple[int, int, int, int, int, int], int, str],
+    ) -> None:
         """Remove node.
 
         Args:
-            uid: Node's unique identifier (MAC, BindIndex)
+            uid: Node's unique identifier (MAC, BindIndex, IP)
         """
         self.nodes.pop(uid, None)
 
@@ -296,7 +309,7 @@ class Discovery:
     senders: dict[int, Sender]
     artpollreply: ArtPollReply
     monitor_task: asyncio.Task | None
-    nodes: dict[tuple[tuple[int, int, int, int, int, int], int], Node]
+    nodes: dict[tuple[tuple[int, int, int, int, int, int], int, str], Node]
     notify: Callable | None
 
     def __init__(
@@ -313,7 +326,9 @@ class Discovery:
         self.is_running = False
         self.monitor_task = None
         self.nodes = {}
-        self.consoles: dict[tuple[tuple[int, int, int, int, int, int], int], Node] = {}
+        self.consoles: dict[
+            tuple[tuple[int, int, int, int, int, int], int, str], Node
+        ] = {}
         self.notify = notify
 
     def start(self) -> None:
@@ -375,7 +390,7 @@ class Discovery:
         nodes = self.nodes.copy()
         for node in nodes.values():
             if time.time() - node.last_seen > 8:
-                uid = (node.mac, node.bind_index)
+                uid = (node.mac, node.bind_index, node.ip)
                 for universe in node.output_universes:
                     if universe in self.senders:
                         self.senders[universe].del_node(uid)
@@ -387,7 +402,7 @@ class Discovery:
         consoles = self.consoles.copy()
         for console in consoles.values():
             if time.time() - console.last_seen > 8:
-                uid = (console.mac, console.bind_index)
+                uid = (console.mac, console.bind_index, console.ip)
                 self.consoles.pop(uid, None)
                 if self.notify:
                     self.notify("del-console", console.ip)
@@ -408,16 +423,19 @@ class Discovery:
 
     def _handle_node_reply(self, reply: ArtPollReply) -> None:
         """Process an ArtPollReply from a standard Node."""
-        uid = (reply.mac, reply.bind_index)
+        uid = (reply.mac, reply.bind_index, str(ipaddress.IPv4Address(reply.ip)))
         node = self.nodes.get(uid, None)
         if not node:
             node = Node(reply=reply, notify=self.notify)
             self.nodes[uid] = node
             for universe in node.output_universes:
                 if universe in self.senders:
-                    self.senders[universe].add_node(uid, node)
-                    if self.notify:
-                        self.notify("add-node", node.ip, universe)
+                    if not any(
+                        n.ip == node.ip for n in self.senders[universe].nodes.values()
+                    ):
+                        self.senders[universe].add_node(uid, node)
+                        if self.notify:
+                            self.notify("add-node", node.ip, universe)
         else:
             old_universes = node.output_universes.copy()
             node.from_poll_reply(reply)
@@ -433,11 +451,12 @@ class Discovery:
             added_universes = set(new_universes) - set(old_universes)
             for u in added_universes:
                 if u in self.senders:
-                    self.senders[u].add_node(uid, node)
+                    if not any(n.ip == node.ip for n in self.senders[u].nodes.values()):
+                        self.senders[u].add_node(uid, node)
 
     def _handle_console_reply(self, reply: ArtPollReply) -> None:
         """Process an ArtPollReply from a Console/Controller."""
-        uid = (reply.mac, reply.bind_index)
+        uid = (reply.mac, reply.bind_index, str(ipaddress.IPv4Address(reply.ip)))
         console = self.consoles.get(uid, None)
         if not console:
             console = Node(reply=reply, notify=self.notify)
@@ -559,7 +578,7 @@ class Listeners:
         if artdmx := listener.get_artdmx(univ):
             try:
                 artdmx.decode(data)
-            except (ArtNetDecodeError, ArtNetSequenceError):
+            except ArtNetDecodeError, ArtNetSequenceError:
                 return
 
             self.merger.update(artdmx.universe, addr[0], artdmx.data)
