@@ -28,7 +28,7 @@
     </ul>
   </description>
   <releases>
-    <release version="0.10.beta" date="2026-05-28">
+    <release version="0.10.1.beta" date="2026-05-30">
       <description>
         <p>This release introduces a major architectural overhaul centered around the new CoreEngine, brings visual upgrades to cue playback, introduces new companion utilities, and resolves key stability and hardware compatibility bugs.</p>
       </description>
