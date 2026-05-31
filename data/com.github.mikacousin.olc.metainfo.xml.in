@@ -14,7 +14,7 @@
     <p>Open Lighting Console is a free software to control lights on theater shows.</p>
     <p>Some features:</p>
     <ul>
-      <li>Used Art-Net or sACN to send DMX</li>
+      <li>Used Art-Net, sACN and Enttec DMX USB PRO to send DMX</li>
       <li>RPN syntax</li>
       <li>Import / Export ASCII Light Cue shows</li>
       <li>Patch / Unpatch by channels or by outputs</li>
@@ -28,7 +28,7 @@
     </ul>
   </description>
   <releases>
-    <release version="0.10.2.beta" date="2026-05-30">
+    <release version="0.10.3.beta" date="2026-05-31">
       <description>
         <p>This release introduces a major architectural overhaul centered around the new CoreEngine, brings visual upgrades to cue playback, introduces new companion utilities, and resolves key stability and hardware compatibility bugs.</p>
       </description>
