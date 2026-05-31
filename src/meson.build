@@ -36,7 +36,6 @@ olc_sources = [
   'independents_edition.py',
   'lightshow.py',
   'main_fader.py',
-  'osc.py',
   'patch.py',
   'patch_channels.py',
   'patch_outputs.py',

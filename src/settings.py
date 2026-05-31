@@ -1,4 +1,3 @@
-from __future__ import annotations
 # -*- coding: utf-8 -*-
 # Open Lighting Console
 # Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
@@ -13,6 +12,8 @@ from __future__ import annotations
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
 import ipaddress
 import socket
 import typing
@@ -20,38 +21,28 @@ from gettext import gettext as _
 from typing import Callable
 
 from gi.repository import Gdk, GLib, Gtk
+from olc.core.backends.osc.delegate import GUIOSCDelegate
 from olc.core.universe_config import Protocol
-from olc.osc import Osc
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
-    from olc.backends import DMXBackend
+    from olc.application import Application
     from olc.backends.backend import MultiProtocolBackend
-    from olc.midi import Midi
-    from olc.tabs_manager import Tabs
-    from olc.window import Window
 
 
 # pylint: disable=too-many-instance-attributes
 class SettingsTab(Gtk.Box):
     """Settings"""
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
-        settings: Gio.Settings,
-        tabs: Tabs,
-        midi: Midi,
-        backnd: DMXBackend,
-        window: Window,
-        osc: Osc,
+        app: Application,
     ) -> None:
-        self.settings = settings
-        self.tabs = tabs
-        self.midi = midi
-        self.backend = backnd
-        self.window = window
-        self.osc = osc
+        self.app = app
+        self.settings = app.settings
+        self.tabs = app.tabs
+        self.midi = app.midi
+        self.backend = app.backend
+        self.window = app.window
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._last_artnet_state: list[list[str]] | None = None
@@ -459,30 +450,41 @@ class SettingsTab(Gtk.Box):
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
         self.settings.set_value("osc", GLib.Variant("b", state))
-        if state:
-            self.osc = Osc()
-        elif self.osc:
-            self.osc.stop()
-            self.osc = None
+        engine = self.app.engine
+        if engine is not None:
+            if state:
+                engine.start_osc(
+                    host=self.settings.get_string("osc-host"),
+                    client_port=self.settings.get_int("osc-client-port"),
+                    server_port=self.settings.get_int("osc-server-port"),
+                )
+                self.app.osc_delegate = GUIOSCDelegate(self.app)
+                engine.register_osc_delegate(self.app.osc_delegate)
+            else:
+                engine.stop_osc()
+                self.app.osc_delegate = None
 
     def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
         port = widget.get_value_as_int()
         self.settings.set_value("osc-client-port", GLib.Variant("i", port))
-        if self.osc and self.osc.client:
-            self.osc.client.target_changed(port=port)
+        engine = self.app.engine
+        if engine is not None:
+            engine.update_osc_client(port=port)
 
     def _server_port_changed(self, widget: Gtk.SpinButton) -> None:
         port = widget.get_value_as_int()
         self.settings.set_value("osc-server-port", GLib.Variant("i", port))
-        if self.osc:
-            self.osc.restart_server()
+        engine = self.app.engine
+        if engine is not None:
+            engine.update_osc_server(port)
 
     def _client_ip_changed(self, widget: Gtk.Entry) -> None:
         ip_addr = widget.get_text()
         if self._is_ip(ip_addr):
             self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
-            if self.osc and self.osc.client:
-                self.osc.client.target_changed(host=ip_addr)
+            engine = self.app.engine
+            if engine is not None:
+                engine.update_osc_client(host=ip_addr)
             parent = self.get_parent()
             if parent:
                 parent.grab_focus()

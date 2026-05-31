@@ -169,14 +169,14 @@ class FaderBank:
                     self.faders[page][index].index - 1
                 ].queue_draw()
             # Refresh OSC
-            if App().osc:
-                App().osc.client.send("/olc/fader/page", ("i", page))
-                App().osc.client.send(
-                    f"/olc/fader/1/{index}/label", ("s", self.faders[page][index].text)
+            if App().engine is not None:
+                App().engine.send_osc("/olc/fader/page", page)
+                App().engine.send_osc(
+                    f"/olc/fader/1/{index}/label", self.faders[page][index].text
                 )
-                App().osc.client.send(
-                    f"olc/fader/1/{index}/level",
-                    ("i", round(self.faders[page][index].level * 255)),
+                App().engine.send_osc(
+                    f"/olc/fader/1/{index}/level",
+                    round(self.faders[page][index].level * 255),
                 )
 
     def update_active_faders(self) -> None:

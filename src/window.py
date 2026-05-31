@@ -1,4 +1,3 @@
-from __future__ import annotations
 # -*- coding: utf-8 -*-
 # Open Lighting Console
 # Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
@@ -13,6 +12,8 @@ from __future__ import annotations
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
 import typing
 from typing import Callable
 
@@ -45,8 +46,8 @@ class CommandLine:
     def update(self) -> None:
         """Update Display"""
         self.statusbar.push(self.context_id, self.keystring)
-        if App().osc:
-            App().osc.client.send("/olc/command_line", ("s", self.keystring))
+        if App().engine is not None:
+            App().engine.send_osc("/olc/command_line", self.keystring)
 
     def add_string(self, string: str) -> None:
         """Add string to displayed string

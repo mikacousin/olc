@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
+
 import typing
 from typing import Optional
 
@@ -167,9 +168,9 @@ class PatchByOutputs:
         else:
             self.outputs = []
             self.last = 0
-        if self.app.osc:
-            self.app.osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", self.get_selected()
             )
         if self.app.tabs.tabs["patch_outputs"]:
             self.app.tabs.tabs["patch_outputs"].select_outputs()
@@ -187,9 +188,9 @@ class PatchByOutputs:
                 for out in range(self.last - 1, output_index - 1, -1):
                     self.outputs.append(out)
             self.last = output_index
-        if self.app.osc:
-            self.app.osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", self.get_selected()
             )
         if self.app.tabs.tabs["patch_outputs"]:
             self.app.tabs.tabs["patch_outputs"].select_outputs()
@@ -202,9 +203,9 @@ class PatchByOutputs:
         if output_index:
             self.outputs.append(output_index)
             self.last = output_index
-        if self.app.osc:
-            self.app.osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", self.get_selected()
             )
         if self.app.tabs.tabs["patch_outputs"]:
             self.app.tabs.tabs["patch_outputs"].select_outputs()
@@ -217,9 +218,9 @@ class PatchByOutputs:
         if output_index:
             self.outputs.remove(output_index)
             self.last = output_index
-        if self.app.osc:
-            self.app.osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", self.get_selected()
             )
         if self.app.tabs.tabs["patch_outputs"]:
             self.app.tabs.tabs["patch_outputs"].select_outputs()
@@ -237,9 +238,9 @@ class PatchByOutputs:
             return
         self.__for_each_output(channel, several)
         self.app.window.live_view.channels_view.update()
-        if self.app.osc:
-            self.app.osc.client.send(
-                "/olc/patch/selected_outputs", ("s", self.get_selected())
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", self.get_selected()
             )
         if self.app.tabs.tabs["patch_outputs"]:
             self.app.tabs.tabs["patch_outputs"].refresh()

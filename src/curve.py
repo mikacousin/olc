@@ -1,4 +1,3 @@
-from __future__ import annotations
 # -*- coding: utf-8 -*-
 # Open Lighting Console
 # Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
@@ -14,6 +13,8 @@ from __future__ import annotations
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 # pylint: disable=wrong-import-order
+from __future__ import annotations
+
 import typing
 from gettext import gettext as _
 

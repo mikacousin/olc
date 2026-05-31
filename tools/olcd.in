@@ -46,6 +46,7 @@ engine.fade_to(0, target, duration=60)
 engine.fade_to(1, target, duration=30)
 engine.fade_to(3, target, duration=40)
 engine.start()
+engine.start_osc(host="127.0.0.1", client_port=9000, server_port=7000)
 
 try:
     while True:

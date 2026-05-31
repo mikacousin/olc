@@ -26,6 +26,7 @@ from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
 from olc.core.fader import FadeEngine
 from olc.core.mergers import HTPMerger, LTPMerger
+from olc.core.osc import CoreOSCClient, EngineOSCServer
 from olc.core.senders import ArtNetSender, SACNSender
 from olc.core.universe_config import Protocol, UniverseConfig, UniverseMap
 from olc.core.universe_data import DMXUniverse
@@ -135,6 +136,10 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         self._loopback = loopback
         self._no_transmit = no_transmit
 
+        self.osc_server = None
+        self.osc_client = None
+        self._osc_delegate = None
+
         # Raise soft open files limit to support 1024+ universes
         try:
             import resource  # pylint: disable=import-outside-toplevel
@@ -218,6 +223,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
     def stop(self, timeout: float = 2.0) -> None:
         """Stop the DMX output loop."""
+        self.stop_osc()
         self._loop.stop(timeout=timeout)
         if self._artnet_manager is not None:
             self._artnet_manager.stop()
@@ -402,6 +408,68 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
     def effective_hz(self) -> float:
         """Average output frequency since start."""
         return self._loop.effective_hz
+
+    def start_osc(self, host: str, client_port: int, server_port: int) -> None:
+        """Start the OSC server and client asynchronously in the network loop."""
+        with self._lock:
+            if self.osc_server is not None or self.osc_client is not None:
+                self.stop_osc()
+
+            self.osc_client = CoreOSCClient(host, client_port)
+            self.osc_server = EngineOSCServer(server_port, engine=self)
+            if self._osc_delegate is not None:
+                self.osc_server.register_delegate(self._osc_delegate)
+
+            # Schedule the server start in the background event loop
+            asyncio.run_coroutine_threadsafe(
+                self.osc_server.start(), self._network_thread.loop
+            )
+
+    def stop_osc(self) -> None:
+        """Stop the OSC server and client."""
+        with self._lock:
+            if self.osc_server is not None:
+                # Stop the server asynchronously
+                self._network_thread.loop.call_soon_threadsafe(self.osc_server.stop)
+                self.osc_server = None
+            if self.osc_client is not None:
+                self.osc_client.close()
+                self.osc_client = None
+
+    def update_osc_client(self, host: str = "", port: int | None = None) -> None:
+        """Update client IP or port settings."""
+        with self._lock:
+            if self.osc_client is not None:
+                self.osc_client.target_changed(host, port)
+
+    def update_osc_server(self, server_port: int) -> None:
+        """Restart the OSC server on a new port."""
+        with self._lock:
+            if self.osc_server is not None:
+                # Stop the old one
+                old_server = self.osc_server
+                self._network_thread.loop.call_soon_threadsafe(old_server.stop)
+
+                # Start the new one
+                self.osc_server = EngineOSCServer(server_port, engine=self)
+                if self._osc_delegate is not None:
+                    self.osc_server.register_delegate(self._osc_delegate)
+                asyncio.run_coroutine_threadsafe(
+                    self.osc_server.start(), self._network_thread.loop
+                )
+
+    def register_osc_delegate(self, delegate: object) -> None:
+        """Register a delegate for GUI-specific OSC callbacks."""
+        with self._lock:
+            self._osc_delegate = delegate
+            if self.osc_server is not None:
+                self.osc_server.register_delegate(delegate)
+
+    def send_osc(self, path: str, *args: object) -> None:
+        """Send an OSC message to the client target."""
+        with self._lock:
+            if self.osc_client is not None:
+                self.osc_client.send(path, *args)
 
     def _send_all(self) -> None:
         """Called by DMXLoop on every tick. Ticks faders then dispatches to senders."""

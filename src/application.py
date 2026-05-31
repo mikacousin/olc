@@ -24,6 +24,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 from olc.backends.backend import MultiProtocolBackend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
+from olc.core.backends.osc.delegate import GUIOSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
@@ -39,7 +40,6 @@ from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
 from olc.lightshow import LightShow  # noqa: E402
 from olc.midi import Midi  # noqa: E402
-from olc.osc import Osc  # noqa: E402
 from olc.patch import PatchByOutputs  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
@@ -120,7 +120,7 @@ class Application(Gtk.Application):
         self.tabs = None
         self.crossfade = None
         self.midi = None
-        self.osc = None
+        self.osc_delegate = None
 
         # Light show initialization
         self.lightshow = LightShow()
@@ -173,10 +173,6 @@ class Application(Gtk.Application):
         self.midi = Midi(self, refresh_settings)
         self.midi.messages.lcd.show_faders()
 
-        # Create and launch OSC server
-        if self.settings.get_boolean("osc"):
-            self.osc = Osc()
-
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
 
@@ -216,6 +212,15 @@ class Application(Gtk.Application):
         self.backend = MultiProtocolBackend(self.lightshow)
 
         self.engine.start()
+
+        if self.settings.get_boolean("osc") and self.engine is not None:
+            self.engine.start_osc(
+                host=self.settings.get_string("osc-host"),
+                client_port=self.settings.get_int("osc-client-port"),
+                server_port=self.settings.get_int("osc-server-port"),
+            )
+            self.osc_delegate = GUIOSCDelegate(self)
+            self.engine.register_osc_delegate(self.osc_delegate)
 
         def on_patch_empty_cb() -> None:
             if self.backend:
@@ -684,12 +689,7 @@ class Application(Gtk.Application):
                 "settings",
                 SettingsTab,
                 "Settings",
-                self.settings,
-                self.tabs,
-                self.midi,
-                self.backend,
-                self.window,
-                self.osc,
+                self,
             )
 
     def _shortcuts(
