@@ -132,29 +132,29 @@ class TestCoreEngineMergers:
         """htp_write() raises RuntimeError when no HTPMerger is attached."""
         engine = _make_engine()
         with pytest.raises(RuntimeError):
-            engine.htp_write(0, 0, {10: 100})
+            engine._htp_write(0, 0, {10: 100})
 
     def test_htp_write_with_merger(self) -> None:
         """HTP merge produces the highest value in the buffer."""
         engine = _make_engine()
-        engine.add_htp_merger(0, num_sources=2)
-        engine.htp_write(0, 0, {10: 100})
-        engine.htp_write(0, 1, {10: 200})
+        engine._add_htp_merger(0, num_sources=2)
+        engine._htp_write(0, 0, {10: 100})
+        engine._htp_write(0, 1, {10: 200})
         assert engine.universe(0)[10] == 200
 
     def test_ltp_write_without_merger_raises(self) -> None:
         """ltp_write() raises RuntimeError when no LTPMerger is attached."""
         engine = _make_engine()
         with pytest.raises(RuntimeError):
-            engine.ltp_write(0, 0, {10: 100})
+            engine._ltp_write(0, 0, {10: 100})
 
     def test_ltp_write_with_merger(self) -> None:
         """LTP merge produces the most recently written value in the buffer."""
         engine = _make_engine()
-        engine.add_ltp_merger(0, num_sources=2)
-        engine.ltp_write(0, 0, {10: 100})
+        engine._add_ltp_merger(0, num_sources=2)
+        engine._ltp_write(0, 0, {10: 100})
         time.sleep(0.01)
-        engine.ltp_write(0, 1, {10: 50})
+        engine._ltp_write(0, 1, {10: 50})
         # Source 1 wrote last -> 50 wins
         assert engine.universe(0)[10] == 50
 

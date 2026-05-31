@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 from typing import Callable
 
 from olc.core.backends.artnet import ArtNetManager
@@ -48,6 +49,9 @@ class DMXBackend:
         if self.sacn is not None:
             self.sacn.notify = self.notify_sacn
 
+        if hasattr(lightshow.app.engine, "notify_enttec"):
+            lightshow.app.engine.notify_enttec = self.notify_enttec
+
     def stop(self) -> None:
         """Stop backend"""
         self.dmx.thread.stop()
@@ -64,6 +68,12 @@ class DMXBackend:
         """Dispatch sACN notifications to UI."""
         return self.notify(f"sacn-{action}", *args, **kwargs)
 
+    def notify_enttec(
+        self, universe: int, action: str, *args: str | int, **kwargs: str
+    ) -> None | Callable:
+        """Dispatch ENTTEC USB Pro notifications to UI."""
+        return self.notify(f"enttec-{action}", universe, *args, **kwargs)
+
     def notify(self, action: str, *args: str | int, **kwargs: str) -> None | Callable:
         """Dispatch unified notifications to GTK UI."""
         actions = {
@@ -73,6 +83,9 @@ class DMXBackend:
             "artnet-del-console": "_artnet_del_console",
             "sacn-add-node": "_sacn_add_node",
             "sacn-del-node": "_sacn_del_node",
+            "enttec-connect": "_enttec_connect",
+            "enttec-connect-fail": "_enttec_connect_fail",
+            "enttec-disconnect": "_enttec_disconnect",
         }
         attr = actions.get(action, None)
         if attr:
@@ -116,4 +129,33 @@ class DMXBackend:
         if self.dmx:
             self.dmx.trigger_notification(
                 "sACN Source disconnected", f"Lost Source at {ip}."
+            )
+
+    def _enttec_connect(self, universe: int, port: str) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                _("DMX USB Pro connected"),
+                _(
+                    "Universe {universe}: ENTTEC device connected on port {port}."
+                ).format(universe=universe, port=port),
+            )
+
+    def _enttec_connect_fail(self, universe: int, port: str, error: str) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                _("DMX USB Pro connection failed"),
+                _(
+                    "Universe {universe}: could not connect to ENTTEC "
+                    "device on port {port} ({error})."
+                ).format(universe=universe, port=port, error=error),
+            )
+
+    def _enttec_disconnect(self, universe: int, port: str, error: str) -> None:
+        if self.dmx:
+            self.dmx.trigger_notification(
+                _("DMX USB Pro disconnected"),
+                _(
+                    "Universe {universe}: ENTTEC device on port {port} "
+                    "was disconnected ({error})."
+                ).format(universe=universe, port=port, error=error),
             )

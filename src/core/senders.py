@@ -25,6 +25,7 @@ from olc.core.universe_data import NUM_CHANNELS, DMXUniverse
 
 if typing.TYPE_CHECKING:
     from olc.core.backends.artnet import ArtNetManager
+    from olc.core.backends.enttec import DmxUsbProManager
 
 ARTNET_PORT = 6454
 SACN_PORT = 5568
@@ -294,3 +295,30 @@ class SACNSender:
         """Close the underlying UDP sockets."""
         for sock in self._socks:
             sock.close()
+class DmxUsbProSender:
+    """
+    Sends DMX universe data to an ENTTEC DMX USB PRO widget via a serial port
+    by delegating the transmission to the DmxUsbProManager.
+    """
+
+    def __init__(self, manager: DmxUsbProManager) -> None:
+        self._manager = manager
+
+    def send(self, dmx_universe: DMXUniverse) -> None:
+        """Send a DMX frame to the ENTTEC DMX USB PRO widget."""
+        try:
+            dmx_data = bytes(dmx_universe.view)
+            payload_len = len(dmx_data) + 1  # prepend start code 0x00
+
+            # ENTTEC Packet format:
+            # 0x7E, Label 6, Length LSB, Length MSB, 0x00 (start code), DMX data, 0xE7
+            header = struct.pack("<BBH", 0x7E, 6, payload_len)
+            packet = header + b"\x00" + dmx_data + b"\xE7"
+
+            self._manager.write_packet(packet)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            print(f"[DMX USB PRO] Sender error: {e}")
+
+    def close(self) -> None:
+        """Close the sender."""
+        # The manager handles closing/cleanup

@@ -250,4 +250,7 @@ class OlcWriter(WriteFile):
                     "priority": config.sacn.priority,
                     "sync_address": config.sacn.sync_address,
                 },
+                "dmx_usb_pro": {
+                    "port": config.dmx_usb_pro.port,
+                },
             }

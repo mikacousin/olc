@@ -32,9 +32,43 @@ from olc.step import Step  # noqa: E402
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.engine import CoreEngine
     from olc.lightshow import LightShow
     from olc.midi import Midi
     from olc.tabs_manager import Tabs
+    from olc.window import Window
+
+
+def _import_single_universe(u: int, val: dict, engine: CoreEngine) -> None:
+    """Helper to import configuration for a single universe."""
+    config = engine.universe_map[u]
+    protocols_set = set()
+    for p_name in val.get("protocols", []):
+        if p_name == "ARTNET":
+            protocols_set.add(Protocol.ARTNET)
+        elif p_name == "SACN" and u != 0:
+            protocols_set.add(Protocol.SACN)
+        elif p_name == "DMX_USB_PRO":
+            protocols_set.add(Protocol.DMX_USB_PRO)
+    config.set_protocols(protocols_set)
+
+    if "artnet" in val:
+        artnet_val = val["artnet"]
+        config.artnet.net = artnet_val.get("net", 0)
+        config.artnet.sub = artnet_val.get("sub", 0)
+        config.artnet.sync_active = artnet_val.get("sync_active", False)
+
+    if "sacn" in val:
+        sacn_val = val["sacn"]
+        config.sacn.priority = sacn_val.get("priority", 100)
+        config.sacn.sync_address = sacn_val.get("sync_address", 0)
+
+    if "dmx_usb_pro" in val:
+        dmx_usb_pro_val = val["dmx_usb_pro"]
+        config.dmx_usb_pro.port = dmx_usb_pro_val.get("port", "Auto-detect")
+
+    # Hot-reload sender registry for this universe
+    engine.reload_universe(u)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -46,7 +80,7 @@ class ImportFile:
     data: ParsedData
     actions: dict
     parser: AsciiParser | OlcParser
-    window: Gtk.Window | None
+    window: Window | None
     midi: Midi | None
     settings: Gio.Settings | None
     tabs: Tabs | None
@@ -57,7 +91,7 @@ class ImportFile:
         lightshow: LightShow,
         file: Gio.File,
         file_type: FileType,
-        window: Gtk.Window | None = None,
+        window: Window | None = None,
         midi: Midi | None = None,
         settings: Gio.Settings | None = None,
         tabs: Tabs | None = None,
@@ -233,28 +267,7 @@ class ImportFile:
             if u not in engine.universe_map:
                 continue
 
-            config = engine.universe_map[u]
-            protocols_set = set()
-            for p_name in val.get("protocols", []):
-                if p_name == "ARTNET":
-                    protocols_set.add(Protocol.ARTNET)
-                elif p_name == "SACN" and u != 0:
-                    protocols_set.add(Protocol.SACN)
-            config.set_protocols(protocols_set)
-
-            if "artnet" in val:
-                artnet_val = val["artnet"]
-                config.artnet.net = artnet_val.get("net", 0)
-                config.artnet.sub = artnet_val.get("sub", 0)
-                config.artnet.sync_active = artnet_val.get("sync_active", False)
-
-            if "sacn" in val:
-                sacn_val = val["sacn"]
-                config.sacn.priority = sacn_val.get("priority", 100)
-                config.sacn.sync_address = sacn_val.get("sync_address", 0)
-
-            # Hot-reload sender registry for this universe
-            engine.reload_universe(u)
+            _import_single_universe(u, val, engine)
 
     def _update_ui(self) -> None:
         if self.window is not None and self.window.live_view is not None:

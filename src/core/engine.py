@@ -21,13 +21,14 @@ from dataclasses import dataclass, field
 import numpy as np
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
+from olc.core.backends.enttec import DmxUsbProManager
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
 from olc.core.fader import FadeEngine
 from olc.core.mergers import HTPMerger, LTPMerger
 from olc.core.osc import CoreOSCClient, EngineOSCServer
-from olc.core.senders import ArtNetSender, SACNSender
+from olc.core.senders import ArtNetSender, DmxUsbProSender, SACNSender
 from olc.core.universe_config import Protocol, UniverseConfig, UniverseMap
 from olc.core.universe_data import DMXUniverse
 
@@ -60,7 +61,9 @@ class _RuntimeSlot:
     fader: FadeEngine | None = field(default=None)
     htp_merger: HTPMerger | None = field(default=None)
     ltp_merger: LTPMerger | None = field(default=None)
-    senders: list[ArtNetSender | SACNSender] = field(default_factory=list)
+    senders: list[ArtNetSender | SACNSender | DmxUsbProSender] = field(
+        default_factory=list
+    )
 
 
 def _build_senders(  # pylint: disable=unexpected-keyword-arg
@@ -68,9 +71,10 @@ def _build_senders(  # pylint: disable=unexpected-keyword-arg
     artnet_manager: ArtNetManager | None = None,
     dest_ip: str = "255.255.255.255",
     sacn_multicast: bool = True,
-) -> list[ArtNetSender | SACNSender]:
+    dmx_usb_pro_manager: DmxUsbProManager | None = None,
+) -> list[ArtNetSender | SACNSender | DmxUsbProSender]:
     """Create the network senders described by a UniverseConfig."""
-    senders: list[ArtNetSender | SACNSender] = []
+    senders: list[ArtNetSender | SACNSender | DmxUsbProSender] = []
     if Protocol.ARTNET in config.protocols:
         # Compute Art-Net universe from net/sub/universe
         artnet_universe = (
@@ -94,6 +98,8 @@ def _build_senders(  # pylint: disable=unexpected-keyword-arg
                 ip=dest_ip,
             )
         )
+    if Protocol.DMX_USB_PRO in config.protocols and dmx_usb_pro_manager is not None:
+        senders.append(DmxUsbProSender(manager=dmx_usb_pro_manager))
     return senders
 
 
@@ -170,9 +176,28 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             no_listen=no_listen,
         )
 
+        # Initialize DMX USB Pro managers registry
+        self._dmx_usb_pro_managers: dict[int, DmxUsbProManager] = {}
+        self.notify_enttec = None
+
         # Build one runtime slot per universe declared in the map
         self._slots: dict[int, _RuntimeSlot] = {}
         for config in universe_map:
+            dmx_usb_pro_manager = None
+            if not no_transmit and Protocol.DMX_USB_PRO in config.protocols:
+                dmx_usb_pro_manager = DmxUsbProManager(
+                    port=config.dmx_usb_pro.port,
+                    loop=self._network_thread.loop,
+                )
+                dmx_usb_pro_manager.notify = (
+                    lambda action, *args, u=config.universe_id: (
+                        self.notify_enttec(u, action, *args)
+                        if self.notify_enttec
+                        else None
+                    )
+                )
+                self._dmx_usb_pro_managers[config.universe_id] = dmx_usb_pro_manager
+
             self._slots[config.universe_id] = _RuntimeSlot(
                 universe=DMXUniverse(config.universe_id),
                 senders=[]
@@ -182,6 +207,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                     self._artnet_manager,
                     dest_ip="127.0.0.1" if loopback else "255.255.255.255",
                     sacn_multicast=not loopback,
+                    dmx_usb_pro_manager=dmx_usb_pro_manager,
                 ),
             )
 
@@ -218,6 +244,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             Protocol.SACN in c.protocols for c in self._map
         ):
             self._sacn_manager.start()
+        for manager in self._dmx_usb_pro_managers.values():
+            manager.start()
         if not self._no_transmit:
             self._loop.start()
 
@@ -229,6 +257,8 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             self._artnet_manager.stop()
         if self._sacn_manager is not None:
             self._sacn_manager.stop()
+        for manager in self._dmx_usb_pro_managers.values():
+            manager.stop()
         if self._network_thread is not None:
             self._network_thread.stop()
         if self._zmq_pub is not None:
@@ -268,17 +298,94 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         with self._lock:
             slot.fader = FadeEngine(slot.universe)
 
-    def add_htp_merger(self, uid: int, num_sources: int) -> None:
+    def _add_htp_merger(self, uid: int, num_sources: int) -> None:
         """Attach an HTPMerger to a universe slot."""
         slot = self._get_slot(uid)
         with self._lock:
             slot.htp_merger = HTPMerger(num_sources)
 
-    def add_ltp_merger(self, uid: int, num_sources: int) -> None:
+    def _add_ltp_merger(self, uid: int, num_sources: int) -> None:
         """Attach an LTPMerger to a universe slot."""
         slot = self._get_slot(uid)
         with self._lock:
             slot.ltp_merger = LTPMerger(num_sources)
+
+    def _reload_dmx_usb_pro(
+        self, uid: int, config: UniverseConfig
+    ) -> DmxUsbProManager | None:
+        """Stop old DmxUsbProManager and start a new one if active."""
+        if uid in self._dmx_usb_pro_managers:
+            self._dmx_usb_pro_managers.pop(uid).stop()
+
+        dmx_usb_pro_manager = None
+        if not self._no_transmit and Protocol.DMX_USB_PRO in config.protocols:
+            dmx_usb_pro_manager = DmxUsbProManager(
+                port=config.dmx_usb_pro.port,
+                loop=self._network_thread.loop,
+            )
+            dmx_usb_pro_manager.notify = lambda action, *args, u=uid: (
+                self.notify_enttec(u, action, *args) if self.notify_enttec else None
+            )
+            self._dmx_usb_pro_managers[uid] = dmx_usb_pro_manager
+            if self.is_running:
+                dmx_usb_pro_manager.start()
+        return dmx_usb_pro_manager
+
+    def _reload_artnet(self, uid: int, config: UniverseConfig) -> None:
+        """Update Art-Net manager configuration for a universe reload."""
+        if self._artnet_manager is None:
+            return
+        self._artnet_manager.universes = [
+            c.universe_id for c in self._map if Protocol.ARTNET in c.protocols
+        ]
+        self._artnet_manager.listeners.universes = self._artnet_manager.universes
+        self._artnet_manager.discovery.universes = self._artnet_manager.universes
+        if Protocol.ARTNET in config.protocols:
+            if uid not in self._artnet_manager.senders:
+                self._artnet_manager.senders[uid] = ArtNetSenderClass(
+                    uid, self._artnet_manager._notify_forwarder
+                )
+            if self.is_running:
+                self._artnet_manager.start()
+        else:
+            self._artnet_manager.senders.pop(uid, None)
+            if self.is_running and not self._artnet_manager.universes:
+                self._artnet_manager.stop()
+
+    def _reload_sacn(self, uid: int, config: UniverseConfig) -> None:
+        """Update sACN manager configuration for a universe reload."""
+        if self._sacn_manager is None:
+            return
+        old_universes = list(self._sacn_manager.universes)
+        self._sacn_manager.universes = [
+            c.universe_id for c in self._map if Protocol.SACN in c.protocols
+        ]
+        if Protocol.SACN in config.protocols:
+            if uid not in old_universes:
+                self._sacn_manager.network.join_multicast(uid)
+            if uid not in self._sacn_manager.mergers:
+                self._sacn_manager.mergers[uid] = SacnMerger(
+                    universe=uid,
+                    callback=self._sacn_manager._handle_incoming_dmx,
+                )
+            if not self._no_transmit:
+                if uid not in self._sacn_manager.senders:
+                    self._sacn_manager.senders[uid] = SACNSender(
+                        universe=uid, multicast=True
+                    )
+            sync_addr = config.sacn.sync_address
+            if sync_addr > 0:
+                self._sacn_manager.network.join_multicast(sync_addr)
+            if self.is_running:
+                self._sacn_manager.start()
+        else:
+            if uid in old_universes:
+                self._sacn_manager.network.leave_multicast(uid)
+            self._sacn_manager.mergers.pop(uid, None)
+            if uid in self._sacn_manager.senders:
+                self._sacn_manager.senders.pop(uid).close()
+            if self.is_running and not self._sacn_manager.universes:
+                self._sacn_manager.stop()
 
     def reload_universe(self, uid: int) -> None:
         """
@@ -288,6 +395,9 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         config = self._map[uid]
         dest_ip = "127.0.0.1" if self._loopback else "255.255.255.255"
         sacn_multicast = not self._loopback
+
+        dmx_usb_pro_manager = self._reload_dmx_usb_pro(uid, config)
+
         new_senders = (
             []
             if self._no_transmit
@@ -296,60 +406,14 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self._artnet_manager,
                 dest_ip=dest_ip,
                 sacn_multicast=sacn_multicast,
+                dmx_usb_pro_manager=dmx_usb_pro_manager,
             )
         )
         with self._lock:
             self._get_slot(uid).senders = new_senders
 
-        if self._artnet_manager is not None:
-            self._artnet_manager.universes = [
-                c.universe_id for c in self._map if Protocol.ARTNET in c.protocols
-            ]
-            self._artnet_manager.listeners.universes = self._artnet_manager.universes
-            self._artnet_manager.discovery.universes = self._artnet_manager.universes
-            if Protocol.ARTNET in config.protocols:
-                if uid not in self._artnet_manager.senders:
-                    self._artnet_manager.senders[uid] = ArtNetSenderClass(
-                        uid, self._artnet_manager._notify_forwarder
-                    )
-                if self.is_running:
-                    self._artnet_manager.start()
-            else:
-                self._artnet_manager.senders.pop(uid, None)
-                if self.is_running and not self._artnet_manager.universes:
-                    self._artnet_manager.stop()
-
-        if self._sacn_manager is not None:
-            old_universes = list(self._sacn_manager.universes)
-            self._sacn_manager.universes = [
-                c.universe_id for c in self._map if Protocol.SACN in c.protocols
-            ]
-            if Protocol.SACN in config.protocols:
-                if uid not in old_universes:
-                    self._sacn_manager.network.join_multicast(uid)
-                if uid not in self._sacn_manager.mergers:
-                    self._sacn_manager.mergers[uid] = SacnMerger(
-                        universe=uid,
-                        callback=self._sacn_manager._handle_incoming_dmx,
-                    )
-                if not self._no_transmit:
-                    if uid not in self._sacn_manager.senders:
-                        self._sacn_manager.senders[uid] = SACNSender(
-                            universe=uid, multicast=True
-                        )
-                sync_addr = config.sacn.sync_address
-                if sync_addr > 0:
-                    self._sacn_manager.network.join_multicast(sync_addr)
-                if self.is_running:
-                    self._sacn_manager.start()
-            else:
-                if uid in old_universes:
-                    self._sacn_manager.network.leave_multicast(uid)
-                self._sacn_manager.mergers.pop(uid, None)
-                if uid in self._sacn_manager.senders:
-                    self._sacn_manager.senders.pop(uid).close()
-                if self.is_running and not self._sacn_manager.universes:
-                    self._sacn_manager.stop()
+        self._reload_artnet(uid, config)
+        self._reload_sacn(uid, config)
 
     def blackout(self, uid: int) -> None:
         """Zero all channels of a universe immediately."""
@@ -371,7 +435,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             )
         slot.fader.go(target, duration)
 
-    def htp_write(self, uid: int, source_id: int, channels: dict[int, int]) -> None:
+    def _htp_write(self, uid: int, source_id: int, channels: dict[int, int]) -> None:
         """
         Write channels for a source via the HTP merger.
         Raises RuntimeError if no HTPMerger is attached to this universe.
@@ -385,7 +449,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         slot.htp_merger.write(source_id, channels)
         slot.htp_merger.get_output(out=slot.universe.array)
 
-    def ltp_write(self, uid: int, source_id: int, channels: dict[int, int]) -> None:
+    def _ltp_write(self, uid: int, source_id: int, channels: dict[int, int]) -> None:
         """
         Write channels for a source via the LTP merger.
         Raises RuntimeError if no LTPMerger is attached to this universe.

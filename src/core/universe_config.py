@@ -22,6 +22,7 @@ class Protocol(Enum):
 
     ARTNET = auto()
     SACN = auto()
+    DMX_USB_PRO = auto()
 
 
 _UNIVERSE_0_FORBIDDEN: frozenset[Protocol] = frozenset({Protocol.SACN})
@@ -58,6 +59,12 @@ class SacnSettings:
             )
 
 
+@dataclass
+class DmxUsbProSettings:
+    """DMX USB Pro universe configuration"""
+
+    port: str = "Auto-detect"
+
 
 class UniverseConfig:
     """Universe configuration"""
@@ -66,6 +73,7 @@ class UniverseConfig:
     _protocols: set[Protocol]
     artnet: ArtNetSettings
     sacn: SacnSettings
+    dmx_usb_pro: DmxUsbProSettings
 
     def __init__(self, universe_id: int) -> None:
         if not isinstance(universe_id, int) or universe_id < 0:
@@ -76,6 +84,7 @@ class UniverseConfig:
         self._protocols = set()
         self.artnet = ArtNetSettings()
         self.sacn = SacnSettings()
+        self.dmx_usb_pro = DmxUsbProSettings()
 
     @property
     def universe_id(self) -> int:

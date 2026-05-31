@@ -20,13 +20,12 @@ import typing
 from gettext import gettext as _
 from typing import Callable
 
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import Gdk, GLib, GObject, Gtk
 from olc.core.backends.osc.delegate import GUIOSCDelegate
 from olc.core.universe_config import Protocol
 
 if typing.TYPE_CHECKING:
     from olc.application import Application
-    from olc.backends.backend import MultiProtocolBackend
 
 
 # pylint: disable=too-many-instance-attributes
@@ -46,6 +45,7 @@ class SettingsTab(Gtk.Box):
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._last_artnet_state: list[list[str]] | None = None
+        self.universe_widgets = {}
 
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
@@ -192,7 +192,8 @@ class SettingsTab(Gtk.Box):
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
-        self.tabs.close("settings")
+        if self.tabs is not None:
+            self.tabs.close("settings")
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -215,7 +216,8 @@ class SettingsTab(Gtk.Box):
 
     def _keypress_escape(self) -> None:
         """Close Tab"""
-        self.tabs.close("settings")
+        if self.tabs is not None:
+            self.tabs.close("settings")
 
     def on_combo_change(self, _widget: Gtk.Widget, path: str, text: str) -> None:
         """Change rotatives mode
@@ -297,9 +299,10 @@ class SettingsTab(Gtk.Box):
         self.settings.set_strv("relative2", relative2)
         self.settings.set_strv("makie", makies)
         self.settings.set_strv("absolute", absolutes)
-        GLib.idle_add(self.midi.ports.close)
-        GLib.idle_add(self.midi.ports.open, midi_ports)
-        self.midi.update_faders()
+        if self.midi is not None:
+            GLib.idle_add(self.midi.ports.close)
+            GLib.idle_add(self.midi.ports.open, midi_ports)
+            self.midi.update_faders()
 
     def _artnet(self, builder: Gtk.Builder) -> None:
         # pylint: disable=too-many-locals,protected-access
@@ -357,7 +360,7 @@ class SettingsTab(Gtk.Box):
                 grouped[key]["universes"].update(dev_univs)
 
     def _refresh_artnet(self) -> bool:
-        if not self.tabs.tabs.get("settings"):
+        if not self.tabs or not self.tabs.tabs.get("settings"):
             return False
 
         if not self.backend:
@@ -367,20 +370,18 @@ class SettingsTab(Gtk.Box):
         if artnet is None:
             return True
 
-        multi_backend = typing.cast("MultiProtocolBackend", self.backend)
-
         grouped = {}
         self._collect_devices(
-            multi_backend.artnet.discovery.nodes,
+            artnet.discovery.nodes,
             "Node",
             grouped,
-            multi_backend.artnet.universes,
+            artnet.universes,
         )
         self._collect_devices(
-            multi_backend.artnet.discovery.consoles,
+            artnet.discovery.consoles,
             "Controller",
             grouped,
-            multi_backend.artnet.universes,
+            artnet.universes,
         )
 
         new_state = [
@@ -390,10 +391,10 @@ class SettingsTab(Gtk.Box):
 
         if any(
             ((0, 0, 0, 0, 0, 0), 0) in s.nodes
-            for s in multi_backend.artnet.senders.values()
+            for s in artnet.senders.values()
         ):
             univs = ", ".join(
-                str(u) for u in sorted(multi_backend.artnet.senders.keys())
+                str(u) for u in sorted(artnet.senders.keys())
             )
             new_state.append(
                 ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
@@ -431,18 +432,19 @@ class SettingsTab(Gtk.Box):
         self.settings.set_value("percent", GLib.Variant("b", state))
 
         # Force redraw of main window
-        self.window.live_view.channels_view.update()
+        if self.window is not None:
+            self.window.live_view.channels_view.update()
 
         # Redraw Sequences Tab if open
-        if self.tabs.tabs["sequences"]:
+        if self.tabs is not None and self.tabs.tabs["sequences"]:
             typing.cast(typing.Any, self.tabs.tabs["sequences"]).channels_view.update()
 
         # Redraw Groups Tab if exist
-        if self.tabs.tabs["groups"]:
+        if self.tabs is not None and self.tabs.tabs["groups"]:
             typing.cast(typing.Any, self.tabs.tabs["groups"]).channels_view.update()
 
         # Redraw Memories Tab if exist
-        if self.tabs.tabs["memories"]:
+        if self.tabs is not None and self.tabs.tabs["memories"]:
             typing.cast(typing.Any, self.tabs.tabs["memories"]).channels_view.update()
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
@@ -495,10 +497,34 @@ class SettingsTab(Gtk.Box):
         except ValueError:
             return False
 
+    def _get_serial_ports(self, current_port: str) -> list[str]:
+        """Scan system for available serial ports and ensure current_port is present."""
+        serial_ports = ["Auto-detect"]
+        try:
+            import serial.tools.list_ports  # pylint: disable=import-outside-toplevel
+
+            for p in serial.tools.list_ports.comports():
+                if p.vid == 0x0403 and p.pid == 0x6001:
+                    serial_ports.append(f"{p.device} (DMX USB PRO)")
+                else:
+                    serial_ports.append(p.device)
+        except Exception:  # pylint: disable=broad-exception-caught
+            serial_ports.extend(["/dev/ttyUSB0", "/dev/ttyUSB1"])
+
+        if current_port != "Auto-detect":
+            found = False
+            for sp in serial_ports:
+                if sp == current_port or sp.startswith(f"{current_port} "):
+                    found = True
+                    break
+            if not found:
+                serial_ports.append(current_port)
+
+        return serial_ports
+
     def _create_universes_tab(self) -> Gtk.Box:
         # pylint: disable=too-many-locals,too-many-statements
-        app = self.window.get_application()
-        engine = getattr(app, "engine", None)
+        engine = getattr(self.app, "engine", None)
 
         main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         main_box.set_margin_start(15)
@@ -594,6 +620,57 @@ class SettingsTab(Gtk.Box):
             sacn_sync_spin.set_adjustment(sacn_sync_adj)
             sacn_params.attach(sacn_sync_spin, 1, 1, 1, 1)
 
+            # --- Column 3: DMX USB PRO ---
+            dmx_usb_pro_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+            dmx_usb_pro_box.set_hexpand(True)
+            frame_box.pack_start(dmx_usb_pro_box, True, True, 0)
+
+            dmx_usb_pro_check = Gtk.CheckButton(label=_("Enable DMX USB Pro"))
+            dmx_usb_pro_box.pack_start(dmx_usb_pro_check, False, False, 0)
+
+            dmx_usb_pro_params = Gtk.Grid()
+            dmx_usb_pro_params.set_column_spacing(10)
+            dmx_usb_pro_params.set_row_spacing(6)
+            dmx_usb_pro_box.pack_start(dmx_usb_pro_params, False, False, 0)
+
+            # Port Label
+            port_label = Gtk.Label(label=_("Port:"))
+            port_label.set_halign(Gtk.Align.START)
+            dmx_usb_pro_params.attach(port_label, 0, 0, 1, 1)
+
+            # Port Combo Box
+            port_combo = Gtk.ComboBoxText()
+            port_combo.set_hexpand(True)
+            dmx_usb_pro_params.attach(port_combo, 1, 0, 1, 1)
+
+            # Populate combo box with ports using helper
+            current_port = config.dmx_usb_pro.port if config else "Auto-detect"
+            serial_ports = self._get_serial_ports(current_port)
+
+            for sp in serial_ports:
+                port_combo.append_text(sp)
+
+            # Select active item
+            active_idx = 0
+            for idx, sp in enumerate(serial_ports):
+                if sp == current_port or sp.startswith(f"{current_port} "):
+                    active_idx = idx
+                    break
+            port_combo.set_active(active_idx)
+
+            # Store widgets for conflict management and callbacks
+            self.universe_widgets[u] = {
+                "artnet_check": artnet_check,
+                "net_spin": net_spin,
+                "sub_spin": sub_spin,
+                "sync_switch": sync_switch,
+                "sacn_check": sacn_check,
+                "prio_spin": prio_spin,
+                "sacn_sync_spin": sacn_sync_spin,
+                "dmx_usb_pro_check": dmx_usb_pro_check,
+                "port_combo": port_combo,
+            }
+
             # Populate initial values
             if config is not None:
                 artnet_check.set_active(Protocol.ARTNET in config.protocols)
@@ -605,25 +682,35 @@ class SettingsTab(Gtk.Box):
                 prio_spin.set_value(config.sacn.priority)
                 sacn_sync_spin.set_value(config.sacn.sync_address)
 
-            # Bind sensitiveness
-            artnet_check.bind_property("active", net_spin, "sensitive", 1)
-            artnet_check.bind_property("active", sub_spin, "sensitive", 1)
-            artnet_check.bind_property("active", sync_switch, "sensitive", 1)
+                dmx_usb_pro_check.set_active(Protocol.DMX_USB_PRO in config.protocols)
 
-            sacn_check.bind_property("active", prio_spin, "sensitive", 1)
-            sacn_check.bind_property("active", sacn_sync_spin, "sensitive", 1)
+            # Bind sensitiveness
+            artnet_check.bind_property(
+                "active", net_spin, "sensitive", GObject.BindingFlags.SYNC_CREATE
+            )
+            artnet_check.bind_property(
+                "active", sub_spin, "sensitive", GObject.BindingFlags.SYNC_CREATE
+            )
+            artnet_check.bind_property(
+                "active", sync_switch, "sensitive", GObject.BindingFlags.SYNC_CREATE
+            )
+
+            sacn_check.bind_property(
+                "active", prio_spin, "sensitive", GObject.BindingFlags.SYNC_CREATE
+            )
+            sacn_check.bind_property(
+                "active",
+                sacn_sync_spin,
+                "sensitive",
+                GObject.BindingFlags.SYNC_CREATE,
+            )
+
+            dmx_usb_pro_check.bind_property(
+                "active", port_combo, "sensitive", GObject.BindingFlags.SYNC_CREATE
+            )
 
             # Bind callbacks
-            args = (
-                u,
-                artnet_check,
-                net_spin,
-                sub_spin,
-                sync_switch,
-                sacn_check,
-                prio_spin,
-                sacn_sync_spin,
-            )
+            args = (u,)
             cb = self._on_universe_settings_changed
             scb = self._on_universe_switch_changed
             artnet_check.connect("toggled", cb, *args)
@@ -633,6 +720,8 @@ class SettingsTab(Gtk.Box):
             sacn_check.connect("toggled", cb, *args)
             prio_spin.connect("value-changed", cb, *args)
             sacn_sync_spin.connect("value-changed", cb, *args)
+            dmx_usb_pro_check.connect("toggled", cb, *args)
+            port_combo.connect("changed", cb, *args)
 
         scrolled.show_all()
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -640,72 +729,73 @@ class SettingsTab(Gtk.Box):
         container.show_all()
         return container
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _on_universe_settings_changed(
         self,
         _widget: Gtk.Widget,
         universe: int,
-        artnet_check: Gtk.CheckButton,
-        net_spin: Gtk.SpinButton,
-        sub_spin: Gtk.SpinButton,
-        sync_switch: Gtk.Switch,
-        sacn_check: Gtk.CheckButton,
-        prio_spin: Gtk.SpinButton,
-        sacn_sync_spin: Gtk.SpinButton,
     ) -> None:
-        app = self.window.get_application()
-        engine = getattr(app, "engine", None)
+        engine = getattr(self.app, "engine", None)
         if engine is None:
             return
 
         config = engine.universe_map[universe]
+        widgets = self.universe_widgets[universe]
 
         # 1. Update protocols
         protocols = set()
-        if artnet_check.get_active():
+        if widgets["artnet_check"].get_active():
             protocols.add(Protocol.ARTNET)
-        if sacn_check.get_active():
+        if widgets["sacn_check"].get_active():
             protocols.add(Protocol.SACN)
+
+        if widgets["dmx_usb_pro_check"].get_active():
+            selected_text = widgets["port_combo"].get_active_text() or "Auto-detect"
+            port_name = selected_text.split(" ")[0]
+
+            # Mutual exclusion conflict check
+            for other_u, w in self.universe_widgets.items():
+                if other_u == universe:
+                    continue
+                other_check = w["dmx_usb_pro_check"]
+                other_combo = w["port_combo"]
+
+                if other_check.get_active():
+                    other_selected = other_combo.get_active_text() or "Auto-detect"
+                    other_port_name = other_selected.split(" ")[0]
+
+                    if port_name == other_port_name:
+                        # Deactivate other conflict
+                        other_check.set_active(False)
+
+            protocols.add(Protocol.DMX_USB_PRO)
+
         config.set_protocols(protocols)
 
         # 2. Update Art-Net parameters
-        config.artnet.net = int(net_spin.get_value())
-        config.artnet.sub = int(sub_spin.get_value())
-        config.artnet.sync_active = sync_switch.get_active()
+        config.artnet.net = int(widgets["net_spin"].get_value())
+        config.artnet.sub = int(widgets["sub_spin"].get_value())
+        config.artnet.sync_active = widgets["sync_switch"].get_active()
 
         # 3. Update sACN parameters
-        config.sacn.priority = int(prio_spin.get_value())
-        config.sacn.sync_address = int(sacn_sync_spin.get_value())
+        config.sacn.priority = int(widgets["prio_spin"].get_value())
+        config.sacn.sync_address = int(widgets["sacn_sync_spin"].get_value())
 
-        # 4. Hot-reload engine senders/listeners
+        # 4. Update DMX USB Pro parameters
+        selected_text = widgets["port_combo"].get_active_text() or "Auto-detect"
+        config.dmx_usb_pro.port = selected_text.split(" ")[0]
+
+        # 5. Hot-reload engine senders/listeners
         engine.reload_universe(universe)
 
-        # 5. Mark show file as modified
-        app.lightshow.set_modified()
+        # 6. Mark show file as modified
+        if self.app is not None:
+            self.app.lightshow.set_modified()
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _on_universe_switch_changed(
         self,
         _widget: Gtk.Switch,
         _state: bool,
         universe: int,
-        artnet_check: Gtk.CheckButton,
-        net_spin: Gtk.SpinButton,
-        sub_spin: Gtk.SpinButton,
-        sync_switch: Gtk.Switch,
-        sacn_check: Gtk.CheckButton,
-        prio_spin: Gtk.SpinButton,
-        sacn_sync_spin: Gtk.SpinButton,
     ) -> bool:
-        self._on_universe_settings_changed(
-            sync_switch,
-            universe,
-            artnet_check,
-            net_spin,
-            sub_spin,
-            sync_switch,
-            sacn_check,
-            prio_spin,
-            sacn_sync_spin,
-        )
+        self._on_universe_settings_changed(_widget, universe)
         return False
