@@ -360,9 +360,6 @@ class SettingsTab(Gtk.Box):
         if not self.tabs.tabs.get("settings"):
             return False
 
-        if "artnet" not in self.settings.get_string("backend"):
-            return True
-
         if not self.backend:
             return True
 
@@ -643,6 +640,7 @@ class SettingsTab(Gtk.Box):
         container.show_all()
         return container
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _on_universe_settings_changed(
         self,
         _widget: Gtk.Widget,
@@ -685,6 +683,7 @@ class SettingsTab(Gtk.Box):
         # 5. Mark show file as modified
         app.lightshow.set_modified()
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def _on_universe_switch_changed(
         self,
         _widget: Gtk.Switch,
