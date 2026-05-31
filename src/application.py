@@ -85,15 +85,6 @@ class Application(Gtk.Application):
             None,
         )
 
-        self.add_main_option(
-            "http-port",
-            ord("p"),
-            GLib.OptionFlags.NONE,
-            GLib.OptionArg.INT,
-            "The port to run the Ola HTTP server on. Defaults to 9090",
-            None,
-        )
-
         css_provider_file = Gio.File.new_for_uri(
             "resource://com/github/mikacousin/olc/application.css"
         )

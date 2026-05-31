@@ -18,3 +18,5 @@ pyproject.toml
 .pylintrc
 /.agents
 /doc
+/CLAUDE.md
+/.rtk
