@@ -114,10 +114,6 @@ class Independents:
                     level_inde = inde.dmx[channel]
             if level_inde != -1:
                 self.dmx[channel] = level_inde
-                next_level = App().lightshow.main_playback.get_next_channel_level(
-                    channel + 1, level_inde
-                )
-                App().window.live_view.update_channel_widget(channel + 1, next_level)
 
     def add(self, independent: Independent) -> bool:
         """Add an independent

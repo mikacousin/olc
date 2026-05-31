@@ -158,7 +158,7 @@ class CrossFade:
             f"- Next Mem. : {next_cue} "
             f"{self.app.lightshow.main_playback.steps[next_step].text}"
         )
-        update_ui(self.app.lightshow.main_playback.position, subtitle)
+        update_ui(subtitle)
         # If Wait
         if self.app.lightshow.main_playback.steps[next_step].wait:
             self.app.lightshow.main_playback.on_go = False
@@ -221,8 +221,6 @@ class CrossFade:
                 elif scale == self.scale_b:
                     # Get SequentialWindow's width to place cursor
                     self._update_b(channel, old_level, next_level, wait, position)
-                if self.app.window and self.app.window.live_view:
-                    self.app.window.live_view.update_channel_widget(channel, next_level)
             self.app.backend.dmx.set_levels(self.app.lightshow.main_playback.channels)
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
@@ -330,7 +328,6 @@ class CrossFade:
             wait: Wait value
             pos: Position in crossfade
         """
-        lvl = -1
         time_in = (
             self.app.lightshow.main_playback.steps[
                 self.app.lightshow.main_playback.position + 1

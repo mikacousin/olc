@@ -52,19 +52,13 @@ class LiveView(Gtk.Notebook):
         if not widget:
             return
         channel -= 1
-        widget.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
-        level = App().backend.dmx.levels["sequence"][channel]
-        if (
-            not App().lightshow.main_playback.on_go
-            and App().backend.dmx.levels["user"][channel] != -1
-        ):
-            level = App().backend.dmx.levels["user"][channel]
-        if App().backend.dmx.levels["faders"][channel] > level:
-            level = App().backend.dmx.levels["faders"][channel]
-            widget.color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
-        if App().lightshow.independents.dmx[channel] > level:
-            level = App().lightshow.independents.dmx[channel]
-            widget.color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
+        level, color_level = App().backend.dmx.get_composite_level(channel)
+
+        # Apply Main Fader for visual display
+        level = round(level * App().backend.dmx.main_fader.value)
+        next_level = round(next_level * App().backend.dmx.main_fader.value)
+
+        widget.color_level = color_level
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()

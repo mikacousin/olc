@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+# pylint: disable=protected-access, comparison-with-callable
 from unittest.mock import MagicMock, patch
 
 from olc.define import UNIVERSES
@@ -24,6 +25,7 @@ def test_dmx_send_triggers_callbacks() -> None:
     """
     # Mock lightshow and app
     lightshow = MagicMock()
+    lightshow.patch.is_patched.return_value = False
     app = MagicMock()
     engine = MagicMock()
     lightshow.app = app

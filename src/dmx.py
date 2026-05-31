@@ -57,6 +57,7 @@ class Dmx:
         # DMX values
         self.frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
         self._old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
+        self._old_channel_levels = array.array("B", [0] * MAX_CHANNELS)
         # To test outputs
         self.user_outputs = {}
         # Callbacks for UI updates
@@ -65,6 +66,30 @@ class Dmx:
         self.notification_callbacks = []
         # Thread to send DMX every DMX_INTERVAL ms
         self.thread = RepeatedTimer(DMX_INTERVAL / 1000, self.send)
+
+    def get_composite_level(self, channel_idx: int) -> tuple[int, dict[str, float]]:
+        """Get the composite level and state color for a channel (0-indexed).
+
+        Args:
+            channel_idx: Channel index (0 to MAX_CHANNELS - 1)
+
+        Returns:
+            Tuple of (composite_level, color_dict)
+        """
+        color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
+        level = self.levels["sequence"][channel_idx]
+        if (
+            not self.lightshow.main_playback.on_go
+            and self.levels["user"][channel_idx] != -1
+        ):
+            level = self.levels["user"][channel_idx]
+        if self.levels["faders"][channel_idx] > level:
+            level = self.levels["faders"][channel_idx]
+            color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
+        if self.lightshow.independents.dmx[channel_idx] > level:
+            level = self.lightshow.independents.dmx[channel_idx]
+            color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
+        return level, color_level
 
     def set_levels(self, channels: Optional[set[int]] = None) -> None:
         """Set DMX frame levels
@@ -79,35 +104,23 @@ class Dmx:
                 continue
             outputs = self.patch.channels[channel]
             channel -= 1
-            # Sequence
-            level = self.levels["sequence"][channel]
-            # User
-            if (
-                not self.lightshow.main_playback.on_go
-                and self.levels["user"][channel] != -1
-            ):
-                level = self.levels["user"][channel]
-            # Faders
-            if self.levels["faders"][channel] > level:
-                level = self.levels["faders"][channel]
-            # Independents
-            if self.lightshow.independents.dmx[channel] > level:
-                level = self.lightshow.independents.dmx[channel]
+            level, _color = self.get_composite_level(channel)
             for out in outputs:
                 output = out[0]
                 universe = out[1]
                 if universe and output:
+                    out_level = level
                     # Curve
                     curve_numb = self.patch.outputs[universe][output][1]
                     if curve_numb:
                         curve = self.lightshow.curves.get_curve(curve_numb)
                         if curve:
-                            level = curve.values.get(level, 0)
+                            out_level = curve.values.get(out_level, 0)
                     # Main Fader
-                    level = round(level * self.main_fader.value)
+                    out_level = round(out_level * self.main_fader.value)
                     index = UNIVERSES.index(universe)
                     # Update output level
-                    self.frame[index][output - 1] = level
+                    self.frame[index][output - 1] = out_level
 
     def send(self) -> None:
         """Send DMX values to CoreEngine"""
@@ -126,6 +139,38 @@ class Dmx:
                         )
                     self._old_frame[index] = array.array("B", current_frame)
                 engine.universe(universe).array[:] = list(current_frame)
+
+            # Compute composite levels for all channels to check for modifications
+            changed_channels = []
+            for i in range(MAX_CHANNELS):
+                if not self.patch.is_patched(i + 1):
+                    continue
+                raw_level, _color = self.get_composite_level(i)
+                # Apply Main Fader for visual display
+                level = round(raw_level * self.main_fader.value)
+
+                if level != self._old_channel_levels[i]:
+                    self._old_channel_levels[i] = level
+                    changed_channels.append(i + 1)
+
+            if changed_channels:
+                GLib.idle_add(self.trigger_channels_update, changed_channels)
+
+    def trigger_channels_update(self, changed_channels: list[int]) -> None:
+        """Trigger channel widgets updates on the main thread."""
+        if self.lightshow.app is not None and self.lightshow.app.window is not None:
+            live_view = self.lightshow.app.window.live_view
+            for channel in changed_channels:
+                step = self.lightshow.main_playback.steps[
+                    self.lightshow.main_playback.position
+                ]
+                seq_level = 0
+                if step.cue is not None:
+                    seq_level = step.cue.channels.get(channel, 0)
+                seq_next_level = self.lightshow.main_playback.get_next_channel_level(
+                    channel, seq_level
+                )
+                live_view.update_channel_widget(channel, seq_next_level)
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""

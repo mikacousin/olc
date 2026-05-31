@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import array
@@ -31,11 +30,10 @@ if typing.TYPE_CHECKING:
     from olc.channel_time import ChannelTime
 
 
-def update_ui(position: int, subtitle: str) -> None:
+def update_ui(subtitle: str) -> None:
     """Update user interface when Step is in scene
 
     Args:
-        position: Step
         subtitle: Memories number in header bar
     """
     # Update Sequential Tab
@@ -55,15 +53,6 @@ def update_ui(position: int, subtitle: str) -> None:
             App().virtual_console.scale_b.set_inverted(True)
         App().virtual_console.scale_a.set_value(0)
         App().virtual_console.scale_b.set_value(0)
-    # Update Channels display
-    for channel in range(1, MAX_CHANNELS + 1):
-        level = (
-            App().lightshow.main_playback.steps[position].cue.channels.get(channel, 0)
-        )
-        next_level = App().lightshow.main_playback.get_next_channel_level(
-            channel, level
-        )
-        App().window.live_view.update_channel_widget(channel, next_level)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -277,7 +266,7 @@ class Sequence:
                 f"{self.steps[position + 1].text}"
             )
             # Update display
-            update_ui(position, subtitle)
+            update_ui(subtitle)
 
             # Empty DMX user array
             App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
@@ -289,8 +278,6 @@ class Sequence:
                     continue
                 level = self.steps[position].cue.channels.get(channel, 0)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
-                next_level = self.get_next_channel_level(channel, level)
-                App().window.live_view.update_channel_widget(channel, next_level)
             App().backend.dmx.set_levels(self.channels)
 
     def sequence_minus(self) -> None:
@@ -331,7 +318,7 @@ class Sequence:
                 f"{self.steps[position + 1].text}"
             )
             # Update display
-            update_ui(position, subtitle)
+            update_ui(subtitle)
 
             # Empty DMX user array
             App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
@@ -342,8 +329,6 @@ class Sequence:
                     continue
                 level = self.steps[position].cue.channels.get(channel, 0)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
-                next_level = self.get_next_channel_level(channel, level)
-                App().window.live_view.update_channel_widget(channel, next_level)
             App().backend.dmx.set_levels(self.channels)
 
     def goto(self, keystring: str) -> None:
@@ -567,12 +552,6 @@ class ThreadGo(threading.Thread):
                     level = self.sequence.steps[0].cue.channels.get(channel, 0)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
                 App().backend.dmx.frame[index][output - 1] = level
-                next_level = self.sequence.get_next_channel_level(channel, level)
-                GLib.idle_add(
-                    App().window.live_view.update_channel_widget,
-                    channel,
-                    next_level,
-                )
         App().backend.dmx.set_levels(self.sequence.channels)
         self.sequence.on_go = False
         App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
@@ -709,8 +688,6 @@ class ThreadGo(threading.Thread):
         else:
             level = self._channel_level(i, old_level, next_level)
         App().backend.dmx.levels["sequence"][channel - 1] = level
-        next_level = self.sequence.get_next_channel_level(channel, level)
-        GLib.idle_add(App().window.live_view.update_channel_widget, channel, next_level)
 
     def _channel_level(self, i: float, old_level: int, next_level: int) -> int:
         """Return channel level
@@ -836,7 +813,7 @@ def _next_step(sequence: Sequence) -> int:
         f"{sequence.steps[next_step].text}"
     )
     # Update Gtk in main thread
-    GLib.idle_add(update_ui, sequence.position, subtitle)
+    GLib.idle_add(update_ui, subtitle)
     return next_step
 
 
@@ -883,12 +860,6 @@ class ThreadGoBack(threading.Thread):
                 level = self.sequence.steps[prev_step].cue.channels.get(channel, 0)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
                 App().backend.dmx.frame[index][output - 1] = level
-                next_level = self.sequence.get_next_channel_level(channel, level)
-                GLib.idle_add(
-                    App().window.live_view.update_channel_widget,
-                    channel,
-                    next_level,
-                )
         App().backend.dmx.set_levels(self.sequence.channels)
         self.sequence.on_go = False
         App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
@@ -922,7 +893,7 @@ class ThreadGoBack(threading.Thread):
             f"{self.sequence.steps[prev_step + 1].cue.memory} "
             f"{self.sequence.steps[prev_step + 1].text}"
         )
-        GLib.idle_add(update_ui, prev_step, subtitle)
+        GLib.idle_add(update_ui, subtitle)
         App().midi.button_off("go_back")
 
     def run(self) -> None:
@@ -980,6 +951,7 @@ class ThreadGoBack(threading.Thread):
         # Countdown
         GLib.idle_add(App().window.playback.goback_countdown, i, go_back_time, position)
         for channel, outputs in App().lightshow.patch.channels.items():
+            next_level = self.sequence.steps[position - 1].cue.channels.get(channel, 0)
             for value in outputs:
                 output = value[0]
                 univ = value[1]
@@ -987,16 +959,8 @@ class ThreadGoBack(threading.Thread):
                     continue
                 index = UNIVERSES.index(univ)
                 old_level = self.dmxlevels[index][output - 1]
-                next_level = self.sequence.steps[position - 1].cue.channels.get(
-                    channel, 0
-                )
                 level = self._channel_level(i, old_level, next_level, go_back_time)
                 App().backend.dmx.levels["sequence"][channel - 1] = level
-                GLib.idle_add(
-                    App().window.live_view.update_channel_widget,
-                    channel,
-                    next_level,
-                )
         App().backend.dmx.set_levels(self.sequence.channels)
 
     def _channel_level(

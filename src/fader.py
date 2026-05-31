@@ -173,7 +173,6 @@ class FaderGroup(Fader):
             for channel, lvl in self.contents.channels.items():
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
-                update_channel_display(channel)
             self.fader_bank.update_levels()
             App().backend.dmx.set_levels(self.channels)
 
@@ -218,7 +217,6 @@ class FaderPreset(Fader):
             for channel, lvl in self.contents.channels.items():
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
-                update_channel_display(channel)
             self.fader_bank.update_levels()
             App().backend.dmx.set_levels(self.channels)
 
@@ -271,7 +269,6 @@ class FaderChannels(Fader):
             for channel, lvl in self.contents.items():
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
-                update_channel_display(channel)
             self.fader_bank.update_levels()
             App().backend.dmx.set_levels(self.channels)
 
@@ -332,7 +329,6 @@ class FaderSequence(Fader):
             self.contents.thread.join()
             for channel in self.channels:
                 self.dmx[channel - 1] = 0
-                update_channel_display(channel)
             self.fader_bank.update_levels()
             App().backend.dmx.set_levels(self.channels)
 
@@ -419,6 +415,5 @@ class ThreadChaser(threading.Thread):
             level = round(level * self.fader.level)
             # Update fader level
             self.fader.dmx[channel - 1] = level
-            update_channel_display(channel)
         self.fader.fader_bank.update_levels()
         App().backend.dmx.set_levels(self.fader.channels)
