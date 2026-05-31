@@ -8,8 +8,6 @@ Open Lighting Console (olc) est un logiciel fonctionnant sous linux pour piloter
 
 **version Beta**
 
-Par précaution, vous ne devriez pas utiliser de fichier ASCII-Light originaux, mais des copies. Ceci afin de ne pas perdre d'information en enregistrant dans le même fichier.
-
 Fenêtre principale :
 ![Screenshot](../assets/olc.png?raw=true)
 
@@ -43,26 +41,16 @@ Toute aide pour créer des paquets pour différentes distribution est bienvenue.
 - python3
 - python-gobject
 - gobject-introspection
-- ola (avec support python3)
-- sacn (python-sacn (AUR) pour archlinux)
 - mido (python-mido (AUR) pour archlinux)
-- pyliblo3
 - SciPy (python-scipy pour archlinux)
 - Charset Normalizer (python-charset-normalizer pour archlinux)
 
 #### Ubuntu
 
-Installez ola avec le support de python 3:
-```bash
-$ sudo apt install ola-python
-```
-
 Installez les dépendances pour olc:
 ```bash
 $ sudo apt install meson python3-setuptools gobject-introspection cmake python-gobject libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer
 ```
-
-**Il manque le paquet pour installer le module sacn pour python. Si vous connaissez une méthode pour l'installer, merci de la partager.**
 
 #### Construction à partir de git
 
@@ -73,13 +61,7 @@ $ meson setup builddir --prefix=/usr/local
 $ sudo ninja -C builddir install
 ```
 
-Pour exécuter le logiciel sans le module sacn pour python:
+Pour exécuter le logiciel:
 ```bash
-$ olc --backend ola
+$ olc
 ```
-
-#### Raspberry Pi 3B+
-
-**Plus de tests sont nécessaires**
-
-Semble fonctionner avec **1 univers et 512 circuits** (éditez le fichier src/define.py)

@@ -8,8 +8,6 @@ Open Lighting Console (olc) is a linux software to control lights on shows.
 
 **Beta version**
 
-As a precaution, you should not use original ascii light files, but rather copies. This, in order not to lose information by saving in the same file.
-
 Main Window :
 ![Screenshot](../assets/olc.png?raw=true)
 
@@ -42,26 +40,16 @@ Any help to create packages for different distributions is welcome.
 - python3
 - python-gobject
 - gobject-introspection
-- ola (with python3 support)
-- sacn (python-sacn (AUR) on archlinux)
 - mido (python-mido (AUR) on archlinux)
-- pyliblo3
 - SciPy (python-scipy on archlinux)
 - Charset Normalizer (python-charset-normalizer on archlinux)
 
 #### Ubuntu
 
-Install ola with python 3 support:
-```bash
-$ sudo apt install ola-python
-```
-
 Install olc dependencies:
 ```bash
 $ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer
 ```
-
-**A package for sacn python module is missing. If you know how to install it, please tell me.**
 
 #### Building from git
 
@@ -72,13 +60,7 @@ $ meson setup builddir --prefix=/usr/local
 $ sudo ninja -C builddir install
 ```
 
-You can execute the software without sacn python module:
+You can execute the software:
 ```bash
-$ olc --backend ola
+$ olc
 ```
-
-#### Raspberry Pi 3B+
-
-**Need some tests**
-
-Seems to work with **1 universe and 512 channels** (edit src/define.py)
