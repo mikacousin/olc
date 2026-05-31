@@ -49,7 +49,6 @@ CSS_DATA = """
     font-size: 11pt;
     padding: 6px;
     min-width: 32px;
-    text-align: center;
     border-radius: 4px;
     margin: 1px;
 }
@@ -83,7 +82,6 @@ CSS_DATA = """
     font-size: 10pt;
     color: #888888;
     padding-right: 12px;
-    text-align: right;
 }
 .sidebar-panel {
     background-color: #242424;
@@ -215,6 +213,7 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         for row_idx in range(32):
             start_ch = row_idx * 16 + 1
             row_header = Gtk.Label(label=f"{start_ch:03d}")
+            row_header.set_xalign(1.0)
             row_header.add_css_class("channel-header")
             self.grid.attach(row_header, 0, row_idx, 1, 1)
 
