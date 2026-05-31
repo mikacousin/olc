@@ -372,8 +372,8 @@ class SacnMonitorApplication(Adw.Application):
             self.engine.start()
 
         # Prefer dark theme system-wide if supported by desktop settings
-        if gtk_settings := Gtk.Settings.get_default():
-            gtk_settings.set_property("gtk-application-prefer-dark-theme", True)
+        style_manager = Adw.StyleManager.get_default()
+        style_manager.set_color_scheme(Adw.ColorScheme.PREFER_DARK)
 
         window = SacnMonitorWindow(self, self.engine)
         window.present()
