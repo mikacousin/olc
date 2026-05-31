@@ -43,12 +43,18 @@ Any help to create packages for different distributions is welcome.
 - mido (python-mido (AUR) on archlinux)
 - SciPy (python-scipy on archlinux)
 - Charset Normalizer (python-charset-normalizer on archlinux)
+- NumPy (python-numpy on archlinux)
+- ifaddr (python-ifaddr on archlinux)
+- pySerial (python-pyserial on archlinux)
+- pyzmq (python-pyzmq on archlinux)
+- Textual (python-textual on archlinux)
+- Rich (python-rich on archlinux)
 
 #### Ubuntu
 
 Install olc dependencies:
 ```bash
-$ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer
+$ sudo apt install meson python3-setuptools gobject-introspection cmake libgirepository1.0-dev libgtk-3-dev python-gi-dev python3-cairo-dev python3-gi-cairo python3-liblo python3-mido python3-rtmidi gettext python3-scipy python3-charset-normalizer python3-numpy python3-ifaddr python3-serial python3-zmq python3-textual python3-rich
 ```
 
 #### Building from git
@@ -64,3 +70,13 @@ You can execute the software:
 ```bash
 $ olc
 ```
+
+## Companion Tools
+
+Open Lighting Console includes several helper utilities installed alongside the main application to monitor network packages, benchmark performance, or run headless servers:
+
+- **`olcd`** (OLC Daemon): A headless version of Open Lighting Console (**WIP, currently used only for testing purposes**). It initializes and runs the `CoreEngine` without a graphical interface, listening and reacting to OSC messages.
+- **`olc-monitor`** (OLC Monitor): An interactive terminal user interface (TUI) based on `textual` and `zmq` that streams real-time DMX channel values and frequency statistics from a running `olcd` or `olc` process.
+- **`sacn-monitor`** (sACN Monitor): A modern GTK4/Adwaita graphical utility for passive network packet monitoring of sACN streams. It displays active sources, their priorities, and renders a 3D intensity grid of the 512 DMX channels.
+- **`olc-bench`** (OLC Benchmarking): A stress-testing tool that measures the machine's performance limit by incrementally simulating active DMX universes to find the maximum stable universe count at a target 44Hz frequency.
+
