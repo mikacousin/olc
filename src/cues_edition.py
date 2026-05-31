@@ -14,10 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import array
 import typing
 from typing import Callable
 
+import numpy as np
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, is_float
@@ -49,7 +49,7 @@ class CuesEditionTab(Gtk.Paned):
         self.settings = settings
 
         # Channels modified by user
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(500)
@@ -91,7 +91,7 @@ class CuesEditionTab(Gtk.Paned):
     def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Selected Cue"""
         self.channels_view.flowbox.unselect_all()
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
         self.channels_view.update()
 
     def refresh(self) -> None:

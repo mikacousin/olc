@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 # from olc.define import MAX_FADER_PAGE
+import numpy as np
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE, App
 from olc.fader import (
     Fader,
@@ -192,12 +193,7 @@ class FaderBank:
 
     def update_levels(self) -> None:
         """Update faders levels for DMX"""
-        for channel in self.channels:
-            if not App().lightshow.patch.is_patched(channel):
-                continue
-            level_fader = -1
-            for fader in self.active_faders:
-                if fader.dmx[channel - 1] > level_fader:
-                    level_fader = fader.dmx[channel - 1]
-                if level_fader != -1:
-                    App().backend.dmx.levels["faders"][channel - 1] = level_fader
+        faders_levels = App().backend.dmx.levels["faders"]
+        faders_levels.fill(0)
+        for fader in self.active_faders:
+            np.maximum(faders_levels, fader.dmx, out=faders_levels)

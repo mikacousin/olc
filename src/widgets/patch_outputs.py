@@ -371,8 +371,12 @@ class PatchWidget(Gtk.DrawingArea):
                     return
                 cr.set_source_rgba(0.2, 0.2, 0.2, 1.0)
                 cr.set_line_width(1)
-                cr.move_to(10, allocation.height - curve.values[0] - 10)
-                for x, y in curve.values.items():
+                cr.move_to(
+                    10,
+                    allocation.height - int(curve.values_array[0]) - 10,
+                )
+                for x, y in enumerate(curve.values_array):
+                    y = int(y)
                     cr.line_to(
                         10 + (x / 255) * (allocation.width - 20),
                         (allocation.height - 10)

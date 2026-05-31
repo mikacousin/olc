@@ -30,7 +30,7 @@ from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
-from olc.define import MAX_CHANNELS, UNIVERSES  # noqa: E402
+from olc.define import UNIVERSES  # noqa: E402
 from olc.dialog import ConfirmationDialog  # noqa: E402
 from olc.fader_edition import FaderTab  # noqa: E402
 from olc.files.export_file import ExportFile  # noqa: E402
@@ -330,8 +330,7 @@ class Application(Gtk.Application):
                 chaser.thread.join()
         # All channels at 0
         if self.backend:
-            for channel in range(MAX_CHANNELS):
-                self.backend.dmx.levels["user"][channel] = -1
+            self.backend.dmx.levels["user"][:] = -1
             self.backend.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
@@ -404,9 +403,8 @@ class Application(Gtk.Application):
 
         # All channels at 0
         if self.backend:
-            for channel in range(MAX_CHANNELS):
-                self.backend.dmx.levels["sequence"][channel] = 0
-                self.backend.dmx.levels["user"][channel] = -1
+            self.backend.dmx.levels["sequence"][:] = 0
+            self.backend.dmx.levels["user"][:] = -1
             self.backend.dmx.set_levels()
 
     def _import_file(

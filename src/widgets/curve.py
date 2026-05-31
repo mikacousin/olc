@@ -71,8 +71,12 @@ class CurveWidget(Gtk.Button):
         cr.set_line_width(2)
         cr.set_source_rgba(0.0, 0.0, 0.0, 1.0)
         if self.curve:
-            cr.move_to(0, height - self.curve.values[0])
-            for x, y in self.curve.values.items():
-                cr.line_to((x / 255) * width, height - ((y / 255) * height))
+            cr.move_to(0, height - int(self.curve.values_array[0]))
+            for x, y in enumerate(self.curve.values_array):
+                y = int(y)
+                cr.line_to(
+                    (x / 255) * width,
+                    height - ((y / 255) * height),
+                )
         cr.stroke()
         return False

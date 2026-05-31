@@ -14,12 +14,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import array
 import threading
 import time
 import typing
 from enum import IntEnum
 
+import numpy as np
 from gi.repository import GLib
 from olc.define import MAX_CHANNELS, App
 
@@ -131,19 +131,20 @@ class FaderMain(Fader):
         """Fader level has changed"""
         self.contents.set_level(self.level)
         App().window.main_fader.queue_draw()
+        App().backend.dmx.set_levels()
 
 
 class FaderGroup(Fader):
     """Fader with group"""
 
     contents: Group
-    dmx: array.array
+    dmx: np.ndarray
     channels: set
 
     def __init__(self, index: int, fader_bank: FaderBank, group: Group = None) -> None:
         super().__init__(index, fader_bank)
         self.contents = group
-        self.dmx = array.array("B", [0] * MAX_CHANNELS)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         # Channels used by fader
         self.channels = set()
         if group:
@@ -174,20 +175,20 @@ class FaderGroup(Fader):
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels(self.channels)
+            App().backend.dmx.set_levels()
 
 
 class FaderPreset(Fader):
     """Fader with preset"""
 
     contents: Cue
-    dmx: array.array
+    dmx: np.ndarray
     channels: set
 
     def __init__(self, index: int, fader_bank: FaderBank, cue: Cue = None) -> None:
         super().__init__(index, fader_bank)
         self.contents = cue
-        self.dmx = array.array("B", [0] * MAX_CHANNELS)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         # Channels used by fader
         self.channels = set()
         if cue:
@@ -218,14 +219,14 @@ class FaderPreset(Fader):
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels(self.channels)
+            App().backend.dmx.set_levels()
 
 
 class FaderChannels(Fader):
     """Fader with channels"""
 
     contents: dict[int, int] | None
-    dmx: array.array
+    dmx: np.ndarray
     channels: set
 
     def __init__(
@@ -233,7 +234,7 @@ class FaderChannels(Fader):
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = channels
-        self.dmx = array.array("B", [0] * MAX_CHANNELS)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         # Channels used by fader
         self.channels = set()
         if self.contents:
@@ -270,14 +271,14 @@ class FaderChannels(Fader):
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels(self.channels)
+            App().backend.dmx.set_levels()
 
 
 class FaderSequence(Fader):
     """Fader with sequence"""
 
     contents: Sequence
-    dmx: array.array
+    dmx: np.ndarray
     channels: set
 
     def __init__(
@@ -285,7 +286,7 @@ class FaderSequence(Fader):
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = chaser
-        self.dmx = array.array("B", [0] * MAX_CHANNELS)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         # Channels used by fader
         self.channels = set()
         if chaser:
@@ -330,7 +331,7 @@ class FaderSequence(Fader):
             for channel in self.channels:
                 self.dmx[channel - 1] = 0
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels(self.channels)
+            App().backend.dmx.set_levels()
 
 
 class ThreadChaser(threading.Thread):
@@ -416,4 +417,4 @@ class ThreadChaser(threading.Thread):
             # Update fader level
             self.fader.dmx[channel - 1] = level
         self.fader.fader_bank.update_levels()
-        App().backend.dmx.set_levels(self.fader.channels)
+        App().backend.dmx.set_levels()

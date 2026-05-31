@@ -14,20 +14,19 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import array
 import threading
 import time
 import typing
 from typing import Optional
 
+import numpy as np
 from gi.repository import GLib, Pango
 from olc.cue import Cue
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, App
+from olc.define import MAX_CHANNELS, App
 from olc.step import Step
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
-    from olc.channel_time import ChannelTime
 
 
 def update_ui(subtitle: str) -> None:
@@ -269,16 +268,14 @@ class Sequence:
             update_ui(subtitle)
 
             # Empty DMX user array
-            App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+            App().backend.dmx.levels["user"].fill(-1)
             self.update_channels()
 
             # Send DMX values
-            for channel in App().lightshow.patch.channels:
-                if not App().lightshow.patch.is_patched(channel):
-                    continue
-                level = self.steps[position].cue.channels.get(channel, 0)
-                App().backend.dmx.levels["sequence"][channel - 1] = level
-            App().backend.dmx.set_levels(self.channels)
+            App().backend.dmx.levels["sequence"][:] = (
+                self.steps[position].cue.channels_array
+            )
+            App().backend.dmx.set_levels()
 
     def sequence_minus(self) -> None:
         """Sequence -"""
@@ -321,15 +318,14 @@ class Sequence:
             update_ui(subtitle)
 
             # Empty DMX user array
-            App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+            App().backend.dmx.levels["user"].fill(-1)
             self.update_channels()
 
-            for channel in App().lightshow.patch.channels:
-                if not App().lightshow.patch.is_patched(channel):
-                    continue
-                level = self.steps[position].cue.channels.get(channel, 0)
-                App().backend.dmx.levels["sequence"][channel - 1] = level
-            App().backend.dmx.set_levels(self.channels)
+            # Send DMX values
+            App().backend.dmx.levels["sequence"][:] = (
+                self.steps[position].cue.channels_array
+            )
+            App().backend.dmx.set_levels()
 
     def goto(self, keystring: str) -> None:
         """Jump to cue number
@@ -501,8 +497,8 @@ class ThreadGo(threading.Thread):
         self.pause = threading.Event()
         self.pause.set()
         self.sequence = sequence
-        # To save dmx levels when user send Go
-        self.dmxlevels = [array.array("B", [0] * 512) for _univ in range(NB_UNIVERSES)]
+        # To save channels levels when user sends Go
+        self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         next_step = self.sequence.position + 1
         self.total_time = self.sequence.steps[next_step].total_time * 1000
         self.time_in = self.sequence.steps[next_step].time_in * 1000
@@ -513,48 +509,27 @@ class ThreadGo(threading.Thread):
         self.goto = goto
 
     def _capture_start_levels(self) -> None:
-        """Capture DMX levels when Go is sent"""
-        for channel, outputs in App().lightshow.patch.channels.items():
-            if not App().lightshow.patch.is_patched(channel):
-                continue
-            for out in outputs:
-                output = out[0]
-                universe = out[1]
-                if None in (output, universe):
-                    continue
-                level = App().backend.dmx.levels["sequence"][channel - 1]
-                if App().backend.dmx.levels["user"][channel - 1] != -1:
-                    level = App().backend.dmx.levels["user"][channel - 1]
-                curve_numb = App().lightshow.patch.outputs[universe][output][1]
-                if curve_numb:
-                    curve = App().lightshow.curves.get_curve(curve_numb)
-                    level = curve.values.get(level, 0)
-                level = round(level * App().backend.dmx.main_fader.value)
-                index = UNIVERSES.index(universe)
-                self.dmxlevels[index][output - 1] = level
+        """Capture sequential channels levels when Go is sent"""
+        self.old_channels_levels = App().backend.dmx.levels["sequence"].copy()
+        user_levels = App().backend.dmx.levels["user"]
+        user_mask = user_levels != -1
+        self.old_channels_levels[user_mask] = user_levels[user_mask]
 
     def _finalize_go(self) -> None:
         """Finish load memory after sequence transition"""
-        for channel, outputs in App().lightshow.patch.channels.items():
-            if not App().lightshow.patch.is_patched(channel):
-                continue
-            for values in outputs:
-                output = values[0]
-                univ = values[1]
-                if None in (output, univ):
-                    continue
-                index = UNIVERSES.index(univ)
-                if self.sequence.position < self.sequence.last - 1:
-                    level = self.sequence.steps[
-                        self.sequence.position + 1
-                    ].cue.channels.get(channel, 0)
-                else:
-                    level = self.sequence.steps[0].cue.channels.get(channel, 0)
-                App().backend.dmx.levels["sequence"][channel - 1] = level
-                App().backend.dmx.frame[index][output - 1] = level
-        App().backend.dmx.set_levels(self.sequence.channels)
+        if self.sequence.position < self.sequence.last - 1:
+            target_cue = self.sequence.steps[self.sequence.position + 1].cue
+        else:
+            target_cue = self.sequence.steps[0].cue
+
+        # Block-copy levels to sequential dmx levels
+        App().backend.dmx.levels["sequence"][:] = target_cue.channels_array
+
+        # Distribute DMX levels to frames
+        App().backend.dmx.set_levels()
+
         self.sequence.on_go = False
-        App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+        App().backend.dmx.levels["user"].fill(-1)
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
         if self.sequence.steps[next_step].wait:
@@ -624,22 +599,7 @@ class ThreadGo(threading.Thread):
         Args:
             i: Time spent
         """
-        for channel, outputs in App().lightshow.patch.channels.items():
-            for chan in outputs:
-                if output := chan[0]:
-                    output -= 1
-                    univ = chan[1]
-                    index = UNIVERSES.index(univ)
-                    old_level = self.dmxlevels[index][output]
-                    if self.sequence.position < self.sequence.last - 1:
-                        next_level = self.sequence.steps[
-                            self.sequence.position + 1
-                        ].cue.channels.get(channel, 0)
-                    else:
-                        next_level = self.sequence.steps[0].cue.channels.get(channel, 0)
-                        self.sequence.position = 0
-
-                    self._set_level(channel, i, old_level, next_level)
+        self._do_go(i)
 
     def _do_go(self, i: float) -> None:
         """Go
@@ -647,132 +607,93 @@ class ThreadGo(threading.Thread):
         Args:
             i: Time spent
         """
-        for channel, outputs in App().lightshow.patch.channels.items():
-            if not App().lightshow.patch.is_patched(channel):
-                continue
-            for chan in outputs:
-                if output := chan[0]:
-                    output -= 1
-                    univ = chan[1]
-                    index = UNIVERSES.index(univ)
-                    old_level = self.dmxlevels[index][output]
-                    if self.sequence.position < self.sequence.last - 1:
-                        next_level = self.sequence.steps[
-                            self.sequence.position + 1
-                        ].cue.channels.get(channel, 0)
-                    else:
-                        next_level = self.sequence.steps[0].cue.channels.get(channel, 0)
-                        self.sequence.position = 0
+        next_step = self.sequence.position + 1
+        step = self.sequence.steps[next_step]
 
-                    self._set_level(channel, i, old_level, next_level)
-        App().backend.dmx.set_levels(self.sequence.channels)
+        lvls = self._calculate_transitions_go(i, step)
+        self._apply_channel_times_go(lvls, i, step)
 
-    def _set_level(
-        self, channel: int, i: float, old_level: int, next_level: int
+        App().backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
+        App().backend.dmx.set_levels()
+
+    def _calculate_transitions_go(
+        self, i: float, step: Step
+    ) -> np.ndarray:
+        """Calculate fade levels using array operations."""
+        old_levels = self.old_channels_levels.astype(np.int32)
+        next_levels = step.cue.channels_array.astype(np.int32)
+        lvls = old_levels.copy()
+
+        # Decays (channels going down)
+        decay_mask = next_levels < old_levels
+        if np.any(decay_mask):
+            progress_mask = (i > self.wait + step.delay_out * 1000) & (
+                i < (step.time_out + step.wait + step.delay_out) * 1000
+            )
+            if np.any(progress_mask & decay_mask):
+                factor = (i - self.wait - step.delay_out * 1000) / (
+                    step.time_out * 1000
+                )
+                diff = (next_levels - old_levels) * factor
+                decay_lvls = np.round(old_levels - np.abs(diff)).astype(np.int32)
+                lvls[progress_mask & decay_mask] = decay_lvls[
+                    progress_mask & decay_mask
+                ]
+
+            end_mask = i >= (step.time_out + step.wait + step.delay_out) * 1000
+            lvls[end_mask & decay_mask] = next_levels[end_mask & decay_mask]
+
+        # Attacks (channels going up)
+        attack_mask = next_levels > old_levels
+        if np.any(attack_mask):
+            progress_mask = (i > self.wait + step.delay_in * 1000) & (
+                i < (step.time_in + step.wait + step.delay_in) * 1000
+            )
+            if np.any(progress_mask & attack_mask):
+                factor = (i - self.wait - step.delay_in * 1000) / (
+                    step.time_in * 1000
+                )
+                diff = (next_levels - old_levels) * factor
+                attack_lvls = np.round(old_levels + diff).astype(np.int32)
+                lvls[progress_mask & attack_mask] = attack_lvls[
+                    progress_mask & attack_mask
+                ]
+
+            end_mask = i >= (step.time_in + step.wait + step.delay_in) * 1000
+            lvls[end_mask & attack_mask] = next_levels[end_mask & attack_mask]
+
+        return lvls
+
+    def _apply_channel_times_go(
+        self, lvls: np.ndarray, i: float, step: Step
     ) -> None:
-        """Get level
+        """Apply individual channel times."""
+        if not step.channel_time:
+            return
+        old_levels = self.old_channels_levels.astype(np.int32)
+        next_levels = step.cue.channels_array.astype(np.int32)
+        for channel, ct in step.channel_time.items():
+            o_lvl = old_levels[channel - 1]
+            n_lvl = next_levels[channel - 1]
+            if n_lvl < o_lvl:  # Decay
+                if i < ct.delay * 1000 + self.wait:
+                    lvl = o_lvl
+                elif i < (ct.delay + ct.time) * 1000 + self.wait:
+                    factor = (i - ct.delay * 1000 - self.wait) / (ct.time * 1000)
+                    lvl = o_lvl - abs(int((n_lvl - o_lvl) * factor))
+                else:
+                    lvl = n_lvl
+                lvls[channel - 1] = lvl
+            elif n_lvl > o_lvl:  # Attack
+                if i < ct.delay * 1000 + self.wait:
+                    lvl = o_lvl
+                elif i < (ct.delay + ct.time) * 1000 + self.wait:
+                    factor = (i - ct.delay * 1000 - self.wait) / (ct.time * 1000)
+                    lvl = int((n_lvl - o_lvl) * factor + o_lvl)
+                else:
+                    lvl = n_lvl
+                lvls[channel - 1] = lvl
 
-        Args:
-            channel: Channel number
-            i: Time spent
-            old_level: Old level
-            next_level: Next level
-        """
-        channel_time = self.sequence.steps[self.sequence.position + 1].channel_time
-        if channel in channel_time:
-            # Channel is in a channel time
-            level = self._channel_time_level(
-                i, channel_time[channel], old_level, next_level
-            )
-        # Else channel is normal
-        else:
-            level = self._channel_level(i, old_level, next_level)
-        App().backend.dmx.levels["sequence"][channel - 1] = level
-
-    def _channel_level(self, i: float, old_level: int, next_level: int) -> int:
-        """Return channel level
-
-        Args:
-            i: Time spent
-            old_level: Old level
-            next_level: Next level
-
-        Returns:
-            channel level
-        """
-        # If level increases, use Time In
-        if (
-            next_level > old_level
-            and self.wait + self.delay_in < i < self.time_in + self.wait + self.delay_in
-        ):
-            return (
-                int(
-                    ((next_level - old_level + 1) / self.time_in)
-                    * (i - self.wait - self.delay_in)
-                )
-                + old_level
-            )
-        if next_level > old_level and i > self.time_in + self.wait + self.delay_in:
-            return next_level
-        # If level decreases, use Time Out
-        if (
-            next_level < old_level
-            and self.wait + self.delay_out
-            < i
-            < self.time_out + self.wait + self.delay_out
-        ):
-            return old_level - abs(
-                int(
-                    ((next_level - old_level - 1) / self.time_out)
-                    * (i - self.wait - self.delay_out)
-                )
-            )
-        if next_level < old_level and i > self.time_out + self.wait + self.delay_out:
-            return next_level
-        # Level doesn't change
-        return old_level
-
-    def _channel_time_level(
-        self, i: float, channel_time: ChannelTime, old_level: int, next_level: int
-    ) -> int:
-        """Return channel level if in channel time
-
-        Args:
-            i: Time spent
-            channel_time: Channel time
-            old_level: Old level
-            next_level: Next level
-
-        Returns:
-            Channel level
-        """
-        ct_delay = channel_time.delay * 1000
-        ct_time = channel_time.time * 1000
-        if next_level > old_level:
-            if i < ct_delay + self.wait:
-                level = old_level
-            elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
-                level = (
-                    int(
-                        ((next_level - old_level + 1) / ct_time)
-                        * (i - ct_delay - self.wait)
-                    )
-                    + old_level
-                )
-            else:
-                level = next_level
-        elif i < ct_delay + self.wait:
-            level = old_level
-        elif ct_delay + self.wait <= i < ct_delay + ct_time + self.wait:
-            level = old_level - abs(
-                int(
-                    ((next_level - old_level - 1) / ct_time)
-                    * (i - ct_delay - self.wait)
-                )
-            )
-        else:
-            level = next_level
-        return level
 
 
 def _next_step(sequence: Sequence) -> int:
@@ -826,43 +747,28 @@ class ThreadGoBack(threading.Thread):
         self.pause = threading.Event()
         self.pause.set()
         self.sequence = sequence
-
-        self.dmxlevels = [array.array("B", [0] * 512) for _univ in range(NB_UNIVERSES)]
+        # To save channels levels when Go Back starts
+        self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
 
     def _capture_start_levels(self) -> None:
-        """Capture DMX levels when Go Back starts"""
-        for channel, outputs in App().lightshow.patch.channels.items():
-            for value in outputs:
-                output = value[0]
-                univ = value[1]
-                if None in (output, univ):
-                    continue
-                level = App().backend.dmx.levels["sequence"][channel - 1]
-                if App().backend.dmx.levels["user"][channel - 1] != -1:
-                    level = App().backend.dmx.levels["user"][channel - 1]
-                curve_numb = App().lightshow.patch.outputs[univ][output][1]
-                if curve_numb:
-                    curve = App().lightshow.curves.get_curve(curve_numb)
-                    level = curve.values.get(level, 0)
-                level = round(level * App().backend.dmx.main_fader.value)
-                index = UNIVERSES.index(univ)
-                self.dmxlevels[index][output - 1] = level
+        """Capture sequential channels levels when Go Back starts"""
+        self.old_channels_levels = App().backend.dmx.levels["sequence"].copy()
+        user_levels = App().backend.dmx.levels["user"]
+        user_mask = user_levels != -1
+        self.old_channels_levels[user_mask] = user_levels[user_mask]
 
     def _finalize_goback(self, prev_step: int) -> None:
         """Finish load memory after sequence transition"""
-        for channel, outputs in App().lightshow.patch.channels.items():
-            for values in outputs:
-                output = values[0]
-                univ = values[1]
-                if None in (output, univ):
-                    continue
-                index = UNIVERSES.index(univ)
-                level = self.sequence.steps[prev_step].cue.channels.get(channel, 0)
-                App().backend.dmx.levels["sequence"][channel - 1] = level
-                App().backend.dmx.frame[index][output - 1] = level
-        App().backend.dmx.set_levels(self.sequence.channels)
+        target_cue = self.sequence.steps[prev_step].cue
+
+        # Block-copy levels to sequential dmx levels
+        App().backend.dmx.levels["sequence"][:] = target_cue.channels_array
+
+        # Distribute DMX levels to frames
+        App().backend.dmx.set_levels()
+
         self.sequence.on_go = False
-        App().backend.dmx.levels["user"] = array.array("h", [-1] * MAX_CHANNELS)
+        App().backend.dmx.levels["user"].fill(-1)
         self.sequence.update_channels()
         self.sequence.position = prev_step
         App().window.playback.sequential.time_in = self.sequence.steps[
@@ -950,35 +856,16 @@ class ThreadGoBack(threading.Thread):
             GLib.idle_add(App().virtual_console.scale_b.set_value, val)
         # Countdown
         GLib.idle_add(App().window.playback.goback_countdown, i, go_back_time, position)
-        for channel, outputs in App().lightshow.patch.channels.items():
-            next_level = self.sequence.steps[position - 1].cue.channels.get(channel, 0)
-            for value in outputs:
-                output = value[0]
-                univ = value[1]
-                if None in (output, univ):
-                    continue
-                index = UNIVERSES.index(univ)
-                old_level = self.dmxlevels[index][output - 1]
-                level = self._channel_level(i, old_level, next_level, go_back_time)
-                App().backend.dmx.levels["sequence"][channel - 1] = level
-        App().backend.dmx.set_levels(self.sequence.channels)
 
-    def _channel_level(
-        self, i: float, old_level: int, next_level: int, go_back_time: float
-    ) -> int:
-        """Return channel level
+        # Array-based fade
+        old_levels = self.old_channels_levels.astype(np.int32)
+        next_levels = (
+            self.sequence.steps[position - 1]
+            .cue.channels_array.astype(np.int32)
+        )
+        factor = i / go_back_time
+        diff = (next_levels - old_levels) * factor
+        lvls = np.round(old_levels + diff).astype(np.int32)
 
-        Args:
-            i: Time spent
-            old_level: Old level
-            next_level: Next level
-            go_back_time: Default GoBack time
-
-        Returns:
-            Channel level
-        """
-        if next_level > old_level:
-            return round(((next_level - old_level) / go_back_time) * i) + old_level
-        if next_level < old_level:
-            return old_level - abs(round(((next_level - old_level) / go_back_time) * i))
-        return next_level
+        App().backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
+        App().backend.dmx.set_levels()

@@ -14,10 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import array
 import typing
 from typing import Callable, Optional
 
+import numpy as np
 from gi.repository import Gdk, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
@@ -51,11 +51,10 @@ class SequenceTab(Gtk.Grid):
         self.window = window
         self.settings = settings
         # To stock user modification on channels
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
-
         self._setup_sequences_list()
         self._setup_cues_list()
         self.attach(self.treeview1, 0, 0, 1, 1)
@@ -544,12 +543,12 @@ class SequenceTab(Gtk.Grid):
         path = Gtk.TreePath.new_first()
         self.treeview2.set_cursor(path)
         # Reset user modifications
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
     def _keypress_q(self) -> None:
         """Previous Cue"""
         # Reset user modifications
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
         path, _focus_column = self.treeview2.get_cursor()
         if path:
@@ -562,7 +561,7 @@ class SequenceTab(Gtk.Grid):
     def _keypress_w(self) -> None:
         """Next Cue"""
         # Reset user modifications
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
         path, _focus_column = self.treeview2.get_cursor()
         if path:
@@ -624,7 +623,7 @@ class SequenceTab(Gtk.Grid):
                         widget.queue_draw()
             dialog.destroy()
             # Reset user modifications
-            self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+            self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
     def _keypress_delete(self) -> None:
         """Delete selected Step"""
@@ -713,7 +712,7 @@ class SequenceTab(Gtk.Grid):
         sequence.update_channels()
         self.update_sequence_display(step)
         self.lightshow.set_modified()
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
     def _update_cue(self, sequence: Sequence, mem: float) -> None:
         """Update existing cue inside the sequence"""

@@ -12,12 +12,12 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=wrong-import-order
 from __future__ import annotations
 
 import typing
 from gettext import gettext as _
 
+import numpy as np
 from scipy.interpolate import PchipInterpolator
 
 if typing.TYPE_CHECKING:
@@ -29,12 +29,12 @@ class Curve:
 
     name: str  # Curve name
     editable: bool  # Editable Curve or not
-    values: dict[int, int]  # To store values
+    values_array: np.ndarray  # For fast array look up
 
     def __init__(self, name: str = "", editable: bool = False) -> None:
         self.name = name
         self.editable = editable
-        self.values = {}
+        self.values_array = np.zeros(256, dtype=np.uint8)
         self.populate_values()
 
     def get_level(self, level: int) -> int:
@@ -46,7 +46,7 @@ class Curve:
         Returns:
             new level
         """
-        return self.values.get(level, 0)
+        return int(self.values_array[level])
 
     def populate_values(self) -> None:
         """Calculate each value of curve
@@ -65,10 +65,7 @@ class Curve:
         if isinstance(self, LimitCurve) and self.limit == 0:
             # LimitCurve at 0%
             return True
-        for value in self.values.values():
-            if value != 0:
-                return False
-        return True
+        return bool(np.all(self.values_array == 0))
 
 
 class LinearCurve(Curve):
@@ -79,8 +76,7 @@ class LinearCurve(Curve):
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
-        for x in range(256):
-            self.values[x] = x
+        self.values_array = np.arange(256, dtype=np.uint8)
 
 
 class SquareRootCurve(Curve):
@@ -91,8 +87,9 @@ class SquareRootCurve(Curve):
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
-        for x in range(256):
-            self.values[x] = round(pow(x, 0.5) * pow(255, 0.5))
+        self.values_array = np.round(np.sqrt(np.arange(256)) * np.sqrt(255)).astype(
+            np.uint8
+        )
 
 
 class LimitCurve(Curve):
@@ -106,8 +103,9 @@ class LimitCurve(Curve):
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
-        for x in range(256):
-            self.values[x] = round(x * (self.limit / 255))
+        self.values_array = np.round(np.arange(256) * (self.limit / 255.0)).astype(
+            np.uint8
+        )
 
 
 class PointsCurve(Curve):
@@ -172,6 +170,8 @@ class SegmentsCurve(PointsCurve):
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
+        if not hasattr(self, "values_array") or self.values_array is None:
+            self.values_array = np.zeros(256, dtype=np.uint8)
         intervals = len(self.points) - 1
         for i in range(intervals):
             x_start = self.points[i][0]
@@ -179,9 +179,10 @@ class SegmentsCurve(PointsCurve):
             x_end = self.points[i + 1][0]
             y_end = self.points[i + 1][1]
             for x in range(x_start, x_end + 1):
-                self.values[x] = round(
+                val = round(
                     y_start + (((x - x_start) / (x_end - x_start)) * (y_end - y_start))
                 )
+                self.values_array[x] = val
 
 
 class InterpolateCurve(PointsCurve):
@@ -191,6 +192,8 @@ class InterpolateCurve(PointsCurve):
         super().__init__(name=_("Interpolate"), editable=True)
 
     def populate_values(self) -> None:
+        if not hasattr(self, "values_array") or self.values_array is None:
+            self.values_array = np.zeros(256, dtype=np.uint8)
         x = []
         y = []
         for point in self.points:
@@ -198,7 +201,8 @@ class InterpolateCurve(PointsCurve):
             y.append(point[1])
         spl = PchipInterpolator(x, y)
         for i in range(256):
-            self.values[i] = min(max(round(float(spl(i))), 0), 255)
+            val = min(max(round(float(spl(i))), 0), 255)
+            self.values_array[i] = val
 
 
 class Curves:

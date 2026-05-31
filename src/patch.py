@@ -17,12 +17,14 @@ from __future__ import annotations
 import typing
 from typing import Optional
 
+import numpy as np
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
 
 if typing.TYPE_CHECKING:
     from olc.application import Application
 
 
+# pylint: disable=too-many-instance-attributes
 class DMXPatch:
     """To store and manipulate DMX patch
     Default patch is 1:1 (channel = output)
@@ -47,6 +49,12 @@ class DMXPatch:
         self.outputs = {}
         self.on_patch_empty_cb: typing.Callable[[], None] | None = None
         self.on_unpatch_cb: typing.Callable[[int, int], None] | None = None
+        self._numpy_cache_dirty = True
+        self.is_patched_mask = np.zeros(MAX_CHANNELS, dtype=bool)
+        self.map_src_channels = np.array([], dtype=np.intp)
+        self.map_dst_universes = np.array([], dtype=np.intp)
+        self.map_dst_outputs = np.array([], dtype=np.intp)
+        self.map_dst_curves = np.array([], dtype=np.intp)
 
         self.patch_1on1()
 
@@ -70,6 +78,7 @@ class DMXPatch:
         self.outputs = {}
         for channel in range(1, MAX_CHANNELS + 1):
             self.channels[channel] = [[None, None]]
+        self._numpy_cache_dirty = True
 
     def patch_1on1(self) -> None:
         """Set patch 1:1"""
@@ -96,6 +105,7 @@ class DMXPatch:
         if univ not in self.outputs:
             self.outputs[univ] = {}
         self.outputs[univ][output] = [channel, curve]
+        self._numpy_cache_dirty = True
 
     def unpatch(self, channel: int, output: int, univ: int) -> None:
         """Unpatch an output from a channel
@@ -112,6 +122,56 @@ class DMXPatch:
         index = self.universes.index(univ)
         if self.on_unpatch_cb:
             self.on_unpatch_cb(index, output - 1)
+        self._numpy_cache_dirty = True
+
+    def update_numpy_cache_if_dirty(self) -> None:
+        """Update cached mappings if dirty."""
+        if getattr(self, "_numpy_cache_dirty", True) or not hasattr(
+            self, "map_src_channels"
+        ):
+            self._update_numpy_cache()
+            self._numpy_cache_dirty = False
+
+    def _update_numpy_cache(self) -> None:
+        """Update cached arrays for fast block operations."""
+        # 1. Boolean mask of patched channels (True if patched, False if not)
+        mask = np.zeros(MAX_CHANNELS, dtype=bool)
+        for channel in range(1, MAX_CHANNELS + 1):
+            if channel in self.channels:
+                if (
+                    self.channels[channel] != [[None, None]]
+                    and None not in self.channels[channel][0]
+                ):
+                    mask[channel - 1] = True
+        self.is_patched_mask = mask
+
+        # 2. Flat indexing arrays for fast block level distribution
+        src_channels = []
+        dst_universes = []
+        dst_outputs = []
+        dst_curves = []
+
+        for channel, outputs in self.channels.items():
+            if outputs == [[None, None]] or None in outputs[0]:
+                continue
+            for out in outputs:
+                output = out[0]
+                universe = out[1]
+                if universe and output:
+                    src_channels.append(channel - 1)
+                    dst_universes.append(UNIVERSES.index(universe))
+                    dst_outputs.append(output - 1)
+
+                    # Curve number
+                    curve_numb = 0
+                    if universe in self.outputs and output in self.outputs[universe]:
+                        curve_numb = self.outputs[universe][output][1]
+                    dst_curves.append(curve_numb)
+
+        self.map_src_channels = np.array(src_channels, dtype=np.intp)
+        self.map_dst_universes = np.array(dst_universes, dtype=np.intp)
+        self.map_dst_outputs = np.array(dst_outputs, dtype=np.intp)
+        self.map_dst_curves = np.array(dst_curves, dtype=np.intp)
 
     def get_first_patched_channel(self) -> int:
         """Return first patched channel
@@ -119,10 +179,9 @@ class DMXPatch:
         Returns:
             Channel number (1-MAX_CHANNELS)
         """
-        for channel in range(MAX_CHANNELS):
-            if self.is_patched(channel + 1):
-                break
-        return channel + 1
+        self.update_numpy_cache_if_dirty()
+        indices = np.nonzero(self.is_patched_mask)[0]
+        return int(indices[0]) + 1 if len(indices) > 0 else 1
 
     def get_last_patched_channel(self) -> int:
         """Return last patched channel
@@ -130,10 +189,9 @@ class DMXPatch:
         Returns:
             Channel number (1-MAX_CHANNELS)
         """
-        for channel in range(MAX_CHANNELS, 0, -1):
-            if self.is_patched(channel):
-                break
-        return channel
+        self.update_numpy_cache_if_dirty()
+        indices = np.nonzero(self.is_patched_mask)[0]
+        return int(indices[-1]) + 1 if len(indices) > 0 else 1
 
 
 class PatchByOutputs:

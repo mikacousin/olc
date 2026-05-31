@@ -14,10 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import array
 import typing
 from typing import Callable, Optional
 
+import numpy as np
 from gi.repository import GLib
 from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES
 from olc.main_fader import MainFader
@@ -29,6 +29,16 @@ if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
 
 
+class DmxLevels(dict):
+    """Custom dictionary to automatically convert list values to NumPy arrays."""
+    def __setitem__(self, key: str, value: object) -> None:
+        if isinstance(value, list):
+            dtype = np.int16 if key == "user" else np.uint8
+            super().__setitem__(key, np.array(value, dtype=dtype))
+        else:
+            super().__setitem__(key, value)
+
+
 # pylint: disable=too-many-instance-attributes
 class Dmx:
     """Send levels to backend"""
@@ -36,8 +46,8 @@ class Dmx:
     backend: Optional[DMXBackend]
     patch: DMXPatch
     main_fader: MainFader
-    levels: dict[str, array.array]
-    frame: list[array.array]
+    levels: DmxLevels
+    frame: list[np.ndarray]
     user_outputs: dict[tuple[int, int], int]
     thread: RepeatedTimer
     output_callbacks: list[Callable[[int, list[int]], None]]
@@ -49,15 +59,15 @@ class Dmx:
         self.patch = self.lightshow.patch
         self.main_fader = MainFader()
         # Dimmers levels
-        self.levels = {
-            "sequence": array.array("B", [0] * MAX_CHANNELS),
-            "user": array.array("h", [-1] * MAX_CHANNELS),
-            "faders": array.array("B", [0] * MAX_CHANNELS),
-        }
+        self.levels = DmxLevels({
+            "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+            "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
+            "faders": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+        })
         # DMX values
-        self.frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
-        self._old_frame = [array.array("B", [0] * 512) for _ in range(NB_UNIVERSES)]
-        self._old_channel_levels = array.array("B", [0] * MAX_CHANNELS)
+        self.frame = [np.zeros(512, dtype=np.uint8) for _ in range(NB_UNIVERSES)]
+        self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in range(NB_UNIVERSES)]
+        self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         # To test outputs
         self.user_outputs = {}
         # Callbacks for UI updates
@@ -89,38 +99,51 @@ class Dmx:
         if self.lightshow.independents.dmx[channel_idx] > level:
             level = self.lightshow.independents.dmx[channel_idx]
             color_level = {"red": 0.4, "green": 0.4, "blue": 0.7}
-        return level, color_level
+        return int(level), color_level
 
-    def set_levels(self, channels: Optional[set[int]] = None) -> None:
-        """Set DMX frame levels
+    def get_all_composite_levels(self) -> np.ndarray:
+        """Get composite levels for all channels simultaneously by block.
 
-        Args:
-            channels: Channels to modify
+        Returns:
+            Array of composite levels.
         """
-        if not channels:
-            channels = set(range(1, MAX_CHANNELS + 1))
-        for channel in channels:
-            if not self.patch.is_patched(channel):
-                continue
-            outputs = self.patch.channels[channel]
-            channel -= 1
-            level, _color = self.get_composite_level(channel)
-            for out in outputs:
-                output = out[0]
-                universe = out[1]
-                if universe and output:
-                    out_level = level
-                    # Curve
-                    curve_numb = self.patch.outputs[universe][output][1]
-                    if curve_numb:
-                        curve = self.lightshow.curves.get_curve(curve_numb)
-                        if curve:
-                            out_level = curve.values.get(out_level, 0)
-                    # Main Fader
-                    out_level = round(out_level * self.main_fader.value)
-                    index = UNIVERSES.index(universe)
-                    # Update output level
-                    self.frame[index][output - 1] = out_level
+        composite = self.levels["sequence"].copy()
+        composite = np.maximum(composite, self.levels["faders"])
+        composite = np.maximum(composite, self.lightshow.independents.dmx)
+        user_mask = self.levels["user"] != -1
+        composite[user_mask] = self.levels["user"][user_mask]
+        return composite
+
+    def set_levels(self) -> None:
+        """Set DMX frame levels"""
+        composite = self.get_all_composite_levels()
+
+        self.patch.update_numpy_cache_if_dirty()
+
+        # Extract levels for each patched output slot
+        out_levels = composite[self.patch.map_src_channels].astype(np.float64)
+
+        # Apply curves by block
+        unique_curves = np.unique(self.patch.map_dst_curves)
+        for curve_numb in unique_curves:
+            if curve_numb != 0:
+                curve = self.lightshow.curves.get_curve(curve_numb)
+                if curve:
+                    curve_mask = self.patch.map_dst_curves == curve_numb
+                    out_levels[curve_mask] = curve.values_array[
+                        out_levels[curve_mask].astype(np.uint8)
+                    ]
+
+        # Scale by Main Fader
+        out_levels = np.round(out_levels * self.main_fader.value).astype(np.uint8)
+
+        # Distribute levels to self.frame using advanced indexing
+        for index in range(NB_UNIVERSES):
+            univ_mask = self.patch.map_dst_universes == index
+            if np.any(univ_mask):
+                self.frame[index][self.patch.map_dst_outputs[univ_mask]] = out_levels[
+                    univ_mask
+                ]
 
     def send(self) -> None:
         """Send DMX values to CoreEngine"""
@@ -129,31 +152,33 @@ class Dmx:
             for index, universe in enumerate(UNIVERSES):
                 current_frame = self.frame[index]
                 old_frame = self._old_frame[index]
-                if current_frame != old_frame:
-                    changed_outputs = [
-                        ch for ch in range(512) if current_frame[ch] != old_frame[ch]
-                    ]
+                if not np.array_equal(current_frame, old_frame):
+                    changed_outputs = np.where(current_frame != old_frame)[0].tolist()
                     if changed_outputs:
                         GLib.idle_add(
                             self.trigger_output_callbacks, universe, changed_outputs
                         )
-                    self._old_frame[index] = array.array("B", current_frame)
-                engine.universe(universe).array[:] = list(current_frame)
+                    np.copyto(self._old_frame[index], current_frame)
+                engine.universe(universe).apply_array(current_frame)
 
             # Compute composite levels for all channels to check for modifications
-            changed_channels = []
-            for i in range(MAX_CHANNELS):
-                if not self.patch.is_patched(i + 1):
-                    continue
-                raw_level, _color = self.get_composite_level(i)
-                # Apply Main Fader for visual display
-                level = round(raw_level * self.main_fader.value)
+            self.patch.update_numpy_cache_if_dirty()
 
-                if level != self._old_channel_levels[i]:
-                    self._old_channel_levels[i] = level
-                    changed_channels.append(i + 1)
+            composite = self.get_all_composite_levels()
+            current_display_levels = np.round(
+                composite * self.main_fader.value
+            ).astype(np.uint8)
 
-            if changed_channels:
+            changed_indices = np.where(
+                (current_display_levels != self._old_channel_levels)
+                & self.patch.is_patched_mask
+            )[0]
+
+            if len(changed_indices) > 0:
+                self._old_channel_levels[changed_indices] = current_display_levels[
+                    changed_indices
+                ]
+                changed_channels = (changed_indices + 1).tolist()
                 GLib.idle_add(self.trigger_channels_update, changed_channels)
 
     def trigger_channels_update(self, changed_channels: list[int]) -> None:
@@ -175,9 +200,9 @@ class Dmx:
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
         for index, universe in enumerate(UNIVERSES):
-            self.frame[index] = array.array("B", [0] * 512)
+            self.frame[index].fill(0)
             if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-                self.lightshow.app.engine.universe(universe).array[:] = [0] * 512
+                self.lightshow.app.engine.universe(universe).blackout()
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output

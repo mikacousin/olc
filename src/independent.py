@@ -12,8 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-import array
-
+import numpy as np
 from olc.define import MAX_CHANNELS, App
 
 
@@ -44,7 +43,7 @@ class Independent:
         self.levels = levels or {}
         self.text = text
         self.inde_type = inde_type
-        self.dmx = array.array("B", [0] * MAX_CHANNELS)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
 
         self.update_channels()
 
@@ -82,7 +81,7 @@ class Independent:
             dmx_lvl = round(level * (self.level / 255))
             self.dmx[channel - 1] = dmx_lvl
         App().lightshow.independents.update_dmx()
-        App().backend.dmx.set_levels(self.channels)
+        App().backend.dmx.set_levels()
 
 
 class Independents:
@@ -96,7 +95,7 @@ class Independents:
     def __init__(self) -> None:
         self.independents = []
         self.channels = set()
-        self.dmx = array.array("B", [0] * MAX_CHANNELS)
+        self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
 
         # Create 9 Independents
         for i in range(6):
@@ -106,14 +105,9 @@ class Independents:
 
     def update_dmx(self) -> None:
         """Update DMX levels"""
-        for channel in self.channels:
-            channel -= 1
-            level_inde = -1
-            for inde in self.independents:
-                if channel + 1 in inde.channels and inde.dmx[channel] > level_inde:
-                    level_inde = inde.dmx[channel]
-            if level_inde != -1:
-                self.dmx[channel] = level_inde
+        self.dmx.fill(0)
+        for inde in self.independents:
+            self.dmx = np.maximum(self.dmx, inde.dmx)
 
     def add(self, independent: Independent) -> bool:
         """Add an independent

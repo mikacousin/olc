@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import numpy as np
 from olc.define import MAX_CHANNELS
 
 
@@ -25,6 +26,7 @@ class Cue:
     memory: float  # Cue number
     channels: dict[int, int]  # Channels levels
     text: str  # Cue text
+    _channels_array: np.ndarray | None
 
     def __init__(
         self,
@@ -37,6 +39,18 @@ class Cue:
         self.memory = memory
         self.channels = channels or {}
         self.text = text
+        self._channels_array = None
+
+    @property
+    def channels_array(self) -> np.ndarray:
+        """Cached array representation of cue channels for block calculations."""
+        if self._channels_array is None:
+            arr = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+            for channel, level in self.channels.items():
+                if 1 <= channel <= MAX_CHANNELS:
+                    arr[channel - 1] = level
+            self._channels_array = arr
+        return self._channels_array
 
     def set_level(self, channel: int, level: int) -> None:
         """Set level of a channel.
@@ -52,6 +66,8 @@ class Cue:
             and 0 < channel <= MAX_CHANNELS
         ):
             self.channels[channel] = level
+            if self._channels_array is not None:
+                self._channels_array[channel - 1] = level
 
     def get_level(self, channel: int) -> int:
         """Get channel's level

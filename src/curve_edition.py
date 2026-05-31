@@ -76,9 +76,9 @@ class CurveValues(Gtk.DrawingArea):
                 if (
                     curve.editable
                     and isinstance(curve, (SegmentsCurve, InterpolateCurve))
-                    and (x, curve.values[x]) in curve.points
+                    and (x, int(curve.values_array[x])) in curve.points
                 ):
-                    idx = curve.points.index((x, curve.values[x]))
+                    idx = curve.points.index((x, int(curve.values_array[x])))
                     tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
                     if tab.curve_edition.points[idx].get_active():
                         cr.set_source_rgb(1, 0.7, 0.3)
@@ -89,7 +89,7 @@ class CurveValues(Gtk.DrawingArea):
                 cr.move_to(i + 1, j + 9)
                 cr.show_text(str(x))
                 cr.move_to(i + 1, j + 19)
-                cr.show_text(str(curve.values[x]))
+                cr.show_text(str(int(curve.values_array[x])))
                 x += 1
 
 

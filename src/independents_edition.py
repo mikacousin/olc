@@ -14,10 +14,10 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import array
 import typing
 from typing import Callable
 
+import numpy as np
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
@@ -46,7 +46,7 @@ class IndependentsTab(Gtk.Paned):
         self.window = window
         self.settings = settings
 
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
@@ -82,7 +82,7 @@ class IndependentsTab(Gtk.Paned):
     def on_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select independent"""
         self.channels_view.flowbox.unselect_all()
-        self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
         self.channels_view.update()
 
     def refresh(self) -> None:
@@ -195,7 +195,7 @@ class IndependentsTab(Gtk.Paned):
             self.channels_view.update()
 
             # Reset user modifications
-            self.user_channels = array.array("h", [-1] * MAX_CHANNELS)
+            self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
 
 class IndeChannelsView(ChannelsView):

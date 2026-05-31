@@ -164,7 +164,7 @@ class LiveChannelsView(ChannelsView):
         """
         App().backend.dmx.levels["user"][channel - 1] = level
         App().lightshow.main_playback.update_channels()
-        App().backend.dmx.set_levels({channel})
+        App().backend.dmx.set_levels()
         App().window.live_view.update_channel_widget(channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
@@ -194,4 +194,4 @@ class LiveChannelsView(ChannelsView):
                 channel, level
             )
             App().window.live_view.update_channel_widget(channel, next_level)
-        App().backend.dmx.set_levels(set(channels))
+        App().backend.dmx.set_levels()

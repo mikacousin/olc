@@ -160,11 +160,17 @@ class EditCurveWidget(Gtk.DrawingArea):
 
         cr.set_line_width(2)
         cr.set_source_rgba(0.5, 0.3, 0.0, 1.0)
-        cr.move_to(self.delta, height - self.delta - self.curve.values[0])
-        for x, y in self.curve.values.items():
+        cr.move_to(
+            self.delta,
+            height - self.delta - int(self.curve.values_array[0]),
+        )
+        for x, y in enumerate(self.curve.values_array):
+            y = int(y)
             cr.line_to(
                 (x / 255) * (width - (self.delta * 2)) + self.delta,
-                height - self.delta - ((y / 255) * (height - (self.delta * 2))),
+                height
+                - self.delta
+                - ((y / 255) * (height - (self.delta * 2))),
             )
         cr.stroke()
         return False
