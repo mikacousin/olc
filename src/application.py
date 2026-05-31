@@ -31,6 +31,7 @@ from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import MAX_CHANNELS, UNIVERSES  # noqa: E402
+from olc.dialog import ConfirmationDialog  # noqa: E402
 from olc.fader_edition import FaderTab  # noqa: E402
 from olc.files.export_file import ExportFile  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
@@ -201,6 +202,38 @@ class Application(Gtk.Application):
         if "version" in options:
             print(f"{self.version}")
             sys.exit()
+
+        # If already running, present the window and conditionally load the file
+        if self.engine is not None:
+            if self.window is not None:
+                self.window.present()
+            arguments = command_line.get_arguments()
+            if len(arguments) > 1:
+                filename = arguments[1]
+                # Confirmation dialog
+                dialog = ConfirmationDialog(
+                    _(
+                        "A show is already loaded. Do you want to load '{}'?\n"
+                        "Unsaved changes will be lost."
+                    ).format(pathlib.Path(filename).name),
+                    self.window,
+                )
+                response = dialog.run()
+                dialog.destroy()
+                if response == Gtk.ResponseType.OK:
+                    self.lightshow.file = command_line.create_file_for_arg(filename)
+                    imported = ImportFile(
+                        self.lightshow,
+                        self.lightshow.file,
+                        FileType.OLC,
+                        window=self.window,
+                        midi=self.midi,
+                        settings=self.settings,
+                        tabs=self.tabs,
+                    )
+                    imported.parse()
+            return False
+
         # Set up UniverseMap for CoreEngine
         universe_map = UniverseMap(max(UNIVERSES) + 1)
         for u in range(1, 5):
