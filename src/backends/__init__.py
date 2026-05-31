@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import typing
-from enum import Enum, auto
 
 from olc.dmx import Dmx
 
@@ -24,14 +23,7 @@ if typing.TYPE_CHECKING:
     from olc.patch import DMXPatch
 
 
-class Backend(Enum):
-    """Available backends"""
-
-    OLA = auto()
-    SACN = auto()
-    ARTNET = auto()
-
-
+# pylint: disable=too-few-public-methods
 class DMXBackend:
     """Create DMX Backend"""
 
@@ -45,15 +37,3 @@ class DMXBackend:
     def stop(self) -> None:
         """Stop backend"""
         self.dmx.thread.stop()
-
-    def send(self, universe: int, index: int) -> None:
-        """Send DMX universe
-
-        Args:
-            universe: one in UNIVERSES
-            index: Index of universe
-
-        Raises:
-            NotImplementedError: Must be implemented in subclass
-        """
-        raise NotImplementedError

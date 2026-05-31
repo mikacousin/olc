@@ -43,9 +43,6 @@ class MultiProtocolBackend(DMXBackend):
         if self.sacn is not None:
             self.sacn.notify = self.notify_sacn
 
-    def send(self, universe: int, index: int) -> None:
-        """Send DMX data (handled natively by CoreEngine's DMXLoop)."""
-
     def notify_artnet(
         self, action: str, *args: str | int, **kwargs: str
     ) -> None | Callable:
