@@ -17,22 +17,27 @@ from __future__ import annotations
 import typing
 from typing import Callable
 
-from olc.backends import DMXBackend
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.sacn import SacnManager
+from olc.dmx import Dmx
 
 if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
+    from olc.patch import DMXPatch
 
 
-class MultiProtocolBackend(DMXBackend):
+# pylint: disable=too-few-public-methods
+class DMXBackend:
     """Unified DMX Backend coordinating multiple active protocols from CoreEngine."""
 
+    dmx: Dmx
+    patch: DMXPatch
     artnet: ArtNetManager | None
     sacn: SacnManager | None
 
     def __init__(self, lightshow: LightShow) -> None:
-        super().__init__(lightshow)
+        self.dmx = Dmx(typing.cast(typing.Any, self), lightshow)
+        self.patch = lightshow.patch
         self.artnet = getattr(lightshow.app.engine, "_artnet_manager", None)
         self.sacn = getattr(lightshow.app.engine, "_sacn_manager", None)
 
@@ -42,6 +47,10 @@ class MultiProtocolBackend(DMXBackend):
 
         if self.sacn is not None:
             self.sacn.notify = self.notify_sacn
+
+    def stop(self) -> None:
+        """Stop backend"""
+        self.dmx.thread.stop()
 
     def notify_artnet(
         self, action: str, *args: str | int, **kwargs: str

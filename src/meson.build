@@ -19,6 +19,7 @@ configure_file(
 
 olc_sources = [
   'application.py',
+  'backends.py',
   'channel_time.py',
   'crossfade.py',
   'cue.py',
@@ -58,10 +59,6 @@ install_data(
   install_dir: join_paths(python_dir, 'olc')
 )
 
-install_subdir(
-  'backends',
-  install_dir: join_paths(python_dir, 'olc')
-)
 
 install_subdir(
   'core',

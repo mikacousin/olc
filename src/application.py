@@ -22,7 +22,7 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
-from olc.backends.backend import MultiProtocolBackend  # noqa: E402
+from olc.backends import DMXBackend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.core.backends.osc.delegate import GUIOSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
@@ -57,7 +57,7 @@ from olc.window import Window  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
-    backend: MultiProtocolBackend | None
+    backend: DMXBackend | None
     engine: CoreEngine | None
     midi: Midi | None
     version: str
@@ -233,7 +233,7 @@ class Application(Gtk.Application):
 
         self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
 
-        self.backend = MultiProtocolBackend(self.lightshow)
+        self.backend = DMXBackend(self.lightshow)
 
         self.engine.start()
 
