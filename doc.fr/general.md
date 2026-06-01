@@ -13,38 +13,22 @@ Normalement, cette version doit s'installer sur toutes les distributions Linux. 
 
 - Toute aide pour créer des paquets pour d'autres distributions est la bienvenue.
 
-## Moteurs DMX
-Pour piloter le matériel lumière, olc doit utiliser un moteur DMX.  
-Deux moteurs sont pris en charges et au moins l'un des deux doit être installé.  
+## Moteur DMX unifié (CoreEngine)
+Pour piloter votre matériel d'éclairage, olc intègre désormais un moteur de communication réseau unifié à haute performance (**CoreEngine**).
 
-Il est possible de choisir le moteur en lançant olc en ligne de commande :
-```bash
-$ olc --backend <backend>
-```
-Si ce choix aboutit, la modification est enregistrée pour les prochains lancements.
+Ce moteur fonctionne en tâche de fond de manière autonome et sécurisée. olc émet les trames de chaque univers physique dans les protocoles réseau standard :
 
-### sACN
-C'est le moteur par défaut.
-Il est basé sur le module python [sACN/E1.31](https://github.com/Hundemeier/sacn).  
+### sACN (E1.31)
+Le moteur réseau intègre nativement le protocole de diffusion **sACN** pour le contrôle d'équipements sur le réseau local.
 
-Pour choisir ce moteur :
-```bash
-$ olc --backend sacn
-```
+### ArtNet
+Le moteur réseau émet également en parallèle dans le protocole standard **ArtNet** pour la communication directe avec les nœuds et projecteurs compatibles.
 
-### Open Lighting Architecture
-Un moteur basé sur [OLA](https://www.openlighting.org/ola/) est disponible. Pour simplifier, c'est le lien entre olc et le DMX, sACN, artnet, et d'autres protocoles moins courants.  
+### Matériel DMX Physique (ENTTEC USB Pro)
+La console prend en charge de façon native et plug-and-play les interfaces physiques USB DMX (telles que le boîtier **ENTTEC DMX USB Pro**) en routant le flux DMX directement sur le port configuré.
 
-Pour choisir ce moteur :
-```bash
-$ olc --backend ola
-```
-Au démarrage, Open Lighting Console lancera automatiquement olad, s'il ne tourne pas déjà.  
-Pour configurer OLA, utiliser l'interface web en suivant le lien [http://localhost:9090](http://localhost:9090) une fois olad lancé.  
-Il est possible de préciser un autre port pour l'interface web d'OLA en lançant olc en ligne de commande, par exemple :
-```bash
-$ olc --http-port 6000
-```
+### Supervision en temps réel (ZeroMQ)
+Un flux de supervision ZeroMQ est disponible (sur le port `5555`) et publie en temps réel l'ensemble des trames DMX et métriques de fréquence de chaque univers pour des outils externes d'analyse ou de visualisation.
 
 ## Fenêtre principale
 ![Fenêtre principale](pictures/main_window.png)
@@ -96,31 +80,33 @@ Enfin, les mémoires suivantes.
 
 Une mémoire stocke les niveaux des circuits
 
-- Enregistrer une mémoire avec le prochain numéro de libre :  `Record` ou [Maj + R]
-- Enregistrer la mémoire 10 :  `10 Record` ou [1] [0] [Maj + R]
-- Mettre à jour la mémoire active : `Update` ou [Maj + U]
+- Enregistrer une mémoire avec le prochain numéro de libre : `Record` ou [R] / [Maj + R]
+- Enregistrer la mémoire 10 : `10 Record` ou [1] [0] [R] / [Maj + R]
+- Mettre à jour la mémoire active : `Update` ou [U] / [Maj + U]
 
 Un pas contient une mémoire et des temps
 
-- Définir un temps de montée de 3s : [3] [Maj + I]
-- Définir un temps de descente de 2s : [2] [Maj + O]
-- Définir un temps de montée et de descente de 10s : [1] [0] [Maj + T]
-- Définir un délai sur la montée de 1s : [1] [Maj + K]
-- Définir un délai sur la descente de 2s : [2] [Maj + L]
-- Définir un délai sur la montée et la descente de 3s : [3] [Maj + D]
-- Définir un wait de 0.5s : [0] [.] [5] [Maj + W]
+- Définir un temps de montée de 3s : [3] [I] / [Maj + I]
+- Définir un temps de descente de 2s : [2] [O] / [Maj + O]
+- Définir un temps de montée et de descente de 10s : [1] [0] [T] / [Maj + T]
+- Définir un délai sur la montée de 1s : [1] [K] / [Maj + K]
+- Définir un délai sur la descente de 2s : [2] [L] / [Maj + L]
+- Définir un délai sur la montée et la descente de 3s : [3] [D] / [Maj + D]
+- Définir un wait (attente) de 0.5s : [0] [.] [5] [X] / [Maj + X]
 
 #### Se déplacer dans la séquence principale :
-- Go : `Go` ou [Ctrl + G]
-- Pause : `Pause` ou [Ctrl + Z]
-- Sauter au prochain pas : `Seq+` ou [W]
-- Sauter au pas précédent : `Seq-` ou [Q]
-- Aller à la mémoire 2.0 (la mémoire doit exister) : `2 Goto` ou [2] [Maj + G]
-- Revenir au pas précédent :  `Go Back` ou [Ctrl + B]
-> Le temps du Go Back Time peut être modifié dans les Paramêtres
+- Go (lancer la transition) : `Go` ou la touche [Espace]
+- Pause (suspendre la transition) : `Pause` ou [Ctrl + Espace]
+- Sauter au prochain pas : `Seq+` ou [w] / [W]
+- Sauter au pas précédent : `Seq-` ou [q] / [Q]
+- Aller à la mémoire 2.0 (la mémoire doit exister) : `2 Goto` ou [2] [g] / [2] [Maj + G]
+- Revenir au pas précédent : `Go Back` ou [Ctrl + B]
+> Le temps du Go Back Time peut être modifié dans les Paramètres
 
 ## Divers :
-- La touche [Tab] permet de changer la partie active.
+- Annuler la dernière action (Undo) : [Ctrl + Z]
+- Rétablir la dernière action annulée (Redo) : [Ctrl + Shift + Z] ou [Ctrl + Y]
+- La touche [Tab] permet de changer la partie active (focus).
 - Pour effacer le buffer clavier : [Backspace]
 - Pour fermer un onglet : cliquer avec la souris sur la croix de l'onglet ou [Esc]
-- Pour passer l'application en plein écran [F11]
+- Pour passer l'application en plein écran : [F11]

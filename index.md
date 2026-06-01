@@ -3,17 +3,16 @@
 ![Window](https://raw.githubusercontent.com/mikacousin/olc/assets/olc.png)
 
 ## Features
-- Used [Open Lighting Architecture](https://www.openlighting.org/ola/) to send DMX
-- [RPN](https://en.wikipedia.org/wiki/Reverse_Polish_notation) syntax
-- Open / Save ASCII files (from Congo, DLight for example)
-- Patch / Unpatch by channels or by outputs
-- Main Playback
-- Chasers (as Sequences)
-- Groups
-- Masters
-- Track channels
-- Virtual console with easy MIDI learning for controllers
-- [Open Sound Control](https://en.wikipedia.org/wiki/Open_Sound_Control)
+- **Unified DMX Engine (CoreEngine)**: A single high-performance background networking engine that broadcasts **sACN (E1.31)** and **ArtNet** DMX data across configured universes.
+- **DMX USB Hardware**: Plug-and-play support for physical DMX USB interfaces (such as **ENTTEC DMX USB Pro** devices) routed natively through universe slot configurations.
+- **Undo/Redo** (`Ctrl+Z` / `Ctrl+Shift+Z`).
+- **Syntax**: Reverse Polish Notation (**RPN**) theater lighting console syntax.
+- **Files**: Native OLC files and open/save standard **ASCII files** (compatible with Congo, DLight, etc.).
+- **Playback & Control**: Main Playback, Chasers (additional sequences), Group masters, and submaster Fader banks.
+- **Patch & Sheets**: Patch/unpatch by channels or outputs, with comprehensive channel tracking sheets.
+- **MIDI Controllers**: Virtual console with intuitive **MIDI learning** (supports Notes, Control Changes, Mackie Control, and Pitchwheel feedback).
+- **OSC**: Full **Open Sound Control** integration for remote control.
+- **Real-time Monitoring**: Built-in ZeroMQ monitoring server (port `5555`) publishing DMX frames and engine frame rate metrics in real time.
 
 ## Documentation 
 > Note:  
@@ -49,25 +48,22 @@ A Preset store channels levels
 
 A Step contains a cue and times
 
-- Time In of 3s: [3], [Shift + I]
-- Time Out of 2s: [2], [Shift + O]
-- Time In and Time Out of 10s: [10], [Shift + T]
-- Delay In of 1s: [1], [Shift + K]
-- Delay Out of 2s: [2], [Shift + L]
-- Delay In and Delay Out of 3s: [3], [Shift + D]
-- Wait of 0.5s: [0.5], [Shift + W]
+- Time In of 3s: [3], [I] / [Shift + I]
+- Time Out of 2s: [2], [O] / [Shift + O]
+- Time In and Time Out of 10s: [10], [T] / [Shift + T]
+- Delay In of 1s: [1], [K] / [Shift + K]
+- Delay Out of 2s: [2], [L] / [Shift + L]
+- Delay In and Delay Out of 3s: [3], [D] / [Shift + D]
+- Wait of 0.5s: [0.5], [X] / [Shift + X]
 
 #### Move in Sequence
-- Go: `Go`
-- Jump to next step: `Seq+`
-- Jump to previous step: `Seq-`
-- Go to Preset 2.0: `2 Goto`
-- Go to the previous Step:  `Go Back`
+- Go: `Go` or keyboard [Space] key
+- Pause: `Pause` or [Ctrl + Space]
+- Jump to next step: `Seq+` or [W]
+- Jump to previous step: `Seq-` or [Q]
+- Go to Preset 2.0: `2 Goto` or [2], [G] / [Shift + G]
+- Go to the previous Step:  `Go Back` or [Ctrl + B]
 > Go Back Time can be changed in settings
-
-### Open Lighting Architecture
-On start-up, Open Lighting Console will launched olad if not already running.  
-To configure OLA, use the web interface on [http://localhost:9090](http://localhost:9090) while olad is running.
 
 ### MIDI controllers
 Configure your controllers with:
@@ -147,3 +143,6 @@ OSC Path | Value | Command
 /olc/patch/- | | Remove Output
 /olc/patch/channel | | Patch Outputs to channel
 /olc/patch/selected_outputs | | Send selected Outputs
+/olc/universe/*/set_channels | str (JSON) or ints `[chan, lvl, ...]` | Direct channel assignment to CoreEngine universe DMX buffer
+/olc/universe/*/blackout | | Direct blackout of CoreEngine universe DMX buffer
+

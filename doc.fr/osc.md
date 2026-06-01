@@ -50,3 +50,6 @@ Chemin OSC | Valeur | Commande
 /olc/patch/- | | Enlève un Output à patcher
 /olc/patch/channel | | Patch les Outputs sélectionnés au circuit entré dans la ligne de commande
 /olc/patch/selected_outputs | | Envoie la liste des outputs sélectionnés
+/olc/universe/*/set_channels | str (JSON) ou ints `[chan, lvl, ...]` | Affectation directe des intensités de circuits au buffer DMX de l'univers CoreEngine
+/olc/universe/*/blackout | | Blackout direct du buffer DMX de l'univers CoreEngine
+
