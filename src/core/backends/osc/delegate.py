@@ -46,25 +46,33 @@ class GUIOSCDelegate:
                 "/olc/command_line", self.app.window.commandline.get_string()
             )
 
+    def _execute_action(self, name: str) -> None:
+        """Execute an action from the registry.
+
+        Args:
+            name: The action name.
+        """
+        self.app.core.action_registry.execute(name)
+
     @make_method("/olc/key/go")
     def _go(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.lightshow.main_playback.do_go, None, None)
+        GLib.idle_add(self._execute_action, "playback.go")
 
     @make_method("/olc/key/pause")
     def _pause(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.lightshow.main_playback.pause, None, None)
+        GLib.idle_add(self._execute_action, "playback.pause")
 
     @make_method("/olc/key/goback")
     def _goback(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.lightshow.main_playback.go_back, None, None)
+        GLib.idle_add(self.app.core.lightshow.main_playback.go_back, None, None)
 
     @make_method("/olc/key/seq+")
     def _seq_plus(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.lightshow.main_playback.sequence_plus)
+        GLib.idle_add(self.app.core.lightshow.main_playback.sequence_plus)
 
     @make_method("/olc/key/seq-")
     def _seq_minus(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.lightshow.main_playback.sequence_minus)
+        GLib.idle_add(self.app.core.lightshow.main_playback.sequence_minus)
 
     @make_method("/olc/key/clear")
     def _clear(self, _address: str, _args: list) -> None:
@@ -181,7 +189,7 @@ class GUIOSCDelegate:
         GLib.idle_add(self._pageupdate_safe)
 
     def _pageupdate_safe(self) -> None:
-        fader_bank = self.app.lightshow.fader_bank
+        fader_bank = self.app.core.lightshow.fader_bank
         if self.app.engine is not None:
             self.app.engine.send_osc("/olc/fader/page", fader_bank.active_page)
             for fader in fader_bank.faders[fader_bank.active_page].values():
@@ -194,7 +202,7 @@ class GUIOSCDelegate:
         GLib.idle_add(self._fader_page_plus_safe)
 
     def _fader_page_plus_safe(self) -> None:
-        fader_bank = self.app.lightshow.fader_bank
+        fader_bank = self.app.core.lightshow.fader_bank
         if self.app.virtual_console is not None:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             self.app.virtual_console.fader_page_plus.emit("button-press-event", event)
@@ -221,7 +229,7 @@ class GUIOSCDelegate:
         GLib.idle_add(self._fader_page_minus_safe)
 
     def _fader_page_minus_safe(self) -> None:
-        fader_bank = self.app.lightshow.fader_bank
+        fader_bank = self.app.core.lightshow.fader_bank
         if self.app.virtual_console:
             event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
             self.app.virtual_console.fader_page_minus.emit("button-press-event", event)
@@ -259,7 +267,7 @@ class GUIOSCDelegate:
                     self.app.virtual_console.faders[fader_index - 1]
                 )
             else:
-                fader = self.app.lightshow.fader_bank.get_fader(fader_index)
+                fader = self.app.core.lightshow.fader_bank.get_fader(fader_index)
                 fader.set_level(level / 255)
                 if self.app.midi is not None:
                     midi_fader = self.app.midi.faders.faders[fader_index - 1]
@@ -283,7 +291,7 @@ class GUIOSCDelegate:
         try:
             pressed = args[0]
             fader_index = int(address.split("/")[4])
-            fader = self.app.lightshow.fader_bank.get_fader(fader_index)
+            fader = self.app.core.lightshow.fader_bank.get_fader(fader_index)
             if pressed:
                 fader.flash_on()
             else:

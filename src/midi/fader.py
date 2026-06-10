@@ -30,7 +30,7 @@ class MIDIFader:
     valid: FaderState
 
     def __init__(self) -> None:
-        self.value = 0
+        self.value = 0.0
         self.valid = FaderState.VALID
 
     def get_value(self) -> float:
@@ -41,7 +41,7 @@ class MIDIFader:
         """
         return self.value
 
-    def set_state(self, value: int) -> None:
+    def set_state(self, value: float) -> None:
         """Set Fader state
 
         Args:
@@ -55,7 +55,7 @@ class MIDIFader:
         else:
             self.valid = FaderState.VALID
 
-    def is_valid(self, new_value: int, level: int) -> bool:
+    def is_valid(self, new_value: float, level: float) -> bool:
         """Is fader valid
 
         Args:

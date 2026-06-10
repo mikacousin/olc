@@ -24,9 +24,7 @@ from olc.fader import FaderType
 from olc.files.read import ReadFile
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gtk
     from olc.files.import_file import ImportFile
-    from olc.lightshow import LightShow
 
 
 class State(Enum):
@@ -62,13 +60,11 @@ class AsciiParser(ReadFile):
     def __init__(
         self,
         imported: ImportFile,
-        lightshow: LightShow,
         default_time: float,
-        window: Gtk.Window | None = None,
         importation: bool = True,
     ) -> None:
-        super().__init__(imported, window=window, importation=importation)
-        self.lightshow = lightshow
+        super().__init__(imported, window=imported.window, importation=importation)
+        self.lightshow = imported.lightshow
         self.data = imported.data.data
         self.default_time = default_time
         self.tokens = {

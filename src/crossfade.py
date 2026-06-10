@@ -67,20 +67,20 @@ class CrossFade:
         level = scale.get_value()
 
         if level not in (255, 0):
-            self.app.lightshow.main_playback.on_go = True
+            self.app.core.lightshow.main_playback.on_go = True
             # If Go is sent, stop it
             if (
                 self.manual
-                and self.app.lightshow.main_playback.thread
-                and self.app.lightshow.main_playback.thread.is_alive()
+                and self.app.core.lightshow.main_playback.thread
+                and self.app.core.lightshow.main_playback.thread.is_alive()
             ):
-                self.app.lightshow.main_playback.thread.stop()
-                self.app.lightshow.main_playback.thread.join()
+                self.app.core.lightshow.main_playback.thread.stop()
+                self.app.core.lightshow.main_playback.thread.join()
 
         if scale in (self.scale_a, self.scale_b):
-            if self.app.lightshow.main_playback.last == 0:
+            if self.app.core.lightshow.main_playback.last == 0:
                 # If sequential is empty, don't do anything
-                self.app.lightshow.main_playback.on_go = False
+                self.app.core.lightshow.main_playback.on_go = False
                 return
             # Update sliders position
             self.update_slider(scale, level)
@@ -96,76 +96,76 @@ class CrossFade:
 
         if self.scale_a.get_value() == 0 and self.scale_b.get_value() == 0:
             # Stop crossfade if return to 0
-            if not self.app.lightshow.main_playback.on_go:
+            if not self.app.core.lightshow.main_playback.on_go:
                 return
             self.scale_a.moved = False
             self.scale_b.moved = False
             self.manual = False
-            self.app.lightshow.main_playback.on_go = False
+            self.app.core.lightshow.main_playback.on_go = False
 
     def at_full(self) -> None:
         """Slider A and B at Full"""
-        if not self.app.lightshow.main_playback.on_go:
+        if not self.app.core.lightshow.main_playback.on_go:
             return
         self.scale_a.moved = False
         self.scale_b.moved = False
         self.manual = False
-        self.app.lightshow.main_playback.on_go = False
+        self.app.core.lightshow.main_playback.on_go = False
         # Empty array of levels enter by user
         self.app.backend.dmx.levels["user"] = np.full(MAX_CHANNELS, -1, dtype=np.int16)
-        self.app.lightshow.main_playback.update_channels()
+        self.app.core.lightshow.main_playback.update_channels()
         # Go to next step
-        next_step = self.app.lightshow.main_playback.position + 1
-        if next_step < self.app.lightshow.main_playback.last - 1:
+        next_step = self.app.core.lightshow.main_playback.position + 1
+        if next_step < self.app.core.lightshow.main_playback.last - 1:
             # Next step
-            self.app.lightshow.main_playback.position += 1
+            self.app.core.lightshow.main_playback.position += 1
             next_step += 1
         else:
             # Return to first step
-            self.app.lightshow.main_playback.position = 0
+            self.app.core.lightshow.main_playback.position = 0
             next_step = 1
         # Update user interface
         if self.app.window and self.app.window.playback:
             self.app.window.playback.sequential.total_time = (
-                self.app.lightshow.main_playback.steps[next_step].total_time
+                self.app.core.lightshow.main_playback.steps[next_step].total_time
             )
             self.app.window.playback.sequential.time_in = (
-                self.app.lightshow.main_playback.steps[next_step].time_in
+                self.app.core.lightshow.main_playback.steps[next_step].time_in
             )
             self.app.window.playback.sequential.time_out = (
-                self.app.lightshow.main_playback.steps[next_step].time_out
+                self.app.core.lightshow.main_playback.steps[next_step].time_out
             )
             self.app.window.playback.sequential.delay_in = (
-                self.app.lightshow.main_playback.steps[next_step].delay_in
+                self.app.core.lightshow.main_playback.steps[next_step].delay_in
             )
             self.app.window.playback.sequential.delay_out = (
-                self.app.lightshow.main_playback.steps[next_step].delay_out
+                self.app.core.lightshow.main_playback.steps[next_step].delay_out
             )
             self.app.window.playback.sequential.wait = (
-                self.app.lightshow.main_playback.steps[next_step].wait
+                self.app.core.lightshow.main_playback.steps[next_step].wait
             )
             self.app.window.playback.sequential.channel_time = (
-                self.app.lightshow.main_playback.steps[next_step].channel_time
+                self.app.core.lightshow.main_playback.steps[next_step].channel_time
             )
             self.app.window.playback.sequential.position_a = 0
             self.app.window.playback.sequential.position_b = 0
-        cue = self.app.lightshow.main_playback.steps[
-            self.app.lightshow.main_playback.position
+        cue = self.app.core.lightshow.main_playback.steps[
+            self.app.core.lightshow.main_playback.position
         ].cue.memory
-        cue_text = self.app.lightshow.main_playback.steps[
-            self.app.lightshow.main_playback.position
+        cue_text = self.app.core.lightshow.main_playback.steps[
+            self.app.core.lightshow.main_playback.position
         ].text
-        next_cue = self.app.lightshow.main_playback.steps[next_step].cue.memory
+        next_cue = self.app.core.lightshow.main_playback.steps[next_step].cue.memory
         subtitle = (
             f"Mem. :{cue} {cue_text} "
             f"- Next Mem. : {next_cue} "
-            f"{self.app.lightshow.main_playback.steps[next_step].text}"
+            f"{self.app.core.lightshow.main_playback.steps[next_step].text}"
         )
         update_ui(subtitle)
         # If Wait
-        if self.app.lightshow.main_playback.steps[next_step].wait:
-            self.app.lightshow.main_playback.on_go = False
-            self.app.lightshow.main_playback.do_go(None, False)
+        if self.app.core.lightshow.main_playback.steps[next_step].wait:
+            self.app.core.lightshow.main_playback.on_go = False
+            self.app.core.action_registry.execute("playback.go")
 
     def update_slider(self, scale: Scale, level: int) -> None:
         """Update sliders position
@@ -174,8 +174,8 @@ class CrossFade:
             scale: Scale object
             level: int
         """
-        step_idx = self.app.lightshow.main_playback.position + 1
-        step = self.app.lightshow.main_playback.steps[step_idx]
+        step_idx = self.app.core.lightshow.main_playback.position + 1
+        step = self.app.core.lightshow.main_playback.steps[step_idx]
         total_time = step.total_time * 1000
         wait = step.wait * 1000
         position = (level / 255) * total_time
@@ -225,14 +225,14 @@ class CrossFade:
         """Apply individual channel times for decays."""
         if not step.channel_time:
             return
-        old_levels = self.app.lightshow.main_playback.steps[
-            self.app.lightshow.main_playback.position
+        old_levels = self.app.core.lightshow.main_playback.steps[
+            self.app.core.lightshow.main_playback.position
         ].cue.channels_array.astype(np.int32)
 
-        next_step = self.app.lightshow.main_playback.position + 1
-        if next_step >= self.app.lightshow.main_playback.last - 1:
+        next_step = self.app.core.lightshow.main_playback.position + 1
+        if next_step >= self.app.core.lightshow.main_playback.last - 1:
             next_step = 0
-        next_levels = self.app.lightshow.main_playback.steps[
+        next_levels = self.app.core.lightshow.main_playback.steps[
             next_step
         ].cue.channels_array.astype(np.int32)
 
@@ -255,7 +255,7 @@ class CrossFade:
 
     def _calculate_scale_a(self, position: float, step: Step) -> np.ndarray:
         """Calculate fade levels for Scale A (decays)."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self.app.core.lightshow.main_playback
         old_levels = main_pb.steps[main_pb.position].cue.channels_array.astype(np.int32)
 
         next_step = main_pb.position + 1
@@ -294,14 +294,14 @@ class CrossFade:
         """Apply individual channel times for attacks."""
         if not step.channel_time:
             return
-        old_levels = self.app.lightshow.main_playback.steps[
-            self.app.lightshow.main_playback.position
+        old_levels = self.app.core.lightshow.main_playback.steps[
+            self.app.core.lightshow.main_playback.position
         ].cue.channels_array.astype(np.int32)
 
-        next_step = self.app.lightshow.main_playback.position + 1
-        if next_step >= self.app.lightshow.main_playback.last - 1:
+        next_step = self.app.core.lightshow.main_playback.position + 1
+        if next_step >= self.app.core.lightshow.main_playback.last - 1:
             next_step = 0
-        next_levels = self.app.lightshow.main_playback.steps[
+        next_levels = self.app.core.lightshow.main_playback.steps[
             next_step
         ].cue.channels_array.astype(np.int32)
 
@@ -322,7 +322,7 @@ class CrossFade:
 
     def _calculate_scale_b(self, position: float, step: Step) -> np.ndarray:
         """Calculate fade levels for Scale B (attacks)."""
-        main_pb = self.app.lightshow.main_playback
+        main_pb = self.app.core.lightshow.main_playback
         old_levels = main_pb.steps[main_pb.position].cue.channels_array.astype(np.int32)
 
         next_step = main_pb.position + 1

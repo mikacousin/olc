@@ -18,6 +18,7 @@ import threading
 import typing
 from collections import deque
 from dataclasses import dataclass
+from typing import Deque
 
 import mido
 from olc.midi.control_change import MidiControlChanges
@@ -30,6 +31,7 @@ from olc.midi.xfade import MidiXFade
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
+    import olc.midi
     from olc.application import Application
     from olc.fader import Fader, FaderBank
 
@@ -37,7 +39,7 @@ if typing.TYPE_CHECKING:
 class Queue:
     """Queue implementation based on deque"""
 
-    _elements: mido.Message
+    _elements: Deque[mido.Message]
 
     def __init__(self) -> None:
         self._elements = deque()
@@ -82,9 +84,13 @@ class MidiMessages:
         enqueue_cb: typing.Callable[[mido.Message], None],
         fader_bank: FaderBank,
     ) -> None:
-        self.notes = MidiNotes(midi, app_delegate)
-        self.control_change = MidiControlChanges(midi, app_delegate)
-        self.pitchwheel = MidiPitchWheel(midi, app_delegate)
+        self.notes = MidiNotes(typing.cast("olc.midi.Midi", midi), app_delegate)
+        self.control_change = MidiControlChanges(
+            typing.cast("olc.midi.Midi", midi), app_delegate
+        )
+        self.pitchwheel = MidiPitchWheel(
+            typing.cast("olc.midi.Midi", midi), app_delegate
+        )
         self.lcd = MackieLCD(enqueue_cb, fader_bank)
 
 
@@ -104,7 +110,8 @@ class MidiFaders:
             self.inde_faders.append(MIDIFader())
 
 
-class MidiSend:  # pylint: disable=R0903
+# pylint: disable=too-few-public-methods
+class MidiSend:
     """Send MIDI messages"""
 
     ports: MidiPorts
@@ -139,13 +146,17 @@ class Midi:
         app_delegate: Application,
         on_ports_changed: typing.Callable[[], None] | None = None,
     ) -> None:
-        self.lightshow = app_delegate.lightshow
+        self.lightshow = app_delegate.core.lightshow
         self.learning = ""
         self.faders = MidiFaders()
         # Create crossfade Faders
-        self.xfade = MidiXFade(self, app_delegate)
+        self.xfade = MidiXFade(typing.cast("olc.midi.Midi", self), app_delegate)
         # Create and Open MIDI ports
-        self.ports = MidiPorts(self, app_delegate.settings, on_ports_changed)
+        self.ports = MidiPorts(
+            typing.cast("olc.midi.Midi", self),
+            app_delegate.settings,
+            on_ports_changed,
+        )
         self.send = MidiSend(self.ports)
         self.messages = MidiMessages(
             self, app_delegate, self.enqueue, self.lightshow.fader_bank
@@ -284,3 +295,20 @@ class Midi:
             action: Action name
         """
         self.messages.notes.send(action, 0)
+
+    def send_cc(self, channel: int, control: int, value: int) -> None:
+        """Send a Control Change message.
+
+        Args:
+            channel: The MIDI channel (0-15).
+            control: The CC control number.
+            value: The CC value (0-127).
+        """
+        msg = mido.Message(
+            "control_change",
+            channel=channel,
+            control=control,
+            value=value,
+            time=0,
+        )
+        self.enqueue(msg)

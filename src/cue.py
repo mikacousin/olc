@@ -12,8 +12,42 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+import typing
+
 import numpy as np
 from olc.define import MAX_CHANNELS
+
+
+class CueChannels(dict[int, int]):
+    """Custom dictionary to keep the array cache in sync with in-place changes."""
+
+    # pylint: disable=protected-access
+
+    def __init__(self, cue: "Cue", *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)
+        self.cue = cue
+
+    def __setitem__(self, key: int, value: int) -> None:
+        super().__setitem__(key, value)
+        if self.cue._channels_array is not None:
+            if 1 <= key <= MAX_CHANNELS:
+                self.cue._channels_array[key - 1] = value
+
+    def __delitem__(self, key: int) -> None:
+        super().__delitem__(key)
+        self.cue._channels_array = None
+
+    def clear(self) -> None:
+        super().clear()
+        self.cue._channels_array = None
+
+    def update(  # ty: ignore[invalid-method-override]
+        self,
+        m: typing.Mapping[int, int] | typing.Iterable[tuple[int, int]] = (),
+        /,
+    ) -> None:
+        super().update(m)
+        self.cue._channels_array = None
 
 
 class Cue:
@@ -24,7 +58,7 @@ class Cue:
 
     sequence: int  # Sequence number (0 for Preset)
     memory: float  # Cue number
-    channels: dict[int, int]  # Channels levels
+    _channels: CueChannels  # Channels levels
     text: str  # Cue text
     _channels_array: np.ndarray | None
 
@@ -37,8 +71,18 @@ class Cue:
     ) -> None:
         self.sequence = sequence
         self.memory = memory
-        self.channels = channels or {}
+        self._channels_array = None
+        self._channels = CueChannels(self, channels or {})
         self.text = text
+
+    @property
+    def channels(self) -> dict[int, int]:
+        """Get the channel levels dictionary."""
+        return self._channels
+
+    @channels.setter
+    def channels(self, value: dict[int, int]) -> None:
+        self._channels = CueChannels(self, value)
         self._channels_array = None
 
     @property

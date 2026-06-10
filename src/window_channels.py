@@ -18,10 +18,11 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import UNIVERSES, App
+from olc.define import UNIVERSES
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
+    from olc.application import Application
     from olc.tabs_manager import Tabs
     from olc.window import Window
 
@@ -30,6 +31,8 @@ class LiveView(Gtk.Notebook):
     """Live Channels View"""
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
+        self.window = window
+        self.tabs = tabs
         super().__init__()
         self.set_group_name("olc")
 
@@ -41,6 +44,11 @@ class LiveView(Gtk.Notebook):
 
         self.connect("key_press_event", self.on_key_press_event)
 
+    @property
+    def app(self) -> Application:
+        """Get parent application instance safely."""
+        return self.window.app
+
     def update_channel_widget(self, channel: int, next_level: int) -> None:
         """Update display of channel widget
 
@@ -51,19 +59,23 @@ class LiveView(Gtk.Notebook):
         widget = self.channels_view.get_channel_widget(channel)
         if not widget:
             return
+        if self.app.backend is None:
+            return
         channel -= 1
-        level, color_level = App().backend.dmx.get_composite_level(channel)
+        level, color_level = self.app.backend.dmx.get_composite_level(channel)
 
         # Apply Main Fader for visual display
-        level = round(level * App().backend.dmx.main_fader.value)
-        next_level = round(next_level * App().backend.dmx.main_fader.value)
+        level = round(level * self.app.backend.dmx.main_fader.value)
+        next_level = round(next_level * self.app.backend.dmx.main_fader.value)
 
         widget.color_level = color_level
         widget.level = level
         widget.next_level = next_level
         widget.queue_draw()
 
-    def on_key_press_event(self, widget: Gtk.Widget, event: Gdk.EventKey) -> Callable:
+    def on_key_press_event(
+        self, widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | bool | None:
         """On key press event
 
         Args:
@@ -74,28 +86,44 @@ class LiveView(Gtk.Notebook):
             function() to handle keys pressed
         """
         keyname = Gdk.keyval_name(event.keyval)
-        if keyname == "Tab":
-            return App().window.toggle_focus()
-        if keyname == "ISO_Left_Tab":
-            return App().window.move_tab()
+        if self.app.window is not None:
+            if keyname == "Tab":
+                return self.app.window.toggle_focus()
+            if keyname == "ISO_Left_Tab":
+                return self.app.window.move_tab()
         # Find open page in notebook to send keyboard events
         page = self.get_current_page()
         child = self.get_nth_page(page)
-        if child in App().tabs.tabs.values():
-            return child.on_key_press_event(widget, event)
-        return App().window.on_key_press_event(widget, event)
+        if (
+            self.app.tabs is not None
+            and child in self.app.tabs.tabs.values()
+            and child is not None
+            and hasattr(child, "on_key_press_event")
+        ):
+            return typing.cast(typing.Any, child).on_key_press_event(widget, event)
+        if self.app.window is not None:
+            return self.app.window.on_key_press_event(widget, event)
+        return False
 
 
 class LiveChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
+        self.window = window
+        self.tabs = tabs
         super().__init__(
-            lightshow=App().lightshow,
+            lightshow=window.app.core.lightshow,
             window=window,
-            settings=App().settings,
+            settings=window.app.settings,
             tabs=tabs,
         )
+
+    @property
+    def app(self) -> Application:
+        """Get parent application instance safely."""
+        assert self.window is not None
+        return self.window.app
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
@@ -106,7 +134,9 @@ class LiveChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        channel_widget = child.get_child()
+        channel_widget = typing.cast(typing.Any, child.get_child())
+        if channel_widget is None:
+            return False
         channel = child.get_index() + 1
         channel_widget.next_level = self.get_next_level(channel, channel_widget)
         if self.view_mode == VIEW_MODES["Active"]:
@@ -117,10 +147,10 @@ class LiveChannelsView(ChannelsView):
             return visible
 
         if self.view_mode == VIEW_MODES["Patched"]:
-            patched = App().lightshow.patch.is_patched(channel)
+            patched = self.app.core.lightshow.patch.is_patched(channel)
             child.set_visible(patched)
             return patched
-        if not App().lightshow.patch.is_patched(channel):
+        if not self.app.core.lightshow.patch.is_patched(channel):
             channel_widget.level = 0
         child.set_visible(True)
         return True
@@ -135,37 +165,25 @@ class LiveChannelsView(ChannelsView):
         Returns:
             Channel next level (0 - 255)
         """
-        position = App().lightshow.main_playback.position
+        position = self.app.core.lightshow.main_playback.position
         if (
-            App().lightshow.main_playback.last > 1
-            and position < App().lightshow.main_playback.last - 1
-            and App().lightshow.main_playback.last
-            <= len(App().lightshow.main_playback.steps)
+            self.app.core.lightshow.main_playback.last > 1
+            and position < self.app.core.lightshow.main_playback.last - 1
+            and self.app.core.lightshow.main_playback.last
+            <= len(self.app.core.lightshow.main_playback.steps)
         ):
-            next_level = (
-                App()
-                .lightshow.main_playback.steps[position + 1]
-                .cue.channels.get(channel, 0)
-            )
-        elif App().lightshow.main_playback.last:
-            next_level = (
-                App().lightshow.main_playback.steps[0].cue.channels.get(channel, 0)
-            )
+            cue = self.app.core.lightshow.main_playback.steps[position + 1].cue
+            next_level = cue.channels.get(channel, 0) if cue is not None else 0
+        elif self.app.core.lightshow.main_playback.last:
+            cue = self.app.core.lightshow.main_playback.steps[0].cue
+            next_level = cue.channels.get(channel, 0) if cue is not None else 0
         else:
-            next_level = channel_widget.level
+            next_level = typing.cast(typing.Any, channel_widget).level
         return next_level
 
     def set_channel_level(self, channel: int, level: int) -> None:
-        """Set channel level
-
-        Args:
-            channel: channel number (1 - MAX_CHANNELS)
-            level: DMX level (0 - 255)
-        """
-        App().backend.dmx.levels["user"][channel - 1] = level
-        App().lightshow.main_playback.update_channels()
-        App().backend.dmx.set_levels()
-        App().window.live_view.update_channel_widget(channel, level)
+        """Set channel level using the unified core ActionRegistry."""
+        self.app.core.action_registry.execute("channel.set_level", channel, level)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change patched channels level with a wheel
@@ -174,24 +192,30 @@ class LiveChannelsView(ChannelsView):
             step: Step level
             direction: Up or Down
         """
-        level = None
+        if self.app.backend is None:
+            return
+        level = 0
         channels = self.get_selected_channels()
         for channel in channels:
-            if not App().lightshow.patch.is_patched(channel):
+            if not self.app.core.lightshow.patch.is_patched(channel):
                 continue
-            for output in App().lightshow.patch.channels[channel]:
+            for output in self.app.core.lightshow.patch.channels[channel]:
                 out = output[0]
                 univ = output[1]
-                index = UNIVERSES.index(univ)
-                level = App().backend.dmx.frame[index][out - 1]
-                if direction == Gdk.ScrollDirection.UP:
-                    App().backend.dmx.levels["user"][channel - 1] = min(
-                        level + step, 255
-                    )
-                elif direction == Gdk.ScrollDirection.DOWN:
-                    App().backend.dmx.levels["user"][channel - 1] = max(level - step, 0)
-            next_level = App().lightshow.main_playback.get_next_channel_level(
+                if out is not None and univ is not None:
+                    index = UNIVERSES.index(univ)
+                    level = self.app.backend.dmx.frame[index][out - 1]
+                    if direction == Gdk.ScrollDirection.UP:
+                        self.app.backend.dmx.levels["user"][channel - 1] = min(
+                            level + step, 255
+                        )
+                    elif direction == Gdk.ScrollDirection.DOWN:
+                        self.app.backend.dmx.levels["user"][channel - 1] = max(
+                            level - step, 0
+                        )
+            next_level = self.app.core.lightshow.main_playback.get_next_channel_level(
                 channel, level
             )
-            App().window.live_view.update_channel_widget(channel, next_level)
-        App().backend.dmx.set_levels()
+            if self.app.window is not None:
+                self.app.window.live_view.update_channel_widget(channel, next_level)
+        self.app.backend.dmx.set_levels()

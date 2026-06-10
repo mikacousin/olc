@@ -24,6 +24,7 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
+    from olc.widgets.channels_view import ChannelsView
     from olc.window import Window
 
 
@@ -56,7 +57,7 @@ class ChannelWidget(Gtk.DrawingArea):
         self.clicked = False
         self.color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
         self.scale = 1.0
-        self.width = 80 * self.scale
+        self.width = round(80 * self.scale)
 
         self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
         self.connect("button-press-event", self.on_click)
@@ -72,9 +73,24 @@ class ChannelWidget(Gtk.DrawingArea):
             event: Gdk.EventButton or Gdk.EventTouch
         """
         accel_mask = Gtk.accelerator_get_default_mod_mask()
-        flowboxchild = target.get_parent()
-        flowbox = flowboxchild.get_parent()
-        channels_view = flowbox.get_parent().get_parent().get_parent()
+        flowboxchild_raw = target.get_parent()
+        if flowboxchild_raw is None:
+            return
+        flowboxchild = typing.cast("Gtk.FlowBoxChild", flowboxchild_raw)
+        flowbox_raw = flowboxchild.get_parent()
+        if flowbox_raw is None:
+            return
+        flowbox = typing.cast("Gtk.FlowBox", flowbox_raw)
+        p1 = flowbox.get_parent()
+        if p1 is None:
+            return
+        p2 = p1.get_parent()
+        if p2 is None:
+            return
+        p3 = p2.get_parent()
+        if p3 is None:
+            return
+        channels_view = typing.cast("ChannelsView", p3)
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             self.window.commandline.set_string(str(self.channel))
@@ -100,7 +116,7 @@ class ChannelWidget(Gtk.DrawingArea):
         Args:
             cr: Cairo context
         """
-        self.width = 80 * self.scale
+        self.width = round(80 * self.scale)
         self.set_size_request(self.width, self.width)
         allocation = self.get_allocation()
         percent_level = self.settings.get_boolean("percent")
@@ -115,10 +131,18 @@ class ChannelWidget(Gtk.DrawingArea):
     def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw background"""
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        if self.get_parent().is_selected():
+        parent_raw = self.get_parent()
+        parent = (
+            typing.cast("Gtk.FlowBoxChild", parent_raw)
+            if parent_raw is not None
+            else None
+        )
+        if parent is not None and parent.is_selected():
             cr.set_source_rgb(0.6, 0.4, 0.1)
         else:
-            cr.set_source_rgba(*list(bg_color))
+            cr.set_source_rgba(
+                bg_color.red, bg_color.green, bg_color.blue, bg_color.alpha
+            )
         cr.rectangle(0, 0, allocation.width, allocation.height)
         cr.fill()
 
@@ -129,12 +153,19 @@ class ChannelWidget(Gtk.DrawingArea):
         # Draw background
         background = Gdk.RGBA()
         background.parse("#33393B")
-        cr.set_source_rgba(*list(background))
+        cr.set_source_rgba(
+            background.red, background.green, background.blue, background.alpha
+        )
         cr.rectangle(4, 4, allocation.width - 8, self.width - 8)
         cr.fill()
         # Draw background of channel number
-        flowboxchild = self.get_parent()
-        if flowboxchild.is_selected():
+        flowboxchild_raw = self.get_parent()
+        flowboxchild = (
+            typing.cast("Gtk.FlowBoxChild", flowboxchild_raw)
+            if flowboxchild_raw is not None
+            else None
+        )
+        if flowboxchild is not None and flowboxchild.is_selected():
             cr.set_source_rgb(0.4, 0.4, 0.4)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
@@ -158,9 +189,9 @@ class ChannelWidget(Gtk.DrawingArea):
     def _draw_level(self, cr: cairo.Context, percent_level: bool) -> None:
         """Draw level"""
         cr.set_source_rgb(
-            self.color_level.get("red"),
-            self.color_level.get("green"),
-            self.color_level.get("blue"),
+            self.color_level.get("red", 0.0),
+            self.color_level.get("green", 0.0),
+            self.color_level.get("blue", 0.0),
         )
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(13 * self.scale)

@@ -31,6 +31,7 @@ from olc.independent import Independents  # noqa: E402
 from olc.step import Step  # noqa: E402
 
 if typing.TYPE_CHECKING:
+    import olc.files.import_file
     from gi.repository import Gio
     from olc.core.engine import CoreEngine
     from olc.lightshow import LightShow
@@ -121,14 +122,16 @@ class ImportFile:
             else:
                 default_time = 5.0
             self.parser = AsciiParser(
-                self,
-                self.lightshow,
+                typing.cast("olc.files.import_file.ImportFile", self),
                 default_time,
-                window=self.window,
                 importation=importation,
             )
         else:
-            self.parser = OlcParser(self, window=self.window, importation=importation)
+            self.parser = OlcParser(
+                typing.cast("olc.files.import_file.ImportFile", self),
+                window=self.window,
+                importation=importation,
+            )
 
     def parse(self) -> None:
         """Start reading file"""
@@ -275,11 +278,10 @@ class ImportFile:
         if self.tabs:
             self.tabs.refresh_all()
         if self.window is not None and self.window.header is not None:
-            subtitle = (
-                f"Mem. : 0.0 - "
-                f"Next Mem. : {self.lightshow.main_playback.steps[1].cue.memory} "
-                f"{self.lightshow.main_playback.steps[1].cue.text}"
-            )
+            cue = self.lightshow.main_playback.steps[1].cue
+            memory = cue.memory if cue is not None else 0.0
+            text = cue.text if cue is not None else ""
+            subtitle = f"Mem. : 0.0 - Next Mem. : {memory} {text}"
             self.window.header.set_subtitle(subtitle)
         if self.window is not None and self.window.playback is not None:
             self.window.playback.update_xfade_display(0)

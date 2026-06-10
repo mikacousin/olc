@@ -20,6 +20,7 @@ import typing
 from gettext import gettext as _
 from typing import Callable
 
+import serial.tools.list_ports
 from gi.repository import Gdk, GLib, GObject, Gtk
 from olc.core.backends.osc.delegate import GUIOSCDelegate
 from olc.core.universe_config import Protocol
@@ -146,7 +147,10 @@ class SettingsTab(Gtk.Box):
         relative2 = self.settings.get_strv("relative2")
         makies = self.settings.get_strv("makie")
         absolutes = self.settings.get_strv("absolute")
-        for midi_port in sorted(list(set(self.midi.ports.mido_ports or []))):
+        ports_list = []
+        if self.midi is not None and self.midi.ports is not None:
+            ports_list = self.midi.ports.mido_ports or []
+        for midi_port in sorted(list(set(ports_list))):
             if midi_port in default:
                 if midi_port in relative1:
                     self.liststore_midi.append(
@@ -389,13 +393,8 @@ class SettingsTab(Gtk.Box):
             for g in grouped.values()
         ]
 
-        if any(
-            ((0, 0, 0, 0, 0, 0), 0) in s.nodes
-            for s in artnet.senders.values()
-        ):
-            univs = ", ".join(
-                str(u) for u in sorted(artnet.senders.keys())
-            )
+        if any(((0, 0, 0, 0, 0, 0), 0) in s.nodes for s in artnet.senders.values()):
+            univs = ", ".join(str(u) for u in sorted(artnet.senders.keys()))
             new_state.append(
                 ["Virtual Node (Local Loopback)", "127.0.0.1", "Node", univs]
             )
@@ -501,8 +500,6 @@ class SettingsTab(Gtk.Box):
         """Scan system for available serial ports and ensure current_port is present."""
         serial_ports = ["Auto-detect"]
         try:
-            import serial.tools.list_ports  # pylint: disable=import-outside-toplevel
-
             for p in serial.tools.list_ports.comports():
                 if p.vid == 0x0403 and p.pid == 0x6001:
                     serial_ports.append(f"{p.device} (DMX USB PRO)")
@@ -789,7 +786,7 @@ class SettingsTab(Gtk.Box):
 
         # 6. Mark show file as modified
         if self.app is not None:
-            self.app.lightshow.set_modified()
+            self.app.core.lightshow.set_modified()
 
     def _on_universe_switch_changed(
         self,

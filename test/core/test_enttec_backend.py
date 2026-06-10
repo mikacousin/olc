@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 # pylint: disable=protected-access,comparison-with-callable
 import asyncio
+import typing
 from unittest.mock import MagicMock, patch
 
 import serial
@@ -155,6 +156,7 @@ class TestDmxUsbProManager:
         manager = DmxUsbProManager(port="/dev/ttyUSB0", loop=loop)
         manager.start()
         loop.create_task.assert_called_once()
+        loop.create_task.call_args[0][0].close()
 
     def test_schedule_reconnect(self) -> None:
         """Verify _schedule_reconnect schedules reconnect task."""
@@ -167,6 +169,7 @@ class TestDmxUsbProManager:
         manager._schedule_reconnect()
         assert manager._reconnect_task is not None
         loop.create_task.assert_called_once()
+        loop.create_task.call_args[0][0].close()
 
         # Scheduling again when task exists and not done does not schedule a new task
         manager._reconnect_task.done = MagicMock(return_value=False)
@@ -192,7 +195,7 @@ class TestDmxUsbProManager:
                 if manager.notify is not None:
                     manager.notify("connect", "/dev/ttyUSB0")
 
-        manager._async_connect = fake_connect
+        typing.cast(typing.Any, manager)._async_connect = fake_connect
         asyncio.run(manager._async_reconnect())
 
         assert connect_call_count == 3
@@ -241,16 +244,16 @@ class TestDmxUsbProManager:
         manager._actual_port = "/dev/ttyUSB0"
         mock_notify = MagicMock()
         manager.notify = mock_notify
-        manager.stop = MagicMock()
-        manager._schedule_reconnect = MagicMock()
+        typing.cast(typing.Any, manager).stop = MagicMock()
+        typing.cast(typing.Any, manager)._schedule_reconnect = MagicMock()
 
         manager._handle_disconnect(OSError("Lost connection"))
 
         mock_notify.assert_called_once_with(
             "disconnect", "/dev/ttyUSB0", "Lost connection"
         )
-        manager.stop.assert_called_once()
-        manager._schedule_reconnect.assert_called_once()
+        typing.cast(typing.Any, manager).stop.assert_called_once()
+        typing.cast(typing.Any, manager)._schedule_reconnect.assert_called_once()
 
     def test_write_packet_not_connected(self) -> None:
         """Verify write_packet returns early without writing if not connected."""
@@ -299,10 +302,10 @@ class TestDmxUsbProManager:
         manager = DmxUsbProManager(port="/dev/ttyUSB0")
         manager._serial = mock_serial
         manager._connected = True
-        manager.stop = MagicMock()
+        typing.cast(typing.Any, manager).stop = MagicMock()
 
         manager.write_packet(b"\x7e\x06\x00\xe7")
-        manager.stop.assert_called_once()
+        typing.cast(typing.Any, manager).stop.assert_called_once()
 
     def test_stop(self) -> None:
         """Verify stop cleans up serial port, reader, and reconnect tasks."""

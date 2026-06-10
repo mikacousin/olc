@@ -12,9 +12,12 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# from olc.define import MAX_FADER_PAGE
+from __future__ import annotations
+
+import typing
+
 import numpy as np
-from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE, App
+from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.fader import (
     Fader,
     FaderChannels,
@@ -25,6 +28,11 @@ from olc.fader import (
     FaderType,
 )
 
+if typing.TYPE_CHECKING:
+    import olc.fader_bank
+    from olc.core.app import CoreApplication
+    from olc.lightshow import LightShow
+
 
 class FaderBank:
     """Pages of faders"""
@@ -34,18 +42,27 @@ class FaderBank:
     channels: set
     active_faders: set
     max_fader_per_page: int
+    lightshow: typing.Optional[LightShow]
 
-    def __init__(self) -> None:
+    def __init__(self, lightshow: typing.Optional[LightShow] = None) -> None:
+        self.lightshow = lightshow
         self.active_page = 1
         self.faders = {}
         self.max_fader_per_page = MAX_FADER_PER_PAGE
         for page in range(1, MAX_FADER_PAGE + 1):
             self.faders[page] = {}
             for index in range(1, MAX_FADER_PER_PAGE + 1):
-                self.faders[page][index] = Fader(index, self)
+                self.faders[page][index] = Fader(
+                    index, typing.cast("olc.fader_bank.FaderBank", self)
+                )
         self.channels = set()
         self.active_faders = set()
         self.update_active_faders()
+
+    @property
+    def app(self) -> CoreApplication | None:
+        """Get parent application instance safely."""
+        return self.lightshow.app if self.lightshow else None
 
     def get_fader(self, index: int) -> Fader:
         """Get fader on active page
@@ -91,7 +108,11 @@ class FaderBank:
         return FaderType.NONE
 
     def set_fader(
-        self, page: int, index: int, fader_type: FaderType, contents: object = None
+        self,
+        page: int,
+        index: int,
+        fader_type: FaderType,
+        contents: dict[int, int] | float | None = None,
     ) -> None:
         """Assign a fader
 
@@ -107,75 +128,115 @@ class FaderBank:
             self._set_fader_type(page, index, fader_type, contents)
 
     def _set_fader_type(
-        self, page: int, index: int, fader_type: FaderType, contents: object
+        self,
+        page: int,
+        index: int,
+        fader_type: FaderType,
+        contents: dict[int, int] | float | None,
     ) -> None:
+        fader_bank_type = typing.cast("olc.fader_bank.FaderBank", self)
         if fader_type == FaderType.NONE:
-            self.faders[page][index] = Fader(index, self)
+            self.faders[page][index] = Fader(index, fader_bank_type)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.CHANNELS:
-            self.faders[page][index] = FaderChannels(index, self, contents)
+            channels = contents if isinstance(contents, dict) else None
+            self.faders[page][index] = FaderChannels(index, fader_bank_type, channels)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.GROUP:
-            if group := App().lightshow.get_group(contents):
-                self.faders[page][index] = FaderGroup(index, self, group)
+            if (
+                self.lightshow
+                and isinstance(contents, (int, float))
+                and (group := self.lightshow.get_group(contents))
+            ):
+                self.faders[page][index] = FaderGroup(index, fader_bank_type, group)
             else:
-                self.faders[page][index] = FaderGroup(index, self)
+                self.faders[page][index] = FaderGroup(index, fader_bank_type)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.MAIN:
-            self.faders[page][index] = FaderMain(index, self)
+            self.faders[page][index] = FaderMain(index, fader_bank_type)
         elif fader_type == FaderType.PRESET:
-            if cue := App().lightshow.get_cue(contents):
-                self.faders[page][index] = FaderPreset(index, self, cue)
+            if (
+                self.lightshow
+                and isinstance(contents, (int, float))
+                and (cue := self.lightshow.get_cue(contents))
+            ):
+                self.faders[page][index] = FaderPreset(index, fader_bank_type, cue)
             else:
-                self.faders[page][index] = FaderPreset(index, self)
+                self.faders[page][index] = FaderPreset(index, fader_bank_type)
             self.faders[page][index].set_level(0)
         elif fader_type == FaderType.SEQUENCE:
-            if chaser := App().lightshow.get_chaser(contents):
-                self.faders[page][index] = FaderSequence(index, self, chaser)
+            if (
+                self.lightshow
+                and isinstance(contents, (int, float))
+                and (chaser := self.lightshow.get_chaser(contents))
+            ):
+                self.faders[page][index] = FaderSequence(index, fader_bank_type, chaser)
             else:
-                self.faders[page][index] = FaderSequence(index, self)
+                self.faders[page][index] = FaderSequence(index, fader_bank_type)
             self.faders[page][index].set_level(0)
         self._refresh_faders_display(page, index)
 
     def _set_fader_contents(
-        self, page: int, index: int, fader_type: FaderType, contents: object
+        self,
+        page: int,
+        index: int,
+        fader_type: FaderType,
+        contents: dict[int, int] | float | None,
     ) -> None:
         if fader_type == FaderType.GROUP:
-            if group := App().lightshow.get_group(contents):
+            if (
+                self.lightshow
+                and isinstance(contents, (int, float))
+                and (group := self.lightshow.get_group(contents))
+            ):
                 self.faders[page][index].set_contents(group)
         elif fader_type == FaderType.PRESET:
-            if cue := App().lightshow.get_cue(contents):
+            if (
+                self.lightshow
+                and isinstance(contents, (int, float))
+                and (cue := self.lightshow.get_cue(contents))
+            ):
                 self.faders[page][index].set_contents(cue)
         elif fader_type == FaderType.SEQUENCE:
-            if chaser := App().lightshow.get_chaser(contents):
+            if (
+                self.lightshow
+                and isinstance(contents, (int, float))
+                and (chaser := self.lightshow.get_chaser(contents))
+            ):
                 self.faders[page][index].set_contents(chaser)
         self._refresh_faders_display(page, index)
 
     def _refresh_faders_display(self, page: int, index: int) -> None:
         if page == self.active_page:
             # Refresh MIDI
-            App().midi.update_fader(self.faders[page][index])
+            if self.app and hasattr(self.app, "midi") and self.app.midi:
+                self.app.midi.update_fader(self.faders[page][index])
             # Refresh Virtual Console
-            if App().virtual_console:
-                widget = App().virtual_console.faders[
+            app_any = typing.cast(typing.Any, self.app)
+            if (
+                app_any
+                and hasattr(app_any, "virtual_console")
+                and app_any.virtual_console
+            ):
+                widget = app_any.virtual_console.faders[
                     self.faders[page][index].index - 1
                 ]
                 level = self.faders[page][index].level * 255
                 widget.set_value(level)
-                App().virtual_console.fader_moved(widget)
-                App().virtual_console.flashes[
+                app_any.virtual_console.fader_moved(widget)
+                app_any.virtual_console.flashes[
                     self.faders[page][index].index - 1
                 ].label = self.faders[page][index].text
-                App().virtual_console.flashes[
+                app_any.virtual_console.flashes[
                     self.faders[page][index].index - 1
                 ].queue_draw()
             # Refresh OSC
-            if App().engine is not None:
-                App().engine.send_osc("/olc/fader/page", page)
-                App().engine.send_osc(
+            if self.app and hasattr(self.app, "engine") and self.app.engine is not None:
+                self.app.engine.send_osc("/olc/fader/page", page)
+                self.app.engine.send_osc(
                     f"/olc/fader/1/{index}/label", self.faders[page][index].text
                 )
-                App().engine.send_osc(
+                self.app.engine.send_osc(
                     f"/olc/fader/1/{index}/level",
                     round(self.faders[page][index].level * 255),
                 )
@@ -193,7 +254,8 @@ class FaderBank:
 
     def update_levels(self) -> None:
         """Update faders levels for DMX"""
-        faders_levels = App().backend.dmx.levels["faders"]
-        faders_levels.fill(0)
-        for fader in self.active_faders:
-            np.maximum(faders_levels, fader.dmx, out=faders_levels)
+        if self.app and hasattr(self.app, "backend") and self.app.backend:
+            faders_levels = self.app.backend.dmx.levels["faders"]
+            faders_levels.fill(0)
+            for fader in self.active_faders:
+                np.maximum(faders_levels, fader.dmx, out=faders_levels)

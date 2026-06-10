@@ -40,10 +40,13 @@ def test_dmx_send_triggers_callbacks() -> None:
     for universe in UNIVERSES:
         univ_mock = MagicMock()
         univ_mock.array = [0] * 512
+
         def make_apply(m):  # noqa: ANN001,ANN202
             def apply_array(arr):  # noqa: ANN001,ANN202
                 m.array[:] = list(arr)
+
             return apply_array
+
         univ_mock.apply_array.side_effect = make_apply(univ_mock)
         universe_mocks[universe] = univ_mock
 

@@ -168,9 +168,7 @@ class EditCurveWidget(Gtk.DrawingArea):
             y = int(y)
             cr.line_to(
                 (x / 255) * (width - (self.delta * 2)) + self.delta,
-                height
-                - self.delta
-                - ((y / 255) * (height - (self.delta * 2))),
+                height - self.delta - ((y / 255) * (height - (self.delta * 2))),
             )
         cr.stroke()
         return False

@@ -101,5 +101,5 @@ class MidiPitchWheel:
             )
         else:
             number = index + 1
-            fader = self.app_delegate.lightshow.fader_bank.get_fader(number)
+            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(number)
             GLib.idle_add(fader.set_level, val)

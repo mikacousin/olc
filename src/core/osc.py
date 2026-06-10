@@ -20,7 +20,7 @@ import inspect
 import json
 import socket
 import struct
-from typing import Callable, Optional
+from typing import Any, Callable, Optional, cast
 
 
 def _pad(data: bytes) -> bytes:
@@ -85,10 +85,10 @@ def make_method(address: str | None, typetags: str | None = None) -> Callable:
     """
 
     def decorator(func: Callable) -> Callable:
-        if not hasattr(func, "osc_methods"):
-            func.osc_methods = []
-        # Store as attribute on the function object itself
-        func.osc_methods.append((address, typetags))
+        func_any = cast(Any, func)
+        if not hasattr(func_any, "osc_methods"):
+            func_any.osc_methods = []
+        func_any.osc_methods.append((address, typetags))
         return func
 
     return decorator

@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Open Lighting Console
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Headless launcher tool for OpenLightingConsole.
+
+Starts the core application, DMX playback engines, MIDI trigger loops, and OSC
+servers as a background service without any graphical UI dependencies.
+"""
+# pylint: disable=invalid-name
+
+from __future__ import annotations
+
+import sys
+
+# Ensure gi and PyGObject are available for GSettings & MainLoop
+try:
+    import gi
+
+    gi.require_version("Gio", "2.0")
+    from gi.repository import Gio, GLib
+except ImportError as err:
+    print(f"[olc-headless] Error: PyGObject and Gio dependencies are required: {err}")
+    sys.exit(1)
+
+
+sys.path.insert(1, "@pythondir@")
+
+from olc.backends import DMXBackend
+from olc.core.app import CoreApplication
+from olc.core.binding import OscBinding
+from olc.core.engine import CoreEngine
+from olc.core.universe_config import Protocol, UniverseMap
+from olc.define import UNIVERSES
+
+
+def main() -> None:
+    """Run the headless console application."""
+    print("=" * 60)
+    print("       Open Lighting Console - Headless CLI Service       ")
+    print("=" * 60)
+
+    # 1. Initialize settings from Gio schema
+    try:
+        settings = Gio.Settings.new("com.github.mikacousin.olc")
+    except Exception as err:  # pylint: disable=broad-exception-caught
+        print(f"[olc-headless] Warning: Failed to load GSettings schema: {err}")
+        print("[olc-headless] Falling back to default settings.")
+        settings = None
+
+    # 2. Instantiate the core application
+    app = CoreApplication(settings)
+
+    # 3. Create the UniverseMap and CoreEngine
+    universe_map = UniverseMap(max(UNIVERSES) + 1)
+    for u in range(1, 5):
+        universe_map.enable_protocol(u, Protocol.ARTNET)
+        universe_map.enable_protocol(u, Protocol.SACN)
+
+    print("[olc-headless] Starting CoreEngine...")
+    app.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
+    app.backend = DMXBackend(app.lightshow)
+
+    app.engine.start()
+
+    # 4. Start OSC Server and register dynamic trigger routes
+    osc_enabled = settings.get_boolean("osc") if settings else True
+    if osc_enabled and app.engine is not None:
+        host = settings.get_string("osc-host") if settings else "127.0.0.1"
+        client_port = settings.get_int("osc-client-port") if settings else 8000
+        server_port = settings.get_int("osc-server-port") if settings else 9000
+
+        print(f"[olc-headless] Starting OSC server on port {server_port}...")
+        app.engine.start_osc(host, client_port, server_port)
+
+        # Create sample OSC bindings for testing / verification
+        # /olc/playback/go -> executes app.action_registry.execute("playback.go")
+        # /olc/channel/set -> executes
+        # app.action_registry.execute("channel.set_level", channel, level)
+        app.action_registry.register_binding(
+            "playback.go", OscBinding("playback.go", "/olc/playback/go")
+        )
+        app.action_registry.register_binding(
+            "playback.pause", OscBinding("playback.pause", "/olc/playback/pause")
+        )
+        app.action_registry.register_binding(
+            "channel.set_level", OscBinding("channel.set_level", "/olc/channel/set")
+        )
+
+    # 5. Core events monitor (console logger for events)
+    def on_event_emitted(event_name: str, *args: object, **kwargs: object) -> None:
+        print(
+            f"[Event Monitor] Emitted '{event_name}' - Args: {args} - Kwargs: {kwargs}"
+        )
+
+    app.subscribe(
+        "group.created",
+        lambda group: on_event_emitted("group.created", group.index, group.text),
+    )
+    app.subscribe(
+        "group.deleted", lambda group: on_event_emitted("group.deleted", group.index)
+    )
+    app.subscribe(
+        "channel.level_changed",
+        lambda chan, val: on_event_emitted("channel.level_changed", chan, val),
+    )
+    app.subscribe(
+        "playback.go_triggered",
+        lambda state: on_event_emitted("playback.go_triggered", state),
+    )
+
+    print("[olc-headless] Headless console is active. Press Ctrl+C to stop.")
+    print("=" * 60)
+
+    # 6. Keep main loop alive (using GLib.MainLoop to let background threads
+    # dispatch safely)
+    loop = GLib.MainLoop()
+    try:
+        loop.run()
+    except KeyboardInterrupt:
+        print("\n[olc-headless] KeyboardInterrupt received. Shutting down...")
+        app.stop()
+        loop.quit()
+        print("[olc-headless] Core engines successfully stopped.")
+
+
+if __name__ == "__main__":
+    main()

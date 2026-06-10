@@ -25,7 +25,9 @@ from olc.patch import DMXPatch
 from olc.sequence import Sequence
 
 if typing.TYPE_CHECKING:
+    import olc.lightshow
     from gi.repository import Gio
+    from olc.core.app import CoreApplication
     from olc.cue import Cue
     from olc.group import Group
 
@@ -84,7 +86,7 @@ class ShowFile:
 class LightShow(ShowFile):
     """Light show data"""
 
-    app: typing.Any
+    app: CoreApplication | None
     curves: Curves
     main_playback: Sequence
     cues: list
@@ -94,12 +96,14 @@ class LightShow(ShowFile):
     independents: Independents
     patch: DMXPatch
 
-    def __init__(self) -> None:
+    def __init__(self, app: CoreApplication | None = None) -> None:
         super().__init__(None)
+        self.app = app
+        lightshow_type = typing.cast("olc.lightshow.LightShow", self)
         # Curves
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
-        self.main_playback = Sequence(1, text="Main Playback")
+        self.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow_type)
         # List of global memories
         self.cues = []
         # List of chasers
@@ -107,9 +111,9 @@ class LightShow(ShowFile):
         # List of groups
         self.groups = []
         # Faders
-        self.fader_bank = FaderBank()
+        self.fader_bank = FaderBank(lightshow_type)
         # Independents
-        self.independents = Independents()
+        self.independents = Independents(lightshow_type)
         # Patch
         self.patch = DMXPatch(UNIVERSES)
 
@@ -157,6 +161,7 @@ class LightShow(ShowFile):
 
     def reset(self) -> None:
         """Reset all"""
+        lightshow_type = typing.cast("olc.lightshow.LightShow", self)
         del self.main_playback.steps[1:]
         del self.cues[:]
         for chaser in self.chasers:
@@ -167,5 +172,5 @@ class LightShow(ShowFile):
         del self.chasers[:]
         del self.groups[:]
         self.fader_bank.reset_faders()
-        self.independents = Independents()
+        self.independents = Independents(lightshow_type)
         self.patch.patch_empty()

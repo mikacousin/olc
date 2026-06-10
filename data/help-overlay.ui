@@ -103,6 +103,20 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="undo">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;Z</property>
+                <property name="title" translatable="yes" context="shortcut window">Undo</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="redo">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;Z</property>
+                <property name="title" translatable="yes" context="shortcut window">Redo</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="esc">
                 <property name="visible">1</property>
                 <property name="accelerator">Escape</property>
@@ -227,49 +241,49 @@
             <child>
               <object class="GtkShortcutsShortcut" id="time">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;t</property>
+                <property name="accelerator">t</property>
                 <property name="title" translatable="yes" context="shortcut window">Time</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="time_in">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;i</property>
+                <property name="accelerator">i</property>
                 <property name="title" translatable="yes" context="shortcut window">Time In</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="time_out">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;o</property>
+                <property name="accelerator">o</property>
                 <property name="title" translatable="yes" context="shortcut window">Time Out</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="delay">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;d</property>
+                <property name="accelerator">d</property>
                 <property name="title" translatable="yes" context="shortcut window">Delay</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="delay_in">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;k</property>
+                <property name="accelerator">k</property>
                 <property name="title" translatable="yes" context="shortcut window">Delay In</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="delay_out">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;l</property>
+                <property name="accelerator">l</property>
                 <property name="title" translatable="yes" context="shortcut window">Delay Out</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="wait">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;w</property>
+                <property name="accelerator">x</property>
                 <property name="title" translatable="yes" context="shortcut window">Wait</property>
               </object>
             </child>
@@ -282,7 +296,7 @@
             <child>
               <object class="GtkShortcutsShortcut" id="go">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;G</property>
+                <property name="accelerator">space</property>
                 <property name="title" translatable="yes" context="shortcut window">Go</property>
               </object>
             </child>
@@ -296,7 +310,7 @@
             <child>
               <object class="GtkShortcutsShortcut" id="pause">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;Z</property>
+                <property name="accelerator">&lt;ctrl&gt;space</property>
                 <property name="title" translatable="yes" context="shortcut window">Toggle Pause</property>
               </object>
             </child>

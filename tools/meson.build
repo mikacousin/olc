@@ -7,6 +7,14 @@ configure_file(
 )
 
 configure_file(
+  input: 'olc-headless.in',
+  output: 'olc-headless',
+  configuration: conf,
+  install: true,
+  install_dir: get_option('bindir')
+)
+
+configure_file(
   input: 'olc-monitor.in',
   output: 'olc-monitor',
   configuration: conf,

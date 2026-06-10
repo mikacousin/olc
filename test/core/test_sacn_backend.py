@@ -18,6 +18,7 @@ import contextlib
 import socket
 import struct
 import threading
+import typing
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
@@ -400,8 +401,11 @@ class TestSacnNetwork:
                 mock_sock_class.return_value = mock_sock
 
                 # Mock loop datagram endpoint creation
-                loop.create_datagram_endpoint = MagicMock(return_value=asyncio.Future())
-                loop.create_datagram_endpoint.return_value.set_result(
+                mock_loop = typing.cast(typing.Any, loop)
+                mock_loop.create_datagram_endpoint = MagicMock(
+                    return_value=asyncio.Future()
+                )
+                mock_loop.create_datagram_endpoint.return_value.set_result(
                     (MagicMock(), MagicMock())
                 )
 
@@ -714,11 +718,11 @@ class TestSacnManager:
 
             # Mock SacnManager.send_sync
             mock_send_sync = MagicMock()
-            engine._sacn_manager.send_sync = mock_send_sync
+            typing.cast(typing.Any, engine._sacn_manager).send_sync = mock_send_sync
 
             # Mock the sender's send method
             for sender in engine._slots[1].senders:
-                sender.send = MagicMock()
+                typing.cast(typing.Any, sender).send = MagicMock()
 
             # Execute a single tick of the loop
             engine._send_all()

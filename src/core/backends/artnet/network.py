@@ -188,6 +188,4 @@ class Network:  # pylint: disable=too-many-instance-attributes
                         net = ip_network(f"{ip.ip}/{ip.network_prefix}", strict=False)
                         broadcast = net.broadcast_address
                         if broadcast.version == 4:
-                            self.interfaces[str(ip.ip)] = typing.cast(
-                                IPv4Address, broadcast
-                            )
+                            self.interfaces[str(ip.ip)] = broadcast

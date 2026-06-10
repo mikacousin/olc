@@ -25,7 +25,9 @@ if typing.TYPE_CHECKING:
 class ConfirmationDialog(Gtk.Dialog):
     """Confirmation dialog"""
 
-    def __init__(self, text: str, window: Window) -> None:
+    def __init__(self, text: str, window: Window | None) -> None:
+        if window is None:
+            return
         super().__init__(title="Confirmation", transient_for=window)
         self.add_buttons(
             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK

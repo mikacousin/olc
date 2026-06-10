@@ -30,7 +30,7 @@ class Step:
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
-        sequence: int = 0,
+        sequence: float = 0.0,
         cue: Optional[Cue] = None,
         time_in: float = 5.0,
         time_out: float = 5.0,

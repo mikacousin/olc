@@ -31,8 +31,8 @@ class GoWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
-    def __init__(self, midi: Midi | None, *args: object, **kwds: object) -> None:
-        super().__init__(*args, **kwds)
+    def __init__(self, midi: Midi | None) -> None:
+        super().__init__()
         self.midi = midi
 
         self.width = 100

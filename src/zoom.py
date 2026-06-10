@@ -25,13 +25,15 @@ if typing.TYPE_CHECKING:
     from olc.window import Window
 
 
-def zoom(direction: str, window: Window) -> None:
+def zoom(direction: str, window: Window | None) -> None:
     """Zoom in/out widgets
     FlowBox child needs a 'scale' attribute
 
     Args:
         direction: "in" or "out"
     """
+    if window is None:
+        return
     tab = window.get_active_tab()
     children = tab.get_children()
 

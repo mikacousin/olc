@@ -152,13 +152,19 @@ class MidiNotes:
                     fader_index = int(key[6:])
                     page = int((fader_index - 1) / 10)
                     fader = int(fader_index - (page * 10))
-                    if page + 1 == self.app_delegate.lightshow.fader_bank.active_page:
+                    if (
+                        page + 1
+                        == self.app_delegate.core.lightshow.fader_bank.active_page
+                    ):
                         GLib.idle_add(self.flash, msg, fader)
                 elif key[:6] == "fader_":
                     fader_index = int(key[6:])
                     page = int((fader_index - 1) / 10)
                     fader = int(fader_index - (page * 10))
-                    if page + 1 == self.app_delegate.lightshow.fader_bank.active_page:
+                    if (
+                        page + 1
+                        == self.app_delegate.core.lightshow.fader_bank.active_page
+                    ):
                         GLib.idle_add(self.fader, msg, fader)
                 elif key[:5] == "inde_":
                     GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
@@ -203,7 +209,7 @@ class MidiNotes:
                     # Don't delete flash button from other pages
                     index = int(key[6:])
                     page = index // 11 + 1
-                    if page == self.app_delegate.lightshow.fader_bank.active_page:
+                    if page == self.app_delegate.core.lightshow.fader_bank.active_page:
                         self.notes.update({key: [0, -1]})
                 else:
                     # Delete it
@@ -215,7 +221,9 @@ class MidiNotes:
         """Toggle MIDI Led"""
         self.send("pause", 0)
 
-    def _update_inde_button(self, inde: Independent, index: int, level: int) -> None:
+    def _update_inde_button(
+        self, inde: Independent | None, index: int, level: int
+    ) -> None:
         """Update Independent Button level
 
         Args:
@@ -223,6 +231,8 @@ class MidiNotes:
             index: Independent Number
             level: Level (0-255)
         """
+        if inde is None:
+            return
         inde.level = level
         inde.update_dmx()
         velocity = 0 if level == 0 else 127
@@ -238,15 +248,15 @@ class MidiNotes:
         inde = None
         widget = None
         if independent == 7:
-            inde = self.app_delegate.lightshow.independents.independents[6]
+            inde = self.app_delegate.core.lightshow.independents.independents[6]
             if self.app_delegate.virtual_console:
                 widget = self.app_delegate.virtual_console.independent7
         elif independent == 8:
-            inde = self.app_delegate.lightshow.independents.independents[7]
+            inde = self.app_delegate.core.lightshow.independents.independents[7]
             if self.app_delegate.virtual_console:
                 widget = self.app_delegate.virtual_console.independent8
         elif independent == 9:
-            inde = self.app_delegate.lightshow.independents.independents[8]
+            inde = self.app_delegate.core.lightshow.independents.independents[8]
             if self.app_delegate.virtual_console:
                 widget = self.app_delegate.virtual_console.independent9
         if msg.type == "note_off" or (
@@ -275,12 +285,12 @@ class MidiNotes:
 
     def _zoom_plus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
-        if self.zoom:
+        if self.zoom and self.app_delegate.window is not None:
             zoom("in", self.app_delegate.window)
 
     def _zoom_minus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
-        if self.zoom:
+        if self.zoom and self.app_delegate.window is not None:
             zoom("out", self.app_delegate.window)
 
     def fader(self, msg: mido.Message, fader_index: int) -> None:
@@ -292,7 +302,7 @@ class MidiNotes:
         """
         if msg.velocity == 0:
             midi_name = f"fader_{fader_index}"
-            fader = self.app_delegate.lightshow.fader_bank.get_fader(fader_index)
+            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
 
             self.midi.messages.control_change.send(midi_name, round(fader.level * 127))
             self.midi.messages.pitchwheel.send(
@@ -308,11 +318,11 @@ class MidiNotes:
         """
         if msg.velocity == 0:
             self.midi.enqueue(msg)
-            fader = self.app_delegate.lightshow.fader_bank.get_fader(fader_index)
+            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
             fader.flash_off()
         elif msg.velocity == 127:
             self.midi.enqueue(msg)
-            fader = self.app_delegate.lightshow.fader_bank.get_fader(fader_index)
+            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
             fader.flash_on()
 
     def go(self, msg: mido.Message) -> None:
@@ -336,7 +346,7 @@ class MidiNotes:
                     "button-press-event", event
                 )
             else:
-                self.app_delegate.lightshow.main_playback.do_go(None, None)
+                self.app_delegate.core.action_registry.execute("playback.go")
 
     def pause(self, msg: mido.Message) -> None:
         """Pause
@@ -358,13 +368,13 @@ class MidiNotes:
                     "button-press-event", event
                 )
             else:
-                self.app_delegate.lightshow.main_playback.pause(None, None)
+                self.app_delegate.core.action_registry.execute("playback.pause")
 
         if (
-            self.app_delegate.lightshow.main_playback.on_go
-            and self.app_delegate.lightshow.main_playback.thread
+            self.app_delegate.core.lightshow.main_playback.on_go
+            and self.app_delegate.core.lightshow.main_playback.thread
         ):
-            if self.app_delegate.lightshow.main_playback.thread.pause.is_set():
+            if self.app_delegate.core.lightshow.main_playback.thread.pause.is_set():
                 message = mido.Message(
                     "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
                 )
@@ -394,9 +404,7 @@ class MidiNotes:
                     "button-press-event", event
                 )
             else:
-                self.app_delegate.lightshow.main_playback.go_back(
-                    self.app_delegate, None
-                )
+                self.app_delegate.core.lightshow.main_playback.go_back(None, None)
 
     def goto(self, msg: mido.Message) -> None:
         """Go to Cue
@@ -415,10 +423,11 @@ class MidiNotes:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 self.app_delegate.virtual_console.goto.emit("button-press-event", event)
             else:
-                self.app_delegate.lightshow.main_playback.goto(
-                    self.app_delegate.window.commandline.get_string()
-                )
-                self.app_delegate.window.commandline.set_string("")
+                if self.app_delegate.window is not None:
+                    self.app_delegate.core.lightshow.main_playback.goto(
+                        self.app_delegate.window.commandline.get_string()
+                    )
+                    self.app_delegate.window.commandline.set_string("")
 
     def seq_minus(self, msg: mido.Message) -> None:
         """Seq -
@@ -442,8 +451,9 @@ class MidiNotes:
                 )
             else:
                 self.midi.enqueue(msg)
-                self.app_delegate.lightshow.main_playback.sequence_minus()
-                self.app_delegate.window.commandline.set_string("")
+                self.app_delegate.core.lightshow.main_playback.sequence_minus()
+                if self.app_delegate.window is not None:
+                    self.app_delegate.window.commandline.set_string("")
 
     def seq_plus(self, msg: mido.Message) -> None:
         """Seq +
@@ -467,8 +477,9 @@ class MidiNotes:
                 )
             else:
                 self.midi.enqueue(msg)
-                self.app_delegate.lightshow.main_playback.sequence_plus()
-                self.app_delegate.window.commandline.set_string("")
+                self.app_delegate.core.lightshow.main_playback.sequence_plus()
+                if self.app_delegate.window is not None:
+                    self.app_delegate.window.commandline.set_string("")
 
     def output(self, msg: mido.Message) -> None:
         """Output
@@ -508,7 +519,7 @@ class MidiNotes:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 self.app_delegate.virtual_console.seq.emit("button-press-event", event)
             else:
-                self.app_delegate.lightshow.main_playback(None, None)
+                self.app_delegate.sequences(None, None)
 
     def group(self, msg: mido.Message) -> None:
         """Groups
@@ -592,9 +603,12 @@ class MidiNotes:
                     "button-press-event", event
                 )
             else:
-                self.app_delegate.lightshow.fader_bank.active_page += 1
-                if self.app_delegate.lightshow.fader_bank.active_page > MAX_FADER_PAGE:
-                    self.app_delegate.lightshow.fader_bank.active_page = 1
+                self.app_delegate.core.lightshow.fader_bank.active_page += 1
+                if (
+                    self.app_delegate.core.lightshow.fader_bank.active_page
+                    > MAX_FADER_PAGE
+                ):
+                    self.app_delegate.core.lightshow.fader_bank.active_page = 1
                 self.midi.update_faders()
 
     def page_minus(self, msg: mido.Message) -> None:
@@ -616,9 +630,11 @@ class MidiNotes:
                     "button-press-event", event
                 )
             else:
-                self.app_delegate.lightshow.fader_bank.active_page -= 1
-                if self.app_delegate.lightshow.fader_bank.active_page < 1:
-                    self.app_delegate.lightshow.fader_bank.active_page = MAX_FADER_PAGE
+                self.app_delegate.core.lightshow.fader_bank.active_page -= 1
+                if self.app_delegate.core.lightshow.fader_bank.active_page < 1:
+                    self.app_delegate.core.lightshow.fader_bank.active_page = (
+                        MAX_FADER_PAGE
+                    )
                 self.midi.update_faders()
 
     def _execute_midi_action(self, action: str, msg: mido.Message) -> None:

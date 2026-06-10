@@ -30,7 +30,7 @@ class MidiIO:
     """A thin wrapper around mido IO port"""
 
     name: Optional[str]  # The port name
-    port: mido.ports.BaseInput  # The port itself
+    port: mido.ports.IOPort  # The port itself
 
     def __init__(self, midi: Midi, name: Optional[str] = None) -> None:
         self.midi = midi
@@ -61,7 +61,7 @@ class MidiIO:
         if msg.type in ("note_on", "note_off"):
             self.midi.messages.notes.scan(msg)
         elif msg.type == "control_change":
-            self.midi.messages.control_change.scan(self.name, msg)
+            self.midi.messages.control_change.scan(self.name or "", msg)
         elif msg.type == "pitchwheel":
             self.midi.messages.pitchwheel.scan(msg)
 

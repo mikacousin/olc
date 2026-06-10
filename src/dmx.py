@@ -31,6 +31,7 @@ if typing.TYPE_CHECKING:
 
 class DmxLevels(dict):
     """Custom dictionary to automatically convert list values to NumPy arrays."""
+
     def __setitem__(self, key: str, value: object) -> None:
         if isinstance(value, list):
             dtype = np.int16 if key == "user" else np.uint8
@@ -59,11 +60,13 @@ class Dmx:
         self.patch = self.lightshow.patch
         self.main_fader = MainFader()
         # Dimmers levels
-        self.levels = DmxLevels({
-            "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
-            "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
-            "faders": np.zeros(MAX_CHANNELS, dtype=np.uint8),
-        })
+        self.levels = DmxLevels(
+            {
+                "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+                "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
+                "faders": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+            }
+        )
         # DMX values
         self.frame = [np.zeros(512, dtype=np.uint8) for _ in range(NB_UNIVERSES)]
         self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in range(NB_UNIVERSES)]
@@ -110,8 +113,9 @@ class Dmx:
         composite = self.levels["sequence"].copy()
         composite = np.maximum(composite, self.levels["faders"])
         composite = np.maximum(composite, self.lightshow.independents.dmx)
-        user_mask = self.levels["user"] != -1
-        composite[user_mask] = self.levels["user"][user_mask]
+        if not self.lightshow.main_playback.on_go:
+            user_mask = self.levels["user"] != -1
+            composite[user_mask] = self.levels["user"][user_mask]
         return composite
 
     def set_levels(self) -> None:
@@ -165,9 +169,9 @@ class Dmx:
             self.patch.update_numpy_cache_if_dirty()
 
             composite = self.get_all_composite_levels()
-            current_display_levels = np.round(
-                composite * self.main_fader.value
-            ).astype(np.uint8)
+            current_display_levels = np.round(composite * self.main_fader.value).astype(
+                np.uint8
+            )
 
             changed_indices = np.where(
                 (current_display_levels != self._old_channel_levels)
@@ -183,8 +187,9 @@ class Dmx:
 
     def trigger_channels_update(self, changed_channels: list[int]) -> None:
         """Trigger channel widgets updates on the main thread."""
-        if self.lightshow.app is not None and self.lightshow.app.window is not None:
-            live_view = self.lightshow.app.window.live_view
+        app_any = typing.cast(typing.Any, self.lightshow.app)
+        if app_any is not None and app_any.window is not None:
+            live_view = app_any.window.live_view
             for channel in changed_channels:
                 step = self.lightshow.main_playback.steps[
                     self.lightshow.main_playback.position

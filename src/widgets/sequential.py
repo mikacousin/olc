@@ -34,8 +34,10 @@ class SequentialWidget(Gtk.Widget):
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
-        lightshow: LightShow,
+        lightshow: LightShow | None,
     ) -> None:
+        if lightshow is None:
+            return
         self.lightshow = lightshow
         if self.lightshow.main_playback.last > 1:
             position = self.lightshow.main_playback.position
@@ -137,7 +139,7 @@ class SequentialWidget(Gtk.Widget):
         self, cr: cairo.Context, allocation: Gdk.Rectangle
     ) -> None:
         bg_color = self.get_style_context().get_background_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(bg_color))
+        cr.set_source_rgba(bg_color.red, bg_color.green, bg_color.blue, bg_color.alpha)
         cr.paint()
 
         if self.position_a or self.position_b:  # Red filter in fades
@@ -153,7 +155,7 @@ class SequentialWidget(Gtk.Widget):
         self, cr: cairo.Context, allocation: Gdk.Rectangle, inter: float
     ) -> None:
         fg_color = self.get_style_context().get_color(Gtk.StateFlags.NORMAL)
-        cr.set_source_rgba(*list(fg_color))
+        cr.set_source_rgba(fg_color.red, fg_color.green, fg_color.blue, fg_color.alpha)
         cr.set_line_width(1)
 
         cr.move_to(16, 24)
@@ -308,11 +310,11 @@ class SequentialWidget(Gtk.Widget):
         time: float,
     ) -> None:
         position = self.lightshow.main_playback.position
-        old_level = self.lightshow.main_playback.steps[position].cue.channels.get(
-            channel, 0
-        )
-        next_level = self.lightshow.main_playback.steps[position + 1].cue.channels.get(
-            channel, 0
+        step_a = self.lightshow.main_playback.steps[position]
+        old_level = step_a.cue.channels.get(channel, 0) if step_a.cue is not None else 0
+        step_b = self.lightshow.main_playback.steps[position + 1]
+        next_level = (
+            step_b.cue.channels.get(channel, 0) if step_b.cue is not None else 0
         )
 
         pos_time = self.position_a if next_level < old_level else self.position_b

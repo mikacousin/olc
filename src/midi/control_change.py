@@ -175,16 +175,18 @@ class MidiControlChanges:
             channels_view = None
             if tab == self.app_delegate.window.live_view.channels_view:
                 channels_view = tab
-            elif tab in (
+            elif self.app_delegate.tabs is not None and tab in (
                 self.app_delegate.tabs.tabs["groups"],
                 self.app_delegate.tabs.tabs["indes"],
                 self.app_delegate.tabs.tabs["faders"],
                 self.app_delegate.tabs.tabs["memories"],
                 self.app_delegate.tabs.tabs["sequences"],
             ):
-                channels_view = tab.channels_view
-            if channels_view:
-                channels_view.wheel_level(step, direction)
+                channels_view = getattr(tab, "channels_view", None)
+            if channels_view is not None:
+                wheel_level_func = getattr(channels_view, "wheel_level", None)
+                if wheel_level_func is not None:
+                    wheel_level_func(step, direction)
 
     def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
         """Faders
@@ -195,8 +197,8 @@ class MidiControlChanges:
         """
         val = msg.value / 127
         midi_fader = self.midi.faders.faders[fader_index - 1]
-        fader = self.app_delegate.lightshow.fader_bank.get_fader(fader_index)
-        if not midi_fader.is_valid(val, fader.value):
+        fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
+        if not midi_fader.is_valid(val, fader.level):
             return
         if self.app_delegate.virtual_console:
             self.app_delegate.virtual_console.faders[fader_index - 1].set_value(
@@ -252,7 +254,7 @@ class MidiControlChanges:
         self, independent: int, step: int
     ) -> tuple[Independent | None, int]:
         inde = None
-        for inde in self.app_delegate.lightshow.independents.independents:
+        for inde in self.app_delegate.core.lightshow.independents.independents:
             if inde.number == independent:
                 val = inde.level + step
                 if val < 0:

@@ -31,22 +31,22 @@ class ButtonWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_ACTION, None, ())}
 
+    WIDTH = 50
+    HEIGHT = 50
+    RADIUS = 10
+    FONT_SIZE = 10
+
     def __init__(
         self, label: str = "", text: str = "None", midi: Midi | None = None
     ) -> None:
         Gtk.Widget.__init__(self)
         self.midi = midi
 
-        self.width = 50
-        self.height = 50
-        self.radius = 10
-        self.font_size = 10
-
         self.pressed = False
         self.label = label
         self.text = text
 
-        self.set_size_request(self.width, self.height)
+        self.set_size_request(self.WIDTH, self.HEIGHT)
 
         self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
 
@@ -82,20 +82,20 @@ class ButtonWidget(Gtk.Widget):
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
-        area = (1, self.width - 2, 1, self.height - 2)
-        rounded_rectangle_fill(cr, area, self.radius)
+        area = (1, self.WIDTH - 2, 1, self.HEIGHT - 2)
+        rounded_rectangle_fill(cr, area, self.RADIUS)
         cr.set_source_rgb(0.1, 0.1, 0.1)
-        rounded_rectangle(cr, area, self.radius)
+        rounded_rectangle(cr, area, self.RADIUS)
         # Draw Text
         if self.text == "None":
             cr.set_source_rgb(0.5, 0.5, 0.5)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-        cr.set_font_size(self.font_size)
+        cr.set_font_size(self.FONT_SIZE)
         (_x, _y, w, h, _dx, _dy) = cr.text_extents(self.label)
         cr.move_to(
-            self.width / 2 - w / 2, self.height / 2 - (h - (self.radius * 2)) / 2
+            self.WIDTH / 2 - w / 2, self.HEIGHT / 2 - (h - (self.RADIUS * 2)) / 2
         )
         cr.show_text(self.label)
         return False

@@ -20,3 +20,4 @@ pyproject.toml
 /doc
 /CLAUDE.md
 /.rtk
+/stubs

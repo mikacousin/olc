@@ -129,6 +129,7 @@ class TestDMXLoop:
 
     def test_late_count(self) -> None:
         """Test that slow send_fn increments late_count."""
+
         def slow_send() -> None:
             # Target period = 10ms (100Hz).
             # We simulate a network send that drags on (30ms).

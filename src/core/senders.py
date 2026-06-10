@@ -295,6 +295,8 @@ class SACNSender:
         """Close the underlying UDP sockets."""
         for sock in self._socks:
             sock.close()
+
+
 class DmxUsbProSender:
     """
     Sends DMX universe data to an ENTTEC DMX USB PRO widget via a serial port
@@ -313,7 +315,7 @@ class DmxUsbProSender:
             # ENTTEC Packet format:
             # 0x7E, Label 6, Length LSB, Length MSB, 0x00 (start code), DMX data, 0xE7
             header = struct.pack("<BBH", 0x7E, 6, payload_len)
-            packet = header + b"\x00" + dmx_data + b"\xE7"
+            packet = header + b"\x00" + dmx_data + b"\xe7"
 
             self._manager.write_packet(packet)
         except Exception as e:  # pylint: disable=broad-exception-caught

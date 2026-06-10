@@ -227,12 +227,12 @@ class PatchByOutputs:
             self.outputs = []
             self.last = 0
         if self.app.engine is not None:
-            self.app.engine.send_osc(
-                "/olc/patch/selected_outputs", self.get_selected()
-            )
-        if self.app.tabs.tabs["patch_outputs"]:
-            self.app.tabs.tabs["patch_outputs"].select_outputs()
-        self.app.window.commandline.set_string("")
+            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
+        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
+        if tab is not None:
+            typing.cast(typing.Any, tab).select_outputs()
+        if self.app.window is not None:
+            self.app.window.commandline.set_string("")
 
     def thru(self) -> None:
         """Thru output"""
@@ -247,12 +247,12 @@ class PatchByOutputs:
                     self.outputs.append(out)
             self.last = output_index
         if self.app.engine is not None:
-            self.app.engine.send_osc(
-                "/olc/patch/selected_outputs", self.get_selected()
-            )
-        if self.app.tabs.tabs["patch_outputs"]:
-            self.app.tabs.tabs["patch_outputs"].select_outputs()
-        self.app.window.commandline.set_string("")
+            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
+        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
+        if tab is not None:
+            typing.cast(typing.Any, tab).select_outputs()
+        if self.app.window is not None:
+            self.app.window.commandline.set_string("")
 
     def add_output(self) -> None:
         """Add an output to selection"""
@@ -262,12 +262,12 @@ class PatchByOutputs:
             self.outputs.append(output_index)
             self.last = output_index
         if self.app.engine is not None:
-            self.app.engine.send_osc(
-                "/olc/patch/selected_outputs", self.get_selected()
-            )
-        if self.app.tabs.tabs["patch_outputs"]:
-            self.app.tabs.tabs["patch_outputs"].select_outputs()
-        self.app.window.commandline.set_string("")
+            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
+        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
+        if tab is not None:
+            typing.cast(typing.Any, tab).select_outputs()
+        if self.app.window is not None:
+            self.app.window.commandline.set_string("")
 
     def del_output(self) -> None:
         """Remove an output to selection"""
@@ -277,12 +277,12 @@ class PatchByOutputs:
             self.outputs.remove(output_index)
             self.last = output_index
         if self.app.engine is not None:
-            self.app.engine.send_osc(
-                "/olc/patch/selected_outputs", self.get_selected()
-            )
-        if self.app.tabs.tabs["patch_outputs"]:
-            self.app.tabs.tabs["patch_outputs"].select_outputs()
-        self.app.window.commandline.set_string("")
+            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
+        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
+        if tab is not None:
+            typing.cast(typing.Any, tab).select_outputs()
+        if self.app.window is not None:
+            self.app.window.commandline.set_string("")
 
     def patch_channel(self, several: bool) -> None:
         """Patch
@@ -295,22 +295,24 @@ class PatchByOutputs:
         if channel is None:
             return
         self.__for_each_output(channel, several)
-        self.app.window.live_view.channels_view.update()
+        if self.app.window is not None:
+            self.app.window.live_view.channels_view.update()
         if self.app.engine is not None:
-            self.app.engine.send_osc(
-                "/olc/patch/selected_outputs", self.get_selected()
-            )
-        if self.app.tabs.tabs["patch_outputs"]:
-            self.app.tabs.tabs["patch_outputs"].refresh()
+            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
+        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
+        if tab is not None:
+            typing.cast(typing.Any, tab).refresh()
             # Select next output
             output_index = self.last
             if output_index < NB_UNIVERSES * 512:
                 output_index += 1
             output, universe = self.get_output_universe(output_index)
-            self.app.window.commandline.set_string(f"{output}.{universe}")
+            if self.app.window is not None:
+                self.app.window.commandline.set_string(f"{output}.{universe}")
             self.select_output()
-        self.app.lightshow.set_modified()
-        self.app.window.commandline.set_string("")
+        self.app.core.lightshow.set_modified()
+        if self.app.window is not None:
+            self.app.window.commandline.set_string("")
 
     def __for_each_output(self, channel: int, several: bool) -> None:
         for i, output_index in enumerate(self.outputs):
@@ -336,14 +338,19 @@ class PatchByOutputs:
                         # Patch Channel : same channel for every outputs
                         self.patch.add_output(channel, output, univ)
                 # Refresh LiveView
-                if 0 < channel <= MAX_CHANNELS:
+                if (
+                    0 < channel <= MAX_CHANNELS
+                    and self.app.window is not None
+                    and self.app.backend is not None
+                ):
                     index = UNIVERSES.index(univ)
                     level = self.app.backend.dmx.frame[index][output - 1]
                     widget = self.app.window.live_view.channels_view.get_channel_widget(
                         channel
                     )
-                    widget.level = level
-                    widget.queue_draw()
+                    if widget is not None:
+                        widget.level = level
+                        widget.queue_draw()
 
     def __unpatch(self, output: int, univ: int) -> None:
         if univ in self.patch.outputs and output in self.patch.outputs[univ]:
@@ -381,6 +388,8 @@ class PatchByOutputs:
     def _string_to_output(self) -> tuple[Optional[int], Optional[int]]:
         output = None
         universe = None
+        if self.app.window is None:
+            return (None, None)
         keystring = self.app.window.commandline.get_string()
         if not keystring:
             keystring = "0"
@@ -396,6 +405,8 @@ class PatchByOutputs:
         return (output, universe)
 
     def _string_to_channel(self) -> Optional[int]:
+        if self.app.window is None:
+            return None
         keystring = self.app.window.commandline.get_string()
         if not keystring:
             keystring = "0"

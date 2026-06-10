@@ -12,10 +12,19 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+
 import numpy as np
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS
+
+if typing.TYPE_CHECKING:
+    from olc.core.app import CoreApplication
+    from olc.lightshow import LightShow
 
 
+# pylint: disable=too-many-instance-attributes
 class Independent:
     """Independent object
     Control channels excluded from recording
@@ -30,14 +39,17 @@ class Independent:
         dmx (array): DMX levels
     """
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         number: int,
+        independents: Independents,
         text: str = "",
         levels: dict[int, int] | None = None,
         inde_type: str = "knob",
     ) -> None:
         self.number = number
+        self.independents = independents
         self.level = 0
         self.channels = set()
         self.levels = levels or {}
@@ -46,6 +58,11 @@ class Independent:
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
 
         self.update_channels()
+
+    @property
+    def app(self) -> CoreApplication | None:
+        """Get parent application instance safely."""
+        return self.independents.app
 
     def update_channels(self) -> None:
         """Update set of channels"""
@@ -69,9 +86,10 @@ class Independent:
             value: New level
         """
         # Send MIDI message to knob LEDs
-        App().midi.messages.control_change.send(
-            f"inde_led_{self.number}", 32 + int((value / 255) * 12)
-        )
+        if self.app and hasattr(self.app, "midi") and self.app.midi:
+            self.app.midi.messages.control_change.send(
+                f"inde_led_{self.number}", 32 + int((value / 255) * 12)
+            )
         self.level = value
         self.update_dmx()
 
@@ -80,8 +98,9 @@ class Independent:
         for channel, level in self.levels.items():
             dmx_lvl = round(level * (self.level / 255))
             self.dmx[channel - 1] = dmx_lvl
-        App().lightshow.independents.update_dmx()
-        App().backend.dmx.set_levels()
+        self.independents.update_dmx()
+        if self.app and hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()
 
 
 class Independents:
@@ -92,16 +111,22 @@ class Independents:
         channels (set): list of channels present in independents
     """
 
-    def __init__(self) -> None:
-        self.independents = []
+    def __init__(self, lightshow: typing.Optional[LightShow] = None) -> None:
+        self.lightshow = lightshow
+        self.independents: list[Independent] = []
         self.channels = set()
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
 
         # Create 9 Independents
         for i in range(6):
-            self.add(Independent(i + 1))
+            self.add(Independent(i + 1, self))
         for i in range(6, 9):
-            self.add(Independent(i + 1, inde_type="button"))
+            self.add(Independent(i + 1, self, inde_type="button"))
+
+    @property
+    def app(self) -> CoreApplication | None:
+        """Get parent application instance safely."""
+        return self.lightshow.app if self.lightshow else None
 
     def update_dmx(self) -> None:
         """Update DMX levels"""

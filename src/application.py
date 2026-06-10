@@ -14,8 +14,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import pathlib
 import sys
+import typing
 from gettext import gettext as _
 from typing import Optional
+
+if typing.TYPE_CHECKING:
+    import olc.application
 
 import gi
 
@@ -24,6 +28,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 from olc.backends import DMXBackend  # noqa: E402
 from olc.channel_time import ChanneltimeTab  # noqa: E402
+from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends.osc.delegate import GUIOSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
@@ -37,9 +42,9 @@ from olc.files.export_file import ExportFile  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
+from olc.gui_event_bridge import GuiEventBridge  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
-from olc.lightshow import LightShow  # noqa: E402
 from olc.midi import Midi  # noqa: E402
 from olc.patch import PatchByOutputs  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
@@ -62,16 +67,20 @@ class Application(Gtk.Application):
     midi: Midi | None
     version: str
     tabs: Tabs | None
+    window: Window | None
+    about_window: Gtk.AboutDialog | None
+    virtual_console: VirtualConsoleWindow | None
+    shortcuts: Gtk.Window | None
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
         self.backend = None
         self.engine = None
         self.version = version
         super().__init__(
-            *args,
+            *args,  # ty: ignore[invalid-argument-type]
             application_id="com.github.mikacousin.olc",
             flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
-            **kwargs,
+            **kwargs,  # ty: ignore[invalid-argument-type]
         )
         GLib.set_application_name("OpenLightingConsole")
         GLib.set_prgname("olc")
@@ -114,19 +123,23 @@ class Application(Gtk.Application):
         self.midi = None
         self.osc_delegate = None
 
-        # Light show initialization
-        self.lightshow = LightShow()
-        self.lightshow.app = self
+        # Core application and Light show initialization
+        app_type = typing.cast("olc.application.Application", self)
+        self.core = CoreApplication(self.settings, self)
 
-        self.patch_by_outputs = PatchByOutputs(self, self.lightshow.patch)
+        # Setup GUI-safe event callbacks from Core via the event bridge
+        self.event_bridge = GuiEventBridge(app_type)
+
+        self.patch_by_outputs = PatchByOutputs(app_type, self.core.lightshow.patch)
 
     def do_activate(self) -> None:
+        app_type = typing.cast("olc.application.Application", self)
         # Create Main Window
         self.tabs = Tabs(None)
-        self.window = Window(self.tabs)
+        self.window = Window(app_type, self.tabs)
         self.tabs.window = self.window
         self.window.show_all()
-        self.lightshow.on_modified_changed = self.window.header.set_title
+        self.core.lightshow.on_modified_changed = self.window.header.set_title
         # No selected channel on startup
         self.window.live_view.channels_view.flowbox.unselect_all()
 
@@ -136,33 +149,41 @@ class Application(Gtk.Application):
         # Add global shortcuts
         # Go
         action = Gio.SimpleAction.new("go", None)
-        action.connect("activate", self.lightshow.main_playback.do_go)
+        action.connect(
+            "activate",
+            lambda *_: self.core.action_registry.execute("playback.go"),
+        )
         self.add_action(action)
-        self.set_accels_for_action("app.go", ["<Control>g"])
+        self.set_accels_for_action("app.go", ["space"])
         # Go Back
         action = Gio.SimpleAction.new("go_back", None)
-        action.connect("activate", self.lightshow.main_playback.go_back)
+        action.connect("activate", self.core.lightshow.main_playback.go_back)
         self.add_action(action)
         self.set_accels_for_action("app.go_back", ["<Control>b"])
         # Pause
         action = Gio.SimpleAction.new("pause", None)
-        action.connect("activate", self.lightshow.main_playback.pause)
+        action.connect(
+            "activate",
+            lambda *_: self.core.action_registry.execute("playback.pause"),
+        )
         self.add_action(action)
-        self.set_accels_for_action("app.pause", ["<Control>z"])
+        self.set_accels_for_action("app.pause", ["<Control>space"])
         # Full screen
         action = Gio.SimpleAction.new("fullscreen", None)
         action.connect("activate", self.window.fullscreen_toggle)
         self.add_action(action)
 
         # For Manual crossfade
-        self.crossfade = CrossFade(self)
+        self.crossfade = CrossFade(app_type)
 
         # Open MIDI Inputs and Outputs
         def refresh_settings() -> None:
             if self.tabs and self.tabs.tabs.get("settings"):
-                self.tabs.tabs["settings"].refresh()
+                settings_tab = typing.cast(SettingsTab, self.tabs.tabs["settings"])
+                settings_tab.refresh()
 
-        self.midi = Midi(self, refresh_settings)
+        self.midi = Midi(app_type, refresh_settings)
+        self.core.midi = self.midi
         self.midi.messages.lcd.show_faders()
 
     def do_startup(self) -> None:
@@ -184,8 +205,11 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.about", ["F3"])
         self.set_accels_for_action("app.fullscreen", ["F11"])
+        self.set_accels_for_action("app.undo", ["<Control>z"])
+        self.set_accels_for_action("app.redo", ["<Shift><Control>z", "<Control>y"])
 
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
+        app_type = typing.cast("olc.application.Application", self)
         Gtk.Application.do_command_line(self, command_line)
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
@@ -212,10 +236,12 @@ class Application(Gtk.Application):
                 response = dialog.run()
                 dialog.destroy()
                 if response == Gtk.ResponseType.OK:
-                    self.lightshow.file = command_line.create_file_for_arg(filename)
+                    self.core.lightshow.file = command_line.create_file_for_arg(
+                        filename
+                    )
                     imported = ImportFile(
-                        self.lightshow,
-                        self.lightshow.file,
+                        self.core.lightshow,
+                        self.core.lightshow.file,
                         FileType.OLC,
                         window=self.window,
                         midi=self.midi,
@@ -232,8 +258,10 @@ class Application(Gtk.Application):
             universe_map.enable_protocol(u, Protocol.SACN)
 
         self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
+        self.core.engine = self.engine
 
-        self.backend = DMXBackend(self.lightshow)
+        self.backend = DMXBackend(self.core.lightshow)
+        self.core.backend = self.backend
 
         self.engine.start()
 
@@ -243,7 +271,7 @@ class Application(Gtk.Application):
                 client_port=self.settings.get_int("osc-client-port"),
                 server_port=self.settings.get_int("osc-server-port"),
             )
-            self.osc_delegate = GUIOSCDelegate(self)
+            self.osc_delegate = GUIOSCDelegate(app_type)
             self.engine.register_osc_delegate(self.osc_delegate)
 
         def on_patch_empty_cb() -> None:
@@ -254,18 +282,18 @@ class Application(Gtk.Application):
             if self.backend:
                 self.backend.dmx.frame[index][output] = 0
 
-        self.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
-        self.lightshow.patch.on_unpatch_cb = on_unpatch_cb
+        self.core.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
+        self.core.lightshow.patch.on_unpatch_cb = on_unpatch_cb
 
         self.backend.dmx.add_notification_callback(self.on_backend_notification)
         # Activate olc
         self.activate()
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
-            self.lightshow.file = command_line.create_file_for_arg(arguments[1])
+            self.core.lightshow.file = command_line.create_file_for_arg(arguments[1])
             imported = ImportFile(
-                self.lightshow,
-                self.lightshow.file,
+                self.core.lightshow,
+                self.core.lightshow.file,
                 FileType.OLC,
                 window=self.window,
                 midi=self.midi,
@@ -282,7 +310,7 @@ class Application(Gtk.Application):
         notification.set_body(body)
         self.send_notification(None, notification)
 
-    def setup_app_menu(self) -> None:
+    def setup_app_menu(self) -> Gio.MenuModel:
         """Setup application menu
 
         Returns:
@@ -291,6 +319,9 @@ class Application(Gtk.Application):
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
         menu = builder.get_object("app-menu")
+        assert menu is not None, (
+            "Required 'app-menu' object not found in builder resource"
+        )
         actions = {
             "new": "_new",
             "open": "_open",
@@ -311,19 +342,31 @@ class Application(Gtk.Application):
             "settings": "_settings",
             "show-help-overlay": "_shortcuts",
             "about": "_about",
+            "undo": "_undo",
+            "redo": "_redo",
             "quit": "exit",
         }
         for name, func in actions.items():
-            function = getattr(self, func, None)
-            action = Gio.SimpleAction.new(name, None)
-            action.connect("activate", function)
-            self.add_action(action)
-        return menu
+            if function := getattr(self, func, None):
+                action = Gio.SimpleAction.new(name, None)
+                action.connect("activate", function)
+                self.add_action(action)
+        return typing.cast(Gio.MenuModel, menu)
+
+    def _undo(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
+        """Undo last action."""
+        self.core.action_registry.execute("edit.undo")
+
+    def _redo(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
+        """Redo last undone action."""
+        self.core.action_registry.execute("edit.redo")
 
     def _new(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """New show"""
+        assert self.window is not None
+        assert self.tabs is not None
         # Stop Chasers
-        for chaser in self.lightshow.chasers:
+        for chaser in self.core.lightshow.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False
                 chaser.thread.stop()
@@ -334,21 +377,23 @@ class Application(Gtk.Application):
             self.backend.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
-        self.lightshow.patch.patch_1on1()
+        self.core.lightshow.patch.patch_1on1()
         # Reset Main Playback
-        self.lightshow.main_playback = Sequence(1, "Main Playback")
-        self.lightshow.main_playback.position = 0
-        self.lightshow.main_playback.update_channels()
+        self.core.lightshow.main_playback = Sequence(1, "Main Playback")
+        self.core.lightshow.main_playback.position = 0
+        self.core.lightshow.main_playback.update_channels()
         # Delete cues, groups, chasers, faders
-        del self.lightshow.cues[:]
-        del self.lightshow.groups[:]
-        del self.lightshow.chasers[:]
-        self.lightshow.fader_bank.reset_faders()
-        self.lightshow.independents = Independents()
+        del self.core.lightshow.cues[:]
+        del self.core.lightshow.groups[:]
+        del self.core.lightshow.chasers[:]
+        self.core.lightshow.fader_bank.reset_faders()
+        self.core.lightshow.independents = Independents()
         # Redraw Sequential Window
         self.window.playback.update_sequence_display()
-        self.window.playback.update_xfade_display(self.lightshow.main_playback.position)
-        self.window.update_channels_display(self.lightshow.main_playback.position)
+        self.window.playback.update_xfade_display(
+            self.core.lightshow.main_playback.position
+        )
+        self.window.update_channels_display(self.core.lightshow.main_playback.position)
 
         # Redraw all open tabs
         self.tabs.refresh_all()
@@ -385,11 +430,11 @@ class Application(Gtk.Application):
         response = open_dialog.run()
 
         if response == Gtk.ResponseType.ACCEPT:
-            self.lightshow.file = open_dialog.get_file()
+            self.core.lightshow.file = open_dialog.get_file()
             # Load file
             imported = ImportFile(
-                self.lightshow,
-                self.lightshow.file,
+                self.core.lightshow,
+                self.core.lightshow.file,
                 FileType.OLC,
                 window=self.window,
                 midi=self.midi,
@@ -435,6 +480,8 @@ class Application(Gtk.Application):
 
         if response == Gtk.ResponseType.ACCEPT:
             filename = open_dialog.get_filename()
+            if filename is None:
+                return
             extension = "".join(
                 [s for s in pathlib.Path(filename).suffixes if " " not in s]
             ).lower()
@@ -447,7 +494,7 @@ class Application(Gtk.Application):
                 open_dialog.destroy()
                 return
             imported = ImportFile(
-                self.lightshow,
+                self.core.lightshow,
                 open_dialog.get_file(),
                 file_type,
                 window=self.window,
@@ -475,7 +522,9 @@ class Application(Gtk.Application):
         response = dialog.run()
 
         if response == Gtk.ResponseType.ACCEPT:
-            exported = ExportFile(dialog.get_file(), FileType.ASCII, self.lightshow)
+            exported = ExportFile(
+                dialog.get_file(), FileType.ASCII, self.core.lightshow
+            )
             exported.write()
         dialog.destroy()
 
@@ -483,16 +532,19 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Save"""
-        if self.lightshow.file is not None:
+        if self.core.lightshow.file is not None:
             exported = ExportFile(
-                self.lightshow.file, FileType.OLC, self.lightshow, midi=self.midi
+                self.core.lightshow.file,
+                FileType.OLC,
+                self.core.lightshow,
+                midi=self.midi,
             )
             exported.write()
         else:
             self._saveas(_action, _parameter)
 
     def _saveas(
-        self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Save as"""
         save_dialog = Gtk.FileChooserNative.new(
@@ -508,10 +560,11 @@ class Application(Gtk.Application):
         # dialog always on top of the main window
         save_dialog.set_modal(True)
         # if file has already been saved
-        if self.lightshow.file is not None:
+        if self.core.lightshow.file is not None:
             try:
-                # set self.lightshow.file as the current filename for the file chooser
-                save_dialog.set_file(self.lightshow.file)
+                # set self.core.lightshow.file as the current filename for the file
+                # chooser
+                save_dialog.set_file(self.core.lightshow.file)
             except GObject.GError as e:
                 print(f"Error: {e}")
         else:
@@ -521,15 +574,18 @@ class Application(Gtk.Application):
 
         # if response is "ACCEPT" (the button "Save" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
-            # self.lightshow.file is the currently selected file
-            self.lightshow.file = save_dialog.get_file()
+            # self.core.lightshow.file is the currently selected file
+            self.core.lightshow.file = save_dialog.get_file()
             # save to file
             exported = ExportFile(
-                self.lightshow.file, FileType.OLC, self.lightshow, midi=self.midi
+                self.core.lightshow.file,
+                FileType.OLC,
+                self.core.lightshow,
+                midi=self.midi,
             )
             exported.write()
             # Set Main Window's title with file name
-            self.lightshow.set_not_modified()
+            self.core.lightshow.set_not_modified()
         # destroy the FileChooserNative
         save_dialog.destroy()
 
@@ -542,8 +598,8 @@ class Application(Gtk.Application):
                 "patch_outputs",
                 PatchOutputsTab,
                 "Patch Outputs",
-                self.lightshow.patch,
-                self.lightshow,
+                self.core.lightshow.patch,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -560,8 +616,8 @@ class Application(Gtk.Application):
                 "patch_channels",
                 PatchChannelsTab,
                 "Patch Channels",
-                self.lightshow.patch,
-                self.lightshow,
+                self.core.lightshow.patch,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -577,7 +633,7 @@ class Application(Gtk.Application):
                 "track_channels",
                 TrackChannelsTab,
                 "Track Channels",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -592,7 +648,7 @@ class Application(Gtk.Application):
                 "memories",
                 CuesEditionTab,
                 "Memories",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -607,7 +663,7 @@ class Application(Gtk.Application):
                 "groups",
                 GroupTab,
                 "Groups",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -622,7 +678,7 @@ class Application(Gtk.Application):
                 "sequences",
                 SequenceTab,
                 "Sequences",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -642,7 +698,7 @@ class Application(Gtk.Application):
                 "Channel Time",
                 sequence,
                 step,
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -657,7 +713,7 @@ class Application(Gtk.Application):
                 "curves",
                 CurvesTab,
                 "Curves",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -672,7 +728,7 @@ class Application(Gtk.Application):
                 "faders",
                 FaderTab,
                 "Faders",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -687,7 +743,7 @@ class Application(Gtk.Application):
                 "indes",
                 IndependentsTab,
                 "Independents",
-                self.lightshow,
+                self.core.lightshow,
                 self.tabs,
                 self.window,
                 self.settings,
@@ -698,7 +754,9 @@ class Application(Gtk.Application):
     ) -> None:
         """Virtual Console Window"""
         if not self.virtual_console:
-            self.virtual_console = VirtualConsoleWindow(self)
+            self.virtual_console = VirtualConsoleWindow(
+                typing.cast("olc.application.Application", self)
+            )
             self.virtual_console.show_all()
             self.add_window(self.virtual_console)
 
@@ -720,9 +778,10 @@ class Application(Gtk.Application):
         """Create Shortcuts Window"""
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/gtk/help-overlay.ui")
-        self.shortcuts = builder.get_object("help_overlay")
-        self.shortcuts.set_transient_for(self.window)
-        self.shortcuts.show()
+        self.shortcuts = typing.cast(Gtk.Window, builder.get_object("help_overlay"))
+        if self.shortcuts:
+            self.shortcuts.set_transient_for(self.window)
+            self.shortcuts.show()
 
     def _about(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
@@ -734,7 +793,9 @@ class Application(Gtk.Application):
         if not self.about_window:
             builder = Gtk.Builder()
             builder.add_from_resource("/com/github/mikacousin/olc/AboutDialog.ui")
-            self.about_window = builder.get_object("about_dialog")
+            self.about_window = typing.cast(
+                Gtk.AboutDialog, builder.get_object("about_dialog")
+            )
             if self.about_window:
                 self.about_window.set_transient_for(self.window)
                 self.about_window.connect("response", self._about_response)
@@ -760,7 +821,7 @@ class Application(Gtk.Application):
         Returns:
             True to not propagate signal
         """
-        if self.lightshow.modified:
+        if self.core.lightshow.modified and self.window is not None:
             dialog = DialogQuit(self.window)
             response = dialog.run()
             dialog.destroy()
@@ -768,8 +829,8 @@ class Application(Gtk.Application):
                 return True
             if response == 1:
                 self._save(None, None)
-        self.lightshow.main_playback.stop()
-        for chaser in self.lightshow.chasers:
+        self.core.lightshow.main_playback.stop()
+        for chaser in self.core.lightshow.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False
                 chaser.thread.stop()

@@ -33,6 +33,7 @@ olc_sources = [
   'fader_edition.py',
   'fader_bank.py',
   'group.py',
+  'gui_event_bridge.py',
   'independent.py',
   'independents_edition.py',
   'lightshow.py',
@@ -59,6 +60,11 @@ install_data(
   install_dir: join_paths(python_dir, 'olc')
 )
 
+
+install_subdir(
+  'actions',
+  install_dir: join_paths(python_dir, 'olc')
+)
 
 install_subdir(
   'core',

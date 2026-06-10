@@ -20,32 +20,15 @@ import typing
 from enum import IntEnum
 
 import numpy as np
-from gi.repository import GLib
-from olc.define import MAX_CHANNELS, App
+from olc.define import MAX_CHANNELS
 
 if typing.TYPE_CHECKING:
+    from olc.core.app import CoreApplication
     from olc.cue import Cue
     from olc.fader_bank import FaderBank
     from olc.group import Group
     from olc.main_fader import MainFader
     from olc.sequence import Sequence
-
-
-def update_channel_display(channel: int) -> None:
-    """Update channel levels display in LiveView
-
-    Args:
-        channel: Channel number (from 1 to MAX_CHANNELS)
-    """
-    seq_level = (
-        App()
-        .lightshow.main_playback.steps[App().lightshow.main_playback.position]
-        .cue.channels.get(channel, 0)
-    )
-    seq_next_level = App().lightshow.main_playback.get_next_channel_level(
-        channel, seq_level
-    )
-    GLib.idle_add(App().window.live_view.update_channel_widget, channel, seq_next_level)
 
 
 class FaderType(IntEnum):
@@ -77,6 +60,11 @@ class Fader:
         self.old_level = 0.0
         self.contents = None
 
+    @property
+    def app(self) -> CoreApplication | None:
+        """Get parent application instance safely."""
+        return self.fader_bank.app
+
     def set_level(self, level: float) -> None:
         """Set fader level
 
@@ -88,27 +76,40 @@ class Fader:
         self.level_changed()
         # Send MIDI message to faders
         midi_name = f"fader_{self.index}"
-        App().midi.messages.control_change.send(midi_name, round(level * 127))
-        App().midi.messages.pitchwheel.send(midi_name, round(level * 16383) - 8192)
+        if self.app and hasattr(self.app, "midi") and self.app.midi:
+            self.app.midi.messages.control_change.send(midi_name, round(level * 127))
+            self.app.midi.messages.pitchwheel.send(
+                midi_name, round(level * 16383) - 8192
+            )
         # OSC
-        if App().engine is not None:
+        if self.app and hasattr(self.app, "engine") and self.app.engine is not None:
             page = 1
             index = self.index
             path = f"/olc/fader/{page}/{index}/level"
-            App().engine.send_osc(path, round(level * 255))
+            self.app.engine.send_osc(path, round(level * 255))
 
     def flash_on(self) -> None:
         """Flash fader at full"""
         self.old_level = self.level
         self.set_level(1.0)
-        if App().virtual_console:
-            App().virtual_console.faders[self.index - 1].set_value(255)
+        app_any = typing.cast(typing.Any, self.app)
+        if (
+            app_any
+            and hasattr(app_any, "virtual_console")
+            and app_any.virtual_console is not None
+        ):
+            app_any.virtual_console.faders[self.index - 1].set_value(255)
 
     def flash_off(self) -> None:
         """Stop flash"""
         self.set_level(self.old_level)
-        if App().virtual_console:
-            App().virtual_console.faders[self.index - 1].set_value(
+        app_any = typing.cast(typing.Any, self.app)
+        if (
+            app_any
+            and hasattr(app_any, "virtual_console")
+            and app_any.virtual_console is not None
+        ):
+            app_any.virtual_console.faders[self.index - 1].set_value(
                 round(self.old_level * 255)
             )
 
@@ -119,29 +120,38 @@ class Fader:
 class FaderMain(Fader):
     """Fader with MainFader"""
 
-    contents: MainFader
+    contents: MainFader | None
 
     def __init__(self, index: int, fader_bank: FaderBank) -> None:
         super().__init__(index, fader_bank)
-        self.contents = App().backend.dmx.main_fader
+        if self.app and hasattr(self.app, "backend") and self.app.backend:
+            self.contents = self.app.backend.dmx.main_fader
+        else:
+            self.contents = None
         self.text = "Main Fader"
-        self.level = self.contents.get_level()
+        self.level = self.contents.get_level() if self.contents else 0.0
 
     def level_changed(self) -> None:
         """Fader level has changed"""
-        self.contents.set_level(self.level)
-        App().window.main_fader.queue_draw()
-        App().backend.dmx.set_levels()
+        if self.contents:
+            self.contents.set_level(self.level)
+        if self.app and hasattr(self.app, "window") and self.app.window is not None:
+            app_any = typing.cast(typing.Any, self.app)
+            app_any.window.main_fader.queue_draw()
+        if self.app and hasattr(self.app, "backend") and self.app.backend:
+            self.app.backend.dmx.set_levels()
 
 
 class FaderGroup(Fader):
     """Fader with group"""
 
-    contents: Group
+    contents: Group | None
     dmx: np.ndarray
     channels: set
 
-    def __init__(self, index: int, fader_bank: FaderBank, group: Group = None) -> None:
+    def __init__(
+        self, index: int, fader_bank: FaderBank, group: Group | None = None
+    ) -> None:
         super().__init__(index, fader_bank)
         self.contents = group
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
@@ -154,6 +164,8 @@ class FaderGroup(Fader):
     def update_channels(self) -> None:
         """Update channels used by fader"""
         self.channels.clear()
+        if self.contents is None:
+            return
         for channel in self.contents.channels:
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
@@ -175,17 +187,20 @@ class FaderGroup(Fader):
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels()
+            if self.app and hasattr(self.app, "backend") and self.app.backend:
+                self.app.backend.dmx.set_levels()
 
 
 class FaderPreset(Fader):
     """Fader with preset"""
 
-    contents: Cue
+    contents: Cue | None
     dmx: np.ndarray
     channels: set
 
-    def __init__(self, index: int, fader_bank: FaderBank, cue: Cue = None) -> None:
+    def __init__(
+        self, index: int, fader_bank: FaderBank, cue: Cue | None = None
+    ) -> None:
         super().__init__(index, fader_bank)
         self.contents = cue
         self.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
@@ -198,6 +213,8 @@ class FaderPreset(Fader):
     def update_channels(self) -> None:
         """Update channels used by fader"""
         self.channels.clear()
+        if self.contents is None:
+            return
         for channel in self.contents.channels:
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
@@ -219,7 +236,8 @@ class FaderPreset(Fader):
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels()
+            if self.app and hasattr(self.app, "backend") and self.app.backend:
+                self.app.backend.dmx.set_levels()
 
 
 class FaderChannels(Fader):
@@ -271,18 +289,19 @@ class FaderChannels(Fader):
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels()
+            if self.app and hasattr(self.app, "backend") and self.app.backend:
+                self.app.backend.dmx.set_levels()
 
 
 class FaderSequence(Fader):
     """Fader with sequence"""
 
-    contents: Sequence
+    contents: Sequence | None
     dmx: np.ndarray
     channels: set
 
     def __init__(
-        self, index: int, fader_bank: FaderBank, chaser: Sequence = None
+        self, index: int, fader_bank: FaderBank, chaser: Sequence | None = None
     ) -> None:
         super().__init__(index, fader_bank)
         self.contents = chaser
@@ -295,6 +314,8 @@ class FaderSequence(Fader):
 
     def update_channels(self) -> None:
         """Update channels used by fader"""
+        if self.contents is None:
+            return
         self.channels = self.contents.channels
         self.fader_bank.update_active_faders()
 
@@ -310,28 +331,30 @@ class FaderSequence(Fader):
 
     def level_changed(self) -> None:
         """Fader level has changed"""
-        if not self.contents:
+        if self.contents is None:
             return
+        chaser = typing.cast(typing.Any, self.contents)
         # If it was not running and fader > 0
-        if self.level and self.contents.run is False:
+        if self.level and chaser.run is False:
             # Start chaser
-            self.contents.run = True
-            self.contents.thread = ThreadChaser(self)
-            self.contents.thread.start()
+            chaser.run = True
+            chaser.thread = ThreadChaser(self)
+            chaser.thread.start()
         # If it was running and fader > 0
-        elif self.level and self.contents.run is True:
+        elif self.level and chaser.run is True:
             # Update max level
-            self.contents.thread.level_scale = round(self.level * 255)
+            chaser.thread.level_scale = round(self.level * 255)
         # If it was running and fader go to 0
-        elif self.level == 0 and self.contents.run is True:
+        elif self.level == 0 and chaser.run is True:
             # Stop chaser
-            self.contents.run = False
-            self.contents.thread.stop()
-            self.contents.thread.join()
+            chaser.run = False
+            chaser.thread.stop()
+            chaser.thread.join()
             for channel in self.channels:
                 self.dmx[channel - 1] = 0
             self.fader_bank.update_levels()
-            App().backend.dmx.set_levels()
+            if self.app and hasattr(self.app, "backend") and self.app.backend:
+                self.app.backend.dmx.set_levels()
 
 
 class ThreadChaser(threading.Thread):
@@ -344,13 +367,16 @@ class ThreadChaser(threading.Thread):
 
     def run(self) -> None:
         position = 0
-        while self.fader.contents.run:
-            if position != self.fader.contents.last - 1:
-                t_in = self.fader.contents.steps[position + 1].time_in
-                t_out = self.fader.contents.steps[position + 1].time_out
+        chaser = typing.cast(typing.Any, self.fader.contents)
+        if chaser is None:
+            return
+        while chaser.run:
+            if position != chaser.last - 1:
+                t_in = chaser.steps[position + 1].time_in
+                t_out = chaser.steps[position + 1].time_out
             else:
-                t_in = self.fader.contents.steps[1].time_in
-                t_out = self.fader.contents.steps[1].time_out
+                t_in = chaser.steps[1].time_in
+                t_out = chaser.steps[1].time_out
             t_max = max([t_in, t_out])
 
             start_time = time.time() * 1000
@@ -359,13 +385,13 @@ class ThreadChaser(threading.Thread):
             delay_out = t_out * 1000
             i = (time.time() * 1000) - start_time
 
-            while i < delay and self.fader.contents.run:
+            while i < delay and chaser.run:
                 self.update_levels(delay_in, delay_out, i, position)
                 time.sleep(0.025)
                 i = (time.time() * 1000) - start_time
 
             position += 1
-            if position == self.fader.contents.last:
+            if position == chaser.last:
                 position = 1
 
     def stop(self) -> None:
@@ -383,24 +409,35 @@ class ThreadChaser(threading.Thread):
             i: Time spent
             position: Step
         """
-        chaser = self.fader.contents
+        chaser = typing.cast(typing.Any, self.fader.contents)
+        if chaser is None:
+            return
         # Only fader channels
         for channel in self.fader.channels:
-            old_level = chaser.steps[position].cue.channels.get(channel, 0)
-            seq_level = (
-                App()
-                .lightshow.main_playback.steps[App().lightshow.main_playback.position]
-                .cue.channels.get(channel, 0)
-            )
+            cue = chaser.steps[position].cue
+            old_level = cue.channels.get(channel, 0) if cue else 0
+            lightshow = self.fader.fader_bank.lightshow
+            if lightshow and lightshow.main_playback:
+                step_obj = lightshow.main_playback.steps[
+                    lightshow.main_playback.position
+                ]
+                if step_obj and step_obj.cue:
+                    seq_level = step_obj.cue.channels.get(channel, 0)
+                else:
+                    seq_level = 0
+            else:
+                seq_level = 0
             old_level = max(old_level, seq_level)
             # Loop on cues
             if position < chaser.last - 1:
-                next_level = chaser.steps[position + 1].cue.channels.get(channel, 0)
+                next_cue = chaser.steps[position + 1].cue
+                next_level = next_cue.channels.get(channel, 0) if next_cue else 0
                 next_level = max(next_level, seq_level)
             else:
-                next_level = chaser.steps[1].cue.channels.get(channel, 0)
+                next_cue = chaser.steps[1].cue
+                next_level = next_cue.channels.get(channel, 0) if next_cue else 0
                 next_level = max(next_level, seq_level)
-                chaser.poition = 1
+                chaser.position = 1
             # If level increases, use time in
             if next_level > old_level and i < delay_in:
                 level = int(((next_level - old_level + 1) / delay_in) * i) + old_level
@@ -417,4 +454,9 @@ class ThreadChaser(threading.Thread):
             # Update fader level
             self.fader.dmx[channel - 1] = level
         self.fader.fader_bank.update_levels()
-        App().backend.dmx.set_levels()
+        if (
+            self.fader.app
+            and hasattr(self.fader.app, "backend")
+            and self.fader.app.backend
+        ):
+            self.fader.app.backend.dmx.set_levels()

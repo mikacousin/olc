@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 # pylint: disable=missing-class-docstring,missing-function-docstring,too-few-public-methods
-
 import json
 from unittest.mock import MagicMock
 

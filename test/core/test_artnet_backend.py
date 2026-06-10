@@ -17,6 +17,7 @@ import asyncio
 import ipaddress
 import socket
 import struct
+import typing
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -332,8 +333,11 @@ class TestArtNetNetwork:
                 mock_sock_class.return_value = mock_sock
 
                 # Mock loop datagram endpoint creation
-                loop.create_datagram_endpoint = MagicMock(return_value=asyncio.Future())
-                loop.create_datagram_endpoint.return_value.set_result(
+                mock_loop = typing.cast(typing.Any, loop)
+                mock_loop.create_datagram_endpoint = MagicMock(
+                    return_value=asyncio.Future()
+                )
+                mock_loop.create_datagram_endpoint.return_value.set_result(
                     (MagicMock(), MagicMock())
                 )
 
@@ -419,7 +423,7 @@ class TestArtNetManager:
         engine = CoreEngine(umap)
 
         sender = engine._slots[1].senders[0]
-        assert sender._sync_active is True
+        assert typing.cast(typing.Any, sender)._sync_active is True
 
     def test_manager_artsync_packet_transmission(self) -> None:
         """Verify ArtNetManager send_sync broadcasts the correct 14-byte packet."""
@@ -452,11 +456,11 @@ class TestArtNetManager:
 
         # Mock ArtNetManager.send_sync
         mock_send_sync = MagicMock()
-        engine._artnet_manager.send_sync = mock_send_sync
+        typing.cast(typing.Any, engine._artnet_manager).send_sync = mock_send_sync
 
         # Mock the sender's send method
         for sender in engine._slots[1].senders:
-            sender.send = MagicMock()
+            typing.cast(typing.Any, sender).send = MagicMock()
 
         # Execute a single tick of the loop
         engine._send_all()

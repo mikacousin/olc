@@ -99,9 +99,7 @@ def run_stress_step(
         if u != 0:
             universe_map.enable_protocol(u, Protocol.SACN)
 
-    engine = CoreEngine(
-        universe_map, hz=target_hz, no_listen=no_listen, loopback=True
-    )
+    engine = CoreEngine(universe_map, hz=target_hz, no_listen=no_listen, loopback=True)
     engine.start()
 
     for u in range(num_universes):
