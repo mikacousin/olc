@@ -12,18 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from __future__ import annotations
-
-import typing
-
 import cairo
-from gi.repository import Gtk
+from gi.repository import Gdk, Gtk
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
-
-if typing.TYPE_CHECKING:
-    from gi.repository import Gdk
-    from olc.lightshow import LightShow
-    from olc.midi import Midi
 
 
 # pylint: disable=too-many-instance-attributes
@@ -36,12 +27,9 @@ class PauseWidget(Gtk.Button):
         self,
         label: str = "",
         text: str = "None",
-        midi: Midi | None = None,
-        lightshow: LightShow | None = None,
     ) -> None:
         super().__init__()
-        self.midi = midi
-        self.lightshow = lightshow
+        self.is_learning = False
 
         self.width = 50
         self.height = 50
@@ -60,27 +48,11 @@ class PauseWidget(Gtk.Button):
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button pressed"""
         self.btn_pressed = True
-        if self.midi:
-            self.midi.messages.notes.send(self.text, 127)
+        self.queue_draw()
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button released"""
-        if self.lightshow and self.lightshow.main_playback.on_go:
-            if (
-                self.lightshow.main_playback.thread
-                and self.lightshow.main_playback.thread.pause.is_set()
-            ):
-                self.btn_pressed = True
-                if self.midi:
-                    self.midi.messages.notes.send(self.text, 127)
-            elif self.lightshow.main_playback.thread:
-                self.btn_pressed = False
-                if self.midi:
-                    self.midi.messages.notes.send(self.text, 0)
-        else:
-            self.btn_pressed = False
-            if self.midi:
-                self.midi.messages.notes.send(self.text, 0)
+        self.emit("clicked")
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Pause button, lightshow: LightShow | None = None
@@ -91,11 +63,11 @@ class PauseWidget(Gtk.Button):
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         elif self.btn_pressed:
-            if self.midi and self.midi.learning == self.text:
+            if self.is_learning:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif self.midi and self.midi.learning == self.text:
+        elif self.is_learning:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)

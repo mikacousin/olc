@@ -382,7 +382,7 @@ class VirtualConsoleWindow(Gtk.Window):
             label="Go Back", text="playback.go_back", midi=self.app.midi
         )
         self.goback.connect("clicked", self._on_go_back)
-        self.pause = PauseWidget("Pause", "playback.pause", midi=self.app.midi)
+        self.pause = PauseWidget("Pause", "playback.pause")
         self.pause.connect("clicked", self._on_pause)
         self.go_pad.attach(self.seq_minus, 0, 0, 1, 1)
         self.go_pad.attach(self.seq_plus, 1, 0, 1, 1)
@@ -1127,10 +1127,15 @@ class VirtualConsoleWindow(Gtk.Window):
             midi_fader.set_state(int(value))
 
     def queue_draw(self) -> None:
-        """Synchronize GoWidget learning state before drawing."""
+        """Synchronize GoWidget and PauseWidget learning states before drawing."""
         if hasattr(self, "go_button") and self.go_button:
             is_learning = False
             if self.app.midi and self.app.midi.learning == "playback.go":
                 is_learning = True
             self.go_button.is_learning = is_learning
+        if hasattr(self, "pause") and self.pause:
+            is_learning = False
+            if self.app.midi and self.app.midi.learning == "playback.pause":
+                is_learning = True
+            self.pause.is_learning = is_learning
         super().queue_draw()
