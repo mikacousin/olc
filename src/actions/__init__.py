@@ -19,7 +19,12 @@ import typing
 from olc.actions.channel import SetChannelLevelAction
 from olc.actions.edit import RedoAction, UndoAction
 from olc.actions.group import DeleteGroupAction, NewGroupAction
-from olc.actions.playback import GoAction, PauseAction
+from olc.actions.playback import (
+    GoAction,
+    PauseAction,
+    SequenceMinusAction,
+    SequencePlusAction,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.registry import ActionRegistry
@@ -37,6 +42,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DeleteGroupAction,
         GoAction,
         PauseAction,
+        SequencePlusAction,
+        SequenceMinusAction,
         UndoAction,
         RedoAction,
     ]

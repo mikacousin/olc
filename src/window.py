@@ -288,12 +288,12 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_q(self) -> None:
         """Seq -"""
-        self.app.core.lightshow.main_playback.sequence_minus()
+        self.app.core.action_registry.execute("playback.sequence_minus")
         self.commandline.set_string("")
 
     def _keypress_w(self) -> None:
         """Seq +"""
-        self.app.core.lightshow.main_playback.sequence_plus()
+        self.app.core.action_registry.execute("playback.sequence_plus")
         self.commandline.set_string("")
 
     def _keypress_g(self) -> None:

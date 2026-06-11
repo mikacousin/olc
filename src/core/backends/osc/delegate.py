@@ -68,11 +68,11 @@ class GUIOSCDelegate:
 
     @make_method("/olc/key/seq+")
     def _seq_plus(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.core.lightshow.main_playback.sequence_plus)
+        GLib.idle_add(self._execute_action, "playback.sequence_plus")
 
     @make_method("/olc/key/seq-")
     def _seq_minus(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.core.lightshow.main_playback.sequence_minus)
+        GLib.idle_add(self._execute_action, "playback.sequence_minus")
 
     @make_method("/olc/key/clear")
     def _clear(self, _address: str, _args: list) -> None:

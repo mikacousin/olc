@@ -30,6 +30,8 @@ def test_playback_actions_with_missing_playback() -> None:
     # Should return early without crash
     app.action_registry.execute("playback.go")
     app.action_registry.execute("playback.pause")
+    app.action_registry.execute("playback.sequence_plus")
+    app.action_registry.execute("playback.sequence_minus")
 
 
 def test_go_action_execution() -> None:
@@ -78,3 +80,55 @@ def test_pause_action_execution() -> None:
     mock_playback.pause.assert_called_once_with(None, None)
     assert len(pause_triggered_events) == 1
     assert pause_triggered_events[0] == {"active": True, "label": "PAUSE"}
+
+
+def test_sequence_plus_action_execution() -> None:
+    """Test execution and event dispatching for SequencePlusAction."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_playback = MagicMock()
+    mock_playback.position = 4
+    app.lightshow.main_playback = mock_playback
+
+    seq_plus_triggered_events = []
+    app.subscribe(
+        "playback.sequence_plus_triggered",
+        lambda state: seq_plus_triggered_events.append(state),
+    )
+
+    app.action_registry.execute("playback.sequence_plus")
+
+    mock_playback.sequence_plus.assert_called_once()
+    assert len(seq_plus_triggered_events) == 1
+    assert seq_plus_triggered_events[0] == {
+        "active": False,
+        "label": "SEQ+",
+        "position": 4,
+    }
+
+
+def test_sequence_minus_action_execution() -> None:
+    """Test execution and event dispatching for SequenceMinusAction."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_playback = MagicMock()
+    mock_playback.position = 3
+    app.lightshow.main_playback = mock_playback
+
+    seq_minus_triggered_events = []
+    app.subscribe(
+        "playback.sequence_minus_triggered",
+        lambda state: seq_minus_triggered_events.append(state),
+    )
+
+    app.action_registry.execute("playback.sequence_minus")
+
+    mock_playback.sequence_minus.assert_called_once()
+    assert len(seq_minus_triggered_events) == 1
+    assert seq_minus_triggered_events[0] == {
+        "active": False,
+        "label": "SEQ-",
+        "position": 3,
+    }

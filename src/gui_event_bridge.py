@@ -44,6 +44,8 @@ class GuiEventBridge:
         self.app = app
         self._go_timeout_id: int | None = None
         self._pause_timeout_id: int | None = None
+        self._seq_plus_timeout_id: int | None = None
+        self._seq_minus_timeout_id: int | None = None
 
         # Setup GUI-safe event callbacks from Core
         self.app.core.subscribe(
@@ -63,6 +65,14 @@ class GuiEventBridge:
         self.app.core.subscribe(
             "playback.pause_triggered",
             lambda feedback: self._run_idle(self._on_pause_triggered, feedback),
+        )
+        self.app.core.subscribe(
+            "playback.sequence_plus_triggered",
+            lambda feedback: self._run_idle(self._on_seq_plus_triggered, feedback),
+        )
+        self.app.core.subscribe(
+            "playback.sequence_minus_triggered",
+            lambda feedback: self._run_idle(self._on_seq_minus_triggered, feedback),
         )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
@@ -194,4 +204,73 @@ class GuiEventBridge:
         if vc and hasattr(vc, "pause") and vc.pause:
             vc.pause.btn_pressed = active
             vc.pause.queue_draw()
+        return False
+
+    def _on_seq_plus_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
+        """Handle the sequence plus triggered event by flashing the Next Cue button.
+
+        Args:
+            _feedback: Feedback state dictionary.
+
+        Returns:
+            Always False.
+        """
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, "seq_plus") and vc.seq_plus:
+            if self._seq_plus_timeout_id is not None:
+                GLib.source_remove(self._seq_plus_timeout_id)
+                self._seq_plus_timeout_id = None
+            vc.seq_plus.pressed = True
+            vc.seq_plus.queue_draw()
+            self._seq_plus_timeout_id = GLib.timeout_add(
+                150, self._reset_seq_plus_button
+            )
+        return False
+
+    def _reset_seq_plus_button(self) -> bool:
+        """Reset the Next Cue button pressed state after the timeout.
+
+        Returns:
+            Always False.
+        """
+        self._seq_plus_timeout_id = None
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, "seq_plus") and vc.seq_plus:
+            vc.seq_plus.pressed = False
+            vc.seq_plus.queue_draw()
+        return False
+
+    def _on_seq_minus_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
+        """Handle the sequence minus triggered event by flashing the Previous Cue
+        button.
+
+        Args:
+            _feedback: Feedback state dictionary.
+
+        Returns:
+            Always False.
+        """
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, "seq_minus") and vc.seq_minus:
+            if self._seq_minus_timeout_id is not None:
+                GLib.source_remove(self._seq_minus_timeout_id)
+                self._seq_minus_timeout_id = None
+            vc.seq_minus.pressed = True
+            vc.seq_minus.queue_draw()
+            self._seq_minus_timeout_id = GLib.timeout_add(
+                150, self._reset_seq_minus_button
+            )
+        return False
+
+    def _reset_seq_minus_button(self) -> bool:
+        """Reset the Previous Cue button pressed state after the timeout.
+
+        Returns:
+            Always False.
+        """
+        self._seq_minus_timeout_id = None
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, "seq_minus") and vc.seq_minus:
+            vc.seq_minus.pressed = False
+            vc.seq_minus.queue_draw()
         return False

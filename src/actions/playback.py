@@ -75,3 +75,65 @@ class PauseAction(Action):
             "active": is_paused,
             "label": "PAUSE",
         }
+
+
+class SequencePlusAction(Action):
+    """Action to select the next sequence step in the playback.
+
+    Jumps directly to the next cue.
+    """
+
+    name = "playback.sequence_plus"
+    can_undo = False
+
+    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+        """Execute the action, switching to the next step directly."""
+        main_playback = self.app.lightshow.main_playback
+        if not main_playback:
+            return
+
+        main_playback.sequence_plus()
+
+        # Notify event with feedback
+        self.app.emit("playback.sequence_plus_triggered", self.get_feedback_state())
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state of the sequence step selection."""
+        main_playback = self.app.lightshow.main_playback
+        position = main_playback.position if main_playback else 0
+        return {
+            "active": False,
+            "label": "SEQ+",
+            "position": position,
+        }
+
+
+class SequenceMinusAction(Action):
+    """Action to select the previous sequence step in the playback.
+
+    Jumps directly to the previous cue.
+    """
+
+    name = "playback.sequence_minus"
+    can_undo = False
+
+    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+        """Execute the action, switching to the previous step directly."""
+        main_playback = self.app.lightshow.main_playback
+        if not main_playback:
+            return
+
+        main_playback.sequence_minus()
+
+        # Notify event with feedback
+        self.app.emit("playback.sequence_minus_triggered", self.get_feedback_state())
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state of the sequence step selection."""
+        main_playback = self.app.lightshow.main_playback
+        position = main_playback.position if main_playback else 0
+        return {
+            "active": False,
+            "label": "SEQ-",
+            "position": position,
+        }

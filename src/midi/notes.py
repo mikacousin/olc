@@ -451,7 +451,9 @@ class MidiNotes:
                 )
             else:
                 self.midi.enqueue(msg)
-                self.app_delegate.core.lightshow.main_playback.sequence_minus()
+                self.app_delegate.core.action_registry.execute(
+                    "playback.sequence_minus"
+                )
                 if self.app_delegate.window is not None:
                     self.app_delegate.window.commandline.set_string("")
 
@@ -477,7 +479,7 @@ class MidiNotes:
                 )
             else:
                 self.midi.enqueue(msg)
-                self.app_delegate.core.lightshow.main_playback.sequence_plus()
+                self.app_delegate.core.action_registry.execute("playback.sequence_plus")
                 if self.app_delegate.window is not None:
                     self.app_delegate.window.commandline.set_string("")
 

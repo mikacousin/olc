@@ -582,7 +582,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "seq_plus"
             self.queue_draw()
         else:
-            self.app.core.lightshow.main_playback.sequence_plus()
+            self.app.core.action_registry.execute("playback.sequence_plus")
 
     def _on_seq_minus(self, _widget: Gtk.Widget) -> None:
         """Sequence -"""
@@ -590,7 +590,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "seq_minus"
             self.queue_draw()
         else:
-            self.app.core.lightshow.main_playback.sequence_minus()
+            self.app.core.action_registry.execute("playback.sequence_minus")
 
     def _on_output(self, _widget: Gtk.Widget) -> None:
         """Output"""
