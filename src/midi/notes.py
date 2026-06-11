@@ -225,7 +225,7 @@ class MidiNotes:
 
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""
-        self.send("pause", 0)
+        self.send("playback.pause", 0)
 
     def _update_inde_button(
         self, inde: Independent | None, index: int, level: int
