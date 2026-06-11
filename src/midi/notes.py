@@ -410,7 +410,7 @@ class MidiNotes:
                     "button-press-event", event
                 )
             else:
-                self.app_delegate.core.lightshow.main_playback.go_back(None, None)
+                self.app_delegate.core.action_registry.execute("playback.go_back")
 
     def goto(self, msg: mido.Message) -> None:
         """Go to Cue
