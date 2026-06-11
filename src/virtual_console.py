@@ -368,7 +368,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
-        self.go_button = GoWidget(self.app.midi)
+        self.go_button = GoWidget()
         self.go_button.connect("clicked", self._on_go)
         self.seq_plus = ButtonWidget(
             label="Next Cue", text="playback.sequence_plus", midi=self.app.midi
@@ -1125,3 +1125,12 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.app.midi is not None:
             midi_fader = self.app.midi.faders.inde_faders[index]
             midi_fader.set_state(int(value))
+
+    def queue_draw(self) -> None:
+        """Synchronize GoWidget learning state before drawing."""
+        if hasattr(self, "go_button") and self.go_button:
+            is_learning = False
+            if self.app.midi and self.app.midi.learning == "playback.go":
+                is_learning = True
+            self.go_button.is_learning = is_learning
+        super().queue_draw()

@@ -12,16 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-from __future__ import annotations
-
-import typing
-
 import cairo
 from gi.repository import Gdk, GObject, Gtk
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
-
-if typing.TYPE_CHECKING:
-    from olc.midi import Midi
 
 
 class GoWidget(Gtk.Widget):
@@ -31,9 +24,9 @@ class GoWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
-    def __init__(self, midi: Midi | None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.midi = midi
+        self.is_learning = False
 
         self.width = 100
         self.height = 50
@@ -50,15 +43,11 @@ class GoWidget(Gtk.Widget):
 
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go pressed"""
-        if self.midi:
-            self.midi.messages.notes.send("playback.go", 127)
         self.pressed = True
         self.queue_draw()
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go released"""
-        if self.midi:
-            self.midi.messages.notes.send("playback.go", 0)
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
@@ -71,11 +60,11 @@ class GoWidget(Gtk.Widget):
         """
         # Draw rounded box
         if self.pressed:
-            if self.midi and self.midi.learning == "playback.go":
+            if self.is_learning:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif self.midi and self.midi.learning == "playback.go":
+        elif self.is_learning:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
