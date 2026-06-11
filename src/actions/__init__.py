@@ -21,6 +21,7 @@ from olc.actions.edit import RedoAction, UndoAction
 from olc.actions.group import DeleteGroupAction, NewGroupAction
 from olc.actions.playback import (
     GoAction,
+    GoBackAction,
     PauseAction,
     SequenceMinusAction,
     SequencePlusAction,
@@ -41,6 +42,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         NewGroupAction,
         DeleteGroupAction,
         GoAction,
+        GoBackAction,
         PauseAction,
         SequencePlusAction,
         SequenceMinusAction,

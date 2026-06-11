@@ -51,14 +51,14 @@ class GoWidget(Gtk.Widget):
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go pressed"""
         if self.midi:
-            self.midi.messages.notes.send("go", 127)
+            self.midi.messages.notes.send("playback.go", 127)
         self.pressed = True
         self.queue_draw()
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go released"""
         if self.midi:
-            self.midi.messages.notes.send("go", 0)
+            self.midi.messages.notes.send("playback.go", 0)
         self.pressed = False
         self.queue_draw()
         self.emit("clicked")
@@ -71,11 +71,11 @@ class GoWidget(Gtk.Widget):
         """
         # Draw rounded box
         if self.pressed:
-            if self.midi and self.midi.learning == "go":
+            if self.midi and self.midi.learning == "playback.go":
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif self.midi and self.midi.learning == "go":
+        elif self.midi and self.midi.learning == "playback.go":
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)

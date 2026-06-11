@@ -79,11 +79,11 @@ class MidiNotes:
         self.zoom = False
         # Default MIDI notes values : "action": Channel, Note
         self.notes = {
-            "go": [0, 94],
-            "go_back": [0, 86],
-            "pause": [0, 93],
-            "seq_minus": [0, 91],
-            "seq_plus": [0, 92],
+            "playback.go": [0, 94],
+            "playback.go_back": [0, 86],
+            "playback.pause": [0, 93],
+            "playback.sequence_minus": [0, 91],
+            "playback.sequence_plus": [0, 92],
             "output": [0, -1],
             "seq": [0, -1],
             "group": [0, -1],
@@ -192,15 +192,6 @@ class MidiNotes:
             midi_name: action string
             value: MIDI note velocity
         """
-        # Normalize Core action names to legacy physical MIDI names
-        midi_name = {
-            "playback.go": "go",
-            "playback.go_back": "go_back",
-            "playback.pause": "pause",
-            "playback.sequence_plus": "seq_plus",
-            "playback.sequence_minus": "seq_minus",
-        }.get(midi_name, midi_name)
-
         channel, note = self.notes[midi_name]
         if note != -1:
             msg = mido.Message(
@@ -444,7 +435,7 @@ class MidiNotes:
                     )
                     self.app_delegate.window.commandline.set_string("")
 
-    def seq_minus(self, msg: mido.Message) -> None:
+    def sequence_minus(self, msg: mido.Message) -> None:
         """Seq -
 
         Args:
@@ -472,7 +463,7 @@ class MidiNotes:
                 if self.app_delegate.window is not None:
                     self.app_delegate.window.commandline.set_string("")
 
-    def seq_plus(self, msg: mido.Message) -> None:
+    def sequence_plus(self, msg: mido.Message) -> None:
         """Seq +
 
         Args:

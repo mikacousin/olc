@@ -371,16 +371,18 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_button = GoWidget(self.app.midi)
         self.go_button.connect("clicked", self._on_go)
         self.seq_plus = ButtonWidget(
-            label="Next Cue", text="seq_plus", midi=self.app.midi
+            label="Next Cue", text="playback.sequence_plus", midi=self.app.midi
         )
         self.seq_plus.connect("clicked", self._on_seq_plus)
         self.seq_minus = ButtonWidget(
-            label="Prev Cue", text="seq_minus", midi=self.app.midi
+            label="Prev Cue", text="playback.sequence_minus", midi=self.app.midi
         )
         self.seq_minus.connect("clicked", self._on_seq_minus)
-        self.goback = ButtonWidget(label="Go Back", text="go_back", midi=self.app.midi)
+        self.goback = ButtonWidget(
+            label="Go Back", text="playback.go_back", midi=self.app.midi
+        )
         self.goback.connect("clicked", self._on_go_back)
-        self.pause = PauseWidget("Pause", "pause", midi=self.app.midi)
+        self.pause = PauseWidget("Pause", "playback.pause", midi=self.app.midi)
         self.pause.connect("clicked", self._on_pause)
         self.go_pad.attach(self.seq_minus, 0, 0, 1, 1)
         self.go_pad.attach(self.seq_plus, 1, 0, 1, 1)
@@ -555,7 +557,7 @@ class VirtualConsoleWindow(Gtk.Window):
     def _on_go(self, _widget: Gtk.Widget) -> None:
         """Go"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "go"
+            self.app.midi.learning = "playback.go"
             self.queue_draw()
         else:
             self.app.core.action_registry.execute("playback.go")
@@ -563,15 +565,15 @@ class VirtualConsoleWindow(Gtk.Window):
     def _on_go_back(self, _widget: Gtk.Widget) -> None:
         """Go back"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "go_back"
+            self.app.midi.learning = "playback.go_back"
             self.queue_draw()
         else:
-            self.app.core.lightshow.main_playback.go_back(None, None)
+            self.app.core.action_registry.execute("playback.go_back")
 
     def _on_pause(self, _widget: Gtk.Widget) -> None:
         """Pause"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "pause"
+            self.app.midi.learning = "playback.pause"
             self.queue_draw()
         else:
             self.app.core.action_registry.execute("playback.pause")
@@ -579,7 +581,7 @@ class VirtualConsoleWindow(Gtk.Window):
     def _on_seq_plus(self, _widget: Gtk.Widget) -> None:
         """Sequence +"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "seq_plus"
+            self.app.midi.learning = "playback.sequence_plus"
             self.queue_draw()
         else:
             self.app.core.action_registry.execute("playback.sequence_plus")
@@ -587,7 +589,7 @@ class VirtualConsoleWindow(Gtk.Window):
     def _on_seq_minus(self, _widget: Gtk.Widget) -> None:
         """Sequence -"""
         if self.is_learning_midi and self.app.midi is not None:
-            self.app.midi.learning = "seq_minus"
+            self.app.midi.learning = "playback.sequence_minus"
             self.queue_draw()
         else:
             self.app.core.action_registry.execute("playback.sequence_minus")

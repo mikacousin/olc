@@ -157,7 +157,10 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.go", ["space"])
         # Go Back
         action = Gio.SimpleAction.new("go_back", None)
-        action.connect("activate", self.core.lightshow.main_playback.go_back)
+        action.connect(
+            "activate",
+            lambda *_: self.core.action_registry.execute("playback.go_back"),
+        )
         self.add_action(action)
         self.set_accels_for_action("app.go_back", ["<Control>b"])
         # Pause

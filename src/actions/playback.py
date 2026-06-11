@@ -184,3 +184,29 @@ class SequenceMinusAction(Action):
             ),
             "next_cue_text": next_step.text if next_step else "",
         }
+
+
+class GoBackAction(Action):
+    """Action to trigger the GO BACK command on the active sequence."""
+
+    name = "playback.go_back"
+    can_undo = False
+
+    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+        """Execute the action, running the previous cue transition."""
+        main_playback = self.app.lightshow.main_playback
+        if not main_playback:
+            return
+
+        main_playback.go_back(None, None)
+
+        self.app.emit("playback.go_back_triggered", self.get_feedback_state())
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state of the GO BACK transition."""
+        main_playback = self.app.lightshow.main_playback
+        on_go = bool(main_playback.on_go) if main_playback else False
+        return {
+            "active": on_go,
+            "label": "GOBACK",
+        }

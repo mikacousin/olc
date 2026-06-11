@@ -44,6 +44,7 @@ class GuiEventBridge:
         """
         self.app = app
         self._go_timeout_id: int | None = None
+        self._goback_timeout_id: int | None = None
         self._pause_timeout_id: int | None = None
         self._seq_plus_timeout_id: int | None = None
         self._seq_minus_timeout_id: int | None = None
@@ -62,6 +63,10 @@ class GuiEventBridge:
         self.app.core.subscribe(
             "playback.go_triggered",
             lambda feedback: self._run_idle(self._on_go_triggered, feedback),
+        )
+        self.app.core.subscribe(
+            "playback.go_back_triggered",
+            lambda feedback: self._run_idle(self._on_goback_triggered, feedback),
         )
         self.app.core.subscribe(
             "playback.pause_triggered",
@@ -167,6 +172,38 @@ class GuiEventBridge:
         if vc and hasattr(vc, "go_button") and vc.go_button:
             vc.go_button.pressed = False
             vc.go_button.queue_draw()
+        return False
+
+    def _on_goback_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
+        """Handle the go-back triggered event by flashing the Go Back button.
+
+        Args:
+            _feedback: Feedback state dictionary.
+
+        Returns:
+            Always False.
+        """
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, "goback") and vc.goback:
+            if self._goback_timeout_id is not None:
+                GLib.source_remove(self._goback_timeout_id)
+                self._goback_timeout_id = None
+            vc.goback.pressed = True
+            vc.goback.queue_draw()
+            self._goback_timeout_id = GLib.timeout_add(150, self._reset_goback_button)
+        return False
+
+    def _reset_goback_button(self) -> bool:
+        """Reset the Go Back button pressed state after the timeout.
+
+        Returns:
+            Always False.
+        """
+        self._goback_timeout_id = None
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, "goback") and vc.goback:
+            vc.goback.pressed = False
+            vc.goback.queue_draw()
         return False
 
     def _on_pause_triggered(self, feedback: dict[str, typing.Any]) -> bool:

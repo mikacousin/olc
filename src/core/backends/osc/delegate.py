@@ -64,7 +64,7 @@ class GUIOSCDelegate:
 
     @make_method("/olc/key/goback")
     def _goback(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self.app.core.lightshow.main_playback.go_back, None, None)
+        GLib.idle_add(self._execute_action, "playback.go_back")
 
     @make_method("/olc/key/seq+")
     def _seq_plus(self, _address: str, _args: list) -> None:

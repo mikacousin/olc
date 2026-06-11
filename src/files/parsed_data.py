@@ -88,9 +88,20 @@ class ParsedData:
         """Import MIDI mapping"""
         if not self.data["midi"] or not self.midi:
             return
+
+        legacy_mapping = {
+            "go": "playback.go",
+            "go_back": "playback.go_back",
+            "pause": "playback.pause",
+            "seq_plus": "playback.sequence_plus",
+            "seq_minus": "playback.sequence_minus",
+        }
+
         for action, value in self.data["midi"]["note"].items():
             if value != [0, -1]:
-                self.midi.messages.notes.notes[action] = value
+                normalized_action = legacy_mapping.get(action, action)
+                if normalized_action in self.midi.messages.notes.notes:
+                    self.midi.messages.notes.notes[normalized_action] = value
         for action, value in self.data["midi"]["control_change"].items():
             if value != [0, -1]:
                 self.midi.messages.control_change.control_change[action] = value

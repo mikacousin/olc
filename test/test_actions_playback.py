@@ -82,6 +82,28 @@ def test_pause_action_execution() -> None:
     assert pause_triggered_events[0] == {"active": True, "label": "PAUSE"}
 
 
+def test_go_back_action_execution() -> None:
+    """Test execution and event dispatching for GoBackAction."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_playback = MagicMock()
+    mock_playback.on_go = True
+    app.lightshow.main_playback = mock_playback
+
+    go_back_triggered_events = []
+    app.subscribe(
+        "playback.go_back_triggered",
+        go_back_triggered_events.append,
+    )
+
+    app.action_registry.execute("playback.go_back")
+
+    mock_playback.go_back.assert_called_once_with(None, None)
+    assert len(go_back_triggered_events) == 1
+    assert go_back_triggered_events[0] == {"active": True, "label": "GOBACK"}
+
+
 def test_sequence_plus_action_execution() -> None:
     """Test execution and event dispatching for SequencePlusAction."""
     settings = MagicMock()

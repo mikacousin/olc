@@ -171,7 +171,7 @@ class Sequence:
             and self.app is not None
             and self.app.midi is not None
         ):
-            self.app.midi.button_off("go")
+            self.app.midi.button_off("playback.go")
             # Switch off Pause Led
             if not self.thread.pause.is_set():
                 self.app.midi.messages.notes.led_pause_off()
@@ -412,7 +412,7 @@ class Sequence:
             goto: True if Goto, False if Go (default)
         """
         if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_on("go")
+            self.app.midi.button_on("playback.go")
         # If Go is active, go to next memory
         if self.stop():
             # Launch another Go
@@ -475,7 +475,7 @@ class Sequence:
             return False
 
         if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_on("go_back")
+            self.app.midi.button_on("playback.go_back")
 
         self.stop()
 
@@ -594,7 +594,7 @@ class ThreadGo(threading.Thread):
         if self.sequence.steps[next_step].wait:
             self.sequence.do_go(None)
         if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_off("go")
+            self.app.midi.button_off("playback.go")
 
     def run(self) -> None:
         self._capture_start_levels()
@@ -886,7 +886,7 @@ class ThreadGoBack(threading.Thread):
         )
         GLib.idle_add(update_ui, subtitle, self.sequence.app)
         if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_off("go_back")
+            self.app.midi.button_off("playback.go_back")
 
     def run(self) -> None:
         if self.sequence.last == 2:
