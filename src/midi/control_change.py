@@ -66,7 +66,7 @@ class MidiControlChanges:
             port: MIDI port name
             msg: MIDI message
         """
-        for key, value in self.control_change.items():
+        for key, value in list(self.control_change.items()):
             if msg.channel == value[0] and msg.control == value[1]:
                 if key[:6] == "fader_":
                     # We need to pass fader number to faders function
@@ -107,12 +107,12 @@ class MidiControlChanges:
         """
         if self.control_change.get(learning):
             # Find if values are already used
-            for key, value in self.control_change.items():
+            for key, value in list(self.control_change.items()):
                 if value[0] == msg.channel and value[1] == msg.control:
                     # Delete it
                     self.control_change.update({key: [0, -1]})
-                # Learn new values
-                self.control_change.update({learning: [msg.channel, msg.control]})
+            # Learn new values
+            self.control_change.update({learning: [msg.channel, msg.control]})
 
     def __get_step(
         self, msg: mido.Message, port: str

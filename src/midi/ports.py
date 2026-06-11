@@ -55,7 +55,7 @@ class MidiIO:
         """
         # print(self.name, msg)
         if self.midi.learning:
-            self.midi.learn(msg)
+            GLib.idle_add(self.midi.learn, msg)
 
         # Find action
         if msg.type in ("note_on", "note_off"):

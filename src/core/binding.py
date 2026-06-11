@@ -90,11 +90,15 @@ class MidiBinding(TriggerBinding):
             return
 
         active = state.get("active", False)
+        timer = state.get("timer", 0)
 
         if self.event_type == "note":
             # Leverage existing Midi button-light interface
-            if active:
-                self.app.midi.button_on(self.action_name)
+            if active or timer > 0:
+                if timer > 0:
+                    self.app.midi.button_on(self.action_name, timer)
+                else:
+                    self.app.midi.button_on(self.action_name)
             else:
                 self.app.midi.button_off(self.action_name)
         elif self.event_type == "cc":

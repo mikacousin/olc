@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
+from olc.sequence import get_cue
 
 
 class GoAction(Action):
@@ -100,11 +101,34 @@ class SequencePlusAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the sequence step selection."""
         main_playback = self.app.lightshow.main_playback
-        position = main_playback.position if main_playback else 0
+        if not main_playback:
+            return {}
+
+        pos = main_playback.position
+        step = main_playback.steps[pos] if pos < len(main_playback.steps) else None
+        next_step = (
+            main_playback.steps[pos + 1] if pos + 1 < len(main_playback.steps) else None
+        )
+
         return {
             "active": False,
+            "timer": 0.1,
             "label": "SEQ+",
-            "position": position,
+            "position": pos,
+            "last": main_playback.last,
+            "next_total_time": next_step.total_time if next_step else 0.0,
+            "next_time_in": next_step.time_in if next_step else 0.0,
+            "next_time_out": next_step.time_out if next_step else 0.0,
+            "next_delay_in": next_step.delay_in if next_step else 0.0,
+            "next_delay_out": next_step.delay_out if next_step else 0.0,
+            "next_wait": next_step.wait if next_step else 0.0,
+            "next_channel_time": next_step.channel_time if next_step else False,
+            "cue_memory": get_cue(step).memory if (step and get_cue(step)) else 0.0,
+            "cue_text": step.text if step else "",
+            "next_cue_memory": (
+                get_cue(next_step).memory if (next_step and get_cue(next_step)) else 0.0
+            ),
+            "next_cue_text": next_step.text if next_step else "",
         }
 
 
@@ -131,9 +155,32 @@ class SequenceMinusAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the sequence step selection."""
         main_playback = self.app.lightshow.main_playback
-        position = main_playback.position if main_playback else 0
+        if not main_playback:
+            return {}
+
+        pos = main_playback.position
+        step = main_playback.steps[pos] if pos < len(main_playback.steps) else None
+        next_step = (
+            main_playback.steps[pos + 1] if pos + 1 < len(main_playback.steps) else None
+        )
+
         return {
             "active": False,
+            "timer": 0.1,
             "label": "SEQ-",
-            "position": position,
+            "position": pos,
+            "last": main_playback.last,
+            "next_total_time": next_step.total_time if next_step else 0.0,
+            "next_time_in": next_step.time_in if next_step else 0.0,
+            "next_time_out": next_step.time_out if next_step else 0.0,
+            "next_delay_in": next_step.delay_in if next_step else 0.0,
+            "next_delay_out": next_step.delay_out if next_step else 0.0,
+            "next_wait": next_step.wait if next_step else 0.0,
+            "next_channel_time": next_step.channel_time if next_step else False,
+            "cue_memory": get_cue(step).memory if (step and get_cue(step)) else 0.0,
+            "cue_text": step.text if step else "",
+            "next_cue_memory": (
+                get_cue(next_step).memory if (next_step and get_cue(next_step)) else 0.0
+            ),
+            "next_cue_text": next_step.text if next_step else "",
         }

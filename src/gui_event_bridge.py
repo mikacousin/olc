@@ -21,6 +21,7 @@ import typing
 from gi.repository import GLib
 from olc.fader import FaderType
 from olc.fader_edition import FaderTab
+from olc.sequence import update_ui
 
 if typing.TYPE_CHECKING:
     from olc.application import Application
@@ -206,11 +207,11 @@ class GuiEventBridge:
             vc.pause.queue_draw()
         return False
 
-    def _on_seq_plus_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
+    def _on_seq_plus_triggered(self, feedback: dict[str, typing.Any]) -> bool:
         """Handle the sequence plus triggered event by flashing the Next Cue button.
 
         Args:
-            _feedback: Feedback state dictionary.
+            feedback: Feedback state dictionary.
 
         Returns:
             Always False.
@@ -225,6 +226,7 @@ class GuiEventBridge:
             self._seq_plus_timeout_id = GLib.timeout_add(
                 150, self._reset_seq_plus_button
             )
+        self._update_sequential_ui(feedback)
         return False
 
     def _reset_seq_plus_button(self) -> bool:
@@ -240,12 +242,12 @@ class GuiEventBridge:
             vc.seq_plus.queue_draw()
         return False
 
-    def _on_seq_minus_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
+    def _on_seq_minus_triggered(self, feedback: dict[str, typing.Any]) -> bool:
         """Handle the sequence minus triggered event by flashing the Previous Cue
         button.
 
         Args:
-            _feedback: Feedback state dictionary.
+            feedback: Feedback state dictionary.
 
         Returns:
             Always False.
@@ -260,6 +262,7 @@ class GuiEventBridge:
             self._seq_minus_timeout_id = GLib.timeout_add(
                 150, self._reset_seq_minus_button
             )
+        self._update_sequential_ui(feedback)
         return False
 
     def _reset_seq_minus_button(self) -> bool:
@@ -274,3 +277,31 @@ class GuiEventBridge:
             vc.seq_minus.pressed = False
             vc.seq_minus.queue_draw()
         return False
+
+    def _update_sequential_ui(self, feedback: dict[str, typing.Any]) -> None:
+        """Update GTK sequential playback widgets and subtitle from feedback."""
+        if not self.app.window:
+            return
+
+        playback_view = self.app.window.playback
+        if playback_view and playback_view.sequential:
+            seq = playback_view.sequential
+            seq.total_time = feedback.get("next_total_time", 0.0)
+            seq.time_in = feedback.get("next_time_in", 0.0)
+            seq.time_out = feedback.get("next_time_out", 0.0)
+            seq.delay_in = feedback.get("next_delay_in", 0.0)
+            seq.delay_out = feedback.get("next_delay_out", 0.0)
+            seq.wait = feedback.get("next_wait", 0.0)
+            seq.channel_time = feedback.get("next_channel_time", False)
+            seq.position_a = 0
+            seq.position_b = 0
+            seq.queue_draw()
+
+        # Update Window's subtitle
+        cue_mem = feedback.get("cue_memory", 0.0)
+        cue_txt = feedback.get("cue_text", "")
+        next_mem = feedback.get("next_cue_memory", 0.0)
+        next_txt = feedback.get("next_cue_text", "")
+
+        subtitle = f"Mem. : {cue_mem} {cue_txt} - Next Mem. : {next_mem} {next_txt}"
+        update_ui(subtitle, typing.cast(typing.Any, self.app))

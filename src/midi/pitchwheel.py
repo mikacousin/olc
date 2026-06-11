@@ -52,10 +52,10 @@ class MidiPitchWheel:
         Args:
             msg: MIDI message
         """
-        for key, value in self.pitchwheel.items():
+        for key, value in list(self.pitchwheel.items()):
             if msg.channel == value:
                 if key[:6] == "fader_":
-                    self._update_fader(msg, int(key[6:]) - 1)
+                    GLib.idle_add(self._update_fader, msg, int(key[6:]) - 1)
                     break
                 if key[:13] == "crossfade_out":
                     GLib.idle_add(self.midi.xfade.moved, msg, self.midi.xfade.fader_out)
@@ -84,7 +84,7 @@ class MidiPitchWheel:
             learning: action to update
         """
         if self.pitchwheel.get(learning):
-            for key, channel in self.pitchwheel.items():
+            for key, channel in list(self.pitchwheel.items()):
                 if channel == msg.channel:
                     self.pitchwheel.update({key: -1})
             self.pitchwheel.update({learning: msg.channel})
@@ -92,14 +92,11 @@ class MidiPitchWheel:
     def _update_fader(self, msg: mido.Message, index: int) -> None:
         val = (msg.pitch + 8192) / 16383
         if self.app_delegate.virtual_console:
-            GLib.idle_add(
-                self.app_delegate.virtual_console.faders[index].set_value, val * 255
-            )
-            GLib.idle_add(
-                self.app_delegate.virtual_console.fader_moved,
-                self.app_delegate.virtual_console.faders[index],
+            self.app_delegate.virtual_console.faders[index].set_value(val * 255)
+            self.app_delegate.virtual_console.fader_moved(
+                self.app_delegate.virtual_console.faders[index]
             )
         else:
             number = index + 1
             fader = self.app_delegate.core.lightshow.fader_bank.get_fader(number)
-            GLib.idle_add(fader.set_level, val)
+            fader.set_level(val)

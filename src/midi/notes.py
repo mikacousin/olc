@@ -139,13 +139,14 @@ class MidiNotes:
         for action in self.notes:
             self.notes[action] = [0, -1]
 
+    # pylint: disable=too-many-branches
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
 
         Args:
             msg: MIDI message
         """
-        for key, value in self.notes.items():
+        for key, value in list(self.notes.items()):
             if msg.channel == value[0] and msg.note == value[1]:
                 if key[:6] == "flash_":
                     # We need to pass fader number to flash function
@@ -177,7 +178,12 @@ class MidiNotes:
                 elif key in SIMPLE_ACTION_MAPPING:
                     GLib.idle_add(self._execute_midi_action, key, msg)
                 else:
-                    GLib.idle_add(getattr(self, f"_function_{key}"), msg)
+                    method_name = key.rsplit(".", maxsplit=1)[-1]
+                    func = getattr(self, f"_function_{method_name}", None) or getattr(
+                        self, method_name, None
+                    )
+                    if func:
+                        GLib.idle_add(func, msg)
 
     def send(self, midi_name: str, value: int) -> None:
         """Send MIDI note message
@@ -186,6 +192,15 @@ class MidiNotes:
             midi_name: action string
             value: MIDI note velocity
         """
+        # Normalize Core action names to legacy physical MIDI names
+        midi_name = {
+            "playback.go": "go",
+            "playback.go_back": "go_back",
+            "playback.pause": "pause",
+            "playback.sequence_plus": "seq_plus",
+            "playback.sequence_minus": "seq_minus",
+        }.get(midi_name, midi_name)
+
         channel, note = self.notes[midi_name]
         if note != -1:
             msg = mido.Message(
@@ -202,8 +217,8 @@ class MidiNotes:
         """
         if not self.notes.get(learning):
             return
-            # Find if values are already used
-        for key, value in self.notes.items():
+        # Find if values are already used
+        for key, value in list(self.notes.items()):
             if value[0] == msg.channel and value[1] == msg.note:
                 if learning.startswith("flash_"):
                     # Don't delete flash button from other pages

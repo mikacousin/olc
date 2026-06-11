@@ -46,7 +46,7 @@ def test_go_action_execution() -> None:
     go_triggered_events = []
     app.subscribe(
         "playback.go_triggered",
-        lambda state: go_triggered_events.append(state),
+        go_triggered_events.append,
     )
 
     app.action_registry.execute("playback.go")
@@ -72,7 +72,7 @@ def test_pause_action_execution() -> None:
     pause_triggered_events = []
     app.subscribe(
         "playback.pause_triggered",
-        lambda state: pause_triggered_events.append(state),
+        pause_triggered_events.append,
     )
 
     app.action_registry.execute("playback.pause")
@@ -94,18 +94,18 @@ def test_sequence_plus_action_execution() -> None:
     seq_plus_triggered_events = []
     app.subscribe(
         "playback.sequence_plus_triggered",
-        lambda state: seq_plus_triggered_events.append(state),
+        seq_plus_triggered_events.append,
     )
 
     app.action_registry.execute("playback.sequence_plus")
 
     mock_playback.sequence_plus.assert_called_once()
     assert len(seq_plus_triggered_events) == 1
-    assert seq_plus_triggered_events[0] == {
-        "active": False,
-        "label": "SEQ+",
-        "position": 4,
-    }
+    feedback = seq_plus_triggered_events[0]
+    assert feedback["active"] is False
+    assert feedback["label"] == "SEQ+"
+    assert feedback["position"] == 4
+    assert feedback["timer"] == 0.1
 
 
 def test_sequence_minus_action_execution() -> None:
@@ -120,15 +120,15 @@ def test_sequence_minus_action_execution() -> None:
     seq_minus_triggered_events = []
     app.subscribe(
         "playback.sequence_minus_triggered",
-        lambda state: seq_minus_triggered_events.append(state),
+        seq_minus_triggered_events.append,
     )
 
     app.action_registry.execute("playback.sequence_minus")
 
     mock_playback.sequence_minus.assert_called_once()
     assert len(seq_minus_triggered_events) == 1
-    assert seq_minus_triggered_events[0] == {
-        "active": False,
-        "label": "SEQ-",
-        "position": 3,
-    }
+    feedback = seq_minus_triggered_events[0]
+    assert feedback["active"] is False
+    assert feedback["label"] == "SEQ-"
+    assert feedback["position"] == 3
+    assert feedback["timer"] == 0.1

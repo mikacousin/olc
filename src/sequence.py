@@ -33,7 +33,7 @@ if typing.TYPE_CHECKING:
     from olc.virtual_console import VirtualConsoleWindow
 
 
-def _get_cue(step: Step) -> typing.Any:  # noqa: ANN401
+def get_cue(step: Step) -> typing.Any:  # noqa: ANN401
     """Get the cue object from step as Any to simplify type checking."""
     return step.cue
 
@@ -315,8 +315,6 @@ class Sequence:
 
     def sequence_plus(self) -> None:
         """Sequence +"""
-        if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_on("seq_plus", 0.1)
         self.stop()
 
         # Jump to next Step
@@ -324,46 +322,20 @@ class Sequence:
         position += 1
         if position < self.last - 1:  # Stop on the last cue
             self.position += 1
-            self.window.playback.sequential.total_time = self.steps[
-                position + 1
-            ].total_time
-            self.window.playback.sequential.time_in = self.steps[position + 1].time_in
-            self.window.playback.sequential.time_out = self.steps[position + 1].time_out
-            self.window.playback.sequential.delay_in = self.steps[position + 1].delay_in
-            self.window.playback.sequential.delay_out = self.steps[
-                position + 1
-            ].delay_out
-            self.window.playback.sequential.wait = self.steps[position + 1].wait
-            self.window.playback.sequential.channel_time = self.steps[
-                position + 1
-            ].channel_time
-            self.window.playback.sequential.position_a = 0
-            self.window.playback.sequential.position_b = 0
-
-            # Window's subtitle
-            subtitle = (
-                f"Mem. : {_get_cue(self.steps[position]).memory} "
-                f"{self.steps[position].text}"
-                f" - Next Mem. : {_get_cue(self.steps[position + 1]).memory} "
-                f"{self.steps[position + 1].text}"
-            )
-            # Update display
-            update_ui(subtitle, self.app)
 
             # Empty DMX user array
-            self.backend.dmx.levels["user"].fill(-1)
-            self.update_channels()
+            if self.backend is not None and self.backend.dmx is not None:
+                self.backend.dmx.levels["user"].fill(-1)
+                self.update_channels()
 
-            # Send DMX values
-            self.backend.dmx.levels["sequence"][:] = _get_cue(
-                self.steps[position]
-            ).channels_array
-            self.backend.dmx.set_levels()
+                # Send DMX values
+                self.backend.dmx.levels["sequence"][:] = get_cue(
+                    self.steps[self.position]
+                ).channels_array
+                self.backend.dmx.set_levels()
 
     def sequence_minus(self) -> None:
         """Sequence -"""
-        if self.app is not None and self.app.midi is not None:
-            self.app.midi.button_on("seq_minus", 0.1)
         self.stop()
 
         # Jump to previous Step
@@ -371,42 +343,17 @@ class Sequence:
         position -= 1
         if position >= 0:
             self.position -= 1
-            # Always use times for next cue
-            self.window.playback.sequential.total_time = self.steps[
-                position + 1
-            ].total_time
-            self.window.playback.sequential.time_in = self.steps[position + 1].time_in
-            self.window.playback.sequential.time_out = self.steps[position + 1].time_out
-            self.window.playback.sequential.delay_in = self.steps[position + 1].delay_in
-            self.window.playback.sequential.delay_out = self.steps[
-                position + 1
-            ].delay_out
-            self.window.playback.sequential.wait = self.steps[position + 1].wait
-            self.window.playback.sequential.channel_time = self.steps[
-                position + 1
-            ].channel_time
-            self.window.playback.sequential.position_a = 0
-            self.window.playback.sequential.position_b = 0
-
-            # Window's subtitle
-            subtitle = (
-                f"Mem. : {_get_cue(self.steps[position]).memory} "
-                f"{self.steps[position].text}"
-                f" - Next Mem. : {_get_cue(self.steps[position + 1]).memory} "
-                f"{self.steps[position + 1].text}"
-            )
-            # Update display
-            update_ui(subtitle, self.app)
 
             # Empty DMX user array
-            self.backend.dmx.levels["user"].fill(-1)
-            self.update_channels()
+            if self.backend is not None and self.backend.dmx is not None:
+                self.backend.dmx.levels["user"].fill(-1)
+                self.update_channels()
 
-            # Send DMX values
-            self.backend.dmx.levels["sequence"][:] = _get_cue(
-                self.steps[position]
-            ).channels_array
-            self.backend.dmx.set_levels()
+                # Send DMX values
+                self.backend.dmx.levels["sequence"][:] = get_cue(
+                    self.steps[self.position]
+                ).channels_array
+                self.backend.dmx.set_levels()
 
     def goto(self, keystring: str) -> None:
         """Jump to cue number
@@ -422,7 +369,7 @@ class Sequence:
         # Scan all cues
         for i, step in enumerate(self.steps):
             # Until we find the good one
-            if float(_get_cue(step).memory) == float(keystring):
+            if float(get_cue(step).memory) == float(keystring):
                 # Position to the one just before
                 self.position = i - 1
                 # position = self.position
@@ -495,9 +442,9 @@ class Sequence:
 
             # Set main window's subtitle
             subtitle = (
-                f"Mem. : {_get_cue(self.steps[position]).memory} "
+                f"Mem. : {get_cue(self.steps[position]).memory} "
                 f"{self.steps[position].text} - Next Mem. : "
-                f"{_get_cue(self.steps[position + 1]).memory} "
+                f"{get_cue(self.steps[position + 1]).memory} "
                 f"{self.steps[position + 1].text}"
             )
 
@@ -551,9 +498,9 @@ class Sequence:
         self.window.playback.grid.queue_draw()
 
         subtitle = (
-            f"Mem. : {_get_cue(self.steps[position]).memory} "
+            f"Mem. : {get_cue(self.steps[position]).memory} "
             f"{self.steps[position].text}"
-            f" - Next Mem. : {_get_cue(self.steps[position - 1]).memory} "
+            f" - Next Mem. : {get_cue(self.steps[position - 1]).memory} "
             f"{self.steps[position - 1].text}"
         )
         self.window.header.set_subtitle(subtitle)
@@ -629,9 +576,9 @@ class ThreadGo(threading.Thread):
     def _finalize_go(self) -> None:
         """Finish load memory after sequence transition"""
         if self.sequence.position < self.sequence.last - 1:
-            target_cue = _get_cue(self.sequence.steps[self.sequence.position + 1])
+            target_cue = get_cue(self.sequence.steps[self.sequence.position + 1])
         else:
-            target_cue = _get_cue(self.sequence.steps[0])
+            target_cue = get_cue(self.sequence.steps[0])
 
         # Block-copy levels to sequential dmx levels
         self.backend.dmx.levels["sequence"][:] = target_cue.channels_array
@@ -735,7 +682,7 @@ class ThreadGo(threading.Thread):
     def _calculate_transitions_go(self, i: float, step: Step) -> np.ndarray:
         """Calculate fade levels using array operations."""
         old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = _get_cue(step).channels_array.astype(np.int32)
+        next_levels = get_cue(step).channels_array.astype(np.int32)
         lvls = old_levels.copy()
 
         # Decays (channels going down)
@@ -781,7 +728,7 @@ class ThreadGo(threading.Thread):
         if not step.channel_time:
             return
         old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = _get_cue(step).channels_array.astype(np.int32)
+        next_levels = get_cue(step).channels_array.astype(np.int32)
         for channel, ct in step.channel_time.items():
             o_lvl = old_levels[channel - 1]
             n_lvl = next_levels[channel - 1]
@@ -846,9 +793,9 @@ def _next_step(sequence: Sequence) -> int:
         sequence.window.playback.sequential.position_b = 0
     # Main window's subtitle
     subtitle = (
-        f"Mem. : {_get_cue(sequence.steps[sequence.position]).memory} "
+        f"Mem. : {get_cue(sequence.steps[sequence.position]).memory} "
         f"{sequence.steps[sequence.position].text} - Next Mem. : "
-        f"{_get_cue(sequence.steps[next_step]).memory} "
+        f"{get_cue(sequence.steps[next_step]).memory} "
         f"{sequence.steps[next_step].text}"
     )
     # Update Gtk in main thread
@@ -896,7 +843,7 @@ class ThreadGoBack(threading.Thread):
 
     def _finalize_goback(self, prev_step: int) -> None:
         """Finish load memory after sequence transition"""
-        target_cue = _get_cue(self.sequence.steps[prev_step])
+        target_cue = get_cue(self.sequence.steps[prev_step])
 
         # Block-copy levels to sequential dmx levels
         self.backend.dmx.levels["sequence"][:] = target_cue.channels_array
@@ -932,9 +879,9 @@ class ThreadGoBack(threading.Thread):
         self.window.playback.sequential.position_b = 0
 
         subtitle = (
-            f"Mem. : {_get_cue(self.sequence.steps[prev_step]).memory} "
+            f"Mem. : {get_cue(self.sequence.steps[prev_step]).memory} "
             f"{self.sequence.steps[prev_step].text} - Next Mem. : "
-            f"{_get_cue(self.sequence.steps[prev_step + 1]).memory} "
+            f"{get_cue(self.sequence.steps[prev_step + 1]).memory} "
             f"{self.sequence.steps[prev_step + 1].text}"
         )
         GLib.idle_add(update_ui, subtitle, self.sequence.app)
@@ -1006,7 +953,7 @@ class ThreadGoBack(threading.Thread):
 
         # Array-based fade
         old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = _get_cue(self.sequence.steps[position - 1]).channels_array.astype(
+        next_levels = get_cue(self.sequence.steps[position - 1]).channels_array.astype(
             np.int32
         )
         factor = i / go_back_time
