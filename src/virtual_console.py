@@ -60,29 +60,29 @@ class VirtualConsoleWindow(Gtk.Window):
         self.num_pad = Gtk.Grid()
         # self.num_pad.set_column_homogeneous(True)
         # self.num_pad.set_row_homogeneous(True)
-        self.zero = ButtonWidget(label="0", text="number_0", midi=self.app.midi)
+        self.zero = ButtonWidget(label="0", text="number_0")
         self.zero.connect("clicked", self._on_zero)
-        self.one = ButtonWidget(label="1", text="number_1", midi=self.app.midi)
+        self.one = ButtonWidget(label="1", text="number_1")
         self.one.connect("clicked", self._on_1)
-        self.two = ButtonWidget(label="2", text="number_2", midi=self.app.midi)
+        self.two = ButtonWidget(label="2", text="number_2")
         self.two.connect("clicked", self._on_2)
-        self.three = ButtonWidget(label="3", text="number_3", midi=self.app.midi)
+        self.three = ButtonWidget(label="3", text="number_3")
         self.three.connect("clicked", self._on_3)
-        self.four = ButtonWidget(label="4", text="number_4", midi=self.app.midi)
+        self.four = ButtonWidget(label="4", text="number_4")
         self.four.connect("clicked", self._on_4)
-        self.five = ButtonWidget(label="5", text="number_5", midi=self.app.midi)
+        self.five = ButtonWidget(label="5", text="number_5")
         self.five.connect("clicked", self._on_5)
-        self.six = ButtonWidget(label="6", text="number_6", midi=self.app.midi)
+        self.six = ButtonWidget(label="6", text="number_6")
         self.six.connect("clicked", self._on_6)
-        self.seven = ButtonWidget(label="7", text="number_7", midi=self.app.midi)
+        self.seven = ButtonWidget(label="7", text="number_7")
         self.seven.connect("clicked", self._on_7)
-        self.eight = ButtonWidget(label="8", text="number_8", midi=self.app.midi)
+        self.eight = ButtonWidget(label="8", text="number_8")
         self.eight.connect("clicked", self._on_8)
-        self.nine = ButtonWidget(label="9", text="number_9", midi=self.app.midi)
+        self.nine = ButtonWidget(label="9", text="number_9")
         self.nine.connect("clicked", self._on_9)
-        self.dot = ButtonWidget(label=".", text="dot", midi=self.app.midi)
+        self.dot = ButtonWidget(label=".", text="dot")
         self.dot.connect("clicked", self._on_dot)
-        self.clear = ButtonWidget(label="C", text="clear", midi=self.app.midi)
+        self.clear = ButtonWidget(label="C", text="clear")
         self.clear.connect("clicked", self._on_clear)
         self.num_pad.attach(self.zero, 0, 3, 1, 1)
         self.num_pad.attach(self.clear, 1, 3, 1, 1)
@@ -101,12 +101,12 @@ class VirtualConsoleWindow(Gtk.Window):
         self.time_pad = Gtk.Grid()
         # self.time_pad.set_column_homogeneous(True)
         # self.time_pad.set_row_homogeneous(True)
-        self.time = ButtonWidget(label="Time", text="time", midi=self.app.midi)
+        self.time = ButtonWidget(label="Time", text="time")
         self.time.connect("clicked", self._on_time)
-        self.delay = ButtonWidget(label="Delay", text="delay", midi=self.app.midi)
+        self.delay = ButtonWidget(label="Delay", text="delay")
         self.delay.connect("clicked", self._on_delay)
-        self.button_in = ButtonWidget(label="In", midi=self.app.midi)
-        self.button_out = ButtonWidget(label="Out", midi=self.app.midi)
+        self.button_in = ButtonWidget(label="In")
+        self.button_out = ButtonWidget(label="Out")
         self.label = Gtk.Label(label="")
         self.time_pad.attach(self.label, 0, 0, 1, 1)
         self.label = Gtk.Label(label="")
@@ -120,15 +120,15 @@ class VirtualConsoleWindow(Gtk.Window):
         self.seq_pad = Gtk.Grid()
         # self.seq_pad.set_column_homogeneous(True)
         # self.seq_pad.set_row_homogeneous(True)
-        self.seq = ButtonWidget(label="Seq", text="seq", midi=self.app.midi)
+        self.seq = ButtonWidget(label="Seq", text="seq")
         self.seq.connect("clicked", self._on_seq)
-        self.empty1 = ButtonWidget(label=" ", midi=self.app.midi)
-        self.empty2 = ButtonWidget(label=" ", midi=self.app.midi)
-        self.preset = ButtonWidget(label="Preset", text="preset", midi=self.app.midi)
+        self.empty1 = ButtonWidget(label=" ")
+        self.empty2 = ButtonWidget(label=" ")
+        self.preset = ButtonWidget(label="Preset", text="preset")
         self.preset.connect("clicked", self._on_preset)
-        self.group = ButtonWidget(label="Group", text="group", midi=self.app.midi)
+        self.group = ButtonWidget(label="Group", text="group")
         self.group.connect("clicked", self._on_group)
-        self.effect = ButtonWidget(label="Effect", midi=self.app.midi)
+        self.effect = ButtonWidget(label="Effect")
         self.seq_pad.attach(self.seq, 0, 2, 1, 1)
         self.seq_pad.attach(self.empty1, 1, 2, 1, 1)
         self.seq_pad.attach(self.empty2, 2, 2, 1, 1)
@@ -142,7 +142,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Output grid
         self.output_pad = Gtk.Grid()
-        self.output = ButtonWidget(label="Output", text="output", midi=self.app.midi)
+        self.output = ButtonWidget(label="Output", text="output")
         self.output.connect("clicked", self._on_output)
         self.label = Gtk.Label(label="")
         self.output_pad.attach(self.label, 1, 0, 1, 1)
@@ -158,11 +158,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.rec_pad = Gtk.Grid()
         # self.rec_pad.set_column_homogeneous(True)
         # self.rec_pad.set_row_homogeneous(True)
-        self.update = ButtonWidget(label="Update", text="update", midi=self.app.midi)
+        self.update = ButtonWidget(label="Update", text="update")
         self.update.connect("clicked", self._on_update)
-        self.record = ButtonWidget(label="Record", text="record", midi=self.app.midi)
+        self.record = ButtonWidget(label="Record", text="record")
         self.record.connect("clicked", self._on_record)
-        self.track = ButtonWidget(label="Track", text="track", midi=self.app.midi)
+        self.track = ButtonWidget(label="Track", text="track")
         self.track.connect("clicked", self._on_track)
         self.rec_pad.attach(self.update, 0, 0, 1, 1)
         self.rec_pad.attach(self.record, 2, 0, 1, 1)
@@ -178,25 +178,21 @@ class VirtualConsoleWindow(Gtk.Window):
         self.thru_pad = Gtk.Grid()
         # self.thru_pad.set_column_homogeneous(True)
         # self.thru_pad.set_row_homogeneous(True)
-        self.thru = ButtonWidget(label="Thru", text="thru", midi=self.app.midi)
+        self.thru = ButtonWidget(label="Thru", text="thru")
         self.thru.connect("clicked", self._on_thru)
-        self.channel = ButtonWidget(label="Ch", text="ch", midi=self.app.midi)
+        self.channel = ButtonWidget(label="Ch", text="ch")
         self.channel.connect("clicked", self._on_channel)
-        self.plus = ButtonWidget(label="+", text="plus", midi=self.app.midi)
+        self.plus = ButtonWidget(label="+", text="plus")
         self.plus.connect("clicked", self._on_plus)
-        self.minus = ButtonWidget(label="-", text="minus", midi=self.app.midi)
+        self.minus = ButtonWidget(label="-", text="minus")
         self.minus.connect("clicked", self._on_minus)
-        self.all = ButtonWidget(label="All", text="all", midi=self.app.midi)
+        self.all = ButtonWidget(label="All", text="all")
         self.all.connect("clicked", self._on_all)
-        self.at_level = ButtonWidget(label="@", text="at", midi=self.app.midi)
+        self.at_level = ButtonWidget(label="@", text="at")
         self.at_level.connect("clicked", self._on_at)
-        self.percent_plus = ButtonWidget(
-            label="+%", text="percent_plus", midi=self.app.midi
-        )
+        self.percent_plus = ButtonWidget(label="+%", text="percent_plus")
         self.percent_plus.connect("clicked", self._on_percent_plus)
-        self.percent_minus = ButtonWidget(
-            label="-%", text="percent_minus", midi=self.app.midi
-        )
+        self.percent_minus = ButtonWidget(label="-%", text="percent_minus")
         self.percent_minus.connect("clicked", self._on_percent_minus)
         self.thru_pad.attach(self.thru, 0, 0, 1, 1)
         self.thru_pad.attach(self.channel, 0, 1, 1, 1)
@@ -217,17 +213,17 @@ class VirtualConsoleWindow(Gtk.Window):
         self.modify_pad = Gtk.Grid()
         # self.modify_pad.set_column_homogeneous(True)
         # self.modify_pad.set_row_homogeneous(True)
-        self.insert = ButtonWidget(label="Insert", midi=self.app.midi)
-        self.delete = ButtonWidget(label="Delete", midi=self.app.midi)
-        self.esc = ButtonWidget(label="Esc", midi=self.app.midi)
-        self.modify = ButtonWidget(label="Modify", midi=self.app.midi)
-        self.up = ButtonWidget(label="^", text="up", midi=self.app.midi)
+        self.insert = ButtonWidget(label="Insert")
+        self.delete = ButtonWidget(label="Delete")
+        self.esc = ButtonWidget(label="Esc")
+        self.modify = ButtonWidget(label="Modify")
+        self.up = ButtonWidget(label="^", text="up")
         self.up.connect("clicked", self._on_up)
-        self.down = ButtonWidget(label="v", text="down", midi=self.app.midi)
+        self.down = ButtonWidget(label="v", text="down")
         self.down.connect("clicked", self._on_down)
-        self.left = ButtonWidget(label="<", text="left", midi=self.app.midi)
+        self.left = ButtonWidget(label="<", text="left")
         self.left.connect("clicked", self._on_left)
-        self.right = ButtonWidget(label=">", text="right", midi=self.app.midi)
+        self.right = ButtonWidget(label=">", text="right")
         self.right.connect("clicked", self._on_right)
         self.modify_pad.attach(self.insert, 0, 0, 1, 1)
         self.modify_pad.attach(self.delete, 2, 0, 1, 1)
@@ -249,13 +245,13 @@ class VirtualConsoleWindow(Gtk.Window):
         self.crossfade_pad = Gtk.Grid()
         # self.crossfade_pad.set_column_homogeneous(True)
         # self.crossfade_pad.set_row_homogeneous(True)
-        self.live = ButtonWidget(label="Live", midi=self.app.midi)
-        self.format = ButtonWidget(label="Format", midi=self.app.midi)
-        self.blind = ButtonWidget(label="Blind", midi=self.app.midi)
-        self.goto = ButtonWidget(label="Goto", text="goto", midi=self.app.midi)
+        self.live = ButtonWidget(label="Live")
+        self.format = ButtonWidget(label="Format")
+        self.blind = ButtonWidget(label="Blind")
+        self.goto = ButtonWidget(label="Goto", text="goto")
         self.goto.connect("clicked", self._on_goto)
-        self.a = ButtonWidget(label="A", midi=self.app.midi)
-        self.b = ButtonWidget(label="B", midi=self.app.midi)
+        self.a = ButtonWidget(label="A")
+        self.b = ButtonWidget(label="B")
 
         adjustment = Gtk.Adjustment(0, 0, 255, 1, 10, 0)
         self.scale_a = FaderWidget(
@@ -370,17 +366,11 @@ class VirtualConsoleWindow(Gtk.Window):
         self.go_pad = Gtk.Grid()
         self.go_button = GoWidget()
         self.go_button.connect("clicked", self._on_go)
-        self.seq_plus = ButtonWidget(
-            label="Next Cue", text="playback.sequence_plus", midi=self.app.midi
-        )
+        self.seq_plus = ButtonWidget(label="Next Cue", text="playback.sequence_plus")
         self.seq_plus.connect("clicked", self._on_seq_plus)
-        self.seq_minus = ButtonWidget(
-            label="Prev Cue", text="playback.sequence_minus", midi=self.app.midi
-        )
+        self.seq_minus = ButtonWidget(label="Prev Cue", text="playback.sequence_minus")
         self.seq_minus.connect("clicked", self._on_seq_minus)
-        self.goback = ButtonWidget(
-            label="Go Back", text="playback.go_back", midi=self.app.midi
-        )
+        self.goback = ButtonWidget(label="Go Back", text="playback.go_back")
         self.goback.connect("clicked", self._on_go_back)
         self.pause = PauseWidget("Pause", "playback.pause")
         self.pause.connect("clicked", self._on_pause)
@@ -427,13 +417,9 @@ class VirtualConsoleWindow(Gtk.Window):
             level = round(fader.level * 255)
             self.faders[fader.index - 1].set_value(level)
         self.fader_pages = Gtk.Grid()
-        self.fader_page_plus = ButtonWidget(
-            label="Page+", text="page_plus", midi=self.app.midi
-        )
+        self.fader_page_plus = ButtonWidget(label="Page+", text="page_plus")
         self.fader_page_plus.connect("clicked", self._on_fader_page)
-        self.fader_page_minus = ButtonWidget(
-            label="Page-", text="page_minus", midi=self.app.midi
-        )
+        self.fader_page_minus = ButtonWidget(label="Page-", text="page_minus")
         self.fader_page_minus.connect("clicked", self._on_fader_page)
         self.page_number = Gtk.Label(label=str(fader_bank.active_page))
         self.fader_pages.attach(self.fader_page_plus, 0, 0, 1, 1)
@@ -1127,7 +1113,7 @@ class VirtualConsoleWindow(Gtk.Window):
             midi_fader.set_state(int(value))
 
     def queue_draw(self) -> None:
-        """Synchronize GoWidget and PauseWidget learning states before drawing."""
+        """Synchronize learning states before drawing."""
         if hasattr(self, "go_button") and self.go_button:
             is_learning = False
             if self.app.midi and self.app.midi.learning == "playback.go":
@@ -1138,4 +1124,16 @@ class VirtualConsoleWindow(Gtk.Window):
             if self.app.midi and self.app.midi.learning == "playback.pause":
                 is_learning = True
             self.pause.is_learning = is_learning
+
+        for attr in self.__dict__.values():
+            if isinstance(attr, ButtonWidget):
+                is_learning = False
+                if (
+                    self.app.midi
+                    and attr.text != "None"
+                    and self.app.midi.learning == attr.text
+                ):
+                    is_learning = True
+                attr.is_learning = is_learning
+
         super().queue_draw()

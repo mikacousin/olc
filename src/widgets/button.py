@@ -14,14 +14,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
-import typing
-
 import cairo
 from gi.repository import Gdk, GObject, Gtk
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
-
-if typing.TYPE_CHECKING:
-    from olc.midi import Midi
 
 
 class ButtonWidget(Gtk.Widget):
@@ -36,11 +31,9 @@ class ButtonWidget(Gtk.Widget):
     RADIUS = 10
     FONT_SIZE = 10
 
-    def __init__(
-        self, label: str = "", text: str = "None", midi: Midi | None = None
-    ) -> None:
+    def __init__(self, label: str = "", text: str = "None") -> None:
         Gtk.Widget.__init__(self)
-        self.midi = midi
+        self.is_learning = False
 
         self.pressed = False
         self.label = label
@@ -74,11 +67,11 @@ class ButtonWidget(Gtk.Widget):
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
         elif self.pressed:
-            if self.midi and self.midi.learning == self.text:
+            if self.is_learning:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:
                 cr.set_source_rgb(0.5, 0.3, 0.0)
-        elif self.midi and self.midi.learning == self.text:
+        elif self.is_learning:
             cr.set_source_rgb(0.3, 0.2, 0.2)
         else:
             cr.set_source_rgb(0.2, 0.2, 0.2)
