@@ -19,7 +19,32 @@ import typing
 from gi.repository import Gtk
 
 if typing.TYPE_CHECKING:
+    from olc.channel_time import ChanneltimeTab
+    from olc.cues_edition import CuesEditionTab
+    from olc.curve_edition import CurvesTab
+    from olc.fader_edition import FaderTab
+    from olc.group import GroupTab
+    from olc.independents_edition import IndependentsTab
+    from olc.patch_channels import PatchChannelsTab
+    from olc.patch_outputs import PatchOutputsTab
+    from olc.sequence_edition import SequenceTab
+    from olc.settings import SettingsTab
+    from olc.track_channels import TrackChannelsTab
     from olc.window import Window
+
+    TabWidget = (
+        ChanneltimeTab
+        | CuesEditionTab
+        | CurvesTab
+        | FaderTab
+        | GroupTab
+        | IndependentsTab
+        | PatchChannelsTab
+        | PatchOutputsTab
+        | SequenceTab
+        | SettingsTab
+        | TrackChannelsTab
+    )
 
 
 class Tabs:
@@ -29,7 +54,7 @@ class Tabs:
         tabs: Tabs defined by a unique name and widgets
     """
 
-    tabs: dict[str, Gtk.Paned | None]
+    tabs: dict[str, TabWidget | None]
 
     def __init__(self, window: Window | None) -> None:
         self.window = window
@@ -67,25 +92,29 @@ class Tabs:
             return
         if self.tabs[tab_name] is None:
             self.tabs[tab_name] = widget(*args)
+            tab = self.tabs[tab_name]
+            assert tab is not None
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
             button.connect(
                 "clicked",
-                self.tabs[tab_name].on_close_icon,
+                tab.on_close_icon,
             )
             newlabel = Gtk.Box()
             newlabel.pack_start(Gtk.Label(label=label), False, False, 0)
             newlabel.pack_start(button, False, False, 0)
             newlabel.show_all()
-            self.window.playback.append_page(self.tabs[tab_name], newlabel)
-            self.window.playback.set_tab_reorderable(self.tabs[tab_name], True)
-            self.window.playback.set_tab_detachable(self.tabs[tab_name], True)
+            self.window.playback.append_page(tab, newlabel)
+            self.window.playback.set_tab_reorderable(tab, True)
+            self.window.playback.set_tab_detachable(tab, True)
             self.window.show_all()
             self.window.playback.set_current_page(-1)
         else:
-            page = self.window.playback.page_num(self.tabs[tab_name])
+            tab = self.tabs[tab_name]
+            assert tab is not None
+            page = self.window.playback.page_num(tab)
             self.window.playback.set_current_page(page)
         self.window.playback.grab_focus()
 
@@ -97,9 +126,13 @@ class Tabs:
         """
         if self.window and self.tabs[tab_name]:
             self.window.commandline.set_string("")
-            notebook = self.tabs[tab_name].get_parent()
-            page = notebook.page_num(self.tabs[tab_name])
-            notebook.remove_page(page)
+            tab = self.tabs[tab_name]
+            assert tab is not None
+            notebook = tab.get_parent()
+            if notebook is not None:
+                notebook_nb = typing.cast(Gtk.Notebook, notebook)
+                page = notebook_nb.page_num(tab)
+                notebook_nb.remove_page(page)
             self.tabs[tab_name] = None
 
     def refresh_all(self) -> None:
