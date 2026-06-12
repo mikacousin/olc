@@ -213,9 +213,10 @@ class SequenceTab(Gtk.Grid):
         # Double click on Channel Time
         if col_nb == 8:
             sequence = self.get_selected_sequence()
-            step = self.liststore2[path][0]
-            if sequence and step:
-                self.window.channeltime(sequence, step)
+            step_str = self.liststore2[path][0]
+            if sequence and step_str:
+                step = int(step_str)
+                self.window.app.channeltime(sequence, step)
 
     def path_from_step(self, step: int) -> str:
         """Return row number of Main Playback Window  of the given step

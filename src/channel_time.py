@@ -26,6 +26,7 @@ if typing.TYPE_CHECKING:
     from olc.sequence import Sequence
     from olc.sequence_edition import SequenceTab
     from olc.tabs_manager import Tabs
+    from olc.widgets.channel import ChannelWidget
     from olc.window import Window
 
 
@@ -162,7 +163,7 @@ class ChanneltimeTab(Gtk.Paned):
             if not seq_path:
                 return
             selected = seq_path.get_indices()
-            sequence = sequences_tab.liststore1[selected][0]
+            sequence = sequences_tab.liststore1[selected[0]][0]
             if sequence == self.sequence.index:
                 path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                 ct_nb = len(self.step.channel_time)
@@ -347,18 +348,20 @@ class ChanneltimeTab(Gtk.Paned):
         # Find selected channels
         sel = self.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel)
-            # If not already exist
-            if channel not in self.step.channel_time:
-                # Add Channel Time
-                delay = 0.0
-                time = 0.0
-                self.step.channel_time[channel] = ChannelTime(delay, time)
-                # Update user interface
-                self.liststore.append([channel, "", ""])
-                path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
-                self.treeview.set_cursor(path)
+            child = flowboxchild.get_child()
+            if child is not None:
+                channelwidget = typing.cast("ChannelWidget", child)
+                channel = int(channelwidget.channel)
+                # If not already exist
+                if channel not in self.step.channel_time:
+                    # Add Channel Time
+                    delay = 0.0
+                    time = 0.0
+                    self.step.channel_time[channel] = ChannelTime(delay, time)
+                    # Update user interface
+                    self.liststore.append([channel, "", ""])
+                    path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
+                    self.treeview.set_cursor(path)
 
 
 class CTChannelsView(ChannelsView):
@@ -401,10 +404,14 @@ class CTChannelsView(ChannelsView):
         """
         if not self.tabs or not self.tabs.tabs["channel_time"]:
             return False
+        widget = child.get_child()
+        if widget is None:
+            return False
+        channel_widget = typing.cast("ChannelWidget", widget)
         channel_index = child.get_index()
-        channel_widget = child.get_child()
         step = typing.cast(ChanneltimeTab, self.tabs.tabs["channel_time"]).step
-        channels = step.cue.channels
+        cue = step.cue
+        channels = cue.channels if cue is not None else {}
         path, _focus_column = typing.cast(
             ChanneltimeTab, self.tabs.tabs["channel_time"]
         ).treeview.get_cursor()

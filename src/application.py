@@ -687,11 +687,11 @@ class Application(Gtk.Application):
                 self.settings,
             )
 
-    def channeltime(self, sequence: int, step: int) -> None:
+    def channeltime(self, sequence: Sequence, step: int) -> None:
         """Create Channel Time Tab
 
         Args:
-            sequence: Sequence number
+            sequence: Sequence
             step: Position in sequence
         """
         if self.tabs:
