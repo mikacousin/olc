@@ -39,8 +39,11 @@ class DMXBackend:
     def __init__(self, lightshow: LightShow) -> None:
         self.dmx = Dmx(typing.cast(typing.Any, self), lightshow)
         self.patch = lightshow.patch
-        self.artnet = getattr(lightshow.app.engine, "_artnet_manager", None)
-        self.sacn = getattr(lightshow.app.engine, "_sacn_manager", None)
+        self.artnet = None
+        self.sacn = None
+        if lightshow.app is not None:
+            self.artnet = getattr(lightshow.app.engine, "_artnet_manager", None)
+            self.sacn = getattr(lightshow.app.engine, "_sacn_manager", None)
 
         # Wire up callbacks on active managers
         if self.artnet is not None:
@@ -49,7 +52,7 @@ class DMXBackend:
         if self.sacn is not None:
             self.sacn.notify = self.notify_sacn
 
-        if hasattr(lightshow.app.engine, "notify_enttec"):
+        if lightshow.app is not None and hasattr(lightshow.app.engine, "notify_enttec"):
             lightshow.app.engine.notify_enttec = self.notify_enttec
 
     def stop(self) -> None:
