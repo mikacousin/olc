@@ -22,6 +22,7 @@ from olc.define import NB_UNIVERSES, UNIVERSES, is_int, is_non_nul_int
 from olc.widgets.patch_outputs import PatchWidget
 
 if typing.TYPE_CHECKING:
+    import olc.patch_outputs
     from gi.repository import Gio
     from olc.backends import DMXBackend
     from olc.lightshow import LightShow
@@ -84,7 +85,7 @@ class PatchOutputsTab(Gtk.Box):
                     universe,
                     out,
                     self.lightshow,
-                    self,
+                    typing.cast("olc.patch_outputs.PatchOutputsTab", self),
                     self.window.commandline,
                     self.backend,
                 )
@@ -103,13 +104,13 @@ class PatchOutputsTab(Gtk.Box):
         # Register callback for network DMX updates
         self.backend.dmx.add_output_callback(self.on_network_dmx_changed)
 
-    def on_button_clicked(self, widget: Gtk.Widget) -> None:
+    def on_button_clicked(self, button: Gtk.Button) -> None:
         """On buttons clicked
 
         Args:
             widget: Clicked button
         """
-        button_label = widget.get_label()
+        button_label = button.get_label()
 
         if button_label == "Unpatch all":
             self.patch.patch_empty()
@@ -128,8 +129,9 @@ class PatchOutputsTab(Gtk.Box):
                     widget = self.window.live_view.channels_view.get_channel_widget(
                         channel + 1
                     )
-                    widget.level = level
-                    widget.queue_draw()
+                    if widget is not None:
+                        widget.level = level
+                        widget.queue_draw()
             self.window.live_view.channels_view.update()
         self.lightshow.set_modified()
 
@@ -150,8 +152,9 @@ class PatchOutputsTab(Gtk.Box):
         for output_index in self.patch_by_outputs.outputs:
             output_index -= 1
             child = self.flowbox.get_child_at_index(output_index)
-            self.flowbox.select_child(child)
-            self.window.set_focus(child)
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.window.set_focus(child)
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -212,26 +215,36 @@ class PatchOutputsTab(Gtk.Box):
             new: New Output
         """
         # Get old output level
-        child = self.flowbox.get_child_at_index(old)
-        output = child.get_child().output
-        universe = child.get_child().universe
-        level = self.backend.dmx.user_outputs.get((output, universe))
-        # Old output at 0
-        self.backend.dmx.send_user_output(output, universe, 0)
-        # New output at old output level
-        child = self.flowbox.get_child_at_index(new)
-        output = child.get_child().output
-        universe = child.get_child().universe
-        self.backend.dmx.send_user_output(output, universe, level)
+        child_old = self.flowbox.get_child_at_index(old)
+        if child_old is not None:
+            widget_old = typing.cast("PatchWidget", child_old.get_child())
+            if widget_old is not None:
+                output_old = widget_old.output
+                universe_old = widget_old.universe
+                level = self.backend.dmx.user_outputs.get((output_old, universe_old), 0)
+                # Old output at 0
+                self.backend.dmx.send_user_output(output_old, universe_old, 0)
+
+                # New output at old output level
+                child_new = self.flowbox.get_child_at_index(new)
+                if child_new is not None:
+                    widget_new = typing.cast("PatchWidget", child_new.get_child())
+                    if widget_new is not None:
+                        output_new = widget_new.output
+                        universe_new = widget_new.universe
+                        self.backend.dmx.send_user_output(
+                            output_new, universe_new, level
+                        )
 
     def _keypress_right(self) -> None:
         """Next Output"""
 
         if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
-            self.flowbox.select_child(child)
-            self.window.commandline.set_string("1")
-            self.patch_by_outputs.select_output()
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.window.commandline.set_string("1")
+                self.patch_by_outputs.select_output()
         elif self.patch_by_outputs.last < (NB_UNIVERSES * 512):
             old_output = self.patch_by_outputs.last
             new_output = old_output + 1
@@ -246,9 +259,10 @@ class PatchOutputsTab(Gtk.Box):
 
         if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
-            self.flowbox.select_child(child)
-            self.window.commandline.set_string("1")
-            self.patch_by_outputs.select_output()
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.window.commandline.set_string("1")
+                self.patch_by_outputs.select_output()
         elif self.patch_by_outputs.last > 1:
             old_output = self.patch_by_outputs.last
             new_output = old_output - 1
@@ -263,46 +277,54 @@ class PatchOutputsTab(Gtk.Box):
 
         if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
-            self.flowbox.select_child(child)
-            self.window.commandline.set_string("1")
-            self.patch_by_outputs.select_output()
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.window.commandline.set_string("1")
+                self.patch_by_outputs.select_output()
         else:
             old_output = self.patch_by_outputs.last
             child = self.flowbox.get_child_at_index(old_output - 1)
-            allocation = child.get_allocation()
-            if child := self.flowbox.get_child_at_pos(
-                allocation.x, allocation.y + allocation.height
-            ):
-                index = child.get_index()
-                new_output = index + 1
-                output, universe = self.patch_by_outputs.get_output_universe(new_output)
-                self.window.commandline.set_string(f"{output}.{universe}")
-                self.patch_by_outputs.select_output()
-                if self.test:
-                    self._change_test_output(old_output, new_output)
+            if child is not None:
+                allocation = child.get_allocation()
+                if child_at_pos := self.flowbox.get_child_at_pos(
+                    allocation.x, allocation.y + allocation.height
+                ):
+                    index = child_at_pos.get_index()
+                    new_output = index + 1
+                    output, universe = self.patch_by_outputs.get_output_universe(
+                        new_output
+                    )
+                    self.window.commandline.set_string(f"{output}.{universe}")
+                    self.patch_by_outputs.select_output()
+                    if self.test:
+                        self._change_test_output(old_output, new_output)
 
     def _keypress_up(self) -> None:
         """Previous Line"""
 
         if self.patch_by_outputs.get_selected() == "":
             child = self.flowbox.get_child_at_index(0)
-            self.flowbox.select_child(child)
-            self.window.commandline.set_string("1")
-            self.patch_by_outputs.select_output()
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.window.commandline.set_string("1")
+                self.patch_by_outputs.select_output()
         else:
             old_output = self.patch_by_outputs.last
             child = self.flowbox.get_child_at_index(old_output - 1)
-            allocation = child.get_allocation()
-            if child := self.flowbox.get_child_at_pos(
-                allocation.x, allocation.y - allocation.height / 2
-            ):
-                index = child.get_index()
-                new_output = index + 1
-                output, universe = self.patch_by_outputs.get_output_universe(new_output)
-                self.window.commandline.set_string(f"{output}.{universe}")
-                self.patch_by_outputs.select_output()
-                if self.test:
-                    self._change_test_output(old_output, new_output)
+            if child is not None:
+                allocation = child.get_allocation()
+                if child_at_pos := self.flowbox.get_child_at_pos(
+                    allocation.x, allocation.y - allocation.height // 2
+                ):
+                    index = child_at_pos.get_index()
+                    new_output = index + 1
+                    output, universe = self.patch_by_outputs.get_output_universe(
+                        new_output
+                    )
+                    self.window.commandline.set_string(f"{output}.{universe}")
+                    self.patch_by_outputs.select_output()
+                    if self.test:
+                        self._change_test_output(old_output, new_output)
 
     def _keypress_o(self) -> None:
         """Select Output"""
@@ -365,10 +387,11 @@ class PatchOutputsTab(Gtk.Box):
         outputs = []
         selected = self.flowbox.get_selected_children()
         for flowboxchild in selected:
-            output_widget = flowboxchild.get_child()
-            output = output_widget.output
-            universe = output_widget.universe
-            outputs.append((output, universe))
+            output_widget = typing.cast("PatchWidget", flowboxchild.get_child())
+            if output_widget is not None:
+                output = output_widget.output
+                universe = output_widget.universe
+                outputs.append((output, universe))
         return outputs
 
     def _keypress_kp_divide(self) -> None:
