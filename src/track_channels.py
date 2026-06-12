@@ -22,9 +22,11 @@ from olc.define import MAX_CHANNELS
 from olc.widgets.track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 if typing.TYPE_CHECKING:
+    import olc.track_channels
     from gi.repository import Gio
     from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
+    from olc.widgets.channel import ChannelWidget
     from olc.window import Window
 
 
@@ -64,10 +66,12 @@ class TrackChannelsTab(Gtk.Grid):
         self.channels = []
         sel = self.window.live_view.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel)
-            if self.lightshow.patch.is_patched(channel):
-                self.channels.append(channel - 1)
+            child = flowboxchild.get_child()
+            if child is not None:
+                channelwidget = typing.cast("ChannelWidget", child)
+                channel = int(channelwidget.channel)
+                if self.lightshow.patch.is_patched(channel):
+                    self.channels.append(channel - 1)
 
         self.populate_steps()
 
@@ -89,17 +93,21 @@ class TrackChannelsTab(Gtk.Grid):
         levels: list[list[int]] = [[]]
         self.flowbox.add(self.steps[0])
         for step in range(1, self.lightshow.main_playback.last):
-            memory = self.lightshow.main_playback.steps[step].cue.memory
+            cue = self.lightshow.main_playback.steps[step].cue
+            memory = cue.memory if cue is not None else 0.0
             text = self.lightshow.main_playback.steps[step].text
             levels.append([])
             for channel in self.channels:
-                level = self.lightshow.main_playback.steps[step].cue.channels.get(
-                    channel + 1, 0
-                )
+                level = cue.channels.get(channel + 1, 0) if cue is not None else 0
                 levels[step].append(level)
             self.steps.append(
                 TrackChannelsWidget(
-                    step, memory, text, levels[step], self, self.settings
+                    step,
+                    memory,
+                    text,
+                    levels[step],
+                    typing.cast("olc.track_channels.TrackChannelsTab", self),
+                    self.settings,
                 )
             )
             self.flowbox.add(self.steps[step])
@@ -127,22 +135,23 @@ class TrackChannelsTab(Gtk.Grid):
         self.channels = []
         sel = self.window.live_view.channels_view.flowbox.get_selected_children()
         for flowboxchild in sel:
-            channelwidget = flowboxchild.get_child()
-            channel = int(channelwidget.channel)
-            if self.lightshow.patch.is_patched(channel):
-                self.channels.append(channel - 1)
+            child = flowboxchild.get_child()
+            if child is not None:
+                channelwidget = typing.cast("ChannelWidget", child)
+                channel = int(channelwidget.channel)
+                if self.lightshow.patch.is_patched(channel):
+                    self.channels.append(channel - 1)
         self.channel_selected = 0
         # Update Track Channels Tab
-        self.steps[0].channels = self.channels
+        typing.cast(TrackChannelsHeader, self.steps[0]).channels = self.channels
         levels: list[list[int]] = [[]]
         for step in range(self.lightshow.main_playback.last):
             levels.append([])
+            cue = self.lightshow.main_playback.steps[step].cue
             for channel in self.channels:
-                level = self.lightshow.main_playback.steps[step].cue.channels.get(
-                    channel + 1, 0
-                )
+                level = cue.channels.get(channel + 1, 0) if cue is not None else 0
                 levels[step].append(level)
-            self.steps[step].levels = levels[step]
+            typing.cast(TrackChannelsWidget, self.steps[step]).levels = levels[step]
         self.flowbox.queue_draw()
 
     def refresh(self) -> None:
@@ -206,58 +215,68 @@ class TrackChannelsTab(Gtk.Grid):
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.flowbox.select_child(child)
-            self.last_step_selected = "1"
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_step_selected = "1"
         else:
             sel = self.flowbox.get_selected_children()
             for flowboxchild in sel:
-                widget = flowboxchild.get_child()
-                if self.channel_selected + 1 < len(widget.levels):
-                    self.channel_selected += 1
-                    widget.queue_draw()
+                child = flowboxchild.get_child()
+                if child is not None:
+                    widget = typing.cast(TrackChannelsWidget, child)
+                    if self.channel_selected + 1 < len(widget.levels):
+                        self.channel_selected += 1
+                        widget.queue_draw()
 
     def _keypress_left(self) -> None:
         """Previous Channel"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.flowbox.select_child(child)
-            self.last_step_selected = "1"
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_step_selected = "1"
         else:
             sel = self.flowbox.get_selected_children()
             for flowboxchild in sel:
-                widget = flowboxchild.get_child()
-                if self.channel_selected > 0:
-                    self.channel_selected -= 1
-                    widget.queue_draw()
+                child = flowboxchild.get_child()
+                if child is not None:
+                    widget = typing.cast(TrackChannelsWidget, child)
+                    if self.channel_selected > 0:
+                        self.channel_selected -= 1
+                        widget.queue_draw()
 
     def _keypress_down(self) -> None:
         """Next Step"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.flowbox.select_child(child)
-            self.last_step_selected = "1"
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_step_selected = "1"
         elif int(self.last_step_selected) < self.lightshow.main_playback.last - 2:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) + 1)
-            self.flowbox.select_child(child)
-            index = child.get_index()
-            self.last_step_selected = str(index)
+            if child is not None:
+                self.flowbox.select_child(child)
+                index = child.get_index()
+                self.last_step_selected = str(index)
 
     def _keypress_up(self) -> None:
         """Previous Step"""
 
         if self.last_step_selected == "":
             child = self.flowbox.get_child_at_index(1)
-            self.flowbox.select_child(child)
-            self.last_step_selected = "1"
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_step_selected = "1"
         elif int(self.last_step_selected) > 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_step_selected) - 1)
-            self.flowbox.select_child(child)
-            index = child.get_index()
-            self.last_step_selected = str(index)
+            if child is not None:
+                self.flowbox.select_child(child)
+                index = child.get_index()
+                self.last_step_selected = str(index)
 
     def _keypress_equal(self) -> None:
         """Modify Level"""
@@ -265,20 +284,24 @@ class TrackChannelsTab(Gtk.Grid):
         # Find selected Channel
         sel = self.flowbox.get_selected_children()
         for flowboxchild in sel:
-            widget = flowboxchild.get_child()
-            step = widget.step
-            channel = self.channels[self.channel_selected] + 1
-            level = int(self.window.commandline.get_string())
+            child = flowboxchild.get_child()
+            if child is not None:
+                widget = typing.cast(TrackChannelsWidget, child)
+                step = widget.step
+                channel = self.channels[self.channel_selected] + 1
+                level = int(self.window.commandline.get_string())
 
-            if self.settings.get_boolean("percent"):
-                level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
-            if 0 <= level <= 255:
-                self.lightshow.main_playback.steps[step].cue.channels[channel] = level
-                widget.levels[self.channel_selected] = level
-                widget.queue_draw()
-                self.tabs.refresh_all()
-                self.window.live_view.channels_view.update()
-                self.lightshow.set_modified()
+                if self.settings.get_boolean("percent"):
+                    level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
+                if 0 <= level <= 255:
+                    cue = self.lightshow.main_playback.steps[step].cue
+                    if cue is not None:
+                        cue.channels[channel] = level
+                    widget.levels[self.channel_selected] = level
+                    widget.queue_draw()
+                    self.tabs.refresh_all()
+                    self.window.live_view.channels_view.update()
+                    self.lightshow.set_modified()
 
         self.window.commandline.set_string("")
 
@@ -293,8 +316,11 @@ class TrackChannelsTab(Gtk.Grid):
                 child = self.window.live_view.channels_view.flowbox.get_child_at_index(
                     channel
                 )
-                self.window.live_view.channels_view.flowbox.select_child(child)
-                self.window.last_chan_selected = str(channel)
+                if child is not None:
+                    self.window.live_view.channels_view.flowbox.select_child(child)
+                    self.window.live_view.channels_view.last_selected_channel = str(
+                        channel
+                    )
 
         self.update_display()
 
@@ -304,6 +330,7 @@ class TrackChannelsTab(Gtk.Grid):
         """Channel Thru"""
         self._keypress_greater()
 
+    # pylint: disable=too-many-branches
     def _keypress_greater(self) -> None:
         """Channel Thru"""
 
@@ -312,37 +339,52 @@ class TrackChannelsTab(Gtk.Grid):
 
         if len(sel) == 1:
             flowboxchild = sel[0]
-            channelwidget = flowboxchild.get_child()
-            self.window.last_chan_selected = channelwidget.channel
+            child = flowboxchild.get_child()
+            if child is not None:
+                channelwidget = typing.cast("ChannelWidget", child)
+                self.window.live_view.channels_view.last_selected_channel = (
+                    channelwidget.channel
+                )
 
-        if not self.window.last_chan_selected:
+        if not self.window.live_view.channels_view.last_selected_channel:
             sel = self.window.live_view.channels_view.flowbox.get_selected_children()
             if len(sel) > 0:
+                channel = 0
                 for flowboxchild in sel:
-                    channelwidget = flowboxchild.get_child()
-                    channel = int(channelwidget.channel)
-                self.window.last_chan_selected = str(channel)
+                    child = flowboxchild.get_child()
+                    if child is not None:
+                        channelwidget = typing.cast("ChannelWidget", child)
+                        channel = int(channelwidget.channel)
+                self.window.live_view.channels_view.last_selected_channel = str(channel)
 
-        if self.window.last_chan_selected:
+        if self.window.live_view.channels_view.last_selected_channel:
             to_chan = int(keystring)
-            if to_chan > int(self.window.last_chan_selected):
-                for channel in range(int(self.window.last_chan_selected) - 1, to_chan):
+            if to_chan > int(self.window.live_view.channels_view.last_selected_channel):
+                for channel in range(
+                    int(self.window.live_view.channels_view.last_selected_channel) - 1,
+                    to_chan,
+                ):
                     child = (
                         self.window.live_view.channels_view.flowbox.get_child_at_index(
                             channel
                         )
                     )
-                    self.window.live_view.channels_view.flowbox.select_child(child)
+                    if child is not None:
+                        self.window.live_view.channels_view.flowbox.select_child(child)
             else:
-                for channel in range(to_chan - 1, int(self.window.last_chan_selected)):
+                for channel in range(
+                    to_chan - 1,
+                    int(self.window.live_view.channels_view.last_selected_channel),
+                ):
                     child = (
                         self.window.live_view.channels_view.flowbox.get_child_at_index(
                             channel
                         )
                     )
-                    self.window.live_view.channels_view.flowbox.select_child(child)
+                    if child is not None:
+                        self.window.live_view.channels_view.flowbox.select_child(child)
 
-            self.window.last_chan_selected = keystring
+            self.window.live_view.channels_view.last_selected_channel = keystring
 
             self.update_display()
 
@@ -363,10 +405,10 @@ class TrackChannelsTab(Gtk.Grid):
             child = self.window.live_view.channels_view.flowbox.get_child_at_index(
                 channel
             )
-            self.window.live_view.channels_view.flowbox.select_child(child)
-            self.window.last_chan_selected = keystring
-
-            self.update_display()
+            if child is not None:
+                self.window.live_view.channels_view.flowbox.select_child(child)
+                self.window.live_view.channels_view.last_selected_channel = keystring
+                self.update_display()
 
         self.window.commandline.set_string("")
 
@@ -385,9 +427,9 @@ class TrackChannelsTab(Gtk.Grid):
             child = self.window.live_view.channels_view.flowbox.get_child_at_index(
                 channel
             )
-            self.window.live_view.channels_view.flowbox.unselect_child(child)
-            self.window.last_chan_selected = keystring
-
-            self.update_display()
+            if child is not None:
+                self.window.live_view.channels_view.flowbox.unselect_child(child)
+                self.window.live_view.channels_view.last_selected_channel = keystring
+                self.update_display()
 
         self.window.commandline.set_string("")
