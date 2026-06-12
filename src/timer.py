@@ -47,5 +47,6 @@ class RepeatedTimer:
 
     def stop(self) -> None:
         """Stop function"""
-        self._timer.cancel()
+        if self._timer is not None:
+            self._timer.cancel()
         self.is_running = False
