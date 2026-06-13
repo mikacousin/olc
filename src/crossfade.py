@@ -16,7 +16,6 @@ import typing
 
 import numpy as np
 from olc.define import MAX_CHANNELS
-from olc.sequence import update_ui
 
 if typing.TYPE_CHECKING:
     from olc.step import Step
@@ -125,30 +124,6 @@ class CrossFade:
             self.app.core.lightshow.main_playback.position = 0
             next_step = 1
         # Update user interface
-        if self.app.window and self.app.window.playback:
-            self.app.window.playback.sequential.total_time = (
-                self.app.core.lightshow.main_playback.steps[next_step].total_time
-            )
-            self.app.window.playback.sequential.time_in = (
-                self.app.core.lightshow.main_playback.steps[next_step].time_in
-            )
-            self.app.window.playback.sequential.time_out = (
-                self.app.core.lightshow.main_playback.steps[next_step].time_out
-            )
-            self.app.window.playback.sequential.delay_in = (
-                self.app.core.lightshow.main_playback.steps[next_step].delay_in
-            )
-            self.app.window.playback.sequential.delay_out = (
-                self.app.core.lightshow.main_playback.steps[next_step].delay_out
-            )
-            self.app.window.playback.sequential.wait = (
-                self.app.core.lightshow.main_playback.steps[next_step].wait
-            )
-            self.app.window.playback.sequential.channel_time = (
-                self.app.core.lightshow.main_playback.steps[next_step].channel_time
-            )
-            self.app.window.playback.sequential.position_a = 0
-            self.app.window.playback.sequential.position_b = 0
         cue = self.app.core.lightshow.main_playback.steps[
             self.app.core.lightshow.main_playback.position
         ].cue.memory
@@ -161,7 +136,7 @@ class CrossFade:
             f"- Next Mem. : {next_cue} "
             f"{self.app.core.lightshow.main_playback.steps[next_step].text}"
         )
-        update_ui(subtitle)
+        self.app.core.emit("crossfade.at_full", next_step, subtitle)
         # If Wait
         if self.app.core.lightshow.main_playback.steps[next_step].wait:
             self.app.core.lightshow.main_playback.on_go = False
@@ -198,26 +173,11 @@ class CrossFade:
     def _update_ui_transition(
         self, scale: Scale, position: float, total_time: float, step: int
     ) -> None:
-        """Update individual scale progress indicators in the UI."""
-        if not (self.app.window and self.app.window.playback):
-            return
-
-        alloc_width = self.app.window.playback.sequential.get_allocation().width
-        ratio = (alloc_width - 32) / total_time * position
-
-        if scale == self.scale_a:
-            self.app.window.playback.sequential.position_a = int(ratio)
-            self.app.window.playback.show_timeleft_out(position)
-        elif scale == self.scale_b:
-            self.app.window.playback.sequential.position_b = int(ratio)
-            self.app.window.playback.show_timeleft_in(position)
-
-        # Global progress is that of the least advanced. Cues colors reflect this
-        value = min(self.scale_a.get_value(), self.scale_b.get_value())
-        progress = min(max(value / 255.0, 0.0), 1.0)
-        self.app.window.playback.update_cue_crossfade_color(step, progress)
-        # Redraw Sequential Widget
-        self.app.window.playback.sequential.queue_draw()
+        """Emit scale update events to be handled by the UI bridge."""
+        scale_name = "scale_a" if scale == self.scale_a else "scale_b"
+        self.app.core.emit(
+            "crossfade.scale_updated", scale_name, position, total_time, step
+        )
 
     def _apply_channel_times_a(
         self, lvls: np.ndarray, position: float, step: Step

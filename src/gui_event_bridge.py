@@ -46,6 +46,7 @@ class GuiEventBridge:
         self._go_timeout_id: int | None = None
         self._goback_timeout_id: int | None = None
         self._pause_timeout_id: int | None = None
+        self._pause_blink_state: bool = False
         self._seq_plus_timeout_id: int | None = None
         self._seq_minus_timeout_id: int | None = None
 
@@ -79,6 +80,18 @@ class GuiEventBridge:
         self.app.core.subscribe(
             "playback.sequence_minus_triggered",
             lambda feedback: self._run_idle(self._on_seq_minus_triggered, feedback),
+        )
+        self.app.core.subscribe(
+            "crossfade.at_full",
+            lambda next_step, subtitle: self._run_idle(
+                self._on_crossfade_at_full, next_step, subtitle
+            ),
+        )
+        self.app.core.subscribe(
+            "crossfade.scale_updated",
+            lambda scale_name, position, total_time, step: self._run_idle(
+                self._on_crossfade_scale_updated, scale_name, position, total_time, step
+            ),
         )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
@@ -142,11 +155,11 @@ class GuiEventBridge:
             self.app.window.live_view.update_channel_widget(channel, level)
         return False
 
-    def _on_go_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
-        """Handle the go triggered event by flashing the Go button.
+    def _on_go_triggered(self, feedback: dict[str, typing.Any]) -> bool:
+        """Handle the go triggered event by updating the active state of the Go button.
 
         Args:
-            _feedback: Feedback state dictionary.
+            feedback: Feedback state dictionary.
 
         Returns:
             Always False.
@@ -156,22 +169,10 @@ class GuiEventBridge:
             if self._go_timeout_id is not None:
                 GLib.source_remove(self._go_timeout_id)
                 self._go_timeout_id = None
-            vc.go_button.pressed = True
-            vc.go_button.queue_draw()
-            self._go_timeout_id = GLib.timeout_add(150, self._reset_go_button)
-        return False
-
-    def _reset_go_button(self) -> bool:
-        """Reset the Go button pressed state after the timeout.
-
-        Returns:
-            Always False.
-        """
-        self._go_timeout_id = None
-        vc = self.app.virtual_console
-        if vc and hasattr(vc, "go_button") and vc.go_button:
-            vc.go_button.pressed = False
-            vc.go_button.queue_draw()
+            active = bool(feedback.get("active", False))
+            go_btn = typing.cast(typing.Any, vc.go_button)
+            go_btn.go_active = active
+            go_btn.queue_draw()
         return False
 
     def _on_goback_triggered(self, _feedback: dict[str, typing.Any]) -> bool:
@@ -207,7 +208,7 @@ class GuiEventBridge:
         return False
 
     def _on_pause_triggered(self, feedback: dict[str, typing.Any]) -> bool:
-        """Handle the pause triggered event by flashing the Pause button.
+        """Handle the pause triggered event by blinking the Pause button.
 
         Args:
             feedback: Feedback state dictionary.
@@ -217,34 +218,30 @@ class GuiEventBridge:
         """
         active = bool(feedback.get("active", False))
         vc = self.app.virtual_console
-        if vc and hasattr(vc, "pause") and vc.pause:
-            if self._pause_timeout_id is not None:
-                GLib.source_remove(self._pause_timeout_id)
-                self._pause_timeout_id = None
-            vc.pause.btn_pressed = True
-            vc.pause.queue_draw()
-            self._pause_timeout_id = GLib.timeout_add(
-                150, self._reset_pause_button, active
-            )
-        if self.app.midi:
-            self.app.midi.messages.notes.send("playback.pause", 127 if active else 0)
+        if self._pause_timeout_id is not None:
+            GLib.source_remove(self._pause_timeout_id)
+            self._pause_timeout_id = None
+
+        if active:
+            self._pause_blink_state = True
+            if vc and hasattr(vc, "pause") and vc.pause:
+                vc.pause.btn_pressed = True
+                vc.pause.queue_draw()
+            self._pause_timeout_id = GLib.timeout_add(500, self._on_pause_blink)
+        else:
+            if vc and hasattr(vc, "pause") and vc.pause:
+                vc.pause.btn_pressed = False
+                vc.pause.queue_draw()
         return False
 
-    def _reset_pause_button(self, active: bool) -> bool:
-        """Reset the Pause button to its final state after the timeout.
-
-        Args:
-            active: The final active state.
-
-        Returns:
-            Always False.
-        """
-        self._pause_timeout_id = None
+    def _on_pause_blink(self) -> bool:
+        """Toggle pause button state for blinking effect on the GUI."""
+        self._pause_blink_state = not getattr(self, "_pause_blink_state", False)
         vc = self.app.virtual_console
         if vc and hasattr(vc, "pause") and vc.pause:
-            vc.pause.btn_pressed = active
+            vc.pause.btn_pressed = self._pause_blink_state
             vc.pause.queue_draw()
-        return False
+        return True
 
     def _on_seq_plus_triggered(self, feedback: dict[str, typing.Any]) -> bool:
         """Handle the sequence plus triggered event by flashing the Next Cue button.
@@ -344,3 +341,88 @@ class GuiEventBridge:
 
         subtitle = f"Mem. : {cue_mem} {cue_txt} - Next Mem. : {next_mem} {next_txt}"
         update_ui(subtitle, typing.cast(typing.Any, self.app))
+
+    def sync_virtual_console(self) -> None:
+        """Sync the state of virtual console buttons with the core states."""
+        vc = self.app.virtual_console
+        if not vc:
+            return
+
+        main_playback = self.app.core.lightshow.main_playback
+        if not main_playback:
+            return
+
+        # 1. Sync GO button
+        if hasattr(vc, "go_button") and vc.go_button:
+            vc.go_button.go_active = bool(main_playback.on_go)
+            vc.go_button.queue_draw()
+
+        # 2. Sync PAUSE button
+        is_paused = False
+        if main_playback.on_go and main_playback.thread:
+            is_paused = not main_playback.thread.pause.is_set()
+
+        self._on_pause_triggered({"active": is_paused})
+
+        # 3. Sync Crossfade sliders
+        if hasattr(self.app, "crossfade") and self.app.crossfade:
+            if hasattr(vc, "scale_a") and vc.scale_a:
+                vc.scale_a.set_value(self.app.crossfade.scale_a.get_value())
+            if hasattr(vc, "scale_b") and vc.scale_b:
+                vc.scale_b.set_value(self.app.crossfade.scale_b.get_value())
+
+    def _on_crossfade_at_full(self, next_step: int, subtitle: str) -> bool:
+        """Safely update crossfade UI values when crossfade reaches full."""
+        if self.app.window and self.app.window.playback:
+            self.app.window.playback.sequential.total_time = (
+                self.app.core.lightshow.main_playback.steps[next_step].total_time
+            )
+            self.app.window.playback.sequential.time_in = (
+                self.app.core.lightshow.main_playback.steps[next_step].time_in
+            )
+            self.app.window.playback.sequential.time_out = (
+                self.app.core.lightshow.main_playback.steps[next_step].time_out
+            )
+            self.app.window.playback.sequential.delay_in = (
+                self.app.core.lightshow.main_playback.steps[next_step].delay_in
+            )
+            self.app.window.playback.sequential.delay_out = (
+                self.app.core.lightshow.main_playback.steps[next_step].delay_out
+            )
+            self.app.window.playback.sequential.wait = (
+                self.app.core.lightshow.main_playback.steps[next_step].wait
+            )
+            self.app.window.playback.sequential.channel_time = (
+                self.app.core.lightshow.main_playback.steps[next_step].channel_time
+            )
+            self.app.window.playback.sequential.position_a = 0
+            self.app.window.playback.sequential.position_b = 0
+        update_ui(subtitle, typing.cast(typing.Any, self.app))
+        return False
+
+    def _on_crossfade_scale_updated(
+        self, scale_name: str, position: float, total_time: float, step: int
+    ) -> bool:
+        """Safely update progress sliders and redraw sequential display."""
+        if not (self.app.window and self.app.window.playback):
+            return False
+
+        alloc_width = self.app.window.playback.sequential.get_allocation().width
+        ratio = (alloc_width - 32) / total_time * position
+
+        if scale_name == "scale_a":
+            self.app.window.playback.sequential.position_a = int(ratio)
+            self.app.window.playback.show_timeleft_out(position)
+        elif scale_name == "scale_b":
+            self.app.window.playback.sequential.position_b = int(ratio)
+            self.app.window.playback.show_timeleft_in(position)
+
+        if self.app.crossfade:
+            value = min(
+                self.app.crossfade.scale_a.get_value(),
+                self.app.crossfade.scale_b.get_value(),
+            )
+            progress = min(max(value / 255.0, 0.0), 1.0)
+            self.app.window.playback.update_cue_crossfade_color(step, progress)
+            self.app.window.playback.sequential.queue_draw()
+        return False

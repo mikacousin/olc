@@ -219,22 +219,22 @@ class MidiNotes:
             midi_name: action string
             value: MIDI note velocity
         """
-        channel, note = self.notes[midi_name]
-        if note != -1:
+        channel, control = self.cc_notes[midi_name]
+        if control != -1:
+            cc_value = 127 if value > 0 else 0
             msg = mido.Message(
-                "note_on", channel=channel, note=note, velocity=value, time=0
+                "control_change",
+                channel=channel,
+                control=control,
+                value=cc_value,
+                time=0,
             )
             self.midi.enqueue(msg)
         else:
-            channel, control = self.cc_notes[midi_name]
-            if control != -1:
-                cc_value = 127 if value > 0 else 0
+            channel, note = self.notes[midi_name]
+            if note != -1:
                 msg = mido.Message(
-                    "control_change",
-                    channel=channel,
-                    control=control,
-                    value=cc_value,
-                    time=0,
+                    "note_on", channel=channel, note=note, velocity=value, time=0
                 )
                 self.midi.enqueue(msg)
 

@@ -24,6 +24,13 @@ class GoWidget(Gtk.Widget):
 
     __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
+    is_learning: bool
+    width: int
+    height: int
+    radius: int
+    pressed: bool
+    go_active: bool
+
     def __init__(self) -> None:
         super().__init__()
         self.is_learning = False
@@ -33,6 +40,7 @@ class GoWidget(Gtk.Widget):
         self.radius = 10
 
         self.pressed = False
+        self.go_active = False
 
         self.set_size_request(self.width, self.height)
 
@@ -59,7 +67,7 @@ class GoWidget(Gtk.Widget):
             cr: Cairo context
         """
         # Draw rounded box
-        if self.pressed:
+        if self.pressed or self.go_active:
             if self.is_learning:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
             else:

@@ -138,3 +138,24 @@ def test_midi_notes_writer_and_parsed_data() -> None:
     parsed.import_midi()
 
     assert notes.cc_notes["playback.go"] == [1, 55]
+
+
+def test_midi_notes_send_cc_prioritized() -> None:
+    """Test that CC mappings are prioritized over default Note mappings in send()."""
+    midi = MagicMock()
+    app = MagicMock()
+    notes = MidiNotes(midi, app)
+
+    # Set both note and CC mappings active
+    notes.notes["playback.go"] = [0, 94]  # Default Note mapping
+    notes.cc_notes["playback.go"] = [1, 50]  # Custom CC mapping
+
+    notes.send("playback.go", 127)
+
+    # Assert control_change was queued, not note_on
+    midi.enqueue.assert_called_once()
+    sent_msg = midi.enqueue.call_args[0][0]
+    assert sent_msg.type == "control_change"
+    assert sent_msg.channel == 1
+    assert sent_msg.control == 50
+    assert sent_msg.value == 127

@@ -56,15 +56,15 @@ class MidiIO:
         # print(self.name, msg)
         if self.midi.learning:
             GLib.idle_add(self.midi.learn, msg)
-
-        # Find action
-        if msg.type in ("note_on", "note_off"):
-            self.midi.messages.notes.scan(msg)
-        elif msg.type == "control_change":
-            self.midi.messages.notes.scan_cc(msg)
-            self.midi.messages.control_change.scan(self.name or "", msg)
-        elif msg.type == "pitchwheel":
-            self.midi.messages.pitchwheel.scan(msg)
+        else:
+            # Find action
+            if msg.type in ("note_on", "note_off"):
+                self.midi.messages.notes.scan(msg)
+            elif msg.type == "control_change":
+                self.midi.messages.notes.scan_cc(msg)
+                self.midi.messages.control_change.scan(self.name or "", msg)
+            elif msg.type == "pitchwheel":
+                self.midi.messages.pitchwheel.scan(msg)
 
 
 class MidiPorts:

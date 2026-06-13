@@ -32,7 +32,6 @@ from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends.osc.delegate import GUIOSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
-from olc.crossfade import CrossFade  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
@@ -177,7 +176,7 @@ class Application(Gtk.Application):
         self.add_action(action)
 
         # For Manual crossfade
-        self.crossfade = CrossFade(app_type)
+        self.crossfade = self.core.crossfade
 
         # Open MIDI Inputs and Outputs
         def refresh_settings() -> None:
@@ -762,6 +761,7 @@ class Application(Gtk.Application):
             )
             self.virtual_console.show_all()
             self.add_window(self.virtual_console)
+            self.event_bridge.sync_virtual_console()
 
     def _settings(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

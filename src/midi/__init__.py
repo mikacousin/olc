@@ -128,9 +128,11 @@ class MidiSend:
         """Send MIDI messages from the queue"""
         for msg in self.queue:
             for port in self.ports.ports:
+                # print("MIDI sent:", msg)
                 port.port.send(msg)
 
 
+# pylint: disable=too-many-instance-attributes
 class Midi:
     """MIDI messages from controllers"""
 
@@ -140,6 +142,8 @@ class Midi:
     xfade: MidiXFade
     ports: MidiPorts
     send: MidiSend
+    _pause_blink_timer: RepeatedTimer | None
+    _pause_blink_state: bool
 
     def __init__(
         self,
@@ -161,10 +165,15 @@ class Midi:
         self.messages = MidiMessages(
             self, app_delegate, self.enqueue, self.lightshow.fader_bank
         )
+        self._pause_blink_timer = None
+        self._pause_blink_state = False
         self.controler_reset()
 
     def stop(self) -> None:
         """Stop MIDI"""
+        if self._pause_blink_timer is not None:
+            self._pause_blink_timer.stop()
+            self._pause_blink_timer = None
         self.ports.poll.stop()
         self.send.thread.stop()
         self.controler_reset()
@@ -296,9 +305,16 @@ class Midi:
             action: Action name
             timer: Optional time to light off
         """
-        self.messages.notes.send(action, 127)
-        if timer:
-            threading.Timer(timer, self.messages.notes.send, [action, 0]).start()
+        if action == "playback.pause":
+            if self._pause_blink_timer is not None:
+                self._pause_blink_timer.stop()
+            self._pause_blink_state = True
+            self.messages.notes.send("playback.pause", 127)
+            self._pause_blink_timer = RepeatedTimer(0.5, self._blink_pause_led)
+        else:
+            self.messages.notes.send(action, 127)
+            if timer:
+                threading.Timer(timer, self.messages.notes.send, [action, 0]).start()
 
     def button_off(self, action: str) -> None:
         """Light off button
@@ -306,7 +322,20 @@ class Midi:
         Args:
             action: Action name
         """
-        self.messages.notes.send(action, 0)
+        if action == "playback.pause":
+            if self._pause_blink_timer is not None:
+                self._pause_blink_timer.stop()
+                self._pause_blink_timer = None
+            self.messages.notes.send("playback.pause", 0)
+        else:
+            self.messages.notes.send(action, 0)
+
+    def _blink_pause_led(self) -> None:
+        """Toggle pause MIDI LED state for blinking effect"""
+        self._pause_blink_state = not self._pause_blink_state
+        self.messages.notes.send(
+            "playback.pause", 127 if self._pause_blink_state else 0
+        )
 
     def send_cc(self, channel: int, control: int, value: int) -> None:
         """Send a Control Change message.

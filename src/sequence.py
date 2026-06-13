@@ -97,6 +97,7 @@ class Sequence:
     thread: Optional[ThreadGo | ThreadGoBack]
     lightshow: typing.Optional[LightShow]
     backend: typing.Any
+    _on_go: bool
 
     def __init__(
         self,
@@ -114,7 +115,7 @@ class Sequence:
         self.position = 0
         self.last = 0
         # Flag to know if we have a Go in progress
-        self.on_go = False
+        self._on_go = False
         # Channels present in this sequence
         # self.channels = array.array("B", [0] * MAX_CHANNELS)
         self.channels: set[int] = set()
@@ -130,6 +131,26 @@ class Sequence:
         self.add_step(step)
         # Last Step
         self.add_step(step)
+
+    @property
+    def on_go(self) -> bool:
+        """Check if a Go transition is in progress."""
+        return getattr(self, "_on_go", False)
+
+    @on_go.setter
+    def on_go(self, value: bool) -> None:
+        """Set the on_go transition flag and trigger event notifications."""
+        if getattr(self, "_on_go", False) != value:
+            self._on_go = value
+            if self.app is not None:
+                core = getattr(self.app, "core", self.app)
+                # Update action registry feedback for MIDI bindings
+                core.action_registry.trigger_feedback("playback.go")
+                # Emit event for GUI (GuiEventBridge)
+                core.emit(
+                    "playback.go_triggered",
+                    core.action_registry.get("playback.go").get_feedback_state(),
+                )
 
     @property
     def app(self) -> CoreApplication | None:
@@ -174,15 +195,24 @@ class Sequence:
             self.app.midi.button_off("playback.go")
             # Switch off Pause Led
             if not self.thread.pause.is_set():
-                self.app.midi.messages.notes.led_pause_off()
-                if self.virtual_console is not None:
-                    self.virtual_console.pause.btn_pressed = False
-                    self.virtual_console.pause.queue_draw()
-            # Stop actual Thread
-            self.thread.pause.set()
+                self.thread.pause.set()
+                if self.app is not None and self.app.midi is not None:
+                    self.app.midi.button_off("playback.pause")
+                if self.app is not None:
+                    core = getattr(self.app, "core", self.app)
+                    core.action_registry.trigger_feedback("playback.pause")
+                    core.emit(
+                        "playback.pause_triggered",
+                        core.action_registry.get("playback.pause").get_feedback_state(),
+                    )
+            else:
+                self.thread.pause.set()
             self.thread.stop()
             self.thread.join()
             self.on_go = False
+            if self.app is not None and self.app.crossfade is not None:
+                self.app.crossfade.scale_a.set_value(0)
+                self.app.crossfade.scale_b.set_value(0)
             # Stop at the end
             self.position = min(self.position, self.last - 3)
             return True
@@ -515,8 +545,19 @@ class Sequence:
         if self.thread:
             if self.thread.pause.is_set():
                 self.thread.pause.clear()
+                if self.app is not None and self.app.midi is not None:
+                    self.app.midi.button_on("playback.pause")
             else:
                 self.thread.pause.set()
+                if self.app is not None and self.app.midi is not None:
+                    self.app.midi.button_off("playback.pause")
+            if self.app is not None:
+                core = getattr(self.app, "core", self.app)
+                core.action_registry.trigger_feedback("playback.pause")
+                core.emit(
+                    "playback.pause_triggered",
+                    core.action_registry.get("playback.pause").get_feedback_state(),
+                )
 
 
 # pylint: disable=too-many-instance-attributes
@@ -584,6 +625,9 @@ class ThreadGo(threading.Thread):
         self.backend.dmx.levels["sequence"][:] = target_cue.channels_array
 
         self.sequence.on_go = False
+        if self.app is not None and self.app.crossfade is not None:
+            self.app.crossfade.scale_a.set_value(0)
+            self.app.crossfade.scale_b.set_value(0)
         self.backend.dmx.levels["user"].fill(-1)
 
         # Distribute DMX levels to frames
@@ -639,12 +683,15 @@ class ThreadGo(threading.Thread):
             / self.total_time
         ) * i
         GLib.idle_add(self.window.playback.sequential.queue_draw)
+        val = round((255 / self.total_time) * i)
+        if self.app is not None and self.app.crossfade is not None:
+            self.app.crossfade.scale_a.set_value(val)
+            self.app.crossfade.scale_b.set_value(val)
         # Move Virtual Console crossfade
         if (
             self.sequence.virtual_console
             and self.sequence.virtual_console.props.visible
         ):
-            val = round((255 / self.total_time) * i)
             GLib.idle_add(self.sequence.virtual_console.scale_a.set_value, val)
             GLib.idle_add(self.sequence.virtual_console.scale_b.set_value, val)
         # Show times left
@@ -849,6 +896,9 @@ class ThreadGoBack(threading.Thread):
         self.backend.dmx.levels["sequence"][:] = target_cue.channels_array
 
         self.sequence.on_go = False
+        if self.app is not None and self.app.crossfade is not None:
+            self.app.crossfade.scale_a.set_value(0)
+            self.app.crossfade.scale_b.set_value(0)
         self.backend.dmx.levels["user"].fill(-1)
 
         # Distribute DMX levels to frames
@@ -940,12 +990,15 @@ class ThreadGoBack(threading.Thread):
             (allocation.width - 32) / go_back_time
         ) * i
         GLib.idle_add(self.window.playback.sequential.queue_draw)
+        val = round((255 / go_back_time) * i)
+        if self.app is not None and self.app.crossfade is not None:
+            self.app.crossfade.scale_a.set_value(val)
+            self.app.crossfade.scale_b.set_value(val)
         # Move Virtual Console crossfade
         if (
             self.sequence.virtual_console
             and self.sequence.virtual_console.props.visible
         ):
-            val = round((255 / go_back_time) * i)
             GLib.idle_add(self.sequence.virtual_console.scale_a.set_value, val)
             GLib.idle_add(self.sequence.virtual_console.scale_b.set_value, val)
         # Countdown

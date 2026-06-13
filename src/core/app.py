@@ -20,6 +20,7 @@ from olc.actions import register_all_actions
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
 from olc.core.registry import ActionRegistry
+from olc.crossfade import CrossFade
 from olc.lightshow import LightShow
 
 if typing.TYPE_CHECKING:
@@ -29,6 +30,7 @@ if typing.TYPE_CHECKING:
     from olc.midi import Midi
 
 
+# pylint: disable=too-many-instance-attributes
 class CoreApplication(EventDispatcher):
     """The headless core application managing engines, midi, and actions.
 
@@ -39,6 +41,12 @@ class CoreApplication(EventDispatcher):
     backend: typing.Optional[DMXBackend]
     engine: typing.Optional[CoreEngine]
     midi: typing.Optional[Midi]
+    crossfade: typing.Optional[CrossFade]
+
+    @property
+    def core(self) -> CoreApplication:
+        """Return self as the core application."""
+        return self
 
     def __init__(self, settings: object, app: object = None) -> None:
         """Initialize the CoreApplication.
@@ -57,6 +65,10 @@ class CoreApplication(EventDispatcher):
         self.backend = None
         self.engine = None
         self.midi = None
+
+        # For crossfade
+        app_delegate = app if app is not None else self
+        self.crossfade = CrossFade(typing.cast(typing.Any, app_delegate))
 
         # Action and Undo/Redo plumbing layers
         self.action_registry = ActionRegistry(
