@@ -28,8 +28,8 @@ from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.lightshow import LightShow
     from olc.cues_edition import CuesEditionTab
-    from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
     from olc.widgets.channel import ChannelWidget
     from olc.window import Window

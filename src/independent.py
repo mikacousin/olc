@@ -21,7 +21,7 @@ from olc.define import MAX_CHANNELS
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

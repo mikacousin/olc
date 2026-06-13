@@ -22,7 +22,7 @@ from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderTy
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.tabs_manager import Tabs
     from olc.window import Window
 

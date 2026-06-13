@@ -23,7 +23,7 @@ from olc.core.backends.sacn import SacnManager
 from olc.dmx import Dmx
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.patch import DMXPatch
 
 

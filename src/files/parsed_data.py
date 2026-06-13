@@ -27,7 +27,7 @@ from olc.sequence import Sequence
 from olc.step import Step
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.midi import Midi
 
 

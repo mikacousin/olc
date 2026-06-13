@@ -34,7 +34,7 @@ if typing.TYPE_CHECKING:
     import olc.files.import_file
     from gi.repository import Gio
     from olc.core.engine import CoreEngine
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.midi import Midi
     from olc.tabs_manager import Tabs
     from olc.window import Window

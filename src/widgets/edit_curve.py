@@ -21,8 +21,8 @@ from gi.repository import Gdk, Gtk
 from olc.curve import InterpolateCurve, SegmentsCurve
 
 if typing.TYPE_CHECKING:
+    from olc.core.lightshow import LightShow
     from olc.curve_edition import CurvesTab
-    from olc.lightshow import LightShow
     from olc.patch_outputs import PatchOutputsTab
     from olc.tabs_manager import Tabs
 

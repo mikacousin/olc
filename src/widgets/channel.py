@@ -22,7 +22,7 @@ from olc.track_channels import TrackChannelsTab
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.tabs_manager import Tabs
     from olc.widgets.channels_view import ChannelsView
     from olc.window import Window

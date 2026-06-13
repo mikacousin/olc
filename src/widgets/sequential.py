@@ -22,7 +22,7 @@ from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS, time_to_string
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 # pylint: disable=too-many-instance-attributes

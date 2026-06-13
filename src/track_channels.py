@@ -24,7 +24,7 @@ from olc.widgets.track_channels import TrackChannelsHeader, TrackChannelsWidget
 if typing.TYPE_CHECKING:
     import olc.track_channels
     from gi.repository import Gio
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.tabs_manager import Tabs
     from olc.widgets.channel import ChannelWidget
     from olc.window import Window

@@ -19,7 +19,7 @@ import typing
 from gi.repository import Gio
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 class WriteFile:

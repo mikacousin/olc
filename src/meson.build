@@ -35,7 +35,7 @@ olc_sources = [
   'gui_event_bridge.py',
   'independent.py',
   'independents_edition.py',
-  'lightshow.py',
+  'gtk_lightshow.py',
   'main_fader.py',
   'patch.py',
   'patch_channels.py',

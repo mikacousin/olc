@@ -21,7 +21,7 @@ from gi.repository import Gdk, Gtk
 from olc.widgets.common import rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.tabs_manager import Tabs
     from olc.window import Window
 

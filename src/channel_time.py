@@ -22,7 +22,7 @@ from olc.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.sequence import Sequence
     from olc.sequence_edition import SequenceTab
     from olc.tabs_manager import Tabs

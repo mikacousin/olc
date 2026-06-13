@@ -41,6 +41,7 @@ from olc.files.export_file import ExportFile  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.group import GroupTab  # noqa: E402
+from olc.gtk_lightshow import GtkLightShow  # noqa: E402
 from olc.gui_event_bridge import GuiEventBridge  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.independents_edition import IndependentsTab  # noqa: E402
@@ -124,7 +125,8 @@ class Application(Gtk.Application):
 
         # Core application and Light show initialization
         app_type = typing.cast("olc.application.Application", self)
-        self.core = CoreApplication(self.settings, self)
+        lightshow = GtkLightShow(typing.cast(typing.Any, app_type))
+        self.core = CoreApplication(self.settings, self, lightshow=lightshow)
 
         # Setup GUI-safe event callbacks from Core via the event bridge
         self.event_bridge = GuiEventBridge(app_type)

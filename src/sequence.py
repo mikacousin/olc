@@ -29,7 +29,7 @@ from olc.step import Step
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.core.app import CoreApplication
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.virtual_console import VirtualConsoleWindow
 
 

@@ -21,7 +21,7 @@ import numpy as np
 from scipy.interpolate import PchipInterpolator
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 class Curve:

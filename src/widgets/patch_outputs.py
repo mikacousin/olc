@@ -25,7 +25,7 @@ from olc.widgets.curve import CurveWidget
 
 if typing.TYPE_CHECKING:
     from olc.backends import DMXBackend
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.patch_outputs import PatchOutputsTab
     from olc.window import CommandLine
 

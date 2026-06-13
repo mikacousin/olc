@@ -21,7 +21,7 @@ from olc.widgets.common import rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     import cairo
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 class CurveWidget(Gtk.Button):

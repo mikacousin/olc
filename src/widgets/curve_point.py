@@ -22,9 +22,9 @@ from gi.repository import Gdk, GObject, Gtk
 
 if typing.TYPE_CHECKING:
     import cairo
+    from olc.core.lightshow import LightShow
     from olc.curve import PointsCurve
     from olc.curve_edition import CurvesTab
-    from olc.lightshow import LightShow
     from olc.patch_outputs import PatchOutputsTab
     from olc.tabs_manager import Tabs
 

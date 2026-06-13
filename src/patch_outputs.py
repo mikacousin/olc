@@ -25,7 +25,7 @@ if typing.TYPE_CHECKING:
     import olc.patch_outputs
     from gi.repository import Gio
     from olc.backends import DMXBackend
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.patch import DMXPatch, PatchByOutputs
     from olc.tabs_manager import Tabs
     from olc.window import Window

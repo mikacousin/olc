@@ -31,7 +31,7 @@ from olc.fader import (
 if typing.TYPE_CHECKING:
     import olc.fader_bank
     from olc.core.app import CoreApplication
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 class FaderBank:

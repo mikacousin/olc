@@ -22,7 +22,7 @@ from olc.files.file_type import FileType
 from olc.files.olc.writer import OlcWriter
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.midi import Midi
 
 

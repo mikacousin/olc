@@ -26,7 +26,7 @@ from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
     from olc.backends import DMXBackend
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
 
 
 class DmxLevels(dict):

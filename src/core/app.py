@@ -20,8 +20,8 @@ from olc.actions import register_all_actions
 from olc.core.crossfade import CrossFade
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
+from olc.core.lightshow import LightShow
 from olc.core.registry import ActionRegistry
-from olc.lightshow import LightShow
 
 if typing.TYPE_CHECKING:
     import olc.core.app
@@ -48,18 +48,28 @@ class CoreApplication(EventDispatcher):
         """Return self as the core application."""
         return self
 
-    def __init__(self, settings: object, app: object = None) -> None:
+    def __init__(
+        self,
+        settings: object,
+        app: object = None,
+        lightshow: typing.Optional[LightShow] = None,
+    ) -> None:
         """Initialize the CoreApplication.
 
         Args:
             settings: Configuration settings instance.
             app: Optional parent application instance.
+            lightshow: Optional pre-instantiated LightShow model.
         """
         super().__init__()
         self.settings = settings
 
         # Load standard LightShow state model
-        self.lightshow = LightShow(typing.cast(typing.Any, app or self))
+        if lightshow is not None:
+            self.lightshow = lightshow
+            self.lightshow.app = typing.cast(typing.Any, app or self)
+        else:
+            self.lightshow = LightShow(typing.cast(typing.Any, app or self))
 
         # Initialize engines as None (to be attached by launcher or Gtk)
         self.backend = None
@@ -91,6 +101,8 @@ class CoreApplication(EventDispatcher):
 
     def stop(self) -> None:
         """Gracefully stop DMX and MIDI services."""
+        if self.backend:
+            self.backend.stop()
         if self.midi:
             self.midi.stop()
         if self.engine:

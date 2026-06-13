@@ -14,9 +14,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import os
 import typing
 
-from gi.repository import GLib, Gtk
 from olc.curve import Curves
 from olc.define import UNIVERSES
 from olc.fader_bank import FaderBank
@@ -25,59 +25,41 @@ from olc.patch import DMXPatch
 from olc.sequence import Sequence
 
 if typing.TYPE_CHECKING:
-    import olc.lightshow
-    from gi.repository import Gio
+    import olc.core.lightshow
     from olc.core.app import CoreApplication
     from olc.core.group import Group
     from olc.cue import Cue
 
 
 class ShowFile:
-    """Opened file"""
+    """Opened file (Agnostic version, no Gio/Gtk dependency)"""
 
-    file: Gio.File | None
+    file_path: str | None
     basename: str
     modified: bool
-    recent_manager: Gtk.RecentManager
+    file: typing.Any
 
-    def __init__(self, file: Gio.File | None) -> None:
-        self.file = file
-        self.basename = (self.file.get_basename() or "") if self.file else ""
+    def __init__(self, file_path: str | None) -> None:
+        self.file_path = file_path
+        self.basename = os.path.basename(file_path) if file_path else ""
         self.modified = False
-        self.recent_manager = Gtk.RecentManager.get_default()
+        self.file = None
         self.on_modified_changed: typing.Callable[[str], None] | None = None
 
     def add_recent_file(self) -> None:
-        """Add to Recent files
-
-        Raises:
-            e: not documented
-        """
-        if not self.file:
-            return
-        uri = self.file.get_uri()
-        if uri:
-            # We remove the project from recent projects list
-            # and then re-add it to this list to make sure it
-            # gets positioned at the top of the recent projects list.
-            try:
-                self.recent_manager.remove_item(uri)
-            except GLib.Error as e:
-                if e.domain != "gtk-recent-manager-error-quark":
-                    raise e
-            self.recent_manager.add_item(uri)
+        """Add to Recent files (no-op in base class)"""
 
     def set_modified(self) -> None:
         """Set file as modified"""
         self.modified = True
-        self.basename = (self.file.get_basename() or "") if self.file else ""
+        self.basename = os.path.basename(self.file_path) if self.file_path else ""
         if self.on_modified_changed:
             self.on_modified_changed(f"{self.basename}*")
 
     def set_not_modified(self) -> None:
         """Set file as not modified"""
         self.modified = False
-        self.basename = (self.file.get_basename() or "") if self.file else ""
+        self.basename = os.path.basename(self.file_path) if self.file_path else ""
         if self.on_modified_changed:
             self.on_modified_changed(self.basename)
 
@@ -99,7 +81,7 @@ class LightShow(ShowFile):
     def __init__(self, app: CoreApplication | None = None) -> None:
         super().__init__(None)
         self.app = app
-        lightshow_type = typing.cast("olc.lightshow.LightShow", self)
+        lightshow_type = typing.cast("olc.core.lightshow.LightShow", self)
         # Curves
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
@@ -161,7 +143,7 @@ class LightShow(ShowFile):
 
     def reset(self) -> None:
         """Reset all"""
-        lightshow_type = typing.cast("olc.lightshow.LightShow", self)
+        lightshow_type = typing.cast("olc.core.lightshow.LightShow", self)
         del self.main_playback.steps[1:]
         del self.cues[:]
         for chaser in self.chasers:

@@ -21,7 +21,7 @@ from gi.repository import Gdk, Gtk
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
-    from olc.lightshow import LightShow
+    from olc.core.lightshow import LightShow
     from olc.patch import DMXPatch
     from olc.patch_channels import PatchChannelsTab
     from olc.window import CommandLine
