@@ -46,12 +46,16 @@ class AsciiWriter(WriteFile):
         self._end()
 
     def _header(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(bytes("IDENT 3:0\n", "ascii"))
         self.stream.write(bytes("MANUFACTURER MIKA\n", "ascii"))
         self.stream.write(bytes("CONSOLE OLC\n\n", "ascii"))
         self.stream.write(bytes("CLEAR ALL\n\n", "ascii"))
 
     def _main_playback(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -82,6 +86,8 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes("\n", "ascii"))
 
     def _chasers(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -112,6 +118,8 @@ class AsciiWriter(WriteFile):
                 self.stream.write(bytes("\n", "ascii"))
 
     def _groups(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -130,6 +138,8 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes("\n", "ascii"))
 
     def _cobalt_groups(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -149,6 +159,8 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes("\n", "ascii"))
 
     def _masters(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -199,6 +211,8 @@ class AsciiWriter(WriteFile):
         self.stream.write(bytes("\n", "ascii"))
 
     def _patch(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -231,6 +245,8 @@ class AsciiWriter(WriteFile):
         self.stream.write(bytes("\n", "ascii"))
 
     def _independents(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(
             bytes("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", "ascii")
         )
@@ -243,6 +259,8 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes("\n", "utf8"))
 
     def _end(self) -> None:
+        if self.stream is None:
+            return
         self.stream.write(bytes("ENDDATA\n", "ascii"))
 
     def _save_channels(self, chans: dict[int, int]) -> None:
@@ -251,6 +269,8 @@ class AsciiWriter(WriteFile):
         Args:
             chans: Channels and Levels
         """
+        if self.stream is None:
+            return
         channels = ""
         i = 1
         for chan, level in chans.items():
@@ -271,6 +291,8 @@ class AsciiWriter(WriteFile):
         Args:
             text: Text to write
         """
+        if self.stream is None:
+            return
         self.stream.write(
             bytes(f"TEXT {strip_accents(text)}\n", "utf8")
             .decode("utf8")
