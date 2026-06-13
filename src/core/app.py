@@ -17,10 +17,10 @@ from __future__ import annotations
 import typing
 
 from olc.actions import register_all_actions
+from olc.core.crossfade import CrossFade
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
 from olc.core.registry import ActionRegistry
-from olc.crossfade import CrossFade
 from olc.lightshow import LightShow
 
 if typing.TYPE_CHECKING:

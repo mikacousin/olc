@@ -21,7 +21,7 @@ from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     import cairo
-    from olc.crossfade import CrossFade
+    from olc.core.crossfade import CrossFade
     from olc.midi import Midi
 
 

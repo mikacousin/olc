@@ -21,7 +21,6 @@ olc_sources = [
   'application.py',
   'backends.py',
   'channel_time.py',
-  'crossfade.py',
   'cue.py',
   'cues_edition.py',
   'curve.py',
