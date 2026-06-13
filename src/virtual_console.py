@@ -516,6 +516,8 @@ class VirtualConsoleWindow(Gtk.Window):
                 self.flashes[fader.index - 1].label = fader.text
                 self.flashes[fader.index - 1].queue_draw()
             if self.app.midi is not None:
+                for fader in fader_bank.faders[fader_bank.active_page].values():
+                    self.app.midi.faders.faders[fader.index - 1].set_state(fader.level)
                 self.app.midi.messages.lcd.show_faders()
 
     def _on_time(self, _widget: Gtk.Widget) -> None:
@@ -950,7 +952,7 @@ class VirtualConsoleWindow(Gtk.Window):
             fader_bank.faders[fader_bank.active_page][index].set_level(value / 255)
             if self.app.midi is not None:
                 midi_fader = self.app.midi.faders.faders[self.faders.index(fader)]
-                midi_fader.set_state(int(value))
+                midi_fader.set_state(value / 255)
 
     def _fader_clicked(self, fader: FaderWidget) -> None:
         """Fader clicked
