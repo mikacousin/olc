@@ -86,11 +86,10 @@ class ReadFile:
 
     def _error_dialog(self, message: str) -> None:
         dialog = Gtk.MessageDialog(
-            self.window,
-            Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT,
-            Gtk.MessageType.ERROR,
-            Gtk.ButtonsType.OK,
-            message,
+            transient_for=self.window,
+            message_type=Gtk.MessageType.ERROR,
+            buttons=Gtk.ButtonsType.OK,
+            text=message,
         )
         dialog.set_title(_("Error"))
         dialog.run()
