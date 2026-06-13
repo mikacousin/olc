@@ -59,12 +59,12 @@ class FaderEdit(Gtk.Box):
 
         self.label = Gtk.Label()
 
-        fader_type = [
-            [FaderType.NONE, ""],
-            [FaderType.PRESET, "Preset"],
-            [FaderType.SEQUENCE, "Sequence"],
-            [FaderType.GROUP, "Group"],
-            [FaderType.MAIN, "Main Fader"],
+        fader_type: list[tuple[FaderType, str]] = [
+            (FaderType.NONE, ""),
+            (FaderType.PRESET, "Preset"),
+            (FaderType.SEQUENCE, "Sequence"),
+            (FaderType.GROUP, "Group"),
+            (FaderType.MAIN, "Main Fader"),
         ]
         self.type_button = Gtk.MenuButton()
         popover = Gtk.Popover()
@@ -190,7 +190,10 @@ class FaderEdit(Gtk.Box):
         self.show_all()
 
     def _on_contents_changed(
-        self, widget: Gtk.ModelButton, fader_type: FaderType, contents: object
+        self,
+        widget: Gtk.ModelButton,
+        fader_type: FaderType,
+        contents: dict[int, int] | int | float | None,
     ) -> None:
         """Fader contents has been changed
 
