@@ -23,9 +23,11 @@ from olc.define import MAX_CHANNELS
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
+    import olc.independents_edition
     from gi.repository import Gio
     from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
+    from olc.widgets.channel import ChannelWidget
     from olc.window import Window
 
 
@@ -187,7 +189,9 @@ class IndependentsTab(Gtk.Paned):
             channels = {}
             for channel in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(channel + 1)
-                channels[channel + 1] = channel_widget.level
+                if channel_widget is not None:
+                    widget = channel_widget
+                    channels[channel + 1] = widget.level
             self.lightshow.independents.independents[number - 1].set_levels(channels)
             self.lightshow.independents.update_channels()
             self.lightshow.independents.independents[number - 1].update_dmx()
@@ -220,9 +224,11 @@ class IndeChannelsView(ChannelsView):
             channel: Channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        typing.cast(IndependentsTab, self.tabs.tabs["indes"]).user_channels[
-            channel - 1
-        ] = level
+        if self.tabs is not None:
+            tab = typing.cast(
+                "olc.independents_edition.IndependentsTab", self.tabs.tabs["indes"]
+            )
+            tab.user_channels[channel - 1] = level
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -234,15 +240,17 @@ class IndeChannelsView(ChannelsView):
         channels = self.get_selected_channels()
         for channel in channels:
             channel_widget = self.get_channel_widget(channel)
-            level = channel_widget.level
-            if direction == Gdk.ScrollDirection.UP:
-                level = min(level + step, 255)
-            elif direction == Gdk.ScrollDirection.DOWN:
-                level = max(level - step, 0)
-            channel_widget.level = level
-            channel_widget.next_level = level
-            channel_widget.queue_draw()
-            self.set_channel_level(channel, level)
+            if channel_widget is not None:
+                widget = channel_widget
+                level = widget.level
+                if direction == Gdk.ScrollDirection.UP:
+                    level = min(level + step, 255)
+                elif direction == Gdk.ScrollDirection.DOWN:
+                    level = max(level - step, 0)
+                widget.level = level
+                widget.next_level = level
+                widget.queue_draw()
+                self.set_channel_level(channel, level)
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
@@ -254,16 +262,18 @@ class IndeChannelsView(ChannelsView):
             True or False
         """
         if (
-            not self.lightshow.independents.independents
-            or not self.tabs
+            self.lightshow is None
+            or not self.lightshow.independents.independents
+            or self.tabs is None
             or not self.tabs.tabs["indes"]
         ):
             child.set_visible(False)
             return False
         # Find selected independent
-        path, _focus_column = typing.cast(
-            IndependentsTab, self.tabs.tabs["indes"]
-        ).treeview.get_cursor()
+        tab = typing.cast(
+            "olc.independents_edition.IndependentsTab", self.tabs.tabs["indes"]
+        )
+        path, _focus_column = tab.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             if self.view_mode == VIEW_MODES["Active"]:
@@ -284,28 +294,35 @@ class IndeChannelsView(ChannelsView):
         Returns:
             True or False
         """
+        if self.tabs is None or self.lightshow is None:
+            return False
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = typing.cast(
-            IndependentsTab, self.tabs.tabs["indes"]
-        ).user_channels
+        if channel_widget is None:
+            return False
+        widget = typing.cast("ChannelWidget", channel_widget)
+
+        tab = typing.cast(
+            "olc.independents_edition.IndependentsTab", self.tabs.tabs["indes"]
+        )
+        user_channels = tab.user_channels
         channels = self.lightshow.independents.independents[row].levels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels.get(channel_index + 1, 0)
-                channel_widget.next_level = channels.get(channel_index + 1, 0)
+                widget.level = channels.get(channel_index + 1, 0)
+                widget.next_level = channels.get(channel_index + 1, 0)
             else:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
+                widget.level = user_channels[channel_index]
+                widget.next_level = user_channels[channel_index]
             child.set_visible(True)
             return True
         if user_channels[channel_index] != -1:
-            channel_widget.level = user_channels[channel_index]
-            channel_widget.next_level = user_channels[channel_index]
+            widget.level = user_channels[channel_index]
+            widget.next_level = user_channels[channel_index]
             child.set_visible(True)
             return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
+        widget.level = 0
+        widget.next_level = 0
         child.set_visible(False)
         return False
 
@@ -319,6 +336,8 @@ class IndeChannelsView(ChannelsView):
         Returns:
             True or False
         """
+        if self.lightshow is None:
+            return False
         # Return all patched channels
         channel = child.get_index() + 1
         if not self.lightshow.patch.is_patched(channel):
@@ -336,27 +355,34 @@ class IndeChannelsView(ChannelsView):
         Returns:
             True or False
         """
+        if self.tabs is None or self.lightshow is None:
+            return False
         channel_index = child.get_index()
         channel_widget = child.get_child()
-        user_channels = typing.cast(
-            IndependentsTab, self.tabs.tabs["indes"]
-        ).user_channels
+        if channel_widget is None:
+            return False
+        widget = typing.cast("ChannelWidget", channel_widget)
+
+        tab = typing.cast(
+            "olc.independents_edition.IndependentsTab", self.tabs.tabs["indes"]
+        )
+        user_channels = tab.user_channels
         channels = self.lightshow.independents.independents[row].levels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels.get(channel_index + 1, 0)
-                channel_widget.next_level = channels.get(channel_index + 1, 0)
+                widget.level = channels.get(channel_index + 1, 0)
+                widget.next_level = channels.get(channel_index + 1, 0)
             else:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
+                widget.level = user_channels[channel_index]
+                widget.next_level = user_channels[channel_index]
             child.set_visible(True)
             return True
         if user_channels[channel_index] != -1:
-            channel_widget.level = user_channels[channel_index]
-            channel_widget.next_level = user_channels[channel_index]
+            widget.level = user_channels[channel_index]
+            widget.next_level = user_channels[channel_index]
             child.set_visible(True)
             return True
-        channel_widget.level = 0
-        channel_widget.next_level = 0
+        widget.level = 0
+        widget.next_level = 0
         child.set_visible(True)
         return True
