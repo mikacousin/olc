@@ -608,7 +608,7 @@ class SequenceTab(Gtk.Grid):
             widget_ch = self.channels_view.get_channel_widget(channel + 1)
             if widget_ch is not None:
                 channel_widget = widget_ch
-                if channel_widget.level:
+                if (channel + 1 in channels) or (self.user_channels[channel] != -1):
                     channels[channel + 1] = channel_widget.level
         sequence.update_channels()
         # Tag filename as modified

@@ -29,6 +29,7 @@ if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
     from olc.sequence_edition import SequenceTab
     from olc.tabs_manager import Tabs
+    from olc.widgets.channel import ChannelWidget
     from olc.window import Window
 
 
@@ -196,9 +197,10 @@ class CuesEditionTab(Gtk.Paned):
             nb_chan = 0
             for chan in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(chan + 1)
-                if channel_widget and channel_widget.level:
-                    channels[chan + 1] = channel_widget.level
-                    nb_chan += 1
+                if channel_widget is not None:
+                    if (chan + 1 in channels) or (self.user_channels[chan] != -1):
+                        channels[chan + 1] = channel_widget.level
+                        nb_chan += 1
             self.lightshow.main_playback.update_channels()
             # Update Display
             treeiter = self.liststore.get_iter(path)
@@ -240,9 +242,9 @@ class CuesEditionTab(Gtk.Paned):
             # Find Steps using selected memory
             steps = [
                 i
-                for i, _ in enumerate(self.lightshow.main_playback.steps)
-                if self.lightshow.main_playback.steps[i].cue.memory
-                == self.lightshow.cues[row].memory
+                for i, step in enumerate(self.lightshow.main_playback.steps)
+                if step.cue is not None
+                and step.cue.memory == self.lightshow.cues[row].memory
             ]
             # Delete Steps
             for step in steps:
@@ -296,7 +298,7 @@ class CuesEditionTab(Gtk.Paned):
         nb_chan = len(self.lightshow.cues[i].channels)
         self.lightshow.main_playback.update_channels()
 
-        treeiter = self.liststore.get_iter(i)
+        treeiter = self.liststore.get_iter(str(i))
         self.liststore.set_value(treeiter, 2, nb_chan)
         if i == self.lightshow.main_playback.position:
             self._update_live_view_channels(i)
@@ -470,7 +472,12 @@ class CueChannelsView(ChannelsView):
             channel: Channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        tab = typing.cast(CuesEditionTab, self.tabs.tabs["memories"])
+        if self.tabs is None:
+            return
+        memories_tab = self.tabs.tabs.get("memories")
+        if memories_tab is None:
+            return
+        tab = typing.cast(CuesEditionTab, memories_tab)
         tab.user_channels[channel - 1] = level
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
@@ -502,7 +509,12 @@ class CueChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        if not self.lightshow.cues or not self.tabs.tabs["memories"]:
+        if (
+            self.lightshow is None
+            or not self.lightshow.cues
+            or self.tabs is None
+            or self.tabs.tabs.get("memories") is None
+        ):
             child.set_visible(False)
             return False
         # Find selected row
@@ -525,27 +537,36 @@ class CueChannelsView(ChannelsView):
         return False
 
     def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        if (
+            self.tabs is None
+            or self.tabs.tabs.get("memories") is None
+            or self.lightshow is None
+        ):
+            return False
         user_channels = typing.cast(
             CuesEditionTab, self.tabs.tabs["memories"]
         ).user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
+        if channel_widget is None:
+            return False
+        widget = typing.cast("ChannelWidget", channel_widget)
         # Channels in Cue
         channels = self.lightshow.cues[row].channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels.get(channel_index + 1, 0)
-                channel_widget.next_level = channels.get(channel_index + 1, 0)
+                widget.level = int(channels.get(channel_index + 1, 0))
+                widget.next_level = int(channels.get(channel_index + 1, 0))
             else:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
+                widget.level = int(user_channels[channel_index])
+                widget.next_level = int(user_channels[channel_index])
             return True
         if user_channels[channel_index] == -1:
-            channel_widget.level = 0
-            channel_widget.next_level = 0
+            widget.level = 0
+            widget.next_level = 0
             return False
-        channel_widget.level = user_channels[channel_index]
-        channel_widget.next_level = user_channels[channel_index]
+        widget.level = int(user_channels[channel_index])
+        widget.next_level = int(user_channels[channel_index])
         return True
 
     def __filter_patched(self, row: int, child: Gtk.FlowBoxChild) -> bool:
@@ -559,30 +580,39 @@ class CueChannelsView(ChannelsView):
             True if patched, else False
         """
         channel = child.get_index() + 1
-        if not self.lightshow.patch.is_patched(channel):
+        if self.lightshow is None or not self.lightshow.patch.is_patched(channel):
             return False
         return self.__filter_all(row, child)
 
     def __filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+        if (
+            self.tabs is None
+            or self.tabs.tabs.get("memories") is None
+            or self.lightshow is None
+        ):
+            return False
         user_channels = typing.cast(
             CuesEditionTab, self.tabs.tabs["memories"]
         ).user_channels
         channel_index = child.get_index()
         channel_widget = child.get_child()
+        if channel_widget is None:
+            return False
+        widget = typing.cast("ChannelWidget", channel_widget)
         # Channels in Cue
         channels = self.lightshow.cues[row].channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
-                channel_widget.level = channels.get(channel_index + 1, 0)
-                channel_widget.next_level = channels.get(channel_index + 1, 0)
+                widget.level = int(channels.get(channel_index + 1, 0))
+                widget.next_level = int(channels.get(channel_index + 1, 0))
             else:
-                channel_widget.level = user_channels[channel_index]
-                channel_widget.next_level = user_channels[channel_index]
+                widget.level = int(user_channels[channel_index])
+                widget.next_level = int(user_channels[channel_index])
             return True
         if user_channels[channel_index] == -1:
-            channel_widget.level = 0
-            channel_widget.next_level = 0
+            widget.level = 0
+            widget.next_level = 0
             return True
-        channel_widget.level = user_channels[channel_index]
-        channel_widget.next_level = user_channels[channel_index]
+        widget.level = int(user_channels[channel_index])
+        widget.next_level = int(user_channels[channel_index])
         return True
