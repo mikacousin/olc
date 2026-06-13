@@ -20,7 +20,7 @@ from typing import Callable, Optional
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
+from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.patch_outputs import PatchOutputsTab
 from olc.widgets.curve import CurveWidget
 from olc.widgets.curve_point import CurvePointWidget
@@ -48,16 +48,14 @@ class CurveValues(Gtk.DrawingArea):
         Args:
             cr: Cairo context
         """
-        if (
-            typing.cast(CurvesTab, self.tabs.tabs["curves"]).curve_edition.curve_nb
-            is None
-        ):
+        curve_edition = typing.cast(CurvesTab, self.tabs.tabs["curves"]).curve_edition
+        curve_nb = curve_edition.curve_nb
+        if curve_nb is None:
+            return
+        curve = self.lightshow.curves.get_curve(curve_nb)
+        if curve is None:
             return
         self.set_size_request(1000, 240)
-        curve_nb = typing.cast(
-            CurvesTab, self.tabs.tabs["curves"]
-        ).curve_edition.curve_nb
-        curve = self.lightshow.curves.get_curve(curve_nb)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(8)
         x = 0
@@ -75,7 +73,7 @@ class CurveValues(Gtk.DrawingArea):
                 cr.stroke()
                 if (
                     curve.editable
-                    and isinstance(curve, (SegmentsCurve, InterpolateCurve))
+                    and isinstance(curve, PointsCurve)
                     and (x, int(curve.values_array[x])) in curve.points
                 ):
                     idx = curve.points.index((x, int(curve.values_array[x])))
@@ -100,6 +98,7 @@ class CurveEdition(Gtk.Box):
     curve_nb: int | None  # Curve number
     points: list[CurvePointWidget]  # Points widgets
     fixed: Gtk.Fixed | None
+    edit_curve: EditCurveWidget | None
     label: Gtk.Label | None
 
     def __init__(self, lightshow: LightShow, tabs: Tabs) -> None:
@@ -132,6 +131,8 @@ class CurveEdition(Gtk.Box):
         # HeaderBar
         self.curve_nb = curve_nb
         curve = self.lightshow.curves.get_curve(curve_nb)
+        if curve is None:
+            return
         text = curve.name
         if isinstance(curve, LimitCurve):
             text += f" {round((curve.limit / 255) * 100)}%"
@@ -148,15 +149,13 @@ class CurveEdition(Gtk.Box):
         for child in self.hbox.get_children():
             child.destroy()
         self.fixed = Gtk.Fixed()
-        if self.fixed is None:
-            return
         self.edit_curve = EditCurveWidget(
-            self.curve_nb, lightshow=self.lightshow, tabs=self.tabs
+            curve_nb, lightshow=self.lightshow, tabs=self.tabs
         )
         self.fixed.put(self.edit_curve, 0, 0)
         self.label = Gtk.Label(label="")
         self.fixed.put(self.label, 0, 0)
-        if isinstance(curve, (SegmentsCurve, InterpolateCurve)) and curve.editable:
+        if isinstance(curve, PointsCurve) and curve.editable:
             self.points_curve()
         self.hbox.add(self.fixed)
         # Add special widgets
@@ -176,18 +175,22 @@ class CurveEdition(Gtk.Box):
             for point in self.points:
                 point.destroy()
         self.points.clear()
+        if self.curve_nb is None or self.edit_curve is None or self.fixed is None:
+            return
         curve = self.lightshow.curves.get_curve(self.curve_nb)
+        if curve is None or not isinstance(curve, PointsCurve):
+            return
         for number, point in enumerate(curve.points):
             x = point[0]
             y = point[1]
             # Warning: SizeRequest used, not real size
             width = self.edit_curve.get_size_request()[0]
             height = self.edit_curve.get_size_request()[1]
-            x = (
+            x_wgt = (
                 round((x / 255) * (width - (self.edit_curve.delta * 2)))
                 + self.edit_curve.delta
             )
-            y = (
+            y_wgt = (
                 height
                 - self.edit_curve.delta
                 - round((y / 255) * (height - (self.edit_curve.delta * 2)))
@@ -201,27 +204,42 @@ class CurveEdition(Gtk.Box):
                 )
             )
             self.points[-1].connect("toggled", self.on_toggled, None)
-            self.fixed.put(self.points[-1], x - 4, y - 4)
+            self.fixed.put(self.points[-1], x_wgt - 4, y_wgt - 4)
         self.show_all()
 
     def on_del_curve(self, _widget: Gtk.Widget) -> None:
         """Delete selected curve"""
         tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
-        if selected := tab.flowbox.get_selected_children():
-            flowboxchild = selected[0]
-            curvebutton = flowboxchild.get_child()
-            curve_nb = curvebutton.curve_nb
-            self.lightshow.curves.del_curve(curve_nb)
-            self.change_curve(0)
-            curve_nb = 0
-            tab.refresh()
-            flowboxchild = None
-            for flowboxchild in tab.flowbox.get_children():
-                if flowboxchild.get_child().curve_nb == curve_nb:
-                    break
-            if flowboxchild:
-                tab.flowbox.select_child(flowboxchild)
-            self.lightshow.set_modified()
+        if tab.flowbox is None:
+            return
+        selected = tab.flowbox.get_selected_children()
+        if not selected:
+            return
+        flowboxchild = selected[0]
+        curvebutton = flowboxchild.get_child()
+        if not isinstance(curvebutton, CurveButton):
+            return
+        curve_nb = curvebutton.curve_nb
+        self.lightshow.curves.del_curve(curve_nb)
+        self.change_curve(0)
+        curve_nb = 0
+        tab.refresh()
+        if tab.flowbox is None:
+            return
+        flowboxchild = None
+        for child in tab.flowbox.get_children():
+            if not isinstance(child, Gtk.FlowBoxChild):
+                continue
+            child_widget = child.get_child()
+            if (
+                isinstance(child_widget, CurveButton)
+                and child_widget.curve_nb == curve_nb
+            ):
+                flowboxchild = child
+                break
+        if flowboxchild:
+            tab.flowbox.select_child(flowboxchild)
+        self.lightshow.set_modified()
 
     def limit_changed(self, widget: Gtk.Scale) -> None:
         """LimitCurve value has been changed
@@ -229,7 +247,11 @@ class CurveEdition(Gtk.Box):
         Args:
             widget: Scale
         """
+        if self.curve_nb is None:
+            return
         curve = self.lightshow.curves.get_curve(self.curve_nb)
+        if not isinstance(curve, LimitCurve):
+            return
         curve.limit = int(widget.get_value())
         curve.populate_values()
         text = curve.name
@@ -277,7 +299,10 @@ class CurveButton(CurveWidget):
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         entry = Gtk.Entry()
         entry.set_has_frame(False)
-        entry.set_text(self.curve.name)
+        if self.curve is not None:
+            entry.set_text(self.curve.name)
+        else:
+            entry.set_text("")
         entry.connect("activate", self.on_edit)
         vbox.pack_start(entry, False, True, 10)
         vbox.show_all()
@@ -292,22 +317,25 @@ class CurveButton(CurveWidget):
             widget: Entry used
         """
         text = widget.get_text()
-        self.curve.name = text
-        tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
-        tab.curve_edition.header.set_title(text)
-        self.popover.popdown()
-        self.lightshow.set_modified()
+        if self.curve is not None:
+            self.curve.name = text
+            tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
+            tab.curve_edition.header.set_title(text)
+            self.popover.popdown()
+            self.lightshow.set_modified()
 
     def on_click(self, _button: Gtk.Widget) -> None:
         """Button clicked"""
         child = self.get_parent()
-        if not child.is_selected():
-            tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
-            tab.curve_edition.change_curve(self.curve_nb)
-            tab.flowbox.unselect_all()
-            tab.flowbox.select_child(child)
-        elif self.curve.editable:
-            self.popover.popup()
+        if isinstance(child, Gtk.FlowBoxChild):
+            if not child.is_selected():
+                tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
+                tab.curve_edition.change_curve(self.curve_nb)
+                if tab.flowbox is not None:
+                    tab.flowbox.unselect_all()
+                    tab.flowbox.select_child(child)
+            elif self.curve is not None and self.curve.editable:
+                self.popover.popup()
 
 
 class CurvesTab(Gtk.Paned):
@@ -368,16 +396,26 @@ class CurvesTab(Gtk.Paned):
         elif widget is self.buttons["segments"]:
             curve_nb = self.lightshow.curves.add_curve(SegmentsCurve())
         elif widget is self.buttons["interpolate"]:
-            curve_nb = self.lightshow.curves.add_curve(InterpolateCurve())
-            self.lightshow.curves.curves[curve_nb].add_point(70, 40)
+            curve_obj = InterpolateCurve()
+            curve_nb = self.lightshow.curves.add_curve(curve_obj)
+            curve_obj.add_point(70, 40)
+        else:
+            return
         self.curve_edition.change_curve(curve_nb)
         self.refresh()
-        flowboxchild = None
-        for flowboxchild in self.flowbox.get_children():
-            if flowboxchild.get_child().curve_nb == curve_nb:
-                break
-        if flowboxchild:
-            self.flowbox.select_child(flowboxchild)
+        if self.flowbox is not None:
+            flowboxchild = None
+            for child in self.flowbox.get_children():
+                if isinstance(child, Gtk.FlowBoxChild):
+                    child_btn = child.get_child()
+                    if (
+                        isinstance(child_btn, CurveButton)
+                        and child_btn.curve_nb == curve_nb
+                    ):
+                        flowboxchild = child
+                        break
+            if flowboxchild is not None:
+                self.flowbox.select_child(flowboxchild)
         self.lightshow.set_modified()
 
     def populate_curves(self) -> None:
@@ -475,43 +513,69 @@ class CurvesTab(Gtk.Paned):
     def _keypress_left(self) -> None:
         """Move curve point left"""
         index = self.curve_edition.get_active_point()
+        if self.curve_edition.curve_nb is None:
+            return
+        curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        if not isinstance(curve, PointsCurve):
+            return
         last = len(self.curve_edition.points) - 1
-        if index and index != last:
-            x = self.curve_edition.points[index].curve.points[index][0] - 1
-            if x > self.curve_edition.points[index].curve.points[index - 1][0]:
-                y = self.curve_edition.points[index].curve.points[index][1]
+        if index is not None and index != 0 and index != last:
+            x = curve.points[index][0] - 1
+            if x > curve.points[index - 1][0]:
+                y = curve.points[index][1]
                 self.__update_point(index, x, y)
 
     def _keypress_right(self) -> None:
         """Move curve point right"""
         index = self.curve_edition.get_active_point()
+        if self.curve_edition.curve_nb is None:
+            return
+        curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        if not isinstance(curve, PointsCurve):
+            return
         last = len(self.curve_edition.points) - 1
-        if index and index != last:
-            x = self.curve_edition.points[index].curve.points[index][0] + 1
-            if x < self.curve_edition.points[index].curve.points[index + 1][0]:
-                y = self.curve_edition.points[index].curve.points[index][1]
+        if index is not None and index != 0 and index != last:
+            x = curve.points[index][0] + 1
+            if x < curve.points[index + 1][0]:
+                y = curve.points[index][1]
                 self.__update_point(index, x, y)
 
     def _keypress_up(self) -> None:
         """Move curve point up"""
         index = self.curve_edition.get_active_point()
-        if index:
-            x = self.curve_edition.points[index].curve.points[index][0]
-            y = self.curve_edition.points[index].curve.points[index][1] + 1
+        if self.curve_edition.curve_nb is None:
+            return
+        curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        if not isinstance(curve, PointsCurve):
+            return
+        if index is not None and index != 0:
+            x = curve.points[index][0]
+            y = curve.points[index][1] + 1
             self.__update_point(index, x, y)
 
     def _keypress_down(self) -> None:
         """Move curve point down"""
         index = self.curve_edition.get_active_point()
-        if index:
-            x = self.curve_edition.points[index].curve.points[index][0]
-            y = self.curve_edition.points[index].curve.points[index][1] - 1
+        if self.curve_edition.curve_nb is None:
+            return
+        curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        if not isinstance(curve, PointsCurve):
+            return
+        if index is not None and index != 0:
+            x = curve.points[index][0]
+            y = curve.points[index][1] - 1
             self.__update_point(index, x, y)
 
     def __update_point(self, index: int, x: int, y: int) -> None:
+        if self.curve_edition.curve_nb is None:
+            return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
+        if not isinstance(curve, PointsCurve):
+            return
         curve.set_point(index, x, y)
         self.curve_edition.queue_draw()
+        if self.curve_edition.edit_curve is None or self.curve_edition.fixed is None:
+            return
         width = self.curve_edition.edit_curve.get_size_request()[0]
         height = self.curve_edition.edit_curve.get_size_request()[1]
         x_wgt = (
