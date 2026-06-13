@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import threading
@@ -21,7 +20,6 @@ import typing
 from typing import Optional
 
 import numpy as np
-from gi.repository import GLib, Pango
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.step import Step
@@ -30,59 +28,11 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.core.app import CoreApplication
     from olc.core.lightshow import LightShow
-    from olc.virtual_console import VirtualConsoleWindow
 
 
 def get_cue(step: Step) -> typing.Any:  # noqa: ANN401
     """Get the cue object from step as Any to simplify type checking."""
     return step.cue
-
-
-def update_ui(subtitle: str, app: CoreApplication | None = None) -> None:
-    """Update user interface when Step is in scene
-
-    Args:
-        subtitle: Memories number in header bar
-        app: The application instance
-    """
-    if not app:
-        return
-    app_any = typing.cast(typing.Any, app)
-    # Update Sequential Tab
-    if hasattr(app_any, "window") and app_any.window:
-        app_any.window.playback.update_active_cues_display()
-        app_any.window.playback.grid.queue_draw()
-        # Cue times
-        app_any.window.playback.display_times()
-        # Update Main Window's Subtitle
-        app_any.window.header.set_subtitle(subtitle)
-
-        # Update Channels display
-        if app_any.window.live_view:
-            main_playback = app_any.core.lightshow.main_playback
-            step = main_playback.steps[main_playback.position]
-            for channel in range(1, MAX_CHANNELS + 1):
-                seq_level = 0
-                if step.cue is not None:
-                    seq_level = step.cue.channels.get(channel, 0)
-                seq_next_level = main_playback.get_next_channel_level(
-                    channel, seq_level
-                )
-                app_any.window.live_view.update_channel_widget(channel, seq_next_level)
-    # Virtual Console crossfade
-    if (
-        hasattr(app_any, "virtual_console")
-        and app_any.virtual_console
-        and app_any.virtual_console.props.visible
-    ):
-        if app_any.virtual_console.scale_a.get_inverted():
-            app_any.virtual_console.scale_a.set_inverted(False)
-            app_any.virtual_console.scale_b.set_inverted(False)
-        else:
-            app_any.virtual_console.scale_a.set_inverted(True)
-            app_any.virtual_console.scale_b.set_inverted(True)
-        app_any.virtual_console.scale_a.set_value(0)
-        app_any.virtual_console.scale_b.set_value(0)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -117,7 +67,6 @@ class Sequence:
         # Flag to know if we have a Go in progress
         self._on_go = False
         # Channels present in this sequence
-        # self.channels = array.array("B", [0] * MAX_CHANNELS)
         self.channels: set[int] = set()
         # Flag for chasers
         self.run = False
@@ -157,20 +106,6 @@ class Sequence:
         """Get parent application instance safely."""
         if self.lightshow:
             return self.lightshow.app
-        return None
-
-    @property
-    def virtual_console(self) -> VirtualConsoleWindow | None:
-        """Get parent application's virtual console instance safely."""
-        if self.app is not None:
-            return typing.cast(typing.Any, self.app).virtual_console
-        return None
-
-    @property
-    def window(self) -> typing.Any:  # noqa: ANN401
-        """Get parent application's window instance safely."""
-        if self.app is not None:
-            return typing.cast(typing.Any, self.app).window
         return None
 
     @property
@@ -402,34 +337,26 @@ class Sequence:
             if float(get_cue(step).memory) == float(keystring):
                 # Position to the one just before
                 self.position = i - 1
-                # position = self.position
                 next_step = self.position + 1
-                # Redraw Sequential window with new times
-                self.window.playback.sequential.total_time = self.steps[
-                    next_step
-                ].total_time
-                self.window.playback.sequential.time_in = self.steps[next_step].time_in
-                self.window.playback.sequential.time_out = self.steps[
-                    next_step
-                ].time_out
-                self.window.playback.sequential.delay_in = self.steps[
-                    next_step
-                ].delay_in
-                self.window.playback.sequential.delay_out = self.steps[
-                    next_step
-                ].delay_out
-                self.window.playback.sequential.wait = self.steps[next_step].wait
-                self.window.playback.sequential.channel_time = self.steps[
-                    next_step
-                ].channel_time
-                self.window.playback.sequential.position_a = 0
-                self.window.playback.sequential.position_b = 0
 
-                # Update user interface
-                self.window.playback.cues_liststore1[old_pos][9] = "#232729"
-                self.window.playback.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
-                self.window.playback.update_active_cues_display()
-                self.window.playback.grid.queue_draw()
+                # Emit event for GUI (GuiEventBridge) to setup times and view
+                if self.app is not None:
+                    core = getattr(self.app, "core", self.app)
+                    core.emit(
+                        "playback.goto_selected",
+                        {
+                            "old_pos": old_pos,
+                            "next_step": next_step,
+                            "keystring": keystring,
+                            "total_time": self.steps[next_step].total_time,
+                            "time_in": self.steps[next_step].time_in,
+                            "time_out": self.steps[next_step].time_out,
+                            "delay_in": self.steps[next_step].delay_in,
+                            "delay_out": self.steps[next_step].delay_out,
+                            "wait": self.steps[next_step].wait,
+                            "channel_time": self.steps[next_step].channel_time,
+                        },
+                    )
 
                 # Launch Go
                 self.do_go(None, True)
@@ -454,21 +381,6 @@ class Sequence:
                 self.position = 0
                 position = 0
             self.on_go = False
-            self.window.playback.sequential.total_time = self.steps[
-                position + 1
-            ].total_time
-            self.window.playback.sequential.time_in = self.steps[position + 1].time_in
-            self.window.playback.sequential.time_out = self.steps[position + 1].time_out
-            self.window.playback.sequential.delay_in = self.steps[position + 1].delay_in
-            self.window.playback.sequential.delay_out = self.steps[
-                position + 1
-            ].delay_out
-            self.window.playback.sequential.wait = self.steps[position + 1].wait
-            self.window.playback.sequential.channel_time = self.steps[
-                position + 1
-            ].channel_time
-            self.window.playback.sequential.position_a = 0
-            self.window.playback.sequential.position_b = 0
 
             # Set main window's subtitle
             subtitle = (
@@ -478,12 +390,23 @@ class Sequence:
                 f"{self.steps[position + 1].text}"
             )
 
-            # Update Sequential Tab
-            self.window.playback.update_active_cues_display()
-            self.window.playback.grid.queue_draw()
-            self.window.playback.display_times()
-            # Update Main Window's Subtitle
-            self.window.header.set_subtitle(subtitle)
+            # Emit event for GUI (GuiEventBridge)
+            if self.app is not None:
+                core = getattr(self.app, "core", self.app)
+                core.emit(
+                    "playback.go_triggered_direct",
+                    {
+                        "position": position,
+                        "subtitle": subtitle,
+                        "total_time": self.steps[position + 1].total_time,
+                        "time_in": self.steps[position + 1].time_in,
+                        "time_out": self.steps[position + 1].time_out,
+                        "delay_in": self.steps[position + 1].delay_in,
+                        "delay_out": self.steps[position + 1].delay_out,
+                        "wait": self.steps[position + 1].wait,
+                        "channel_time": self.steps[position + 1].channel_time,
+                    },
+                )
 
             self.do_go(None)
 
@@ -515,25 +438,24 @@ class Sequence:
                 "go-back-time"
             )
 
-        self.window.playback.sequential.total_time = goback_time
-        self.window.playback.sequential.time_in = goback_time
-        self.window.playback.sequential.time_out = goback_time
-        self.window.playback.sequential.delay_in = 0
-        self.window.playback.sequential.delay_out = 0
-        self.window.playback.sequential.wait = 0
-        self.window.playback.sequential.channel_time = {}
-        self.window.playback.sequential.position_a = 0
-        self.window.playback.sequential.position_b = 0
-
-        self.window.playback.grid.queue_draw()
-
         subtitle = (
             f"Mem. : {get_cue(self.steps[position]).memory} "
             f"{self.steps[position].text}"
             f" - Next Mem. : {get_cue(self.steps[position - 1]).memory} "
             f"{self.steps[position - 1].text}"
         )
-        self.window.header.set_subtitle(subtitle)
+
+        # Emit event for GUI (GuiEventBridge)
+        if self.app is not None:
+            core = getattr(self.app, "core", self.app)
+            core.emit(
+                "playback.go_back_started",
+                {
+                    "position": position,
+                    "subtitle": subtitle,
+                    "goback_time": goback_time,
+                },
+            )
 
         self.on_go = True
         self.thread = ThreadGoBack(self)
@@ -576,7 +498,7 @@ class ThreadGo(threading.Thread):
     backend: typing.Any
 
     def __init__(self, goto: bool, sequence: Sequence) -> None:
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name="ThreadGo", daemon=True)
         self._stopevent = threading.Event()
         self.pause = threading.Event()
         self.pause.set()
@@ -596,11 +518,6 @@ class ThreadGo(threading.Thread):
     def app(self) -> CoreApplication | None:
         """Get parent application instance safely."""
         return self.sequence.app
-
-    @property
-    def window(self) -> typing.Any:  # noqa: ANN401
-        """Get parent application's window instance safely."""
-        return self.sequence.window
 
     @property
     def backend(self) -> typing.Any:  # noqa: ANN401
@@ -635,6 +552,17 @@ class ThreadGo(threading.Thread):
 
         self.sequence.update_channels()
         next_step = _next_step(self.sequence)
+
+        # Emit event for GUI (GuiEventBridge)
+        if self.app is not None:
+            core = getattr(self.app, "core", self.app)
+            core.emit(
+                "playback.transition_completed",
+                {
+                    "next_step": next_step,
+                },
+            )
+
         if self.sequence.steps[next_step].wait:
             self.sequence.do_go(None)
         if self.app is not None and self.app.midi is not None:
@@ -673,29 +601,24 @@ class ThreadGo(threading.Thread):
         Args:
             i: Time spent
         """
-        # Update sliders position
-        self.window.playback.sequential.position_a = (
-            (self.window.playback.sequential.get_allocation().width - 32)
-            / self.total_time
-        ) * i
-        self.window.playback.sequential.position_b = (
-            (self.window.playback.sequential.get_allocation().width - 32)
-            / self.total_time
-        ) * i
-        GLib.idle_add(self.window.playback.sequential.queue_draw)
         val = round((255 / self.total_time) * i)
         if self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(val)
             self.app.crossfade.scale_b.set_value(val)
-        # Move Virtual Console crossfade
-        if (
-            self.sequence.virtual_console
-            and self.sequence.virtual_console.props.visible
-        ):
-            GLib.idle_add(self.sequence.virtual_console.scale_a.set_value, val)
-            GLib.idle_add(self.sequence.virtual_console.scale_b.set_value, val)
-        # Show times left
-        GLib.idle_add(self.window.playback.show_timeleft, i)
+
+        # Emit event for GUI (GuiEventBridge)
+        if self.app is not None:
+            core = getattr(self.app, "core", self.app)
+            core.emit(
+                "playback.transition_progress",
+                {
+                    "time_spent": i,
+                    "total_time": self.total_time,
+                    "progress_val": val,
+                    "sequence_position": self.sequence.position,
+                },
+            )
+
         # Wait for wait time
         if i > self.wait:
             if self.goto:
@@ -817,27 +740,7 @@ def _next_step(sequence: Sequence) -> int:
     else:
         sequence.position = 0
         next_step = 1
-    # Update times for visual crossfade
-    if sequence.window is not None:
-        sequence.window.playback.sequential.total_time = sequence.steps[
-            next_step
-        ].total_time
-        sequence.window.playback.sequential.time_in = sequence.steps[next_step].time_in
-        sequence.window.playback.sequential.time_out = sequence.steps[
-            next_step
-        ].time_out
-        sequence.window.playback.sequential.delay_in = sequence.steps[
-            next_step
-        ].delay_in
-        sequence.window.playback.sequential.delay_out = sequence.steps[
-            next_step
-        ].delay_out
-        sequence.window.playback.sequential.wait = sequence.steps[next_step].wait
-        sequence.window.playback.sequential.channel_time = sequence.steps[
-            next_step
-        ].channel_time
-        sequence.window.playback.sequential.position_a = 0
-        sequence.window.playback.sequential.position_b = 0
+
     # Main window's subtitle
     subtitle = (
         f"Mem. : {get_cue(sequence.steps[sequence.position]).memory} "
@@ -845,8 +748,25 @@ def _next_step(sequence: Sequence) -> int:
         f"{get_cue(sequence.steps[next_step]).memory} "
         f"{sequence.steps[next_step].text}"
     )
-    # Update Gtk in main thread
-    GLib.idle_add(update_ui, subtitle, sequence.app)
+
+    # Emit event for GUI (GuiEventBridge)
+    if sequence.app is not None:
+        core = getattr(sequence.app, "core", sequence.app)
+        core.emit(
+            "playback.step_changed",
+            {
+                "position": sequence.position,
+                "next_step": next_step,
+                "subtitle": subtitle,
+                "total_time": sequence.steps[next_step].total_time,
+                "time_in": sequence.steps[next_step].time_in,
+                "time_out": sequence.steps[next_step].time_out,
+                "delay_in": sequence.steps[next_step].delay_in,
+                "delay_out": sequence.steps[next_step].delay_out,
+                "wait": sequence.steps[next_step].wait,
+                "channel_time": sequence.steps[next_step].channel_time,
+            },
+        )
     return next_step
 
 
@@ -858,7 +778,7 @@ class ThreadGoBack(threading.Thread):
     backend: typing.Any
 
     def __init__(self, sequence: Sequence) -> None:
-        threading.Thread.__init__(self)
+        threading.Thread.__init__(self, name="ThreadGoBack", daemon=True)
         self._stopevent = threading.Event()
         self.pause = threading.Event()
         self.pause.set()
@@ -870,11 +790,6 @@ class ThreadGoBack(threading.Thread):
     def app(self) -> CoreApplication | None:
         """Get parent application instance safely."""
         return self.sequence.app
-
-    @property
-    def window(self) -> typing.Any:  # noqa: ANN401
-        """Get parent application's window instance safely."""
-        return self.sequence.window
 
     @property
     def backend(self) -> typing.Any:  # noqa: ANN401
@@ -906,27 +821,6 @@ class ThreadGoBack(threading.Thread):
 
         self.sequence.update_channels()
         self.sequence.position = prev_step
-        self.window.playback.sequential.time_in = self.sequence.steps[
-            prev_step + 1
-        ].time_in
-        self.window.playback.sequential.time_out = self.sequence.steps[
-            prev_step + 1
-        ].time_out
-        self.window.playback.sequential.delay_in = self.sequence.steps[
-            prev_step + 1
-        ].delay_in
-        self.window.playback.sequential.delay_out = self.sequence.steps[
-            prev_step + 1
-        ].delay_out
-        self.window.playback.sequential.wait = self.sequence.steps[prev_step + 1].wait
-        self.window.playback.sequential.total_time = self.sequence.steps[
-            prev_step + 1
-        ].total_time
-        self.window.playback.sequential.channel_time = self.sequence.steps[
-            prev_step + 1
-        ].channel_time
-        self.window.playback.sequential.position_a = 0
-        self.window.playback.sequential.position_b = 0
 
         subtitle = (
             f"Mem. : {get_cue(self.sequence.steps[prev_step]).memory} "
@@ -934,7 +828,25 @@ class ThreadGoBack(threading.Thread):
             f"{get_cue(self.sequence.steps[prev_step + 1]).memory} "
             f"{self.sequence.steps[prev_step + 1].text}"
         )
-        GLib.idle_add(update_ui, subtitle, self.sequence.app)
+
+        # Emit event for GUI (GuiEventBridge)
+        if self.app is not None:
+            core = getattr(self.app, "core", self.app)
+            core.emit(
+                "playback.goback_completed",
+                {
+                    "prev_step": prev_step,
+                    "subtitle": subtitle,
+                    "time_in": self.sequence.steps[prev_step + 1].time_in,
+                    "time_out": self.sequence.steps[prev_step + 1].time_out,
+                    "delay_in": self.sequence.steps[prev_step + 1].delay_in,
+                    "delay_out": self.sequence.steps[prev_step + 1].delay_out,
+                    "wait": self.sequence.steps[prev_step + 1].wait,
+                    "total_time": self.sequence.steps[prev_step + 1].total_time,
+                    "channel_time": self.sequence.steps[prev_step + 1].channel_time,
+                },
+            )
+
         if self.app is not None and self.app.midi is not None:
             self.app.midi.button_off("playback.go_back")
 
@@ -981,28 +893,23 @@ class ThreadGoBack(threading.Thread):
             i: Time spent
             position: Step
         """
-        # Update sliders position
-        allocation = self.window.playback.sequential.get_allocation()
-        self.window.playback.sequential.position_a = (
-            (allocation.width - 32) / go_back_time
-        ) * i
-        self.window.playback.sequential.position_b = (
-            (allocation.width - 32) / go_back_time
-        ) * i
-        GLib.idle_add(self.window.playback.sequential.queue_draw)
         val = round((255 / go_back_time) * i)
         if self.app is not None and self.app.crossfade is not None:
             self.app.crossfade.scale_a.set_value(val)
             self.app.crossfade.scale_b.set_value(val)
-        # Move Virtual Console crossfade
-        if (
-            self.sequence.virtual_console
-            and self.sequence.virtual_console.props.visible
-        ):
-            GLib.idle_add(self.sequence.virtual_console.scale_a.set_value, val)
-            GLib.idle_add(self.sequence.virtual_console.scale_b.set_value, val)
-        # Countdown
-        GLib.idle_add(self.window.playback.goback_countdown, i, go_back_time, position)
+
+        # Emit event for GUI (GuiEventBridge)
+        if self.app is not None:
+            core = getattr(self.app, "core", self.app)
+            core.emit(
+                "playback.goback_progress",
+                {
+                    "time_spent": i,
+                    "goback_time": go_back_time,
+                    "position": position,
+                    "progress_val": val,
+                },
+            )
 
         # Array-based fade
         old_levels = self.old_channels_levels.astype(np.int32)

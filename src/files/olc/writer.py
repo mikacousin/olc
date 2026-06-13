@@ -24,8 +24,8 @@ from olc.files.write import WriteFile
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.core.lightshow import LightShow
+    from olc.core.sequence import Sequence
     from olc.midi import Midi
-    from olc.sequence import Sequence
 
 
 class OlcWriter(WriteFile):

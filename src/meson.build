@@ -40,7 +40,6 @@ olc_sources = [
   'patch.py',
   'patch_channels.py',
   'patch_outputs.py',
-  'sequence.py',
   'sequence_edition.py',
   'settings.py',
   'step.py',

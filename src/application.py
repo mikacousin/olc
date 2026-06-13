@@ -31,6 +31,7 @@ from olc.channel_time import ChanneltimeTab  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends.osc.delegate import GUIOSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
+from olc.core.sequence import Sequence  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.cues_edition import CuesEditionTab  # noqa: E402
 from olc.curve_edition import CurvesTab  # noqa: E402
@@ -49,7 +50,6 @@ from olc.midi import Midi  # noqa: E402
 from olc.patch import PatchByOutputs  # noqa: E402
 from olc.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.patch_outputs import PatchOutputsTab  # noqa: E402
-from olc.sequence import Sequence  # noqa: E402
 from olc.sequence_edition import SequenceTab  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
 from olc.tabs_manager import Tabs  # noqa: E402

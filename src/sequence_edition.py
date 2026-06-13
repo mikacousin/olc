@@ -19,10 +19,10 @@ from typing import Callable, Optional
 
 import numpy as np
 from gi.repository import Gdk, Gtk
+from olc.core.sequence import Sequence
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
 from olc.dialog import ConfirmationDialog
-from olc.sequence import Sequence
 from olc.step import Step
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 

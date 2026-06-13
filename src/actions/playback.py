@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.sequence import get_cue
+from olc.core.sequence import get_cue
 
 
 class GoAction(Action):

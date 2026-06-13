@@ -18,10 +18,10 @@ from __future__ import annotations
 
 import typing
 
-from gi.repository import GLib
+from gi.repository import GLib, Pango
+from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.fader_edition import FaderTab
-from olc.sequence import update_ui
 
 if typing.TYPE_CHECKING:
     from olc.application import Application
@@ -93,6 +93,38 @@ class GuiEventBridge:
             lambda scale_name, position, total_time, step: self._run_idle(
                 self._on_crossfade_scale_updated, scale_name, position, total_time, step
             ),
+        )
+        self.app.core.subscribe(
+            "playback.step_changed",
+            lambda data: self._run_idle(self._on_playback_step_changed, data),
+        )
+        self.app.core.subscribe(
+            "playback.goto_selected",
+            lambda data: self._run_idle(self._on_playback_goto_selected, data),
+        )
+        self.app.core.subscribe(
+            "playback.go_triggered_direct",
+            lambda data: self._run_idle(self._on_playback_go_triggered_direct, data),
+        )
+        self.app.core.subscribe(
+            "playback.go_back_started",
+            lambda data: self._run_idle(self._on_playback_go_back_started, data),
+        )
+        self.app.core.subscribe(
+            "playback.transition_progress",
+            lambda data: self._run_idle(self._on_playback_transition_progress, data),
+        )
+        self.app.core.subscribe(
+            "playback.transition_completed",
+            lambda data: self._run_idle(self._on_playback_transition_completed, data),
+        )
+        self.app.core.subscribe(
+            "playback.goback_progress",
+            lambda data: self._run_idle(self._on_playback_goback_progress, data),
+        )
+        self.app.core.subscribe(
+            "playback.goback_completed",
+            lambda data: self._run_idle(self._on_playback_goback_completed, data),
         )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
@@ -427,3 +459,171 @@ class GuiEventBridge:
             self.app.window.playback.update_cue_crossfade_color(step, progress)
             self.app.window.playback.sequential.queue_draw()
         return False
+
+    def _on_playback_step_changed(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            seq = self.app.window.playback.sequential
+            seq.total_time = data["total_time"]
+            seq.time_in = data["time_in"]
+            seq.time_out = data["time_out"]
+            seq.delay_in = data["delay_in"]
+            seq.delay_out = data["delay_out"]
+            seq.wait = data["wait"]
+            seq.channel_time = data["channel_time"]
+            seq.position_a = 0
+            seq.position_b = 0
+        update_ui(data["subtitle"], self.app)
+        return False
+
+    def _on_playback_goto_selected(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            playback = self.app.window.playback
+            old_pos = data["old_pos"]
+            playback.sequential.total_time = data["total_time"]
+            playback.sequential.time_in = data["time_in"]
+            playback.sequential.time_out = data["time_out"]
+            playback.sequential.delay_in = data["delay_in"]
+            playback.sequential.delay_out = data["delay_out"]
+            playback.sequential.wait = data["wait"]
+            playback.sequential.channel_time = data["channel_time"]
+            playback.sequential.position_a = 0
+            playback.sequential.position_b = 0
+
+            playback.cues_liststore1[old_pos][9] = "#232729"
+            playback.cues_liststore1[old_pos][10] = Pango.Weight.NORMAL
+            playback.update_active_cues_display()
+            playback.grid.queue_draw()
+        return False
+
+    def _on_playback_go_triggered_direct(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            playback = self.app.window.playback
+            playback.sequential.total_time = data["total_time"]
+            playback.sequential.time_in = data["time_in"]
+            playback.sequential.time_out = data["time_out"]
+            playback.sequential.delay_in = data["delay_in"]
+            playback.sequential.delay_out = data["delay_out"]
+            playback.sequential.wait = data["wait"]
+            playback.sequential.channel_time = data["channel_time"]
+            playback.sequential.position_a = 0
+            playback.sequential.position_b = 0
+
+            playback.update_active_cues_display()
+            playback.grid.queue_draw()
+            playback.display_times()
+        if self.app.window:
+            self.app.window.header.set_subtitle(data["subtitle"])
+        return False
+
+    def _on_playback_go_back_started(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            playback = self.app.window.playback
+            goback_time = data["goback_time"]
+            playback.sequential.total_time = goback_time
+            playback.sequential.time_in = goback_time
+            playback.sequential.time_out = goback_time
+            playback.sequential.delay_in = 0
+            playback.sequential.delay_out = 0
+            playback.sequential.wait = 0
+            playback.sequential.channel_time = {}
+            playback.sequential.position_a = 0
+            playback.sequential.position_b = 0
+
+            playback.grid.queue_draw()
+        if self.app.window:
+            self.app.window.header.set_subtitle(data["subtitle"])
+        return False
+
+    def _on_playback_transition_progress(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            playback = self.app.window.playback
+            time_spent = data["time_spent"]
+            total_time = data["total_time"]
+            val = data["progress_val"]
+            alloc_width = playback.sequential.get_allocation().width
+            ratio = ((alloc_width - 32) / total_time) * time_spent
+            playback.sequential.position_a = ratio
+            playback.sequential.position_b = ratio
+            playback.sequential.queue_draw()
+            playback.show_timeleft(time_spent)
+
+            vc = self.app.virtual_console
+            if vc and vc.props.visible:
+                vc.scale_a.set_value(val)
+                vc.scale_b.set_value(val)
+        return False
+
+    def _on_playback_transition_completed(self, _data: dict[str, typing.Any]) -> bool:
+        return False
+
+    def _on_playback_goback_progress(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            playback = self.app.window.playback
+            time_spent = data["time_spent"]
+            goback_time = data["goback_time"]
+            position = data["position"]
+            val = data["progress_val"]
+            alloc_width = playback.sequential.get_allocation().width
+            ratio = ((alloc_width - 32) / goback_time) * time_spent
+            playback.sequential.position_a = ratio
+            playback.sequential.position_b = ratio
+            playback.sequential.queue_draw()
+            playback.goback_countdown(time_spent, goback_time, position)
+
+            vc = self.app.virtual_console
+            if vc and vc.props.visible:
+                vc.scale_a.set_value(val)
+                vc.scale_b.set_value(val)
+        return False
+
+    def _on_playback_goback_completed(self, data: dict[str, typing.Any]) -> bool:
+        if self.app.window and self.app.window.playback:
+            playback = self.app.window.playback
+            playback.sequential.time_in = data["time_in"]
+            playback.sequential.time_out = data["time_out"]
+            playback.sequential.delay_in = data["delay_in"]
+            playback.sequential.delay_out = data["delay_out"]
+            playback.sequential.wait = data["wait"]
+            playback.sequential.total_time = data["total_time"]
+            playback.sequential.channel_time = data["channel_time"]
+            playback.sequential.position_a = 0
+            playback.sequential.position_b = 0
+        update_ui(data["subtitle"], self.app)
+        return False
+
+
+def update_ui(subtitle: str, app: Application | None = None) -> None:
+    """Update user interface when Step is in scene. (Relocated to GUI Bridge)"""
+    if not app:
+        return
+    # Update Sequential Tab
+    if app.window:
+        app.window.playback.update_active_cues_display()
+        app.window.playback.grid.queue_draw()
+        # Cue times
+        app.window.playback.display_times()
+        # Update Main Window's Subtitle
+        app.window.header.set_subtitle(subtitle)
+
+        # Update Channels display
+        if app.window.live_view:
+            main_playback = app.core.lightshow.main_playback
+            step = main_playback.steps[main_playback.position]
+            for channel in range(1, MAX_CHANNELS + 1):
+                seq_level = 0
+                if step.cue is not None:
+                    seq_level = step.cue.channels.get(channel, 0)
+                seq_next_level = main_playback.get_next_channel_level(
+                    channel, seq_level
+                )
+                app.window.live_view.update_channel_widget(channel, seq_next_level)
+    # Virtual Console crossfade
+    if app.virtual_console and app.virtual_console.props.visible:
+        if app.virtual_console.scale_a.get_inverted():
+            app.virtual_console.scale_a.set_inverted(False)
+            app.virtual_console.scale_b.set_inverted(False)
+        else:
+            app.virtual_console.scale_a.set_inverted(True)
+            app.virtual_console.scale_b.set_inverted(True)
+        app.virtual_console.scale_a.set_value(0)
+        app.virtual_console.scale_b.set_value(0)
