@@ -67,10 +67,12 @@ SIMPLE_ACTION_MAPPING = {
 }
 
 
+# pylint: disable=too-many-public-methods
 class MidiNotes:
     """MIDI messages from controllers"""
 
     notes: dict[str, list[int]]
+    cc_notes: dict[str, list[int]]
     zoom: bool
 
     def __init__(self, midi: Midi, app_delegate: Application) -> None:
@@ -133,13 +135,54 @@ class MidiNotes:
                     self.notes[f"fader_{j + i * 10 + 1}"] = [0, 104 + j]
                 else:
                     self.notes[f"fader_{j + i * 10 + 1}"] = [0, -1]
+        self.cc_notes = {action: [0, -1] for action in self.notes}
 
     def reset(self) -> None:
         """Remove all MIDI note"""
         for action in self.notes:
             self.notes[action] = [0, -1]
+        for action in self.cc_notes:
+            self.cc_notes[action] = [0, -1]
 
     # pylint: disable=too-many-branches
+    def _dispatch(self, key: str, msg: mido.Message) -> None:
+        """Dispatch a MIDI action to its handler
+
+        Args:
+            key: Action key
+            msg: (Simulated) MIDI note message
+        """
+        if key[:6] == "flash_":
+            # We need to pass fader number to flash function
+            fader_index = int(key[6:])
+            page = int((fader_index - 1) / 10)
+            fader = int(fader_index - (page * 10))
+            if page + 1 == self.app_delegate.core.lightshow.fader_bank.active_page:
+                GLib.idle_add(self.flash, msg, fader)
+        elif key[:6] == "fader_":
+            fader_index = int(key[6:])
+            page = int((fader_index - 1) / 10)
+            fader = int(fader_index - (page * 10))
+            if page + 1 == self.app_delegate.core.lightshow.fader_bank.active_page:
+                GLib.idle_add(self.fader, msg, fader)
+        elif key[:5] == "inde_":
+            GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
+        elif key[:4] == "zoom":
+            GLib.idle_add(self._toggle_zoom, msg)
+        elif key[:6] == "h_plus" or key[:6] == "v_plus":
+            GLib.idle_add(self._zoom_plus, msg)
+        elif key[:7] == "h_minus" or key[:7] == "v_minus":
+            GLib.idle_add(self._zoom_minus, msg)
+        elif key in SIMPLE_ACTION_MAPPING:
+            GLib.idle_add(self._execute_midi_action, key, msg)
+        else:
+            method_name = key.rsplit(".", maxsplit=1)[-1]
+            func = getattr(self, f"_function_{method_name}", None) or getattr(
+                self, method_name, None
+            )
+            if func:
+                GLib.idle_add(func, msg)
+
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
 
@@ -148,45 +191,29 @@ class MidiNotes:
         """
         for key, value in list(self.notes.items()):
             if msg.channel == value[0] and msg.note == value[1]:
-                if key[:6] == "flash_":
-                    # We need to pass fader number to flash function
-                    fader_index = int(key[6:])
-                    page = int((fader_index - 1) / 10)
-                    fader = int(fader_index - (page * 10))
-                    if (
-                        page + 1
-                        == self.app_delegate.core.lightshow.fader_bank.active_page
-                    ):
-                        GLib.idle_add(self.flash, msg, fader)
-                elif key[:6] == "fader_":
-                    fader_index = int(key[6:])
-                    page = int((fader_index - 1) / 10)
-                    fader = int(fader_index - (page * 10))
-                    if (
-                        page + 1
-                        == self.app_delegate.core.lightshow.fader_bank.active_page
-                    ):
-                        GLib.idle_add(self.fader, msg, fader)
-                elif key[:5] == "inde_":
-                    GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
-                elif key[:4] == "zoom":
-                    GLib.idle_add(self._toggle_zoom, msg)
-                elif key[:6] == "h_plus" or key[:6] == "v_plus":
-                    GLib.idle_add(self._zoom_plus, msg)
-                elif key[:7] == "h_minus" or key[:7] == "v_minus":
-                    GLib.idle_add(self._zoom_minus, msg)
-                elif key in SIMPLE_ACTION_MAPPING:
-                    GLib.idle_add(self._execute_midi_action, key, msg)
-                else:
-                    method_name = key.rsplit(".", maxsplit=1)[-1]
-                    func = getattr(self, f"_function_{method_name}", None) or getattr(
-                        self, method_name, None
-                    )
-                    if func:
-                        GLib.idle_add(func, msg)
+                self._dispatch(key, msg)
+
+    def scan_cc(self, msg: mido.Message) -> None:
+        """Scan MIDI CC for button actions
+
+        Args:
+            msg: MIDI message
+        """
+        for key, value in list(self.cc_notes.items()):
+            if msg.channel == value[0] and msg.control == value[1]:
+                note_type = "note_on" if msg.value > 0 else "note_off"
+                velocity = 127 if msg.value > 0 else 0
+                simulated_msg = mido.Message(
+                    note_type,
+                    channel=msg.channel,
+                    note=0,
+                    velocity=velocity,
+                    time=msg.time,
+                )
+                self._dispatch(key, simulated_msg)
 
     def send(self, midi_name: str, value: int) -> None:
-        """Send MIDI note message
+        """Send MIDI note or CC message
 
         Args:
             midi_name: action string
@@ -198,6 +225,18 @@ class MidiNotes:
                 "note_on", channel=channel, note=note, velocity=value, time=0
             )
             self.midi.enqueue(msg)
+        else:
+            channel, control = self.cc_notes[midi_name]
+            if control != -1:
+                cc_value = 127 if value > 0 else 0
+                msg = mido.Message(
+                    "control_change",
+                    channel=channel,
+                    control=control,
+                    value=cc_value,
+                    time=0,
+                )
+                self.midi.enqueue(msg)
 
     def learn(self, msg: mido.Message, learning: str) -> None:
         """Learn new MIDI Note control
@@ -222,6 +261,32 @@ class MidiNotes:
                     self.notes.update({key: [0, -1]})
         # Learn new values
         self.notes.update({learning: [msg.channel, msg.note]})
+        self.cc_notes.update({learning: [0, -1]})
+
+    def learn_cc(self, msg: mido.Message, learning: str) -> None:
+        """Learn new MIDI CC control for button action
+
+        Args:
+            msg: MIDI message
+            learning: action to update
+        """
+        if learning not in self.cc_notes:
+            return
+        # Find if values are already used
+        for key, value in list(self.cc_notes.items()):
+            if value[0] == msg.channel and value[1] == msg.control:
+                if learning.startswith("flash_"):
+                    # Don't delete flash button from other pages
+                    index = int(key[6:])
+                    page = index // 11 + 1
+                    if page == self.app_delegate.core.lightshow.fader_bank.active_page:
+                        self.cc_notes.update({key: [0, -1]})
+                else:
+                    # Delete it
+                    self.cc_notes.update({key: [0, -1]})
+        # Learn new values
+        self.cc_notes.update({learning: [msg.channel, msg.control]})
+        self.notes.update({learning: [0, -1]})
 
     def led_pause_off(self) -> None:
         """Toggle MIDI Led"""
@@ -323,11 +388,11 @@ class MidiNotes:
             fader_index: Fader number
         """
         if msg.velocity == 0:
-            self.midi.enqueue(msg)
+            self.send(f"flash_{fader_index}", 0)
             fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
             fader.flash_off()
         elif msg.velocity == 127:
-            self.midi.enqueue(msg)
+            self.send(f"flash_{fader_index}", 127)
             fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
             fader.flash_on()
 
@@ -337,22 +402,8 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            # Go released
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.go_button.emit(
-                    "button-release-event", event
-                )
-        elif msg.velocity == 127:
-            # Go pressed
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.go_button.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.core.action_registry.execute("playback.go")
+        if msg.velocity == 127:
+            self.app_delegate.core.action_registry.execute("playback.go")
 
     def pause(self, msg: mido.Message) -> None:
         """Pause
@@ -360,36 +411,8 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.pause.emit(
-                    "button-release-event", event
-                )
-                self.app_delegate.virtual_console.pause.clicked()
-        elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.pause.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.core.action_registry.execute("playback.pause")
-
-        if (
-            self.app_delegate.core.lightshow.main_playback.on_go
-            and self.app_delegate.core.lightshow.main_playback.thread
-        ):
-            if self.app_delegate.core.lightshow.main_playback.thread.pause.is_set():
-                message = mido.Message(
-                    "note_on", channel=msg.channel, note=msg.note, velocity=0, time=0
-                )
-                self.midi.enqueue(message)
-            else:
-                message = mido.Message(
-                    "note_on", channel=msg.channel, note=msg.note, velocity=127, time=0
-                )
-                self.midi.enqueue(message)
+        if msg.velocity == 127:
+            self.app_delegate.core.action_registry.execute("playback.pause")
 
     def go_back(self, msg: mido.Message) -> None:
         """Go Back
@@ -397,20 +420,8 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.goback.emit(
-                    "button-release-event", event
-                )
-        elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.goback.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.core.action_registry.execute("playback.go_back")
+        if msg.velocity == 127:
+            self.app_delegate.core.action_registry.execute("playback.go_back")
 
     def goto(self, msg: mido.Message) -> None:
         """Go to Cue
@@ -441,27 +452,13 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.seq_minus.emit(
-                    "button-release-event", event
-                )
-            else:
-                self.midi.enqueue(msg)
-        elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.seq_minus.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.midi.enqueue(msg)
-                self.app_delegate.core.action_registry.execute(
-                    "playback.sequence_minus"
-                )
-                if self.app_delegate.window is not None:
-                    self.app_delegate.window.commandline.set_string("")
+        if msg.velocity == 127:
+            self.app_delegate.core.action_registry.execute("playback.sequence_minus")
+            if self.app_delegate.window is not None:
+                self.app_delegate.window.commandline.set_string("")
+            self.send("playback.sequence_minus", 127)
+        elif msg.velocity == 0:
+            self.send("playback.sequence_minus", 0)
 
     def sequence_plus(self, msg: mido.Message) -> None:
         """Seq +
@@ -469,25 +466,13 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.seq_plus.emit(
-                    "button-release-event", event
-                )
-            else:
-                self.midi.enqueue(msg)
-        elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.seq_plus.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.midi.enqueue(msg)
-                self.app_delegate.core.action_registry.execute("playback.sequence_plus")
-                if self.app_delegate.window is not None:
-                    self.app_delegate.window.commandline.set_string("")
+        if msg.velocity == 127:
+            self.app_delegate.core.action_registry.execute("playback.sequence_plus")
+            if self.app_delegate.window is not None:
+                self.app_delegate.window.commandline.set_string("")
+            self.send("playback.sequence_plus", 127)
+        elif msg.velocity == 0:
+            self.send("playback.sequence_plus", 0)
 
     def output(self, msg: mido.Message) -> None:
         """Output

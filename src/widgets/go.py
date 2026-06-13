@@ -45,12 +45,12 @@ class GoWidget(Gtk.Widget):
         """Go pressed"""
         self.pressed = True
         self.queue_draw()
+        self.emit("clicked")
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Go released"""
         self.pressed = False
         self.queue_draw()
-        self.emit("clicked")
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Go button

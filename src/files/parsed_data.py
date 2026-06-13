@@ -102,6 +102,13 @@ class ParsedData:
                 normalized_action = legacy_mapping.get(action, action)
                 if normalized_action in self.midi.messages.notes.notes:
                     self.midi.messages.notes.notes[normalized_action] = value
+        note_cc = self.data["midi"].get("note_cc")
+        if note_cc:
+            for action, value in note_cc.items():
+                if value != [0, -1]:
+                    normalized_action = legacy_mapping.get(action, action)
+                    if normalized_action in self.midi.messages.notes.cc_notes:
+                        self.midi.messages.notes.cc_notes[normalized_action] = value
         for action, value in self.data["midi"]["control_change"].items():
             if value != [0, -1]:
                 self.midi.messages.control_change.control_change[action] = value

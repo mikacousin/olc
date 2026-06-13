@@ -13,15 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 import cairo
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, GObject, Gtk
 from olc.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 
 # pylint: disable=too-many-instance-attributes
-class PauseWidget(Gtk.Button):
+class PauseWidget(Gtk.Widget):
     """Pause button widget"""
 
     __gtype_name__ = "PauseWidget"
+
+    __gsignals__ = {"clicked": (GObject.SIGNAL_RUN_FIRST, None, ())}
 
     def __init__(
         self,
@@ -41,6 +43,8 @@ class PauseWidget(Gtk.Button):
         self.text = text
 
         self.set_size_request(self.width, self.height)
+
+        self.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
 
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
@@ -88,3 +92,29 @@ class PauseWidget(Gtk.Button):
         )
         cr.show_text(self.label)
         return False
+
+    def do_realize(self) -> None:
+        """Realize widget"""
+        allocation = self.get_allocation()
+        attr = Gdk.WindowAttr()
+        attr.window_type = Gdk.WindowType.CHILD
+        attr.x = allocation.x
+        attr.y = allocation.y
+        attr.width = allocation.width
+        attr.height = allocation.height
+        attr.visual = self.get_visual()
+        attr.event_mask = (
+            self.get_events()
+            | Gdk.EventMask.EXPOSURE_MASK
+            | Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.TOUCH_MASK
+        )
+        wat = Gdk.WindowAttributesType
+        mask = wat.X | wat.Y | wat.VISUAL
+
+        window = Gdk.Window(self.get_parent_window(), attr, mask)
+        self.set_window(window)
+        self.register_window(window)
+
+        self.set_realized(True)
+        window.set_background_pattern(None)

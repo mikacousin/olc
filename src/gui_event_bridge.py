@@ -215,6 +215,7 @@ class GuiEventBridge:
         Returns:
             Always False.
         """
+        active = bool(feedback.get("active", False))
         vc = self.app.virtual_console
         if vc and hasattr(vc, "pause") and vc.pause:
             if self._pause_timeout_id is not None:
@@ -222,10 +223,11 @@ class GuiEventBridge:
                 self._pause_timeout_id = None
             vc.pause.btn_pressed = True
             vc.pause.queue_draw()
-            active = bool(feedback.get("active", False))
             self._pause_timeout_id = GLib.timeout_add(
                 150, self._reset_pause_button, active
             )
+        if self.app.midi:
+            self.app.midi.messages.notes.send("playback.pause", 127 if active else 0)
         return False
 
     def _reset_pause_button(self, active: bool) -> bool:

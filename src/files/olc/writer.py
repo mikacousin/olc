@@ -223,6 +223,7 @@ class OlcWriter(WriteFile):
         self.data["midi_mapping"] = {}
         midi = self.midi.messages
         self.data["midi_mapping"]["note"] = midi.notes.notes
+        self.data["midi_mapping"]["note_cc"] = midi.notes.cc_notes
         self.data["midi_mapping"]["control_change"] = midi.control_change.control_change
         self.data["midi_mapping"]["pitchwheel"] = midi.pitchwheel.pitchwheel
 

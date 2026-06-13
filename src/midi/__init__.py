@@ -190,6 +190,7 @@ class Midi:
             self.messages.notes.learn(msg, self.learning)
         elif msg.type == "control_change":
             self.messages.control_change.learn(msg, self.learning)
+            self.messages.notes.learn_cc(msg, self.learning)
         elif msg.type == "pitchwheel":
             self.messages.pitchwheel.learn(msg, self.learning)
         # Tag filename as modified
@@ -227,6 +228,17 @@ class Midi:
                 if note != -1:
                     msg = mido.Message(
                         "note_on", channel=channel, note=note, velocity=0, time=0
+                    )
+                    port.port.send(msg)
+            for values in self.messages.notes.cc_notes.values():
+                channel, control = values
+                if control != -1:
+                    msg = mido.Message(
+                        "control_change",
+                        channel=channel,
+                        control=control,
+                        value=0,
+                        time=0,
                     )
                     port.port.send(msg)
             port.port.reset()
