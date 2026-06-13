@@ -22,6 +22,7 @@ from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
 
 if typing.TYPE_CHECKING:
+    import olc.patch_channels
     from gi.repository import Gio
     from olc.backends import DMXBackend
     from olc.lightshow import LightShow
@@ -70,7 +71,7 @@ class PatchChannelsTab(Gtk.Box):
                     channel + 1,
                     self.patch,
                     self.lightshow,
-                    self,
+                    typing.cast("olc.patch_channels.PatchChannelsTab", self),
                     self.window.commandline,
                 )
             )
@@ -84,8 +85,9 @@ class PatchChannelsTab(Gtk.Box):
         self.pack_start(self.scrollable, True, True, 0)
 
         child = self.flowbox.get_child_at_index(0)
-        self.flowbox.select_child(child)
-        self.last_chan_selected = "0"
+        if child is not None:
+            self.flowbox.select_child(child)
+            self.last_chan_selected = "0"
 
     def refresh(self) -> None:
         """Refresh display"""
@@ -152,13 +154,15 @@ class PatchChannelsTab(Gtk.Box):
 
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = "0"
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_chan_selected = "0"
         elif int(self.last_chan_selected) < MAX_CHANNELS - 1:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected) + 1)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = str(int(self.last_chan_selected) + 1)
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
         self.window.commandline.set_string("")
 
@@ -166,13 +170,15 @@ class PatchChannelsTab(Gtk.Box):
         """Select Previous Channel"""
         if self.last_chan_selected == "":
             child = self.flowbox.get_child_at_index(0)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = "0"
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_chan_selected = "0"
         elif int(self.last_chan_selected) > 0:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(int(self.last_chan_selected) - 1)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = str(int(self.last_chan_selected) - 1)
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
         self.window.commandline.set_string("")
 
@@ -185,8 +191,9 @@ class PatchChannelsTab(Gtk.Box):
             channel = int(keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.flowbox.get_child_at_index(channel)
-                self.flowbox.select_child(child)
-                self.last_chan_selected = str(channel)
+                if child is not None:
+                    self.flowbox.select_child(child)
+                    self.last_chan_selected = str(channel)
 
         self.window.commandline.set_string("")
 
@@ -203,9 +210,11 @@ class PatchChannelsTab(Gtk.Box):
         # If one channel is selected, start from it
         selected = self.flowbox.get_selected_children()
         if len(selected) == 1:
-            patchwidget = selected[0].get_child()
-            channel = patchwidget.channel - 1
-            self.last_chan_selected = str(channel)
+            child_widget = selected[0].get_child()
+            if child_widget is not None:
+                patchwidget = typing.cast("PatchChannelWidget", child_widget)
+                channel = patchwidget.channel - 1
+                self.last_chan_selected = str(channel)
 
         if not self.last_chan_selected:
             return
@@ -215,21 +224,29 @@ class PatchChannelsTab(Gtk.Box):
         if to_chan > int(self.last_chan_selected):
             for chan in range(int(self.last_chan_selected), to_chan):
                 child = self.flowbox.get_child_at_index(chan)
-                self.flowbox.select_child(child)
+                if child is not None:
+                    self.flowbox.select_child(child)
         else:
             for chan in range(to_chan - 1, int(self.last_chan_selected)):
                 child = self.flowbox.get_child_at_index(chan)
-                self.flowbox.select_child(child)
+                if child is not None:
+                    self.flowbox.select_child(child)
         self.last_chan_selected = str(to_chan - 1)
 
         self.window.commandline.set_string("")
 
+    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _keypress_m(self) -> None:
         """Modify Output"""
         sel = self.flowbox.get_selected_children()
         several = len(sel) > 1
+        channel: int = 0
         for i, flowboxchild in enumerate(sel):
-            channel = flowboxchild.get_child().channel
+            child_widget = flowboxchild.get_child()
+            if child_widget is None:
+                continue
+            widget = typing.cast("PatchChannelWidget", child_widget)
+            channel = widget.channel
 
             keystring = self.window.commandline.get_string()
             # Unpatch if no entry
@@ -237,9 +254,18 @@ class PatchChannelsTab(Gtk.Box):
                 for item in self.patch.channels[channel]:
                     output = item[0]
                     universe = item[1]
-                    self.patch.unpatch(channel, output, universe)
+                    if output is not None and universe is not None:
+                        self.patch.unpatch(channel, output, universe)
                 # Update user interface
                 self.channels[channel].queue_draw()
+
+                widget_chan = self.window.live_view.channels_view.get_channel_widget(
+                    channel
+                )
+                if widget_chan is not None:
+                    widget_chan.level = 0
+                    widget_chan.queue_draw()
+                self.window.live_view.channels_view.update()
             else:
                 # New values
                 if "." in keystring:
@@ -259,31 +285,37 @@ class PatchChannelsTab(Gtk.Box):
 
                     universe = UNIVERSES[0]
 
-                if 0 < output + i <= 512:
-                    # Unpatch old values
-                    self._unpatch_channel(channel)
-                    self._unpatch(output + i, universe)
-                    # Patch
-                    if several:
-                        self.patch.add_output(channel, output + i, universe)
-                    else:
-                        self.patch.add_output(channel, output, universe)
-                    # Update user interface
-                    self.channels[channel - 1].queue_draw()
+                if output is not None and universe is not None:
+                    if 0 < output + i <= 512:
+                        # Unpatch old values
+                        self._unpatch_channel(channel)
+                        self._unpatch(output + i, universe)
+                        # Patch
+                        if several:
+                            self.patch.add_output(channel, output + i, universe)
+                        else:
+                            self.patch.add_output(channel, output, universe)
+                        # Update user interface
+                        self.channels[channel - 1].queue_draw()
 
-            # Update list of channels
-            index = UNIVERSES.index(universe)
-            level = self.backend.dmx.frame[index][output]
-            widget = self.window.live_view.channels_view.get_channel_widget(channel)
-            widget.level = level
-            widget.queue_draw()
-            self.window.live_view.channels_view.update()
+                    # Update list of channels
+                    index = UNIVERSES.index(universe)
+                    level = self.backend.dmx.frame[index][output]
+                    widget_chan = (
+                        self.window.live_view.channels_view.get_channel_widget(channel)
+                    )
+                    if widget_chan is not None:
+                        widget_chan.level = level
+                        widget_chan.queue_draw()
+                    self.window.live_view.channels_view.update()
+
         # Select next channel
         if sel and channel < MAX_CHANNELS:
             self.flowbox.unselect_all()
             child = self.flowbox.get_child_at_index(channel)
-            self.flowbox.select_child(child)
-            self.last_chan_selected = str(channel)
+            if child is not None:
+                self.flowbox.select_child(child)
+                self.last_chan_selected = str(channel)
 
         self.window.commandline.set_string("")
 
@@ -294,8 +326,11 @@ class PatchChannelsTab(Gtk.Box):
             return
         sel = self.flowbox.get_selected_children()
         for flowboxchild in sel:
-            patchchannelwidget = flowboxchild.get_child()
-            channel = patchchannelwidget.channel
+            child_widget = flowboxchild.get_child()
+            if child_widget is None:
+                continue
+            widget = typing.cast("PatchChannelWidget", child_widget)
+            channel = widget.channel
 
             # New values
             if "." in keystring:
@@ -313,18 +348,22 @@ class PatchChannelsTab(Gtk.Box):
                 output = int(keystring)
                 universe = UNIVERSES[0]
 
-            if 0 < output <= 512:
-                # Unpatch old value
-                self._unpatch(output, universe)
-                # Patch
-                self.patch.add_output(channel, output, universe)
-                # Update user interface
-                self.channels[channel - 1].queue_draw()
+            if output is not None and universe is not None:
+                if 0 < output <= 512:
+                    # Unpatch old value
+                    self._unpatch(output, universe)
+                    # Patch
+                    self.patch.add_output(channel, output, universe)
+                    # Update user interface
+                    self.channels[channel - 1].queue_draw()
 
-                # Update list of channels
-                widget = self.window.live_view.channels_view.get_channel_widget(channel)
-                widget.queue_draw()
-                self.window.live_view.channels_view.update()
+                    # Update list of channels
+                    widget_chan = (
+                        self.window.live_view.channels_view.get_channel_widget(channel)
+                    )
+                    if widget_chan is not None:
+                        widget_chan.queue_draw()
+                    self.window.live_view.channels_view.update()
 
         self.window.commandline.set_string("")
 
@@ -335,8 +374,11 @@ class PatchChannelsTab(Gtk.Box):
             return
         sel = self.flowbox.get_selected_children()
         for flowboxchild in sel:
-            patchchannelwidget = flowboxchild.get_child()
-            channel = patchchannelwidget.channel
+            child_widget = flowboxchild.get_child()
+            if child_widget is None:
+                continue
+            widget = typing.cast("PatchChannelWidget", child_widget)
+            channel = widget.channel
             if "." in keystring:
                 if keystring[0] != ".":
                     # "output.universe"
@@ -351,16 +393,23 @@ class PatchChannelsTab(Gtk.Box):
 
                 universe = UNIVERSES[0]
 
-            if 0 < output <= 512 and [output, universe] in self.patch.channels[channel]:
-                # Remove Output
-                self.patch.unpatch(channel, output, universe)
-                # Update user interface
-                self.channels[channel - 1].queue_draw()
+            if output is not None and universe is not None:
+                if (
+                    0 < output <= 512
+                    and [output, universe] in self.patch.channels[channel]
+                ):
+                    # Remove Output
+                    self.patch.unpatch(channel, output, universe)
+                    # Update user interface
+                    self.channels[channel - 1].queue_draw()
 
-            # Update list of channels
-            widget = self.window.live_view.channels_view.get_channel_widget(channel)
-            widget.queue_draw()
-            self.window.live_view.channels_view.update()
+                # Update list of channels
+                widget_chan = self.window.live_view.channels_view.get_channel_widget(
+                    channel
+                )
+                if widget_chan is not None:
+                    widget_chan.queue_draw()
+                self.window.live_view.channels_view.update()
 
         self.window.commandline.set_string("")
 
