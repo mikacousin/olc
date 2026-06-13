@@ -28,8 +28,8 @@ if typing.TYPE_CHECKING:
     import olc.lightshow
     from gi.repository import Gio
     from olc.core.app import CoreApplication
+    from olc.core.group import Group
     from olc.cue import Cue
-    from olc.group import Group
 
 
 class ShowFile:

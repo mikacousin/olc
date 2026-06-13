@@ -25,7 +25,8 @@ from olc.sequence import update_ui
 
 if typing.TYPE_CHECKING:
     from olc.application import Application
-    from olc.group import Group, GroupTab
+    from olc.core.group import Group
+    from olc.group import GroupTab
 
 
 # pylint: disable=too-few-public-methods

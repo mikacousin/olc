@@ -15,10 +15,10 @@
 from __future__ import annotations
 
 import typing
-from dataclasses import dataclass
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
+from olc.core.group import Group
 from olc.define import is_non_nul_float
 from olc.widgets.channel import ChannelWidget
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
@@ -29,21 +29,6 @@ if typing.TYPE_CHECKING:
     from olc.lightshow import LightShow
     from olc.tabs_manager import Tabs
     from olc.window import Window
-
-
-@dataclass
-class Group:
-    """A Group is composed with channels at some levels
-
-    Attributes:
-        index: Group number
-        channels: Dictionary of channels with level
-        text: Group description
-    """
-
-    index: float
-    channels: dict[int, int]
-    text: str = ""
 
 
 class GroupChannelsView(ChannelsView):
@@ -74,7 +59,7 @@ class GroupChannelsView(ChannelsView):
             GroupTab, self.tabs.tabs["groups"]
         ).flowbox.get_selected_children()[0]
         index = selected_group.get_index()
-        self.lightshow.groups[index].channels[channel] = level
+        self.lightshow.groups[index].set_channel(channel, level)
         self.lightshow.set_modified()
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
@@ -91,13 +76,14 @@ class GroupChannelsView(ChannelsView):
             GroupTab, self.tabs.tabs["groups"]
         ).flowbox.get_selected_children()[0]
         index = selected_group.get_index()
+        group = self.lightshow.groups[index]
         for channel in channels:
-            level = self.lightshow.groups[index].channels.get(channel, 0)
+            level = group.get_channel_level(channel, 0)
             if direction == Gdk.ScrollDirection.UP:
                 level = min(level + step, 255)
             elif direction == Gdk.ScrollDirection.DOWN:
                 level = max(level - step, 0)
-            self.lightshow.groups[index].channels[channel] = level
+            group.set_channel(channel, level)
         self.update()
         self.lightshow.set_modified()
 
@@ -150,9 +136,10 @@ class GroupChannelsView(ChannelsView):
         """
         channel = child.get_index() + 1  # Channel number
         channel_widget = typing.cast(ChannelWidget, child.get_child())
-        if group.channels.get(channel) or child.is_selected():
-            channel_widget.level = group.channels.get(channel, 0)
-            channel_widget.next_level = group.channels.get(channel, 0)
+        level = group.get_channel_level(channel, 0)
+        if level or child.is_selected():
+            channel_widget.level = level
+            channel_widget.next_level = level
         else:
             channel_widget.level = 0
             channel_widget.next_level = 0
@@ -187,9 +174,10 @@ class GroupChannelsView(ChannelsView):
         """
         channel = child.get_index() + 1
         channel_widget = typing.cast(ChannelWidget, child.get_child())
-        if group.channels.get(channel) or child.is_selected():
-            channel_widget.level = group.channels.get(channel, 0)
-            channel_widget.next_level = channel_widget.level
+        level = group.get_channel_level(channel, 0)
+        if level or child.is_selected():
+            channel_widget.level = level
+            channel_widget.next_level = level
             child.set_visible(True)
             return True
         child.set_visible(False)

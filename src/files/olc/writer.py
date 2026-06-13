@@ -142,7 +142,7 @@ class OlcWriter(WriteFile):
         for group in self.lightshow.groups:
             self.data["groups"][group.index] = {
                 "label": group.text,
-                "channels": group.channels,
+                "channels": group.get_channels(),
             }
         if not self.data["groups"]:
             del self.data["groups"]

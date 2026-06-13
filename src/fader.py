@@ -24,9 +24,9 @@ from olc.define import MAX_CHANNELS
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.core.group import Group
     from olc.cue import Cue
     from olc.fader_bank import FaderBank
-    from olc.group import Group
     from olc.main_fader import MainFader
     from olc.sequence import Sequence
 
@@ -166,7 +166,7 @@ class FaderGroup(Fader):
         self.channels.clear()
         if self.contents is None:
             return
-        for channel in self.contents.channels:
+        for channel in self.contents.get_channels():
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
 
@@ -183,7 +183,7 @@ class FaderGroup(Fader):
     def level_changed(self) -> None:
         """Fader level has changed"""
         if self.contents:
-            for channel, lvl in self.contents.channels.items():
+            for channel, lvl in self.contents.get_channels().items():
                 level = round(lvl * self.level)
                 self.dmx[channel - 1] = level
             self.fader_bank.update_levels()

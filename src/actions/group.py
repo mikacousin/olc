@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.group import Group
+from olc.core.group import Group
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

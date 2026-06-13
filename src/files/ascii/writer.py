@@ -134,7 +134,7 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes(f"GROUP {group.index}\n", "ascii"))
             self._ascii_text(group.text)
             self.stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
-            self._save_channels(group.channels)
+            self._save_channels(group.get_channels())
             self.stream.write(bytes("\n", "ascii"))
 
     def _cobalt_groups(self) -> None:
@@ -155,7 +155,7 @@ class AsciiWriter(WriteFile):
             self.stream.write(bytes(f"$GROUP {group.index}\n", "ascii"))
             self._ascii_text(group.text)
             self.stream.write(bytes(f"$$TEXT {group.text}\n", "utf8"))
-            self._save_channels(group.channels)
+            self._save_channels(group.get_channels())
             self.stream.write(bytes("\n", "ascii"))
 
     def _masters(self) -> None:

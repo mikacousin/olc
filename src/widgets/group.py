@@ -78,7 +78,7 @@ class GroupWidget(Gtk.Widget):
         flowboxchild = typing.cast(Gtk.FlowBoxChild, self.get_parent())
         index = flowboxchild.get_index()
         group = self.lightshow.groups[index]
-        group.text = text
+        group.set_text(text)
         fader_bank = self.lightshow.fader_bank
 
         app = typing.cast(typing.Any, self.window.get_application())

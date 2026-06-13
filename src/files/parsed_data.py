@@ -17,12 +17,12 @@ from __future__ import annotations
 import typing
 
 from olc.channel_time import ChannelTime
+from olc.core.group import Group
 from olc.cue import Cue
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.define import MAX_FADER_PER_PAGE
 from olc.fader import FaderType
 from olc.files.import_dialog import Action
-from olc.group import Group
 from olc.sequence import Sequence
 from olc.step import Step
 
@@ -158,8 +158,8 @@ class ParsedData:
             label = values.get("label")
             for group in self.lightshow.groups:
                 if group_number == group.index:
-                    group.text = label
-                    group.channels = channels
+                    group.set_text(label)
+                    group.set_channels(channels)
                     break
             else:
                 # Create new group
