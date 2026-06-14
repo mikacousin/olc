@@ -116,7 +116,8 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         self.selected_universe = 1
         self.dmx_labels: list[Gtk.Label] = []
         self.current_dmx_values = [-1] * 512
-        self.source_rows: dict[bytes, Adw.ActionRow] = {}
+        self.global_source_rows: dict[bytes, Adw.ExpanderRow] = {}
+        self.global_source_universes: dict[bytes, list[int]] = {}
 
         # Load Custom Styling
         css_provider = Gtk.CssProvider()
@@ -140,13 +141,13 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
 
         # Universe Selector dropdown
         self.universe_store = Gtk.StringList.new(
-            [f"Univers {u}" for u in range(1, 257)]
+            [f"Universe {u}" for u in range(1, 257)]
         )
         self.dropdown = Gtk.DropDown.new(model=self.universe_store, expression=None)
         self.dropdown.connect("notify::selected", self.on_universe_changed)
 
         title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        title_label = Gtk.Label(label="Univers :")
+        title_label = Gtk.Label(label="Universe:")
         title_label.add_css_class("dim-label")
         title_box.append(title_label)
         title_box.append(self.dropdown)
@@ -169,8 +170,10 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
 
         # Empty status page placeholder
         self.status_page = Adw.StatusPage()
-        self.status_page.set_title("En attente de signal sACN...")
-        self.status_page.set_description("Écoute active des émetteurs sur le réseau...")
+        self.status_page.set_title("Waiting for sACN signal...")
+        self.status_page.set_description(
+            "Active listening for transmitters on the network..."
+        )
         self.status_page.set_icon_name("network-wired-symbolic")
         self.sidebar_stack.add_child(self.status_page)
 
@@ -183,10 +186,13 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         sources_box.set_margin_top(12)
         sources_box.set_margin_bottom(12)
 
-        self.pref_group = Adw.PreferencesGroup()
-        self.pref_group.set_title("Sources Détectées")
-        self.pref_group.set_description("Émetteurs sACN diffusant sur cet univers")
-        sources_box.append(self.pref_group)
+        self.global_pref_group = Adw.PreferencesGroup()
+        self.global_pref_group.set_title("Detected sACN Sources")
+        self.global_pref_group.set_description(
+            "Active transmitters on the network or this universe"
+        )
+        sources_box.append(self.global_pref_group)
+
         self.sources_scroll.set_child(sources_box)
         self.sidebar_stack.add_child(self.sources_scroll)
 
@@ -239,7 +245,7 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         bottom_bar.set_margin_bottom(8)
         root_box.append(bottom_bar)
 
-        self.status_label = Gtk.Label(label="Écoute active sur le réseau...")
+        self.status_label = Gtk.Label(label="Active listening on the network...")
         self.status_label.add_css_class("dim-label")
         bottom_bar.append(self.status_label)
 
@@ -252,6 +258,11 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         # Hook window teardown callback and register GLib timer loop
         self.connect("destroy", self.on_destroy)
         GLib.timeout_add(100, self.tick)
+
+    def select_universe(self, univ: int) -> None:
+        """Switch dropdown selection to the given universe."""
+        if 1 <= univ <= 256:
+            self.dropdown.set_selected(univ - 1)
 
     def on_universe_changed(self, dropdown: Gtk.DropDown, _: object) -> None:
         """Triggered upon selecting a different active universe ID."""
@@ -273,53 +284,112 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         # Invalidate local DMX cache to force redrawing entire grid
         self.current_dmx_values = [-1] * 512
 
-        # Reset active sources sidebar
-        for row in list(self.source_rows.values()):
-            self.pref_group.remove(row)
-        self.source_rows.clear()
-
     def tick(self) -> bool:
         """Periodic real-time callback processing DMX merges and source updates."""
         merger = self.engine.sacn_manager.mergers.get(self.selected_universe)
         active_sources = merger.sources if merger else {}
+        discovered_sources = self.engine.sacn_manager.discovered_sources
+
+        # Merge active sources on this universe and global discovered sources
+        all_sources = {}
+        for cid, src_info in discovered_sources.items():
+            all_sources[cid] = {
+                "name": src_info["name"],
+                "ip": src_info["ip"],
+                "universes": sorted(list(src_info["universes"])),
+            }
+
+        # Add active sources on this universe (including historical / legacy sources)
+        for cid, src in active_sources.items():
+            if cid not in all_sources:
+                all_sources[cid] = {
+                    "name": src.name,
+                    "ip": src.ip or "Unknown",
+                    "universes": [self.selected_universe],
+                }
 
         # 1. Update active source sidebar widgets
-        if not active_sources:
+        if not all_sources:
             if self.sidebar_stack.get_visible_child() != self.status_page:
                 self.sidebar_stack.set_visible_child(self.status_page)
-            for row in list(self.source_rows.values()):
-                self.pref_group.remove(row)
-            self.source_rows.clear()
-            self.status_label.set_text("Aucun signal détecté sur le réseau.")
+            for row in list(self.global_source_rows.values()):
+                self.global_pref_group.remove(row)
+            self.global_source_rows.clear()
+            self.global_source_universes.clear()
+            self.status_label.set_text("No signal detected on the network.")
         else:
             if self.sidebar_stack.get_visible_child() != self.sources_scroll:
                 self.sidebar_stack.set_visible_child(self.sources_scroll)
 
-            # Remove timed out sources from UI
-            for cid in list(self.source_rows.keys()):
-                if cid not in active_sources:
-                    row = self.source_rows.pop(cid)
-                    self.pref_group.remove(row)
+            # Remove rows of disappeared transmitters
+            for cid in list(self.global_source_rows.keys()):
+                if cid not in all_sources:
+                    row = self.global_source_rows.pop(cid)
+                    self.global_pref_group.remove(row)
+                    self.global_source_universes.pop(cid, None)
 
-            # Insert or update rows
-            for cid, src in active_sources.items():
-                if cid not in self.source_rows:
-                    row = Adw.ActionRow.new()
-                    row.add_prefix(
-                        Gtk.Image.new_from_icon_name("network-wired-symbolic")
+            # Insert or update sources
+            for cid, src_info in all_sources.items():
+                univs = src_info["universes"]
+                # Construct appropriate subtitle
+                if cid in active_sources:
+                    priority = active_sources[cid].priority
+                    subtitle = (
+                        f"IP: {src_info['ip']} | Priority: {priority} (Active) | "
+                        f"{len(univs)} universe{'s' if len(univs) > 1 else ''}"
                     )
-                    self.pref_group.add(row)
-                    self.source_rows[cid] = row
+                else:
+                    subtitle = (
+                        f"IP: {src_info['ip']} | "
+                        f"{len(univs)} universe{'s' if len(univs) > 1 else ''}"
+                    )
 
-                row = self.source_rows[cid]
-                row.set_title(src.name)
-                ip_str = src.ip or "Inconnue"
-                row.set_subtitle(f"IP: {ip_str} | Priorité: {src.priority}")
+                # If row is missing or universes list has changed
+                if (
+                    cid not in self.global_source_rows
+                    or self.global_source_universes.get(cid) != univs
+                ):
+                    if cid in self.global_source_rows:
+                        old_row = self.global_source_rows.pop(cid)
+                        self.global_pref_group.remove(old_row)
 
+                    row = Adw.ExpanderRow.new()
+                    row.add_prefix(Gtk.Image.new_from_icon_name("computer-symbolic"))
+                    row.set_title(src_info["name"])
+                    row.set_subtitle(subtitle)
+                    self.global_pref_group.add(row)
+                    self.global_source_rows[cid] = row
+                    self.global_source_universes[cid] = univs
+
+                    # Add Gtk.FlowBox with universe buttons
+                    flowbox = Gtk.FlowBox.new()
+                    flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+                    flowbox.set_max_children_per_line(8)
+                    flowbox.set_margin_start(12)
+                    flowbox.set_margin_end(12)
+                    flowbox.set_margin_top(6)
+                    flowbox.set_margin_bottom(6)
+
+                    for u in univs:
+                        btn = Gtk.Button.new_with_label(str(u))
+                        btn.add_css_class("flat")
+                        btn.connect(
+                            "clicked", lambda button, univ=u: self.select_universe(univ)
+                        )
+                        flowbox.append(btn)
+
+                    row.add_row(flowbox)
+                else:
+                    # Just update the title and subtitle
+                    row = self.global_source_rows[cid]
+                    row.set_title(src_info["name"])
+                    row.set_subtitle(subtitle)
+
+            # Update global status label
             num_srcs = len(active_sources)
-            s_suf = "s" if num_srcs > 1 else ""
             self.status_label.set_text(
-                f"{num_srcs} émetteur{s_suf} actif{s_suf} détecté{s_suf}."
+                f"{num_srcs} active transmitter{'s' if num_srcs > 1 else ''} detected "
+                f"on this universe."
             )
 
         # 2. Update DMX intensities grid differentially

@@ -531,7 +531,7 @@ class TestSacnManager:
                     # Verify initial discovery packet was sent
                     mock_sock.sendto.assert_called_once()
                     sent_data, sent_addr = mock_sock.sendto.call_args[0]
-                    assert sent_addr == ("239.255.250.198", 5568)
+                    assert sent_addr == ("239.255.250.214", 5568)
 
                     decoded_packet = SacnDiscoveryPacket()
                     decoded_packet.decode(sent_data)
@@ -729,3 +729,45 @@ class TestSacnManager:
 
             # Verify SacnManager.send_sync was called with universe 2000
             mock_send_sync.assert_called_once_with(2000)
+
+    def test_manager_discovery_receiving(self) -> None:
+        """Verify that SacnManager receives and decodes discovery packets, and prunes
+        expired ones.
+        """
+        umap = UniverseMap(3)
+        umap.enable_protocol(1, Protocol.SACN)
+
+        with patch("olc.core.backends.sacn.SacnNetwork"):
+            manager = SacnManager(umap)
+
+            # Create a mock discovery packet
+            cid = b"\x08" * 16
+            packet = SacnDiscoveryPacket(
+                cid=cid,
+                source_name="Test Source",
+                universes=[1, 2, 5],
+                page=0,
+                last_page=0,
+            )
+
+            # Receive discovery packet
+            with patch("time.time", return_value=100.0):
+                manager.read_packet(packet.encode(), ("192.168.1.10", 5568))
+
+            # Verify registered source
+            assert cid in manager.discovered_sources
+            src = manager.discovered_sources[cid]
+            assert src["name"] == "Test Source"
+            assert src["ip"] == "192.168.1.10"
+            assert src["universes"] == {1, 2, 5}
+            assert src["last_seen"] == 100.0
+
+            # Verify pruning: time is 120.0 (not yet expired, < 25s)
+            with patch("time.time", return_value=120.0):
+                manager._check_pending_timeouts()
+            assert cid in manager.discovered_sources
+
+            # Verify pruning: time is 126.0 (>25s timeout, expired)
+            with patch("time.time", return_value=126.0):
+                manager._check_pending_timeouts()
+            assert cid not in manager.discovered_sources

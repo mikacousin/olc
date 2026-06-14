@@ -26,6 +26,7 @@ from typing import Callable
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.backends.sacn.network import SacnNetwork
 from olc.core.backends.sacn.protocol import (
+    DISCOVERY_UNIVERSE,
     SacnDecodeError,
     SacnDiscoveryPacket,
     SacnPacket,
@@ -95,6 +96,9 @@ class SacnManager:
         self.pending_ips: dict[bytes, str] = {}
         self._sync_sequences: dict[int, int] = {}
 
+        # Discovered sources on the network
+        self.discovered_sources: dict[bytes, dict] = {}
+
     def _get_active_universes(self) -> list[int]:
         """Return the sorted list of active transmitting universes (1 to 63999)."""
         return sorted([u for u in self.senders if 1 <= u <= 63999])
@@ -126,7 +130,8 @@ class SacnManager:
                 last_page=last_page,
             )
             try:
-                self._discovery_sock.sendto(packet.encode(), ("239.255.250.198", 5568))
+                dest_ip = _sacn_multicast_ip(DISCOVERY_UNIVERSE)
+                self._discovery_sock.sendto(packet.encode(), (dest_ip, 5568))
             except OSError:
                 pass
 
@@ -199,6 +204,9 @@ class SacnManager:
                     sync_addr = self.universe_map[u].sacn.sync_address
                     if sync_addr > 0:
                         self.network.join_multicast(sync_addr)
+
+            # Join multicast group for universe discovery
+            self.network.join_multicast(DISCOVERY_UNIVERSE)
 
         if self._no_transmit:
             return
@@ -309,11 +317,23 @@ class SacnManager:
             self.pending_timestamps.pop(cid, None)
             self.pending_ips.pop(cid, None)
 
+        # Prune discovered sources that haven't sent a packet for >25s
+        for cid, src_info in list(self.discovered_sources.items()):
+            if now - src_info["last_seen"] > 25.0:
+                self.discovered_sources.pop(cid, None)
+
     def read_packet(self, data: bytes, _addr: tuple[str, int]) -> None:
         """Callback from low-level network UDP socket on packet reception."""
         self._check_pending_timeouts()
+        ip = _addr[0]
+        if self._handle_data_packet(data, ip):
+            return
+        if self._handle_sync_packet(data):
+            return
+        self._handle_discovery_packet(data, ip)
 
-        # Try decoding as standard sACN Data Packet
+    def _handle_data_packet(self, data: bytes, ip: str) -> bool:
+        """Try decoding data as standard sACN Data Packet. Return True if handled."""
         try:
             packet = SacnPacket()
             packet.decode(data)
@@ -327,7 +347,7 @@ class SacnManager:
                     self.pending_dmx[packet.cid][universe] = packet.data
                     if packet.cid not in self.pending_timestamps:
                         self.pending_timestamps[packet.cid] = time.time()
-                    self.pending_ips[packet.cid] = _addr[0]
+                    self.pending_ips[packet.cid] = ip
                 else:
                     # Otherwise, apply immediately
                     merger.update(
@@ -336,15 +356,16 @@ class SacnManager:
                         priority=packet.priority,
                         data=packet.data,
                         stream_terminated=packet.stream_terminated,
-                        ip=_addr[0],
+                        ip=ip,
                     )
                     if self.notify and packet.cid not in merger.sources:
                         self.notify("add-source", packet.source_name, universe)
-            return
+            return True
         except SacnDecodeError:
-            pass
+            return False
 
-        # Try decoding as sACN Synchronization Packet
+    def _handle_sync_packet(self, data: bytes) -> bool:
+        """Try decoding data as sACN Synchronization Packet. Return True if handled."""
         try:
             sync_packet = SacnSyncPacket()
             sync_packet.decode(data)
@@ -372,8 +393,52 @@ class SacnManager:
                 self.pending_dmx.pop(cid, None)
                 self.pending_timestamps.pop(cid, None)
                 self.pending_ips.pop(cid, None)
+            return True
         except SacnDecodeError:
-            pass
+            return False
+
+    def _handle_discovery_packet(self, data: bytes, ip: str) -> bool:
+        """Try decoding data as sACN Universe Discovery Packet. Return True if
+        handled.
+        """
+        try:
+            disc_packet = SacnDiscoveryPacket()
+            disc_packet.decode(data)
+            cid = disc_packet.cid
+            source_name = disc_packet.source_name
+            page = disc_packet.page
+            last_page = disc_packet.last_page
+            universes = disc_packet.universes
+
+            now = time.time()
+            if cid not in self.discovered_sources:
+                self.discovered_sources[cid] = {
+                    "name": source_name,
+                    "ip": ip,
+                    "pages": {},
+                    "universes": set(),
+                    "last_seen": now,
+                }
+
+            src_info = self.discovered_sources[cid]
+            src_info["name"] = source_name
+            src_info["ip"] = ip
+            src_info["last_seen"] = now
+            src_info["pages"][page] = universes
+
+            # Clear outdated pages if last_page was reduced
+            for p in list(src_info["pages"].keys()):
+                if p > last_page:
+                    src_info["pages"].pop(p, None)
+
+            # Re-consolidate all active universes across all active pages
+            all_univs = set()
+            for p_univs in src_info["pages"].values():
+                all_univs.update(p_univs)
+            src_info["universes"] = all_univs
+            return True
+        except SacnDecodeError:
+            return False
 
     def _handle_incoming_dmx(self, universe: int, data: list[int]) -> None:
         if self.on_dmx_received:
