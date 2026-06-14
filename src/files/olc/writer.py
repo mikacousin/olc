@@ -253,5 +253,7 @@ class OlcWriter(WriteFile):
                 },
                 "dmx_usb_pro": {
                     "port": config.dmx_usb_pro.port,
+                    "port_index": config.dmx_usb_pro.port_index,
+                    "model": config.dmx_usb_pro.model,
                 },
             }

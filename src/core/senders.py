@@ -304,8 +304,9 @@ class DmxUsbProSender:
     by delegating the transmission to the DmxUsbProManager.
     """
 
-    def __init__(self, manager: DmxUsbProManager) -> None:
+    def __init__(self, manager: DmxUsbProManager, port_index: int = 1) -> None:
         self._manager = manager
+        self._port_index = port_index
 
     def send(self, dmx_universe: DMXUniverse) -> None:
         """Send a DMX frame to the ENTTEC DMX USB PRO widget."""
@@ -314,8 +315,10 @@ class DmxUsbProSender:
             payload_len = len(dmx_data) + 1  # prepend start code 0x00
 
             # ENTTEC Packet format:
-            # 0x7E, Label 6, Length LSB, Length MSB, 0x00 (start code), DMX data, 0xE7
-            header = struct.pack("<BBH", 0x7E, 6, payload_len)
+            # 0x7E, Label (6 or 0xA9), Length LSB, Length MSB, 0x00 (start code),
+            # DMX data, 0xE7
+            label = 0xA9 if self._port_index == 2 else 6
+            header = struct.pack("<BBH", 0x7E, label, payload_len)
             packet = header + b"\x00" + dmx_data + b"\xe7"
 
             self._manager.write_packet(packet)

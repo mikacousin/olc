@@ -64,6 +64,8 @@ class DmxUsbProSettings:
     """DMX USB Pro universe configuration"""
 
     port: str = "Auto-detect"
+    port_index: int = 1
+    model: str = "Auto-detect"
 
 
 class UniverseConfig:

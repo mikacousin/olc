@@ -67,6 +67,8 @@ def _import_single_universe(u: int, val: dict, engine: CoreEngine) -> None:
     if "dmx_usb_pro" in val:
         dmx_usb_pro_val = val["dmx_usb_pro"]
         config.dmx_usb_pro.port = dmx_usb_pro_val.get("port", "Auto-detect")
+        config.dmx_usb_pro.port_index = dmx_usb_pro_val.get("port_index", 1)
+        config.dmx_usb_pro.model = dmx_usb_pro_val.get("model", "Auto-detect")
 
     # Hot-reload sender registry for this universe
     engine.reload_universe(u)

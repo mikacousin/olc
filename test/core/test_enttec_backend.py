@@ -18,13 +18,25 @@ import typing
 from unittest.mock import MagicMock, patch
 
 import serial
-from olc.core.backends.enttec import DmxUsbProManager
+from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.senders import DmxUsbProSender
 from olc.core.universe_data import DMXUniverse
 
 
 class TestDmxUsbProManager:
     """Exhaustive test suite for DmxUsbProManager."""
+
+    @patch("serial.tools.list_ports.comports")
+    def test_resolve_port_auto_detect(self, mock_comports: MagicMock) -> None:
+        """Verify resolve_port correctly resolves Auto-detect."""
+        mock_port = MagicMock()
+        mock_port.device = "/dev/ttyUSB_resolved"
+        mock_port.vid = 0x0403
+        mock_port.pid = 0x6001
+        mock_comports.return_value = [mock_port]
+
+        assert resolve_port("Auto-detect") == "/dev/ttyUSB_resolved"
+        assert resolve_port("/dev/ttyUSB99") == "/dev/ttyUSB99"
 
     def test_init(self) -> None:
         """Verify that parameters are correctly initialized."""
@@ -64,7 +76,7 @@ class TestDmxUsbProManager:
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             timeout=0,
-            write_timeout=0.01,
+            write_timeout=0.5,
         )
         loop.add_reader.assert_called_once_with(10, manager._on_bytes_received)
 
@@ -329,6 +341,37 @@ class TestDmxUsbProManager:
         mock_serial.close.assert_called_once()
         mock_task.cancel.assert_called_once()
 
+    @patch("asyncio.sleep")
+    @patch("serial.tools.list_ports.comports")
+    @patch("serial.Serial")
+    def test_connect_pro_mk2_initialization_sequence(
+        self,
+        mock_serial_class: MagicMock,
+        mock_comports: MagicMock,
+        mock_sleep: MagicMock,
+    ) -> None:
+        """Verify that when a Pro Mk2 is detected, the API2 handshake is sent."""
+        mock_port = MagicMock()
+        mock_port.device = "/dev/ttyUSB0"
+        mock_port.description = "Enttec DMX USB PRO Mk2"
+        mock_comports.return_value = [mock_port]
+
+        mock_serial = MagicMock()
+        mock_serial.fileno.return_value = 15
+        mock_serial_class.return_value = mock_serial
+
+        loop = MagicMock(spec=asyncio.AbstractEventLoop)
+        manager = DmxUsbProManager(port="/dev/ttyUSB0", loop=loop)
+
+        asyncio.run(manager._async_connect())
+
+        mock_serial.write.assert_any_call(b"\x7e\x0d\x04\x00\xad\x88\xd0\xc8\xe7")
+        mock_serial.write.assert_any_call(b"\x7e\xcb\x02\x00\x01\x01\xe7")
+        assert mock_serial.write.call_count == 2
+        mock_sleep.assert_any_call(0.15)
+        mock_sleep.assert_any_call(0.05)
+        assert mock_sleep.call_count == 2
+
 
 class TestDmxUsbProSender:
     """Exhaustive test suite for DmxUsbProSender."""
@@ -336,7 +379,7 @@ class TestDmxUsbProSender:
     def test_sender_formats_packet_and_delegates(self) -> None:
         """Verify that send() formats the ENTTEC packet correctly and sends it."""
         mock_manager = MagicMock(spec=DmxUsbProManager)
-        sender = DmxUsbProSender(manager=mock_manager)
+        sender = DmxUsbProSender(manager=mock_manager, port_index=1)
 
         univ = DMXUniverse()
         univ[0] = 255
@@ -362,6 +405,29 @@ class TestDmxUsbProSender:
         assert packet[7] == 64
 
         # End delimiter
+        assert packet[-1] == 0xE7
+
+    def test_sender_port_2_formats_packet_with_label_0xa9(self) -> None:
+        """Verify that send() formats the ENTTEC packet with label 0xA9 for port
+        index 2.
+        """
+        mock_manager = MagicMock(spec=DmxUsbProManager)
+        sender = DmxUsbProSender(manager=mock_manager, port_index=2)
+
+        univ = DMXUniverse()
+        univ[0] = 200
+
+        sender.send(univ)
+
+        mock_manager.write_packet.assert_called_once()
+        packet = mock_manager.write_packet.call_args[0][0]
+
+        assert packet[0] == 0x7E  # Start delimiter
+        assert packet[1] == 0xA9  # TX Label for Port 2
+        assert packet[2] == 0x01  # Length LSB
+        assert packet[3] == 0x02  # Length MSB
+        assert packet[4] == 0x00  # Start code
+        assert packet[5] == 200
         assert packet[-1] == 0xE7
 
     def test_sender_handles_exceptions_gracefully(self) -> None:

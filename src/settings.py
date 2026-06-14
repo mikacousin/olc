@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import ipaddress
+import os
 import socket
 import typing
 from gettext import gettext as _
@@ -22,6 +23,7 @@ from typing import Callable
 
 import serial.tools.list_ports
 from gi.repository import Gdk, GLib, GObject, Gtk
+from olc.core.backends.enttec import resolve_port
 from olc.core.backends.osc.delegate import GUIOSCDelegate
 from olc.core.universe_config import Protocol
 
@@ -47,6 +49,7 @@ class SettingsTab(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
         self._last_artnet_state: list[list[str]] | None = None
         self.universe_widgets = {}
+        self._updating_settings = False
 
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/settings.ui")
@@ -502,7 +505,17 @@ class SettingsTab(Gtk.Box):
         try:
             for p in serial.tools.list_ports.comports():
                 if p.vid == 0x0403 and p.pid == 0x6001:
-                    serial_ports.append(f"{p.device} (DMX USB PRO)")
+                    desc = (p.description or "").upper()
+                    prod = (p.product or "").upper()
+                    if (
+                        "MK2" in desc
+                        or "MK2" in prod
+                        or "MK II" in desc
+                        or "MK II" in prod
+                    ):
+                        serial_ports.append(f"{p.device} (DMX USB PRO MK2)")
+                    else:
+                        serial_ports.append(f"{p.device} (DMX USB PRO)")
                 else:
                     serial_ports.append(p.device)
         except Exception:  # pylint: disable=broad-exception-caught
@@ -655,6 +668,37 @@ class SettingsTab(Gtk.Box):
                     break
             port_combo.set_active(active_idx)
 
+            # Port Index Label
+            port_index_label = Gtk.Label(label=_("Output Port:"))
+            port_index_label.set_halign(Gtk.Align.START)
+            dmx_usb_pro_params.attach(port_index_label, 0, 1, 1, 1)
+
+            # Port Index Combo Box
+            port_index_combo = Gtk.ComboBoxText()
+            port_index_combo.set_hexpand(True)
+            port_index_combo.append("1", _("Port 1 (DMX 1)"))
+            port_index_combo.append("2", _("Port 2 (DMX 2 / Mk2)"))
+            dmx_usb_pro_params.attach(port_index_combo, 1, 1, 1, 1)
+
+            current_port_index = str(config.dmx_usb_pro.port_index) if config else "1"
+            port_index_combo.set_active_id(current_port_index)
+
+            # Model Label
+            model_label = Gtk.Label(label=_("Model:"))
+            model_label.set_halign(Gtk.Align.START)
+            dmx_usb_pro_params.attach(model_label, 0, 2, 1, 1)
+
+            # Model Combo Box
+            model_combo = Gtk.ComboBoxText()
+            model_combo.set_hexpand(True)
+            model_combo.append("Auto-detect", _("Auto-detect"))
+            model_combo.append("Pro V1", _("Force Pro V1 (Standard)"))
+            model_combo.append("Pro Mk2", _("Force Pro Mk2"))
+            dmx_usb_pro_params.attach(model_combo, 1, 2, 1, 1)
+
+            current_model = config.dmx_usb_pro.model if config else "Auto-detect"
+            model_combo.set_active_id(current_model)
+
             # Store widgets for conflict management and callbacks
             self.universe_widgets[u] = {
                 "artnet_check": artnet_check,
@@ -666,6 +710,8 @@ class SettingsTab(Gtk.Box):
                 "sacn_sync_spin": sacn_sync_spin,
                 "dmx_usb_pro_check": dmx_usb_pro_check,
                 "port_combo": port_combo,
+                "port_index_combo": port_index_combo,
+                "model_combo": model_combo,
             }
 
             # Populate initial values
@@ -705,6 +751,15 @@ class SettingsTab(Gtk.Box):
             dmx_usb_pro_check.bind_property(
                 "active", port_combo, "sensitive", GObject.BindingFlags.SYNC_CREATE
             )
+            dmx_usb_pro_check.bind_property(
+                "active",
+                port_index_combo,
+                "sensitive",
+                GObject.BindingFlags.SYNC_CREATE,
+            )
+            dmx_usb_pro_check.bind_property(
+                "active", model_combo, "sensitive", GObject.BindingFlags.SYNC_CREATE
+            )
 
             # Bind callbacks
             args = (u,)
@@ -719,6 +774,8 @@ class SettingsTab(Gtk.Box):
             sacn_sync_spin.connect("value-changed", cb, *args)
             dmx_usb_pro_check.connect("toggled", cb, *args)
             port_combo.connect("changed", cb, *args)
+            port_index_combo.connect("changed", cb, *args)
+            model_combo.connect("changed", cb, *args)
 
         scrolled.show_all()
         container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -726,67 +783,135 @@ class SettingsTab(Gtk.Box):
         container.show_all()
         return container
 
+    # pylint: disable=too-many-locals,too-many-branches,too-many-statements,too-many-nested-blocks
     def _on_universe_settings_changed(
         self,
         _widget: Gtk.Widget,
         universe: int,
     ) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
+
         engine = getattr(self.app, "engine", None)
         if engine is None:
             return
 
-        config = engine.universe_map[universe]
-        widgets = self.universe_widgets[universe]
+        self._updating_settings = True
+        try:
+            config = engine.universe_map[universe]
+            widgets = self.universe_widgets[universe]
 
-        # 1. Update protocols
-        protocols = set()
-        if widgets["artnet_check"].get_active():
-            protocols.add(Protocol.ARTNET)
-        if widgets["sacn_check"].get_active():
-            protocols.add(Protocol.SACN)
+            # 1. Update protocols
+            protocols = set()
+            if widgets["artnet_check"].get_active():
+                protocols.add(Protocol.ARTNET)
+            if widgets["sacn_check"].get_active():
+                protocols.add(Protocol.SACN)
 
-        if widgets["dmx_usb_pro_check"].get_active():
+            if widgets["dmx_usb_pro_check"].get_active():
+                selected_text = widgets["port_combo"].get_active_text() or "Auto-detect"
+                port_name = selected_text.split(" ")[0]
+
+                # Smart default port allocation for MK2 if newly activated
+                if Protocol.DMX_USB_PRO not in config.protocols:
+                    resolved_port = resolve_port(port_name)
+                    is_mk2 = False
+                    try:
+                        resolved_real = os.path.realpath(resolved_port)
+                        for p in serial.tools.list_ports.comports():
+                            p_real = os.path.realpath(p.device)
+                            if p_real == resolved_real or p.device == resolved_port:
+                                desc = (p.description or "").upper()
+                                prod = (p.product or "").upper()
+                                if (
+                                    "MK2" in desc
+                                    or "MK2" in prod
+                                    or "MK II" in desc
+                                    or "MK II" in prod
+                                ):
+                                    is_mk2 = True
+                                    break
+                    except Exception:  # pylint: disable=broad-exception-caught
+                        pass
+
+                    if is_mk2:
+                        # Check which ports are in use by other active universes on
+                        # this same resolved device
+                        port1_in_use = False
+                        port2_in_use = False
+                        for other_u, w in self.universe_widgets.items():
+                            if other_u == universe:
+                                continue
+                            if w["dmx_usb_pro_check"].get_active():
+                                other_sel = (
+                                    w["port_combo"].get_active_text() or "Auto-detect"
+                                )
+                                other_port_resolved = resolve_port(
+                                    other_sel.split(" ")[0]
+                                )
+                                if other_port_resolved == resolved_port:
+                                    other_idx = int(
+                                        w["port_index_combo"].get_active_id() or "1"
+                                    )
+                                    if other_idx == 1:
+                                        port1_in_use = True
+                                    elif other_idx == 2:
+                                        port2_in_use = True
+                        # Smart default: use Port 2 only if Port 1 is in use
+                        # AND Port 2 is free
+                        if port1_in_use and not port2_in_use:
+                            widgets["port_index_combo"].set_active_id("2")
+
+                port_idx = int(widgets["port_index_combo"].get_active_id() or "1")
+
+                # Mutual exclusion conflict check
+                for other_u, w in self.universe_widgets.items():
+                    if other_u == universe:
+                        continue
+                    other_check = w["dmx_usb_pro_check"]
+                    other_combo = w["port_combo"]
+                    other_idx_combo = w["port_index_combo"]
+
+                    if other_check.get_active():
+                        other_selected = other_combo.get_active_text() or "Auto-detect"
+                        other_port_name = other_selected.split(" ")[0]
+                        other_port_idx = int(other_idx_combo.get_active_id() or "1")
+
+                        if port_name == other_port_name and port_idx == other_port_idx:
+                            # Deactivate other conflict
+                            other_check.set_active(False)
+
+                protocols.add(Protocol.DMX_USB_PRO)
+
+            config.set_protocols(protocols)
+
+            # 2. Update Art-Net parameters
+            config.artnet.net = int(widgets["net_spin"].get_value())
+            config.artnet.sub = int(widgets["sub_spin"].get_value())
+            config.artnet.sync_active = widgets["sync_switch"].get_active()
+
+            # 3. Update sACN parameters
+            config.sacn.priority = int(widgets["prio_spin"].get_value())
+            config.sacn.sync_address = int(widgets["sacn_sync_spin"].get_value())
+
+            # 4. Update DMX USB Pro parameters
             selected_text = widgets["port_combo"].get_active_text() or "Auto-detect"
-            port_name = selected_text.split(" ")[0]
+            config.dmx_usb_pro.port = selected_text.split(" ")[0]
+            config.dmx_usb_pro.port_index = int(
+                widgets["port_index_combo"].get_active_id() or "1"
+            )
+            config.dmx_usb_pro.model = (
+                widgets["model_combo"].get_active_id() or "Auto-detect"
+            )
 
-            # Mutual exclusion conflict check
-            for other_u, w in self.universe_widgets.items():
-                if other_u == universe:
-                    continue
-                other_check = w["dmx_usb_pro_check"]
-                other_combo = w["port_combo"]
+            # 5. Hot-reload engine senders/listeners
+            engine.reload_universe(universe)
 
-                if other_check.get_active():
-                    other_selected = other_combo.get_active_text() or "Auto-detect"
-                    other_port_name = other_selected.split(" ")[0]
-
-                    if port_name == other_port_name:
-                        # Deactivate other conflict
-                        other_check.set_active(False)
-
-            protocols.add(Protocol.DMX_USB_PRO)
-
-        config.set_protocols(protocols)
-
-        # 2. Update Art-Net parameters
-        config.artnet.net = int(widgets["net_spin"].get_value())
-        config.artnet.sub = int(widgets["sub_spin"].get_value())
-        config.artnet.sync_active = widgets["sync_switch"].get_active()
-
-        # 3. Update sACN parameters
-        config.sacn.priority = int(widgets["prio_spin"].get_value())
-        config.sacn.sync_address = int(widgets["sacn_sync_spin"].get_value())
-
-        # 4. Update DMX USB Pro parameters
-        selected_text = widgets["port_combo"].get_active_text() or "Auto-detect"
-        config.dmx_usb_pro.port = selected_text.split(" ")[0]
-
-        # 5. Hot-reload engine senders/listeners
-        engine.reload_universe(universe)
-
-        # 6. Mark show file as modified
-        if self.app is not None:
-            self.app.core.lightshow.set_modified()
+            # 6. Mark show file as modified
+            if self.app is not None:
+                self.app.core.lightshow.set_modified()
+        finally:
+            self._updating_settings = False
 
     def _on_universe_switch_changed(
         self,

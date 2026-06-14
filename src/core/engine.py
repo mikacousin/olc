@@ -17,11 +17,12 @@ import json
 import threading
 import time
 from dataclasses import dataclass, field
+from typing import Callable
 
 import numpy as np
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
-from olc.core.backends.enttec import DmxUsbProManager
+from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
@@ -29,7 +30,12 @@ from olc.core.fader import FadeEngine
 from olc.core.mergers import HTPMerger, LTPMerger
 from olc.core.osc import CoreOSCClient, EngineOSCServer
 from olc.core.senders import ArtNetSender, DmxUsbProSender, SACNSender
-from olc.core.universe_config import Protocol, UniverseConfig, UniverseMap
+from olc.core.universe_config import (
+    DmxUsbProSettings,
+    Protocol,
+    UniverseConfig,
+    UniverseMap,
+)
 from olc.core.universe_data import DMXUniverse
 
 
@@ -101,7 +107,12 @@ def _build_senders(  # pylint: disable=unexpected-keyword-arg,too-many-arguments
             )
         )
     if Protocol.DMX_USB_PRO in config.protocols and dmx_usb_pro_manager is not None:
-        senders.append(DmxUsbProSender(manager=dmx_usb_pro_manager))
+        senders.append(
+            DmxUsbProSender(
+                manager=dmx_usb_pro_manager,
+                port_index=config.dmx_usb_pro.port_index,
+            )
+        )
     return senders
 
 
@@ -179,26 +190,29 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         )
 
         # Initialize DMX USB Pro managers registry
-        self._dmx_usb_pro_managers: dict[int, DmxUsbProManager] = {}
-        self.notify_enttec = None
+        self._dmx_usb_pro_managers: dict[str, DmxUsbProManager] = {}
+        self.notify_enttec: Callable | None = None
 
         # Build one runtime slot per universe declared in the map
         self._slots: dict[int, _RuntimeSlot] = {}
         for config in universe_map:
             dmx_usb_pro_manager = None
             if not no_transmit and Protocol.DMX_USB_PRO in config.protocols:
-                dmx_usb_pro_manager = DmxUsbProManager(
-                    port=config.dmx_usb_pro.port,
-                    loop=self._network_thread.loop,
-                )
-                dmx_usb_pro_manager.notify = (
-                    lambda action, *args, u=config.universe_id: (
-                        self.notify_enttec(u, action, *args)
-                        if self.notify_enttec
-                        else None
+                port = resolve_port(config.dmx_usb_pro.port)
+                if port not in self._dmx_usb_pro_managers:
+                    dmx_usb_pro_manager = DmxUsbProManager(
+                        port=port,
+                        loop=self._network_thread.loop,
+                        configs_provider=lambda p=port: self._get_dmx_usb_pro_configs(
+                            p
+                        ),
                     )
-                )
-                self._dmx_usb_pro_managers[config.universe_id] = dmx_usb_pro_manager
+                    dmx_usb_pro_manager.notify = lambda action, *args, p=port: (
+                        self._notify_enttec_for_port(p, action, *args)
+                    )
+                    self._dmx_usb_pro_managers[port] = dmx_usb_pro_manager
+                else:
+                    dmx_usb_pro_manager = self._dmx_usb_pro_managers[port]
 
             self._slots[config.universe_id] = _RuntimeSlot(
                 universe=DMXUniverse(config.universe_id),
@@ -313,25 +327,61 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         with self._lock:
             slot.ltp_merger = LTPMerger(num_sources)
 
+    def _get_dmx_usb_pro_configs(self, port: str) -> list[DmxUsbProSettings]:
+        """Get all active DMX USB Pro configurations for a given port."""
+        configs = []
+        for c in self._map:
+            if not self._no_transmit and Protocol.DMX_USB_PRO in c.protocols:
+                if resolve_port(c.dmx_usb_pro.port) == port:
+                    configs.append(c.dmx_usb_pro)
+        return configs
+
+    def _notify_enttec_for_port(
+        self, port: str, action: str, *args: object
+    ) -> None:
+        """Notify Enttec events for all universes sharing this port."""
+        if not self.notify_enttec:
+            return
+        for c in self._map:
+            if not self._no_transmit and Protocol.DMX_USB_PRO in c.protocols:
+                if resolve_port(c.dmx_usb_pro.port) == port:
+                    self.notify_enttec(c.universe_id, action, *args)  # pylint: disable=not-callable
+
     def _reload_dmx_usb_pro(
         self, uid: int, config: UniverseConfig
     ) -> DmxUsbProManager | None:
-        """Stop old DmxUsbProManager and start a new one if active."""
-        if uid in self._dmx_usb_pro_managers:
-            self._dmx_usb_pro_managers.pop(uid).stop()
+        """Stop old DmxUsbProManagers no longer needed, and get/create manager for
+        config.
+        """
+        # Clean up managers that are no longer needed by ANY universe
+        needed_ports = set()
+        for c in self._map:
+            if not self._no_transmit and Protocol.DMX_USB_PRO in c.protocols:
+                needed_ports.add(resolve_port(c.dmx_usb_pro.port))
+
+        for port in list(self._dmx_usb_pro_managers.keys()):
+            if port not in needed_ports:
+                self._dmx_usb_pro_managers.pop(port).stop()
 
         dmx_usb_pro_manager = None
         if not self._no_transmit and Protocol.DMX_USB_PRO in config.protocols:
-            dmx_usb_pro_manager = DmxUsbProManager(
-                port=config.dmx_usb_pro.port,
-                loop=self._network_thread.loop,
-            )
-            dmx_usb_pro_manager.notify = lambda action, *args, u=uid: (
-                self.notify_enttec(u, action, *args) if self.notify_enttec else None
-            )
-            self._dmx_usb_pro_managers[uid] = dmx_usb_pro_manager
-            if self.is_running:
-                dmx_usb_pro_manager.start()
+            port = resolve_port(config.dmx_usb_pro.port)
+            if port not in self._dmx_usb_pro_managers:
+                dmx_usb_pro_manager = DmxUsbProManager(
+                    port=port,
+                    loop=self._network_thread.loop,
+                    configs_provider=lambda p=port: self._get_dmx_usb_pro_configs(p),
+                )
+                dmx_usb_pro_manager.notify = lambda action, *args, p=port: (
+                    self._notify_enttec_for_port(p, action, *args)
+                )
+                self._dmx_usb_pro_managers[port] = dmx_usb_pro_manager
+                if self.is_running:
+                    dmx_usb_pro_manager.start()
+            else:
+                dmx_usb_pro_manager = self._dmx_usb_pro_managers[port]
+                if dmx_usb_pro_manager.is_connected and self.notify_enttec:
+                    self.notify_enttec(uid, "connect", port)  # pylint: disable=not-callable
         return dmx_usb_pro_manager
 
     def _reload_artnet(self, uid: int, config: UniverseConfig) -> None:
