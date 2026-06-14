@@ -487,6 +487,19 @@ class TestSacnManager:
 
         manager.stop()
 
+    def test_manager_cid_sharing(self) -> None:
+        """Verify that all created senders share the manager's CID."""
+        umap = UniverseMap(8)
+        umap.enable_protocol(2, Protocol.SACN)
+        umap.enable_protocol(3, Protocol.SACN)
+
+        manager = SacnManager(umap)
+        assert 2 in manager.senders
+        assert 3 in manager.senders
+        assert manager.senders[2]._cid == manager._cid
+        assert manager.senders[3]._cid == manager._cid
+        manager.stop()
+
     def test_manager_dmx_sending(self) -> None:
         """Verify DMX transmission calls the correct sACN senders."""
         umap = UniverseMap(4)

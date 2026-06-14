@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import struct
 import sys
 from unittest.mock import MagicMock, patch
@@ -116,6 +117,20 @@ class TestSACNHelpers:
 
 class TestSACNSender:  # pylint: disable=too-few-public-methods
     """Test suite for the SACNSender."""
+
+    def test_custom_cid(self) -> None:
+        """SACNSender must accept a custom CID."""
+        custom_cid = b"\x12" * 16
+        with patch("socket.socket"):
+            sender = SACNSender(universe=1, cid=custom_cid)
+            assert sender._cid == custom_cid
+
+    def test_default_cid(self) -> None:
+        """SACNSender must generate a CID when none is provided."""
+        with patch("socket.socket"):
+            sender = SACNSender(universe=1)
+            assert len(sender._cid) == 16
+            assert sender._cid != b""
 
     def test_send_calls_socket(self) -> None:
         """send() must transmit data via the socket."""

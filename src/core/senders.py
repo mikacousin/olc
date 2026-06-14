@@ -198,12 +198,13 @@ class SACNSender:
         multicast: bool = True,
         ip: str = "127.0.0.1",
         sync_address: int = 0,
+        cid: bytes = b"",
     ) -> None:
         self._universe = universe
         self._source = source
         self._priority = priority
         self._sequence = 0
-        self._cid = uuid.uuid4().bytes
+        self._cid = cid if cid else uuid.uuid4().bytes
         self._sync_address = sync_address
         self._dest = (
             (_sacn_multicast_ip(universe), SACN_PORT) if multicast else (ip, SACN_PORT)

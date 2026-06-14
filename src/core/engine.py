@@ -66,12 +66,13 @@ class _RuntimeSlot:
     )
 
 
-def _build_senders(  # pylint: disable=unexpected-keyword-arg
+def _build_senders(  # pylint: disable=unexpected-keyword-arg,too-many-arguments,too-many-positional-arguments
     config: UniverseConfig,
     artnet_manager: ArtNetManager | None = None,
     dest_ip: str = "255.255.255.255",
     sacn_multicast: bool = True,
     dmx_usb_pro_manager: DmxUsbProManager | None = None,
+    sacn_cid: bytes = b"",
 ) -> list[ArtNetSender | SACNSender | DmxUsbProSender]:
     """Create the network senders described by a UniverseConfig."""
     senders: list[ArtNetSender | SACNSender | DmxUsbProSender] = []
@@ -96,6 +97,7 @@ def _build_senders(  # pylint: disable=unexpected-keyword-arg
                 sync_address=config.sacn.sync_address,
                 multicast=sacn_multicast,
                 ip=dest_ip,
+                cid=sacn_cid,
             )
         )
     if Protocol.DMX_USB_PRO in config.protocols and dmx_usb_pro_manager is not None:
@@ -208,6 +210,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                     dest_ip="127.0.0.1" if loopback else "255.255.255.255",
                     sacn_multicast=not loopback,
                     dmx_usb_pro_manager=dmx_usb_pro_manager,
+                    sacn_cid=self._sacn_manager._cid,
                 ),
             )
 
@@ -371,7 +374,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
             if not self._no_transmit:
                 if uid not in self._sacn_manager.senders:
                     self._sacn_manager.senders[uid] = SACNSender(
-                        universe=uid, multicast=True
+                        universe=uid, multicast=True, cid=self._sacn_manager._cid
                     )
             sync_addr = config.sacn.sync_address
             if sync_addr > 0:
@@ -407,6 +410,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 dest_ip=dest_ip,
                 sacn_multicast=sacn_multicast,
                 dmx_usb_pro_manager=dmx_usb_pro_manager,
+                sacn_cid=self._sacn_manager._cid,
             )
         )
         with self._lock:

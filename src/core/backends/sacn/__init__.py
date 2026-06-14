@@ -59,6 +59,7 @@ class SacnManager:
         self.universe_map = universe_map
         self._no_transmit = no_transmit
         self._no_listen = no_listen
+        self._cid = uuid.uuid4().bytes
         self.universes = [
             config.universe_id
             for config in universe_map
@@ -79,12 +80,11 @@ class SacnManager:
         self.senders: dict[int, SACNSender] = {}
         if not no_transmit:
             for u in self.universes:
-                self.senders[u] = SACNSender(universe=u, multicast=True)
+                self.senders[u] = SACNSender(universe=u, multicast=True, cid=self._cid)
 
         self.network = SacnNetwork(typing.cast(typing.Any, self))
 
         # ACN Component CID and discovery thread configurations
-        self._cid = uuid.uuid4().bytes
         self.is_running = False
         self.discovery_task: asyncio.Task | None = None
         self._discovery_sock: socket.socket | None = None
