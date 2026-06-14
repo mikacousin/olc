@@ -23,12 +23,26 @@
 Provides passive packet monitoring, source tracking, and intensity grid rendering.
 """
 
+import gettext
+import locale
 import os
 import sys
 
 # Support running both locally in source tree and when installed via meson
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 sys.path.insert(1, "@pythondir@")
+
+LOCALEDIR = "@localedir@"
+try:
+    locale.bindtextdomain("olc", LOCALEDIR)
+    locale.textdomain("olc")
+    gettext.bindtextdomain("olc", LOCALEDIR)
+    gettext.textdomain("olc")
+except Exception:  # pylint: disable=broad-except
+    pass
+
+_ = gettext.gettext
+ngettext = gettext.ngettext
 
 import gi  # noqa: E402
 
@@ -128,7 +142,7 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
             )
 
         # Set window properties
-        self.set_title("sACN Monitor")
+        self.set_title(_("sACN Monitor"))
         self.set_default_size(1020, 640)
 
         # Root vertical layout container
@@ -141,13 +155,13 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
 
         # Universe Selector dropdown
         self.universe_store = Gtk.StringList.new(
-            [f"Universe {u}" for u in range(1, 257)]
+            [f"{_('Universe')} {u}" for u in range(1, 257)]
         )
         self.dropdown = Gtk.DropDown.new(model=self.universe_store, expression=None)
         self.dropdown.connect("notify::selected", self.on_universe_changed)
 
         title_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        title_label = Gtk.Label(label="Universe:")
+        title_label = Gtk.Label(label=_("Universe:"))
         title_label.add_css_class("dim-label")
         title_box.append(title_label)
         title_box.append(self.dropdown)
@@ -170,9 +184,9 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
 
         # Empty status page placeholder
         self.status_page = Adw.StatusPage()
-        self.status_page.set_title("Waiting for sACN signal...")
+        self.status_page.set_title(_("Waiting for sACN signal..."))
         self.status_page.set_description(
-            "Active listening for transmitters on the network..."
+            _("Active listening for transmitters on the network...")
         )
         self.status_page.set_icon_name("network-wired-symbolic")
         self.sidebar_stack.add_child(self.status_page)
@@ -187,9 +201,9 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         sources_box.set_margin_bottom(12)
 
         self.global_pref_group = Adw.PreferencesGroup()
-        self.global_pref_group.set_title("Detected sACN Sources")
+        self.global_pref_group.set_title(_("Detected sACN Sources"))
         self.global_pref_group.set_description(
-            "Active transmitters on the network or this universe"
+            _("Active transmitters on the network or this universe")
         )
         sources_box.append(self.global_pref_group)
 
@@ -245,11 +259,11 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
         bottom_bar.set_margin_bottom(8)
         root_box.append(bottom_bar)
 
-        self.status_label = Gtk.Label(label="Active listening on the network...")
+        self.status_label = Gtk.Label(label=_("Active listening on the network..."))
         self.status_label.add_css_class("dim-label")
         bottom_bar.append(self.status_label)
 
-        self.info_label = Gtk.Label(label="OLC sACN Monitor")
+        self.info_label = Gtk.Label(label=_("OLC sACN Monitor"))
         self.info_label.add_css_class("dim-label")
         self.info_label.set_hexpand(True)
         self.info_label.set_halign(Gtk.Align.END)
@@ -304,7 +318,7 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
             if cid not in all_sources:
                 all_sources[cid] = {
                     "name": src.name,
-                    "ip": src.ip or "Unknown",
+                    "ip": src.ip or _("Unknown"),
                     "universes": [self.selected_universe],
                 }
 
@@ -316,7 +330,7 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
                 self.global_pref_group.remove(row)
             self.global_source_rows.clear()
             self.global_source_universes.clear()
-            self.status_label.set_text("No signal detected on the network.")
+            self.status_label.set_text(_("No signal detected on the network."))
         else:
             if self.sidebar_stack.get_visible_child() != self.sources_scroll:
                 self.sidebar_stack.set_visible_child(self.sources_scroll)
@@ -332,16 +346,22 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
             for cid, src_info in all_sources.items():
                 univs = src_info["universes"]
                 # Construct appropriate subtitle
+                universe_str = ngettext(
+                    "{} universe", "{} universes", len(univs)
+                ).format(len(univs))
                 if cid in active_sources:
                     priority = active_sources[cid].priority
-                    subtitle = (
-                        f"IP: {src_info['ip']} | Priority: {priority} (Active) | "
-                        f"{len(univs)} universe{'s' if len(univs) > 1 else ''}"
+                    subtitle = _(
+                        "IP: {ip} | Priority: {priority} (Active) | {universes}"
+                    ).format(
+                        ip=src_info["ip"],
+                        priority=priority,
+                        universes=universe_str,
                     )
                 else:
-                    subtitle = (
-                        f"IP: {src_info['ip']} | "
-                        f"{len(univs)} universe{'s' if len(univs) > 1 else ''}"
+                    subtitle = _("IP: {ip} | {universes}").format(
+                        ip=src_info["ip"],
+                        universes=universe_str,
                     )
 
                 # If row is missing or universes list has changed
@@ -387,10 +407,12 @@ class SacnMonitorWindow(Adw.ApplicationWindow):
 
             # Update global status label
             num_srcs = len(active_sources)
-            self.status_label.set_text(
-                f"{num_srcs} active transmitter{'s' if num_srcs > 1 else ''} detected "
-                f"on this universe."
-            )
+            status_text = ngettext(
+                "{count} active transmitter detected on this universe.",
+                "{count} active transmitters detected on this universe.",
+                num_srcs,
+            ).format(count=num_srcs)
+            self.status_label.set_text(status_text)
 
         # 2. Update DMX intensities grid differentially
         dmx_data = merger._last_merged if merger else [0] * 512

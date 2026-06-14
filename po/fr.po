@@ -370,3 +370,55 @@ msgstr "Fichiers ASCII"
 
 msgid "All Files"
 msgstr "Tous les fichiers"
+
+msgid "sACN Monitor"
+msgstr "Moniteur sACN"
+
+msgid "Universe"
+msgstr "Univers"
+
+msgid "Universe:"
+msgstr "Univers :"
+
+msgid "Waiting for sACN signal..."
+msgstr "En attente de signal sACN..."
+
+msgid "Active listening for transmitters on the network..."
+msgstr "Écoute active des émetteurs sur le réseau..."
+
+msgid "Detected sACN Sources"
+msgstr "Sources sACN détectées"
+
+msgid "Active transmitters on the network or this universe"
+msgstr "Émetteurs actifs sur le réseau ou sur cet univers"
+
+msgid "Active listening on the network..."
+msgstr "Écoute active sur le réseau..."
+
+msgid "OLC sACN Monitor"
+msgstr "Moniteur sACN OLC"
+
+msgid "Unknown"
+msgstr "Inconnu"
+
+msgid "No signal detected on the network."
+msgstr "Aucun signal détecté sur le réseau."
+
+msgid "Priority"
+msgstr "Priorité"
+
+msgid "{} universe"
+msgid_plural "{} universes"
+msgstr[0] "{} univers"
+msgstr[1] "{} univers"
+
+msgid "IP: {ip} | Priority: {priority} (Active) | {universes}"
+msgstr "IP : {ip} | Priorité : {priority} (Actif) | {universes}"
+
+msgid "IP: {ip} | {universes}"
+msgstr "IP : {ip} | {universes}"
+
+msgid "{count} active transmitter detected on this universe."
+msgid_plural "{count} active transmitters detected on this universe."
+msgstr[0] "{count} émetteur actif détecté sur cet univers."
+msgstr[1] "{count} émetteurs actifs détectés sur cet univers."

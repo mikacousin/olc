@@ -5,3 +5,4 @@ data/app-menu.ui
 data/help-overlay.ui
 src/application.py
 src/settings.py
+tools/sacn-monitor.in
