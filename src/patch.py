@@ -58,6 +58,10 @@ class DMXPatch:
 
         self.patch_1on1()
 
+    def invalidate_cache(self) -> None:
+        """Invalidate the numpy cache."""
+        self._numpy_cache_dirty = True
+
     def is_patched(self, channel: int) -> bool:
         """Test if channel is patched
 
@@ -322,40 +326,14 @@ class PatchByOutputs:
                 if not channel:
                     self.__unpatch(output, univ)
                 else:
-                    old_channel = None
-                    if (
-                        univ in self.patch.outputs
-                        and output in self.patch.outputs[univ]
-                    ):
-                        old_channel = self.patch.outputs[univ][output][0]
-                    # Unpatch old value if exist
-                    if old_channel:
-                        self.patch.unpatch(old_channel, output, univ)
-                    if several:
-                        # Patch Channel : increment channels for each output
-                        self.patch.add_output(channel + i, output, univ)
-                    else:
-                        # Patch Channel : same channel for every outputs
-                        self.patch.add_output(channel, output, univ)
-                # Refresh LiveView
-                if (
-                    0 < channel <= MAX_CHANNELS
-                    and self.app.window is not None
-                    and self.app.backend is not None
-                ):
-                    index = UNIVERSES.index(univ)
-                    level = self.app.backend.dmx.frame[index][output - 1]
-                    widget = self.app.window.live_view.channels_view.get_channel_widget(
-                        channel
+                    chan = channel + i if several else channel
+                    self.app.core.action_registry.execute(
+                        "patch.add_output", chan, output, univ
                     )
-                    if widget is not None:
-                        widget.level = level
-                        widget.queue_draw()
 
     def __unpatch(self, output: int, univ: int) -> None:
         if univ in self.patch.outputs and output in self.patch.outputs[univ]:
-            chan = self.patch.outputs[univ][output][0]
-            self.patch.unpatch(chan, output, univ)
+            self.app.core.action_registry.execute("patch.unpatch_output", output, univ)
 
     def get_output_universe(self, out: int) -> tuple[Optional[int], Optional[int]]:
         """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)

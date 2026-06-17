@@ -43,8 +43,8 @@ class SetChannelLevelAction(Action):
         self.level: int = -1
         self.old_level: int = -1
 
-    def execute(self, channel: int, level: int) -> None:  # ty: ignore[invalid-method-override]
-        """Execute the action, setting the DMX channel level.
+    def configure(self, channel: int, level: int) -> None:
+        """Configure the action with the target channel and level.
 
         Args:
             channel: The 1-indexed channel number (1 to MAX_CHANNELS).
@@ -52,6 +52,11 @@ class SetChannelLevelAction(Action):
         """
         self.channel = channel
         self.level = level
+
+    def execute(self) -> None:
+        """Execute the action, setting the DMX channel level."""
+        channel = self.channel
+        level = self.level
 
         # Validate channel and level bounds
         if not 1 <= channel <= MAX_CHANNELS:

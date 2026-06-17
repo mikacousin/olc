@@ -57,10 +57,11 @@ class CurvePatchOutputWidget(CurveWidget):
             if (
                 univ in self.lightshow.patch.outputs
                 and out in self.lightshow.patch.outputs[univ]
+                and self.lightshow.app is not None
             ):
-                self.lightshow.patch.outputs[univ][out][1] = self.curve_nb
-        self.tab.refresh()
-        self.lightshow.set_modified()
+                self.lightshow.app.core.action_registry.execute(
+                    "patch.set_output_curve", out, univ, self.curve_nb
+                )
 
 
 # pylint: disable=too-many-instance-attributes

@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import typing
 
-from gi.repository import GLib, Pango
+from gi.repository import GLib, Gtk, Pango
+from olc.curve import LimitCurve, PointsCurve
 from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.fader_edition import FaderTab
@@ -26,7 +27,10 @@ from olc.fader_edition import FaderTab
 if typing.TYPE_CHECKING:
     from olc.application import Application
     from olc.core.group import Group
+    from olc.curve_edition import CurvesTab
     from olc.group import GroupTab
+    from olc.patch_channels import PatchChannelsTab
+    from olc.patch_outputs import PatchOutputsTab
 
 
 # pylint: disable=too-few-public-methods
@@ -54,6 +58,13 @@ class GuiEventBridge:
         # Setup GUI-safe event callbacks from Core
         self.app.core.subscribe(
             "group.created", lambda _: self._run_idle(self._safe_refresh_groups)
+        )
+        self.app.core.subscribe(
+            "patch.changed", lambda: self._run_idle(self._safe_refresh_patch)
+        )
+        self.app.core.subscribe(
+            "curve.changed",
+            lambda curve_nb: self._run_idle(self._safe_refresh_curves, curve_nb),
         )
         self.app.core.subscribe(
             "group.deleted", lambda g: self._run_idle(self._on_group_deleted, g)
@@ -146,6 +157,118 @@ class GuiEventBridge:
             group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
             group_tab.refresh()
         return False
+
+    def _safe_refresh_patch(self) -> bool:
+        """Refresh patch UI tabs and live channels view safely in the GTK thread.
+
+        Returns:
+            Always False.
+        """
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.update()
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("patch_outputs") is not None:
+                patch_outputs = typing.cast(
+                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+                )
+                patch_outputs.refresh()
+            if self.app.tabs.tabs.get("patch_channels") is not None:
+                patch_channels = typing.cast(
+                    "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
+                )
+                patch_channels.refresh()
+        return False
+
+    def _safe_refresh_curves(self, curve_nb: int) -> bool:
+        """Refresh curves tab UI safely in the GTK thread.
+
+        Args:
+            curve_nb: The active curve number.
+
+        Returns:
+            Always False.
+        """
+        if not self.app.tabs:
+            return False
+        curves_tab_obj = self.app.tabs.tabs.get("curves")
+        if curves_tab_obj is None:
+            return False
+
+        curves_tab = typing.cast("CurvesTab", curves_tab_obj)
+        is_active_curve = curves_tab.curve_edition.curve_nb == curve_nb
+        curves_count = len(curves_tab.lightshow.curves.curves)
+        flowbox_count = 0
+        if curves_tab.flowbox is not None:
+            flowbox_count = len(
+                [
+                    c
+                    for c in curves_tab.flowbox.get_children()
+                    if isinstance(c, Gtk.FlowBoxChild)
+                ]
+            )
+
+        if is_active_curve and curves_count == flowbox_count:
+            self._fast_refresh_active_curve(curves_tab, curve_nb)
+        else:
+            self._slow_refresh_curves(curves_tab, curve_nb)
+        return False
+
+    def _fast_refresh_active_curve(
+        self, curves_tab: "CurvesTab", curve_nb: int
+    ) -> None:
+        """Perform a fast local UI update on the currently active curve."""
+        curve = curves_tab.lightshow.curves.get_curve(curve_nb)
+        if curve is None:
+            return
+
+        # Update title
+        text = curve.name
+        if isinstance(curve, LimitCurve):
+            text += f" {round((curve.limit / 255) * 100)}%"
+        curves_tab.curve_edition.header.set_title(text)
+
+        # Update scale slider value (safely using updating flag to avoid loops)
+        if (
+            isinstance(curve, LimitCurve)
+            and curves_tab.curve_edition.scale_widget is not None
+        ):
+            curves_tab.curve_edition.updating_slider = True
+            try:
+                curves_tab.curve_edition.scale_widget.set_value(curve.limit)
+            finally:
+                curves_tab.curve_edition.updating_slider = False
+
+        # Update points if it's a PointsCurve
+        if isinstance(curve, PointsCurve):
+            curves_tab.curve_edition.points_curve()
+
+        # Redraw Cairo widgets
+        curves_tab.curve_edition.values.queue_draw()
+        if curves_tab.curve_edition.edit_curve is not None:
+            curves_tab.curve_edition.edit_curve.queue_draw()
+
+        # Redraw the button preview in the curves list
+        if curves_tab.flowbox is not None:
+            for child in curves_tab.flowbox.get_children():
+                if not isinstance(child, Gtk.FlowBoxChild):
+                    continue
+                child_btn = child.get_child()
+                if child_btn and getattr(child_btn, "curve_nb", None) == curve_nb:
+                    child_btn.queue_draw()
+                    break
+
+    def _slow_refresh_curves(self, curves_tab: "CurvesTab", curve_nb: int) -> None:
+        """Perform a full rebuild of the curves tab UI."""
+        curves_tab.refresh()
+        curves_tab.curve_edition.change_curve(curve_nb)
+        if curves_tab.flowbox is not None:
+            for child in curves_tab.flowbox.get_children():
+                if not isinstance(child, Gtk.FlowBoxChild):
+                    continue
+                child_btn = child.get_child()
+                if child_btn and getattr(child_btn, "curve_nb", None) == curve_nb:
+                    curves_tab.flowbox.select_child(child)
+                    break
 
     def _on_group_deleted(self, group: Group) -> bool:
         """Clean up faders referencing the deleted group and refresh UI.

@@ -75,7 +75,10 @@ class ActionRegistry:
 
         action_class = self._action_classes[name]
         action = action_class(self.app)
-        result = action.execute(*args, **kwargs)
+        configure = getattr(action, "configure", None)
+        if callable(configure):
+            configure(*args, **kwargs)
+        result = action.execute()
 
         if action.can_undo:
             self.app.history.push(action)

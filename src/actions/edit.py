@@ -28,7 +28,7 @@ class UndoAction(Action):
     name = "edit.undo"
     can_undo = False  # Undo operations cannot be undone (reverted by redo)
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the undo operation in the history manager."""
         self.app.history.undo()
 
@@ -39,6 +39,6 @@ class RedoAction(Action):
     name = "edit.redo"
     can_undo = False  # Redo operations cannot be undone (reverted by undo)
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the redo operation in the history manager."""
         self.app.history.redo()

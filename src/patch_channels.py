@@ -251,11 +251,14 @@ class PatchChannelsTab(Gtk.Box):
             keystring = self.window.commandline.get_string()
             # Unpatch if no entry
             if keystring in ["", "0"]:
-                for item in self.patch.channels[channel]:
+                items = list(self.patch.channels[channel])
+                for item in items:
                     output = item[0]
                     universe = item[1]
                     if output is not None and universe is not None:
-                        self.patch.unpatch(channel, output, universe)
+                        self.window.app.core.action_registry.execute(
+                            "patch.unpatch_output", output, universe
+                        )
                 # Update user interface
                 self.channels[channel].queue_draw()
 
@@ -289,12 +292,11 @@ class PatchChannelsTab(Gtk.Box):
                     if 0 < output + i <= 512:
                         # Unpatch old values
                         self._unpatch_channel(channel)
-                        self._unpatch(output + i, universe)
                         # Patch
-                        if several:
-                            self.patch.add_output(channel, output + i, universe)
-                        else:
-                            self.patch.add_output(channel, output, universe)
+                        out_val = output + i if several else output
+                        self.window.app.core.action_registry.execute(
+                            "patch.add_output", channel, out_val, universe
+                        )
                         # Update user interface
                         self.channels[channel - 1].queue_draw()
 
@@ -350,10 +352,10 @@ class PatchChannelsTab(Gtk.Box):
 
             if output is not None and universe is not None:
                 if 0 < output <= 512:
-                    # Unpatch old value
-                    self._unpatch(output, universe)
                     # Patch
-                    self.patch.add_output(channel, output, universe)
+                    self.window.app.core.action_registry.execute(
+                        "patch.add_output", channel, output, universe
+                    )
                     # Update user interface
                     self.channels[channel - 1].queue_draw()
 
@@ -399,7 +401,9 @@ class PatchChannelsTab(Gtk.Box):
                     and [output, universe] in self.patch.channels[channel]
                 ):
                     # Remove Output
-                    self.patch.unpatch(channel, output, universe)
+                    self.window.app.core.action_registry.execute(
+                        "patch.unpatch_output", output, universe
+                    )
                     # Update user interface
                     self.channels[channel - 1].queue_draw()
 
@@ -415,14 +419,17 @@ class PatchChannelsTab(Gtk.Box):
 
     def _unpatch(self, output: int, universe: int) -> None:
         if universe in self.patch.outputs and output in self.patch.outputs[universe]:
-            channel = self.patch.outputs[universe][output][0]
-            self.patch.unpatch(channel, output, universe)
-            self.channels[channel - 1].queue_draw()
+            self.window.app.core.action_registry.execute(
+                "patch.unpatch_output", output, universe
+            )
 
     def _unpatch_channel(self, channel: int) -> None:
         if channel in self.patch.channels:
-            for item in self.patch.channels[channel]:
+            items = list(self.patch.channels[channel])
+            for item in items:
                 output = item[0]
                 universe = item[1]
                 if output is not None and universe is not None:
-                    self.patch.unpatch(channel, output, universe)
+                    self.window.app.core.action_registry.execute(
+                        "patch.unpatch_output", output, universe
+                    )

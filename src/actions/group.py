@@ -42,19 +42,23 @@ class NewGroupAction(Action):
         self.group_nb: typing.Optional[float] = None
         self.created_group: typing.Optional[Group] = None
 
-    def execute(self, group_nb: float | None = None) -> None:  # ty: ignore[invalid-method-override]
-        """Execute the action, creating a new group.
+    def configure(self, group_nb: float | None = None) -> None:
+        """Configure the action with an optional group number.
 
         Args:
             group_nb: Optional group number.
                       If None, the next available integer is used.
         """
+        self.group_nb = group_nb
+
+    def execute(self) -> None:
+        """Execute the action, creating a new group."""
         lightshow = self.app.lightshow
 
+        group_nb = self.group_nb
         if group_nb is None:
             group_nb = 1.0 if not lightshow.groups else lightshow.groups[-1].index + 1.0
-
-        self.group_nb = group_nb
+            self.group_nb = group_nb
 
         # Prevent duplicate indices
         for group in lightshow.groups:
@@ -118,14 +122,18 @@ class DeleteGroupAction(Action):
         self.deleted_group: typing.Optional[Group] = None
         self.deleted_index: typing.Optional[int] = None
 
-    def execute(self, group_nb: float) -> None:  # ty: ignore[invalid-method-override]
-        """Execute the action, deleting the specified group.
+    def configure(self, group_nb: float) -> None:
+        """Configure the action with the group number to delete.
 
         Args:
             group_nb: The index number of the group to delete.
         """
-        lightshow = self.app.lightshow
         self.group_nb = group_nb
+
+    def execute(self) -> None:
+        """Execute the action, deleting the specified group."""
+        lightshow = self.app.lightshow
+        group_nb = self.group_nb
 
         # Find target group
         target_group = None

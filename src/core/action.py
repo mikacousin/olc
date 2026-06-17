@@ -40,10 +40,11 @@ class Action(ABC):
         self.app = app
 
     @abstractmethod
-    def execute(self, *args: object, **kwargs: object) -> object:
-        """Execute the action's primary behavior.
+    def execute(self) -> object:
+        """Execute the action using its already-configured state.
 
-        Must be implemented by all subclasses.
+        Must be implemented by all subclasses. Arguments are provided
+        via configure() before this method is called.
         """
 
     def undo(self) -> None:
@@ -55,7 +56,7 @@ class Action(ABC):
             raise NotImplementedError(f"Action '{self.name}' does not support undo.")
 
     def redo(self) -> None:
-        """Reapply the action. Defaults to calling execute()."""
+        """Reapply the action. Defaults to calling execute() with saved state."""
         self.execute()
 
     def get_feedback_state(self) -> dict[str, typing.Any]:

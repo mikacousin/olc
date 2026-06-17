@@ -17,8 +17,21 @@ from __future__ import annotations
 import typing
 
 from olc.actions.channel import SetChannelLevelAction
+from olc.actions.curve import (
+    CurveDeleteAction,
+    CurveNewAction,
+    CurveSetLimitAction,
+    CurveUpdatePointsAction,
+)
 from olc.actions.edit import RedoAction, UndoAction
 from olc.actions.group import DeleteGroupAction, NewGroupAction
+from olc.actions.patch import (
+    PatchAddOutputAction,
+    PatchClearAction,
+    PatchSet1on1Action,
+    PatchSetOutputCurveAction,
+    PatchUnpatchOutputAction,
+)
 from olc.actions.playback import (
     GoAction,
     GoBackAction,
@@ -48,6 +61,15 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SequenceMinusAction,
         UndoAction,
         RedoAction,
+        PatchAddOutputAction,
+        PatchUnpatchOutputAction,
+        PatchClearAction,
+        PatchSet1on1Action,
+        PatchSetOutputCurveAction,
+        CurveNewAction,
+        CurveDeleteAction,
+        CurveUpdatePointsAction,
+        CurveSetLimitAction,
     ]
 
     for action_class in actions_to_register:

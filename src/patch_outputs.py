@@ -113,27 +113,10 @@ class PatchOutputsTab(Gtk.Box):
         button_label = button.get_label()
 
         if button_label == "Unpatch all":
-            self.patch.patch_empty()
-            self.flowbox.queue_draw()
-            self.window.live_view.channels_view.update()
-            self.backend.dmx.user_outputs.clear()
-            self.backend.dmx.all_outputs_at_zero()
+            self.window.app.core.action_registry.execute("patch.clear")
 
         elif button_label == "Patch 1:1":
-            self.patch.patch_1on1()
-            self.flowbox.queue_draw()
-
-            for univ in range(NB_UNIVERSES):
-                for channel in range(512):
-                    level = self.backend.dmx.frame[univ][channel]
-                    widget = self.window.live_view.channels_view.get_channel_widget(
-                        channel + 1
-                    )
-                    if widget is not None:
-                        widget.level = level
-                        widget.queue_draw()
-            self.window.live_view.channels_view.update()
-        self.lightshow.set_modified()
+            self.window.app.core.action_registry.execute("patch.set_1on1")
 
     def refresh(self) -> None:
         """Refresh display"""

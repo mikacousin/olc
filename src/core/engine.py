@@ -336,9 +336,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                     configs.append(c.dmx_usb_pro)
         return configs
 
-    def _notify_enttec_for_port(
-        self, port: str, action: str, *args: object
-    ) -> None:
+    def _notify_enttec_for_port(self, port: str, action: str, *args: object) -> None:
         """Notify Enttec events for all universes sharing this port."""
         if not self.notify_enttec:
             return
@@ -386,8 +384,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
     def _reload_artnet(self, uid: int, config: UniverseConfig) -> None:
         """Update Art-Net manager configuration for a universe reload."""
-        if self._artnet_manager is None:
-            return
         self._artnet_manager.universes = [
             c.universe_id for c in self._map if Protocol.ARTNET in c.protocols
         ]
@@ -407,8 +403,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
     def _reload_sacn(self, uid: int, config: UniverseConfig) -> None:
         """Update sACN manager configuration for a universe reload."""
-        if self._sacn_manager is None:
-            return
         old_universes = list(self._sacn_manager.universes)
         self._sacn_manager.universes = [
             c.universe_id for c in self._map if Protocol.SACN in c.protocols

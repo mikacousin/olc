@@ -25,6 +25,8 @@ from olc.core.app import CoreApplication
 
 
 class MockAction(Action):
+    """Minimal Action implementation used for testing the ActionRegistry."""
+
     name = "mock.test_action"
     can_undo = True
 
@@ -33,7 +35,7 @@ class MockAction(Action):
         self.executed = False
         self.undone = False
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         self.executed = True
 
     def undo(self) -> None:

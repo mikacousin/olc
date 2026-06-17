@@ -26,7 +26,7 @@ class GoAction(Action):
     name = "playback.go"
     can_undo = False  # Playback transitions are transient real-time events
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the action, running the next cue in the active sequence."""
         main_playback = self.app.lightshow.main_playback
         if not main_playback:
@@ -54,7 +54,7 @@ class PauseAction(Action):
     name = "playback.pause"
     can_undo = False  # Playback transitions are transient real-time events
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the action, toggling the pause state of the crossfade."""
         main_playback = self.app.lightshow.main_playback
         if not main_playback:
@@ -87,7 +87,7 @@ class SequencePlusAction(Action):
     name = "playback.sequence_plus"
     can_undo = False
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the action, switching to the next step directly."""
         main_playback = self.app.lightshow.main_playback
         if not main_playback:
@@ -141,7 +141,7 @@ class SequenceMinusAction(Action):
     name = "playback.sequence_minus"
     can_undo = False
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the action, switching to the previous step directly."""
         main_playback = self.app.lightshow.main_playback
         if not main_playback:
@@ -192,7 +192,7 @@ class GoBackAction(Action):
     name = "playback.go_back"
     can_undo = False
 
-    def execute(self) -> None:  # ty: ignore[invalid-method-override]
+    def execute(self) -> None:
         """Execute the action, running the previous cue transition."""
         main_playback = self.app.lightshow.main_playback
         if not main_playback:

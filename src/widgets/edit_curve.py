@@ -70,20 +70,26 @@ class EditCurveWidget(Gtk.DrawingArea):
             y_curve = round(((self.height - event.y - 20) / (self.height - 40)) * 255)
             x_curve = max(min(x_curve, 255), 0)
             y_curve = max(min(y_curve, 255), 0)
-            self.curve.add_point(x_curve, y_curve)
-            self.queue_draw()
-            tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
-            tab.curve_edition.points_curve()
-            if (x_curve, y_curve) in self.curve.points:
-                idx = self.curve.points.index((x_curve, y_curve))
-                tab.curve_edition.points[idx].set_active(True)
-                tab.curve_edition.points[idx].queue_draw()
-            self.lightshow.set_modified()
-            if self.tabs.tabs["patch_outputs"]:
-                patch_tab = typing.cast(
-                    "PatchOutputsTab", self.tabs.tabs["patch_outputs"]
-                )
-                patch_tab.refresh()
+
+            new_points = list(self.curve.points)
+            if not any(x_curve in point for point in new_points):
+                new_points.append((x_curve, y_curve))
+                new_points.sort()
+
+                tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
+                idx = new_points.index((x_curve, y_curve))
+                tab.curve_edition.pending_active_point_idx = idx
+
+                if self.lightshow.app is not None:
+                    self.lightshow.app.core.action_registry.execute(
+                        "curve.update_points", self.curve_nb, new_points
+                    )
+
+                if self.tabs.tabs["patch_outputs"]:
+                    patch_tab = typing.cast(
+                        "PatchOutputsTab", self.tabs.tabs["patch_outputs"]
+                    )
+                    patch_tab.refresh()
 
     def on_mouse_move(self, _widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Update pointer coordinates

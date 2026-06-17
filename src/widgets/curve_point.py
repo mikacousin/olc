@@ -61,9 +61,16 @@ class CurvePointWidget(Gtk.DrawingArea):
         self.active = False
         self.number = number
         self.curve = curve
-        evmask = Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON1_MOTION_MASK
+        self.drag_start_points: list[tuple[int, int]] = []
+        self.is_dragging = False
+        evmask = (
+            Gdk.EventMask.BUTTON_PRESS_MASK
+            | Gdk.EventMask.BUTTON_RELEASE_MASK
+            | Gdk.EventMask.BUTTON1_MOTION_MASK
+        )
         self.set_events(evmask)
         self.connect("button_press_event", self.button_pressed)
+        self.connect("button_release_event", self.button_released)
         self.connect("motion_notify_event", self.motion_notify)
         self.offset = Point()
         self.prev = Point()
@@ -86,6 +93,8 @@ class CurvePointWidget(Gtk.DrawingArea):
                 toggle.set_active(False)
                 toggle.queue_draw()
             self.set_active(True)
+            self.drag_start_points = list(self.curve.points) if self.curve else []
+            self.is_dragging = True
             parent = widget.get_parent()
             if not parent:
                 return
@@ -118,6 +127,29 @@ class CurvePointWidget(Gtk.DrawingArea):
             )
             if tab.curve_edition.label:
                 tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
+
+    def button_released(self, _widget: Gtk.Widget, event: Gdk.EventButton) -> None:
+        """Button released
+
+        Args:
+            event: Event with coordinates
+        """
+        if event.button == 1 and getattr(self, "is_dragging", False):
+            self.is_dragging = False
+            if (
+                self.curve
+                and self.tabs
+                and list(self.curve.points) != self.drag_start_points
+            ):
+                final_points = list(self.curve.points)
+                # Temporarily restore starting points so the action can record the
+                # previous state properly
+                self.curve.points = list(self.drag_start_points)
+                tab = typing.cast("CurvesTab", self.tabs.tabs["curves"])
+                if self.lightshow and self.lightshow.app is not None:
+                    self.lightshow.app.core.action_registry.execute(
+                        "curve.update_points", tab.curve_edition.curve_nb, final_points
+                    )
 
     def motion_notify(self, widget: Gtk.Widget, event: Gdk.EventMotion) -> None:
         """Button moved

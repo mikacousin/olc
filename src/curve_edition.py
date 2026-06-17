@@ -100,6 +100,7 @@ class CurveEdition(Gtk.Box):
     fixed: Gtk.Fixed | None
     edit_curve: EditCurveWidget | None
     label: Gtk.Label | None
+    pending_active_point_idx: int | None
 
     def __init__(self, lightshow: LightShow, tabs: Tabs) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
@@ -110,6 +111,11 @@ class CurveEdition(Gtk.Box):
         self.fixed = None
         self.edit_curve = None
         self.label = None
+        self.scale_widget = None
+        self.updating_slider = False
+        self._is_dragging_limit = False
+        self._drag_start_limit = 255
+        self.pending_active_point_idx = None
         # HeaderBar
         self.header = Gtk.HeaderBar()
         text = _("Select curve")
@@ -145,6 +151,7 @@ class CurveEdition(Gtk.Box):
             button.connect("clicked", self.on_del_curve)
             box.add(button)
             self.header.pack_end(box)
+        self.scale_widget = None
         # Display curve and tools
         for child in self.hbox.get_children():
             child.destroy()
@@ -165,12 +172,21 @@ class CurveEdition(Gtk.Box):
             scale.set_digits(0)
             scale.set_inverted(True)
             scale.connect("value-changed", self.limit_changed)
+            scale.connect("button-press-event", self.limit_press)
+            scale.connect("button-release-event", self.limit_release)
             self.hbox.add(scale)
+            self.scale_widget = scale
         self.values.queue_draw()
         self.show_all()
 
     def points_curve(self) -> None:
         """Generate PointWidgets"""
+        active_idx = self.pending_active_point_idx
+        if active_idx is not None:
+            self.pending_active_point_idx = None
+        else:
+            active_idx = self.get_active_point()
+
         if self.points:
             for point in self.points:
                 point.destroy()
@@ -204,13 +220,15 @@ class CurveEdition(Gtk.Box):
                 )
             )
             self.points[-1].connect("toggled", self.on_toggled, None)
+            if number == active_idx:
+                self.points[-1].set_active(True)
             self.fixed.put(self.points[-1], x_wgt - 4, y_wgt - 4)
         self.show_all()
 
     def on_del_curve(self, _widget: Gtk.Widget) -> None:
         """Delete selected curve"""
         tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
-        if tab.flowbox is None:
+        if tab.flowbox is None or self.lightshow.app is None:
             return
         selected = tab.flowbox.get_selected_children()
         if not selected:
@@ -220,12 +238,10 @@ class CurveEdition(Gtk.Box):
         if not isinstance(curvebutton, CurveButton):
             return
         curve_nb = curvebutton.curve_nb
-        self.lightshow.curves.del_curve(curve_nb)
+        self.lightshow.app.core.action_registry.execute("curve.delete", curve_nb)
         self.change_curve(0)
         curve_nb = 0
         tab.refresh()
-        if tab.flowbox is None:
-            return
         flowboxchild = None
         for child in tab.flowbox.get_children():
             if not isinstance(child, Gtk.FlowBoxChild):
@@ -241,23 +257,76 @@ class CurveEdition(Gtk.Box):
             tab.flowbox.select_child(flowboxchild)
         self.lightshow.set_modified()
 
+    def limit_press(self, _widget: Gtk.Scale, event: Gdk.EventButton) -> bool:
+        """LimitCurve slider clicked
+
+        Args:
+            _widget: Scale
+            event: Event
+        """
+        if event.button == 1 and self.curve_nb is not None:
+            curve = self.lightshow.curves.get_curve(self.curve_nb)
+            if isinstance(curve, LimitCurve):
+                self._drag_start_limit = curve.limit
+                self._is_dragging_limit = True
+        return False
+
+    def limit_release(self, widget: Gtk.Scale, event: Gdk.EventButton) -> bool:
+        """LimitCurve slider released
+
+        Args:
+            widget: Scale
+            event: Event
+        """
+        if self.lightshow.app is None:
+            return False
+        if event.button == 1 and getattr(self, "_is_dragging_limit", False):
+            self._is_dragging_limit = False
+            if self.curve_nb is not None:
+                curve = self.lightshow.curves.get_curve(self.curve_nb)
+                if isinstance(curve, LimitCurve):
+                    final_val = int(widget.get_value())
+                    if final_val != self._drag_start_limit:
+                        # Restore starting value temporarily so action execution
+                        # records it as old_value
+                        curve.limit = self._drag_start_limit
+                        curve.populate_values()
+                        self.lightshow.app.core.action_registry.execute(
+                            "curve.set_limit", self.curve_nb, final_val
+                        )
+        return False
+
     def limit_changed(self, widget: Gtk.Scale) -> None:
         """LimitCurve value has been changed
 
         Args:
             widget: Scale
         """
-        if self.curve_nb is None:
+        if self.lightshow.app is None:
+            return
+        if self.curve_nb is None or getattr(self, "updating_slider", False):
             return
         curve = self.lightshow.curves.get_curve(self.curve_nb)
         if not isinstance(curve, LimitCurve):
             return
-        curve.limit = int(widget.get_value())
-        curve.populate_values()
-        text = curve.name
-        text += f" {round((curve.limit / 255) * 100)}%"
-        self.header.set_title(text)
-        self.lightshow.set_modified()
+
+        if getattr(self, "_is_dragging_limit", False):
+            # During drag: update curve value in-place and redraw UI
+            curve.limit = int(widget.get_value())
+            curve.populate_values()
+            text = curve.name
+            text += f" {round((curve.limit / 255) * 100)}%"
+            self.header.set_title(text)
+            self.lightshow.app.core.emit("curve.changed", self.curve_nb)
+        else:
+            # Discrete change (e.g. keyboard arrows, scroll wheel, or click without
+            # drag)
+            self.lightshow.app.core.action_registry.execute(
+                "curve.set_limit", self.curve_nb, int(widget.get_value())
+            )
+            text = curve.name
+            text += f" {round((curve.limit / 255) * 100)}%"
+            self.header.set_title(text)
 
     def on_toggled(self, button: CurvePointWidget, _name: object) -> None:
         """Curve point clicked
@@ -392,13 +461,22 @@ class CurvesTab(Gtk.Paned):
             widget: button clicked
         """
         if widget is self.buttons["limit"]:
-            curve_nb = self.lightshow.curves.add_curve(LimitCurve(255))
+            curve_nb = typing.cast(
+                int,
+                self.window.app.core.action_registry.execute("curve.new", "limit"),
+            )
         elif widget is self.buttons["segments"]:
-            curve_nb = self.lightshow.curves.add_curve(SegmentsCurve())
+            curve_nb = typing.cast(
+                int,
+                self.window.app.core.action_registry.execute("curve.new", "segments"),
+            )
         elif widget is self.buttons["interpolate"]:
-            curve_obj = InterpolateCurve()
-            curve_nb = self.lightshow.curves.add_curve(curve_obj)
-            curve_obj.add_point(70, 40)
+            curve_nb = typing.cast(
+                int,
+                self.window.app.core.action_registry.execute(
+                    "curve.new", "interpolate"
+                ),
+            )
         else:
             return
         self.curve_edition.change_curve(curve_nb)
@@ -416,7 +494,6 @@ class CurvesTab(Gtk.Paned):
                         break
             if flowboxchild is not None:
                 self.flowbox.select_child(flowboxchild)
-        self.lightshow.set_modified()
 
     def populate_curves(self) -> None:
         """Add curves to tab"""
@@ -471,16 +548,19 @@ class CurvesTab(Gtk.Paned):
 
     def _keypress_delete(self) -> None:
         """Delete selected point"""
-        if not self.curve_edition.curve_nb:
+        if not self.curve_edition.curve_nb or self.lightshow.app is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
         if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
             for toggle in self.curve_edition.points:
                 if toggle.get_active():
-                    curve.del_point(toggle.number)
+                    new_points = list(curve.points)
+                    del new_points[toggle.number]
+                    self.lightshow.app.core.action_registry.execute(
+                        "curve.update_points", self.curve_edition.curve_nb, new_points
+                    )
                     self.curve_edition.points_curve()
                     self.curve_edition.queue_draw()
-                    self.lightshow.set_modified()
                     if self.tabs.tabs["patch_outputs"]:
                         typing.cast(
                             PatchOutputsTab, self.tabs.tabs["patch_outputs"]
@@ -567,12 +647,16 @@ class CurvesTab(Gtk.Paned):
             self.__update_point(index, x, y)
 
     def __update_point(self, index: int, x: int, y: int) -> None:
-        if self.curve_edition.curve_nb is None:
+        if self.curve_edition.curve_nb is None or self.lightshow.app is None:
             return
         curve = self.lightshow.curves.get_curve(self.curve_edition.curve_nb)
         if not isinstance(curve, PointsCurve):
             return
-        curve.set_point(index, x, y)
+        new_points = list(curve.points)
+        new_points[index] = (x, y)
+        self.lightshow.app.core.action_registry.execute(
+            "curve.update_points", self.curve_edition.curve_nb, new_points
+        )
         self.curve_edition.queue_draw()
         if self.curve_edition.edit_curve is None or self.curve_edition.fixed is None:
             return
@@ -590,4 +674,3 @@ class CurvesTab(Gtk.Paned):
         self.curve_edition.fixed.move(
             self.curve_edition.points[index], x_wgt - 4, y_wgt - 4
         )
-        self.lightshow.set_modified()
