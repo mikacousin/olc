@@ -70,30 +70,12 @@ class GroupWidget(Gtk.Widget):
         Args:
             widget: Entry used
         """
-        # Update widget text
         text = widget.get_text()
-        self.name = text
-        self.queue_draw()
-        # Update group text
         flowboxchild = typing.cast(Gtk.FlowBoxChild, self.get_parent())
         index = flowboxchild.get_index()
         group = self.lightshow.groups[index]
-        group.set_text(text)
-        fader_bank = self.lightshow.fader_bank
-
-        app = typing.cast(typing.Any, self.window.get_application())
-        # Update Fader text
-        for page, faders in fader_bank.faders.items():
-            for fader in faders.values():
-                if fader.contents is group:
-                    fader.text = text
-                    # Update Virtual Console
-                    if app.virtual_console and page == fader_bank.active_page:
-                        app.virtual_console.flashes[fader.index - 1].label = text
-        if app.midi:
-            app.midi.messages.lcd.show_faders()
+        self.window.app.core.action_registry.execute("group.rename", group.index, text)
         self.popover.popdown()
-        self.lightshow.set_modified()
 
     def on_click(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Group clicked"""

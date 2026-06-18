@@ -193,7 +193,16 @@ class SequenceTab(Gtk.Grid):
         """
         tree_selection = self.treeview2.get_selection()
         model, treeiter = tree_selection.get_selected()
-        return int(model[treeiter][0]) if treeiter else None
+        if not treeiter:
+            return None
+        try:
+            step = int(model[treeiter][0])
+            sequence = self.get_selected_sequence()
+            if sequence and 0 <= step < len(sequence.steps):
+                return step
+        except (IndexError, ValueError, TypeError):
+            pass
+        return None
 
     def on_row_activated(
         self, _treeview: Gtk.TreeView, path: Gtk.TreePath, column: Gtk.TreeViewColumn
@@ -933,7 +942,7 @@ class SeqChannelsView(ChannelsView):
             SequenceTab, self.tabs.tabs["sequences"]
         ).get_selected_sequence()
         step = typing.cast(SequenceTab, self.tabs.tabs["sequences"]).get_selected_step()
-        if not sequence or not step:
+        if not sequence or step is None or step >= len(sequence.steps) or step < 0:
             child.set_visible(False)
             return False
         channel = child.get_index() + 1

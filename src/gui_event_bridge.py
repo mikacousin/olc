@@ -27,10 +27,14 @@ from olc.fader_edition import FaderTab
 if typing.TYPE_CHECKING:
     from olc.application import Application
     from olc.core.group import Group
+    from olc.cues_edition import CuesEditionTab
     from olc.curve_edition import CurvesTab
     from olc.group import GroupTab
     from olc.patch_channels import PatchChannelsTab
     from olc.patch_outputs import PatchOutputsTab
+    from olc.sequence_edition import SequenceTab
+    from olc.track_channels import TrackChannelsTab
+    from olc.widgets.group import GroupWidget
 
 
 # pylint: disable=too-few-public-methods
@@ -58,6 +62,27 @@ class GuiEventBridge:
         # Setup GUI-safe event callbacks from Core
         self.app.core.subscribe(
             "group.created", lambda _: self._run_idle(self._safe_refresh_groups)
+        )
+        self.app.core.subscribe(
+            "group.updated", lambda g: self._run_idle(self._on_group_updated, g)
+        )
+        self.app.core.subscribe(
+            "cue.created",
+            lambda sequence, memory: self._run_idle(
+                self._safe_refresh_cues, sequence, memory
+            ),
+        )
+        self.app.core.subscribe(
+            "cue.deleted",
+            lambda sequence, memory: self._run_idle(
+                self._safe_refresh_cues, sequence, memory
+            ),
+        )
+        self.app.core.subscribe(
+            "cue.updated",
+            lambda sequence, memory: self._run_idle(
+                self._safe_refresh_cues, sequence, memory
+            ),
         )
         self.app.core.subscribe(
             "patch.changed", lambda: self._run_idle(self._safe_refresh_patch)
@@ -156,6 +181,88 @@ class GuiEventBridge:
         if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
             group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
             group_tab.refresh()
+        return False
+
+    def _on_group_updated(self, group: Group) -> bool:
+        """Update group UI, fader text, virtual console, and midi LCD on group update.
+
+        Returns:
+            Always False.
+        """
+        self._safe_refresh_groups()
+
+        # Update fader text, virtual console and MIDI LCD if needed
+        text = group.text
+        fader_bank = self.app.core.lightshow.fader_bank
+        for page, faders in fader_bank.faders.items():
+            for fader in faders.values():
+                if fader.contents is group:
+                    fader.text = text
+                    # Update Virtual Console
+                    if self.app.virtual_console and page == fader_bank.active_page:
+                        self.app.virtual_console.flashes[fader.index - 1].label = text
+        if self.app.midi:
+            self.app.midi.messages.lcd.show_faders()
+
+        # Update the widgets in the GroupTab if we renamed
+        if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
+            group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
+            for child in group_tab.flowbox.get_children():
+                fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                group_widget = fb_child.get_child()
+                # Use duck typing or getattr to read number/name safely
+                if (
+                    group_widget
+                    and getattr(group_widget, "number", None) == group.index
+                ):
+                    typing.cast("GroupWidget", group_widget).name = text
+                    group_widget.queue_draw()
+        return False
+
+    def _safe_refresh_cues(self, sequence: int, memory: float) -> bool:
+        """Refresh the cues (memories) tab and playback UI safely in the GTK thread.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("memories") is not None:
+                memories_tab = typing.cast(
+                    "CuesEditionTab", self.app.tabs.tabs["memories"]
+                )
+                memories_tab.refresh()
+            if self.app.tabs.tabs.get("sequences") is not None:
+                sequences_tab = typing.cast(
+                    "SequenceTab", self.app.tabs.tabs["sequences"]
+                )
+                sequences_tab.refresh()
+            if self.app.tabs.tabs.get("track_channels") is not None:
+                track_tab = typing.cast(
+                    "TrackChannelsTab", self.app.tabs.tabs["track_channels"]
+                )
+                track_tab.refresh()
+        if self.app.window and self.app.window.playback:
+            self.app.window.playback.update_sequence_display()
+
+        # Update Live View if the modified cue is active
+        if self.app.window and self.app.window.live_view:
+            playback = self.app.core.lightshow.main_playback
+            if playback.steps and playback.position + 1 < len(playback.steps):
+                active_cue = playback.steps[playback.position + 1].cue
+                if (
+                    active_cue
+                    and active_cue.sequence == sequence
+                    and active_cue.memory == memory
+                ):
+                    for channel in range(1, MAX_CHANNELS + 1):
+                        widget = (
+                            self.app.window.live_view.channels_view.get_channel_widget(
+                                channel
+                            )
+                        )
+                        if widget:
+                            widget.next_level = active_cue.get_level(channel)
+                            widget.queue_draw()
         return False
 
     def _safe_refresh_patch(self) -> bool:

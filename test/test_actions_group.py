@@ -12,7 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for NewGroupAction, DeleteGroupAction, and HistoryManager."""
+"""Unit tests for Group actions (new, delete, update_channels, rename) and
+HistoryManager.
+"""
 
 from __future__ import annotations
 
@@ -119,3 +121,90 @@ def test_group_new_action_auto_index() -> None:
     app.action_registry.execute("group.new")
     assert len(app.lightshow.groups) == 2
     assert app.lightshow.groups[1].index == 2.0
+
+
+def test_group_update_channels_action() -> None:
+    """Test group update_channels action, including undo and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Clean groups list
+    app.lightshow.groups = []
+
+    # Create initial group
+    app.action_registry.execute("group.new", 1.0)
+    group = app.lightshow.groups[0]
+    assert group.index == 1.0
+    assert group.channels == {}
+
+    # Track updated events
+    updated_events = []
+    app.subscribe("group.updated", lambda g: updated_events.append(g.index))
+
+    # Test group.update_channels
+    app.action_registry.execute("group.update_channels", 1.0, {1: 255, 2: 128})
+    assert group.channels == {1: 255, 2: 128}
+    assert updated_events == [1.0]
+
+    # Undo update_channels
+    updated_events.clear()
+    app.history.undo()
+    assert group.channels == {}
+    assert updated_events == [1.0]
+
+    # Redo update_channels
+    updated_events.clear()
+    app.history.redo()
+    assert group.channels == {1: 255, 2: 128}
+    assert updated_events == [1.0]
+
+
+def test_group_rename_action() -> None:
+    """Test group rename action, including undo and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Clean groups list
+    app.lightshow.groups = []
+
+    # Create initial group
+    app.action_registry.execute("group.new", 1.0)
+    group = app.lightshow.groups[0]
+    assert group.index == 1.0
+    assert group.text == "1.0"
+
+    # Track updated events
+    updated_events = []
+    app.subscribe("group.updated", lambda g: updated_events.append(g.index))
+
+    # Test group.rename
+    app.action_registry.execute("group.rename", 1.0, "New Group Name")
+    assert group.text == "New Group Name"
+    assert updated_events == [1.0]
+
+    # Undo rename
+    updated_events.clear()
+    app.history.undo()
+    assert group.text == "1.0"
+    assert updated_events == [1.0]
+
+    # Redo rename
+    updated_events.clear()
+    app.history.redo()
+    assert group.text == "New Group Name"
+    assert updated_events == [1.0]
+
+
+def test_group_extended_actions_errors() -> None:
+    """Test error validation for group extended actions."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.lightshow.groups = []
+
+    # Update non-existent group channels
+    with pytest.raises(ValueError, match="Group 2.0 does not exist"):
+        app.action_registry.execute("group.update_channels", 2.0, {1: 255})
+
+    # Rename non-existent group
+    with pytest.raises(ValueError, match="Group 2.0 does not exist"):
+        app.action_registry.execute("group.rename", 2.0, "Nobody")

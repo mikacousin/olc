@@ -296,12 +296,13 @@ class TrackChannelsTab(Gtk.Grid):
                 if 0 <= level <= 255:
                     cue = self.lightshow.main_playback.steps[step].cue
                     if cue is not None:
-                        cue.channels[channel] = level
-                    widget.levels[self.channel_selected] = level
-                    widget.queue_draw()
-                    self.tabs.refresh_all()
-                    self.window.live_view.channels_view.update()
-                    self.lightshow.set_modified()
+                        self.window.app.core.action_registry.execute(
+                            "cue.set_channel_level",
+                            cue.memory,
+                            cue.sequence,
+                            channel,
+                            level,
+                        )
 
         self.window.commandline.set_string("")
 

@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import copy
 import typing
 
 from olc.core.action import Action
@@ -170,3 +171,125 @@ class DeleteGroupAction(Action):
             self.app.lightshow.groups.remove(self.deleted_group)
             self.app.lightshow.set_modified()
             self.app.emit("group.deleted", self.deleted_group)
+
+
+class GroupUpdateChannelsAction(Action):
+    """Action to update the channels of a group.
+
+    Supports Undo/Redo by retaining a deep copy of the previous channels.
+    """
+
+    name = "group.update_channels"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the Action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.group_nb: float = 0.0
+        self.new_channels: dict[int, int] = {}
+        self.old_channels: dict[int, int] = {}
+
+    def configure(self, group_nb: float, channels: dict[int, int]) -> None:
+        """Configure the action.
+
+        Args:
+            group_nb: The index of the group.
+            channels: New channels dict.
+        """
+        self.group_nb = group_nb
+        self.new_channels = dict(channels)
+
+    def execute(self) -> None:
+        """Execute the action, replacing group channels."""
+        lightshow = self.app.lightshow
+        target_group = None
+        for group in lightshow.groups:
+            if group.index == self.group_nb:
+                target_group = group
+                break
+        if not target_group:
+            raise ValueError(f"Group {self.group_nb} does not exist.")
+
+        self.old_channels = copy.deepcopy(target_group.channels)
+        target_group.channels = self.new_channels
+        lightshow.set_modified()
+        self.app.emit("group.updated", target_group)
+
+    def undo(self) -> None:
+        """Undo the action, restoring the previous channels."""
+        lightshow = self.app.lightshow
+        target_group = None
+        for group in lightshow.groups:
+            if group.index == self.group_nb:
+                target_group = group
+                break
+        if not target_group:
+            return
+        target_group.channels = self.old_channels
+        lightshow.set_modified()
+        self.app.emit("group.updated", target_group)
+
+
+class GroupRenameAction(Action):
+    """Action to rename a group (change its text description).
+
+    Supports Undo/Redo.
+    """
+
+    name = "group.rename"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the Action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.group_nb: float = 0.0
+        self.new_name: str = ""
+        self.old_name: str = ""
+
+    def configure(self, group_nb: float, name: str) -> None:
+        """Configure the action.
+
+        Args:
+            group_nb: The index of the group.
+            name: The new name (text).
+        """
+        self.group_nb = group_nb
+        self.new_name = name
+
+    def execute(self) -> None:
+        """Execute the action, renaming the group."""
+        lightshow = self.app.lightshow
+        target_group = None
+        for group in lightshow.groups:
+            if group.index == self.group_nb:
+                target_group = group
+                break
+        if not target_group:
+            raise ValueError(f"Group {self.group_nb} does not exist.")
+
+        self.old_name = target_group.text
+        target_group.text = self.new_name
+        lightshow.set_modified()
+        self.app.emit("group.updated", target_group)
+
+    def undo(self) -> None:
+        """Undo the rename, restoring the previous name."""
+        lightshow = self.app.lightshow
+        target_group = None
+        for group in lightshow.groups:
+            if group.index == self.group_nb:
+                target_group = group
+                break
+        if not target_group:
+            return
+        target_group.text = self.old_name
+        lightshow.set_modified()
+        self.app.emit("group.updated", target_group)

@@ -17,6 +17,14 @@ from __future__ import annotations
 import typing
 
 from olc.actions.channel import SetChannelLevelAction
+from olc.actions.cue import (
+    CueCopyAction,
+    CueDeleteAction,
+    CueInsertAction,
+    CueRenameAction,
+    CueSetChannelLevelAction,
+    CueUpdateAction,
+)
 from olc.actions.curve import (
     CurveDeleteAction,
     CurveNewAction,
@@ -24,7 +32,12 @@ from olc.actions.curve import (
     CurveUpdatePointsAction,
 )
 from olc.actions.edit import RedoAction, UndoAction
-from olc.actions.group import DeleteGroupAction, NewGroupAction
+from olc.actions.group import (
+    DeleteGroupAction,
+    GroupRenameAction,
+    GroupUpdateChannelsAction,
+    NewGroupAction,
+)
 from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
@@ -54,6 +67,14 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SetChannelLevelAction,
         NewGroupAction,
         DeleteGroupAction,
+        GroupUpdateChannelsAction,
+        GroupRenameAction,
+        CueUpdateAction,
+        CueDeleteAction,
+        CueRenameAction,
+        CueCopyAction,
+        CueInsertAction,
+        CueSetChannelLevelAction,
         GoAction,
         GoBackAction,
         PauseAction,

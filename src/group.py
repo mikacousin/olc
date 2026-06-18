@@ -59,8 +59,13 @@ class GroupChannelsView(ChannelsView):
             GroupTab, self.tabs.tabs["groups"]
         ).flowbox.get_selected_children()[0]
         index = selected_group.get_index()
-        self.lightshow.groups[index].set_channel(channel, level)
-        self.lightshow.set_modified()
+        group = self.lightshow.groups[index]
+        new_channels = group.channels.copy()
+        new_channels[channel] = level
+        if self.window and self.window.app:
+            self.window.app.core.action_registry.execute(
+                "group.update_channels", group.index, new_channels
+            )
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel
@@ -77,15 +82,18 @@ class GroupChannelsView(ChannelsView):
         ).flowbox.get_selected_children()[0]
         index = selected_group.get_index()
         group = self.lightshow.groups[index]
+        new_channels = group.channels.copy()
         for channel in channels:
-            level = group.get_channel_level(channel, 0)
+            level = new_channels.get(channel, 0)
             if direction == Gdk.ScrollDirection.UP:
                 level = min(level + step, 255)
             elif direction == Gdk.ScrollDirection.DOWN:
                 level = max(level - step, 0)
-            group.set_channel(channel, level)
-        self.update()
-        self.lightshow.set_modified()
+            new_channels[channel] = level
+        if self.window and self.window.app:
+            self.window.app.core.action_registry.execute(
+                "group.update_channels", group.index, new_channels
+            )
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Select channels to display
