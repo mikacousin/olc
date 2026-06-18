@@ -189,7 +189,7 @@ class ImportFile:
         if self.actions["groups"] is Action.IGNORE:
             return
         if self.actions["groups"] is Action.REPLACE:
-            del self.lightshow.groups[:]
+            self.lightshow.groups.clear()
         self.data.import_groups()
 
     def _do_import_faders(self) -> None:

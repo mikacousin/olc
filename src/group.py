@@ -518,11 +518,7 @@ class GroupTab(Gtk.Paned):
         keystring = self.window.commandline.get_string()
         # If no group number, use the next one
         if keystring == "":
-            group_nb = (
-                1.0
-                if len(self.lightshow.groups) == 0
-                else self.lightshow.groups[-1].index + 1.0
-            )
+            group_nb = self.lightshow.groups.get_next_index()
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
         else:

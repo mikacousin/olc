@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from olc.core.app import CoreApplication
+from olc.core.group import Group
 
 
 def test_new_and_delete_group_actions_and_undo_redo() -> None:
@@ -30,8 +31,8 @@ def test_new_and_delete_group_actions_and_undo_redo() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    # Mock the groups list in lightshow
-    app.lightshow.groups = []
+    # Clear groups list in lightshow
+    app.lightshow.groups.clear()
 
     # 2. Track events
     created_events = []
@@ -92,7 +93,7 @@ def test_group_actions_validation_errors() -> None:
     """Test group action error cases like duplicates or non-existent deletes."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    app.lightshow.groups = []
+    app.lightshow.groups.clear()
 
     # Create Group 1.0
     app.action_registry.execute("group.new", 1.0)
@@ -110,7 +111,7 @@ def test_group_new_action_auto_index() -> None:
     """Test NewGroupAction automatically assigns index when not provided."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    app.lightshow.groups = []
+    app.lightshow.groups.clear()
 
     # First auto index should be 1.0 if empty
     app.action_registry.execute("group.new")
@@ -129,7 +130,7 @@ def test_group_update_channels_action() -> None:
     app = CoreApplication(settings)
 
     # Clean groups list
-    app.lightshow.groups = []
+    app.lightshow.groups.clear()
 
     # Create initial group
     app.action_registry.execute("group.new", 1.0)
@@ -165,7 +166,7 @@ def test_group_rename_action() -> None:
     app = CoreApplication(settings)
 
     # Clean groups list
-    app.lightshow.groups = []
+    app.lightshow.groups.clear()
 
     # Create initial group
     app.action_registry.execute("group.new", 1.0)
@@ -199,7 +200,7 @@ def test_group_extended_actions_errors() -> None:
     """Test error validation for group extended actions."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    app.lightshow.groups = []
+    app.lightshow.groups.clear()
 
     # Update non-existent group channels
     with pytest.raises(ValueError, match="Group 2.0 does not exist"):
@@ -208,3 +209,54 @@ def test_group_extended_actions_errors() -> None:
     # Rename non-existent group
     with pytest.raises(ValueError, match="Group 2.0 does not exist"):
         app.action_registry.execute("group.rename", 2.0, "Nobody")
+
+
+def test_groups_container_class() -> None:
+    """Test Groups container class specific API."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Initialize groups
+    groups = app.lightshow.groups
+    groups.clear()
+
+    # Test get_next_index on empty
+    assert groups.get_next_index() == 1.0
+
+    # Test add
+    g1 = Group(index=1.0, channels={})
+    groups.add(g1)
+    assert len(groups) == 1
+    assert groups[0] == g1
+    assert groups.get(1.0) == g1
+    assert groups.get_next_index() == 2.0
+
+    # Test add duplicate raises ValueError
+    with pytest.raises(ValueError, match="Group with index 1.0 already exists"):
+        groups.add(Group(index=1.0, channels={}))
+
+    # Test insert/append maintains sorted order
+    g3 = Group(index=3.0, channels={})
+    g2 = Group(index=2.0, channels={})
+    groups.add(g3)
+    groups.add(g2)
+
+    assert len(groups) == 3
+    assert groups[0] == g1
+    assert groups[1] == g2
+    assert groups[2] == g3
+
+    # Test iteration
+    items = list(groups)
+    assert items == [g1, g2, g3]
+
+    # Test pop and remove
+    popped = groups.pop(1)
+    assert popped == g2
+    assert len(groups) == 2
+    assert groups[0] == g1
+    assert groups[1] == g3
+
+    groups.remove(g3)
+    assert len(groups) == 1
+    assert groups[0] == g1

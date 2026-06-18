@@ -156,14 +156,13 @@ class ParsedData:
         for group_number, values in self.data["groups"].items():
             channels = values.get("channels")
             label = values.get("label")
-            for group in self.lightshow.groups:
-                if group_number == group.index:
-                    group.set_text(label)
-                    group.set_channels(channels)
-                    break
+            group = self.lightshow.groups.get(group_number)
+            if group is not None:
+                group.set_text(label)
+                group.set_channels(channels)
             else:
                 # Create new group
-                self.lightshow.groups.append(Group(group_number, channels, label))
+                self.lightshow.groups.add(Group(group_number, channels, label))
 
     def import_faders(self, actions: dict[str, typing.Any]) -> None:
         """Import faders data

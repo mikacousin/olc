@@ -58,25 +58,19 @@ class NewGroupAction(Action):
 
         group_nb = self.group_nb
         if group_nb is None:
-            group_nb = 1.0 if not lightshow.groups else lightshow.groups[-1].index + 1.0
+            group_nb = lightshow.groups.get_next_index()
             self.group_nb = group_nb
 
         # Prevent duplicate indices
-        for group in lightshow.groups:
-            if group.index == group_nb:
-                raise ValueError(f"Group {group_nb} already exists.")
+        if lightshow.groups.get(group_nb) is not None:
+            raise ValueError(f"Group {group_nb} already exists.")
 
         # Create new group with empty channel list
         channels: dict[int, int] = {}
         self.created_group = Group(group_nb, channels, str(group_nb))
 
-        # Insert group in ordered fashion by its index
-        insert_idx = len(lightshow.groups)
-        for i, g in enumerate(lightshow.groups):
-            if group_nb < g.index:
-                insert_idx = i
-                break
-        lightshow.groups.insert(insert_idx, self.created_group)
+        # Add group to Groups container (sorted insert)
+        lightshow.groups.add(self.created_group)
         lightshow.set_modified()
 
         # Notify subscribers
@@ -84,22 +78,16 @@ class NewGroupAction(Action):
 
     def undo(self) -> None:
         """Undo the group creation, removing the group from the show."""
-        if self.created_group and self.created_group in self.app.lightshow.groups:
+        if self.created_group:
             self.app.lightshow.groups.remove(self.created_group)
             self.app.lightshow.set_modified()
             self.app.emit("group.deleted", self.created_group)
 
     def redo(self) -> None:
         """Redo the group creation, re-inserting the group."""
-        if self.created_group and self.group_nb is not None:
-            lightshow = self.app.lightshow
-            insert_idx = len(lightshow.groups)
-            for i, g in enumerate(lightshow.groups):
-                if self.group_nb < g.index:
-                    insert_idx = i
-                    break
-            lightshow.groups.insert(insert_idx, self.created_group)
-            lightshow.set_modified()
+        if self.created_group:
+            self.app.lightshow.groups.add(self.created_group)
+            self.app.lightshow.set_modified()
             self.app.emit("group.created", self.created_group)
 
 
@@ -135,24 +123,22 @@ class DeleteGroupAction(Action):
         """Execute the action, deleting the specified group."""
         lightshow = self.app.lightshow
         group_nb = self.group_nb
+        if group_nb is None:
+            raise ValueError("Group number is required.")
 
         # Find target group
-        target_group = None
-        target_index = -1
-        for i, group in enumerate(lightshow.groups):
-            if group.index == group_nb:
-                target_group = group
-                target_index = i
-                break
-
+        target_group = lightshow.groups.get(group_nb)
         if not target_group:
             raise ValueError(f"Group {group_nb} does not exist.")
 
         self.deleted_group = target_group
-        self.deleted_index = target_index
+        try:
+            self.deleted_index = list(lightshow.groups).index(target_group)
+        except ValueError:
+            self.deleted_index = None
 
         # Remove from model
-        lightshow.groups.pop(target_index)
+        lightshow.groups.remove(target_group)
         lightshow.set_modified()
 
         # Notify subscribers
@@ -160,14 +146,17 @@ class DeleteGroupAction(Action):
 
     def undo(self) -> None:
         """Undo the deletion, restoring the group back to its original index."""
-        if self.deleted_group and self.deleted_index is not None:
-            self.app.lightshow.groups.insert(self.deleted_index, self.deleted_group)
+        if self.deleted_group:
+            if self.deleted_index is not None:
+                self.app.lightshow.groups.insert(self.deleted_index, self.deleted_group)
+            else:
+                self.app.lightshow.groups.add(self.deleted_group)
             self.app.lightshow.set_modified()
             self.app.emit("group.created", self.deleted_group)
 
     def redo(self) -> None:
         """Redo the deletion, removing the group again."""
-        if self.deleted_group and self.deleted_group in self.app.lightshow.groups:
+        if self.deleted_group:
             self.app.lightshow.groups.remove(self.deleted_group)
             self.app.lightshow.set_modified()
             self.app.emit("group.deleted", self.deleted_group)
@@ -206,11 +195,7 @@ class GroupUpdateChannelsAction(Action):
     def execute(self) -> None:
         """Execute the action, replacing group channels."""
         lightshow = self.app.lightshow
-        target_group = None
-        for group in lightshow.groups:
-            if group.index == self.group_nb:
-                target_group = group
-                break
+        target_group = lightshow.groups.get(self.group_nb)
         if not target_group:
             raise ValueError(f"Group {self.group_nb} does not exist.")
 
@@ -222,11 +207,7 @@ class GroupUpdateChannelsAction(Action):
     def undo(self) -> None:
         """Undo the action, restoring the previous channels."""
         lightshow = self.app.lightshow
-        target_group = None
-        for group in lightshow.groups:
-            if group.index == self.group_nb:
-                target_group = group
-                break
+        target_group = lightshow.groups.get(self.group_nb)
         if not target_group:
             return
         target_group.channels = self.old_channels
@@ -267,11 +248,7 @@ class GroupRenameAction(Action):
     def execute(self) -> None:
         """Execute the action, renaming the group."""
         lightshow = self.app.lightshow
-        target_group = None
-        for group in lightshow.groups:
-            if group.index == self.group_nb:
-                target_group = group
-                break
+        target_group = lightshow.groups.get(self.group_nb)
         if not target_group:
             raise ValueError(f"Group {self.group_nb} does not exist.")
 
@@ -283,11 +260,7 @@ class GroupRenameAction(Action):
     def undo(self) -> None:
         """Undo the rename, restoring the previous name."""
         lightshow = self.app.lightshow
-        target_group = None
-        for group in lightshow.groups:
-            if group.index == self.group_nb:
-                target_group = group
-                break
+        target_group = lightshow.groups.get(self.group_nb)
         if not target_group:
             return
         target_group.text = self.old_name

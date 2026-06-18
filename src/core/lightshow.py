@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import typing
 
+from olc.core.group import Groups
 from olc.core.sequence import Sequence
 from olc.curve import Curves
 from olc.define import UNIVERSES
@@ -73,7 +74,7 @@ class LightShow(ShowFile):
     main_playback: Sequence
     cues: list
     chasers: list
-    groups: list
+    groups: Groups
     fader_bank: FaderBank
     independents: Independents
     patch: DMXPatch
@@ -91,7 +92,7 @@ class LightShow(ShowFile):
         # List of chasers
         self.chasers = []
         # List of groups
-        self.groups = []
+        self.groups = Groups(lightshow_type)
         # Faders
         self.fader_bank = FaderBank(lightshow_type)
         # Independents
@@ -122,10 +123,7 @@ class LightShow(ShowFile):
         Returns:
             Group or None
         """
-        for group in self.groups:
-            if group.index == number:
-                return group
-        return None
+        return self.groups.get(number)
 
     def get_chaser(self, number: float) -> None | Sequence:
         """Get Chaser with his number
@@ -152,7 +150,7 @@ class LightShow(ShowFile):
                 chaser.thread.stop()
                 chaser.thread.join()
         del self.chasers[:]
-        del self.groups[:]
+        self.groups.clear()
         self.fader_bank.reset_faders()
         self.independents = Independents(lightshow_type)
         self.patch.patch_empty()
