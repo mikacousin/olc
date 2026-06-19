@@ -234,7 +234,7 @@ class ImportFile:
 
     def _clear_sequence(self, sequence: int) -> None:
         if sequence == 1:
-            del self.lightshow.cues[:]
+            self.lightshow.cues.clear()
             del self.lightshow.main_playback.steps[1:]
         else:
             chaser = None
@@ -281,9 +281,9 @@ class ImportFile:
             self.tabs.refresh_all()
         if self.window is not None and self.window.header is not None:
             cue = self.lightshow.main_playback.steps[1].cue
-            memory = cue.memory if cue is not None else 0.0
+            number = cue.number if cue is not None else 0.0
             text = cue.text if cue is not None else ""
-            subtitle = f"Mem. : 0.0 - Next Mem. : {memory} {text}"
+            subtitle = f"Mem. : 0.0 - Next Mem. : {number} {text}"
             self.window.header.set_subtitle(subtitle)
         if self.window is not None and self.window.playback is not None:
             self.window.playback.update_xfade_display(0)

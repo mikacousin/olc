@@ -102,7 +102,7 @@ class SequenceTab(Gtk.Grid):
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
-        self.treeview2.connect("cursor-changed", self.on_memory_changed)
+        self.treeview2.connect("cursor-changed", self.on_cue_changed)
         self.treeview2.connect("row-activated", self.on_row_activated)
 
         columns = [
@@ -445,29 +445,29 @@ class SequenceTab(Gtk.Grid):
             if sequence.position == step:
                 cue_step = sequence.steps[step].cue
                 cue_next = sequence.steps[step + 1].cue
-                memory_step = cue_step.memory if cue_step is not None else 0.0
-                memory_next = cue_next.memory if cue_next is not None else 0.0
+                number_step = cue_step.number if cue_step is not None else 0.0
+                number_next = cue_next.number if cue_next is not None else 0.0
                 subtitle = (
-                    f"Mem. : {memory_step} "
+                    f"Mem. : {number_step} "
                     f"{sequence.steps[step].text} - Next Mem. : "
-                    f"{memory_next} "
+                    f"{number_next} "
                     f"{sequence.steps[step + 1].text}"
                 )
                 self.window.header.set_subtitle(subtitle)
             elif sequence.position + 1 == step:
                 cue_prev = sequence.steps[step - 1].cue
                 cue_step = sequence.steps[step].cue
-                memory_prev = cue_prev.memory if cue_prev is not None else 0.0
-                memory_step = cue_step.memory if cue_step is not None else 0.0
+                number_prev = cue_prev.number if cue_prev is not None else 0.0
+                number_step = cue_step.number if cue_step is not None else 0.0
                 subtitle = (
-                    f"Mem. : {memory_prev} "
+                    f"Mem. : {number_prev} "
                     f"{sequence.steps[step - 1].text} - Next Mem. : "
-                    f"{memory_step} "
+                    f"{number_step} "
                     f"{sequence.steps[step].text}"
                 )
                 self.window.header.set_subtitle(subtitle)
 
-    def on_memory_changed(self, _treeview: Gtk.TreeView) -> None:
+    def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select cue"""
         self.channels_view.update()
 
@@ -605,9 +605,9 @@ class SequenceTab(Gtk.Grid):
         if cue is None:
             return
         channels = cue.channels
-        memory = cue.memory
+        number = cue.number
         # Dialog to confirm Update
-        dialog = ConfirmationDialog(f"Update memory {memory} ?", self.window)
+        dialog = ConfirmationDialog(f"Update cue {number} ?", self.window)
         response = dialog.run()
         if response != Gtk.ResponseType.OK:
             dialog.destroy()
@@ -738,7 +738,7 @@ class SequenceTab(Gtk.Grid):
 
     def _update_cue(self, sequence: Sequence, mem: float) -> None:
         """Update existing cue inside the sequence"""
-        dialog = ConfirmationDialog(f"Update memory {mem} ?", self.window)
+        dialog = ConfirmationDialog(f"Update cue {mem} ?", self.window)
         response = dialog.run()
         if response != Gtk.ResponseType.OK:
             dialog.destroy()
@@ -808,12 +808,12 @@ class SequenceTab(Gtk.Grid):
         if channel_time == "0":
             channel_time = ""
         cue = sequence.steps[step].cue
-        cue_memory = str(cue.memory) if cue is not None else ""
+        cue_number = str(cue.number) if cue is not None else ""
         self.liststore2.insert(
             step - 1,
             [
                 str(step),
-                cue_memory,
+                cue_number,
                 sequence.steps[step].text,
                 wait,
                 d_out,

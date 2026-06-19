@@ -23,6 +23,7 @@ from olc.actions.cue import (
     CueInsertAction,
     CueRenameAction,
     CueSetChannelLevelAction,
+    CueSetTempChannelsAction,
     CueUpdateAction,
 )
 from olc.actions.curve import (
@@ -75,6 +76,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         CueCopyAction,
         CueInsertAction,
         CueSetChannelLevelAction,
+        CueSetTempChannelsAction,
         GoAction,
         GoBackAction,
         PauseAction,

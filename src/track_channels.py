@@ -94,7 +94,7 @@ class TrackChannelsTab(Gtk.Grid):
         self.flowbox.add(self.steps[0])
         for step in range(1, self.lightshow.main_playback.last):
             cue = self.lightshow.main_playback.steps[step].cue
-            memory = cue.memory if cue is not None else 0.0
+            number = cue.number if cue is not None else 0.0
             text = self.lightshow.main_playback.steps[step].text
             levels.append([])
             for channel in self.channels:
@@ -103,7 +103,7 @@ class TrackChannelsTab(Gtk.Grid):
             self.steps.append(
                 TrackChannelsWidget(
                     step,
-                    memory,
+                    number,
                     text,
                     levels[step],
                     typing.cast("olc.track_channels.TrackChannelsTab", self),
@@ -298,7 +298,7 @@ class TrackChannelsTab(Gtk.Grid):
                     if cue is not None:
                         self.window.app.core.action_registry.execute(
                             "cue.set_channel_level",
-                            cue.memory,
+                            cue.number,
                             cue.sequence,
                             channel,
                             level,

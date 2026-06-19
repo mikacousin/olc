@@ -377,7 +377,7 @@ class Window(Gtk.ApplicationWindow):
         # Find Preset position
         i = 0
         for item in self.app.core.lightshow.cues:
-            if item.memory > mem:
+            if item.number > mem:
                 break
             i += 1
         i -= 1
@@ -411,10 +411,10 @@ class Window(Gtk.ApplicationWindow):
         if cue is None:
             return
 
-        memory = cue.memory
+        number = cue.number
 
         # Confirmation Dialog
-        dialog = Dialog(self, memory)
+        dialog = Dialog(self, number)
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
@@ -631,9 +631,9 @@ class Window(Gtk.ApplicationWindow):
 
 
 class Dialog(Gtk.Dialog):
-    """Confirmation dialog when update Cue"""
+    """Confirmation dialog when updating a Cue."""
 
-    def __init__(self, parent: Gtk.Window, memory: float) -> None:
+    def __init__(self, parent: Gtk.Window, number: float) -> None:
         super().__init__(title="", transient_for=parent)
         self.add_buttons(
             Gtk.STOCK_CANCEL,
@@ -644,7 +644,7 @@ class Dialog(Gtk.Dialog):
 
         self.set_default_size(150, 100)
 
-        label = Gtk.Label(label=f"Update memory {memory} ?")
+        label = Gtk.Label(label=f"Update cue {number} ?")
 
         box = self.get_content_area()
         box.add(label)

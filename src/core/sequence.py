@@ -205,7 +205,7 @@ class Sequence:
         step = 0
         # Cue already exist ?
         for item in self.steps:
-            if item.cue is not None and item.cue.memory == cue:
+            if item.cue is not None and item.cue.number == cue:
                 found = True
                 break
             step += 1
@@ -215,7 +215,7 @@ class Sequence:
             exist = False
             step = 0
             for item in self.steps:
-                if item.cue is not None and cue is not None and item.cue.memory > cue:
+                if item.cue is not None and cue is not None and item.cue.number > cue:
                     exist = True
                     break
                 step += 1
@@ -238,16 +238,16 @@ class Sequence:
         if step is None:
             return None
         step_cue = self.steps[step].cue
-        memory = step_cue.memory if step_cue is not None else 0.0
+        number = step_cue.number if step_cue is not None else 0.0
         if step >= self.last - 1:
-            return memory + 1
+            return number + 1
 
         next_step_cue = self.steps[step + 1].cue
-        next_memory = next_step_cue.memory if next_step_cue is not None else 0.0
+        next_number = next_step_cue.number if next_step_cue is not None else 0.0
         return (
-            ((next_memory - memory) / 2) + memory
-            if next_memory != 0.0 and (next_memory - memory) <= 1
-            else memory + 1
+            ((next_number - number) / 2) + number
+            if next_number != 0.0 and (next_number - number) <= 1
+            else number + 1
         )
 
     def get_next_channel_level(self, channel: int, level: int) -> int:
@@ -324,7 +324,7 @@ class Sequence:
         """Jump to cue number
 
         Args:
-            keystring: Memory number
+            keystring: Cue number
         """
         old_pos = self.position
 
@@ -334,7 +334,7 @@ class Sequence:
         # Scan all cues
         for i, step in enumerate(self.steps):
             # Until we find the good one
-            if float(get_cue(step).memory) == float(keystring):
+            if float(get_cue(step).number) == float(keystring):
                 # Position to the one just before
                 self.position = i - 1
                 next_step = self.position + 1
@@ -370,7 +370,7 @@ class Sequence:
         """
         if self.app is not None and self.app.midi is not None:
             self.app.midi.button_on("playback.go")
-        # If Go is active, go to next memory
+        # If Go is active, go to next cue
         if self.stop():
             # Launch another Go
             position = self.position
@@ -384,9 +384,9 @@ class Sequence:
 
             # Set main window's subtitle
             subtitle = (
-                f"Mem. : {get_cue(self.steps[position]).memory} "
+                f"Mem. : {get_cue(self.steps[position]).number} "
                 f"{self.steps[position].text} - Next Mem. : "
-                f"{get_cue(self.steps[position + 1]).memory} "
+                f"{get_cue(self.steps[position + 1]).number} "
                 f"{self.steps[position + 1].text}"
             )
 
@@ -439,9 +439,9 @@ class Sequence:
             )
 
         subtitle = (
-            f"Mem. : {get_cue(self.steps[position]).memory} "
+            f"Mem. : {get_cue(self.steps[position]).number} "
             f"{self.steps[position].text}"
-            f" - Next Mem. : {get_cue(self.steps[position - 1]).memory} "
+            f" - Next Mem. : {get_cue(self.steps[position - 1]).number} "
             f"{self.steps[position - 1].text}"
         )
 
@@ -532,7 +532,7 @@ class ThreadGo(threading.Thread):
         self.old_channels_levels[user_mask] = user_levels[user_mask]
 
     def _finalize_go(self) -> None:
-        """Finish load memory after sequence transition"""
+        """Finish load cue after sequence transition"""
         if self.sequence.position < self.sequence.last - 1:
             target_cue = get_cue(self.sequence.steps[self.sequence.position + 1])
         else:
@@ -743,9 +743,9 @@ def _next_step(sequence: Sequence) -> int:
 
     # Main window's subtitle
     subtitle = (
-        f"Mem. : {get_cue(sequence.steps[sequence.position]).memory} "
+        f"Mem. : {get_cue(sequence.steps[sequence.position]).number} "
         f"{sequence.steps[sequence.position].text} - Next Mem. : "
-        f"{get_cue(sequence.steps[next_step]).memory} "
+        f"{get_cue(sequence.steps[next_step]).number} "
         f"{sequence.steps[next_step].text}"
     )
 
@@ -804,7 +804,7 @@ class ThreadGoBack(threading.Thread):
         self.old_channels_levels[user_mask] = user_levels[user_mask]
 
     def _finalize_goback(self, prev_step: int) -> None:
-        """Finish load memory after sequence transition"""
+        """Finish load cue after sequence transition"""
         target_cue = get_cue(self.sequence.steps[prev_step])
 
         # Block-copy levels to sequential dmx levels
@@ -823,9 +823,9 @@ class ThreadGoBack(threading.Thread):
         self.sequence.position = prev_step
 
         subtitle = (
-            f"Mem. : {get_cue(self.sequence.steps[prev_step]).memory} "
+            f"Mem. : {get_cue(self.sequence.steps[prev_step]).number} "
             f"{self.sequence.steps[prev_step].text} - Next Mem. : "
-            f"{get_cue(self.sequence.steps[prev_step + 1]).memory} "
+            f"{get_cue(self.sequence.steps[prev_step + 1]).number} "
             f"{self.sequence.steps[prev_step + 1].text}"
         )
 

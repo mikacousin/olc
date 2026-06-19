@@ -99,10 +99,10 @@ class OlcWriter(WriteFile):
             "cues": {},
         }
         for index, step in enumerate(sequence.steps):
-            if not step.cue or step.cue.memory == 0:
+            if not step.cue or step.cue.number == 0:
                 continue
             self.data["sequences"][seq_index]["steps"][index] = {
-                "cue": step.cue.memory,
+                "cue": step.cue.number,
                 "time_in": step.time_in,
                 "time_out": step.time_out,
             }
@@ -124,7 +124,7 @@ class OlcWriter(WriteFile):
                     ] = {"delay": times.delay, "time": times.time}
             if step.text:
                 self.data["sequences"][seq_index]["steps"][index]["label"] = step.text
-            self.data["sequences"][seq_index]["cues"][step.cue.memory] = {
+            self.data["sequences"][seq_index]["cues"][step.cue.number] = {
                 "label": step.cue.text,
                 "channels": step.cue.channels,
             }
@@ -132,7 +132,7 @@ class OlcWriter(WriteFile):
     def _cues(self) -> None:
         self.data["cues"] = {}
         for cue in self.lightshow.cues:
-            self.data["cues"][cue.memory] = {
+            self.data["cues"][cue.number] = {
                 "label": cue.text,
                 "channels": cue.channels,
             }
@@ -174,7 +174,7 @@ class OlcWriter(WriteFile):
                         "page": page,
                         "number": index,
                         "type": content_type,
-                        "contents": fader.contents.memory,
+                        "contents": fader.contents.number,
                         "text": fader.text,
                     }
                 elif content_type == FaderType.MAIN:

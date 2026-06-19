@@ -162,13 +162,13 @@ class FaderEdit(Gtk.Box):
         vbox.set_border_width(5)
         for cue in self.lightshow.cues:
             button = Gtk.ModelButton()
-            button.set_label(f"{cue.memory} : {cue.text}")
+            button.set_label(f"{cue.number} : {cue.text}")
             button.connect(
-                "clicked", self._on_contents_changed, FaderType.PRESET, cue.memory
+                "clicked", self._on_contents_changed, FaderType.PRESET, cue.number
             )
             vbox.add(button)
             if cue is fader.contents:
-                self.contents_button.set_label(f"{cue.memory} : {cue.text}")
+                self.contents_button.set_label(f"{cue.number} : {cue.text}")
         self._contents_popup(vbox)
 
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:

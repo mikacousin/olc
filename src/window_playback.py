@@ -234,11 +234,11 @@ class MainPlaybackView(Gtk.Notebook):
                 )
             else:
                 cue = lightshow.main_playback.steps[i].cue
-                cue_memory = str(cue.memory) if cue is not None else ""
+                cue_number = str(cue.number) if cue is not None else ""
                 self.cues_liststore1.append(
                     [
                         str(i),
-                        cue_memory,
+                        cue_number,
                         str(lightshow.main_playback.steps[i].text),
                         wait,
                         d_out,

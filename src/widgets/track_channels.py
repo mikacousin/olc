@@ -59,19 +59,19 @@ class TrackChannelsHeader(Gtk.Widget):
         cr.move_to(60 / 2 - w / 2, 60 / 2 - (h - 20) / 2)
         cr.show_text("Step")
 
-        # Draw Memory box
+        # Draw Cue box
         cr.move_to(65, 0)
         area = (65, 125, 0, 60)
         cr.set_source_rgb(0.2, 0.3, 0.2)
         rounded_rectangle_fill(cr, area, self.radius)
 
-        # Draw Memory text
+        # Draw Cue text
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Memory")
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents("Cue")
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-        cr.show_text("Memory")
+        cr.show_text("Cue")
 
         # Draw Text box
         cr.move_to(130, 0)
@@ -141,7 +141,7 @@ class TrackChannelsWidget(Gtk.Widget):
     def __init__(
         self,
         step: int,
-        memory: float,
+        number: float,
         text: str,
         levels: list[int],
         tab: TrackChannelsTab,
@@ -150,7 +150,7 @@ class TrackChannelsWidget(Gtk.Widget):
         super().__init__()
 
         self.step = step
-        self.memory = memory
+        self.number = number
         self.text = text
         self.levels = levels
         self.width = 535 + (len(self.levels) * 65)
@@ -245,13 +245,13 @@ class TrackChannelsWidget(Gtk.Widget):
         else:
             cr.set_source_rgb(0.3, 0.3, 0.3)
         rounded_rectangle_fill(cr, area, self.radius)
-        # Draw Memory number
+        # Draw Cue number
         cr.set_source_rgb(0.9, 0.9, 0.9)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(12)
-        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.memory))
+        (_x, _y, w, h, _dx, _dy) = cr.text_extents(str(self.number))
         cr.move_to(65 + (60 / 2 - w / 2), 60 / 2 - (h - 20) / 2)
-        cr.show_text(str(self.memory))
+        cr.show_text(str(self.number))
 
     def _draw_text_box(self, cr: cairo.Context) -> None:
         """Draw text box

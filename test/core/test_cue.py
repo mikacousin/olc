@@ -19,9 +19,9 @@ from olc.cue import Cue
 
 def test_cue_channels_initialization() -> None:
     """Test that Cue initializes correctly with channels."""
-    cue = Cue(sequence=1, memory=1.0, channels={1: 100, 2: 200}, text="Test Cue")
+    cue = Cue(sequence=1, number=1.0, channels={1: 100, 2: 200}, text="Test Cue")
     assert cue.sequence == 1
-    assert cue.memory == 1.0
+    assert cue.number == 1.0
     assert cue.text == "Test Cue"
     assert cue.channels[1] == 100
     assert cue.channels[2] == 200
@@ -32,7 +32,7 @@ def test_cue_channels_initialization() -> None:
 
 def test_cue_channels_setitem() -> None:
     """Test setting item in channels dictionary directly."""
-    cue = Cue(sequence=1, memory=1.0)
+    cue = Cue(sequence=1, number=1.0)
     # Trigger cached array creation
     assert cue.channels_array[4] == 0
 
@@ -44,7 +44,7 @@ def test_cue_channels_setitem() -> None:
 
 def test_cue_channels_delitem() -> None:
     """Test deleting item from channels dictionary."""
-    cue = Cue(sequence=1, memory=1.0, channels={5: 150})
+    cue = Cue(sequence=1, number=1.0, channels={5: 150})
     # Trigger cached array creation
     assert cue.channels_array[4] == 150
 
@@ -56,7 +56,7 @@ def test_cue_channels_delitem() -> None:
 
 def test_cue_channels_clear() -> None:
     """Test clearing the channels dictionary."""
-    cue = Cue(sequence=1, memory=1.0, channels={5: 150, 10: 200})
+    cue = Cue(sequence=1, number=1.0, channels={5: 150, 10: 200})
     assert cue.channels_array[4] == 150
     assert cue.channels_array[9] == 200
 
@@ -68,7 +68,7 @@ def test_cue_channels_clear() -> None:
 
 def test_cue_channels_update() -> None:
     """Test updating the channels dictionary."""
-    cue = Cue(sequence=1, memory=1.0, channels={5: 150})
+    cue = Cue(sequence=1, number=1.0, channels={5: 150})
     assert cue.channels_array[4] == 150
 
     cue.channels.update({5: 200, 10: 250})
@@ -80,7 +80,7 @@ def test_cue_channels_update() -> None:
 
 def test_cue_channels_reassignment() -> None:
     """Test reassigning the channels dictionary entirely."""
-    cue = Cue(sequence=1, memory=1.0, channels={5: 150})
+    cue = Cue(sequence=1, number=1.0, channels={5: 150})
     assert cue.channels_array[4] == 150
 
     cue.channels = {10: 180}

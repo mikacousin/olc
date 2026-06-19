@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from olc.core.app import CoreApplication
+from olc.cue import Cue, Cues
 
 
 def test_cue_insert_update_set_level() -> None:
@@ -30,7 +31,7 @@ def test_cue_insert_update_set_level() -> None:
     app = CoreApplication(settings)
 
     # Clear cues list for testing
-    app.lightshow.cues = []
+    app.lightshow.cues.clear()
 
     # Track events
     created_events = []
@@ -42,7 +43,7 @@ def test_cue_insert_update_set_level() -> None:
     # 1. Test cue.insert (empty cue)
     app.action_registry.execute("cue.insert", 1.0, 0)
     assert len(app.lightshow.cues) == 1
-    assert app.lightshow.cues[0].memory == 1.0
+    assert app.lightshow.cues[0].number == 1.0
     assert app.lightshow.cues[0].sequence == 0
     assert app.lightshow.cues[0].channels == {}
     assert created_events == [(0, 1.0)]
@@ -54,7 +55,7 @@ def test_cue_insert_update_set_level() -> None:
     # 3. Test redo cue.insert
     app.history.redo()
     assert len(app.lightshow.cues) == 1
-    assert app.lightshow.cues[0].memory == 1.0
+    assert app.lightshow.cues[0].number == 1.0
     assert created_events == [(0, 1.0), (0, 1.0)]
 
     # 4. Test cue.update
@@ -92,7 +93,7 @@ def test_cue_rename_and_copy() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.lightshow.cues = []
+    app.lightshow.cues.clear()
     created_events = []
     deleted_events = []
     updated_events = []
@@ -124,7 +125,7 @@ def test_cue_rename_and_copy() -> None:
     updated_events.clear()
     app.action_registry.execute("cue.copy", 1.0, 2.0, 0)
     assert len(app.lightshow.cues) == 2
-    assert app.lightshow.cues[1].memory == 2.0
+    assert app.lightshow.cues[1].number == 2.0
     assert app.lightshow.cues[1].channels == {1: 200, 2: 128}
     assert created_events == [(0, 2.0)]
     assert updated_events == [(0, 2.0)]
@@ -139,7 +140,7 @@ def test_cue_rename_and_copy() -> None:
     created_events.clear()
     app.history.redo()
     assert len(app.lightshow.cues) == 2
-    assert app.lightshow.cues[1].memory == 2.0
+    assert app.lightshow.cues[1].number == 2.0
     assert app.lightshow.cues[1].channels == {1: 200, 2: 128}
     assert created_events == [(0, 2.0)]
 
@@ -169,7 +170,7 @@ def test_cue_delete() -> None:
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    app.lightshow.cues = []
+    app.lightshow.cues.clear()
     created_events = []
     deleted_events = []
 
@@ -190,7 +191,7 @@ def test_cue_delete() -> None:
     created_events.clear()
     app.history.undo()
     assert len(app.lightshow.cues) == 1
-    assert app.lightshow.cues[0].memory == 2.0
+    assert app.lightshow.cues[0].number == 2.0
     assert app.lightshow.cues[0].channels == {3: 50}
     assert created_events == [(0, 2.0)]
 
@@ -205,7 +206,7 @@ def test_cue_actions_errors() -> None:
     """Test validation errors for cue actions."""
     settings = MagicMock()
     app = CoreApplication(settings)
-    app.lightshow.cues = []
+    app.lightshow.cues.clear()
 
     # Try update non-existent cue
     with pytest.raises(ValueError, match="Cue 1.0 \\(seq 0\\) does not exist"):
@@ -219,3 +220,77 @@ def test_cue_actions_errors() -> None:
     app.action_registry.execute("cue.insert", 1.0, 0)
     with pytest.raises(ValueError, match="Cue 1.0 \\(seq 0\\) already exists"):
         app.action_registry.execute("cue.insert", 1.0, 0)
+
+
+def test_cues_container() -> None:
+    """Test Cues container class functionality (sorting, uniqueness, collection
+    methods).
+    """
+    cues = Cues()
+    assert len(cues) == 0
+
+    # 1. Add cues in unsorted order
+    cue_2 = Cue(sequence=0, number=2.0)
+    cue_1 = Cue(sequence=0, number=1.0)
+    cue_3 = Cue(sequence=0, number=3.0)
+
+    cues.add(cue_2)
+    cues.add(cue_1)
+    cues.add(cue_3)
+
+    # Verify length
+    assert len(cues) == 3
+
+    # Verify sorting (by number)
+    assert cues[0] == cue_1
+    assert cues[1] == cue_2
+    assert cues[2] == cue_3
+
+    # Verify iteration
+    iterated = list(cues)
+    assert iterated == [cue_1, cue_2, cue_3]
+
+    # 2. Test get method
+    assert cues.get(2.0, 0) == cue_2
+    assert cues.get(4.0, 0) is None
+    assert cues.get(2.0, 1) is None  # Wrong sequence
+
+    # 3. Test uniqueness constraint
+    duplicate_cue = Cue(sequence=0, number=2.0)
+    with pytest.raises(ValueError, match="Cue 2.0 \\(seq 0\\) already exists"):
+        cues.add(duplicate_cue)
+
+    # 4. Test remove
+    cues.remove(cue_2)
+    assert len(cues) == 2
+    assert cues.get(2.0, 0) is None
+    assert cues[0] == cue_1
+    assert cues[1] == cue_3
+
+    # 5. Test pop
+    popped = cues.pop(1)
+    assert popped == cue_3
+    assert len(cues) == 1
+    assert cues[0] == cue_1
+
+    # 6. Test append (alias for add)
+    cue_4 = Cue(sequence=0, number=4.0)
+    cues.append(cue_4)
+    assert len(cues) == 2
+    assert cues[1] == cue_4
+
+    # 7. Test insert (alias for add)
+    cue_1_5 = Cue(sequence=0, number=1.5)
+    cues.insert(0, cue_1_5)  # Index is ignored, sorted order maintained
+    assert len(cues) == 3
+    assert cues[1] == cue_1_5
+
+    # 8. Test delitem (deletion by index/slice)
+    del cues[1]
+    assert len(cues) == 2
+    assert cues[0] == cue_1
+    assert cues[1] == cue_4
+
+    # 9. Test clear
+    cues.clear()
+    assert len(cues) == 0

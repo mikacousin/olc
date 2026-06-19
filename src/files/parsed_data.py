@@ -205,14 +205,14 @@ class ParsedData:
         for preset_number, values in self.data["cues"].items():
             channels = values.get("channels")
             label = values.get("label")
-            for cue in self.lightshow.cues:
-                if cue.memory == preset_number:
-                    cue.channels = channels
-                    cue.text = label
-                    break
+            cue = self.lightshow.cues.get(preset_number, 0)
+            if cue is not None:
+                cue.channels = channels
+                cue.text = label
             else:
                 cue = Cue(0, preset_number, channels, label)
-                self._insert_cue(cue)
+                self.lightshow.cues.add(cue)
+                self.lightshow.main_playback.update_channels()
 
     def import_main_playback(self, sequence: int, action: Action) -> None:
         """Import Main Playback
@@ -233,16 +233,15 @@ class ParsedData:
                 "channels"
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
-            for cue in self.lightshow.cues:
-                if cue.memory == cue_number:
-                    # If cue exist, update it
-                    cue.channels = cue_channels
-                    cue.text = cue_text
-                    break
+            cue = self.lightshow.cues.get(cue_number, 0)
+            if cue is not None:
+                # If cue exist, update it
+                cue.channels = cue_channels
+                cue.text = cue_text
             else:
                 # Else, create it
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
-                self.lightshow.cues.append(cue)
+                self.lightshow.cues.add(cue)
             channel_time = {}
             if values.get("channel_time"):
                 for channel, times in values.get("channel_time").items():
@@ -283,7 +282,8 @@ class ParsedData:
                 )
             else:
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
-                self._insert_cue(cue)
+                self.lightshow.cues.add(cue)
+                self.lightshow.main_playback.update_channels()
                 channel_time = {}
                 if values.get("channel_time"):
                     for channel, times in values.get("channel_time").items():
@@ -372,7 +372,7 @@ class ParsedData:
             ]
             cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
             for cue in self.lightshow.chasers[index].cues:
-                if cue.memory == cue_number:
+                if cue.number == cue_number:
                     # If cue exist, update it
                     cue.channels = cue_channels
                     cue.text = cue_text
@@ -400,24 +400,3 @@ class ParsedData:
                 text=values.get("label", ""),
             )
             self.lightshow.chasers[index].add_step(step)
-
-    def _insert_cue(self, cue: Cue) -> None:
-        """Insert cue in list cues
-
-        Args:
-            cue: Cue to insert
-        """
-        cue_number = cue.memory
-        # Find cue position
-        found = False
-        _index = 0
-        for _index, cue_seq in enumerate(self.lightshow.cues):
-            if cue_seq.memory > cue_number:
-                found = True
-                break
-        if not found:
-            # Cue is at the end
-            _index += 1
-        # Insert cue
-        self.lightshow.cues.insert(_index, cue)
-        self.lightshow.main_playback.update_channels()

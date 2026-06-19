@@ -23,7 +23,7 @@ class RepeatedTimer:
     def __init__(
         self, interval: float, function: Callable, *args: object, **kwargs: object
     ) -> None:
-        self._timer = None
+        self._timer: threading.Timer | None = None
         self.interval = interval
         self.function = function
         self.args = args

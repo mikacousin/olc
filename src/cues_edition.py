@@ -17,9 +17,8 @@ from __future__ import annotations
 import typing
 from typing import Callable
 
-import numpy as np
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_CHANNELS, is_float
+from olc.define import MAX_CHANNELS, is_float, is_int
 from olc.dialog import ConfirmationDialog
 from olc.widgets.channels_view import VIEW_MODES, ChannelsView
 
@@ -47,8 +46,7 @@ class CuesEditionTab(Gtk.Paned):
         self.window = window
         self.settings = settings
 
-        # Channels modified by user
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
+        # Cues tab initialization
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(500)
@@ -63,7 +61,7 @@ class CuesEditionTab(Gtk.Paned):
 
         for mem in self.lightshow.cues:
             channels = len(mem.channels)
-            self.liststore.append([str(mem.memory), mem.text, channels])
+            self.liststore.append([str(mem.number), mem.text, channels])
 
         self.filter = self.liststore.filter_new()
 
@@ -71,7 +69,7 @@ class CuesEditionTab(Gtk.Paned):
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_cue_changed)
 
-        for i, column_title in enumerate(["Memory", "Text", "Channels"]):
+        for i, column_title in enumerate(["Cue", "Text", "Channels"]):
             renderer = Gtk.CellRendererText()
             if i == 1:
                 renderer.set_property("editable", True)
@@ -90,15 +88,49 @@ class CuesEditionTab(Gtk.Paned):
     def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Selected Cue"""
         self.channels_view.flowbox.unselect_all()
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
         self.channels_view.update()
 
     def refresh(self) -> None:
-        """Refresh display"""
-        self.liststore.clear()
+        """Refresh display by syncing the liststore without clearing it entirely"""
+        actual_cues = {str(mem.number): mem for mem in self.lightshow.cues}
+        store = self.liststore
+        it = store.get_iter_first()
+        existing_memories = set()
+
+        while isinstance(it, Gtk.TreeIter):
+            mem_str = store.get_value(it, 0)
+            if mem_str in actual_cues:
+                cue = actual_cues[mem_str]
+                nb_chan = len(cue.channels)
+
+                curr_text = store.get_value(it, 1)
+                curr_chan = store.get_value(it, 2)
+
+                if curr_text != cue.text:
+                    store.set_value(it, 1, cue.text)
+                if curr_chan != nb_chan:
+                    store.set_value(it, 2, nb_chan)
+
+                existing_memories.add(mem_str)
+                it = store.iter_next(it)
+            else:
+                it = store.remove(it)
+
         for mem in self.lightshow.cues:
-            channels = len(mem.channels)
-            self.liststore.append([str(mem.memory), mem.text, channels])
+            mem_str = str(mem.number)
+            if mem_str not in existing_memories:
+                nb_chan = len(mem.channels)
+                insert_idx = 0
+                it_insert = store.get_iter_first()
+                while isinstance(it_insert, Gtk.TreeIter):
+                    curr_mem_val = float(store.get_value(it_insert, 0))
+                    if mem.number < curr_mem_val:
+                        break
+                    insert_idx += 1
+                    it_insert = store.iter_next(it_insert)
+
+                store.insert(insert_idx, [mem_str, mem.text, nb_chan])
+
         self.channels_view.update()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
@@ -108,7 +140,7 @@ class CuesEditionTab(Gtk.Paned):
     def _text_edited(self, _widget: Gtk.CellRendererText, path: str, text: str) -> None:
         cue = self.lightshow.cues[int(path)]
         self.window.app.core.action_registry.execute(
-            "cue.rename", cue.memory, cue.sequence, text
+            "cue.rename", cue.number, cue.sequence, text
         )
 
     def on_key_press_event(
@@ -178,37 +210,39 @@ class CuesEditionTab(Gtk.Paned):
         self.channels_view.update()
 
     def _keypress_u(self) -> None:
-        """Update Memory"""
+        """Update Cue"""
         self.channels_view.flowbox.unselect_all()
 
-        # Find selected memory
+        # Find selected cue
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
-            # Memory's channels
+            # Cue's channels
             cue = self.lightshow.cues[row]
             # Update levels and count channels
             channels_dict = {}
+            cue_editor = self.lightshow.cues.cue_editor
+            temp_levels = cue_editor.get_levels(cue.number, cue.sequence)
             for chan in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(chan + 1)
                 if channel_widget is not None:
-                    if (chan + 1 in cue.channels) or (self.user_channels[chan] != -1):
+                    if (chan + 1 in cue.channels) or (temp_levels[chan] != -1):
                         channels_dict[chan + 1] = channel_widget.level
             self.window.app.core.action_registry.execute(
-                "cue.update", cue.memory, cue.sequence, channels_dict
+                "cue.update", cue.number, cue.sequence, channels_dict
             )
 
     def _keypress_delete(self) -> None:
-        """Deletes selected Memory"""
+        """Deletes selected Cue"""
         self.channels_view.flowbox.unselect_all()
 
-        # Find selected memory
+        # Find selected cue
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             # Confirm Delete
             dialog = ConfirmationDialog(
-                f"Delete memory {self.lightshow.cues[row].memory} ?", self.window
+                f"Delete cue {self.lightshow.cues[row].number} ?", self.window
             )
             response = dialog.run()
             if response == Gtk.ResponseType.CANCEL:
@@ -217,7 +251,7 @@ class CuesEditionTab(Gtk.Paned):
             dialog.destroy()
             cue = self.lightshow.cues[row]
             self.window.app.core.action_registry.execute(
-                "cue.delete", cue.memory, cue.sequence
+                "cue.delete", cue.number, cue.sequence
             )
 
     def _update_live_view_channels(self, i: int) -> None:
@@ -229,7 +263,7 @@ class CuesEditionTab(Gtk.Paned):
                 widget.queue_draw()
 
     def _keypress_r(self) -> bool:
-        """Records a copy of the current Memory with a new number
+        """Records a copy of the current Cue with a new number
 
         Returns:
             True or False
@@ -241,20 +275,20 @@ class CuesEditionTab(Gtk.Paned):
         if not mem:
             return False
 
-        # Find selected memory
+        # Find selected cue
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
             src_cue = self.lightshow.cues[row]
             self.window.app.core.action_registry.execute(
-                "cue.copy", src_cue.memory, mem, src_cue.sequence
+                "cue.copy", src_cue.number, mem, src_cue.sequence
             )
 
         self.window.commandline.set_string("")
         return True
 
     def _keypress_insert(self) -> bool:
-        """Insert a new Memory
+        """Insert a new Cue
 
         Returns:
             True or False
@@ -264,15 +298,15 @@ class CuesEditionTab(Gtk.Paned):
             self._insert_cue_on_next_free_number()
             return True
 
-        # Insert memory with the given number
+        # Insert cue with the given number
         mem = float(keystring)
 
-        # Memory already exist ?
+        # Cue already exist ?
         for item in self.lightshow.cues:
-            if item.memory == mem:
+            if item.number == mem:
                 return False
 
-        # Find selected memory
+        # Find selected cue
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
@@ -294,23 +328,23 @@ class CuesEditionTab(Gtk.Paned):
         if len(self.lightshow.cues) > 1:
             for i, _ in enumerate(self.lightshow.cues[:-1]):
                 if (
-                    int(self.lightshow.cues[i + 1].memory)
-                    - int(self.lightshow.cues[i].memory)
+                    int(self.lightshow.cues[i + 1].number)
+                    - int(self.lightshow.cues[i].number)
                     > 1
                 ):
-                    cue_nb = self.lightshow.cues[i].memory + 1
+                    cue_nb = self.lightshow.cues[i].number + 1
                     break
         elif len(self.lightshow.cues) == 1:
-            # Just one memory
-            cue_nb = self.lightshow.cues[0].memory + 1
+            # Just one cue
+            cue_nb = self.lightshow.cues[0].number + 1
         else:
             # The list is empty
             cue_nb = 1.0
         # Free number is at the end
         if not cue_nb:
-            cue_nb = self.lightshow.cues[-1].memory + 1
+            cue_nb = self.lightshow.cues[-1].number + 1
 
-        # Find selected memory for channels levels
+        # Find selected cue for channels levels
         path, _focus_column = self.treeview.get_cursor()
         if path:
             row = path.get_indices()[0]
@@ -343,28 +377,47 @@ class CueChannelsView(ChannelsView):
         )
 
     def set_channel_level(self, channel: int, level: int) -> None:
-        """Set level channel
+        """Set level channel via temporary action.
 
         Args:
             channel: Channel number (1 - MAX_CHANNELS)
             level: DMX level (0 - 255)
         """
-        if self.tabs is None:
+        if self.tabs is None or self.lightshow is None or self.window is None:
             return
         memories_tab = self.tabs.tabs.get("memories")
         if memories_tab is None:
             return
         tab = typing.cast(CuesEditionTab, memories_tab)
-        tab.user_channels[channel - 1] = level
+        path, _focus_column = tab.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            cue = self.lightshow.cues[row]
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels", cue.number, cue.sequence, {channel: level}
+            )
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change channels level with a wheel
+        """Change channels level with a wheel using a group action.
 
         Args:
             step: Step level
             direction: Up or Down
         """
+        if self.tabs is None or self.lightshow is None or self.window is None:
+            return
+        memories_tab = self.tabs.tabs.get("memories")
+        if memories_tab is None:
+            return
+        tab = typing.cast(CuesEditionTab, memories_tab)
+        path, _focus_column = tab.treeview.get_cursor()
+        if not path:
+            return
+        row = path.get_indices()[0]
+        cue = self.lightshow.cues[row]
+
         channels = self.get_selected_channels()
+        channels_dict = {}
         for channel in channels:
             if channel_widget := self.get_channel_widget(channel):
                 level = channel_widget.level
@@ -372,10 +425,122 @@ class CueChannelsView(ChannelsView):
                     level = min(level + step, 255)
                 elif direction == Gdk.ScrollDirection.DOWN:
                     level = max(level - step, 0)
-                channel_widget.level = level
-                channel_widget.next_level = level
-                channel_widget.queue_draw()
-                self.set_channel_level(channel, level)
+                channels_dict[channel] = level
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels", cue.number, cue.sequence, channels_dict
+            )
+
+    def at_level(self) -> None:
+        """Channels at level using a group action."""
+        if (
+            not self.window
+            or not self.settings
+            or self.tabs is None
+            or self.lightshow is None
+        ):
+            return
+        memories_tab = self.tabs.tabs.get("memories")
+        if memories_tab is None:
+            return
+        tab = typing.cast(CuesEditionTab, memories_tab)
+        path, _focus_column = tab.treeview.get_cursor()
+        if not path:
+            return
+        row = path.get_indices()[0]
+        cue = self.lightshow.cues[row]
+
+        keystring = self.window.commandline.get_string()
+        if not is_int(keystring):
+            return
+        level = int(keystring)
+        if self.settings.get_boolean("percent"):
+            level = int(round((level / 100) * 255))
+        level = min(level, 255)
+        channels = self.get_selected_channels()
+        channels_dict = {channel: level for channel in channels}
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels", cue.number, cue.sequence, channels_dict
+            )
+
+    def level_plus(self) -> None:
+        """Channels +% using a group action."""
+        if (
+            not self.settings
+            or self.tabs is None
+            or self.lightshow is None
+            or self.window is None
+        ):
+            return
+        memories_tab = self.tabs.tabs.get("memories")
+        if memories_tab is None:
+            return
+        tab = typing.cast(CuesEditionTab, memories_tab)
+        path, _focus_column = tab.treeview.get_cursor()
+        if not path:
+            return
+        row = path.get_indices()[0]
+        cue = self.lightshow.cues[row]
+
+        step_level = self.settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        channels_dict = {}
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            if channel_widget:
+                level = channel_widget.level
+                if self.settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) + step_level
+                    new_level = min(round((percent_level / 100) * 256), 255)
+                else:
+                    new_level = min(level + step_level, 255)
+                channels_dict[channel] = new_level
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels", cue.number, cue.sequence, channels_dict
+            )
+
+    def level_minus(self) -> None:
+        """Channels -% using a group action."""
+        if (
+            not self.settings
+            or self.tabs is None
+            or self.lightshow is None
+            or self.window is None
+        ):
+            return
+        memories_tab = self.tabs.tabs.get("memories")
+        if memories_tab is None:
+            return
+        tab = typing.cast(CuesEditionTab, memories_tab)
+        path, _focus_column = tab.treeview.get_cursor()
+        if not path:
+            return
+        row = path.get_indices()[0]
+        cue = self.lightshow.cues[row]
+
+        step_level = self.settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        channels_dict = {}
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            if channel_widget:
+                level = channel_widget.level
+                if self.settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) - step_level
+                    new_level = max(round((percent_level / 100) * 256), 0)
+                else:
+                    new_level = max(level - step_level, 0)
+                channels_dict[channel] = new_level
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels", cue.number, cue.sequence, channels_dict
+            )
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display
@@ -423,9 +588,9 @@ class CueChannelsView(ChannelsView):
             or self.lightshow is None
         ):
             return False
-        user_channels = typing.cast(
-            CuesEditionTab, self.tabs.tabs["memories"]
-        ).user_channels
+        cue_editor = self.lightshow.cues.cue_editor
+        cue = self.lightshow.cues[row]
+        user_channels = cue_editor.get_levels(cue.number, cue.sequence)
         channel_index = child.get_index()
         channel_widget = child.get_child()
         if channel_widget is None:
@@ -471,9 +636,9 @@ class CueChannelsView(ChannelsView):
             or self.lightshow is None
         ):
             return False
-        user_channels = typing.cast(
-            CuesEditionTab, self.tabs.tabs["memories"]
-        ).user_channels
+        cue_editor = self.lightshow.cues.cue_editor
+        cue = self.lightshow.cues[row]
+        user_channels = cue_editor.get_levels(cue.number, cue.sequence)
         channel_index = child.get_index()
         channel_widget = child.get_child()
         if channel_widget is None:

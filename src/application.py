@@ -387,7 +387,7 @@ class Application(Gtk.Application):
         self.core.lightshow.main_playback.position = 0
         self.core.lightshow.main_playback.update_channels()
         # Delete cues, groups, chasers, faders
-        del self.core.lightshow.cues[:]
+        self.core.lightshow.cues.clear()
         self.core.lightshow.groups.clear()
         del self.core.lightshow.chasers[:]
         self.core.lightshow.fader_bank.reset_faders()

@@ -126,11 +126,11 @@ class CrossFade:
         # Update user interface
         cue = self.app.core.lightshow.main_playback.steps[
             self.app.core.lightshow.main_playback.position
-        ].cue.memory
+        ].cue.number
         cue_text = self.app.core.lightshow.main_playback.steps[
             self.app.core.lightshow.main_playback.position
         ].text
-        next_cue = self.app.core.lightshow.main_playback.steps[next_step].cue.memory
+        next_cue = self.app.core.lightshow.main_playback.steps[next_step].cue.number
         subtitle = (
             f"Mem. :{cue} {cue_text} "
             f"- Next Mem. : {next_cue} "

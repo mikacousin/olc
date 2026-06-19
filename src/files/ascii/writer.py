@@ -62,9 +62,9 @@ class AsciiWriter(WriteFile):
         self.stream.write(bytes("! Main sequence\n\n", "ascii"))
         self.stream.write(bytes("$SEQUENCE 1 0\n\n", "ascii"))
         for step in self.lightshow.main_playback.steps:
-            if not step.cue or step.cue.memory == 0:
+            if not step.cue or step.cue.number == 0:
                 continue
-            self.stream.write(bytes(f"CUE {step.cue.memory}\n", "ascii"))
+            self.stream.write(bytes(f"CUE {step.cue.number}\n", "ascii"))
             # Save integers as integers
             time_out = self._float_to_str(step.time_out)
             delay_out = self._float_to_str(step.delay_out)
@@ -97,7 +97,7 @@ class AsciiWriter(WriteFile):
             self._ascii_text(chaser.text)
             self.stream.write(bytes(f"$$TEXT {chaser.text}\n\n", "utf8"))
             for step in chaser.steps:
-                if not step.cue or step.cue.memory == 0:
+                if not step.cue or step.cue.number == 0:
                     continue
                 # Save integers as integers
                 time_out = self._float_to_str(step.time_out)
@@ -106,7 +106,7 @@ class AsciiWriter(WriteFile):
                 delay_in = self._float_to_str(step.delay_in)
                 wait = self._float_to_str(step.wait)
                 self.stream.write(
-                    bytes(f"$CUE {chaser.index} {step.cue.memory}\n", "ascii")
+                    bytes(f"$CUE {chaser.index} {step.cue.number}\n", "ascii")
                 )
                 self.stream.write(bytes(f"DOWN {time_out} {delay_out}\n", "ascii"))
                 self.stream.write(bytes(f"UP {time_in} {delay_in}\n", "ascii"))
@@ -199,7 +199,7 @@ class AsciiWriter(WriteFile):
                 elif content_type == FaderType.SEQUENCE:
                     contents = str(fader.contents.index)
                 elif content_type == FaderType.PRESET:
-                    contents = self._float_to_str(fader.contents.memory)
+                    contents = self._float_to_str(fader.contents.number)
                 if content_type not in (FaderType.NONE, FaderType.MAIN):
                     self.stream.write(
                         bytes(

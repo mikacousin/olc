@@ -19,6 +19,7 @@ import typing
 
 from olc.core.group import Groups
 from olc.core.sequence import Sequence
+from olc.cue import Cues
 from olc.curve import Curves
 from olc.define import UNIVERSES
 from olc.fader_bank import FaderBank
@@ -72,7 +73,7 @@ class LightShow(ShowFile):
     app: CoreApplication | None
     curves: Curves
     main_playback: Sequence
-    cues: list
+    cues: Cues
     chasers: list
     groups: Groups
     fader_bank: FaderBank
@@ -88,7 +89,7 @@ class LightShow(ShowFile):
         # Main Playback
         self.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow_type)
         # List of global memories
-        self.cues = []
+        self.cues = Cues(self)
         # List of chasers
         self.chasers = []
         # List of groups
@@ -109,10 +110,7 @@ class LightShow(ShowFile):
         Returns:
             Cue or None
         """
-        for cue in self.cues:
-            if cue.memory == number:
-                return cue
-        return None
+        return self.cues.get(number, 0)
 
     def get_group(self, number: float) -> None | Group:
         """Get Group with his number
@@ -143,7 +141,7 @@ class LightShow(ShowFile):
         """Reset all"""
         lightshow_type = typing.cast("olc.core.lightshow.LightShow", self)
         del self.main_playback.steps[1:]
-        del self.cues[:]
+        self.cues.clear()
         for chaser in self.chasers:
             if chaser.run and chaser.thread:
                 chaser.run = False

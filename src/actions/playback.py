@@ -123,10 +123,10 @@ class SequencePlusAction(Action):
             "next_delay_out": next_step.delay_out if next_step else 0.0,
             "next_wait": next_step.wait if next_step else 0.0,
             "next_channel_time": next_step.channel_time if next_step else False,
-            "cue_memory": get_cue(step).memory if (step and get_cue(step)) else 0.0,
+            "cue_number": get_cue(step).number if (step and get_cue(step)) else 0.0,
             "cue_text": step.text if step else "",
-            "next_cue_memory": (
-                get_cue(next_step).memory if (next_step and get_cue(next_step)) else 0.0
+            "next_cue_number": (
+                get_cue(next_step).number if (next_step and get_cue(next_step)) else 0.0
             ),
             "next_cue_text": next_step.text if next_step else "",
         }
@@ -177,10 +177,10 @@ class SequenceMinusAction(Action):
             "next_delay_out": next_step.delay_out if next_step else 0.0,
             "next_wait": next_step.wait if next_step else 0.0,
             "next_channel_time": next_step.channel_time if next_step else False,
-            "cue_memory": get_cue(step).memory if (step and get_cue(step)) else 0.0,
+            "cue_number": get_cue(step).number if (step and get_cue(step)) else 0.0,
             "cue_text": step.text if step else "",
-            "next_cue_memory": (
-                get_cue(next_step).memory if (next_step and get_cue(next_step)) else 0.0
+            "next_cue_number": (
+                get_cue(next_step).number if (next_step and get_cue(next_step)) else 0.0
             ),
             "next_cue_text": next_step.text if next_step else "",
         }

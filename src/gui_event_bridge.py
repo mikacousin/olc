@@ -68,20 +68,26 @@ class GuiEventBridge:
         )
         self.app.core.subscribe(
             "cue.created",
-            lambda sequence, memory: self._run_idle(
-                self._safe_refresh_cues, sequence, memory
+            lambda sequence, number: self._run_idle(
+                self._safe_refresh_cues, sequence, number
             ),
         )
         self.app.core.subscribe(
             "cue.deleted",
-            lambda sequence, memory: self._run_idle(
-                self._safe_refresh_cues, sequence, memory
+            lambda sequence, number: self._run_idle(
+                self._safe_refresh_cues, sequence, number
             ),
         )
         self.app.core.subscribe(
             "cue.updated",
-            lambda sequence, memory: self._run_idle(
-                self._safe_refresh_cues, sequence, memory
+            lambda sequence, number: self._run_idle(
+                self._safe_refresh_cues, sequence, number
+            ),
+        )
+        self.app.core.subscribe(
+            "cue_editor.changed",
+            lambda sequence, number: self._run_idle(
+                self._safe_refresh_cue_editor, sequence, number
             ),
         )
         self.app.core.subscribe(
@@ -219,7 +225,7 @@ class GuiEventBridge:
                     group_widget.queue_draw()
         return False
 
-    def _safe_refresh_cues(self, sequence: int, memory: float) -> bool:
+    def _safe_refresh_cues(self, sequence: int, number: float) -> bool:
         """Refresh the cues (memories) tab and playback UI safely in the GTK thread.
 
         Returns:
@@ -230,6 +236,18 @@ class GuiEventBridge:
                 memories_tab = typing.cast(
                     "CuesEditionTab", self.app.tabs.tabs["memories"]
                 )
+                path, _ = memories_tab.treeview.get_cursor()
+                if path:
+                    row = path.get_indices()[0]
+                    if 0 <= row < len(memories_tab.lightshow.cues):
+                        selected_cue = memories_tab.lightshow.cues[row]
+                        if (
+                            selected_cue.sequence == sequence
+                            and selected_cue.number == number
+                        ):
+                            memories_tab.lightshow.cues.cue_editor.clear(
+                                number, sequence
+                            )
                 memories_tab.refresh()
             if self.app.tabs.tabs.get("sequences") is not None:
                 sequences_tab = typing.cast(
@@ -245,25 +263,52 @@ class GuiEventBridge:
             self.app.window.playback.update_sequence_display()
 
         # Update Live View if the modified cue is active
-        if self.app.window and self.app.window.live_view:
-            playback = self.app.core.lightshow.main_playback
-            if playback.steps and playback.position + 1 < len(playback.steps):
-                active_cue = playback.steps[playback.position + 1].cue
-                if (
-                    active_cue
-                    and active_cue.sequence == sequence
-                    and active_cue.memory == memory
-                ):
-                    for channel in range(1, MAX_CHANNELS + 1):
-                        widget = (
-                            self.app.window.live_view.channels_view.get_channel_widget(
-                                channel
-                            )
-                        )
-                        if widget:
-                            widget.next_level = active_cue.get_level(channel)
-                            widget.queue_draw()
+        self._update_live_view_active_cue(sequence, number)
         return False
+
+    def _safe_refresh_cue_editor(self, sequence: int, number: float) -> bool:
+        """Refresh the channel view in memories tab when temporary overrides change.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("memories") is not None:
+                memories_tab = typing.cast(
+                    "CuesEditionTab", self.app.tabs.tabs["memories"]
+                )
+                path, _ = memories_tab.treeview.get_cursor()
+                if path:
+                    row = path.get_indices()[0]
+                    if 0 <= row < len(memories_tab.lightshow.cues):
+                        selected_cue = memories_tab.lightshow.cues[row]
+                        if (
+                            selected_cue.sequence == sequence
+                            and selected_cue.number == number
+                        ):
+                            memories_tab.channels_view.update()
+        return False
+
+    def _update_live_view_active_cue(self, sequence: int, number: float) -> None:
+        """Update live view channels if the modified cue is active in playback."""
+        if not (self.app.window and self.app.window.live_view):
+            return
+        playback = self.app.core.lightshow.main_playback
+        if not (playback.steps and playback.position + 1 < len(playback.steps)):
+            return
+        active_cue = playback.steps[playback.position + 1].cue
+        if not (
+            active_cue
+            and active_cue.sequence == sequence
+            and active_cue.number == number
+        ):
+            return
+
+        for channel in range(1, MAX_CHANNELS + 1):
+            widget = self.app.window.live_view.channels_view.get_channel_widget(channel)
+            if widget:
+                widget.next_level = active_cue.get_level(channel)
+                widget.queue_draw()
 
     def _safe_refresh_patch(self) -> bool:
         """Refresh patch UI tabs and live channels view safely in the GTK thread.
@@ -597,9 +642,9 @@ class GuiEventBridge:
             seq.queue_draw()
 
         # Update Window's subtitle
-        cue_mem = feedback.get("cue_memory", 0.0)
+        cue_mem = feedback.get("cue_number", 0.0)
         cue_txt = feedback.get("cue_text", "")
-        next_mem = feedback.get("next_cue_memory", 0.0)
+        next_mem = feedback.get("next_cue_number", 0.0)
         next_txt = feedback.get("next_cue_text", "")
 
         subtitle = f"Mem. : {cue_mem} {cue_txt} - Next Mem. : {next_mem} {next_txt}"
