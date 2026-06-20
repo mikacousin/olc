@@ -23,6 +23,7 @@ from olc.curve import LimitCurve, PointsCurve
 from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.gtk3.fader import FaderTab
+from olc.midi.fader import FaderState
 
 if typing.TYPE_CHECKING:
     from olc.group import Group
@@ -171,6 +172,28 @@ class GuiEventBridge:
         self.app.core.subscribe(
             "playback.goback_completed",
             lambda data: self._run_idle(self._on_playback_goback_completed, data),
+        )
+        self.app.core.subscribe(
+            "channels.selected_changed",
+            lambda selected: self._run_idle(
+                self._on_channels_selected_changed, selected
+            ),
+        )
+        self.app.core.subscribe(
+            "fader.page_changed",
+            lambda page: self._run_idle(self._on_fader_page_changed, page),
+        )
+        self.app.core.subscribe(
+            "fader.level_changed",
+            lambda fader_index, level: self._run_idle(
+                self._on_fader_level_changed, fader_index, level
+            ),
+        )
+        self.app.core.subscribe(
+            "fader.flash_changed",
+            lambda fader_index, pressed: self._run_idle(
+                self._on_fader_flash_changed, fader_index, pressed
+            ),
         )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
@@ -883,6 +906,59 @@ class GuiEventBridge:
             playback.sequential.position_a = 0
             playback.sequential.position_b = 0
         update_ui(data["subtitle"], self.app)
+        return False
+
+    def _on_channels_selected_changed(self, selected_channels: list[int]) -> bool:
+        """Synchronize the logical channel selection to the GUI's FlowBox."""
+        if self.app.window and self.app.window.live_view:
+            channels_view = self.app.window.live_view.channels_view
+            channels_view.flowbox.unselect_all()
+            for ch in selected_channels:
+                if 1 <= ch <= MAX_CHANNELS:
+                    flowboxchild = channels_view.flowbox.get_child_at_index(ch - 1)
+                    if flowboxchild:
+                        channels_view.flowbox.select_child(flowboxchild)
+            if self.app.core.last_selected_channel is not None:
+                channels_view.last_selected_channel = str(
+                    self.app.core.last_selected_channel
+                )
+            else:
+                channels_view.last_selected_channel = ""
+            channels_view.flowbox.invalidate_filter()
+        return False
+
+    def _on_fader_page_changed(self, _page: int) -> bool:
+        """Synchronize fader page changes to the GUI and MIDI controller."""
+        if self.app.virtual_console:
+            self.app.virtual_console.update_page_display()
+        else:
+            if self.app.midi is not None:
+                self.app.midi.update_faders()
+        return False
+
+    def _on_fader_level_changed(self, fader_index: int, level: float) -> bool:
+        """Synchronize fader level to GUI or MIDI controller."""
+        if self.app.virtual_console:
+            self.app.virtual_console.faders[fader_index - 1].set_value(level)
+            self.app.virtual_console.fader_moved(
+                self.app.virtual_console.faders[fader_index - 1]
+            )
+        else:
+            if self.app.midi is not None:
+                midi_fader = self.app.midi.faders.faders[fader_index - 1]
+                midi_value = midi_fader.value
+                if level > midi_value:
+                    midi_fader.valid = FaderState.UP
+                elif level < midi_value:
+                    midi_fader.valid = FaderState.DOWN
+                else:
+                    midi_fader.valid = FaderState.VALID
+        return False
+
+    def _on_fader_flash_changed(self, fader_index: int, _pressed: bool) -> bool:
+        """Queue a redraw on the virtual console flash button."""
+        if self.app.virtual_console:
+            self.app.virtual_console.flashes[fader_index - 1].queue_draw()
         return False
 
 

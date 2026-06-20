@@ -43,6 +43,8 @@ class CoreApplication(EventDispatcher):
     midi: typing.Optional[Midi]
     crossfade: typing.Optional[CrossFade]
     commandline: CoreCommandLine
+    selected_channels: list[int]
+    last_selected_channel: typing.Optional[int]
 
     @property
     def core(self) -> CoreApplication:
@@ -83,6 +85,10 @@ class CoreApplication(EventDispatcher):
 
         # Command line logical state helper
         self.commandline = CoreCommandLine(typing.cast(typing.Any, self))
+
+        # Logical channel selection state
+        self.selected_channels: list[int] = []
+        self.last_selected_channel: typing.Optional[int] = None
 
         # Action and Undo/Redo plumbing layers
         self.action_registry = ActionRegistry(typing.cast(typing.Any, self))

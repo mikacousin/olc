@@ -525,6 +525,22 @@ class VirtualConsoleWindow(Gtk.Window):
                     self.app.midi.faders.faders[fader.index - 1].set_state(fader.level)
                 self.app.midi.messages.lcd.show_faders()
 
+    def update_page_display(self) -> None:
+        """Update fader page labels and values on virtual console and MIDI."""
+        fader_bank = self.app.core.lightshow.fader_bank
+        self.page_number.set_label(str(fader_bank.active_page))
+        for fader in fader_bank.faders[fader_bank.active_page].values():
+            text = f"fader_{fader.index + ((fader_bank.active_page - 1) * 10)}"
+            self.faders[fader.index - 1].text = text
+            val = round(fader.level * 255)
+            self.faders[fader.index - 1].set_value(val)
+            self.flashes[fader.index - 1].label = fader.text
+            self.flashes[fader.index - 1].queue_draw()
+        if self.app.midi is not None:
+            for fader in fader_bank.faders[fader_bank.active_page].values():
+                self.app.midi.faders.faders[fader.index - 1].set_state(fader.level)
+            self.app.midi.messages.lcd.show_faders()
+
     def _on_time(self, _widget: Gtk.Widget) -> None:
         """Time button"""
         if self.is_learning_midi and self.app.midi is not None:

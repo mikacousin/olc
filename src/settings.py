@@ -24,7 +24,7 @@ from typing import Callable
 import serial.tools.list_ports
 from gi.repository import Gdk, GLib, GObject, Gtk
 from olc.core.backends.enttec import resolve_port
-from olc.core.backends.osc.delegate import GUIOSCDelegate
+from olc.core.backends.osc.delegate import OSCDelegate
 from olc.core.universe_config import Protocol
 
 if typing.TYPE_CHECKING:
@@ -459,7 +459,7 @@ class SettingsTab(Gtk.Box):
                     client_port=self.settings.get_int("osc-client-port"),
                     server_port=self.settings.get_int("osc-server-port"),
                 )
-                self.app.osc_delegate = GUIOSCDelegate(self.app)
+                self.app.osc_delegate = OSCDelegate(self.app.core)
                 engine.register_osc_delegate(self.app.osc_delegate)
             else:
                 engine.stop_osc()

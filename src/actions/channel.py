@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
-from olc.define import MAX_CHANNELS
+from olc.define import MAX_CHANNELS, is_int, is_non_nul_int
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -111,3 +111,495 @@ class SetChannelLevelAction(Action):
 
     def __repr__(self) -> str:
         return f"<SetChannelLevelAction channel={self.channel} level={self.level}>"
+
+
+class SelectActiveChannelAction(Action):
+    """Action to select a channel logically by reading the commandline."""
+
+    name = "channel.select_active"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_selection: list[int] = []
+        self.old_last_selected: typing.Optional[int] = None
+        self.new_selection: list[int] = []
+        self.new_last_selected: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        self.old_selection = list(self.app.selected_channels)
+        self.old_last_selected = self.app.last_selected_channel
+
+        cmd_string = self.app.commandline.get_string()
+        if is_non_nul_int(cmd_string):
+            channel = int(cmd_string)
+            if 1 <= channel <= MAX_CHANNELS:
+                self.new_selection = [channel]
+                self.new_last_selected = channel
+            else:
+                self.new_selection = []
+                self.new_last_selected = None
+        else:
+            self.new_selection = []
+            self.new_last_selected = None
+
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.commandline.set_string("")
+
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def undo(self) -> None:
+        self.app.selected_channels = list(self.old_selection)
+        self.app.last_selected_channel = self.old_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def redo(self) -> None:
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+
+class SelectThruChannelAction(Action):
+    """Action to select a range of channels logically (Thru)."""
+
+    name = "channel.select_thru"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_selection: list[int] = []
+        self.old_last_selected: typing.Optional[int] = None
+        self.new_selection: list[int] = []
+        self.new_last_selected: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        self.old_selection = list(self.app.selected_channels)
+        self.old_last_selected = self.app.last_selected_channel
+
+        cmd_string = self.app.commandline.get_string()
+        if is_non_nul_int(cmd_string) and self.old_last_selected is not None:
+            from_chan = self.old_last_selected
+            to_chan = int(cmd_string)
+            low = min(from_chan, to_chan)
+            high = max(from_chan, to_chan)
+
+            self.new_selection = list(self.old_selection)
+            for ch in range(low, high + 1):
+                if 1 <= ch <= MAX_CHANNELS and ch not in self.new_selection:
+                    self.new_selection.append(ch)
+            self.new_last_selected = to_chan
+        else:
+            self.new_selection = list(self.old_selection)
+            self.new_last_selected = self.old_last_selected
+
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.commandline.set_string("")
+
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def undo(self) -> None:
+        self.app.selected_channels = list(self.old_selection)
+        self.app.last_selected_channel = self.old_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def redo(self) -> None:
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+
+class SelectAddChannelAction(Action):
+    """Action to add a channel logically (+)."""
+
+    name = "channel.select_add"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_selection: list[int] = []
+        self.old_last_selected: typing.Optional[int] = None
+        self.new_selection: list[int] = []
+        self.new_last_selected: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        self.old_selection = list(self.app.selected_channels)
+        self.old_last_selected = self.app.last_selected_channel
+
+        cmd_string = self.app.commandline.get_string()
+        if is_non_nul_int(cmd_string):
+            channel = int(cmd_string)
+            if 1 <= channel <= MAX_CHANNELS:
+                self.new_selection = list(self.old_selection)
+                if channel not in self.new_selection:
+                    self.new_selection.append(channel)
+                self.new_last_selected = channel
+            else:
+                self.new_selection = list(self.old_selection)
+                self.new_last_selected = self.old_last_selected
+        else:
+            self.new_selection = list(self.old_selection)
+            self.new_last_selected = self.old_last_selected
+
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.commandline.set_string("")
+
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def undo(self) -> None:
+        self.app.selected_channels = list(self.old_selection)
+        self.app.last_selected_channel = self.old_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def redo(self) -> None:
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+
+class SelectRemoveChannelAction(Action):
+    """Action to remove a channel logically (-)."""
+
+    name = "channel.select_remove"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_selection: list[int] = []
+        self.old_last_selected: typing.Optional[int] = None
+        self.new_selection: list[int] = []
+        self.new_last_selected: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        self.old_selection = list(self.app.selected_channels)
+        self.old_last_selected = self.app.last_selected_channel
+
+        cmd_string = self.app.commandline.get_string()
+        if is_non_nul_int(cmd_string):
+            channel = int(cmd_string)
+            if 1 <= channel <= MAX_CHANNELS:
+                self.new_selection = list(self.old_selection)
+                if channel in self.new_selection:
+                    self.new_selection.remove(channel)
+                self.new_last_selected = channel
+            else:
+                self.new_selection = list(self.old_selection)
+                self.new_last_selected = self.old_last_selected
+        else:
+            self.new_selection = list(self.old_selection)
+            self.new_last_selected = self.old_last_selected
+
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.commandline.set_string("")
+
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def undo(self) -> None:
+        self.app.selected_channels = list(self.old_selection)
+        self.app.last_selected_channel = self.old_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def redo(self) -> None:
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+
+class SelectAllChannelsAction(Action):
+    """Action to select all channels with intensity > 0."""
+
+    name = "channel.select_all"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_selection: list[int] = []
+        self.old_last_selected: typing.Optional[int] = None
+        self.new_selection: list[int] = []
+        self.new_last_selected: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        self.old_selection = list(self.app.selected_channels)
+        self.old_last_selected = self.app.last_selected_channel
+
+        backend = getattr(self.app, "backend", None)
+        selected = []
+        if backend and backend.dmx:
+            for ch in range(1, MAX_CHANNELS + 1):
+                level = int(backend.dmx.levels["user"][ch - 1])
+                if level > 0:
+                    selected.append(ch)
+
+        self.new_selection = selected
+        self.new_last_selected = selected[-1] if selected else None
+
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def undo(self) -> None:
+        self.app.selected_channels = list(self.old_selection)
+        self.app.last_selected_channel = self.old_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def redo(self) -> None:
+        self.app.selected_channels = list(self.new_selection)
+        self.app.last_selected_channel = self.new_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+
+class SetLevelFromCmdAction(Action):
+    """Action to set the level of all selected channels from the commandline."""
+
+    name = "channel.set_level_from_cmd"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.channels: list[int] = []
+        self.old_levels: dict[int, int] = {}
+        self.new_levels: dict[int, int] = {}
+
+    def execute(self) -> None:
+        self.channels = list(self.app.selected_channels)
+        self.old_levels = {}
+        self.new_levels = {}
+
+        cmd_string = self.app.commandline.get_string()
+        if not is_int(cmd_string):
+            return
+
+        level = int(cmd_string)
+        percent = getattr(self.app.settings, "get_boolean", lambda x: False)("percent")
+        if percent:
+            level = int(round((level / 100) * 255))
+        level = min(max(level, 0), 255)
+
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch in self.channels:
+                old_lvl = int(backend.dmx.levels["user"][ch - 1])
+                self.old_levels[ch] = old_lvl
+                self.new_levels[ch] = level
+                backend.dmx.levels["user"][ch - 1] = level
+
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        self.app.commandline.set_string("")
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+    def undo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, old_lvl in self.old_levels.items():
+                backend.dmx.levels["user"][ch - 1] = old_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
+
+    def redo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, new_lvl in self.new_levels.items():
+                backend.dmx.levels["user"][ch - 1] = new_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+
+class SetLevelFullAction(Action):
+    """Action to set the level of all selected channels to 100%."""
+
+    name = "channel.set_level_full"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.channels: list[int] = []
+        self.old_levels: dict[int, int] = {}
+        self.new_levels: dict[int, int] = {}
+
+    def execute(self) -> None:
+        self.channels = list(self.app.selected_channels)
+        self.old_levels = {}
+        self.new_levels = {}
+
+        level = 255
+
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch in self.channels:
+                old_lvl = int(backend.dmx.levels["user"][ch - 1])
+                self.old_levels[ch] = old_lvl
+                self.new_levels[ch] = level
+                backend.dmx.levels["user"][ch - 1] = level
+
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, level)
+
+    def undo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, old_lvl in self.old_levels.items():
+                backend.dmx.levels["user"][ch - 1] = old_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
+
+    def redo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, new_lvl in self.new_levels.items():
+                backend.dmx.levels["user"][ch - 1] = new_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+
+class LevelPlusAction(Action):
+    """Action to increase the level of all selected channels."""
+
+    name = "channel.level_plus"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.channels: list[int] = []
+        self.old_levels: dict[int, int] = {}
+        self.new_levels: dict[int, int] = {}
+
+    def execute(self) -> None:
+        self.channels = list(self.app.selected_channels)
+        self.old_levels = {}
+        self.new_levels = {}
+
+        step_level = getattr(self.app.settings, "get_int", lambda x: 10)(
+            "percent-level"
+        )
+        percent = getattr(self.app.settings, "get_boolean", lambda x: False)("percent")
+
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch in self.channels:
+                old_lvl = int(backend.dmx.levels["user"][ch - 1])
+                self.old_levels[ch] = old_lvl
+
+                if percent:
+                    percent_level = round((old_lvl / 256) * 100) + step_level
+                    new_lvl = min(round((percent_level / 100) * 256), 255)
+                else:
+                    new_lvl = min(old_lvl + step_level, 255)
+
+                self.new_levels[ch] = new_lvl
+                backend.dmx.levels["user"][ch - 1] = new_lvl
+
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+    def undo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, old_lvl in self.old_levels.items():
+                backend.dmx.levels["user"][ch - 1] = old_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
+
+    def redo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, new_lvl in self.new_levels.items():
+                backend.dmx.levels["user"][ch - 1] = new_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+
+class LevelMinusAction(Action):
+    """Action to decrease the level of all selected channels."""
+
+    name = "channel.level_minus"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.channels: list[int] = []
+        self.old_levels: dict[int, int] = {}
+        self.new_levels: dict[int, int] = {}
+
+    def execute(self) -> None:
+        self.channels = list(self.app.selected_channels)
+        self.old_levels = {}
+        self.new_levels = {}
+
+        step_level = getattr(self.app.settings, "get_int", lambda x: 10)(
+            "percent-level"
+        )
+        percent = getattr(self.app.settings, "get_boolean", lambda x: False)("percent")
+
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch in self.channels:
+                old_lvl = int(backend.dmx.levels["user"][ch - 1])
+                self.old_levels[ch] = old_lvl
+
+                if percent:
+                    percent_level = round((old_lvl / 256) * 100) - step_level
+                    new_lvl = max(round((percent_level / 100) * 256), 0)
+                else:
+                    new_lvl = max(old_lvl - step_level, 0)
+
+                self.new_levels[ch] = new_lvl
+                backend.dmx.levels["user"][ch - 1] = new_lvl
+
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+    def undo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, old_lvl in self.old_levels.items():
+                backend.dmx.levels["user"][ch - 1] = old_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
+
+    def redo(self) -> None:
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, new_lvl in self.new_levels.items():
+                backend.dmx.levels["user"][ch - 1] = new_lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch in self.channels:
+            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))

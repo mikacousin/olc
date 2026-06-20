@@ -28,7 +28,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 from olc.backends import DMXBackend  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
-from olc.core.backends.osc.delegate import GUIOSCDelegate  # noqa: E402
+from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
@@ -213,7 +213,6 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.redo", ["<Shift><Control>z", "<Control>y"])
 
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> bool:
-        app_type = typing.cast("olc.gtk3.application.Application", self)
         Gtk.Application.do_command_line(self, command_line)
         options = command_line.get_options_dict()
         # convert GVariantDict -> GVariant -> dict
@@ -275,7 +274,7 @@ class Application(Gtk.Application):
                 client_port=self.settings.get_int("osc-client-port"),
                 server_port=self.settings.get_int("osc-server-port"),
             )
-            self.osc_delegate = GUIOSCDelegate(app_type)
+            self.osc_delegate = OSCDelegate(self.core)
             self.engine.register_osc_delegate(self.osc_delegate)
 
         def on_patch_empty_cb() -> None:

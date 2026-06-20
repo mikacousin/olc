@@ -18,10 +18,10 @@ import typing
 from typing import Optional
 
 import numpy as np
-from olc.core.app import CoreApplication
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
 
 if typing.TYPE_CHECKING:
+    from olc.core.app import CoreApplication
     from olc.core.commandline import CoreCommandLine
     from olc.gtk3.application import Application
 
@@ -217,8 +217,6 @@ class PatchByOutputs:
     @property
     def commandline(self) -> CoreCommandLine:
         """Get the logical command line instance."""
-        if isinstance(self.app, CoreApplication):
-            return self.app.commandline
         return self.app.core.commandline
 
     def get_selected(self) -> str:

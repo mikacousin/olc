@@ -16,7 +16,18 @@ from __future__ import annotations
 
 import typing
 
-from olc.actions.channel import SetChannelLevelAction
+from olc.actions.channel import (
+    LevelMinusAction,
+    LevelPlusAction,
+    SelectActiveChannelAction,
+    SelectAddChannelAction,
+    SelectAllChannelsAction,
+    SelectRemoveChannelAction,
+    SelectThruChannelAction,
+    SetChannelLevelAction,
+    SetLevelFromCmdAction,
+    SetLevelFullAction,
+)
 from olc.actions.cue import (
     CueCopyAction,
     CueDeleteAction,
@@ -67,6 +78,15 @@ def register_all_actions(registry: ActionRegistry) -> None:
     """
     actions_to_register = [
         SetChannelLevelAction,
+        SelectActiveChannelAction,
+        SelectThruChannelAction,
+        SelectAddChannelAction,
+        SelectRemoveChannelAction,
+        SelectAllChannelsAction,
+        SetLevelFromCmdAction,
+        SetLevelFullAction,
+        LevelPlusAction,
+        LevelMinusAction,
         NewGroupAction,
         DeleteGroupAction,
         GroupUpdateChannelsAction,
