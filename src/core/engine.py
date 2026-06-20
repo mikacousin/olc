@@ -26,7 +26,7 @@ from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
-from olc.core.fader import FadeEngine
+from olc.core.fade import FadeEngine
 from olc.core.mergers import HTPMerger, LTPMerger
 from olc.core.osc import CoreOSCClient, EngineOSCServer
 from olc.core.senders import ArtNetSender, DmxUsbProSender, SACNSender

@@ -15,546 +15,162 @@
 from __future__ import annotations
 
 import typing
-from typing import Callable
-
-from gi.repository import Gdk, Gtk
-from olc.core.group import Group
-from olc.define import is_non_nul_float
-from olc.widgets.channel import ChannelWidget
-from olc.widgets.channels_view import VIEW_MODES, ChannelsView
-from olc.widgets.group import GroupWidget
+from dataclasses import dataclass
 
 if typing.TYPE_CHECKING:
-    from gi.repository import Gio
     from olc.core.lightshow import LightShow
-    from olc.tabs_manager import Tabs
-    from olc.window import Window
 
 
-class GroupChannelsView(ChannelsView):
-    """Channels View"""
+@dataclass
+class Group:
+    """A Group is composed of channels at some DMX levels."""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        window: Window,
-        settings: Gio.Settings,
-        tabs: Tabs,
-    ) -> None:
-        super().__init__(
-            lightshow=lightshow, window=window, settings=settings, tabs=tabs
-        )
-        self.tabs = tabs
+    index: float
+    channels: dict[int, int]
+    text: str = ""
 
-    def set_channel_level(self, channel: int, level: int) -> None:
-        """Set channel level
+    def set_text(self, text: str) -> None:
+        """Set the group's text description."""
+        self.text = text
 
-        Args:
-            channel: Channel number (1 - MAX_CHANNELS)
-            level: DMX level (0 - 255)
-        """
-        if not self.tabs or not self.lightshow:
-            return
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
-        new_channels = group.channels.copy()
-        new_channels[channel] = level
-        if self.window and self.window.app:
-            self.window.app.core.action_registry.execute(
-                "group.update_channels", group.index, new_channels
-            )
+    def set_channel(self, channel: int, level: int) -> None:
+        """Set the DMX level of a channel in the group."""
+        self.channels[channel] = level
 
-    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change channels level with a wheel
+    def remove_channel(self, channel: int) -> None:
+        """Remove a channel from the group."""
+        if channel in self.channels:
+            del self.channels[channel]
 
-        Args:
-            step: Step level
-            direction: Up or Down
-        """
-        if not self.tabs or not self.lightshow:
-            return
-        channels = self.get_selected_channels()
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
-        new_channels = group.channels.copy()
-        for channel in channels:
-            level = new_channels.get(channel, 0)
-            if direction == Gdk.ScrollDirection.UP:
-                level = min(level + step, 255)
-            elif direction == Gdk.ScrollDirection.DOWN:
-                level = max(level - step, 0)
-            new_channels[channel] = level
-        if self.window and self.window.app:
-            self.window.app.core.action_registry.execute(
-                "group.update_channels", group.index, new_channels
-            )
+    def get_channel_level(self, channel: int, default: int = 0) -> int:
+        """Get the DMX level of a channel, returning default if not present."""
+        return self.channels.get(channel, default)
 
-    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
-        """Select channels to display
+    def get_channels(self) -> dict[int, int]:
+        """Return the dictionary of channels and their levels."""
+        return self.channels
+
+    def set_channels(self, channels: dict[int, int]) -> None:
+        """Set/overwrite the dictionary of channels."""
+        self.channels = channels
+
+    def clear(self) -> None:
+        """Clear all channels from the group."""
+        self.channels.clear()
+
+
+class Groups:
+    """Groups container class.
+
+    Wraps a list of Group objects and acts as a proxy list while providing
+    high-level methods for lookup, insertion, and index management.
+    """
+
+    def __init__(self, lightshow: LightShow) -> None:
+        """Initialize the Groups container.
 
         Args:
-            child: Parent of Channel Widget
-
-        Returns:
-            True or False
+            lightshow: Parent LightShow instance.
         """
-        # Find selected group
-        selected_group = None
-        if self.tabs and self.tabs.tabs["groups"]:
-            selected_group = typing.cast(
-                GroupTab, self.tabs.tabs["groups"]
-            ).flowbox.get_selected_children()
-        if selected_group and self.lightshow:
-            group_widget = typing.cast(GroupWidget, selected_group[0].get_child())
-            group_number = group_widget.number
-            group = None
-            for g in self.lightshow.groups:
-                if g.index == group_number:
-                    group = g
-                    break
-            if not group:
-                child.set_visible(False)
-                return False
-            # Display active channels
-            if self.view_mode == VIEW_MODES["Active"]:
-                return self.__filter_active(group, child)
-            # Display patched channels
-            if self.view_mode == VIEW_MODES["Patched"]:
-                return self.__filter_patched(group, child)
-            # Display all channels by default
-            return self.__filter_all(group, child)
-        child.set_visible(False)
-        return False
-
-    def __filter_all(self, group: Group, child: Gtk.FlowBoxChild) -> bool:
-        """Display all channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel = child.get_index() + 1  # Channel number
-        channel_widget = typing.cast(ChannelWidget, child.get_child())
-        level = group.get_channel_level(channel, 0)
-        if level or child.is_selected():
-            channel_widget.level = level
-            channel_widget.next_level = level
-        else:
-            channel_widget.level = 0
-            channel_widget.next_level = 0
-        child.set_visible(True)
-        return True
-
-    def __filter_patched(self, group: Group, child: Gtk.FlowBoxChild) -> bool:
-        """Display only patched channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel = child.get_index() + 1
-        if self.lightshow and not self.lightshow.patch.is_patched(channel):
-            child.set_visible(False)
-            return False
-        return self.__filter_all(group, child)
-
-    def __filter_active(self, group: Group, child: Gtk.FlowBoxChild) -> bool:
-        """Display only active channels
-
-        Args:
-            group: Group widget
-            child: Parent of Channel Widget
-
-        Returns:
-            True (visible) or False (not visible)
-        """
-        channel = child.get_index() + 1
-        channel_widget = typing.cast(ChannelWidget, child.get_child())
-        level = group.get_channel_level(channel, 0)
-        if level or child.is_selected():
-            channel_widget.level = level
-            channel_widget.next_level = level
-            child.set_visible(True)
-            return True
-        child.set_visible(False)
-        return False
-
-
-# pylint: disable=too-many-instance-attributes
-class GroupTab(Gtk.Paned):
-    """Groups edition"""
-
-    last_group_selected: str
-    channels_view: GroupChannelsView
-    scrolled: Gtk.ScrolledWindow
-    flowbox: Gtk.FlowBox
-
-    def __init__(
-        self,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-    ) -> None:
-        self.last_group_selected = ""
-        self.selected_group_number: float | None = None
         self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
+        self._groups: list[Group] = []
 
-        Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
-        self.set_position(600)
+    def __len__(self) -> int:
+        """Return the number of groups."""
+        return len(self._groups)
 
-        self.channels_view = GroupChannelsView(
-            lightshow=self.lightshow,
-            window=self.window,
-            settings=self.settings,
-            tabs=self.tabs,
-        )
-        self.add1(self.channels_view)
+    def __getitem__(self, index: int) -> Group:
+        """Get Group at list position index."""
+        return self._groups[index]
 
-        self.scrolled = Gtk.ScrolledWindow()
-        self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-        self.flowbox = Gtk.FlowBox()
-        self.populate_tab()
-        self.add2(self.scrolled)
+    def __delitem__(self, index: int | slice) -> None:
+        """Delete Group(s) at list position or slice."""
+        del self._groups[index]
 
-    def populate_tab(self) -> None:
-        """Add groups to tab"""
-        # New FlowBox
-        self.flowbox = Gtk.FlowBox()
-        self.flowbox.set_valign(Gtk.Align.START)
-        self.flowbox.set_max_children_per_line(20)
-        self.flowbox.set_homogeneous(True)
-        self.flowbox.set_activate_on_single_click(True)
-        self.flowbox.set_selection_mode(Gtk.SelectionMode.SINGLE)
-        self.flowbox.connect("selected-children-changed", self.on_selection_changed)
-        # Add groups to FlowBox
-        for i, _ in enumerate(self.lightshow.groups):
-            self.flowbox.add(
-                GroupWidget(  # pylint: disable=unexpected-keyword-arg
-                    self.lightshow.groups[i].index,
-                    self.lightshow.groups[i].text,
-                    lightshow=self.lightshow,
-                    tabs=self.tabs,
-                    window=self.window,
-                )
-            )
-        self.scrolled.add(self.flowbox)
+    def __iter__(self) -> typing.Iterator[Group]:
+        """Iterate over all groups."""
+        return iter(self._groups)
 
-    def on_selection_changed(self, flowbox: Gtk.FlowBox) -> None:
-        """Called when user selection changes on flowbox"""
-        selected = flowbox.get_selected_children()
-        if selected:
-            child = selected[0]
-            group_widget = typing.cast(GroupWidget, child.get_child())
-            self.selected_group_number = group_widget.number
-            self.last_group_selected = str(child.get_index())
-        else:
-            self.selected_group_number = None
-            self.last_group_selected = ""
-        self.channels_view.update()
-
-    def refresh(self) -> None:
-        """Refresh display"""
-        # Remove Old Groups
-        self.scrolled.remove(self.flowbox)
-        self.flowbox.destroy()
-        # Update Group tab
-        self.populate_tab()
-        self.flowbox.invalidate_filter()
-        self.window.show_all()
-
-        # Restore selection
-        restored = False
-        if getattr(self, "selected_group_number", None) is not None:
-            for child in self.flowbox.get_children():
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                group_widget = typing.cast(GroupWidget, fb_child.get_child())
-                if group_widget and group_widget.number == self.selected_group_number:
-                    self.flowbox.select_child(fb_child)
-                    fb_child.grab_focus()
-                    restored = True
-                    break
-        if not restored:
-            self.selected_group_number = None
-            self.last_group_selected = ""
-            self.channels_view.update()
-
-    def on_close_icon(self, _widget: Gtk.Widget) -> None:
-        """Close Tab with the icon clicked"""
-        self.tabs.close("groups")
-
-    def on_key_press_event(
-        self, _widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> Callable | bool:
-        """Key has been pressed
+    def get(self, index: float) -> Group | None:
+        """Retrieve a Group by its unique group number.
 
         Args:
-            event: Gdk.EventKey
+            index: Group number.
 
         Returns:
-            False or function
+            The matching Group or None.
         """
-        keyname = Gdk.keyval_name(event.keyval)
+        for group in self._groups:
+            if group.index == index:
+                return group
+        return None
 
-        if keyname is None:
-            return False
+    def add(self, group: Group) -> None:
+        """Add a Group in sorted index order.
 
-        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+        Args:
+            group: Group object to add.
 
-        if keyname in (
-            "KP_1",
-            "KP_2",
-            "KP_3",
-            "KP_4",
-            "KP_5",
-            "KP_6",
-            "KP_7",
-            "KP_8",
-            "KP_9",
-            "KP_0",
-        ):
-            self.window.commandline.add_string(keyname[3:])
+        Raises:
+            ValueError: If a group with the same index already exists.
+        """
+        if self.get(group.index) is not None:
+            raise ValueError(f"Group with index {group.index} already exists.")
 
-        if keyname == "period":
-            self.window.commandline.add_string(".")
+        # Find the insertion index to maintain sorted order
+        insert_idx = len(self._groups)
+        for i, g in enumerate(self._groups):
+            if g.index > group.index:
+                insert_idx = i
+                break
+        self._groups.insert(insert_idx, group)
 
-        # Channels View
-        self.channels_view.on_key_press(keyname)
+    def append(self, group: Group) -> None:
+        """Append a Group (adds in sorted order).
 
-        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
-            return func()
-        return False
+        Args:
+            group: Group object to append.
+        """
+        self.add(group)
 
-    def _keypress_backspace(self) -> None:
-        self.window.commandline.set_string("")
+    def remove(self, group: Group) -> None:
+        """Remove a Group.
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("groups")
+        Args:
+            group: Group object to remove.
+        """
+        if group in self._groups:
+            self._groups.remove(group)
 
-    def _keypress_l(self) -> None:
-        """Open Popover to change label group"""
-        if selected := self.flowbox.get_selected_children():
-            flowboxchild = selected[0]
-            group_widget = typing.cast(GroupWidget, flowboxchild.get_child())
-            group_widget.popover.popup()
-        self.window.commandline.set_string("")
+    def insert(self, _idx: int, group: Group) -> None:
+        """Insert a Group at a specific list index (adds in sorted order instead).
 
-    def _keypress_right(self) -> None:
-        """Next Group"""
-        if self.last_group_selected == "":
-            if child := self.flowbox.get_child_at_index(0):
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                self.flowbox.select_child(fb_child)
-                self.window.set_focus(fb_child)
-                self.last_group_selected = "0"
-                self.channels_view.flowbox.unselect_all()
-                self.channels_view.update()
-                self.flowbox.invalidate_filter()
-        elif child := self.flowbox.get_child_at_index(
-            int(self.last_group_selected) + 1
-        ):
-            fb_child = typing.cast(Gtk.FlowBoxChild, child)
-            self.flowbox.select_child(fb_child)
-            self.window.set_focus(fb_child)
-            self.channels_view.flowbox.unselect_all()
-            self.channels_view.update()
-            self.last_group_selected = str(int(self.last_group_selected) + 1)
-        self.channels_view.last_selected_channel = ""
+        Args:
+            _idx: List index.
+            group: Group object.
+        """
+        # Force sorted order rather than arbitrary position insertion
+        self.add(group)
 
-    def _keypress_left(self) -> None:
-        """Previous Group"""
-        if self.last_group_selected == "":
-            if child := self.flowbox.get_child_at_index(0):
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                self.flowbox.select_child(fb_child)
-                self.window.set_focus(fb_child)
-                self.last_group_selected = "0"
-                self.channels_view.flowbox.unselect_all()
-                self.channels_view.update()
-                self.flowbox.invalidate_filter()
-        elif int(self.last_group_selected) > 0:
-            child = self.flowbox.get_child_at_index(int(self.last_group_selected) - 1)
-            fb_child = typing.cast(Gtk.FlowBoxChild, child)
-            self.flowbox.select_child(fb_child)
-            self.window.set_focus(fb_child)
-            self.channels_view.flowbox.unselect_all()
-            self.channels_view.update()
-            self.last_group_selected = str(int(self.last_group_selected) - 1)
-        self.channels_view.last_selected_channel = ""
+    def pop(self, idx: int) -> Group:
+        """Pop a Group at list position idx.
 
-    def _keypress_down(self) -> None:
-        """Group on Next Line"""
-        if self.last_group_selected == "":
-            if child := self.flowbox.get_child_at_index(0):
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                self.flowbox.select_child(fb_child)
-                self.window.set_focus(fb_child)
-                self.last_group_selected = "0"
-                self.channels_view.flowbox.unselect_all()
-                self.channels_view.update()
-                self.flowbox.invalidate_filter()
-        else:
-            child = self.flowbox.get_child_at_index(int(self.last_group_selected))
-            if child is not None:
-                allocation = child.get_allocation()
-                if next_child := self.flowbox.get_child_at_pos(
-                    allocation.x, allocation.y + allocation.height
-                ):
-                    self.flowbox.unselect_all()
-                    fb_child = typing.cast(Gtk.FlowBoxChild, next_child)
-                    index = fb_child.get_index()
-                    self.flowbox.select_child(fb_child)
-                    self.window.set_focus(fb_child)
-                    self.channels_view.flowbox.unselect_all()
-                    self.channels_view.update()
-                    self.last_group_selected = str(index)
-        self.channels_view.last_selected_channel = ""
+        Args:
+            idx: List index to pop.
 
-    def _keypress_up(self) -> None:
-        """Group on Previous Line"""
-        if self.last_group_selected == "":
-            if child := self.flowbox.get_child_at_index(0):
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                self.flowbox.select_child(fb_child)
-                self.window.set_focus(fb_child)
-                self.last_group_selected = "0"
-                self.channels_view.flowbox.unselect_all()
-                self.channels_view.update()
-                self.flowbox.invalidate_filter()
-        else:
-            child = self.flowbox.get_child_at_index(int(self.last_group_selected))
-            if child is not None:
-                allocation = child.get_allocation()
-                y_pos = int(allocation.y - allocation.height / 2)
-                if prev_child := self.flowbox.get_child_at_pos(allocation.x, y_pos):
-                    self.flowbox.unselect_all()
-                    fb_child = typing.cast(Gtk.FlowBoxChild, prev_child)
-                    index = fb_child.get_index()
-                    self.flowbox.select_child(fb_child)
-                    self.window.set_focus(fb_child)
-                    self.channels_view.flowbox.unselect_all()
-                    self.channels_view.update()
-                    self.last_group_selected = str(index)
-        self.channels_view.last_selected_channel = ""
+        Returns:
+            The popped Group object.
+        """
+        return self._groups.pop(idx)
 
-    def _keypress_g(self) -> None:
-        """Select Group"""
-        self.flowbox.unselect_all()
+    def clear(self) -> None:
+        """Clear all groups."""
+        self._groups.clear()
 
-        keystring = self.window.commandline.get_string()
-        if keystring != "":
-            group = float(keystring)
-            flowbox_children = self.flowbox.get_children()
-            for flowbox_child in flowbox_children:
-                fb_child = typing.cast(Gtk.FlowBoxChild, flowbox_child)
-                group_widget = typing.cast(GroupWidget, fb_child.get_child())
-                if group_widget.number == group:
-                    index = fb_child.get_index()
-                    self.flowbox.select_child(fb_child)
-                    self.window.set_focus(fb_child)
-                    self.last_group_selected = str(index)
-                    break
-        # Deselect all channels
-        self.channels_view.flowbox.unselect_all()
-        # Update display
-        self.channels_view.update()
-        self.flowbox.invalidate_filter()
-        self.channels_view.last_selected_channel = ""
+    def get_next_index(self) -> float:
+        """Calculate the next available group index.
 
-        self.window.commandline.set_string("")
-
-    def _update_fader_level(self) -> None:
-        """Update selected fader channels levels"""
-        if selected := self.flowbox.get_selected_children():
-            flowboxchild = selected[0]
-            index = flowboxchild.get_index()
-            group = self.lightshow.groups[index]
-            for page in self.lightshow.fader_bank.faders.values():
-                for fader in page.values():
-                    if fader.contents is group:
-                        fader.set_level(fader.level)
-                        break
-
-    def _keypress_equal(self) -> None:
-        """@ Level"""
-        self.channels_view.at_level()
-        self.channels_view.update()
-        self._update_fader_level()
-        self.window.commandline.set_string("")
-
-    def _keypress_colon(self) -> None:
-        """Level - %"""
-        self.channels_view.level_minus()
-        self.channels_view.update()
-        self._update_fader_level()
-        self.window.commandline.set_string("")
-
-    def _keypress_exclam(self) -> None:
-        """Level + %"""
-        self.channels_view.level_plus()
-        self.channels_view.update()
-        self._update_fader_level()
-        self.window.commandline.set_string("")
-
-    def _keypress_n(self) -> None:
-        """New Group"""
-        keystring = self.window.commandline.get_string()
-        # If no group number, use the next one
-        if keystring == "":
-            group_nb = self.lightshow.groups.get_next_index()
-        elif is_non_nul_float(keystring):
-            group_nb = float(keystring)
-        else:
-            self.window.commandline.set_string("")
-            return
-
-        # Execute new group action
-        app = self.window.app
-        try:
-            self.selected_group_number = group_nb
-            app.core.action_registry.execute("group.new", group_nb)
-            self.channels_view.flowbox.unselect_all()
-        except ValueError:
-            self.selected_group_number = None
-
-        self.window.commandline.set_string("")
-
-    def _keypress_delete(self) -> None:
-        """Delete selected group"""
-        if not (selected := self.flowbox.get_selected_children()):
-            return
-
-        # Find selected group index and group object
-        flowboxchild = selected[0]
-        index = flowboxchild.get_index()
-        group = self.lightshow.groups[index]
-
-        # Determine next group number to select
-        if len(self.lightshow.groups) <= 1:
-            next_group_number = None
-        elif index + 1 == len(self.lightshow.groups):
-            next_group_number = self.lightshow.groups[index - 1].index
-        else:
-            next_group_number = self.lightshow.groups[index + 1].index
-
-        # Execute delete group action
-        self.selected_group_number = next_group_number
-        app = self.window.app
-        app.core.action_registry.execute("group.delete", group.index)
+        Returns:
+            The next index (1.0 if empty, else last index + 1.0).
+        """
+        return 1.0 if not self._groups else self._groups[-1].index + 1.0

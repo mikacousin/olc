@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from olc.core.app import CoreApplication
-from olc.core.group import Group
+from olc.group import Group
 
 
 def test_new_and_delete_group_actions_and_undo_redo() -> None:

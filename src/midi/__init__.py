@@ -32,8 +32,8 @@ from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
     import olc.midi
-    from olc.application import Application
     from olc.fader import Fader, FaderBank
+    from olc.gtk3.application import Application
 
 
 class Queue:

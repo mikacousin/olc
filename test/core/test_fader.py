@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-from olc.core.fader import Fade, FadeEngine
+from olc.core.fade import Fade, FadeEngine
 from olc.core.universe_data import NUM_CHANNELS, DMXUniverse
 
 

@@ -18,38 +18,22 @@ configure_file(
 )
 
 olc_sources = [
-  'application.py',
   'backends.py',
   'channel_time.py',
   'cue.py',
-  'cues_edition.py',
   'curve.py',
-  'curve_edition.py',
   'define.py',
-  'dialog.py',
   'dmx.py',
   'fader.py',
-  'fader_edition.py',
   'fader_bank.py',
   'group.py',
-  'gui_event_bridge.py',
   'independent.py',
-  'independents_edition.py',
-  'gtk_lightshow.py',
   'main_fader.py',
   'patch.py',
-  'patch_channels.py',
-  'patch_outputs.py',
-  'sequence_edition.py',
+  'sequence.py',
   'settings.py',
   'step.py',
-  'tabs_manager.py',
   'timer.py',
-  'track_channels.py',
-  'virtual_console.py',
-  'window.py',
-  'window_channels.py',
-  'window_playback.py',
   'zoom.py',
 ]
 
@@ -80,6 +64,6 @@ install_subdir(
 )
 
 install_subdir(
-  'widgets',
+  'gtk3',
   install_dir: join_paths(python_dir, 'olc')
 )

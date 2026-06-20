@@ -20,7 +20,7 @@ import mido
 from gi.repository import GLib
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
+    from olc.gtk3.application import Application
     from olc.midi import Midi
 
 

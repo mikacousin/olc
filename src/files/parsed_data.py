@@ -17,13 +17,13 @@ from __future__ import annotations
 import typing
 
 from olc.channel_time import ChannelTime
-from olc.core.group import Group
-from olc.core.sequence import Sequence
 from olc.cue import Cue
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.define import MAX_FADER_PER_PAGE
 from olc.fader import FaderType
 from olc.files.import_dialog import Action
+from olc.group import Group
+from olc.sequence import Sequence
 from olc.step import Step
 
 if typing.TYPE_CHECKING:

@@ -22,7 +22,7 @@ from olc.define import MAX_FADER_PAGE
 from olc.midi.fader import FaderState
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
+    from olc.gtk3.application import Application
 
 
 # pylint: disable=too-few-public-methods

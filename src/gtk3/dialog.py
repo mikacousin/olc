@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Open Lighting Console
 # Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
@@ -13,31 +12,31 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
 
-import gettext
-import locale
-import os
-import sys
+import typing
 
-from gi.repository import Gio
+from gi.repository import Gtk
 
-# Make sure we'll find all modules
-sys.path.insert(1, "@pythondir@")
-from olc.gtk3.application import Application  # noqa: E402
-LOCALEDIR = "@localedir@"
-PKGDATADIR = "@pkgdatadir@"
+if typing.TYPE_CHECKING:
+    from olc.gtk3.window import Window
 
-if __name__ == "__main__":
-    locale.bindtextdomain("olc", LOCALEDIR)
-    locale.textdomain("olc")
-    gettext.bindtextdomain("olc", LOCALEDIR)
-    gettext.textdomain("olc")
 
-    resource = Gio.resource_load(os.path.join(PKGDATADIR, "olc.gresource"))
-    Gio.Resource._register(resource)
+class ConfirmationDialog(Gtk.Dialog):
+    """Confirmation dialog"""
 
-    app = Application("@REVISION@")
+    def __init__(self, text: str, window: Window | None) -> None:
+        if window is None:
+            return
+        super().__init__(title="Confirmation", transient_for=window)
+        self.add_buttons(
+            Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OK, Gtk.ResponseType.OK
+        )
 
-    exit_status = app.run(sys.argv)
+        self.set_default_size(150, 100)
 
-    sys.exit(exit_status)
+        label = Gtk.Label(label=text)
+
+        box = self.get_content_area()
+        box.add(label)
+        self.show_all()

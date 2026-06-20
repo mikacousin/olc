@@ -18,7 +18,7 @@ import copy
 import typing
 
 from olc.core.action import Action
-from olc.core.group import Group
+from olc.group import Group
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication

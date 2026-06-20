@@ -17,20 +17,20 @@ from __future__ import annotations
 import os
 import typing
 
-from olc.core.group import Groups
-from olc.core.sequence import Sequence
 from olc.cue import Cues
 from olc.curve import Curves
 from olc.define import UNIVERSES
 from olc.fader_bank import FaderBank
+from olc.group import Groups
 from olc.independent import Independents
 from olc.patch import DMXPatch
+from olc.sequence import Sequence
 
 if typing.TYPE_CHECKING:
     import olc.core.lightshow
     from olc.core.app import CoreApplication
-    from olc.core.group import Group
     from olc.cue import Cue
+    from olc.group import Group
 
 
 class ShowFile:

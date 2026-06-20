@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import typing
 
-from olc.patch_outputs import PatchOutputsTab
-from olc.widgets.channel import ChannelWidget
-from olc.widgets.channels_view import ChannelsView
+from olc.gtk3.patch_outputs import PatchOutputsTab
+from olc.gtk3.widgets.channel import ChannelWidget
+from olc.gtk3.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gtk
-    from olc.window import Window
+    from olc.gtk3.window import Window
 
 
 def zoom(direction: str, window: Window | None) -> None:

@@ -28,7 +28,7 @@ from olc.core.backends.osc.delegate import GUIOSCDelegate
 from olc.core.universe_config import Protocol
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
+    from olc.gtk3.application import Application
 
 
 # pylint: disable=too-many-instance-attributes

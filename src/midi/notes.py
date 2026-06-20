@@ -22,7 +22,7 @@ from olc.define import MAX_FADER_PAGE
 from olc.zoom import zoom
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
+    from olc.gtk3.application import Application
     from olc.independent import Independent
     from olc.midi import Midi
 

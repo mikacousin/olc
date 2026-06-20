@@ -21,7 +21,7 @@ import numpy as np
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
+    from olc.gtk3.application import Application
 
 
 # pylint: disable=too-many-instance-attributes

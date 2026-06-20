@@ -20,7 +20,7 @@ import mido
 from olc.midi.fader import MIDIFader
 
 if typing.TYPE_CHECKING:
-    from olc.application import Application
+    from olc.gtk3.application import Application
     from olc.midi import Midi
 
 

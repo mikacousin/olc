@@ -1,0 +1,394 @@
+# -*- coding: utf-8 -*-
+# Open Lighting Console
+# Copyright (c) 2026 Mika Cousin <mika.cousin@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+from __future__ import annotations
+
+import typing
+from typing import Callable
+
+from gi.repository import Gdk, Gtk
+from olc.channel_time import ChannelTime
+from olc.gtk3.widgets.channels_view import ChannelsView
+
+if typing.TYPE_CHECKING:
+    from gi.repository import Gio
+    from olc.core.lightshow import LightShow
+    from olc.gtk3.sequence import SequenceTab
+    from olc.gtk3.tabs_manager import Tabs
+    from olc.gtk3.widgets.channel import ChannelWidget
+    from olc.gtk3.window import Window
+    from olc.sequence import Sequence
+
+
+# pylint: disable=too-many-instance-attributes
+class ChanneltimeTab(Gtk.Paned):
+    """Channels time edition"""
+
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
+    def __init__(
+        self,
+        sequence: Sequence,
+        position: int,
+        lightshow: LightShow,
+        tabs: Tabs,
+        window: Window,
+        settings: Gio.Settings,
+    ) -> None:
+        self.sequence = sequence
+        self.position = position
+        self.lightshow = lightshow
+        self.tabs = tabs
+        self.window = window
+        self.settings = settings
+
+        Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
+        self.set_position(300)
+
+        self.channels_view = CTChannelsView(
+            lightshow=self.lightshow,
+            window=self.window,
+            settings=self.settings,
+            tabs=self.tabs,
+        )
+        self.add1(self.channels_view)
+
+        self.scrolled2 = Gtk.ScrolledWindow()
+        self.scrolled2.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.scrolled2.set_vexpand(True)
+        self.scrolled2.set_hexpand(True)
+
+        # List of Channels Times
+        self.liststore = Gtk.ListStore(int, str, str)
+
+        self.step = self.sequence.steps[int(position)]
+        self.treeview = Gtk.TreeView(model=self.liststore)
+        self._repopulate_liststore()
+        self.treeview.set_enable_search(False)
+        self.treeview.connect("cursor-changed", self.on_channeltime_changed)
+
+        for i, column_title in enumerate(["Channel", "Delay", "Time"]):
+            renderer = Gtk.CellRendererText()
+            if i == 1:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.delay_edited)
+            elif i == 2:
+                renderer.set_property("editable", True)
+                renderer.connect("edited", self.time_edited)
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            self.treeview.append_column(column)
+
+        self.scrolled2.add(self.treeview)
+
+        self.add2(self.scrolled2)
+
+    def refresh(self) -> None:
+        """Refresh display"""
+        self.liststore.clear()
+        self.channels_view.update()
+
+    def _repopulate_liststore(self) -> None:
+        """Clear and repopulate the liststore data"""
+        self.liststore.clear()
+        for channel, ct in self.step.channel_time.items():
+            delay = str(int(ct.delay)) if ct.delay.is_integer() else str(ct.delay)
+            if delay == "0":
+                delay = ""
+            time = str(int(ct.time)) if ct.time.is_integer() else str(ct.time)
+            if time == "0":
+                time = ""
+            self.liststore.append([channel, delay, time])
+
+    def _update_sequence_tab(self) -> None:
+        """Update Sequence Tab if open on the active sequence"""
+        sequences_tab = typing.cast("SequenceTab", self.tabs.tabs["sequences"])
+        if sequences_tab:
+            seq_path, _ = sequences_tab.treeview1.get_cursor()
+            if not seq_path:
+                return
+            selected = seq_path.get_indices()
+            sequence = sequences_tab.liststore1[selected[0]][0]
+            if sequence == self.sequence.index:
+                path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
+                ct_nb = len(self.step.channel_time)
+                sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
+
+    def _update_total_time(self) -> None:
+        """Recalculate total time for the step"""
+        if self.step.time_in > self.step.time_out:
+            self.step.total_time = self.step.time_in + self.step.wait
+        else:
+            self.step.total_time = self.step.time_out + self.step.wait
+        for ct in self.step.channel_time.values():
+            t = ct.delay + ct.time + self.step.wait
+            self.step.total_time = max(self.step.total_time, t)
+
+    def _update_main_playback(self) -> None:
+        """Redraw Main Playback metrics if necessary"""
+        if self.sequence == self.lightshow.main_playback:
+            path1 = Gtk.TreePath.new_from_indices([int(self.position) + 2])
+            ct_nb = len(self.step.channel_time)
+            self.window.playback.cues_liststore1[path1][8] = (
+                "" if ct_nb == 0 else str(ct_nb)
+            )
+            if self.lightshow.main_playback.position + 1 == int(self.position):
+                self.window.playback.sequential.total_time = self.step.total_time
+                self.window.playback.sequential.queue_draw()
+
+    def delay_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
+        """Delay changed
+
+        Args:
+            path_to_cell: selected channel
+            text: new delay value
+        """
+        if text == "":
+            text = "0"
+        if text.replace(".", "", 1).isdigit():
+            self.liststore[path_to_cell][1] = "" if text == "0" else text
+
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            channel = self.liststore[path.get_indices()[0]][0]
+            if self.step.channel_time[channel].time == 0 and text == "0":
+                del self.step.channel_time[channel]
+                self._repopulate_liststore()
+            else:
+                self.step.channel_time[channel].delay = float(text)
+
+            self._update_sequence_tab()
+            self._update_total_time()
+            self._update_main_playback()
+
+        self.window.commandline.set_string("")
+
+    def time_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
+        """Time changed
+
+        Args:
+            path_to_cell: selected channel
+            text: new time value
+        """
+        if text == "":
+            text = "0"
+        if text.replace(".", "", 1).isdigit():
+            self.liststore[path_to_cell][2] = "" if text == "0" else text
+
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            channel = self.liststore[path.get_indices()[0]][0]
+            if self.step.channel_time[channel].delay == 0 and text == "0":
+                del self.step.channel_time[channel]
+                self._repopulate_liststore()
+            else:
+                self.step.channel_time[channel].time = float(text)
+
+            self._update_sequence_tab()
+            self._update_total_time()
+            self._update_main_playback()
+
+        self.window.commandline.set_string("")
+
+    def on_channeltime_changed(self, _treeview: Gtk.TreeView) -> None:
+        """Select a Channel Time"""
+        self.channels_view.update()
+
+    def on_close_icon(self, _widget: Gtk.Widget) -> None:
+        """Close Tab with the icon clicked"""
+        # If channel times has no delay and no time, delete it
+        keys = list(self.step.channel_time.keys())
+        for channel in keys:
+            delay = self.step.channel_time[channel].delay
+            time = self.step.channel_time[channel].time
+            if delay == 0.0 and time == 0.0:
+                del self.step.channel_time[channel]
+        self.tabs.close("channel_time")
+
+    def on_key_press_event(
+        self, _widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> Callable | bool:
+        """Key has been pressed
+
+        Args:
+            event: Gdk.EventKey
+
+        Returns:
+            False or function
+        """
+        keyname = Gdk.keyval_name(event.keyval)
+
+        if keyname is None:
+            return False
+
+        if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
+            self.window.commandline.add_string(keyname)
+
+        if keyname in (
+            "KP_1",
+            "KP_2",
+            "KP_3",
+            "KP_4",
+            "KP_5",
+            "KP_6",
+            "KP_7",
+            "KP_8",
+            "KP_9",
+            "KP_0",
+        ):
+            self.window.commandline.add_string(keyname[3:])
+
+        if keyname == "period":
+            self.window.commandline.add_string(".")
+
+        # Channels View
+        self.channels_view.on_key_press(keyname)
+
+        if func := getattr(self, f"_keypress_{keyname.lower()}", None):
+            return func()
+        return False
+
+    def _keypress_escape(self) -> None:
+        """Close Tab"""
+        # If channel times has no delay and no time, delete it
+        keys = list(self.step.channel_time.keys())
+        for channel in keys:
+            delay = self.step.channel_time[channel].delay
+            time = self.step.channel_time[channel].time
+            if delay == 0.0 and time == 0.0:
+                del self.step.channel_time[channel]
+        self.tabs.close("channel_time")
+
+    def _keypress_backspace(self) -> None:
+        self.window.commandline.set_string("")
+
+    def _keypress_q(self) -> None:
+        """Previous Channel Time"""
+
+        self.channels_view.flowbox.unselect_all()
+
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            if path.prev():
+                self.treeview.set_cursor(path)
+        else:
+            path = Gtk.TreePath.new_first()
+            self.treeview.set_cursor(path)
+
+    def _keypress_w(self) -> None:
+        """Next Channel Time"""
+
+        self.channels_view.flowbox.unselect_all()
+
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            path.next()
+        else:
+            path = Gtk.TreePath.new_first()
+
+        self.treeview.set_cursor(path)
+
+    def _keypress_insert(self) -> None:
+        """Add Channel Time"""
+        # Find selected channels
+        sel = self.channels_view.flowbox.get_selected_children()
+        for flowboxchild in sel:
+            child = flowboxchild.get_child()
+            if child is not None:
+                channelwidget = typing.cast("ChannelWidget", child)
+                channel = int(channelwidget.channel)
+                # If not already exist
+                if channel not in self.step.channel_time:
+                    # Add Channel Time
+                    delay = 0.0
+                    time = 0.0
+                    self.step.channel_time[channel] = ChannelTime(delay, time)
+                    # Update user interface
+                    self.liststore.append([channel, "", ""])
+                    path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
+                    self.treeview.set_cursor(path)
+
+
+class CTChannelsView(ChannelsView):
+    """Channels View"""
+
+    def __init__(
+        self,
+        lightshow: LightShow,
+        window: Window,
+        settings: Gio.Settings,
+        tabs: Tabs,
+    ) -> None:
+        super().__init__(
+            lightshow=lightshow, window=window, settings=settings, tabs=tabs
+        )
+        self.tabs = tabs
+
+    def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
+        """Change channels level with a wheel
+
+        Args:
+            step: Step level
+            direction: Up or Down
+        """
+
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Channel at level
+
+        Args:
+            channel: Channel number (1 - MAX_CHANNELS)
+            level: DMX level (0 - 255)
+        """
+
+    def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
+        """Filter channels to display
+        Args:
+            child: Parent of Channel Widget
+        Returns:
+            True or False
+        """
+        if not self.tabs or not self.tabs.tabs["channel_time"]:
+            return False
+        widget = child.get_child()
+        if widget is None:
+            return False
+        channel_widget = typing.cast("ChannelWidget", widget)
+        channel_index = child.get_index()
+        step = typing.cast(ChanneltimeTab, self.tabs.tabs["channel_time"]).step
+        cue = step.cue
+        channels = cue.channels if cue is not None else {}
+        path, _focus_column = typing.cast(
+            ChanneltimeTab, self.tabs.tabs["channel_time"]
+        ).treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            channel = typing.cast(
+                ChanneltimeTab, self.tabs.tabs["channel_time"]
+            ).liststore[row][0]
+            if channel - 1 == channel_index or child.is_selected():
+                channel_widget.level = channels.get(channel_index, 0)
+                channel_widget.next_level = channels.get(channel_index, 0)
+                child.set_visible(True)
+                return True
+            channel_widget.level = 0
+            channel_widget.next_level = 0
+            child.set_visible(False)
+            return False
+        if child.is_selected():
+            channel_widget.level = channels.get(channel_index, 0)
+            channel_widget.next_level = channels.get(channel_index, 0)
+            child.set_visible(True)
+            return True
+        channel_widget.level = 0
+        channel_widget.next_level = 0
+        child.set_visible(False)
+        return False

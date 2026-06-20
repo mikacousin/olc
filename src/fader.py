@@ -24,11 +24,11 @@ from olc.define import MAX_CHANNELS
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
-    from olc.core.group import Group
-    from olc.core.sequence import Sequence
     from olc.cue import Cue
     from olc.fader_bank import FaderBank
+    from olc.group import Group
     from olc.main_fader import MainFader
+    from olc.sequence import Sequence
 
 
 class FaderType(IntEnum):

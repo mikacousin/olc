@@ -35,9 +35,9 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.core.engine import CoreEngine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.tabs_manager import Tabs
+    from olc.gtk3.window import Window
     from olc.midi import Midi
-    from olc.tabs_manager import Tabs
-    from olc.window import Window
 
 
 def _import_single_universe(u: int, val: dict, engine: CoreEngine) -> None:
