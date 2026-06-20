@@ -39,9 +39,21 @@ engine.set_channels(3, {k: 0 for k in range(10)})
 engine.start()
 engine.start_osc(host="127.0.0.1", client_port=9000, server_port=7000)
 
+step = 0
 try:
+    print("olcd running. Generating DMX variations... Press Ctrl+C to stop.")
     while True:
-        time.sleep(1.0)
+        # Calculate a dynamic value based on step counter
+        val = step % 256
+
+        # Apply variations on different universes with offsets
+        engine.set_channels(0, {0: val, 1: (val + 64) % 256, 2: (val + 128) % 256})
+        engine.set_channels(1, {k: (val + k * 15) % 256 for k in range(10)})
+        engine.set_channels(3, {k: 255 - ((val + k * 8) % 256) for k in range(10)})
+
+        # Advance step and sleep
+        step = (step + 4) % 256
+        time.sleep(0.1)
 except KeyboardInterrupt:
     print("\nStopping olcd...")
     engine.stop()
