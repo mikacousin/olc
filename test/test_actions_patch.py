@@ -142,3 +142,29 @@ def test_patch_set_output_curve_and_undo_redo() -> None:
     # Redo set output curve
     app.history.redo()
     assert patch.outputs[1][10] == [10, 5]
+
+
+def test_patch_select_output_and_undo_redo() -> None:
+    """Test output.select action and its undo/redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch_by_outputs = app.lightshow.patch_by_outputs
+
+    # Check default state
+    assert patch_by_outputs.outputs == []
+    assert patch_by_outputs.last == 0
+
+    # Select outputs 1 to 5, with last being 5
+    app.action_registry.execute("output.select", [1, 2, 3, 4, 5], 5)
+    assert patch_by_outputs.outputs == [1, 2, 3, 4, 5]
+    assert patch_by_outputs.last == 5
+
+    # Undo
+    app.history.undo()
+    assert patch_by_outputs.outputs == []
+    assert patch_by_outputs.last == 0
+
+    # Redo
+    app.history.redo()
+    assert patch_by_outputs.outputs == [1, 2, 3, 4, 5]
+    assert patch_by_outputs.last == 5

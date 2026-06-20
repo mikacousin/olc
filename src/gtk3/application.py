@@ -53,7 +53,6 @@ from olc.gtk3.virtual_console import VirtualConsoleWindow  # noqa: E402
 from olc.gtk3.window import Window  # noqa: E402
 from olc.independent import Independents  # noqa: E402
 from olc.midi import Midi  # noqa: E402
-from olc.patch import PatchByOutputs  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
 
@@ -131,7 +130,7 @@ class Application(Gtk.Application):
         # Setup GUI-safe event callbacks from Core via the event bridge
         self.event_bridge = GuiEventBridge(app_type)
 
-        self.patch_by_outputs = PatchByOutputs(app_type, self.core.lightshow.patch)
+        self.patch_by_outputs = self.core.lightshow.patch_by_outputs
 
     def do_activate(self) -> None:
         app_type = typing.cast("olc.gtk3.application.Application", self)

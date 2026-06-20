@@ -283,3 +283,58 @@ class PatchSetOutputCurveAction(Action):
             patch.invalidate_cache()
             self.app.lightshow.set_modified()
             self.app.emit("patch.changed")
+
+
+class PatchSelectOutputAction(Action):
+    """Action to select DMX outputs."""
+
+    name = "output.select"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.outputs: list[int] = []
+        self.last: int = 0
+        self.old_outputs: list[int] = []
+        self.old_last: int = 0
+
+    def configure(self, outputs: list[int], last: int) -> None:
+        """Configure the action with the target outputs selection.
+
+        Args:
+            outputs: List of selected DMX output indexes.
+            last: The last selected DMX output index.
+        """
+        self.outputs = list(outputs)
+        self.last = last
+
+    def execute(self) -> None:
+        """Execute the action, updating the logical outputs selection."""
+        patch_by_outputs = self.app.lightshow.patch_by_outputs
+        self.old_outputs = list(patch_by_outputs.outputs)
+        self.old_last = patch_by_outputs.last
+
+        patch_by_outputs.outputs = list(self.outputs)
+        patch_by_outputs.last = self.last
+
+        self._update()
+
+    def undo(self) -> None:
+        patch_by_outputs = self.app.lightshow.patch_by_outputs
+        patch_by_outputs.outputs = list(self.old_outputs)
+        patch_by_outputs.last = self.old_last
+        self._update()
+
+    def redo(self) -> None:
+        patch_by_outputs = self.app.lightshow.patch_by_outputs
+        patch_by_outputs.outputs = list(self.outputs)
+        patch_by_outputs.last = self.last
+        self._update()
+
+    def _update(self) -> None:
+        patch_by_outputs = self.app.lightshow.patch_by_outputs
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", patch_by_outputs.get_selected()
+            )
+        self.app.emit("patch.selected_outputs_changed")

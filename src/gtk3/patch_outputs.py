@@ -54,6 +54,7 @@ class PatchOutputsTab(Gtk.Box):
         self.backend = backend
         self.patch_by_outputs = patch_by_outputs
         self.test = False
+        self._updating_selection = False
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
 
@@ -97,6 +98,9 @@ class PatchOutputsTab(Gtk.Box):
             child.set_name("flowbox_outputs")
 
         scrolled.add(self.flowbox)
+        self.flowbox.connect(
+            "selected-children-changed", self.on_selected_children_changed
+        )
 
         self.pack_start(header, False, False, 0)
         self.pack_start(scrolled, True, True, 0)
@@ -131,13 +135,50 @@ class PatchOutputsTab(Gtk.Box):
 
     def select_outputs(self) -> None:
         """Select Outputs"""
-        self.flowbox.unselect_all()
-        for output_index in self.patch_by_outputs.outputs:
-            output_index -= 1
-            child = self.flowbox.get_child_at_index(output_index)
-            if child is not None:
-                self.flowbox.select_child(child)
-                self.window.set_focus(child)
+        self._updating_selection = True
+        try:
+            self.flowbox.unselect_all()
+            for output_index in self.patch_by_outputs.outputs:
+                output_index -= 1
+                child = self.flowbox.get_child_at_index(output_index)
+                if child is not None:
+                    self.flowbox.select_child(child)
+                    self.window.set_focus(child)
+        finally:
+            self._updating_selection = False
+
+    def on_selected_children_changed(self, flowbox: Gtk.FlowBox) -> None:
+        """Callback when the selected children in Gtk.FlowBox change.
+
+        Args:
+            flowbox: The Gtk.FlowBox instance.
+        """
+        if self._updating_selection:
+            return
+
+        selected = flowbox.get_selected_children()
+        outputs = []
+        for child in selected:
+            idx = child.get_index()
+            outputs.append(idx + 1)
+
+        # Determine the last selected output
+        focus_child = flowbox.get_focus_child()
+        last = 0
+        if isinstance(focus_child, Gtk.FlowBoxChild):
+            focus_idx = focus_child.get_index() + 1
+            if focus_idx in outputs:
+                last = focus_idx
+
+        if last == 0 and outputs:
+            last = outputs[-1]
+
+        # Prevent duplicate execution if the selection hasn't actually changed
+        if (
+            sorted(outputs) != sorted(self.patch_by_outputs.outputs)
+            or last != self.patch_by_outputs.last
+        ):
+            self.window.app.core.action_registry.execute("output.select", outputs, last)
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey

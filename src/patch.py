@@ -21,6 +21,7 @@ import numpy as np
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
 
 if typing.TYPE_CHECKING:
+    from olc.core.app import CoreApplication
     from olc.gtk3.application import Application
 
 
@@ -201,11 +202,12 @@ class DMXPatch:
 class PatchByOutputs:
     """Manipulate Patch using Outputs order"""
 
-    def __init__(self, app: Application, patch: DMXPatch) -> None:
+    def __init__(self, app: Application | CoreApplication, patch: DMXPatch) -> None:
         self.app = app
         self.outputs = []
         self.last = 0
         self.patch = patch
+        self._commandline_string: str = ""
 
     def get_selected(self) -> str:
         """Return selected outputs
@@ -225,68 +227,51 @@ class PatchByOutputs:
         output, universe = self._string_to_output()
         output_index = self._get_output_index(output, universe)
         if output_index:
-            self.outputs = [output_index]
-            self.last = output_index
+            outputs = [output_index]
+            last = output_index
         else:
-            self.outputs = []
-            self.last = 0
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
-        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
-        if tab is not None:
-            typing.cast(typing.Any, tab).select_outputs()
-        if self.app.window is not None:
-            self.app.window.commandline.set_string("")
+            outputs = []
+            last = 0
+        self.app.core.action_registry.execute("output.select", outputs, last)
 
     def thru(self) -> None:
         """Thru output"""
         output, universe = self._string_to_output()
         output_index = self._get_output_index(output, universe)
         if output_index:
+            new_outputs = list(self.outputs)
             if output_index > self.last:
                 for out in range(self.last + 1, output_index + 1):
-                    self.outputs.append(out)
+                    new_outputs.append(out)
             else:
                 for out in range(self.last - 1, output_index - 1, -1):
-                    self.outputs.append(out)
-            self.last = output_index
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
-        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
-        if tab is not None:
-            typing.cast(typing.Any, tab).select_outputs()
-        if self.app.window is not None:
-            self.app.window.commandline.set_string("")
+                    new_outputs.append(out)
+            self.app.core.action_registry.execute(
+                "output.select", new_outputs, output_index
+            )
 
     def add_output(self) -> None:
         """Add an output to selection"""
         output, universe = self._string_to_output()
         output_index = self._get_output_index(output, universe)
         if output_index:
-            self.outputs.append(output_index)
-            self.last = output_index
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
-        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
-        if tab is not None:
-            typing.cast(typing.Any, tab).select_outputs()
-        if self.app.window is not None:
-            self.app.window.commandline.set_string("")
+            new_outputs = list(self.outputs)
+            new_outputs.append(output_index)
+            self.app.core.action_registry.execute(
+                "output.select", new_outputs, output_index
+            )
 
     def del_output(self) -> None:
         """Remove an output to selection"""
         output, universe = self._string_to_output()
         output_index = self._get_output_index(output, universe)
         if output_index:
-            self.outputs.remove(output_index)
-            self.last = output_index
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
-        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
-        if tab is not None:
-            typing.cast(typing.Any, tab).select_outputs()
-        if self.app.window is not None:
-            self.app.window.commandline.set_string("")
+            new_outputs = list(self.outputs)
+            if output_index in new_outputs:
+                new_outputs.remove(output_index)
+            self.app.core.action_registry.execute(
+                "output.select", new_outputs, output_index
+            )
 
     def patch_channel(self, several: bool) -> None:
         """Patch
@@ -299,24 +284,14 @@ class PatchByOutputs:
         if channel is None:
             return
         self.__for_each_output(channel, several)
-        if self.app.window is not None:
-            self.app.window.live_view.channels_view.update()
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/patch/selected_outputs", self.get_selected())
-        tab = self.app.tabs.tabs["patch_outputs"] if self.app.tabs else None
-        if tab is not None:
-            typing.cast(typing.Any, tab).refresh()
-            # Select next output
-            output_index = self.last
-            if output_index < NB_UNIVERSES * 512:
-                output_index += 1
-            output, universe = self.get_output_universe(output_index)
-            if self.app.window is not None:
-                self.app.window.commandline.set_string(f"{output}.{universe}")
-            self.select_output()
-        self.app.core.lightshow.set_modified()
-        if self.app.window is not None:
-            self.app.window.commandline.set_string("")
+
+        # Select next output
+        output_index = self.last
+        if output_index < NB_UNIVERSES * 512:
+            output_index += 1
+        output, universe = self.get_output_universe(output_index)
+        self._set_commandline_string(f"{output}.{universe}")
+        self.select_output()
 
     def __for_each_output(self, channel: int, several: bool) -> None:
         for i, output_index in enumerate(self.outputs):
@@ -334,6 +309,23 @@ class PatchByOutputs:
     def __unpatch(self, output: int, univ: int) -> None:
         if univ in self.patch.outputs and output in self.patch.outputs[univ]:
             self.app.core.action_registry.execute("patch.unpatch_output", output, univ)
+
+    def _get_commandline_string(self) -> str:
+        window = getattr(self.app, "window", None)
+        if window is not None:
+            commandline = getattr(window, "commandline", None)
+            if commandline is not None:
+                return commandline.get_string()
+        return getattr(self, "_commandline_string", "")
+
+    def _set_commandline_string(self, value: str) -> None:
+        window = getattr(self.app, "window", None)
+        if window is not None:
+            commandline = getattr(window, "commandline", None)
+            if commandline is not None:
+                commandline.set_string(value)
+                return
+        self._commandline_string = value
 
     def get_output_universe(self, out: int) -> tuple[Optional[int], Optional[int]]:
         """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)
@@ -366,9 +358,7 @@ class PatchByOutputs:
     def _string_to_output(self) -> tuple[Optional[int], Optional[int]]:
         output = None
         universe = None
-        if self.app.window is None:
-            return (None, None)
-        keystring = self.app.window.commandline.get_string()
+        keystring = self._get_commandline_string()
         if not keystring:
             keystring = "0"
         if "." in keystring:
@@ -383,9 +373,7 @@ class PatchByOutputs:
         return (output, universe)
 
     def _string_to_channel(self) -> Optional[int]:
-        if self.app.window is None:
-            return None
-        keystring = self.app.window.commandline.get_string()
+        keystring = self._get_commandline_string()
         if not keystring:
             keystring = "0"
         if not is_int(keystring):

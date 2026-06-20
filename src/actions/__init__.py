@@ -42,6 +42,7 @@ from olc.actions.group import (
 from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
+    PatchSelectOutputAction,
     PatchSet1on1Action,
     PatchSetOutputCurveAction,
     PatchUnpatchOutputAction,
@@ -87,6 +88,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PatchAddOutputAction,
         PatchUnpatchOutputAction,
         PatchClearAction,
+        PatchSelectOutputAction,
         PatchSet1on1Action,
         PatchSetOutputCurveAction,
         CurveNewAction,

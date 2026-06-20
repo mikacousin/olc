@@ -94,6 +94,10 @@ class GuiEventBridge:
             "patch.changed", lambda: self._run_idle(self._safe_refresh_patch)
         )
         self.app.core.subscribe(
+            "patch.selected_outputs_changed",
+            lambda: self._run_idle(self._on_selected_outputs_changed),
+        )
+        self.app.core.subscribe(
             "curve.changed",
             lambda curve_nb: self._run_idle(self._safe_refresh_curves, curve_nb),
         )
@@ -329,6 +333,22 @@ class GuiEventBridge:
                     "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
                 )
                 patch_channels.refresh()
+        return False
+
+    def _on_selected_outputs_changed(self) -> bool:
+        """Refresh selected outputs UI and reset command line in the GTK thread.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("patch_outputs") is not None:
+                patch_outputs = typing.cast(
+                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+                )
+                patch_outputs.select_outputs()
+        if self.app.window and self.app.window.commandline:
+            self.app.window.commandline.set_string("")
         return False
 
     def _safe_refresh_curves(self, curve_nb: int) -> bool:

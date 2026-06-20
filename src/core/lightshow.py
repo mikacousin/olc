@@ -23,7 +23,7 @@ from olc.define import UNIVERSES
 from olc.fader_bank import FaderBank
 from olc.group import Groups
 from olc.independent import Independents
-from olc.patch import DMXPatch
+from olc.patch import DMXPatch, PatchByOutputs
 from olc.sequence import Sequence
 
 if typing.TYPE_CHECKING:
@@ -79,6 +79,7 @@ class LightShow(ShowFile):
     fader_bank: FaderBank
     independents: Independents
     patch: DMXPatch
+    patch_by_outputs: PatchByOutputs
 
     def __init__(self, app: CoreApplication | None = None) -> None:
         super().__init__(None)
@@ -100,6 +101,9 @@ class LightShow(ShowFile):
         self.independents = Independents(lightshow_type)
         # Patch
         self.patch = DMXPatch(UNIVERSES)
+        self.patch_by_outputs = PatchByOutputs(
+            typing.cast(typing.Any, app or self.app), self.patch
+        )
 
     def get_cue(self, number: float) -> None | Cue:
         """Get Cue with his number
