@@ -124,3 +124,83 @@ def test_channel_set_level_action_feedback_and_repr() -> None:
     }
 
     assert repr(action) == "<SetChannelLevelAction channel=15 level=200>"
+
+
+def test_channel_selection_actions_undo_redo() -> None:
+    """Test channel selection actions execution, undo, and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Subscribe to channels.selected_changed
+    received_selections: list[list[int]] = []
+    app.subscribe(
+        "channels.selected_changed", lambda sel: received_selections.append(list(sel))
+    )
+
+    # 1. Test SelectActiveChannelAction
+    app.commandline.set_string("5")
+    app.action_registry.execute("channel.select_active")
+    assert app.selected_channels == [5]
+    assert app.last_selected_channel == 5
+    assert received_selections[-1] == [5]
+
+    # Undo
+    app.history.undo()
+    assert not app.selected_channels
+    assert app.last_selected_channel is None
+
+    assert received_selections[-1] == []
+
+    # Redo
+    app.history.redo()
+    assert app.selected_channels == [5]
+    assert app.last_selected_channel == 5
+    assert received_selections[-1] == [5]
+
+    # 2. Test SelectAddChannelAction
+    app.commandline.set_string("10")
+    app.action_registry.execute("channel.select_add")
+    assert app.selected_channels == [5, 10]
+    assert app.last_selected_channel == 10
+    assert received_selections[-1] == [5, 10]
+
+    # Undo
+    app.history.undo()
+    assert app.selected_channels == [5]
+    assert app.last_selected_channel == 5
+    assert received_selections[-1] == [5]
+
+    # Redo
+    app.history.redo()
+    assert app.selected_channels == [5, 10]
+
+    # 3. Test SelectThruChannelAction
+    app.commandline.set_string("12")
+    app.action_registry.execute("channel.select_thru")
+    # should select from last_selected (10) thru 12, so 10, 11, 12. And 5 was already
+    # selected.
+    assert set(app.selected_channels) == {5, 10, 11, 12}
+    assert app.last_selected_channel == 12
+
+    # Undo
+    app.history.undo()
+    assert app.selected_channels == [5, 10]
+    assert app.last_selected_channel == 10
+
+    # Redo
+    app.history.redo()
+    assert set(app.selected_channels) == {5, 10, 11, 12}
+
+    # 4. Test SelectRemoveChannelAction
+    app.commandline.set_string("11")
+    app.action_registry.execute("channel.select_remove")
+    assert 11 not in app.selected_channels
+    assert app.last_selected_channel == 11
+
+    # Undo
+    app.history.undo()
+    assert 11 in app.selected_channels
+
+    # Redo
+    app.history.redo()
+    assert 11 not in app.selected_channels

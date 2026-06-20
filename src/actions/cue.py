@@ -468,7 +468,49 @@ class CueSetTempChannelsAction(Action):
             cue_editor.set_level(self.number, self.sequence, channel, level)
 
     def undo(self) -> None:
-        """Undo the temporary levels, restoring previous overrides."""
+        """Undo the temporary channel level changes."""
         cue_editor = self.app.lightshow.cues.cue_editor
         for channel, level in self.old_levels.items():
             cue_editor.set_level(self.number, self.sequence, channel, level)
+
+    def redo(self) -> None:
+        """Redo the temporary channel level changes."""
+        cue_editor = self.app.lightshow.cues.cue_editor
+        for channel, level in self.new_levels.items():
+            cue_editor.set_level(self.number, self.sequence, channel, level)
+
+
+class CueSelectAction(Action):
+    """Action to select a cue logically.
+
+    Supports Undo/Redo by storing the previous selected cue.
+    """
+
+    name = "cue.select"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.cue_id: typing.Optional[tuple[float, int]] = None
+        self.old_cue_id: typing.Optional[tuple[float, int]] = None
+
+    def configure(self, cue_id: tuple[float, int] | None) -> None:
+        """Configure the action with the cue ID to select.
+
+        Args:
+            cue_id: A tuple of (number, sequence) to select, or None to unselect.
+        """
+        self.cue_id = cue_id
+
+    def execute(self) -> None:
+        self.old_cue_id = self.app.selected_cue
+        self.app.selected_cue = self.cue_id
+        self.app.emit("cue.selected_changed", self.cue_id)
+
+    def undo(self) -> None:
+        self.app.selected_cue = self.old_cue_id
+        self.app.emit("cue.selected_changed", self.old_cue_id)
+
+    def redo(self) -> None:
+        self.app.selected_cue = self.cue_id
+        self.app.emit("cue.selected_changed", self.cue_id)

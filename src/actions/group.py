@@ -266,3 +266,39 @@ class GroupRenameAction(Action):
         target_group.text = self.old_name
         lightshow.set_modified()
         self.app.emit("group.updated", target_group)
+
+
+class GroupSelectAction(Action):
+    """Action to select a group logically.
+
+    Supports Undo/Redo by storing the previous selected group.
+    """
+
+    name = "group.select"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.group_nb: typing.Optional[float] = None
+        self.old_group_nb: typing.Optional[float] = None
+
+    def configure(self, group_nb: float | None) -> None:
+        """Configure the action with the group number to select.
+
+        Args:
+            group_nb: The index of the group to select, or None to unselect.
+        """
+        self.group_nb = group_nb
+
+    def execute(self) -> None:
+        self.old_group_nb = self.app.selected_group
+        self.app.selected_group = self.group_nb
+        self.app.emit("group.selected_changed", self.group_nb)
+
+    def undo(self) -> None:
+        self.app.selected_group = self.old_group_nb
+        self.app.emit("group.selected_changed", self.old_group_nb)
+
+    def redo(self) -> None:
+        self.app.selected_group = self.group_nb
+        self.app.emit("group.selected_changed", self.group_nb)

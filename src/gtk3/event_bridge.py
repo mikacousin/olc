@@ -38,7 +38,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.widgets.group import GroupWidget
 
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods, too-many-lines
 class GuiEventBridge:
     """GuiEventBridge maps core events to GTK main-thread UI operations.
 
@@ -194,6 +194,14 @@ class GuiEventBridge:
             lambda fader_index, pressed: self._run_idle(
                 self._on_fader_flash_changed, fader_index, pressed
             ),
+        )
+        self.app.core.subscribe(
+            "group.selected_changed",
+            lambda group_nb: self._run_idle(self._on_group_selected_changed, group_nb),
+        )
+        self.app.core.subscribe(
+            "cue.selected_changed",
+            lambda cue_id: self._run_idle(self._on_cue_selected_changed, cue_id),
         )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
@@ -911,20 +919,39 @@ class GuiEventBridge:
     def _on_channels_selected_changed(self, selected_channels: list[int]) -> bool:
         """Synchronize the logical channel selection to the GUI's FlowBox."""
         if self.app.window and self.app.window.live_view:
-            channels_view = self.app.window.live_view.channels_view
-            channels_view.flowbox.unselect_all()
-            for ch in selected_channels:
-                if 1 <= ch <= MAX_CHANNELS:
-                    flowboxchild = channels_view.flowbox.get_child_at_index(ch - 1)
-                    if flowboxchild:
-                        channels_view.flowbox.select_child(flowboxchild)
-            if self.app.core.last_selected_channel is not None:
-                channels_view.last_selected_channel = str(
-                    self.app.core.last_selected_channel
-                )
-            else:
-                channels_view.last_selected_channel = ""
-            channels_view.flowbox.invalidate_filter()
+            channels_view: typing.Any = self.app.window.live_view.channels_view
+            channels_view.updating_selection = True
+
+            try:
+                channels_view.flowbox.unselect_all()
+                for ch in selected_channels:
+                    if 1 <= ch <= MAX_CHANNELS:
+                        flowboxchild = channels_view.flowbox.get_child_at_index(ch - 1)
+                        if flowboxchild:
+                            channels_view.flowbox.select_child(flowboxchild)
+                if self.app.core.last_selected_channel is not None:
+                    channels_view.last_selected_channel = str(
+                        self.app.core.last_selected_channel
+                    )
+                else:
+                    channels_view.last_selected_channel = ""
+                channels_view.flowbox.invalidate_filter()
+            finally:
+                channels_view.updating_selection = False
+        return False
+
+    def _on_group_selected_changed(self, group_nb: float | None) -> bool:
+        """Synchronize the logical group selection to the GUI."""
+        if self.app.tabs and self.app.tabs.tabs.get("groups") is not None:
+            group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
+            group_tab.select_group_graphically(group_nb)
+        return False
+
+    def _on_cue_selected_changed(self, cue_id: tuple[float, int] | None) -> bool:
+        """Synchronize the logical cue selection to the GUI."""
+        if self.app.tabs and self.app.tabs.tabs.get("memories") is not None:
+            memories_tab = typing.cast("CuesEditionTab", self.app.tabs.tabs["memories"])
+            memories_tab.select_cue_graphically(cue_id)
         return False
 
     def _on_fader_page_changed(self, _page: int) -> bool:

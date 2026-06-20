@@ -47,6 +47,7 @@ class CuesEditionTab(Gtk.Paned):
     treeview: Gtk.TreeView
     scrollable: Gtk.ScrolledWindow
     channels_view: CueChannelsView
+    _updating_selection: bool
 
     def __init__(self, app: Application) -> None:
         self.app = app
@@ -57,6 +58,7 @@ class CuesEditionTab(Gtk.Paned):
         )
         self.settings = app.settings
         self.commandline = app.core.commandline
+        self._updating_selection = False
 
         # Cues tab initialization
 
@@ -97,8 +99,41 @@ class CuesEditionTab(Gtk.Paned):
 
     def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Selected Cue"""
-        self.channels_view.flowbox.unselect_all()
-        self.channels_view.update()
+        if self._updating_selection:
+            return
+        path, _ = self.treeview.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            if 0 <= row < len(self.lightshow.cues):
+                selected_cue = self.lightshow.cues[row]
+                cue_id = (selected_cue.number, selected_cue.sequence)
+            else:
+                cue_id = None
+        else:
+            cue_id = None
+        self.app.core.action_registry.execute("cue.select", cue_id)
+
+    def select_cue_graphically(self, cue_id: tuple[float, int] | None) -> None:
+        """Update the graphical cue selection from the logical state."""
+        self._updating_selection = True
+        try:
+            if cue_id is not None:
+                cue_number, cue_seq = cue_id
+                if cue_seq == 0:
+                    idx = -1
+                    for i, cue in enumerate(self.lightshow.cues):
+                        if cue.number == cue_number:
+                            idx = i
+                            break
+                    if idx != -1:
+                        path = Gtk.TreePath.new_from_indices([idx])
+                        self.treeview.set_cursor(path, None, False)
+            else:
+                self.treeview.get_selection().unselect_all()
+            self.channels_view.flowbox.unselect_all()
+            self.channels_view.update()
+        finally:
+            self._updating_selection = False
 
     def refresh(self) -> None:
         """Refresh display by syncing the liststore without clearing it entirely"""

@@ -260,3 +260,53 @@ def test_groups_container_class() -> None:
     groups.remove(g3)
     assert len(groups) == 1
     assert groups[0] == g1
+
+
+def test_group_select_action_undo_redo() -> None:
+    """Test group select action, including undo and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Clean groups list and set up group
+    app.lightshow.groups.clear()
+    app.action_registry.execute("group.new", 1.0)
+    app.action_registry.execute("group.new", 2.0)
+
+    # Track selection events
+    received_selections: list[float | None] = []
+    app.subscribe("group.selected_changed", received_selections.append)
+
+    # 1. Test group.select with group 1.0
+    app.action_registry.execute("group.select", 1.0)
+    assert app.selected_group == 1.0
+    assert received_selections == [1.0]
+
+    # 2. Test group.select with group 2.0
+    app.action_registry.execute("group.select", 2.0)
+    assert app.selected_group == 2.0
+    assert received_selections == [1.0, 2.0]
+
+    # 3. Undo
+    app.history.undo()
+    assert app.selected_group == 1.0
+    assert received_selections == [1.0, 2.0, 1.0]
+
+    # 4. Undo again
+    app.history.undo()
+    assert app.selected_group is None
+    assert received_selections == [1.0, 2.0, 1.0, None]
+
+    # 5. Redo
+    app.history.redo()
+    assert app.selected_group == 1.0
+    assert received_selections == [1.0, 2.0, 1.0, None, 1.0]
+
+    # 6. Redo again
+    app.history.redo()
+    assert app.selected_group == 2.0
+    assert received_selections == [1.0, 2.0, 1.0, None, 1.0, 2.0]
+
+    # 7. Unselect group
+    app.action_registry.execute("group.select", None)
+    assert app.selected_group is None
+    assert received_selections[-1] is None

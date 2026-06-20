@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 from typing import Callable
 
-from gi.repository import Gdk, Gtk
+from gi.repository import Gdk, GLib, Gtk
 from olc.define import is_non_nul_float
 from olc.group import Group
 from olc.gtk3.widgets.channel import ChannelWidget
@@ -200,6 +200,7 @@ class GroupTab(Gtk.Paned):
     channels_view: GroupChannelsView
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
+    _updating_selection: bool
 
     def __init__(self, app: Application) -> None:
         self.app = app
@@ -212,6 +213,8 @@ class GroupTab(Gtk.Paned):
         self.commandline = app.core.commandline
         self.last_group_selected = ""
         self.selected_group_number = None
+        self._updating_selection = False
+        self._selection_idle_id: int | None = None
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
@@ -250,16 +253,47 @@ class GroupTab(Gtk.Paned):
 
     def on_selection_changed(self, flowbox: Gtk.FlowBox) -> None:
         """Called when user selection changes on flowbox"""
+        if self._updating_selection:
+            return
+
+        if self._selection_idle_id is not None:
+            GLib.source_remove(self._selection_idle_id)
+            self._selection_idle_id = None
+
+        self._selection_idle_id = GLib.idle_add(self._apply_selection_changed, flowbox)
+
+    def _apply_selection_changed(self, flowbox: Gtk.FlowBox) -> bool:
+        self._selection_idle_id = None
         selected = flowbox.get_selected_children()
         if selected:
             child = selected[0]
             group_widget = typing.cast(GroupWidget, child.get_child())
-            self.selected_group_number = group_widget.number
-            self.last_group_selected = str(child.get_index())
+            group_nb = group_widget.number
         else:
-            self.selected_group_number = None
-            self.last_group_selected = ""
-        self.channels_view.update()
+            group_nb = None
+        self.app.core.action_registry.execute("group.select", group_nb)
+        return False
+
+    def select_group_graphically(self, group_nb: float | None) -> None:
+        """Update the graphical group selection from the logical state."""
+        self._updating_selection = True
+        try:
+            self.flowbox.unselect_all()
+            if group_nb is not None:
+                for child in self.flowbox.get_children():
+                    fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                    group_widget = typing.cast(GroupWidget, fb_child.get_child())
+                    if group_widget and group_widget.number == group_nb:
+                        self.flowbox.select_child(fb_child)
+                        self.selected_group_number = group_nb
+                        self.last_group_selected = str(fb_child.get_index())
+                        break
+            else:
+                self.selected_group_number = None
+                self.last_group_selected = ""
+            self.channels_view.update()
+        finally:
+            self._updating_selection = False
 
     def refresh(self) -> None:
         """Refresh display"""

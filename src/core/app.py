@@ -45,6 +45,8 @@ class CoreApplication(EventDispatcher):
     commandline: CoreCommandLine
     selected_channels: list[int]
     last_selected_channel: typing.Optional[int]
+    selected_cue: typing.Optional[tuple[float, int]]
+    selected_group: typing.Optional[float]
 
     @property
     def core(self) -> CoreApplication:
@@ -86,9 +88,11 @@ class CoreApplication(EventDispatcher):
         # Command line logical state helper
         self.commandline = CoreCommandLine(typing.cast(typing.Any, self))
 
-        # Logical channel selection state
+        # Logical selection states
         self.selected_channels: list[int] = []
         self.last_selected_channel: typing.Optional[int] = None
+        self.selected_cue: typing.Optional[tuple[float, int]] = None
+        self.selected_group: typing.Optional[float] = None
 
         # Action and Undo/Redo plumbing layers
         self.action_registry = ActionRegistry(typing.cast(typing.Any, self))

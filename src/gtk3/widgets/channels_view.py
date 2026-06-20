@@ -50,6 +50,7 @@ class ChannelsView(Gtk.Box):
     lightshow: LightShow | None
     settings: Gio.Settings | None
     tabs: Tabs | None
+    updating_selection: bool
 
     def __init__(
         self,
@@ -69,6 +70,7 @@ class ChannelsView(Gtk.Box):
 
         self.view_mode = VIEW_MODES.get("All", 0)
         self.last_selected_channel = ""
+        self.updating_selection = False
 
         header = Gtk.HeaderBar()
         self.combo = Gtk.ComboBoxText()

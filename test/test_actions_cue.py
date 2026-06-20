@@ -294,3 +294,60 @@ def test_cues_container() -> None:
     # 9. Test clear
     cues.clear()
     assert len(cues) == 0
+
+
+def test_cue_select_action_undo_redo() -> None:
+    """Test cue select action, including undo and redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Clean cues list and set up cues
+    app.lightshow.cues.clear()
+    app.action_registry.execute("cue.insert", 1.0, 0)
+    app.action_registry.execute("cue.insert", 2.0, 0)
+
+    # Track selection events
+    received_selections: list[tuple[float, int] | None] = []
+    app.subscribe("cue.selected_changed", received_selections.append)
+
+    # 1. Test cue.select with cue (1.0, 0)
+    app.action_registry.execute("cue.select", (1.0, 0))
+    assert app.selected_cue == (1.0, 0)
+    assert received_selections == [(1.0, 0)]
+
+    # 2. Test cue.select with cue (2.0, 0)
+    app.action_registry.execute("cue.select", (2.0, 0))
+    assert app.selected_cue == (2.0, 0)
+    assert received_selections == [(1.0, 0), (2.0, 0)]
+
+    # 3. Undo
+    app.history.undo()
+    assert app.selected_cue == (1.0, 0)
+    assert received_selections == [(1.0, 0), (2.0, 0), (1.0, 0)]
+
+    # 4. Undo again
+    app.history.undo()
+    assert app.selected_cue is None
+    assert received_selections == [(1.0, 0), (2.0, 0), (1.0, 0), None]
+
+    # 5. Redo
+    app.history.redo()
+    assert app.selected_cue == (1.0, 0)
+    assert received_selections == [(1.0, 0), (2.0, 0), (1.0, 0), None, (1.0, 0)]
+
+    # 6. Redo again
+    app.history.redo()
+    assert app.selected_cue == (2.0, 0)
+    assert received_selections == [
+        (1.0, 0),
+        (2.0, 0),
+        (1.0, 0),
+        None,
+        (1.0, 0),
+        (2.0, 0),
+    ]
+
+    # 7. Unselect cue
+    app.action_registry.execute("cue.select", None)
+    assert app.selected_cue is None
+    assert received_selections[-1] is None

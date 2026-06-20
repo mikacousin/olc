@@ -18,7 +18,6 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
-from olc.gtk3.track_channels import TrackChannelsTab
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -26,6 +25,7 @@ if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
+    from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.widgets.channels_view import ChannelsView
     from olc.gtk3.window import Window
 
@@ -75,6 +75,31 @@ class ChannelWidget(Gtk.DrawingArea):
         self.connect("touch-event", self.on_click)
         self.set_size_request(self.width, self.width)
 
+    def _get_context(
+        self, target: Gtk.Widget
+    ) -> tuple[ChannelsView | None, Gtk.FlowBox | None, Gtk.FlowBoxChild | None]:
+        """Find containing ChannelsView, FlowBox, and FlowBoxChild for target."""
+
+        flowboxchild_raw = target.get_parent()
+        if flowboxchild_raw is None:
+            return None, None, None
+        flowboxchild = typing.cast("Gtk.FlowBoxChild", flowboxchild_raw)
+        flowbox_raw = flowboxchild.get_parent()
+        if flowbox_raw is None:
+            return None, None, None
+        flowbox = typing.cast("Gtk.FlowBox", flowbox_raw)
+        p1 = flowbox.get_parent()
+        if p1 is None:
+            return None, None, None
+        p2 = p1.get_parent()
+        if p2 is None:
+            return None, None, None
+        p3 = p2.get_parent()
+        if p3 is None:
+            return None, None, None
+        channels_view = typing.cast("ChannelsView", p3)
+        return channels_view, flowbox, flowboxchild
+
     def on_click(self, target: Gtk.Widget, event: Gdk.EventButton) -> None:
         """Select clicked widget
 
@@ -82,46 +107,43 @@ class ChannelWidget(Gtk.DrawingArea):
             target: Target
             event: Gdk.EventButton or Gdk.EventTouch
         """
-        accel_mask = Gtk.accelerator_get_default_mod_mask()
-        flowboxchild_raw = target.get_parent()
-        if flowboxchild_raw is None:
+        channels_view, flowbox, flowboxchild = self._get_context(target)
+        if channels_view is None or flowbox is None or flowboxchild is None:
             return
-        flowboxchild = typing.cast("Gtk.FlowBoxChild", flowboxchild_raw)
-        flowbox_raw = flowboxchild.get_parent()
-        if flowbox_raw is None:
-            return
-        flowbox = typing.cast("Gtk.FlowBox", flowbox_raw)
-        p1 = flowbox.get_parent()
-        if p1 is None:
-            return
-        p2 = p1.get_parent()
-        if p2 is None:
-            return
-        p3 = p2.get_parent()
-        if p3 is None:
-            return
-        channels_view = typing.cast("ChannelsView", p3)
 
-        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            self.commandline.set_string(str(self.channel))
-            channels_view.select_thru()
-        elif flowboxchild.is_selected():
-            flowbox.unselect_child(flowboxchild)
-        else:
-            flowbox.select_child(flowboxchild)
-            channels_view.last_selected_channel = self.channel
-        # If Main channels view, update Track Channels if opened
+        accel_mask = Gtk.accelerator_get_default_mod_mask()
+        channel_num = int(self.channel)
+
         if (
             self.window
             and self.window.live_view
             and channels_view is self.window.live_view.channels_view
-            and self.tabs
-            and self.tabs.tabs["track_channels"]
         ):
-            track_channels = typing.cast(
-                TrackChannelsTab, self.tabs.tabs["track_channels"]
-            )  # Avoid circular import
-            track_channels.update_display()
+            if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+                self.commandline.set_string(str(channel_num))
+                self.app.core.action_registry.execute("channel.select_thru")
+            elif channel_num in self.app.core.selected_channels:
+                self.commandline.set_string(str(channel_num))
+                self.app.core.action_registry.execute("channel.select_remove")
+            else:
+                self.commandline.set_string(str(channel_num))
+                self.app.core.action_registry.execute("channel.select_add")
+
+            # Update Track Channels if opened
+            if self.tabs and self.tabs.tabs["track_channels"]:
+                track_channels = typing.cast(
+                    "TrackChannelsTab", self.tabs.tabs["track_channels"]
+                )
+                track_channels.update_display()
+        else:
+            if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+                self.commandline.set_string(str(channel_num))
+                channels_view.select_thru()
+            elif flowboxchild.is_selected():
+                flowbox.unselect_child(flowboxchild)
+            else:
+                flowbox.select_child(flowboxchild)
+                channels_view.last_selected_channel = self.channel
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
