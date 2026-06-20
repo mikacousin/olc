@@ -19,6 +19,8 @@ import typing
 from gi.repository import Gtk
 
 if typing.TYPE_CHECKING:
+    from olc.core.commandline import CoreCommandLine
+    from olc.gtk3.application import Application
     from olc.gtk3.channel_time import ChanneltimeTab
     from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.curve import CurvesTab
@@ -55,9 +57,14 @@ class Tabs:
     """
 
     tabs: dict[str, TabWidget | None]
+    app: Application
+    window: Window | None
+    commandline: CoreCommandLine
 
-    def __init__(self, window: Window | None) -> None:
-        self.window = window
+    def __init__(self, app: Application) -> None:
+        self.app = app
+        self.window = None
+        self.commandline = app.core.commandline
 
         self.tabs = {
             "channel_time": None,
@@ -124,8 +131,8 @@ class Tabs:
         Args:
             tab_name : Tab name found in self.tabs
         """
-        if self.window and self.tabs[tab_name]:
-            self.window.commandline.set_string("")
+        if self.tabs[tab_name]:
+            self.commandline.set_string("")
             tab = self.tabs[tab_name]
             assert tab is not None
             notebook = tab.get_parent()

@@ -24,7 +24,9 @@ from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
@@ -34,26 +36,34 @@ if typing.TYPE_CHECKING:
 class CuesEditionTab(Gtk.Paned):
     """Cues edition"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-    ) -> None:
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
+    app: Application
+    lightshow: LightShow
+    tabs: Tabs
+    window: Window
+    settings: Gio.Settings
+    commandline: CoreCommandLine
+    liststore: Gtk.ListStore
+    filter: Gtk.TreeModelFilter
+    treeview: Gtk.TreeView
+    scrollable: Gtk.ScrolledWindow
+    channels_view: CueChannelsView
+
+    def __init__(self, app: Application) -> None:
+        self.app = app
+        self.lightshow = app.core.lightshow
+        self.tabs = app.tabs if app.tabs is not None else typing.cast(typing.Any, None)
+        self.window = (
+            app.window if app.window is not None else typing.cast(typing.Any, None)
+        )
+        self.settings = app.settings
+        self.commandline = app.core.commandline
 
         # Cues tab initialization
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(500)
 
-        self.channels_view = CueChannelsView(
-            self.lightshow, self.tabs, self.window, self.settings
-        )
+        self.channels_view = CueChannelsView(app=self.app)
         self.add(self.channels_view)
 
         # List of Cues
@@ -160,7 +170,7 @@ class CuesEditionTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+            self.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -174,10 +184,10 @@ class CuesEditionTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.window.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.window.commandline.add_string(".")
+            self.commandline.add_string(".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -191,13 +201,13 @@ class CuesEditionTab(Gtk.Paned):
         self.tabs.close("memories")
 
     def _keypress_backspace(self) -> None:
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_equal(self) -> None:
         """@ level"""
         self.channels_view.at_level()
         self.channels_view.update()
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
@@ -268,10 +278,10 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             True or False
         """
-        if not is_float(self.window.commandline.get_string()):
+        if not is_float(self.commandline.get_string()):
             return False
 
-        mem = float(self.window.commandline.get_string())
+        mem = float(self.commandline.get_string())
         if not mem:
             return False
 
@@ -284,7 +294,7 @@ class CuesEditionTab(Gtk.Paned):
                 "cue.copy", src_cue.number, mem, src_cue.sequence
             )
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
         return True
 
     def _keypress_insert(self) -> bool:
@@ -293,7 +303,7 @@ class CuesEditionTab(Gtk.Paned):
         Returns:
             True or False
         """
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring == "":
             self._insert_cue_on_next_free_number()
             return True
@@ -319,7 +329,7 @@ class CuesEditionTab(Gtk.Paned):
         self.window.app.core.action_registry.execute(
             "cue.insert", mem, sequence, channels
         )
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
         return True
 
     def _insert_cue_on_next_free_number(self) -> None:
@@ -362,19 +372,8 @@ class CuesEditionTab(Gtk.Paned):
 class CueChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-    ) -> None:
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        super().__init__(
-            lightshow=lightshow, window=window, settings=settings, tabs=tabs
-        )
+    def __init__(self, app: Application) -> None:
+        super().__init__(app=app)
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set level channel via temporary action.
@@ -451,7 +450,7 @@ class CueChannelsView(ChannelsView):
         row = path.get_indices()[0]
         cue = self.lightshow.cues[row]
 
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if not is_int(keystring):
             return
         level = int(keystring)

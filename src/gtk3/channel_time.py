@@ -23,7 +23,9 @@ from olc.gtk3.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
@@ -35,32 +37,42 @@ if typing.TYPE_CHECKING:
 class ChanneltimeTab(Gtk.Paned):
     """Channels time edition"""
 
+    app: Application
+    sequence: Sequence
+    position: int
+    lightshow: LightShow
+    tabs: Tabs
+    window: Window
+    settings: Gio.Settings
+    commandline: CoreCommandLine
+    channels_view: CTChannelsView
+    scrolled2: Gtk.ScrolledWindow
+    liststore: Gtk.ListStore
+    step: typing.Any
+    treeview: Gtk.TreeView
+
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         sequence: Sequence,
         position: int,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
+        app: Application,
     ) -> None:
         self.sequence = sequence
         self.position = position
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
+        self.app = app
+        self.lightshow = app.core.lightshow
+        self.tabs = app.tabs if app.tabs is not None else typing.cast(typing.Any, None)
+        self.window = (
+            app.window if app.window is not None else typing.cast(typing.Any, None)
+        )
+        self.settings = app.settings
+        self.commandline = app.core.commandline
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(300)
 
-        self.channels_view = CTChannelsView(
-            lightshow=self.lightshow,
-            window=self.window,
-            settings=self.settings,
-            tabs=self.tabs,
-        )
+        self.channels_view = CTChannelsView(app=self.app)
         self.add1(self.channels_view)
 
         self.scrolled2 = Gtk.ScrolledWindow()
@@ -170,7 +182,7 @@ class ChanneltimeTab(Gtk.Paned):
             self._update_total_time()
             self._update_main_playback()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def time_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
         """Time changed
@@ -197,7 +209,7 @@ class ChanneltimeTab(Gtk.Paned):
             self._update_total_time()
             self._update_main_playback()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def on_channeltime_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select a Channel Time"""
@@ -231,7 +243,7 @@ class ChanneltimeTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+            self.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -245,10 +257,10 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.window.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.window.commandline.add_string(".")
+            self.commandline.add_string(".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -269,7 +281,7 @@ class ChanneltimeTab(Gtk.Paned):
         self.tabs.close("channel_time")
 
     def _keypress_backspace(self) -> None:
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_q(self) -> None:
         """Previous Channel Time"""
@@ -321,17 +333,8 @@ class ChanneltimeTab(Gtk.Paned):
 class CTChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        window: Window,
-        settings: Gio.Settings,
-        tabs: Tabs,
-    ) -> None:
-        super().__init__(
-            lightshow=lightshow, window=window, settings=settings, tabs=tabs
-        )
-        self.tabs = tabs
+    def __init__(self, app: Application) -> None:
+        super().__init__(app=app)
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel

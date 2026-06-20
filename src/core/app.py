@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.actions import register_all_actions
+from olc.core.commandline import CoreCommandLine
 from olc.core.crossfade import CrossFade
 from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
@@ -24,7 +25,6 @@ from olc.core.lightshow import LightShow
 from olc.core.registry import ActionRegistry
 
 if typing.TYPE_CHECKING:
-    import olc.core.app
     from olc.backends import DMXBackend
     from olc.core.engine import CoreEngine
     from olc.midi import Midi
@@ -42,6 +42,7 @@ class CoreApplication(EventDispatcher):
     engine: typing.Optional[CoreEngine]
     midi: typing.Optional[Midi]
     crossfade: typing.Optional[CrossFade]
+    commandline: CoreCommandLine
 
     @property
     def core(self) -> CoreApplication:
@@ -80,11 +81,12 @@ class CoreApplication(EventDispatcher):
         app_delegate = app if app is not None else self
         self.crossfade = CrossFade(typing.cast(typing.Any, app_delegate))
 
+        # Command line logical state helper
+        self.commandline = CoreCommandLine(typing.cast(typing.Any, self))
+
         # Action and Undo/Redo plumbing layers
-        self.action_registry = ActionRegistry(
-            typing.cast("olc.core.app.CoreApplication", self)
-        )
-        self.history = HistoryManager(typing.cast("olc.core.app.CoreApplication", self))
+        self.action_registry = ActionRegistry(typing.cast(typing.Any, self))
+        self.history = HistoryManager(typing.cast(typing.Any, self))
 
         # Auto-register action classes from the actions package
         self._register_actions()

@@ -22,7 +22,9 @@ from olc.gtk3.track_channels import TrackChannelsTab
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channels_view import ChannelsView
     from olc.gtk3.window import Window
@@ -34,22 +36,30 @@ class ChannelWidget(Gtk.DrawingArea):
 
     __gtype_name__ = "ChannelWidget"
 
+    app: Application
+    lightshow: LightShow
+    settings: Gio.Settings
+    window: Window | None
+    tabs: Tabs | None
+    commandline: CoreCommandLine
+
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         channel: int,
         level: int,
         next_level: int,
-        lightshow: LightShow,
-        settings: Gio.Settings,
-        window: Window,
-        tabs: Tabs,
+        app: Application,
+        window: Window | None = None,
+        tabs: Tabs | None = None,
     ) -> None:
         super().__init__()
-        self.lightshow = lightshow
-        self.settings = settings
-        self.window = window
-        self.tabs = tabs
+        self.app = app
+        self.lightshow = app.core.lightshow
+        self.settings = app.settings
+        self.window = window if window is not None else app.window
+        self.tabs = tabs if tabs is not None else app.tabs
+        self.commandline = app.core.commandline
 
         self.channel = str(channel)
         self.level = level
@@ -93,7 +103,7 @@ class ChannelWidget(Gtk.DrawingArea):
         channels_view = typing.cast("ChannelsView", p3)
 
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-            self.window.commandline.set_string(str(self.channel))
+            self.commandline.set_string(str(self.channel))
             channels_view.select_thru()
         elif flowboxchild.is_selected():
             flowbox.unselect_child(flowboxchild)
@@ -102,7 +112,10 @@ class ChannelWidget(Gtk.DrawingArea):
             channels_view.last_selected_channel = self.channel
         # If Main channels view, update Track Channels if opened
         if (
-            channels_view is self.window.live_view.channels_view
+            self.window
+            and self.window.live_view
+            and channels_view is self.window.live_view.channels_view
+            and self.tabs
             and self.tabs.tabs["track_channels"]
         ):
             track_channels = typing.cast(

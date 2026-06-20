@@ -110,20 +110,7 @@ class LiveChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self, window: Window, tabs: Tabs) -> None:
-        self.window = window
-        self.tabs = tabs
-        super().__init__(
-            lightshow=window.app.core.lightshow,
-            window=window,
-            settings=window.app.settings,
-            tabs=tabs,
-        )
-
-    @property
-    def app(self) -> Application:
-        """Get parent application instance safely."""
-        assert self.window is not None
-        return self.window.app
+        super().__init__(app=window.app, window=window, tabs=tabs)
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
         """Filter channels to display

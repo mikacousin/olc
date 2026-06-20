@@ -61,6 +61,7 @@ from olc.settings import SettingsTab  # noqa: E402
 class Application(Gtk.Application):
     """Application Class"""
 
+    core: CoreApplication
     backend: DMXBackend | None
     engine: CoreEngine | None
     midi: Midi | None
@@ -135,7 +136,7 @@ class Application(Gtk.Application):
     def do_activate(self) -> None:
         app_type = typing.cast("olc.gtk3.application.Application", self)
         # Create Main Window
-        self.tabs = Tabs(None)
+        self.tabs = Tabs(app_type)
         self.window = Window(app_type, self.tabs)
         self.tabs.window = self.window
         self.window.show_all()
@@ -601,13 +602,7 @@ class Application(Gtk.Application):
                 "patch_outputs",
                 PatchOutputsTab,
                 "Patch Outputs",
-                self.core.lightshow.patch,
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
-                self.backend,
-                self.patch_by_outputs,
+                self,
             )
 
     def _patch_channels(
@@ -619,12 +614,7 @@ class Application(Gtk.Application):
                 "patch_channels",
                 PatchChannelsTab,
                 "Patch Channels",
-                self.core.lightshow.patch,
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
-                self.backend,
+                self,
             )
 
     def track_channels(
@@ -636,10 +626,7 @@ class Application(Gtk.Application):
                 "track_channels",
                 TrackChannelsTab,
                 "Track Channels",
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
+                self,
             )
 
     def memories_cb(
@@ -651,10 +638,7 @@ class Application(Gtk.Application):
                 "memories",
                 CuesEditionTab,
                 "Memories",
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
+                self,
             )
 
     def groups_cb(
@@ -666,10 +650,7 @@ class Application(Gtk.Application):
                 "groups",
                 GroupTab,
                 "Groups",
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
+                self,
             )
 
     def sequences(
@@ -681,10 +662,7 @@ class Application(Gtk.Application):
                 "sequences",
                 SequenceTab,
                 "Sequences",
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
+                self,
             )
 
     def channeltime(self, sequence: Sequence, step: int) -> None:
@@ -701,10 +679,7 @@ class Application(Gtk.Application):
                 "Channel Time",
                 sequence,
                 step,
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
+                self,
             )
 
     def _curves(
@@ -746,10 +721,7 @@ class Application(Gtk.Application):
                 "indes",
                 IndependentsTab,
                 "Independents",
-                self.core.lightshow,
-                self.tabs,
-                self.window,
-                self.settings,
+                self,
             )
 
     def _virtual_console(

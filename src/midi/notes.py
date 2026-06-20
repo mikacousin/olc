@@ -440,11 +440,10 @@ class MidiNotes:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 self.app_delegate.virtual_console.goto.emit("button-press-event", event)
             else:
-                if self.app_delegate.window is not None:
-                    self.app_delegate.core.lightshow.main_playback.goto(
-                        self.app_delegate.window.commandline.get_string()
-                    )
-                    self.app_delegate.window.commandline.set_string("")
+                self.app_delegate.core.lightshow.main_playback.goto(
+                    self.app_delegate.core.commandline.get_string()
+                )
+                self.app_delegate.core.commandline.set_string("")
 
     def sequence_minus(self, msg: mido.Message) -> None:
         """Seq -
@@ -454,8 +453,7 @@ class MidiNotes:
         """
         if msg.velocity == 127:
             self.app_delegate.core.action_registry.execute("playback.sequence_minus")
-            if self.app_delegate.window is not None:
-                self.app_delegate.window.commandline.set_string("")
+            self.app_delegate.core.commandline.set_string("")
             self.send("playback.sequence_minus", 127)
         elif msg.velocity == 0:
             self.send("playback.sequence_minus", 0)
@@ -468,8 +466,7 @@ class MidiNotes:
         """
         if msg.velocity == 127:
             self.app_delegate.core.action_registry.execute("playback.sequence_plus")
-            if self.app_delegate.window is not None:
-                self.app_delegate.window.commandline.set_string("")
+            self.app_delegate.core.commandline.set_string("")
             self.send("playback.sequence_plus", 127)
         elif msg.velocity == 0:
             self.send("playback.sequence_plus", 0)
@@ -651,8 +648,8 @@ class MidiNotes:
                 event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
                 widget.emit("button-press-event", event)
             else:
-                if string_to_add is not None and self.app_delegate.window:
-                    self.app_delegate.window.commandline.add_string(string_to_add)
+                if string_to_add is not None:
+                    self.app_delegate.core.commandline.add_string(string_to_add)
                 elif keyval is not None and self.app_delegate.window:
                     event = Gdk.EventKey()
                     event.keyval = keyval

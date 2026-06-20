@@ -23,7 +23,9 @@ from olc.gtk3.widgets.channel import ChannelWidget
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
 
@@ -42,21 +44,28 @@ class ChannelsView(Gtk.Box):
     last_selected_channel: str
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
+    app: Application
+    window: Window | None
+    commandline: CoreCommandLine
+    lightshow: LightShow | None
+    settings: Gio.Settings | None
+    tabs: Tabs | None
 
     def __init__(
         self,
+        app: Application,
         *args: Any,  # noqa: ANN401
-        lightshow: LightShow | None = None,
         window: Window | None = None,
-        settings: Gio.Settings | None = None,
         tabs: Tabs | None = None,
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
         super().__init__(*args, orientation=Gtk.Orientation.VERTICAL, **kwargs)
-        self.window = window
-        self.lightshow = lightshow
-        self.settings = settings
-        self.tabs = tabs
+        self.app = app
+        self.window = window if window is not None else app.window
+        self.commandline = app.core.commandline
+        self.lightshow = app.core.lightshow
+        self.settings = app.settings
+        self.tabs = tabs if tabs is not None else app.tabs
 
         self.view_mode = VIEW_MODES.get("All", 0)
         self.last_selected_channel = ""
@@ -85,10 +94,9 @@ class ChannelsView(Gtk.Box):
                         i + 1,
                         0,
                         0,
-                        self.lightshow,
-                        self.settings,
-                        self.window,
-                        self.tabs,
+                        self.app,
+                        window=self.window,
+                        tabs=self.tabs,
                     )
                 )
         self.scrolled.add(self.flowbox)
@@ -174,9 +182,9 @@ class ChannelsView(Gtk.Box):
     def select_channel(self) -> None:
         """Select one channel"""
         string = ""
-        if not self.window:
+        if not self.window or not self.commandline:
             return
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         self.flowbox.unselect_all()
         if is_non_nul_int(keystring):
             channel = int(keystring)
@@ -191,9 +199,9 @@ class ChannelsView(Gtk.Box):
     def select_plus(self) -> None:
         """Add channel to selection"""
         string = ""
-        if not self.window:
+        if not self.window or not self.commandline:
             return
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
@@ -207,9 +215,9 @@ class ChannelsView(Gtk.Box):
     def select_minus(self) -> None:
         """Remove channel from selection"""
         string = ""
-        if not self.window:
+        if not self.window or not self.commandline:
             return
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if is_non_nul_int(keystring):
             channel = int(keystring)
             if 0 < channel <= MAX_CHANNELS:
@@ -384,11 +392,11 @@ class ChannelsView(Gtk.Box):
 
     def select_thru(self) -> None:
         """Select Channel Thru"""
-        if not self.window:
+        if not self.window or not self.commandline:
             return
         last_chan = self.last_selected_channel
         string = last_chan
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if is_non_nul_int(keystring) and last_chan:
             from_chan = int(last_chan)
             to_chan = int(keystring)
@@ -407,13 +415,13 @@ class ChannelsView(Gtk.Box):
             self.flowbox.invalidate_filter()
             string = keystring
         self.last_selected_channel = string
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def at_level(self) -> None:
         """Channels at level"""
-        if not self.window or not self.settings:
+        if not self.window or not self.settings or not self.commandline:
             return
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if not is_int(keystring):
             return
         level = int(keystring)
@@ -554,22 +562,22 @@ class ChannelsView(Gtk.Box):
         """Next Channel"""
         self.select_next()
         self.grab_focus()
-        if self.window:
-            self.window.commandline.set_string("")
+        if self.commandline:
+            self.commandline.set_string("")
 
     def _keypress_page_down(self) -> None:
         """Previous Channel"""
         self.select_previous()
         self.grab_focus()
-        if self.window:
-            self.window.commandline.set_string("")
+        if self.commandline:
+            self.commandline.set_string("")
 
     def _keypress_c(self) -> None:
         """Channel"""
         self.select_channel()
         self.grab_focus()
-        if self.window:
-            self.window.commandline.set_string("")
+        if self.commandline:
+            self.commandline.set_string("")
 
     def _keypress_kp_divide(self) -> None:
         self._keypress_greater()
@@ -578,8 +586,8 @@ class ChannelsView(Gtk.Box):
         """Channel Thru"""
         self.select_thru()
         self.grab_focus()
-        if self.window:
-            self.window.commandline.set_string("")
+        if self.commandline:
+            self.commandline.set_string("")
 
     def _keypress_kp_add(self) -> None:
         self._keypress_plus()
@@ -588,8 +596,8 @@ class ChannelsView(Gtk.Box):
         """Channel +"""
         self.select_plus()
         self.grab_focus()
-        if self.window:
-            self.window.commandline.set_string("")
+        if self.commandline:
+            self.commandline.set_string("")
 
     def _keypress_kp_subtract(self) -> None:
         self._keypress_minus()
@@ -598,5 +606,5 @@ class ChannelsView(Gtk.Box):
         """Channel -"""
         self.select_minus()
         self.grab_focus()
-        if self.window:
-            self.window.commandline.set_string("")
+        if self.commandline:
+            self.commandline.set_string("")

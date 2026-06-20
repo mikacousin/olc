@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 from typing import Callable
 
-from gi.repository import Gdk, Gio, Gtk
+from gi.repository import Gdk, Gio, GLib, Gtk
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS, UNIVERSES, string_to_time, time_to_string
 from olc.gtk3.widgets.main_fader import MainFaderWidget
@@ -27,18 +27,21 @@ from olc.step import Step
 
 if typing.TYPE_CHECKING:
     import olc.gtk3.window
-    from gi.repository import GLib
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
 
 
-class CommandLine:
-    """Display keyboard entries"""
+# pylint: disable=too-few-public-methods
+class CommandLineWidget:
+    """Display keyboard entries in GTK UI using a Gtk.Statusbar."""
 
     def __init__(self, app: Application) -> None:
-        self.app = app
-        self.keystring = ""
+        """Initialize the CommandLine widget.
 
+        Args:
+            app: The main application instance.
+        """
+        self.app = app
         self.statusbar = Gtk.Statusbar()
         self.context_id = self.statusbar.get_context_id("keypress")
         self.widget = Gtk.Grid()
@@ -46,39 +49,22 @@ class CommandLine:
         self.widget.add(label)
         self.widget.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
 
-    def update(self) -> None:
-        """Update Display"""
-        self.statusbar.push(self.context_id, self.keystring)
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/command_line", self.keystring)
+        self.app.core.subscribe("commandline.changed", self.on_changed)
 
-    def add_string(self, string: str) -> None:
-        """Add string to displayed string
+    def on_changed(self, keystring: str) -> None:
+        """Callback triggered when the logical command line changes.
 
         Args:
-            string: String to add
+            keystring: The new command line string.
         """
-        self.keystring += string
-        self.update()
+        GLib.idle_add(self._update_ui, keystring)
 
-    def set_string(self, string: str) -> None:
-        """Set string to display
-
-        Args:
-            string: String to display
-        """
-        self.keystring = string
-        self.update()
-
-    def get_string(self) -> str:
-        """Return displayed string
-
-        Returns:
-            String
-        """
-        return self.keystring
+    def _update_ui(self, keystring: str) -> bool:
+        self.statusbar.push(self.context_id, keystring)
+        return False
 
 
+# pylint: disable=too-many-instance-attributes
 class Window(Gtk.ApplicationWindow):
     """Main Window"""
 
@@ -129,8 +115,8 @@ class Window(Gtk.ApplicationWindow):
         paned_chan.set_position(1100)
         paned_chan.pack1(self.live_view, resize=True, shrink=False)
         # Gtk.Statusbar to display keyboard's keys
-        self.commandline = CommandLine(self.app)
-        paned_chan.pack2(self.commandline.widget, resize=True, shrink=False)
+        self.commandline_widget = CommandLineWidget(self.app)
+        paned_chan.pack2(self.commandline_widget.widget, resize=True, shrink=False)
         paned.pack1(paned_chan, resize=True, shrink=False)
 
         # Main Playback
@@ -228,7 +214,7 @@ class Window(Gtk.ApplicationWindow):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -242,10 +228,10 @@ class Window(Gtk.ApplicationWindow):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.app.core.commandline.add_string(".")
 
         # Channels View
         self.live_view.channels_view.on_key_press(keyname)
@@ -269,11 +255,11 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_equal(self) -> None:
         """@ Level"""
         self.live_view.channels_view.at_level()
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_escape(self) -> None:
         """Deselect all channels"""
@@ -289,22 +275,24 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_q(self) -> None:
         """Seq -"""
         self.app.core.action_registry.execute("playback.sequence_minus")
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_w(self) -> None:
         """Seq +"""
         self.app.core.action_registry.execute("playback.sequence_plus")
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_g(self) -> None:
         """Goto"""
-        self.app.core.lightshow.main_playback.goto(self.commandline.get_string())
-        self.commandline.set_string("")
+        self.app.core.lightshow.main_playback.goto(
+            self.app.core.commandline.get_string()
+        )
+        self.app.core.commandline.set_string("")
 
     def _keypress_r(self) -> None:
         """Record new Step and new Preset"""
         found = False
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             # Find next free Cue
             position = self.app.core.lightshow.main_playback.position
@@ -336,7 +324,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _create_preset(self, mem: float, step: int) -> None:
         """Create new Preset component"""
@@ -441,7 +429,7 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_t(self) -> None:
         """Change Time In and Time Out of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -467,11 +455,11 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_i(self) -> None:
         """Change Time In of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -493,11 +481,11 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_o(self) -> None:
         """Change Time Out of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -519,11 +507,11 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_x(self) -> None:
         """Change Wait Time of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -545,11 +533,11 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_d(self) -> None:
         """Change Delay In and Out of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -575,11 +563,11 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_k(self) -> None:
         """Change Delay In of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -601,11 +589,11 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
     def _keypress_l(self) -> None:
         """Change Delay Out of next step"""
-        keystring = self.commandline.get_string()
+        keystring = self.app.core.commandline.get_string()
         if keystring == "":
             return
 
@@ -627,7 +615,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.commandline.set_string("")
+        self.app.core.commandline.set_string("")
 
 
 class Dialog(Gtk.Dialog):

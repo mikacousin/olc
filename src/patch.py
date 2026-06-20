@@ -18,10 +18,11 @@ import typing
 from typing import Optional
 
 import numpy as np
+from olc.core.app import CoreApplication
 from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
 
 if typing.TYPE_CHECKING:
-    from olc.core.app import CoreApplication
+    from olc.core.commandline import CoreCommandLine
     from olc.gtk3.application import Application
 
 
@@ -202,12 +203,23 @@ class DMXPatch:
 class PatchByOutputs:
     """Manipulate Patch using Outputs order"""
 
+    app: Application | CoreApplication
+    outputs: list[int]
+    last: int
+    patch: DMXPatch
+
     def __init__(self, app: Application | CoreApplication, patch: DMXPatch) -> None:
         self.app = app
         self.outputs = []
         self.last = 0
         self.patch = patch
-        self._commandline_string: str = ""
+
+    @property
+    def commandline(self) -> CoreCommandLine:
+        """Get the logical command line instance."""
+        if isinstance(self.app, CoreApplication):
+            return self.app.commandline
+        return self.app.core.commandline
 
     def get_selected(self) -> str:
         """Return selected outputs
@@ -311,21 +323,10 @@ class PatchByOutputs:
             self.app.core.action_registry.execute("patch.unpatch_output", output, univ)
 
     def _get_commandline_string(self) -> str:
-        window = getattr(self.app, "window", None)
-        if window is not None:
-            commandline = getattr(window, "commandline", None)
-            if commandline is not None:
-                return commandline.get_string()
-        return getattr(self, "_commandline_string", "")
+        return self.commandline.get_string()
 
     def _set_commandline_string(self, value: str) -> None:
-        window = getattr(self.app, "window", None)
-        if window is not None:
-            commandline = getattr(window, "commandline", None)
-            if commandline is not None:
-                commandline.set_string(value)
-                return
-        self._commandline_string = value
+        self.commandline.set_string(value)
 
     def get_output_universe(self, out: int) -> tuple[Optional[int], Optional[int]]:
         """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)

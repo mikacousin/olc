@@ -347,8 +347,7 @@ class GuiEventBridge:
                     "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
                 )
                 patch_outputs.select_outputs()
-        if self.app.window and self.app.window.commandline:
-            self.app.window.commandline.set_string("")
+        self.app.core.commandline.set_string("")
         return False
 
     def _safe_refresh_curves(self, curve_nb: int) -> bool:

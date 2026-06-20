@@ -25,7 +25,9 @@ if typing.TYPE_CHECKING:
     import olc.gtk3.patch_channels
     from gi.repository import Gio
     from olc.backends import DMXBackend
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
     from olc.patch import DMXPatch
@@ -35,22 +37,33 @@ if typing.TYPE_CHECKING:
 class PatchChannelsTab(Gtk.Box):
     """Tab to patch by channels"""
 
+    app: Application
+    patch: DMXPatch
+    lightshow: LightShow
+    tabs: Tabs
+    window: Window
+    settings: Gio.Settings
+    backend: DMXBackend
+    commandline: CoreCommandLine
+    last_chan_selected: str
+    flowbox: Gtk.FlowBox
+    channels: list[PatchChannelWidget]
+    scrollable: Gtk.ScrolledWindow
+
     # pylint: disable=too-many-arguments, too-many-positional-arguments
-    def __init__(
-        self,
-        patch: DMXPatch,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-        backend: DMXBackend,
-    ) -> None:
-        self.patch = patch
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
-        self.backend = backend
+    def __init__(self, app: Application) -> None:
+        self.app = app
+        self.patch = app.core.lightshow.patch
+        self.lightshow = app.core.lightshow
+        self.tabs = app.tabs if app.tabs is not None else typing.cast(typing.Any, None)
+        self.window = (
+            app.window if app.window is not None else typing.cast(typing.Any, None)
+        )
+        self.settings = app.settings
+        self.backend = (
+            app.backend if app.backend is not None else typing.cast(typing.Any, None)
+        )
+        self.commandline = app.core.commandline
         self.last_chan_selected = ""
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL)
@@ -69,10 +82,8 @@ class PatchChannelsTab(Gtk.Box):
             self.channels.append(
                 PatchChannelWidget(
                     channel + 1,
-                    self.patch,
-                    self.lightshow,
+                    self.app,
                     typing.cast("olc.gtk3.patch_channels.PatchChannelsTab", self),
-                    self.window.commandline,
                 )
             )
             self.flowbox.add(self.channels[channel])
@@ -119,7 +130,7 @@ class PatchChannelsTab(Gtk.Box):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+            self.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -133,10 +144,10 @@ class PatchChannelsTab(Gtk.Box):
             "KP_9",
             "KP_0",
         ):
-            self.window.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.window.commandline.add_string(".")
+            self.commandline.add_string(".")
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
@@ -147,7 +158,7 @@ class PatchChannelsTab(Gtk.Box):
         self.tabs.close("patch_channels")
 
     def _keypress_backspace(self) -> None:
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_down(self) -> None:
         """Select Next Channel"""
@@ -164,7 +175,7 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_up(self) -> None:
         """Select Previous Channel"""
@@ -180,13 +191,13 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_c(self) -> None:
         """Select Channel"""
         self.flowbox.unselect_all()
 
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring != "" and "." not in keystring:
             channel = int(keystring) - 1
             if 0 <= channel < MAX_CHANNELS:
@@ -195,7 +206,7 @@ class PatchChannelsTab(Gtk.Box):
                     self.flowbox.select_child(child)
                     self.last_chan_selected = str(channel)
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_kp_divide(self) -> None:
         """Thru"""
@@ -219,7 +230,7 @@ class PatchChannelsTab(Gtk.Box):
         if not self.last_chan_selected:
             return
 
-        to_chan = int(self.window.commandline.get_string())
+        to_chan = int(self.commandline.get_string())
 
         if to_chan > int(self.last_chan_selected):
             for chan in range(int(self.last_chan_selected), to_chan):
@@ -233,7 +244,7 @@ class PatchChannelsTab(Gtk.Box):
                     self.flowbox.select_child(child)
         self.last_chan_selected = str(to_chan - 1)
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _keypress_m(self) -> None:
@@ -248,7 +259,7 @@ class PatchChannelsTab(Gtk.Box):
             widget = typing.cast("PatchChannelWidget", child_widget)
             channel = widget.channel
 
-            keystring = self.window.commandline.get_string()
+            keystring = self.commandline.get_string()
             # Unpatch if no entry
             if keystring in ["", "0"]:
                 items = list(self.patch.channels[channel])
@@ -319,11 +330,11 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(channel)
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_i(self) -> None:
         """Insert Output"""
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring in ["", "0"]:
             return
         sel = self.flowbox.get_selected_children()
@@ -367,11 +378,11 @@ class PatchChannelsTab(Gtk.Box):
                         widget_chan.queue_draw()
                     self.window.live_view.channels_view.update()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_r(self) -> None:
         """Remove Output"""
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring in ["", "0"]:
             return
         sel = self.flowbox.get_selected_children()
@@ -415,7 +426,7 @@ class PatchChannelsTab(Gtk.Box):
                     widget_chan.queue_draw()
                 self.window.live_view.channels_view.update()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _unpatch(self, output: int, universe: int) -> None:
         if universe in self.patch.outputs and output in self.patch.outputs[universe]:

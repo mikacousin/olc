@@ -38,12 +38,9 @@ class GUIOSCDelegate:
 
     @make_method("/olc/command_line")
     def _commandline(self, _address: str, _args: list) -> None:
-        GLib.idle_add(self._commandline_safe)
-
-    def _commandline_safe(self) -> None:
-        if self.app.window and self.app.window.commandline and self.app.engine:
+        if self.app.engine:
             self.app.engine.send_osc(
-                "/olc/command_line", self.app.window.commandline.get_string()
+                "/olc/command_line", self.app.core.commandline.get_string()
             )
 
     def _execute_action(self, name: str) -> None:
@@ -76,63 +73,51 @@ class GUIOSCDelegate:
 
     @make_method("/olc/key/clear")
     def _clear(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.set_string, "")
+        self.app.core.commandline.set_string("")
 
     @make_method("/olc/key/1")
     def _1(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "1")
+        self.app.core.commandline.add_string("1")
 
     @make_method("/olc/key/2")
     def _2(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "2")
+        self.app.core.commandline.add_string("2")
 
     @make_method("/olc/key/3")
     def _3(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "3")
+        self.app.core.commandline.add_string("3")
 
     @make_method("/olc/key/4")
     def _4(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "4")
+        self.app.core.commandline.add_string("4")
 
     @make_method("/olc/key/5")
     def _5(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "5")
+        self.app.core.commandline.add_string("5")
 
     @make_method("/olc/key/6")
     def _6(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "6")
+        self.app.core.commandline.add_string("6")
 
     @make_method("/olc/key/7")
     def _7(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "7")
+        self.app.core.commandline.add_string("7")
 
     @make_method("/olc/key/8")
     def _8(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "8")
+        self.app.core.commandline.add_string("8")
 
     @make_method("/olc/key/9")
     def _9(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "9")
+        self.app.core.commandline.add_string("9")
 
     @make_method("/olc/key/0")
     def _0(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, "0")
+        self.app.core.commandline.add_string("0")
 
     @make_method("/olc/key/.")
     def _period(self, _address: str, _args: list) -> None:
-        if self.app.window is not None:
-            GLib.idle_add(self.app.window.commandline.add_string, ".")
+        self.app.core.commandline.add_string(".")
 
     @make_method("/olc/key/channel")
     def _channel(self, _address: str, _args: list) -> None:
@@ -151,10 +136,10 @@ class GUIOSCDelegate:
         GLib.idle_add(self._full_safe)
 
     def _full_safe(self) -> None:
-        if self.app.settings.get_boolean("percent") and self.app.window is not None:
-            self.app.window.commandline.set_string("100")
-        elif self.app.window is not None:
-            self.app.window.commandline.set_string("255")
+        if self.app.settings.get_boolean("percent"):
+            self.app.core.commandline.set_string("100")
+        else:
+            self.app.core.commandline.set_string("255")
         self._trigger_key(Gdk.KEY_equal)
 
     @make_method("/olc/key/thru")

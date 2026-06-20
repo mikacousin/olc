@@ -28,7 +28,9 @@ from olc.step import Step
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
@@ -39,18 +41,22 @@ if typing.TYPE_CHECKING:
 class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-    ) -> None:
-        # To stock user modification on channels
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
+    app: Application
+    lightshow: LightShow
+    tabs: Tabs
+    window: Window
+    settings: Gio.Settings
+    commandline: CoreCommandLine
+
+    def __init__(self, app: Application) -> None:
+        self.app = app
+        self.lightshow = app.core.lightshow
+        self.tabs = app.tabs if app.tabs is not None else typing.cast(typing.Any, None)
+        self.window = (
+            app.window if app.window is not None else typing.cast(typing.Any, None)
+        )
+        self.settings = app.settings
+        self.commandline = app.core.commandline
         # To stock user modification on channels
         self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
@@ -91,12 +97,7 @@ class SequenceTab(Gtk.Grid):
         self.scrolled = Gtk.ScrolledWindow()
         self.scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
 
-        self.channels_view = SeqChannelsView(
-            lightshow=self.lightshow,
-            window=self.window,
-            settings=self.settings,
-            tabs=self.tabs,
-        )
+        self.channels_view = SeqChannelsView(app=self.window.app)
         self.paned.add1(self.channels_view)
 
         self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
@@ -504,7 +505,7 @@ class SequenceTab(Gtk.Grid):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+            self.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -518,10 +519,10 @@ class SequenceTab(Gtk.Grid):
             "KP_9",
             "KP_0",
         ):
-            self.window.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.window.commandline.add_string(".")
+            self.commandline.add_string(".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -536,7 +537,7 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_s(self) -> None:
         """Cycle Sequences"""
@@ -581,7 +582,7 @@ class SequenceTab(Gtk.Grid):
         """@ Level"""
         self.channels_view.at_level()
         self.channels_view.update()
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
@@ -689,7 +690,7 @@ class SequenceTab(Gtk.Grid):
         if not sequence:
             return
         step = self.get_selected_step()
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring == "":
             if step:
                 mem_val = sequence.get_next_cue(step=step)
@@ -702,7 +703,7 @@ class SequenceTab(Gtk.Grid):
         else:
             mem = float(keystring)
             found, step = sequence.get_step(cue=mem)
-            self.window.commandline.set_string("")
+            self.commandline.set_string("")
 
         if not found:
             self._create_cue(sequence, mem, step)
@@ -880,17 +881,8 @@ class SequenceTab(Gtk.Grid):
 class SeqChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        window: Window,
-        settings: Gio.Settings,
-        tabs: Tabs,
-    ) -> None:
-        super().__init__(
-            lightshow=lightshow, window=window, settings=settings, tabs=tabs
-        )
-        self.tabs = tabs
+    def __init__(self, app: Application) -> None:
+        super().__init__(app=app)
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level

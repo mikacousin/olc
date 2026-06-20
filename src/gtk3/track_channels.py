@@ -24,7 +24,9 @@ from olc.gtk3.widgets.track_channels import TrackChannelsHeader, TrackChannelsWi
 if typing.TYPE_CHECKING:
     import olc.gtk3.track_channels
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
@@ -34,17 +36,22 @@ if typing.TYPE_CHECKING:
 class TrackChannelsTab(Gtk.Grid):
     """Tab to track channels"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-    ) -> None:
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
+    app: Application
+    lightshow: LightShow
+    tabs: Tabs
+    window: Window
+    settings: Gio.Settings
+    commandline: CoreCommandLine
+
+    def __init__(self, app: Application) -> None:
+        self.app = app
+        self.lightshow = app.core.lightshow
+        self.tabs = app.tabs if app.tabs is not None else typing.cast(typing.Any, None)
+        self.window = (
+            app.window if app.window is not None else typing.cast(typing.Any, None)
+        )
+        self.settings = app.settings
+        self.commandline = app.core.commandline
 
         self.percent_level = self.settings.get_boolean("percent")
 
@@ -182,7 +189,7 @@ class TrackChannelsTab(Gtk.Grid):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+            self.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -196,7 +203,7 @@ class TrackChannelsTab(Gtk.Grid):
             "KP_9",
             "KP_0",
         ):
-            self.window.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:])
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
@@ -208,7 +215,7 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_right(self) -> None:
         """Next Channel"""
@@ -289,14 +296,14 @@ class TrackChannelsTab(Gtk.Grid):
                 widget = typing.cast(TrackChannelsWidget, child)
                 step = widget.step
                 channel = self.channels[self.channel_selected] + 1
-                level = int(self.window.commandline.get_string())
+                level = int(self.commandline.get_string())
 
                 if self.settings.get_boolean("percent"):
                     level = int(round((level / 100) * 255)) if 0 <= level <= 100 else -1
                 if 0 <= level <= 255:
                     cue = self.lightshow.main_playback.steps[step].cue
                     if cue is not None:
-                        self.window.app.core.action_registry.execute(
+                        self.app.core.action_registry.execute(
                             "cue.set_channel_level",
                             cue.number,
                             cue.sequence,
@@ -304,15 +311,15 @@ class TrackChannelsTab(Gtk.Grid):
                             level,
                         )
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_c(self) -> None:
         """Select Channel"""
 
         self.window.live_view.channels_view.flowbox.unselect_all()
 
-        if self.window.commandline.get_string() not in ["", "0"]:
-            channel = int(self.window.commandline.get_string()) - 1
+        if self.commandline.get_string() not in ["", "0"]:
+            channel = int(self.commandline.get_string()) - 1
             if 0 <= channel < MAX_CHANNELS:
                 child = self.window.live_view.channels_view.flowbox.get_child_at_index(
                     channel
@@ -325,7 +332,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.update_display()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_kp_divide(self) -> None:
         """Channel Thru"""
@@ -336,7 +343,7 @@ class TrackChannelsTab(Gtk.Grid):
         """Channel Thru"""
 
         sel = self.window.live_view.channels_view.flowbox.get_selected_children()
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
 
         if len(sel) == 1:
             flowboxchild = sel[0]
@@ -389,7 +396,7 @@ class TrackChannelsTab(Gtk.Grid):
 
             self.update_display()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_kp_add(self) -> None:
         """Channel +"""
@@ -397,7 +404,7 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_plus(self) -> None:
         """Channel +"""
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring == "":
             return
 
@@ -411,7 +418,7 @@ class TrackChannelsTab(Gtk.Grid):
                 self.window.live_view.channels_view.last_selected_channel = keystring
                 self.update_display()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_kp_subtract(self) -> None:
         """Channel -"""
@@ -419,7 +426,7 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_minus(self) -> None:
         """Channel -"""
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring == "":
             return
 
@@ -433,4 +440,4 @@ class TrackChannelsTab(Gtk.Grid):
                 self.window.live_view.channels_view.last_selected_channel = keystring
                 self.update_display()
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")

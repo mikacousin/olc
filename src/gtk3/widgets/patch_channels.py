@@ -21,9 +21,10 @@ from gi.repository import Gdk, Gtk
 from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.patch_channels import PatchChannelsTab
-    from olc.gtk3.window import CommandLine
     from olc.patch import DMXPatch
 
 
@@ -99,22 +100,31 @@ class PatchChannelWidget(Gtk.Widget):
 
     __gtype_name__ = "PatchChannelWidget"
 
+    app: Application
+    lightshow: LightShow
+    tab: PatchChannelsTab
+    commandline: CoreCommandLine
+    channel: int
+    patch: DMXPatch
+    width: int
+    height: int
+    radius: int
+
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         channel: int,
-        patch: DMXPatch,
-        lightshow: LightShow,
+        app: Application,
         tab: PatchChannelsTab,
-        commandline: CommandLine,
     ) -> None:
         super().__init__()
-        self.lightshow = lightshow
+        self.app = app
+        self.lightshow = app.core.lightshow
         self.tab = tab
-        self.commandline = commandline
+        self.commandline = app.core.commandline
+        self.patch = app.core.lightshow.patch
 
         self.channel = channel
-        self.patch = patch
         self.width = 600
         self.height = 40
         self.radius = 5

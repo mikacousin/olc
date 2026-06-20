@@ -25,9 +25,10 @@ from olc.gtk3.widgets.curve import CurveWidget
 
 if typing.TYPE_CHECKING:
     from olc.backends import DMXBackend
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.patch_outputs import PatchOutputsTab
-    from olc.gtk3.window import CommandLine
 
 
 class CurvePatchOutputWidget(CurveWidget):
@@ -72,23 +73,29 @@ class PatchWidget(Gtk.DrawingArea):
 
     stack: Gtk.Stack | None
     popover: Gtk.Popover | None
+    app: Application
+    lightshow: LightShow
+    tab: PatchOutputsTab
+    commandline: CoreCommandLine
+    backend: DMXBackend
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
     def __init__(
         self,
         universe: int,
         output: int,
-        lightshow: LightShow,
+        app: Application,
         tab: PatchOutputsTab,
-        commandline: CommandLine,
-        backend: DMXBackend,
     ) -> None:
         self.universe = universe
         self.output = output
-        self.lightshow = lightshow
+        self.app = app
+        self.lightshow = app.core.lightshow
         self.tab = tab
-        self.commandline = commandline
-        self.backend = backend
+        self.commandline = app.core.commandline
+        self.backend = (
+            app.backend if app.backend is not None else typing.cast(typing.Any, None)
+        )
 
         super().__init__()
         self.scale = 1.0

@@ -26,7 +26,9 @@ from olc.gtk3.widgets.group import GroupWidget
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+    from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window
 
@@ -34,17 +36,8 @@ if typing.TYPE_CHECKING:
 class GroupChannelsView(ChannelsView):
     """Channels View"""
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        window: Window,
-        settings: Gio.Settings,
-        tabs: Tabs,
-    ) -> None:
-        super().__init__(
-            lightshow=lightshow, window=window, settings=settings, tabs=tabs
-        )
-        self.tabs = tabs
+    def __init__(self, app: Application) -> None:
+        super().__init__(app=app)
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level
@@ -196,34 +189,34 @@ class GroupChannelsView(ChannelsView):
 class GroupTab(Gtk.Paned):
     """Groups edition"""
 
+    app: Application
+    lightshow: LightShow
+    tabs: Tabs
+    window: Window
+    settings: Gio.Settings
+    commandline: CoreCommandLine
     last_group_selected: str
+    selected_group_number: float | None
     channels_view: GroupChannelsView
     scrolled: Gtk.ScrolledWindow
     flowbox: Gtk.FlowBox
 
-    def __init__(
-        self,
-        lightshow: LightShow,
-        tabs: Tabs,
-        window: Window,
-        settings: Gio.Settings,
-    ) -> None:
+    def __init__(self, app: Application) -> None:
+        self.app = app
+        self.lightshow = app.core.lightshow
+        self.tabs = app.tabs if app.tabs is not None else typing.cast(typing.Any, None)
+        self.window = (
+            app.window if app.window is not None else typing.cast(typing.Any, None)
+        )
+        self.settings = app.settings
+        self.commandline = app.core.commandline
         self.last_group_selected = ""
-        self.selected_group_number: float | None = None
-        self.lightshow = lightshow
-        self.tabs = tabs
-        self.window = window
-        self.settings = settings
+        self.selected_group_number = None
 
         Gtk.Paned.__init__(self, orientation=Gtk.Orientation.VERTICAL)
         self.set_position(600)
 
-        self.channels_view = GroupChannelsView(
-            lightshow=self.lightshow,
-            window=self.window,
-            settings=self.settings,
-            tabs=self.tabs,
-        )
+        self.channels_view = GroupChannelsView(app=self.app)
         self.add1(self.channels_view)
 
         self.scrolled = Gtk.ScrolledWindow()
@@ -315,7 +308,7 @@ class GroupTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.window.commandline.add_string(keyname)
+            self.commandline.add_string(keyname)
 
         if keyname in (
             "KP_1",
@@ -329,10 +322,10 @@ class GroupTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.window.commandline.add_string(keyname[3:])
+            self.commandline.add_string(keyname[3:])
 
         if keyname == "period":
-            self.window.commandline.add_string(".")
+            self.commandline.add_string(".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -342,7 +335,7 @@ class GroupTab(Gtk.Paned):
         return False
 
     def _keypress_backspace(self) -> None:
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_escape(self) -> None:
         """Close Tab"""
@@ -354,7 +347,7 @@ class GroupTab(Gtk.Paned):
             flowboxchild = selected[0]
             group_widget = typing.cast(GroupWidget, flowboxchild.get_child())
             group_widget.popover.popup()
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_right(self) -> None:
         """Next Group"""
@@ -458,7 +451,7 @@ class GroupTab(Gtk.Paned):
         """Select Group"""
         self.flowbox.unselect_all()
 
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         if keystring != "":
             group = float(keystring)
             flowbox_children = self.flowbox.get_children()
@@ -478,7 +471,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.channels_view.last_selected_channel = ""
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _update_fader_level(self) -> None:
         """Update selected fader channels levels"""
@@ -497,32 +490,32 @@ class GroupTab(Gtk.Paned):
         self.channels_view.at_level()
         self.channels_view.update()
         self._update_fader_level()
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
         self._update_fader_level()
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
         self._update_fader_level()
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_n(self) -> None:
         """New Group"""
-        keystring = self.window.commandline.get_string()
+        keystring = self.commandline.get_string()
         # If no group number, use the next one
         if keystring == "":
             group_nb = self.lightshow.groups.get_next_index()
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
         else:
-            self.window.commandline.set_string("")
+            self.commandline.set_string("")
             return
 
         # Execute new group action
@@ -534,7 +527,7 @@ class GroupTab(Gtk.Paned):
         except ValueError:
             self.selected_group_number = None
 
-        self.window.commandline.set_string("")
+        self.commandline.set_string("")
 
     def _keypress_delete(self) -> None:
         """Delete selected group"""
