@@ -19,14 +19,12 @@ import time
 from dataclasses import dataclass, field
 from typing import Callable
 
-import numpy as np
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Sender as ArtNetSenderClass
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import SacnMerger
 from olc.core.dmxloop import DMXLoop
-from olc.core.fade import FadeEngine
 from olc.core.mergers import HTPMerger, LTPMerger
 from olc.core.osc import CoreOSCClient, EngineOSCServer
 from olc.core.senders import ArtNetSender, DmxUsbProSender, SACNSender
@@ -64,7 +62,6 @@ class _RuntimeSlot:
     """Groups all runtime components for a single DMX universe."""
 
     universe: DMXUniverse
-    fader: FadeEngine | None = field(default=None)
     htp_merger: HTPMerger | None = field(default=None)
     ltp_merger: LTPMerger | None = field(default=None)
     senders: list[ArtNetSender | SACNSender | DmxUsbProSender] = field(
@@ -121,8 +118,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
     Orchestrates DMX output for all universes declared in a UniverseMap.
 
     A single DMXLoop thread drives all universes at the target frequency.
-    Each universe has its own DMXUniverse buffer plus optional FadeEngine
-    and merger components.
+    Each universe has its own DMXUniverse buffer and optional merger components.
 
     Usage::
 
@@ -130,11 +126,9 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         universe_map.enable_protocol(1, Protocol.ARTNET)
 
         engine = CoreEngine(universe_map, hz=44.0)
-        engine.add_fader(1)
         engine.start()
 
         engine.set_channels(1, {0: 255, 1: 128})
-        engine.fade_to(1, target, duration=3.0)
 
         engine.stop()
     """
@@ -309,12 +303,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         """Return the DMXUniverse buffer for a given universe id."""
         return self._get_slot(uid).universe
 
-    def add_fader(self, uid: int) -> None:
-        """Attach a FadeEngine to a universe slot."""
-        slot = self._get_slot(uid)
-        with self._lock:
-            slot.fader = FadeEngine(slot.universe)
-
     def _add_htp_merger(self, uid: int, num_sources: int) -> None:
         """Attach an HTPMerger to a universe slot."""
         slot = self._get_slot(uid)
@@ -471,18 +459,6 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         """Write a dict of {channel: value} to a universe."""
         self._get_slot(uid).universe.set_channels(channels)
 
-    def fade_to(self, uid: int, target: np.ndarray, duration: float) -> None:
-        """
-        Start a fade toward `target` over `duration` seconds.
-        Raises RuntimeError if no FadeEngine is attached to this universe.
-        """
-        slot = self._get_slot(uid)
-        if slot.fader is None:
-            raise RuntimeError(
-                f"Universe {uid} has no FadeEngine. Call add_fader({uid}) first."
-            )
-        slot.fader.go(target, duration)
-
     def _htp_write(self, uid: int, source_id: int, channels: dict[int, int]) -> None:
         """
         Write channels for a source via the HTP merger.
@@ -584,15 +560,13 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                 self.osc_client.send(path, *args)
 
     def _send_all(self) -> None:
-        """Called by DMXLoop on every tick. Ticks faders then dispatches to senders."""
+        """Called by DMXLoop on every tick. Dispatches to senders."""
         # pylint: disable=too-many-locals
         with self._lock:
             active_sync_addresses = set()
             artnet_sync_needed = False
 
             for slot in self._slots.values():
-                if slot.fader is not None:
-                    slot.fader.tick()
                 for sender in slot.senders:
                     try:
                         sender.send(slot.universe)

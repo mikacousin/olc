@@ -21,8 +21,6 @@ Currently used to run tests on the CoreEngine.
 import sys
 import time
 
-import numpy as np
-
 sys.path.insert(1, "@pythondir@")
 
 from olc.core import CoreEngine
@@ -38,13 +36,6 @@ engine = CoreEngine(
 engine.set_channels(0, {k: 0 for k in range(10)})
 engine.set_channels(1, {k: 0 for k in range(10)})
 engine.set_channels(3, {k: 0 for k in range(10)})
-engine.add_fader(0)
-engine.add_fader(1)
-engine.add_fader(3)
-target = np.full(512, 255, dtype=np.uint8)
-engine.fade_to(0, target, duration=60)
-engine.fade_to(1, target, duration=30)
-engine.fade_to(3, target, duration=40)
 engine.start()
 engine.start_osc(host="127.0.0.1", client_port=9000, server_port=7000)
 

@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 from olc.core.engine import CoreEngine
 from olc.core.universe_config import Protocol, UniverseMap
-from olc.core.universe_data import NUM_CHANNELS
 
 
 def _make_engine(num_universes: int = 4, hz: float = 100.0) -> CoreEngine:
@@ -96,33 +95,6 @@ class TestCoreEngineDataOps:
         engine = _make_engine(2)
         with pytest.raises(KeyError):
             engine.set_channels(99, {0: 255})
-
-
-class TestCoreEngineFader:
-    """Test optional FadeEngine integration."""
-
-    def test_fade_without_fader_raises(self) -> None:
-        """fade_to() raises RuntimeError when no FadeEngine is attached."""
-        engine = _make_engine()
-        target = np.zeros(NUM_CHANNELS, dtype=np.uint8)
-        with pytest.raises(RuntimeError):
-            engine.fade_to(0, target, duration=1.0)
-
-    def test_add_fader_then_fade(self) -> None:
-        """fade_to() works after add_fader(), and the buffer updates."""
-        engine = _make_engine()
-        engine.set_channels(0, {k: 0 for k in range(10)})
-        engine.add_fader(0)
-
-        target = np.full(NUM_CHANNELS, 200, dtype=np.uint8)
-        engine.fade_to(0, target, duration=0.05)
-
-        # Let the fade run to completion via the loop
-        engine.start()
-        time.sleep(0.1)
-        engine.stop()
-
-        assert engine.universe(0)[0] == 200
 
 
 class TestCoreEngineMergers:

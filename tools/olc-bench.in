@@ -102,9 +102,6 @@ def run_stress_step(
     engine = CoreEngine(universe_map, hz=target_hz, no_listen=no_listen, loopback=True)
     engine.start()
 
-    for u in range(num_universes):
-        engine.add_fader(u)
-
     start_time = time.monotonic()
     try:
         while time.monotonic() - start_time < duration:
