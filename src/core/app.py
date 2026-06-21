@@ -23,6 +23,7 @@ from olc.core.event import EventDispatcher
 from olc.core.history import HistoryManager
 from olc.core.lightshow import LightShow
 from olc.core.registry import ActionRegistry
+from olc.core.selection import SelectionManager
 
 if typing.TYPE_CHECKING:
     from olc.backends import DMXBackend
@@ -43,8 +44,9 @@ class CoreApplication(EventDispatcher):
     midi: typing.Optional[Midi]
     crossfade: typing.Optional[CrossFade]
     commandline: CoreCommandLine
-    selected_channels: list[int]
-    last_selected_channel: typing.Optional[int]
+    live_selection: SelectionManager
+    action_registry: ActionRegistry
+    history: HistoryManager
     selected_cue: typing.Optional[tuple[float, int]]
     selected_group: typing.Optional[float]
 
@@ -88,18 +90,56 @@ class CoreApplication(EventDispatcher):
         # Command line logical state helper
         self.commandline = CoreCommandLine(typing.cast(typing.Any, self))
 
-        # Logical selection states
-        self.selected_channels: list[int] = []
-        self.last_selected_channel: typing.Optional[int] = None
-        self.selected_cue: typing.Optional[tuple[float, int]] = None
-        self.selected_group: typing.Optional[float] = None
-
         # Action and Undo/Redo plumbing layers
         self.action_registry = ActionRegistry(typing.cast(typing.Any, self))
         self.history = HistoryManager(typing.cast(typing.Any, self))
 
+        # Logical selection states
+        self.live_selection = SelectionManager(
+            commandline=self.commandline,
+            on_changed_callback=self._on_live_selection_changed,
+            history_manager=self.history,
+            get_level_callback=self.get_channel_level,
+        )
+        self.selected_cue: typing.Optional[tuple[float, int]] = None
+        self.selected_group: typing.Optional[float] = None
+
         # Auto-register action classes from the actions package
         self._register_actions()
+
+    @property
+    def selected_channels(self) -> list[int]:
+        """Get the live selection channels."""
+        return self.live_selection.selected_channels
+
+    @selected_channels.setter
+    def selected_channels(self, value: list[int]) -> None:
+        """Set the live selection channels."""
+        self.live_selection.selected_channels = value
+
+    @property
+    def last_selected_channel(self) -> typing.Optional[int]:
+        """Get the last selected live channel."""
+        return self.live_selection.last_selected_channel
+
+    @last_selected_channel.setter
+    def last_selected_channel(self, value: typing.Optional[int]) -> None:
+        """Set the last selected live channel."""
+        self.live_selection.last_selected_channel = value
+
+    def _on_live_selection_changed(self, channels: list[int]) -> None:
+        """Propagate live selection changes to listeners."""
+        self.emit("channels.selected_changed", channels)
+
+    def get_channel_level(self, channel: int) -> int:
+        """Get the current level of a channel in the active backend/dmx state."""
+        backend = getattr(self, "backend", None)
+        if backend and backend.dmx:
+            try:
+                return int(backend.dmx.levels["user"][channel - 1])
+            except (IndexError, TypeError, KeyError):
+                pass
+        return 0
 
     def _register_actions(self) -> None:
         """Register all concrete actions from the actions package."""

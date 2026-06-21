@@ -18,6 +18,7 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
+from olc.core.selection import SelectAddAction, SelectRemoveAction, SelectThruAction
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -25,7 +26,6 @@ if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
-    from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.widgets.channels_view import ChannelsView
     from olc.gtk3.window import Window
 
@@ -114,36 +114,16 @@ class ChannelWidget(Gtk.DrawingArea):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         channel_num = int(self.channel)
 
-        if (
-            self.window
-            and self.window.live_view
-            and channels_view is self.window.live_view.channels_view
-        ):
-            if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-                self.commandline.set_string(str(channel_num))
-                self.app.core.action_registry.execute("channel.select_thru")
-            elif channel_num in self.app.core.selected_channels:
-                self.commandline.set_string(str(channel_num))
-                self.app.core.action_registry.execute("channel.select_remove")
-            else:
-                self.commandline.set_string(str(channel_num))
-                self.app.core.action_registry.execute("channel.select_add")
-
-            # Update Track Channels if opened
-            if self.tabs and self.tabs.tabs["track_channels"]:
-                track_channels = typing.cast(
-                    "TrackChannelsTab", self.tabs.tabs["track_channels"]
-                )
-                track_channels.update_display()
+        if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
+            channels_view.selection_manager.execute_action(
+                SelectThruAction, channel_num
+            )
+        elif channel_num in channels_view.selection_manager.selected_channels:
+            channels_view.selection_manager.execute_action(
+                SelectRemoveAction, channel_num
+            )
         else:
-            if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
-                self.commandline.set_string(str(channel_num))
-                channels_view.select_thru()
-            elif flowboxchild.is_selected():
-                flowbox.unselect_child(flowboxchild)
-            else:
-                flowbox.select_child(flowboxchild)
-                channels_view.last_selected_channel = self.channel
+            channels_view.selection_manager.execute_action(SelectAddAction, channel_num)
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget

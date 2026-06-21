@@ -919,25 +919,15 @@ class GuiEventBridge:
     def _on_channels_selected_changed(self, selected_channels: list[int]) -> bool:
         """Synchronize the logical channel selection to the GUI's FlowBox."""
         if self.app.window and self.app.window.live_view:
-            channels_view: typing.Any = self.app.window.live_view.channels_view
-            channels_view.updating_selection = True
+            channels_view = self.app.window.live_view.channels_view
+            channels_view.sync_selection_to_gui(selected_channels)
 
-            try:
-                channels_view.flowbox.unselect_all()
-                for ch in selected_channels:
-                    if 1 <= ch <= MAX_CHANNELS:
-                        flowboxchild = channels_view.flowbox.get_child_at_index(ch - 1)
-                        if flowboxchild:
-                            channels_view.flowbox.select_child(flowboxchild)
-                if self.app.core.last_selected_channel is not None:
-                    channels_view.last_selected_channel = str(
-                        self.app.core.last_selected_channel
-                    )
-                else:
-                    channels_view.last_selected_channel = ""
-                channels_view.flowbox.invalidate_filter()
-            finally:
-                channels_view.updating_selection = False
+            # Update Track Channels if opened
+            if self.app.tabs and self.app.tabs.tabs.get("track_channels") is not None:
+                track_channels = typing.cast(
+                    "TrackChannelsTab", self.app.tabs.tabs["track_channels"]
+                )
+                track_channels.update_display()
         return False
 
     def _on_group_selected_changed(self, group_nb: float | None) -> bool:
