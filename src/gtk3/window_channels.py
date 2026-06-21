@@ -206,3 +206,23 @@ class LiveChannelsView(ChannelsView):
             if self.app.window is not None:
                 self.app.window.live_view.update_channel_widget(channel, next_level)
         self.app.backend.dmx.set_levels()
+
+    def select_channel(self) -> None:
+        """Select one channel using the unified core ActionRegistry."""
+        self.app.core.action_registry.execute("channel.select_active")
+
+    def select_plus(self) -> None:
+        """Add channel to selection using the unified core ActionRegistry."""
+        self.app.core.action_registry.execute("channel.select_add")
+
+    def select_thru(self) -> None:
+        """Select Channel Thru using the unified core ActionRegistry."""
+        self.app.core.action_registry.execute("channel.select_thru")
+
+    def select_minus(self) -> None:
+        """Remove channel from selection using the unified core ActionRegistry."""
+        self.app.core.action_registry.execute("channel.select_remove")
+
+    def select_all(self) -> None:
+        """Select all active channels using the unified core ActionRegistry."""
+        self.app.core.action_registry.execute("channel.select_all")
