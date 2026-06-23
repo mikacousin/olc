@@ -49,6 +49,7 @@ from olc.actions.group import (
     DeleteGroupAction,
     GroupRenameAction,
     GroupSelectAction,
+    GroupSetTempChannelsAction,
     GroupUpdateChannelsAction,
     NewGroupAction,
 )
@@ -94,6 +95,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         GroupUpdateChannelsAction,
         GroupRenameAction,
         GroupSelectAction,
+        GroupSetTempChannelsAction,
         CueUpdateAction,
         CueDeleteAction,
         CueRenameAction,

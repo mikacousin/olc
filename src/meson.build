@@ -24,6 +24,7 @@ olc_sources = [
   'curve.py',
   'define.py',
   'dmx.py',
+  'editor.py',
   'fader.py',
   'fader_bank.py',
   'group.py',

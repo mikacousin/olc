@@ -92,6 +92,10 @@ class GuiEventBridge:
             ),
         )
         self.app.core.subscribe(
+            "group_editor.changed",
+            lambda index: self._run_idle(self._safe_refresh_group_editor, index),
+        )
+        self.app.core.subscribe(
             "patch.changed", lambda: self._run_idle(self._safe_refresh_patch)
         )
         self.app.core.subscribe(
@@ -322,6 +326,19 @@ class GuiEventBridge:
                             and selected_cue.number == number
                         ):
                             memories_tab.channels_view.update()
+        return False
+
+    def _safe_refresh_group_editor(self, index: float) -> bool:
+        """Refresh the channel view in groups tab when temporary overrides change.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("groups") is not None:
+                group_tab = typing.cast("GroupTab", self.app.tabs.tabs["groups"])
+                if getattr(group_tab, "selected_group_number", None) == index:
+                    group_tab.channels_view.update()
         return False
 
     def _update_live_view_active_cue(self, sequence: int, number: float) -> None:

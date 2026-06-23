@@ -18,6 +18,7 @@ import typing
 
 import numpy as np
 from olc.define import MAX_CHANNELS
+from olc.editor import TempChannelsEditor
 
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
@@ -242,6 +243,23 @@ class Cues:
         self._cues.clear()
 
 
+class _CueTempChannelsEditor(TempChannelsEditor[tuple[float, int]]):
+    """Internal TempChannelsEditor subclass for Cues."""
+
+    def _notify_changed(self, key: tuple[float, int]) -> None:
+        """Notify that the cue editor state has changed.
+
+        Args:
+            key: Identification key of the edited cue (number, sequence).
+        """
+        number, sequence = key
+        if self.lightshow and self.lightshow.app:
+            app = self.lightshow.app
+            if hasattr(app, "core"):
+                app = app.core
+            app.emit("cue_editor.changed", sequence, number)
+
+
 class CueEditor:
     """Manages the temporary channel levels during cue editing, agnostic to the UI."""
 
@@ -251,10 +269,12 @@ class CueEditor:
         Args:
             lightshow: The LightShow model instance.
         """
-        self.lightshow = lightshow
-        # Temporary overrides: maps (number, sequence) to an ndarray
-        # of MAX_CHANNELS levels
-        self._temp_overrides: dict[tuple[float, int], np.ndarray] = {}
+        self._editor = _CueTempChannelsEditor(lightshow)
+
+    @property
+    def lightshow(self) -> LightShow | None:
+        """The LightShow model instance."""
+        return self._editor.lightshow
 
     def get_levels(self, number: float, sequence: int) -> np.ndarray:
         """Retrieve the temporary channel overrides for a specific cue.
@@ -266,10 +286,7 @@ class CueEditor:
         Returns:
             An ndarray containing DMX levels (-1 representing no modification).
         """
-        key = (number, sequence)
-        if key not in self._temp_overrides:
-            self._temp_overrides[key] = np.full(MAX_CHANNELS, -1, dtype=np.int16)
-        return self._temp_overrides[key]
+        return self._editor.get_levels((number, sequence))
 
     def set_level(self, number: float, sequence: int, channel: int, level: int) -> None:
         """Set a temporary level override for a single channel.
@@ -280,14 +297,7 @@ class CueEditor:
             channel: Channel number (1-based).
             level: The temporary DMX level (0-255).
         """
-        if 1 <= channel <= MAX_CHANNELS:
-            levels = self.get_levels(number, sequence)
-            levels[channel - 1] = level
-            if self.lightshow and self.lightshow.app:
-                app = self.lightshow.app
-                if hasattr(app, "core"):
-                    app = app.core
-                app.emit("cue_editor.changed", sequence, number)
+        self._editor.set_level((number, sequence), channel, level)
 
     def clear(self, number: float, sequence: int) -> None:
         """Clear all temporary channel overrides for a specific cue.
@@ -296,14 +306,7 @@ class CueEditor:
             number: Cue number.
             sequence: Sequence index.
         """
-        key = (number, sequence)
-        if key in self._temp_overrides:
-            self._temp_overrides[key].fill(-1)
-            if self.lightshow and self.lightshow.app:
-                app = self.lightshow.app
-                if hasattr(app, "core"):
-                    app = app.core
-                app.emit("cue_editor.changed", sequence, number)
+        self._editor.clear((number, sequence))
 
     def has_overrides(self, number: float, sequence: int) -> bool:
         """Check if a specific cue has any active channel level overrides.
@@ -315,7 +318,4 @@ class CueEditor:
         Returns:
             True if at least one channel has an active override, else False.
         """
-        key = (number, sequence)
-        if key in self._temp_overrides:
-            return bool(np.any(self._temp_overrides[key] != -1))
-        return False
+        return self._editor.has_overrides((number, sequence))

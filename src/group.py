@@ -17,6 +17,8 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass
 
+from olc.editor import TempChannelsEditor
+
 if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
 
@@ -74,6 +76,7 @@ class Groups:
         """
         self.lightshow = lightshow
         self._groups: list[Group] = []
+        self.group_editor = GroupEditor(lightshow)
 
     def __len__(self) -> int:
         """Return the number of groups."""
@@ -174,3 +177,20 @@ class Groups:
             The next index (1.0 if empty, else last index + 1.0).
         """
         return 1.0 if not self._groups else self._groups[-1].index + 1.0
+
+
+class GroupEditor(TempChannelsEditor[float]):
+    """Manages the temporary channel levels during group editing, agnostic to the UI."""
+
+    def _notify_changed(self, key: float) -> None:
+        """Notify that the group editor state has changed.
+
+        Args:
+            key: Identification key of the edited group (index).
+        """
+        index = key
+        if self.lightshow and self.lightshow.app:
+            app = self.lightshow.app
+            if hasattr(app, "core"):
+                app = app.core
+            app.emit("group_editor.changed", index)

@@ -202,6 +202,7 @@ class GroupUpdateChannelsAction(Action):
         self.old_channels = copy.deepcopy(target_group.channels)
         target_group.channels = self.new_channels
         lightshow.set_modified()
+        lightshow.groups.group_editor.clear(self.group_nb)
         self.app.emit("group.updated", target_group)
 
     def undo(self) -> None:
@@ -302,3 +303,54 @@ class GroupSelectAction(Action):
     def redo(self) -> None:
         self.app.selected_group = self.group_nb
         self.app.emit("group.selected_changed", self.group_nb)
+
+
+class GroupSetTempChannelsAction(Action):
+    """Action to set temp channel levels in a group, supporting Undo/Redo."""
+
+    name = "group.set_temp_channels"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the Action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.group_nb: float = 0.0
+        self.new_levels: dict[int, int] = {}
+        self.old_levels: dict[int, int] = {}
+
+    def configure(self, group_nb: float, channels: dict[int, int]) -> None:
+        """Configure the action.
+
+        Args:
+            group_nb: The index of the group.
+            channels: Dict mapping channel number (1-based) to level (0-255).
+        """
+        self.group_nb = group_nb
+        self.new_levels = dict(channels)
+
+    def execute(self) -> None:
+        """Execute the action, storing temp levels."""
+        group_editor = self.app.lightshow.groups.group_editor
+        levels = group_editor.get_levels(self.group_nb)
+        self.old_levels = {}
+        for channel in self.new_levels:
+            self.old_levels[channel] = int(levels[channel - 1])
+
+        for channel, level in self.new_levels.items():
+            group_editor.set_level(self.group_nb, channel, level)
+
+    def undo(self) -> None:
+        """Undo the temporary level changes."""
+        group_editor = self.app.lightshow.groups.group_editor
+        for channel, level in self.old_levels.items():
+            group_editor.set_level(self.group_nb, channel, level)
+
+    def redo(self) -> None:
+        """Redo the temporary level changes."""
+        group_editor = self.app.lightshow.groups.group_editor
+        for channel, level in self.new_levels.items():
+            group_editor.set_level(self.group_nb, channel, level)

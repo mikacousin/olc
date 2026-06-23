@@ -310,3 +310,46 @@ def test_group_select_action_undo_redo() -> None:
     app.action_registry.execute("group.select", None)
     assert app.selected_group is None
     assert received_selections[-1] is None
+
+
+def test_group_temp_channels_action() -> None:
+    """Test group set_temp_channels action and GroupEditor."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Clean groups list
+    app.lightshow.groups.clear()
+
+    # Create initial group
+    app.action_registry.execute("group.new", 1.0)
+    group = app.lightshow.groups[0]
+
+    # Track updated/changed events
+    editor_changed_events = []
+    app.subscribe("group_editor.changed", editor_changed_events.append)
+
+    # Check initially no overrides
+    editor = app.lightshow.groups.group_editor
+    assert not editor.has_overrides(1.0)
+
+    # 1. Set temp channels
+    app.action_registry.execute("group.set_temp_channels", 1.0, {3: 200, 4: 150})
+    assert editor.has_overrides(1.0)
+    assert list(editor.get_levels(1.0)[2:4]) == [200, 150]
+    assert editor_changed_events == [1.0, 1.0]
+
+    # 2. Undo temp channels
+    app.history.undo()
+    assert not editor.has_overrides(1.0)
+    assert list(editor.get_levels(1.0)[2:4]) == [-1, -1]
+
+    # 3. Redo temp channels
+    app.history.redo()
+    assert editor.has_overrides(1.0)
+    assert list(editor.get_levels(1.0)[2:4]) == [200, 150]
+
+    # 4. Commit using update_channels
+    app.action_registry.execute("group.update_channels", 1.0, {3: 200, 4: 150})
+    assert group.channels == {3: 200, 4: 150}
+    # Editor overrides should be cleared after update
+    assert not editor.has_overrides(1.0)
