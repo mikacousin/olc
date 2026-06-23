@@ -27,6 +27,7 @@ from olc.actions.channel import (
     SetChannelLevelAction,
     SetLevelFromCmdAction,
     SetLevelFullAction,
+    SetMultiChannelsLevelAction,
 )
 from olc.actions.cue import (
     CueCopyAction,
@@ -81,6 +82,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
     """
     actions_to_register = [
         SetChannelLevelAction,
+        SetMultiChannelsLevelAction,
         SelectActiveChannelAction,
         SelectThruChannelAction,
         SelectAddChannelAction,

@@ -603,3 +603,73 @@ class LevelMinusAction(Action):
 
         for ch in self.channels:
             self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+
+
+class SetMultiChannelsLevelAction(Action):
+    """Action to set the DMX user-override level of multiple channels at once.
+
+    Supports Undo/Redo by capturing the previous user levels.
+    """
+
+    name = "channel.set_multi_levels"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the Action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.levels: dict[int, int] = {}
+        self.old_levels: dict[int, int] = {}
+
+    def configure(self, levels: dict[int, int]) -> None:
+        """Configure the action with a dictionary mapping channel -> level.
+
+        Args:
+            levels: A dict of {channel: level} where channel is 1-based
+                    and level is DMX intensity (0 to 255, or -1 to release).
+        """
+        self.levels = levels
+
+    def execute(self) -> None:
+        """Execute the action, setting user levels on multiple channels."""
+        self.old_levels = {}
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for channel, level in self.levels.items():
+                if 1 <= channel <= MAX_CHANNELS:
+                    self.old_levels[channel] = int(
+                        backend.dmx.levels["user"][channel - 1]
+                    )
+                    backend.dmx.levels["user"][channel - 1] = level
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for channel, level in self.levels.items():
+            self.app.emit("channel.level_changed", channel, level)
+
+    def undo(self) -> None:
+        """Undo the multiple channel level changes, restoring their previous values."""
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for channel, old_level in self.old_levels.items():
+                backend.dmx.levels["user"][channel - 1] = old_level
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for channel, old_level in self.old_levels.items():
+            self.app.emit("channel.level_changed", channel, old_level)
+
+    def redo(self) -> None:
+        """Redo the multiple channel level changes."""
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for channel, level in self.levels.items():
+                backend.dmx.levels["user"][channel - 1] = level
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for channel, level in self.levels.items():
+            self.app.emit("channel.level_changed", channel, level)

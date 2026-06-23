@@ -204,3 +204,56 @@ def test_channel_selection_actions_undo_redo() -> None:
     # Redo
     app.history.redo()
     assert 11 not in app.selected_channels
+
+
+def test_set_multi_channels_level_action() -> None:
+    """Test multi-channels set level action execution, undo, and redo."""
+    # 1. Initialize mock settings and core app
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # 2. Mock Dmx backend
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, -1, dtype=np.int16)}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    # 3. Track events
+    received_events: list[tuple[int, int]] = []
+    app.subscribe(
+        "channel.level_changed", lambda chan, val: received_events.append((chan, val))
+    )
+
+    # 4. Execute: Set channel 3 to 200, and channel 4 to 150
+    app.action_registry.execute("channel.set_multi_levels", {3: 200, 4: 150})
+
+    # Assert DMX levels override were updated
+    assert app.backend.dmx.levels["user"][2] == 200
+    assert app.backend.dmx.levels["user"][3] == 150
+    # Assert set_levels update was called
+    mock_dmx.set_levels.assert_called_once()
+    # Assert events were emitted (order is not guaranteed, check set)
+    assert set(received_events) == {(3, 200), (4, 150)}
+
+    # 5. Undo the action
+    mock_dmx.set_levels.reset_mock()
+    received_events.clear()
+    app.history.undo()
+
+    # Assert DMX levels override were restored to -1
+    assert app.backend.dmx.levels["user"][2] == -1
+    assert app.backend.dmx.levels["user"][3] == -1
+    mock_dmx.set_levels.assert_called_once()
+    assert set(received_events) == {(3, -1), (4, -1)}
+
+    # 6. Redo the action
+    mock_dmx.set_levels.reset_mock()
+    received_events.clear()
+    app.history.redo()
+
+    # Assert DMX levels override are back to modified values
+    assert app.backend.dmx.levels["user"][2] == 200
+    assert app.backend.dmx.levels["user"][3] == 150
+    mock_dmx.set_levels.assert_called_once()
+    assert set(received_events) == {(3, 200), (4, 150)}

@@ -18,7 +18,7 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import UNIVERSES
+from olc.define import UNIVERSES, is_int
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
@@ -172,8 +172,71 @@ class LiveChannelsView(ChannelsView):
         """Set channel level using the unified core ActionRegistry."""
         self.app.core.action_registry.execute("channel.set_level", channel, level)
 
+    def at_level(self) -> None:
+        """Channels at level using the unified core ActionRegistry."""
+        if not self.settings:
+            return
+        keystring = self.commandline.get_string()
+        if not is_int(keystring):
+            return
+        level = int(keystring)
+        if self.settings.get_boolean("percent"):
+            level = int(round((level / 100) * 255))
+        level = min(level, 255)
+        channels = self.get_selected_channels()
+        channels_dict = {channel: level for channel in channels}
+        if channels_dict:
+            self.app.core.action_registry.execute(
+                "channel.set_multi_levels", channels_dict
+            )
+
+    def level_plus(self) -> None:
+        """Channels +% using the unified core ActionRegistry."""
+        if not self.settings:
+            return
+        step_level = self.settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        channels_dict = {}
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            if channel_widget:
+                level = channel_widget.level
+                if self.settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) + step_level
+                    new_level = min(round((percent_level / 100) * 256), 255)
+                else:
+                    new_level = min(level + step_level, 255)
+                channels_dict[channel] = new_level
+        if channels_dict:
+            self.app.core.action_registry.execute(
+                "channel.set_multi_levels", channels_dict
+            )
+
+    def level_minus(self) -> None:
+        """Channels -% using the unified core ActionRegistry."""
+        if not self.settings:
+            return
+        step_level = self.settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        channels_dict = {}
+        for channel in channels:
+            channel_widget = self.get_channel_widget(channel)
+            if channel_widget:
+                level = channel_widget.level
+                if self.settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) - step_level
+                    new_level = max(round((percent_level / 100) * 256), 0)
+                else:
+                    new_level = max(level - step_level, 0)
+                channels_dict[channel] = new_level
+        if channels_dict:
+            self.app.core.action_registry.execute(
+                "channel.set_multi_levels", channels_dict
+            )
+
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change patched channels level with a wheel
+        """Change patched channels level with a wheel using the unified core
+        ActionRegistry.
 
         Args:
             step: Step level
@@ -181,31 +244,30 @@ class LiveChannelsView(ChannelsView):
         """
         if self.app.backend is None:
             return
-        level = 0
         channels = self.get_selected_channels()
+        channels_dict = {}
         for channel in channels:
             if not self.app.core.lightshow.patch.is_patched(channel):
                 continue
+            level = None
             for output in self.app.core.lightshow.patch.channels[channel]:
                 out = output[0]
                 univ = output[1]
                 if out is not None and univ is not None:
                     index = UNIVERSES.index(univ)
                     level = self.app.backend.dmx.frame[index][out - 1]
-                    if direction == Gdk.ScrollDirection.UP:
-                        self.app.backend.dmx.levels["user"][channel - 1] = min(
-                            level + step, 255
-                        )
-                    elif direction == Gdk.ScrollDirection.DOWN:
-                        self.app.backend.dmx.levels["user"][channel - 1] = max(
-                            level - step, 0
-                        )
-            next_level = self.app.core.lightshow.main_playback.get_next_channel_level(
-                channel, level
+            if level is not None:
+                if direction == Gdk.ScrollDirection.UP:
+                    new_level = min(level + step, 255)
+                elif direction == Gdk.ScrollDirection.DOWN:
+                    new_level = max(level - step, 0)
+                else:
+                    continue
+                channels_dict[channel] = new_level
+        if channels_dict:
+            self.app.core.action_registry.execute(
+                "channel.set_multi_levels", channels_dict
             )
-            if self.app.window is not None:
-                self.app.window.live_view.update_channel_widget(channel, next_level)
-        self.app.backend.dmx.set_levels()
 
     def select_channel(self) -> None:
         """Select one channel using the unified core ActionRegistry."""
