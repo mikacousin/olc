@@ -19,7 +19,7 @@ import typing
 import mido
 from gi.repository import Gdk, GLib
 from olc.define import MAX_FADER_PAGE
-from olc.zoom import zoom
+from olc.gtk3.zoom import zoom
 
 if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application

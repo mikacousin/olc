@@ -35,7 +35,6 @@ olc_sources = [
   'settings.py',
   'step.py',
   'timer.py',
-  'zoom.py',
 ]
 
 install_data(
