@@ -26,6 +26,7 @@ if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.cue import Cue
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
@@ -410,6 +411,23 @@ class CueChannelsView(ChannelsView):
     def __init__(self, app: Application) -> None:
         super().__init__(app=app)
 
+    def _get_selected_cue(self) -> Cue | None:
+        """Retrieve the logically selected Cue from the Core.
+
+        Returns:
+            The selected Cue or None.
+        """
+        if self.lightshow is None:
+            return None
+        selected_cue_id = self.app.core.selected_cue
+        if selected_cue_id is None:
+            return None
+        cue_number, cue_seq = selected_cue_id
+        for cue in self.lightshow.cues:
+            if cue.number == cue_number and cue.sequence == cue_seq:
+                return cue
+        return None
+
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set level channel via temporary action.
 
@@ -419,17 +437,12 @@ class CueChannelsView(ChannelsView):
         """
         if self.tabs is None or self.lightshow is None or self.window is None:
             return
-        memories_tab = self.tabs.tabs.get("memories")
-        if memories_tab is None:
+        cue = self._get_selected_cue()
+        if cue is None:
             return
-        tab = typing.cast(CuesEditionTab, memories_tab)
-        path, _focus_column = tab.treeview.get_cursor()
-        if path:
-            row = path.get_indices()[0]
-            cue = self.lightshow.cues[row]
-            self.window.app.core.action_registry.execute(
-                "cue.set_temp_channels", cue.number, cue.sequence, {channel: level}
-            )
+        self.window.app.core.action_registry.execute(
+            "cue.set_temp_channels", cue.number, cue.sequence, {channel: level}
+        )
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
         """Change channels level with a wheel using a group action.
@@ -440,15 +453,9 @@ class CueChannelsView(ChannelsView):
         """
         if self.tabs is None or self.lightshow is None or self.window is None:
             return
-        memories_tab = self.tabs.tabs.get("memories")
-        if memories_tab is None:
+        cue = self._get_selected_cue()
+        if cue is None:
             return
-        tab = typing.cast(CuesEditionTab, memories_tab)
-        path, _focus_column = tab.treeview.get_cursor()
-        if not path:
-            return
-        row = path.get_indices()[0]
-        cue = self.lightshow.cues[row]
 
         channels = self.get_selected_channels()
         channels_dict = {}
@@ -475,15 +482,9 @@ class CueChannelsView(ChannelsView):
             or self.lightshow is None
         ):
             return
-        memories_tab = self.tabs.tabs.get("memories")
-        if memories_tab is None:
+        cue = self._get_selected_cue()
+        if cue is None:
             return
-        tab = typing.cast(CuesEditionTab, memories_tab)
-        path, _focus_column = tab.treeview.get_cursor()
-        if not path:
-            return
-        row = path.get_indices()[0]
-        cue = self.lightshow.cues[row]
 
         keystring = self.commandline.get_string()
         if not is_int(keystring):
@@ -509,15 +510,9 @@ class CueChannelsView(ChannelsView):
             or self.window is None
         ):
             return
-        memories_tab = self.tabs.tabs.get("memories")
-        if memories_tab is None:
+        cue = self._get_selected_cue()
+        if cue is None:
             return
-        tab = typing.cast(CuesEditionTab, memories_tab)
-        path, _focus_column = tab.treeview.get_cursor()
-        if not path:
-            return
-        row = path.get_indices()[0]
-        cue = self.lightshow.cues[row]
 
         step_level = self.settings.get_int("percent-level")
         channels = self.get_selected_channels()
@@ -547,15 +542,9 @@ class CueChannelsView(ChannelsView):
             or self.window is None
         ):
             return
-        memories_tab = self.tabs.tabs.get("memories")
-        if memories_tab is None:
+        cue = self._get_selected_cue()
+        if cue is None:
             return
-        tab = typing.cast(CuesEditionTab, memories_tab)
-        path, _focus_column = tab.treeview.get_cursor()
-        if not path:
-            return
-        row = path.get_indices()[0]
-        cue = self.lightshow.cues[row]
 
         step_level = self.settings.get_int("percent-level")
         channels = self.get_selected_channels()
@@ -593,27 +582,35 @@ class CueChannelsView(ChannelsView):
         ):
             child.set_visible(False)
             return False
-        # Find selected row
-        tab = typing.cast(CuesEditionTab, self.tabs.tabs["memories"])
-        path, _focus_column = tab.treeview.get_cursor()
-        if path:
-            row = path.get_indices()[0]
-            if row < 0 or row >= len(self.lightshow.cues):
-                child.set_visible(False)
-                return False
-            if self.view_mode == VIEW_MODES["Active"]:
-                visible = self.__filter_active(row, child)
-                child.set_visible(visible)
-                return visible
-            if self.view_mode == VIEW_MODES["Patched"]:
-                visible = self.__filter_patched(row, child)
-                child.set_visible(visible)
-                return visible
-            self.__filter_all(row, child)
-            child.set_visible(True)
-            return True
-        child.set_visible(False)
-        return False
+
+        # Find selected cue logically from the Core
+        selected_cue_id = self.app.core.selected_cue
+        if selected_cue_id is None:
+            child.set_visible(False)
+            return False
+
+        cue_number, cue_seq = selected_cue_id
+        row = -1
+        for i, cue in enumerate(self.lightshow.cues):
+            if cue.number == cue_number and cue.sequence == cue_seq:
+                row = i
+                break
+
+        if row == -1:
+            child.set_visible(False)
+            return False
+
+        if self.view_mode == VIEW_MODES["Active"]:
+            visible = self.__filter_active(row, child)
+            child.set_visible(visible)
+            return visible
+        if self.view_mode == VIEW_MODES["Patched"]:
+            visible = self.__filter_patched(row, child)
+            child.set_visible(visible)
+            return visible
+        self.__filter_all(row, child)
+        child.set_visible(True)
+        return True
 
     def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
         if (
