@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Automated behavioral tests for the GTK3 GUI (Phases 1 & 2)."""
 
-# pylint: disable=redefined-outer-name, protected-access, too-many-statements, import-outside-toplevel
+# pylint: disable=redefined-outer-name, protected-access, too-many-statements, import-outside-toplevel, too-many-locals
 
 from __future__ import annotations
 
@@ -54,8 +54,19 @@ def process_events() -> None:
 def app_gui_instance() -> Generator[Application, None, None]:
     """Fixture to launch the complete GTK Application instance once for the module."""
     # Register resources
-    gresource_path = "/usr/local/share/olc/olc.gresource"
-    if os.path.exists(gresource_path):
+    gresource_path = None
+    candidates = [
+        os.path.join(
+            os.path.dirname(__file__), "..", "builddir", "data", "olc.gresource"
+        ),
+        "/usr/local/share/olc/olc.gresource",
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            gresource_path = candidate
+            break
+
+    if gresource_path is not None:
         resource = Gio.resource_load(gresource_path)
         Gio.Resource._register(resource)  # type: ignore
 

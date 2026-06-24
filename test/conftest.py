@@ -18,7 +18,22 @@
 
 from __future__ import annotations
 
-import pytest
+import os
+import sys
+
+# Dynamic module aliasing to allow importing 'olc' from 'src' without installation
+_root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _root_dir not in sys.path:
+    sys.path.insert(0, _root_dir)
+
+try:
+    import src  # type: ignore
+
+    sys.modules["olc"] = src
+except ImportError:
+    pass
+
+import pytest  # noqa: E402
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
