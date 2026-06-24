@@ -397,19 +397,26 @@ class GroupTab(Gtk.Paned):
 
         # Restore selection
         restored = False
-        if getattr(self, "selected_group_number", None) is not None:
-            for child in self.flowbox.get_children():
-                fb_child = typing.cast(Gtk.FlowBoxChild, child)
-                group_widget = typing.cast(GroupWidget, fb_child.get_child())
-                if group_widget and group_widget.number == self.selected_group_number:
-                    self.flowbox.select_child(fb_child)
-                    fb_child.grab_focus()
-                    restored = True
-                    break
-        if not restored:
-            self.selected_group_number = None
-            self.last_group_selected = ""
-            self.channels_view.update()
+        self._updating_selection = True
+        try:
+            if getattr(self, "selected_group_number", None) is not None:
+                for child in self.flowbox.get_children():
+                    fb_child = typing.cast(Gtk.FlowBoxChild, child)
+                    group_widget = typing.cast(GroupWidget, fb_child.get_child())
+                    if (
+                        group_widget
+                        and group_widget.number == self.selected_group_number
+                    ):
+                        self.flowbox.select_child(fb_child)
+                        fb_child.grab_focus()
+                        restored = True
+                        break
+            if not restored:
+                self.selected_group_number = None
+                self.last_group_selected = ""
+                self.channels_view.update()
+        finally:
+            self._updating_selection = False
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab with the icon clicked"""
