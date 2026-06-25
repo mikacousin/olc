@@ -607,3 +607,151 @@ def test_sequence_and_channel_time_tab_behavior(app_gui: Application) -> None:
     process_events()
     assert step_obj.channel_time[5].time == 0.0
     assert ct_tab.liststore[0][2] == ""
+
+
+# ==============================================================================
+# Phase 3: Channel Selection Behaviour Tests
+# ==============================================================================
+
+
+def test_live_view_channel_selection(app_gui: Application) -> None:
+    """Test channel selection/deselection via keyboard in the live view.
+
+    Covers:
+    - C key selects the channel entered in the commandline
+    - 0 C deselects all channels
+    - C alone (empty commandline) deselects all channels
+    - Undo/redo of both operations
+    """
+    assert app_gui.window is not None
+    channels_view = app_gui.window.live_view.channels_view
+    commandline = app_gui.core.commandline
+
+    # Reset selection state
+    app_gui.core.live_selection.selected_channels = []
+    app_gui.core.live_selection.last_selected_channel = None
+
+    # 1. Select channel 3 via "3 C"
+    commandline.set_string("3")
+    channels_view.select_channel()
+    process_events()
+    assert app_gui.core.selected_channels == [3]
+    assert app_gui.core.last_selected_channel == 3
+
+    # 2. Add channel 7 via "7 +"
+    commandline.set_string("7")
+    channels_view.select_plus()
+    process_events()
+    assert set(app_gui.core.selected_channels) == {3, 7}
+
+    # 3. Deselect all via "0 C"
+    commandline.set_string("0")
+    channels_view.select_channel()
+    process_events()
+    assert app_gui.core.selected_channels == []
+    assert app_gui.core.last_selected_channel is None
+
+    # 4. Undo: should restore {3, 7}
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert set(app_gui.core.selected_channels) == {3, 7}
+
+    # 5. Redo: should clear again
+    app_gui.activate_action("redo", None)
+    process_events()
+    assert app_gui.core.selected_channels == []
+
+    # 6. Re-select channel 5, then deselect via bare C (empty commandline)
+    commandline.set_string("5")
+    channels_view.select_channel()
+    process_events()
+    assert app_gui.core.selected_channels == [5]
+
+    commandline.set_string("")
+    channels_view.select_channel()
+    process_events()
+    assert app_gui.core.selected_channels == []
+    assert app_gui.core.last_selected_channel is None
+
+
+def test_group_tab_channel_selection(app_gui: Application) -> None:
+    """Test channel selection/deselection via keyboard in the Groups tab channels view.
+
+    Covers:
+    - C key selects the channel entered in the commandline (local SelectionManager)
+    - 0 C deselects all channels in the group channels view
+    - C alone (empty commandline) deselects all channels
+    - Undo/redo via the shared history
+    - GUI flowbox highlights match the logical selection state
+    """
+    # 1. Set up a group and open the tab
+    app_gui.core.lightshow.groups.clear()
+    app_gui.core.lightshow.groups.add(Group(1.0, {1: 200, 2: 150, 3: 100}, "G1"))
+
+    app_gui.activate_action("groups", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    group_tab = app_gui.tabs.tabs.get("groups")
+    assert isinstance(group_tab, GroupTab)
+
+    channels_view = group_tab.channels_view
+    commandline = app_gui.core.commandline
+    selection_manager = channels_view.selection_manager
+
+    # Select the group so the channels view is populated
+    children = group_tab.flowbox.get_children()
+    assert len(children) >= 1
+    group_tab.flowbox.select_child(typing.cast(Gtk.FlowBoxChild, children[0]))
+    process_events()
+
+    # 2. Select channel 1 via "1 C"
+    commandline.set_string("1")
+    channels_view.select_channel()
+    process_events()
+    assert selection_manager.selected_channels == [1]
+    assert selection_manager.last_selected_channel == 1
+
+    # Verify flowbox highlight
+    selected_fb = channels_view.flowbox.get_selected_children()
+    assert any(c.get_index() == 0 for c in selected_fb), (
+        "Channel 1 flowbox child should be highlighted."
+    )
+
+    # 3. Add channel 2 via "2 +"
+    commandline.set_string("2")
+    channels_view.select_plus()
+    process_events()
+    assert set(selection_manager.selected_channels) == {1, 2}
+
+    # 4. Deselect all via "0 C"
+    commandline.set_string("0")
+    channels_view.select_channel()
+    process_events()
+    assert selection_manager.selected_channels == []
+    assert selection_manager.last_selected_channel is None
+
+    # Flowbox should show no selection
+    assert channels_view.flowbox.get_selected_children() == []
+
+    # 5. Undo: should restore {1, 2}
+    app_gui.core.history.undo()
+    process_events()
+    assert set(selection_manager.selected_channels) == {1, 2}
+
+    # 6. Redo: should clear again
+    app_gui.core.history.redo()
+    process_events()
+    assert selection_manager.selected_channels == []
+
+    # 7. Re-select channel 3, then deselect via bare C (empty commandline)
+    commandline.set_string("3")
+    channels_view.select_channel()
+    process_events()
+    assert selection_manager.selected_channels == [3]
+
+    commandline.set_string("")
+    channels_view.select_channel()
+    process_events()
+    assert selection_manager.selected_channels == []
+    assert selection_manager.last_selected_channel is None

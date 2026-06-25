@@ -24,6 +24,7 @@ from olc.core.selection import (
     SelectAddAction,
     SelectAllAction,
     SelectionManager,
+    SelectNoneAction,
     SelectRemoveAction,
     SelectThruAction,
 )
@@ -116,3 +117,67 @@ def test_selection_manager_undo_redo() -> None:
     app.history.redo()
     assert manager.selected_channels == [3, 6]
     assert manager.last_selected_channel == 6
+
+
+def test_select_none_action() -> None:
+    """Test SelectNoneAction clears selection and notifies callback."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    changed_selections: list[list[int]] = []
+
+    def on_changed(sel: list[int]) -> None:
+        changed_selections.append(sel)
+
+    manager = SelectionManager(
+        commandline=app.commandline,
+        on_changed_callback=on_changed,
+        history_manager=app.history,
+    )
+
+    # Pre-select some channels
+    manager.execute_action(SelectActiveAction, channel=3)
+    manager.execute_action(SelectAddAction, channel=7)
+    assert manager.selected_channels == [3, 7]
+
+    # SelectNone should clear everything
+    manager.execute_action(SelectNoneAction)
+    assert manager.selected_channels == []
+    assert manager.last_selected_channel is None
+    assert changed_selections[-1] == []
+
+    # Undo should restore [3, 7]
+    app.history.undo()
+    assert manager.selected_channels == [3, 7]
+    assert changed_selections[-1] == [3, 7]
+
+
+def test_select_none_redo() -> None:
+    """Test redo of SelectNoneAction re-clears the selection."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    changed_selections: list[list[int]] = []
+
+    def on_changed(sel: list[int]) -> None:
+        changed_selections.append(sel)
+
+    manager = SelectionManager(
+        commandline=app.commandline,
+        on_changed_callback=on_changed,
+        history_manager=app.history,
+    )
+
+    manager.execute_action(SelectActiveAction, channel=5)
+    manager.execute_action(SelectNoneAction)
+    assert manager.selected_channels == []
+
+    # Undo: restore channel 5
+    app.history.undo()
+    assert manager.selected_channels == [5]
+
+    # Redo: clear again
+    app.history.redo()
+    assert manager.selected_channels == []
+    assert manager.last_selected_channel is None
+    assert changed_selections[-1] == []

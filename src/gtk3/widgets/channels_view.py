@@ -23,6 +23,7 @@ from olc.core.selection import (
     SelectAddAction,
     SelectAllAction,
     SelectionManager,
+    SelectNoneAction,
     SelectRemoveAction,
     SelectThruAction,
 )
@@ -227,10 +228,13 @@ class ChannelsView(Gtk.Box):
         self.combo.set_active(index)
 
     def select_channel(self) -> None:
-        """Select one channel"""
+        """Select one channel, or clear selection if commandline is empty or zero."""
         if not self.window or not self.commandline:
             return
-
+        cmd = self.commandline.get_string()
+        if not cmd or cmd == "0":
+            self.selection_manager.execute_action(SelectNoneAction)
+            return
         self.selection_manager.execute_action(SelectActiveAction)
         if self.selection_manager.last_selected_channel:
             ch = self.selection_manager.last_selected_channel

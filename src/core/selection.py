@@ -129,7 +129,7 @@ class SelectActiveAction(SelectionAction):
         self.old_last = self.manager.last_selected_channel
 
         chan = self.channel
-        if chan == 0:
+        if not chan:
             cmd_string = self.manager.commandline.get_string()
             if is_non_nul_int(cmd_string):
                 chan = int(cmd_string)
@@ -171,7 +171,7 @@ class SelectAddAction(SelectionAction):
         self.old_last = self.manager.last_selected_channel
 
         chan = self.channel
-        if chan == 0:
+        if not chan:
             cmd_string = self.manager.commandline.get_string()
             if is_non_nul_int(cmd_string):
                 chan = int(cmd_string)
@@ -216,7 +216,7 @@ class SelectRemoveAction(SelectionAction):
         self.old_last = self.manager.last_selected_channel
 
         chan = self.channel
-        if chan == 0:
+        if not chan:
             cmd_string = self.manager.commandline.get_string()
             if is_non_nul_int(cmd_string):
                 chan = int(cmd_string)
@@ -261,7 +261,7 @@ class SelectThruAction(SelectionAction):
         self.old_last = self.manager.last_selected_channel
 
         to_chan = self.to_channel
-        if to_chan == 0:
+        if not to_chan:
             cmd_string = self.manager.commandline.get_string()
             if is_non_nul_int(cmd_string):
                 to_chan = int(cmd_string)
@@ -308,6 +308,34 @@ class SelectAllAction(SelectionAction):
                 if self.manager.get_level_callback(ch) > 0:
                     new_sel.append(ch)
         self.manager.selected_channels = new_sel
+
+    def undo(self) -> None:
+        self.manager.selected_channels = list(self.old_selection)
+        self.manager.last_selected_channel = self.old_last
+        self.manager.notify_changed()
+
+
+class SelectNoneAction(SelectionAction):
+    """Action to clear channel selection (select none)."""
+
+    name = "select.none"
+
+    def __init__(self, manager: SelectionManager) -> None:
+        """Initialize the SelectNoneAction.
+
+        Args:
+            manager: The target SelectionManager instance.
+        """
+        super().__init__(manager)
+        self.old_selection: list[int] = []
+        self.old_last: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        self.old_selection = list(self.manager.selected_channels)
+        self.old_last = self.manager.last_selected_channel
+        self.manager.selected_channels = []
+        self.manager.last_selected_channel = None
+        self.manager.commandline.set_string("")
 
     def undo(self) -> None:
         self.manager.selected_channels = list(self.old_selection)

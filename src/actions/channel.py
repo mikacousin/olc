@@ -351,6 +351,42 @@ class SelectAllChannelsAction(Action):
         self.app.emit("channels.selected_changed", self.app.selected_channels)
 
 
+class SelectNoneChannelsAction(Action):
+    """Action to clear all channel selection."""
+
+    name = "channel.select_none"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.old_selection: list[int] = []
+        self.old_last_selected: typing.Optional[int] = None
+
+    def execute(self) -> None:
+        """Clear channel selection and notify listeners."""
+        self.old_selection = list(self.app.selected_channels)
+        self.old_last_selected = self.app.last_selected_channel
+        self.app.selected_channels = []
+        self.app.last_selected_channel = None
+        self.app.commandline.set_string("")
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def undo(self) -> None:
+        self.app.selected_channels = list(self.old_selection)
+        self.app.last_selected_channel = self.old_last_selected
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+    def redo(self) -> None:
+        self.app.selected_channels = []
+        self.app.last_selected_channel = None
+        self.app.emit("channels.selected_changed", self.app.selected_channels)
+
+
 class SetLevelFromCmdAction(Action):
     """Action to set the level of all selected channels from the commandline."""
 
