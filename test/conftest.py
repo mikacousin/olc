@@ -27,7 +27,7 @@ if _root_dir not in sys.path:
     sys.path.insert(0, _root_dir)
 
 try:
-    import src  # type: ignore
+    import src
 
     sys.modules["olc"] = src
 except ImportError:

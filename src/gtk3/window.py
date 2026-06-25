@@ -83,6 +83,7 @@ class Window(Gtk.ApplicationWindow):
         self.set_default_size(1400, 1080)
         self.set_name("olc")
         self.connect("delete-event", self.app.exit)
+        self.connect("key-press-event", self.on_window_key_press)
 
         # Header Bar
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
@@ -196,6 +197,19 @@ class Window(Gtk.ApplicationWindow):
                 widget.level = level
                 widget.next_level = next_level
                 widget.queue_draw()
+
+    def on_window_key_press(self, _widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
+        """Handle window-level key press events.
+
+        If a text entry or cell editable widget is focused, we manually send the
+        event to it and consume the event to prevent application-wide accelerators
+        (like space key triggering 'playback.go') from stealing the keys.
+        """
+        focused = self.get_focus()
+        if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
+            focused.event(event)
+            return True
+        return False
 
     def on_key_press_event(
         self, _widget: Gtk.Widget | None, event: Gdk.EventKey

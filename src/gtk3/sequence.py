@@ -17,21 +17,17 @@ from __future__ import annotations
 import typing
 from typing import Callable, Optional
 
-import numpy as np
 from gi.repository import Gdk, Gtk
-from olc.cue import Cue
-from olc.define import MAX_CHANNELS, string_to_time, time_to_string
+from olc.define import MAX_CHANNELS, is_int, string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.sequence import Sequence
-from olc.step import Step
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
-    from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
@@ -57,8 +53,6 @@ class SequenceTab(Gtk.Grid):
         )
         self.settings = app.settings
         self.commandline = app.core.commandline
-        # To stock user modification on channels
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
@@ -152,6 +146,13 @@ class SequenceTab(Gtk.Grid):
 
     def refresh(self) -> None:
         """Refresh display"""
+        selected_seq_index = None
+        path, _focus_column = self.treeview1.get_cursor()
+        if path:
+            row = path.get_indices()[0]
+            if row < len(self.liststore1):
+                selected_seq_index = self.liststore1[row][0]
+
         self.liststore1.clear()
         self.liststore1.append(
             [
@@ -163,8 +164,20 @@ class SequenceTab(Gtk.Grid):
         for chaser in self.lightshow.chasers:
             self.liststore1.append([chaser.index, chaser.type_seq, chaser.text])
         self.treeview1.set_model(self.liststore1)
-        path = Gtk.TreePath.new_first()
-        self.treeview1.set_cursor(path, None, False)
+
+        selected_iter = None
+        if selected_seq_index is not None:
+            for row in self.liststore1:
+                if row[0] == selected_seq_index:
+                    selected_iter = row.iter
+                    break
+
+        if selected_iter is not None:
+            path = self.liststore1.get_path(selected_iter)
+            self.treeview1.set_cursor(path, None, False)
+        else:
+            path = Gtk.TreePath.new_first()
+            self.treeview1.set_cursor(path, None, False)
         self.on_sequence_changed()
 
     def get_selected_sequence(self) -> Optional[Sequence]:
@@ -252,232 +265,98 @@ class SequenceTab(Gtk.Grid):
     def wait_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
-        """Wait edited
-
-        Args:
-            path: Row number
-            text: New string
-        """
+        """Wait edited"""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
         time = string_to_time(text)
-        string = time_to_string(time)
-        # Update display
-        self.liststore2[path][3] = string
-        # Update Wait value
-        sequence.steps[step].wait = time
-        # Update Total Time
-        self.update_total_time(sequence, step)
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Sequential Tab
-        if sequence == self.lightshow.main_playback:
-            path = Gtk.TreePath.new_from_indices([step + 2])
-            self.window.playback.cues_liststore1[path][3] = string
-            if self.lightshow.main_playback.position + 1 == step:
-                self.window.playback.sequential.wait = time
-                self.window.playback.sequential.total_time = sequence.steps[
-                    step
-                ].total_time
-                self.window.playback.sequential.queue_draw()
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, wait=time
+        )
 
     def out_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
-        """Time Out edited
-
-        Args:
-            path: Row number
-            text: New string
-        """
+        """Time Out edited"""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
         time = string_to_time(text)
-        string = time_to_string(time)
-        # Update display
-        self.liststore2[path][5] = string
-        # Update Time Out value
-        sequence.steps[step].time_out = time
-        # Update Total Time
-        self.update_total_time(sequence, step)
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Sequential Tab
-        if sequence == self.lightshow.main_playback:
-            path = Gtk.TreePath.new_from_indices([step + 2])
-            self.window.playback.cues_liststore1[path][5] = string
-            if self.lightshow.main_playback.position + 1 == step:
-                self.window.playback.sequential.time_out = time
-                self.window.playback.sequential.total_time = sequence.steps[
-                    step
-                ].total_time
-                self.window.playback.sequential.queue_draw()
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, time_out=time
+        )
 
     def in_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
-        """Time in edited
-
-        Args:
-            path: Row number
-            text: New string
-        """
+        """Time in edited"""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
         time = string_to_time(text)
-        string = time_to_string(time)
-        # Update display
-        self.liststore2[path][7] = string
-        # Update Time In value
-        sequence.steps[step].time_in = time
-        # Update Total Time
-        self.update_total_time(sequence, step)
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Sequential Tab
-        if sequence == self.lightshow.main_playback:
-            path = Gtk.TreePath.new_from_indices([step + 2])
-            self.window.playback.cues_liststore1[path][7] = string
-            if self.lightshow.main_playback.position + 1 == step:
-                self.window.playback.sequential.time_in = time
-                self.window.playback.sequential.total_time = sequence.steps[
-                    step
-                ].total_time
-                self.window.playback.sequential.queue_draw()
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, time_in=time
+        )
 
     def delay_out_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
-        """Delay Out edited
-
-        Args:
-            path: Row number
-            text: New string
-        """
+        """Delay Out edited"""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
         time = string_to_time(text)
-        string = time_to_string(time)
-        # Update display
-        self.liststore2[path][4] = string
-        # Update Delay Out value
-        sequence.steps[step].delay_out = time
-        # Update Total Time
-        self.update_total_time(sequence, step)
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Sequential Tab
-        if sequence == self.lightshow.main_playback:
-            path = Gtk.TreePath.new_from_indices([step + 2])
-            self.window.playback.cues_liststore1[path][4] = string
-            if self.lightshow.main_playback.position + 1 == step:
-                self.window.playback.sequential.delay_out = time
-                self.window.playback.sequential.total_time = sequence.steps[
-                    step
-                ].total_time
-                self.window.playback.sequential.queue_draw()
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, delay_out=time
+        )
 
     def delay_in_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
-        """Delay In edited
-
-        Args:
-            path: Row number
-            text: New string
-        """
+        """Delay In edited"""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
         step = int(self.liststore2[path][0])
         time = string_to_time(text)
-        string = time_to_string(time)
-        # Update display
-        self.liststore2[path][6] = string
-        # Update Delay Out value
-        sequence.steps[step].delay_in = time
-        # Update Total Time
-        self.update_total_time(sequence, step)
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Sequential Tab
-        if sequence == self.lightshow.main_playback:
-            path = Gtk.TreePath.new_from_indices([step + 2])
-            self.window.playback.cues_liststore1[path][6] = string
-            if self.lightshow.main_playback.position + 1 == step:
-                self.window.playback.sequential.delay_in = time
-                self.window.playback.sequential.total_time = sequence.steps[
-                    step
-                ].total_time
-                self.window.playback.sequential.queue_draw()
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, delay_in=time
+        )
 
     def text_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
     ) -> None:
-        """Step Text edited
-
-        Args:
-            path: Gtk.TreePath
-            text: string
-        """
-        self.liststore2[path][2] = text
+        """Step Text edited"""
         sequence = self.get_selected_sequence()
         if not sequence:
             return
-        # Find Step
         step = int(self.liststore2[path][0])
-        # Update text value
-        sequence.steps[step].text = text
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Main Playback
-        if sequence == self.lightshow.main_playback:
-            path = Gtk.TreePath.new_from_indices([step + 2])
-            self.window.playback.cues_liststore1[path][2] = text
-            # Update window's subtitle if needed
-            if sequence.position == step:
-                cue_step = sequence.steps[step].cue
-                cue_next = sequence.steps[step + 1].cue
-                number_step = cue_step.number if cue_step is not None else 0.0
-                number_next = cue_next.number if cue_next is not None else 0.0
-                subtitle = (
-                    f"Mem. : {number_step} "
-                    f"{sequence.steps[step].text} - Next Mem. : "
-                    f"{number_next} "
-                    f"{sequence.steps[step + 1].text}"
-                )
-                self.window.header.set_subtitle(subtitle)
-            elif sequence.position + 1 == step:
-                cue_prev = sequence.steps[step - 1].cue
-                cue_step = sequence.steps[step].cue
-                number_prev = cue_prev.number if cue_prev is not None else 0.0
-                number_step = cue_step.number if cue_step is not None else 0.0
-                subtitle = (
-                    f"Mem. : {number_prev} "
-                    f"{sequence.steps[step - 1].text} - Next Mem. : "
-                    f"{number_step} "
-                    f"{sequence.steps[step].text}"
-                )
-                self.window.header.set_subtitle(subtitle)
+        self.window.app.core.action_registry.execute(
+            "step.update_text", sequence.index, step, text
+        )
 
     def on_cue_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select cue"""
         self.channels_view.update()
 
-    def on_sequence_changed(self, _selection: Gtk.TreeSelection | None = None) -> None:
+    def on_sequence_changed(
+        self, _selection: Gtk.TreeSelection | None = None, step_idx: int | None = None
+    ) -> None:
         """Select Sequence"""
+        # Detach model to avoid multiple layout updates during population
+        self.treeview2.set_model(None)
         # Empty ListStore
         self.liststore2.clear()
+        if step_idx is None:
+            step_idx = self.get_selected_step()
+        if step_idx is None:
+            step_idx = 1
         # Display Sequence
-        self.populate_liststore(1)
+        self.populate_liststore(step_idx)
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
@@ -549,14 +428,9 @@ class SequenceTab(Gtk.Grid):
         self.treeview1.set_cursor(path)
         path = Gtk.TreePath.new_first()
         self.treeview2.set_cursor(path)
-        # Reset user modifications
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
     def _keypress_q(self) -> None:
         """Previous Cue"""
-        # Reset user modifications
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
-
         path, _focus_column = self.treeview2.get_cursor()
         if path:
             if path.prev():
@@ -567,9 +441,6 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_w(self) -> None:
         """Next Cue"""
-        # Reset user modifications
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
-
         path, _focus_column = self.treeview2.get_cursor()
         if path:
             path.next()
@@ -596,92 +467,52 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_u(self) -> None:
         """Update Cue"""
-        # Find selected sequence
         sequence = self.get_selected_sequence()
-        # Find Step
         step = self.get_selected_step()
-        if not sequence or not step:
+        if not sequence or step is None:
             return
         cue = sequence.steps[step].cue
         if cue is None:
             return
-        channels = cue.channels
-        number = cue.number
-        # Dialog to confirm Update
-        dialog = ConfirmationDialog(f"Update cue {number} ?", self.window)
+        dialog = ConfirmationDialog(f"Update cue {cue.number} ?", self.window)
         response = dialog.run()
         if response != Gtk.ResponseType.OK:
             dialog.destroy()
             return
-        # Update levels in the cue
+
+        cue_editor = self.lightshow.cues.cue_editor
+        user_channels = cue_editor.get_levels(cue.number, cue.sequence)
+
+        new_channels = dict(cue.channels)
         for channel in range(MAX_CHANNELS):
             widget_ch = self.channels_view.get_channel_widget(channel + 1)
             if widget_ch is not None:
                 channel_widget = widget_ch
-                if (channel + 1 in channels) or (self.user_channels[channel] != -1):
-                    channels[channel + 1] = channel_widget.level
-        sequence.update_channels()
-        # Tag filename as modified
-        self.lightshow.set_modified()
-        # Update Main playback display
-        if (
-            sequence == self.lightshow.main_playback
-            and step == self.lightshow.main_playback.position + 1
-        ):
-            for channel in range(1, MAX_CHANNELS + 1):
-                widget_p = self.window.live_view.channels_view.get_channel_widget(
-                    channel
-                )
-                if widget_p is not None:
-                    widget = widget_p
-                    cue_step = sequence.steps[step].cue
-                    widget.next_level = (
-                        cue_step.channels.get(channel, 0) if cue_step is not None else 0
-                    )
-                    widget.queue_draw()
+                if (channel + 1 in cue.channels) or (user_channels[channel] != -1):
+                    new_channels[channel + 1] = channel_widget.level
+
+        self.window.app.core.action_registry.execute(
+            "cue.update", cue.number, cue.sequence, new_channels
+        )
         dialog.destroy()
-        # Reset user modifications
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
 
     def _keypress_delete(self) -> None:
         """Delete selected Step"""
-        # Find selected sequence
         sequence = self.get_selected_sequence()
         step = self.get_selected_step()
-        if sequence and step:
-            sequence.steps.pop(step)
-            sequence.last -= 1
-            sequence.update_channels()
-            self.liststore2.clear()
-            self.populate_liststore(step)
-            # Update Main Playback
-            self.window.playback.update_sequence_display()
+        if sequence and step is not None:
+            self.window.app.core.action_registry.execute(
+                "sequence.delete_step", sequence.index, step
+            )
 
     def _keypress_n(self) -> None:
         """New Chaser"""
-        # Use the next free index
-        # 1 is for Main Playback, Chasers start at 2
         index_seq = (
             self.lightshow.chasers[-1].index + 1
             if len(self.lightshow.chasers) > 0
             else 2
         )
-        # Create Chaser
-        self.lightshow.chasers.append(Sequence(index_seq, type_seq="Chaser"))
-        del self.lightshow.chasers[-1].steps[1:]
-        self.lightshow.chasers[-1].last = len(self.lightshow.chasers[-1].steps)
-
-        # Update List of sequences
-        self.liststore1.append(
-            [
-                self.lightshow.chasers[-1].index,
-                self.lightshow.chasers[-1].type_seq,
-                self.lightshow.chasers[-1].text,
-            ]
-        )
-
-        # Tag filename as modified
-        self.lightshow.set_modified()
+        self.window.app.core.action_registry.execute("sequence.new", index_seq)
 
     def _keypress_r(self) -> None:
         """New Step and new Cue"""
@@ -719,23 +550,11 @@ class SequenceTab(Gtk.Grid):
                 channel_widget = widget_ch
                 if channel_widget.level:
                     channels[channel + 1] = channel_widget.level
-        cue = Cue(int(sequence.index), mem, channels)
-        step_object = Step(int(sequence.index), cue=cue)
-        sequence.insert_step(step, step_object)
 
-        if sequence is self.lightshow.main_playback:
-            self.lightshow.cues.insert(step, cue)
-            assert self.tabs is not None
-            if self.tabs.tabs["memories"]:
-                nb_chan = len(channels)
-                typing.cast(
-                    "CuesEditionTab", self.tabs.tabs["memories"]
-                ).liststore.insert(step - 1, [str(mem), "", nb_chan])
-
-        sequence.update_channels()
-        self.update_sequence_display(step)
-        self.lightshow.set_modified()
-        self.user_channels = np.full(MAX_CHANNELS, -1, dtype=np.int16)
+        self.window.app.core.action_registry.execute(
+            "sequence.insert_step", sequence.index, step, mem, channels
+        )
+        self.lightshow.cues.cue_editor.clear(mem, int(sequence.index))
 
     def _update_cue(self, sequence: Sequence, mem: float) -> None:
         """Update existing cue inside the sequence"""
@@ -745,50 +564,26 @@ class SequenceTab(Gtk.Grid):
             dialog.destroy()
             return
 
-        _, step = sequence.get_step(cue=mem)
+        step_idx = sequence.get_step(cue=mem)[1]
+        cue = sequence.steps[step_idx].cue
+        if cue is None:
+            dialog.destroy()
+            return
+
+        cue_editor = self.lightshow.cues.cue_editor
+        user_channels = cue_editor.get_levels(cue.number, cue.sequence)
+
+        new_channels = dict(cue.channels)
         for channel in range(MAX_CHANNELS):
             widget_ch = self.channels_view.get_channel_widget(channel + 1)
             if widget_ch is not None:
                 channel_widget = widget_ch
-                if channel_widget.level:
-                    cue = sequence.steps[step].cue
-                    if cue is not None:
-                        cue.channels[channel + 1] = channel_widget.level
+                if (channel + 1 in cue.channels) or (user_channels[channel] != -1):
+                    new_channels[channel + 1] = channel_widget.level
 
-        sequence.update_channels()
-        self.lightshow.set_modified()
-
-        path = Gtk.TreePath.new_from_indices([step - 1])
-        self.treeview2.set_cursor(path, None, False)
-
-        assert self.tabs is not None
-        if sequence is self.lightshow.main_playback and self.tabs.tabs["memories"]:
-            nb_chan = len(self.lightshow.cues[step - 1].channels)
-            treeiter = typing.cast(
-                "CuesEditionTab", self.tabs.tabs["memories"]
-            ).liststore.get_iter(str(step - 1))
-            typing.cast(
-                "CuesEditionTab", self.tabs.tabs["memories"]
-            ).liststore.set_value(treeiter, 2, nb_chan)
-            typing.cast(
-                "CuesEditionTab", self.tabs.tabs["memories"]
-            ).channels_view.update()
-
-        if (
-            sequence is self.lightshow.main_playback
-            and step == self.lightshow.main_playback.position + 1
-        ):
-            for channel in range(MAX_CHANNELS):
-                widget_p = self.window.live_view.channels_view.get_channel_widget(
-                    channel + 1
-                )
-                widget_ch = self.channels_view.get_channel_widget(channel + 1)
-                if widget_p is not None and widget_ch is not None:
-                    widget = widget_p
-                    channel_widget = widget_ch
-                    widget.next_level = channel_widget.level
-                    widget.queue_draw()
-
+        self.window.app.core.action_registry.execute(
+            "cue.update", cue.number, cue.sequence, new_channels
+        )
         dialog.destroy()
 
     def add_step_to_liststore(self, step: int) -> None:
@@ -839,7 +634,7 @@ class SequenceTab(Gtk.Grid):
                 for i in range(sequence.last)[1:]:
                     self.add_step_to_liststore(i)
 
-            self.treeview2.set_model(self.liststore2)
+        self.treeview2.set_model(self.liststore2)
         # Select new step
         path = Gtk.TreePath.new_from_indices([step - 1])
         self.treeview2.set_cursor(path, None, False)
@@ -882,58 +677,195 @@ class SeqChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self, app: Application) -> None:
+        self._cache_time: float = 0.0
+        self._cached_sequence: Sequence | None = None
+        self._cached_step: int | None = None
         super().__init__(app=app)
 
-    def set_channel_level(self, channel: int, level: int) -> None:
-        """Set channel level
+    def _get_cached_selection(self) -> tuple[Optional[Sequence], Optional[int]]:
+        """Get cached selected sequence and step to avoid heavy GTK calls."""
+        import time  # pylint: disable=import-outside-toplevel
 
-        Args:
-            channel: Channel number (1 - MAX_CHANNELS)
-            level: DMX level (0 - 255)
-        """
-        assert self.tabs is not None
-        typing.cast(SequenceTab, self.tabs.tabs["sequences"]).user_channels[
-            channel - 1
-        ] = level
+        now = time.time()
+        if now - self._cache_time > 0.05:
+            if self.tabs is not None and self.tabs.tabs.get("sequences") is not None:
+                tab = typing.cast("SequenceTab", self.tabs.tabs["sequences"])
+                self._cached_sequence = tab.get_selected_sequence()
+                self._cached_step = tab.get_selected_step()
+            else:
+                self._cached_sequence = None
+                self._cached_step = None
+            self._cache_time = now
+        return self._cached_sequence, self._cached_step
+
+    def set_channel_level(self, channel: int, level: int) -> None:
+        """Set channel level"""
+        if self.tabs is not None:
+            tab = typing.cast(SequenceTab, self.tabs.tabs["sequences"])
+            seq = tab.get_selected_sequence()
+            step_idx = tab.get_selected_step()
+            if seq and step_idx is not None:
+                step = seq.steps[step_idx]
+                if step.cue and self.window is not None:
+                    self.window.app.core.action_registry.execute(
+                        "cue.set_temp_channels",
+                        step.cue.number,
+                        step.cue.sequence,
+                        {channel: level},
+                    )
 
     def wheel_level(self, step: int, direction: Gdk.ScrollDirection) -> None:
-        """Change channels level with a wheel
+        """Change channels level with a wheel using a group action."""
+        if self.tabs is None or self.lightshow is None or self.window is None:
+            return
+        tab = typing.cast(SequenceTab, self.tabs.tabs["sequences"])
+        seq = tab.get_selected_sequence()
+        step_idx = tab.get_selected_step()
+        if seq is None or step_idx is None:
+            return
+        step_obj = seq.steps[step_idx]
+        if step_obj.cue is None:
+            return
 
-        Args:
-            step: Step level
-            direction: Up or Down
-        """
         channels = self.get_selected_channels()
+        channels_dict = {}
         for channel in channels:
-            widget = self.get_channel_widget(channel)
-            if widget is not None:
-                channel_widget = widget
+            if channel_widget := self.get_channel_widget(channel):
                 level = channel_widget.level
                 if direction == Gdk.ScrollDirection.UP:
                     level = min(level + step, 255)
                 elif direction == Gdk.ScrollDirection.DOWN:
                     level = max(level - step, 0)
-                channel_widget.level = level
-                channel_widget.next_level = level
-                channel_widget.queue_draw()
-                self.set_channel_level(channel, level)
+                channels_dict[channel] = level
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels",
+                step_obj.cue.number,
+                step_obj.cue.sequence,
+                channels_dict,
+            )
+
+    def at_level(self) -> None:
+        """Channels at level using a group action."""
+        if (
+            not self.window
+            or not self.settings
+            or self.tabs is None
+            or self.lightshow is None
+        ):
+            return
+        tab = typing.cast(SequenceTab, self.tabs.tabs["sequences"])
+        seq = tab.get_selected_sequence()
+        step_idx = tab.get_selected_step()
+        if seq is None or step_idx is None:
+            return
+        step = seq.steps[step_idx]
+        if step.cue is None:
+            return
+
+        keystring = self.commandline.get_string()
+        if not is_int(keystring):
+            return
+        level = int(keystring)
+        if self.settings.get_boolean("percent"):
+            level = int(round((level / 100) * 255))
+        level = min(level, 255)
+        channels = self.get_selected_channels()
+        channels_dict = {channel: level for channel in channels}
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels",
+                step.cue.number,
+                step.cue.sequence,
+                channels_dict,
+            )
+
+    def level_plus(self) -> None:
+        """Channels +% using a group action."""
+        if (
+            not self.settings
+            or self.tabs is None
+            or self.lightshow is None
+            or self.window is None
+        ):
+            return
+        tab = typing.cast(SequenceTab, self.tabs.tabs["sequences"])
+        seq = tab.get_selected_sequence()
+        step_idx = tab.get_selected_step()
+        if seq is None or step_idx is None:
+            return
+        step = seq.steps[step_idx]
+        if step.cue is None:
+            return
+
+        step_level = self.settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        channels_dict = {}
+        for channel in channels:
+            if channel_widget := self.get_channel_widget(channel):
+                level = channel_widget.level
+                if self.settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) + step_level
+                    new_level = min(round((percent_level / 100) * 256), 255)
+                else:
+                    new_level = min(level + step_level, 255)
+                channels_dict[channel] = new_level
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels",
+                step.cue.number,
+                step.cue.sequence,
+                channels_dict,
+            )
+
+    def level_minus(self) -> None:
+        """Channels -% using a group action."""
+        if (
+            not self.settings
+            or self.tabs is None
+            or self.lightshow is None
+            or self.window is None
+        ):
+            return
+        tab = typing.cast(SequenceTab, self.tabs.tabs["sequences"])
+        seq = tab.get_selected_sequence()
+        step_idx = tab.get_selected_step()
+        if seq is None or step_idx is None:
+            return
+        step = seq.steps[step_idx]
+        if step.cue is None:
+            return
+
+        step_level = self.settings.get_int("percent-level")
+        channels = self.get_selected_channels()
+        channels_dict = {}
+        for channel in channels:
+            if channel_widget := self.get_channel_widget(channel):
+                level = channel_widget.level
+                if self.settings.get_boolean("percent"):
+                    percent_level = round((level / 256) * 100) - step_level
+                    new_level = max(round((percent_level / 100) * 256), 0)
+                else:
+                    new_level = max(level - step_level, 0)
+                channels_dict[channel] = new_level
+
+        if channels_dict:
+            self.window.app.core.action_registry.execute(
+                "cue.set_temp_channels",
+                step.cue.number,
+                step.cue.sequence,
+                channels_dict,
+            )
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
-        """Filter channels to display
-
-        Args:
-            child: Parent of Channel Widget
-
-        Returns:
-            True or False
-        """
+        """Filter channels to display"""
         if not self.tabs or not self.tabs.tabs["sequences"]:
             child.set_visible(False)
             return False
-        sequence = typing.cast(
-            SequenceTab, self.tabs.tabs["sequences"]
-        ).get_selected_sequence()
-        step = typing.cast(SequenceTab, self.tabs.tabs["sequences"]).get_selected_step()
+        sequence, step = self._get_cached_selection()
         if not sequence or step is None or step >= len(sequence.steps) or step < 0:
             child.set_visible(False)
             return False
@@ -947,24 +879,27 @@ class SeqChannelsView(ChannelsView):
         return self._filter_all(child, channel_level)
 
     def _filter_active(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
-        """Filter in Active mode
-
-        Args:
-            child: Parent of Channel Widget
-            channel_level: Channel level of selected step of selected sequence
-
-        Returns:
-            True or False
-        """
+        """Filter in Active mode"""
         channel_index = child.get_index()
         widget = child.get_child()
         if widget is None:
             return False
         channel_widget = typing.cast("ChannelWidget", widget)
         assert self.tabs is not None
-        user_channel = typing.cast(
-            SequenceTab, self.tabs.tabs["sequences"]
-        ).user_channels[channel_index]
+        assert self.lightshow is not None
+
+        seq, step_idx = self._get_cached_selection()
+        if seq and step_idx is not None:
+            cue = seq.steps[step_idx].cue
+            if cue:
+                user_channel = self.lightshow.cues.cue_editor.get_levels(
+                    cue.number, cue.sequence
+                )[channel_index]
+            else:
+                user_channel = -1
+        else:
+            user_channel = -1
+
         if channel_level or child.is_selected():
             if user_channel == -1:
                 channel_widget.level = channel_level
@@ -985,15 +920,7 @@ class SeqChannelsView(ChannelsView):
         return False
 
     def _filter_patched(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
-        """Filter in Patched mode
-
-        Args:
-            child: Parent of Channel Widget
-            channel_level: Channel level of selected step of selected sequence
-
-        Returns:
-            True or False
-        """
+        """Filter in Patched mode"""
         channel = child.get_index() + 1
         assert self.lightshow is not None
         if not self.lightshow.patch.is_patched(channel):
@@ -1002,24 +929,27 @@ class SeqChannelsView(ChannelsView):
         return self._filter_all(child, channel_level)
 
     def _filter_all(self, child: Gtk.FlowBoxChild, channel_level: int) -> bool:
-        """Filter in All channels mode
-
-        Args:
-            child: Parent of Channel Widget
-            channel_level: Channel level of selected step of selected sequence
-
-        Returns:
-            True or False
-        """
+        """Filter in All channels mode"""
         channel_index = child.get_index()
         widget = child.get_child()
         if widget is None:
             return False
         channel_widget = typing.cast("ChannelWidget", widget)
         assert self.tabs is not None
-        user_channel = typing.cast(
-            SequenceTab, self.tabs.tabs["sequences"]
-        ).user_channels[channel_index]
+        assert self.lightshow is not None
+
+        seq, step_idx = self._get_cached_selection()
+        if seq and step_idx is not None:
+            cue = seq.steps[step_idx].cue
+            if cue:
+                user_channel = self.lightshow.cues.cue_editor.get_levels(
+                    cue.number, cue.sequence
+                )[channel_index]
+            else:
+                user_channel = -1
+        else:
+            user_channel = -1
+
         if channel_level or child.is_selected():
             if user_channel == -1:
                 channel_widget.level = channel_level

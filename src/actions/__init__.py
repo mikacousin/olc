@@ -69,6 +69,15 @@ from olc.actions.playback import (
     SequenceMinusAction,
     SequencePlusAction,
 )
+from olc.actions.sequence import (
+    SequenceDeleteAction,
+    SequenceDeleteStepAction,
+    SequenceInsertStepAction,
+    SequenceNewAction,
+    StepUpdateChannelTimeAction,
+    StepUpdateTextAction,
+    StepUpdateTimesAction,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.registry import ActionRegistry
@@ -123,6 +132,13 @@ def register_all_actions(registry: ActionRegistry) -> None:
         CurveDeleteAction,
         CurveUpdatePointsAction,
         CurveSetLimitAction,
+        SequenceNewAction,
+        SequenceDeleteAction,
+        SequenceInsertStepAction,
+        SequenceDeleteStepAction,
+        StepUpdateTimesAction,
+        StepUpdateTextAction,
+        StepUpdateChannelTimeAction,
     ]
 
     for action_class in actions_to_register:

@@ -103,6 +103,7 @@ class SelectionAction(ABC):
     def redo(self) -> None:
         """Redo the selection changes."""
         self.execute()
+        self.manager.notify_changed()
 
 
 class SelectActiveAction(SelectionAction):
@@ -134,6 +135,7 @@ class SelectActiveAction(SelectionAction):
                 chan = int(cmd_string)
             else:
                 return
+        self.channel = chan
 
         if 1 <= chan <= MAX_CHANNELS:
             self.manager.selected_channels = [chan]
@@ -175,6 +177,7 @@ class SelectAddAction(SelectionAction):
                 chan = int(cmd_string)
             else:
                 return
+        self.channel = chan
 
         if 1 <= chan <= MAX_CHANNELS:
             new_sel = list(self.old_selection)
@@ -219,6 +222,7 @@ class SelectRemoveAction(SelectionAction):
                 chan = int(cmd_string)
             else:
                 return
+        self.channel = chan
 
         if 1 <= chan <= MAX_CHANNELS:
             new_sel = list(self.old_selection)
@@ -263,6 +267,7 @@ class SelectThruAction(SelectionAction):
                 to_chan = int(cmd_string)
             else:
                 return
+        self.to_channel = to_chan
 
         if self.old_last is not None and 1 <= to_chan <= MAX_CHANNELS:
             from_chan = self.old_last

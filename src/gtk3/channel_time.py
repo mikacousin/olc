@@ -85,7 +85,7 @@ class ChanneltimeTab(Gtk.Paned):
 
         self.step = self.sequence.steps[int(position)]
         self.treeview = Gtk.TreeView(model=self.liststore)
-        self._repopulate_liststore()
+        self.repopulate_liststore()
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_channeltime_changed)
 
@@ -109,9 +109,18 @@ class ChanneltimeTab(Gtk.Paned):
         self.liststore.clear()
         self.channels_view.update()
 
-    def _repopulate_liststore(self) -> None:
+    def repopulate_liststore(self) -> None:
         """Clear and repopulate the liststore data"""
+        selected_channel = getattr(self, "last_inserted_channel", None)
+        if selected_channel is not None:
+            self.last_inserted_channel = None
+        else:
+            path, _focus_column = self.treeview.get_cursor()
+            if path:
+                selected_channel = self.liststore[path.get_indices()[0]][0]
+
         self.liststore.clear()
+        selected_iter = None
         for channel, ct in self.step.channel_time.items():
             delay = str(int(ct.delay)) if ct.delay.is_integer() else str(ct.delay)
             if delay == "0":
@@ -119,7 +128,13 @@ class ChanneltimeTab(Gtk.Paned):
             time = str(int(ct.time)) if ct.time.is_integer() else str(ct.time)
             if time == "0":
                 time = ""
-            self.liststore.append([channel, delay, time])
+            it = self.liststore.append([channel, delay, time])
+            if channel == selected_channel:
+                selected_iter = it
+
+        if selected_iter is not None:
+            path = self.liststore.get_path(selected_iter)
+            self.treeview.set_cursor(path)
 
     def _update_sequence_tab(self) -> None:
         """Update Sequence Tab if open on the active sequence"""
@@ -172,15 +187,14 @@ class ChanneltimeTab(Gtk.Paned):
         path, _focus_column = self.treeview.get_cursor()
         if path:
             channel = self.liststore[path.get_indices()[0]][0]
-            if self.step.channel_time[channel].time == 0 and text == "0":
-                del self.step.channel_time[channel]
-                self._repopulate_liststore()
-            else:
-                self.step.channel_time[channel].delay = float(text)
-
-            self._update_sequence_tab()
-            self._update_total_time()
-            self._update_main_playback()
+            delay_val = float(text)
+            self.app.core.action_registry.execute(
+                "step.update_channel_time",
+                self.sequence.index,
+                int(self.position),
+                channel,
+                delay=delay_val,
+            )
 
         self.commandline.set_string("")
 
@@ -199,15 +213,14 @@ class ChanneltimeTab(Gtk.Paned):
         path, _focus_column = self.treeview.get_cursor()
         if path:
             channel = self.liststore[path.get_indices()[0]][0]
-            if self.step.channel_time[channel].delay == 0 and text == "0":
-                del self.step.channel_time[channel]
-                self._repopulate_liststore()
-            else:
-                self.step.channel_time[channel].time = float(text)
-
-            self._update_sequence_tab()
-            self._update_total_time()
-            self._update_main_playback()
+            time_val = float(text)
+            self.app.core.action_registry.execute(
+                "step.update_channel_time",
+                self.sequence.index,
+                int(self.position),
+                channel,
+                time=time_val,
+            )
 
         self.commandline.set_string("")
 
@@ -320,12 +333,9 @@ class ChanneltimeTab(Gtk.Paned):
                 channel = int(channelwidget.channel)
                 # If not already exist
                 if channel not in self.step.channel_time:
-                    # Add Channel Time
-                    delay = 0.0
-                    time = 0.0
-                    self.step.channel_time[channel] = ChannelTime(delay, time)
-                    # Update user interface
-                    self.liststore.append([channel, "", ""])
+                    self.step.channel_time[channel] = ChannelTime(0.0, 0.0)
+                    self.repopulate_liststore()
+                    # select the newly added row at the end of liststore
                     path = Gtk.TreePath.new_from_indices([len(self.liststore) - 1])
                     self.treeview.set_cursor(path)
 

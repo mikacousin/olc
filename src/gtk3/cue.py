@@ -112,7 +112,8 @@ class CuesEditionTab(Gtk.Paned):
                 cue_id = None
         else:
             cue_id = None
-        self.app.core.action_registry.execute("cue.select", cue_id)
+        if self.app.core.selected_cue != cue_id:
+            self.app.core.action_registry.execute("cue.select", cue_id)
 
     def select_cue_graphically(self, cue_id: tuple[float, int] | None) -> None:
         """Update the graphical cue selection from the logical state."""
@@ -409,6 +410,8 @@ class CueChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self, app: Application) -> None:
+        self._cache_time: float = 0.0
+        self._cached_cue: Cue | None = None
         super().__init__(app=app)
 
     def _get_selected_cue(self) -> Cue | None:
@@ -419,14 +422,22 @@ class CueChannelsView(ChannelsView):
         """
         if self.lightshow is None:
             return None
-        selected_cue_id = self.app.core.selected_cue
-        if selected_cue_id is None:
-            return None
-        cue_number, cue_seq = selected_cue_id
-        for cue in self.lightshow.cues:
-            if cue.number == cue_number and cue.sequence == cue_seq:
-                return cue
-        return None
+        import time  # pylint: disable=import-outside-toplevel
+
+        now = time.time()
+        if now - self._cache_time > 0.05:
+            selected_cue_id = self.app.core.selected_cue
+            if selected_cue_id is None:
+                self._cached_cue = None
+            else:
+                cue_number, cue_seq = selected_cue_id
+                self._cached_cue = None
+                for cue in self.lightshow.cues:
+                    if cue.number == cue_number and cue.sequence == cue_seq:
+                        self._cached_cue = cue
+                        break
+            self._cache_time = now
+        return self._cached_cue
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set level channel via temporary action.
@@ -584,35 +595,24 @@ class CueChannelsView(ChannelsView):
             return False
 
         # Find selected cue logically from the Core
-        selected_cue_id = self.app.core.selected_cue
-        if selected_cue_id is None:
-            child.set_visible(False)
-            return False
-
-        cue_number, cue_seq = selected_cue_id
-        row = -1
-        for i, cue in enumerate(self.lightshow.cues):
-            if cue.number == cue_number and cue.sequence == cue_seq:
-                row = i
-                break
-
-        if row == -1:
+        cue = self._get_selected_cue()
+        if cue is None:
             child.set_visible(False)
             return False
 
         if self.view_mode == VIEW_MODES["Active"]:
-            visible = self.__filter_active(row, child)
+            visible = self.__filter_active(cue, child)
             child.set_visible(visible)
             return visible
         if self.view_mode == VIEW_MODES["Patched"]:
-            visible = self.__filter_patched(row, child)
+            visible = self.__filter_patched(cue, child)
             child.set_visible(visible)
             return visible
-        self.__filter_all(row, child)
+        self.__filter_all(cue, child)
         child.set_visible(True)
         return True
 
-    def __filter_active(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_active(self, cue: Cue, child: Gtk.FlowBoxChild) -> bool:
         if (
             self.tabs is None
             or self.tabs.tabs.get("memories") is None
@@ -620,7 +620,6 @@ class CueChannelsView(ChannelsView):
         ):
             return False
         cue_editor = self.lightshow.cues.cue_editor
-        cue = self.lightshow.cues[row]
         user_channels = cue_editor.get_levels(cue.number, cue.sequence)
         channel_index = child.get_index()
         channel_widget = child.get_child()
@@ -628,7 +627,7 @@ class CueChannelsView(ChannelsView):
             return False
         widget = typing.cast("ChannelWidget", channel_widget)
         # Channels in Cue
-        channels = self.lightshow.cues[row].channels
+        channels = cue.channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 widget.level = int(channels.get(channel_index + 1, 0))
@@ -645,11 +644,11 @@ class CueChannelsView(ChannelsView):
         widget.next_level = int(user_channels[channel_index])
         return True
 
-    def __filter_patched(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_patched(self, cue: Cue, child: Gtk.FlowBoxChild) -> bool:
         """Return all patched channels
 
         Args:
-            row: Cue index
+            cue: Cue object
             child: FlowBoxChild corresponding to a channel
 
         Returns:
@@ -658,9 +657,9 @@ class CueChannelsView(ChannelsView):
         channel = child.get_index() + 1
         if self.lightshow is None or not self.lightshow.patch.is_patched(channel):
             return False
-        return self.__filter_all(row, child)
+        return self.__filter_all(cue, child)
 
-    def __filter_all(self, row: int, child: Gtk.FlowBoxChild) -> bool:
+    def __filter_all(self, cue: Cue, child: Gtk.FlowBoxChild) -> bool:
         if (
             self.tabs is None
             or self.tabs.tabs.get("memories") is None
@@ -668,7 +667,6 @@ class CueChannelsView(ChannelsView):
         ):
             return False
         cue_editor = self.lightshow.cues.cue_editor
-        cue = self.lightshow.cues[row]
         user_channels = cue_editor.get_levels(cue.number, cue.sequence)
         channel_index = child.get_index()
         channel_widget = child.get_child()
@@ -676,7 +674,7 @@ class CueChannelsView(ChannelsView):
             return False
         widget = typing.cast("ChannelWidget", channel_widget)
         # Channels in Cue
-        channels = self.lightshow.cues[row].channels
+        channels = cue.channels
         if channels.get(channel_index + 1) or child.is_selected():
             if user_channels[channel_index] == -1:
                 widget.level = int(channels.get(channel_index + 1, 0))

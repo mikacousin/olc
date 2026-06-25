@@ -22,6 +22,7 @@ from gi.repository import GLib, Gtk, Pango
 from olc.curve import LimitCurve, PointsCurve
 from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
+from olc.gtk3.channel_time import ChanneltimeTab
 from olc.gtk3.fader import FaderTab
 from olc.midi.fader import FaderState
 
@@ -36,6 +37,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.widgets.group import GroupWidget
+    from olc.sequence import Sequence
 
 
 # pylint: disable=too-few-public-methods, too-many-lines
@@ -207,6 +209,32 @@ class GuiEventBridge:
             "cue.selected_changed",
             lambda cue_id: self._run_idle(self._on_cue_selected_changed, cue_id),
         )
+        self.app.core.subscribe(
+            "sequence.created",
+            lambda seq: self._run_idle(self._on_sequence_created, seq),
+        )
+        self.app.core.subscribe(
+            "sequence.deleted",
+            lambda seq: self._run_idle(self._on_sequence_deleted, seq),
+        )
+        self.app.core.subscribe(
+            "step.inserted",
+            lambda seq_idx, step_idx: self._run_idle(
+                self._on_step_changed, seq_idx, step_idx
+            ),
+        )
+        self.app.core.subscribe(
+            "step.deleted",
+            lambda seq_idx, step_idx: self._run_idle(
+                self._on_step_changed, seq_idx, step_idx
+            ),
+        )
+        self.app.core.subscribe(
+            "step.updated",
+            lambda seq_idx, step_idx: self._run_idle(
+                self._on_step_changed, seq_idx, step_idx
+            ),
+        )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
         """Run a function safely in the GTK main loop, discarding return value.
@@ -303,6 +331,77 @@ class GuiEventBridge:
 
         # Update Live View if the modified cue is active
         self._update_live_view_active_cue(sequence, number)
+        return False
+
+    def _on_sequence_created(self, _sequence: Sequence) -> bool:
+        """Handle sequence creation event to refresh UI."""
+        if self.app.tabs and self.app.tabs.tabs.get("sequences") is not None:
+            sequences_tab = typing.cast("SequenceTab", self.app.tabs.tabs["sequences"])
+            sequences_tab.refresh()
+        return False
+
+    def _on_sequence_deleted(self, _sequence: Sequence) -> bool:
+        """Handle sequence deletion event to refresh UI."""
+        if self.app.tabs and self.app.tabs.tabs.get("sequences") is not None:
+            sequences_tab = typing.cast("SequenceTab", self.app.tabs.tabs["sequences"])
+            sequences_tab.refresh()
+        return False
+
+    def _on_step_changed(self, sequence_idx: float, step_idx: int) -> bool:
+        """Handle step changes (insert, delete, update) to refresh UI tabs."""
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("sequences") is not None:
+                sequences_tab = typing.cast(
+                    "SequenceTab", self.app.tabs.tabs["sequences"]
+                )
+                selected_seq = sequences_tab.get_selected_sequence()
+                if selected_seq and selected_seq.index == sequence_idx:
+                    sequences_tab.on_sequence_changed(step_idx=step_idx)
+            if self.app.tabs.tabs.get("channel_time") is not None:
+                ct_tab = typing.cast(ChanneltimeTab, self.app.tabs.tabs["channel_time"])
+                if (
+                    ct_tab.sequence.index == sequence_idx
+                    and int(ct_tab.position) == step_idx
+                ):
+                    ct_tab.repopulate_liststore()
+                    ct_tab.channels_view.update()
+        if sequence_idx == 1.0 and self.app.window:
+            if self.app.window.playback:
+                self.app.window.playback.update_sequence_display()
+                lightshow = self.app.core.lightshow
+                if 0 <= step_idx < len(lightshow.main_playback.steps):
+                    if lightshow.main_playback.position + 1 == step_idx:
+                        step_obj = lightshow.main_playback.steps[step_idx]
+                        self.app.window.playback.sequential.wait = step_obj.wait
+                        self.app.window.playback.sequential.time_in = step_obj.time_in
+                        self.app.window.playback.sequential.time_out = step_obj.time_out
+                        self.app.window.playback.sequential.delay_in = step_obj.delay_in
+                        self.app.window.playback.sequential.delay_out = (
+                            step_obj.delay_out
+                        )
+                        self.app.window.playback.sequential.total_time = (
+                            step_obj.total_time
+                        )
+                        self.app.window.playback.sequential.queue_draw()
+
+            # Update header subtitle if needed
+            lightshow = self.app.core.lightshow
+            sequence = lightshow.main_playback
+            if step_idx in (sequence.position, sequence.position + 1):
+                if 0 <= sequence.position < len(
+                    sequence.steps
+                ) and 0 <= sequence.position + 1 < len(sequence.steps):
+                    cue_step = sequence.steps[sequence.position].cue
+                    cue_next = sequence.steps[sequence.position + 1].cue
+                    number_step = cue_step.number if cue_step is not None else 0.0
+                    number_next = cue_next.number if cue_next is not None else 0.0
+                    subtitle = (
+                        f"Mem. : {number_step} "
+                        f"{sequence.steps[sequence.position].text} - Next Mem. : "
+                        f"{number_next} "
+                        f"{sequence.steps[sequence.position + 1].text}"
+                    )
+                    self.app.window.header.set_subtitle(subtitle)
         return False
 
     def _safe_refresh_cue_editor(self, sequence: int, number: float) -> bool:

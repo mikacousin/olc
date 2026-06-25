@@ -37,7 +37,38 @@ class GroupChannelsView(ChannelsView):
     """Channels View"""
 
     def __init__(self, app: Application) -> None:
+        self._cache_time: float = 0.0
+        self._cached_group: Group | None = None
         super().__init__(app=app)
+
+    def invalidate_cache(self) -> None:
+        """Force the next _get_selected_group() call to bypass the cache."""
+        self._cache_time = 0.0
+
+    def _get_selected_group(self) -> Group | None:
+        """Get selected group, cached to avoid heavy GTK lookup operations."""
+        if not self.tabs or not self.lightshow:
+            return None
+        import time  # pylint: disable=import-outside-toplevel
+
+        now = time.time()
+        if now - self._cache_time > 0.05:
+            groups_tab = self.tabs.tabs.get("groups")
+            if groups_tab is None:
+                self._cached_group = None
+            else:
+                gt = typing.cast("GroupTab", groups_tab)
+                selected_children = gt.flowbox.get_selected_children()
+                if not selected_children:
+                    self._cached_group = None
+                else:
+                    index = selected_children[0].get_index()
+                    if 0 <= index < len(self.lightshow.groups):
+                        self._cached_group = self.lightshow.groups[index]
+                    else:
+                        self._cached_group = None
+            self._cache_time = now
+        return self._cached_group
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level via temporary action.
@@ -48,11 +79,9 @@ class GroupChannelsView(ChannelsView):
         """
         if not self.tabs or not self.lightshow or not self.window:
             return
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
+        group = self._get_selected_group()
+        if group is None:
+            return
         self.window.app.core.action_registry.execute(
             "group.set_temp_channels", group.index, {channel: level}
         )
@@ -66,12 +95,10 @@ class GroupChannelsView(ChannelsView):
         """
         if not self.tabs or not self.lightshow or not self.window:
             return
+        group = self._get_selected_group()
+        if group is None:
+            return
         channels = self.get_selected_channels()
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
         channels_dict = {}
         for channel in channels:
             channel_widget = self.get_channel_widget(channel)
@@ -91,6 +118,9 @@ class GroupChannelsView(ChannelsView):
         """Channels at level using a temporary action."""
         if not self.window or not self.settings or not self.tabs or not self.lightshow:
             return
+        group = self._get_selected_group()
+        if group is None:
+            return
         keystring = self.commandline.get_string()
         if not is_int(keystring):
             return
@@ -99,11 +129,6 @@ class GroupChannelsView(ChannelsView):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
         channels = self.get_selected_channels()
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
         channels_dict = {channel: level for channel in channels}
         if channels_dict:
             self.window.app.core.action_registry.execute(
@@ -114,13 +139,11 @@ class GroupChannelsView(ChannelsView):
         """Channels +% using a temporary action."""
         if not self.settings or not self.tabs or not self.lightshow or not self.window:
             return
+        group = self._get_selected_group()
+        if group is None:
+            return
         step_level = self.settings.get_int("percent-level")
         channels = self.get_selected_channels()
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
         channels_dict = {}
         for channel in channels:
             channel_widget = self.get_channel_widget(channel)
@@ -141,13 +164,11 @@ class GroupChannelsView(ChannelsView):
         """Channels -% using a temporary action."""
         if not self.settings or not self.tabs or not self.lightshow or not self.window:
             return
+        group = self._get_selected_group()
+        if group is None:
+            return
         step_level = self.settings.get_int("percent-level")
         channels = self.get_selected_channels()
-        selected_group = typing.cast(
-            GroupTab, self.tabs.tabs["groups"]
-        ).flowbox.get_selected_children()[0]
-        index = selected_group.get_index()
-        group = self.lightshow.groups[index]
         channels_dict = {}
         for channel in channels:
             channel_widget = self.get_channel_widget(channel)
@@ -173,23 +194,8 @@ class GroupChannelsView(ChannelsView):
         Returns:
             True or False
         """
-        # Find selected group
-        selected_group = None
-        if self.tabs and self.tabs.tabs["groups"]:
-            selected_group = typing.cast(
-                GroupTab, self.tabs.tabs["groups"]
-            ).flowbox.get_selected_children()
-        if selected_group and self.lightshow:
-            group_widget = typing.cast(GroupWidget, selected_group[0].get_child())
-            group_number = group_widget.number
-            group = None
-            for g in self.lightshow.groups:
-                if g.index == group_number:
-                    group = g
-                    break
-            if not group:
-                child.set_visible(False)
-                return False
+        group = self._get_selected_group()
+        if group:
             # Display active channels
             if self.view_mode == VIEW_MODES["Active"]:
                 return self.__filter_active(group, child)
@@ -361,7 +367,8 @@ class GroupTab(Gtk.Paned):
             group_nb = group_widget.number
         else:
             group_nb = None
-        self.app.core.action_registry.execute("group.select", group_nb)
+        if self.app.core.selected_group != group_nb:
+            self.app.core.action_registry.execute("group.select", group_nb)
         return False
 
     def select_group_graphically(self, group_nb: float | None) -> None:
@@ -381,6 +388,8 @@ class GroupTab(Gtk.Paned):
             else:
                 self.selected_group_number = None
                 self.last_group_selected = ""
+            # Invalidate the channel-view cache so filter_channels uses the new group
+            self.channels_view.invalidate_cache()
             self.channels_view.update()
         finally:
             self._updating_selection = False
@@ -505,7 +514,7 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_right(self) -> None:
         """Next Group"""
-        if self.last_group_selected == "":
+        if not self.last_group_selected:
             if child := self.flowbox.get_child_at_index(0):
                 fb_child = typing.cast(Gtk.FlowBoxChild, child)
                 self.flowbox.select_child(fb_child)
@@ -527,7 +536,7 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_left(self) -> None:
         """Previous Group"""
-        if self.last_group_selected == "":
+        if not self.last_group_selected:
             if child := self.flowbox.get_child_at_index(0):
                 fb_child = typing.cast(Gtk.FlowBoxChild, child)
                 self.flowbox.select_child(fb_child)
@@ -548,7 +557,7 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_down(self) -> None:
         """Group on Next Line"""
-        if self.last_group_selected == "":
+        if not self.last_group_selected:
             if child := self.flowbox.get_child_at_index(0):
                 fb_child = typing.cast(Gtk.FlowBoxChild, child)
                 self.flowbox.select_child(fb_child)
@@ -576,7 +585,7 @@ class GroupTab(Gtk.Paned):
 
     def _keypress_up(self) -> None:
         """Group on Previous Line"""
-        if self.last_group_selected == "":
+        if not self.last_group_selected:
             if child := self.flowbox.get_child_at_index(0):
                 fb_child = typing.cast(Gtk.FlowBoxChild, child)
                 self.flowbox.select_child(fb_child)
@@ -606,7 +615,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox.unselect_all()
 
         keystring = self.commandline.get_string()
-        if keystring != "":
+        if keystring:
             group = float(keystring)
             flowbox_children = self.flowbox.get_children()
             for flowbox_child in flowbox_children:
@@ -664,7 +673,7 @@ class GroupTab(Gtk.Paned):
         """New Group"""
         keystring = self.commandline.get_string()
         # If no group number, use the next one
-        if keystring == "":
+        if not keystring:
             group_nb = self.lightshow.groups.get_next_index()
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
