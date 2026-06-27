@@ -50,7 +50,7 @@ class Independent:
     ) -> None:
         self.number = number
         self.independents = independents
-        self.level = 0
+        self.level = 0.0
         self.channels = set()
         self.levels = levels or {}
         self.text = text
@@ -79,7 +79,7 @@ class Independent:
         self.levels = levels
         self.channels = {channel for channel, level in levels.items() if level}
 
-    def set_level(self, value: int) -> None:
+    def set_level(self, value: float) -> None:
         """Set independent level
 
         Args:
@@ -89,7 +89,7 @@ class Independent:
         if self.number <= 6:
             if self.app and hasattr(self.app, "midi") and self.app.midi:
                 self.app.midi.messages.control_change.send(
-                    f"inde_led_{self.number}", 32 + int((value / 255) * 12)
+                    f"inde_led_{self.number}", 32 + int(value * 12)
                 )
         self.level = value
         self.update_dmx()
@@ -97,7 +97,7 @@ class Independent:
     def update_dmx(self) -> None:
         """Update DMX levels"""
         for channel, level in self.levels.items():
-            dmx_lvl = round(level * (self.level / 255))
+            dmx_lvl = round(level * self.level)
             self.dmx[channel - 1] = dmx_lvl
         self.independents.update_dmx()
         if self.app and hasattr(self.app, "backend") and self.app.backend:

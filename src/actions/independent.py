@@ -55,8 +55,7 @@ class IndependentSetLevelAction(Action):
         """Apply the level to the independent and emit event."""
         independents = self.app.lightshow.independents
         inde = independents.independents[self.number - 1]
-        raw_val = round(self.level * 255)
-        inde.set_level(raw_val)
+        inde.set_level(self.level)
         self.app.emit("independent.level_changed", self.number, self.level)
 
 

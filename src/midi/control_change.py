@@ -229,7 +229,7 @@ class MidiControlChanges:
                 return
             val = round((msg.value / 127) * 255)
             fader = self.midi.faders.inde_faders[independent - 1]
-            if not fader.is_valid(val, inde.level):
+            if not fader.is_valid(val, round(inde.level * 255)):
                 return
             self._update_inde(independent, inde, val)
         else:
@@ -256,7 +256,7 @@ class MidiControlChanges:
         inde = None
         for inde in self.app_delegate.core.lightshow.independents.independents:
             if inde.number == independent:
-                val = inde.level + step
+                val = round(inde.level * 255) + step
                 if val < 0:
                     val = 0
                 elif val > 255:

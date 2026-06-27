@@ -304,7 +304,7 @@ class MidiNotes:
         """
         if inde is None:
             return
-        inde.level = level
+        inde.level = level / 255.0
         inde.update_dmx()
         velocity = 0 if level == 0 else 127
         self.send(f"inde_{index}", velocity)
@@ -325,7 +325,7 @@ class MidiNotes:
             return
 
         if msg.type == "note_off" or (
-            msg.type == "note_on" and msg.velocity == 127 and inde.level == 255
+            msg.type == "note_on" and msg.velocity == 127 and inde.level >= 0.5
         ):
             if self.app_delegate.core is not None and hasattr(
                 self.app_delegate.core, "action_registry"
@@ -335,7 +335,7 @@ class MidiNotes:
                 )
             else:
                 self._update_inde_button(inde, independent, 0)
-        elif msg.type == "note_on" and msg.velocity == 127 and inde.level == 0:
+        elif msg.type == "note_on" and msg.velocity == 127 and inde.level < 0.5:
             if self.app_delegate.core is not None and hasattr(
                 self.app_delegate.core, "action_registry"
             ):

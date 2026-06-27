@@ -98,15 +98,15 @@ def test_independent_set_level_action() -> None:
 
     inde = app.lightshow.independents.independents[0]
     inde.set_levels({1: 255})
-    assert inde.level == 0
+    assert inde.level == 0.0
     assert inde.dmx[0] == 0
 
     # Execute set level to 50%
     app.action_registry.execute("independent.set_level", 1, 0.5)
-    assert inde.level == 128
+    assert inde.level == 0.5
     assert inde.dmx[0] == 128
     assert received_events == [(1, 0.5)]
 
     # Undo should do nothing (can_undo = False)
     app.history.undo()
-    assert inde.level == 128
+    assert inde.level == 0.5

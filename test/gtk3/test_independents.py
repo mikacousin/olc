@@ -38,14 +38,14 @@ def test_gui_independent_set_level_action(app_gui: Application) -> None:
     inde_button = app_gui.core.lightshow.independents.independents[6]
 
     # Verify initial levels
-    assert inde_knob.level == 0
-    assert inde_button.level == 0
+    assert inde_knob.level == 0.0
+    assert inde_button.level == 0.0
 
     # 2. Execute set level to 50% on knob 1
     app_gui.core.action_registry.execute("independent.set_level", 1, 0.5)
     process_events()
 
-    assert inde_knob.level == 128
+    assert inde_knob.level == 0.5
     assert app_gui.virtual_console.independent1.value == 127.5
 
     # 3. Simulate knob movement on IHM to 100%
@@ -53,13 +53,13 @@ def test_gui_independent_set_level_action(app_gui: Application) -> None:
     app_gui.virtual_console._inde_changed(app_gui.virtual_console.independent1)
     process_events()
 
-    assert inde_knob.level == 255
+    assert inde_knob.level == 1.0
 
     # 4. Execute set level to 100% on button 7
     app_gui.core.action_registry.execute("independent.set_level", 7, 1.0)
     process_events()
 
-    assert inde_button.level == 255
+    assert inde_button.level == 1.0
     assert app_gui.virtual_console.independent7.get_active() is True
 
     # 5. Simulate button click on IHM to turn off
@@ -67,7 +67,7 @@ def test_gui_independent_set_level_action(app_gui: Application) -> None:
     app_gui.virtual_console._inde_clicked(app_gui.virtual_console.independent7)
     process_events()
 
-    assert inde_button.level == 0
+    assert inde_button.level == 0.0
 
     # Clean up
     app_gui.virtual_console.close()
