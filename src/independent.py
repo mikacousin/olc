@@ -85,11 +85,12 @@ class Independent:
         Args:
             value: New level
         """
-        # Send MIDI message to knob LEDs
-        if self.app and hasattr(self.app, "midi") and self.app.midi:
-            self.app.midi.messages.control_change.send(
-                f"inde_led_{self.number}", 32 + int((value / 255) * 12)
-            )
+        # Send MIDI message to knob LEDs (only for knobs 1 to 6)
+        if self.number <= 6:
+            if self.app and hasattr(self.app, "midi") and self.app.midi:
+                self.app.midi.messages.control_change.send(
+                    f"inde_led_{self.number}", 32 + int((value / 255) * 12)
+                )
         self.level = value
         self.update_dmx()
 

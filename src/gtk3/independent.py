@@ -114,7 +114,10 @@ class IndependentsTab(Gtk.Paned):
         """
         self.liststore[path][2] = text
         number = self.liststore[path][0]
-        self.lightshow.independents.independents[number - 1].text = text
+        if self.app is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute("independent.rename", number, text)
+        else:
+            self.lightshow.independents.independents[number - 1].text = text
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey
@@ -198,9 +201,16 @@ class IndependentsTab(Gtk.Paned):
                 if channel_widget is not None:
                     widget = channel_widget
                     channels[channel + 1] = widget.level
-            self.lightshow.independents.independents[number - 1].set_levels(channels)
-            self.lightshow.independents.update_channels()
-            self.lightshow.independents.independents[number - 1].update_dmx()
+            if self.app is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute(
+                    "independent.update_channels", number, channels
+                )
+            else:
+                self.lightshow.independents.independents[number - 1].set_levels(
+                    channels
+                )
+                self.lightshow.independents.update_channels()
+                self.lightshow.independents.independents[number - 1].update_dmx()
             self.window.live_view.channels_view.flowbox.queue_draw()
             self.channels_view.update()
 

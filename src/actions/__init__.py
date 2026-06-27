@@ -61,6 +61,11 @@ from olc.actions.group import (
     GroupUpdateChannelsAction,
     NewGroupAction,
 )
+from olc.actions.independent import (
+    IndependentRenameAction,
+    IndependentSetLevelAction,
+    IndependentUpdateChannelsAction,
+)
 from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
@@ -151,6 +156,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         FaderSetLevelAction,
         FaderSetPageAction,
         SelectNoneChannelsAction,
+        IndependentRenameAction,
+        IndependentSetLevelAction,
+        IndependentUpdateChannelsAction,
     ]
 
     for action_class in actions_to_register:

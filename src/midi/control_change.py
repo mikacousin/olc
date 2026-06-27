@@ -265,23 +265,12 @@ class MidiControlChanges:
         return inde, val
 
     def _update_inde(self, independent: int, inde: Independent, val: int) -> None:
-        if self.app_delegate.virtual_console:
-            widget = None
-            if independent == 1:
-                widget = self.app_delegate.virtual_console.independent1
-            elif independent == 2:
-                widget = self.app_delegate.virtual_console.independent2
-            elif independent == 3:
-                widget = self.app_delegate.virtual_console.independent3
-            elif independent == 4:
-                widget = self.app_delegate.virtual_console.independent4
-            elif independent == 5:
-                widget = self.app_delegate.virtual_console.independent5
-            elif independent == 6:
-                widget = self.app_delegate.virtual_console.independent6
-            if widget:
-                widget.value = val
-                widget.emit("changed")
-                widget.queue_draw()
+        level_float = val / 255.0
+        if self.app_delegate.core is not None and hasattr(
+            self.app_delegate.core, "action_registry"
+        ):
+            self.app_delegate.core.action_registry.execute(
+                "independent.set_level", independent, level_float
+            )
         else:
             inde.set_level(val)

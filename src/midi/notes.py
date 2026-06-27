@@ -317,29 +317,31 @@ class MidiNotes:
             independent: Independent number
         """
         inde = None
-        widget = None
-        if independent == 7:
-            inde = self.app_delegate.core.lightshow.independents.independents[6]
-            if self.app_delegate.virtual_console:
-                widget = self.app_delegate.virtual_console.independent7
-        elif independent == 8:
-            inde = self.app_delegate.core.lightshow.independents.independents[7]
-            if self.app_delegate.virtual_console:
-                widget = self.app_delegate.virtual_console.independent8
-        elif independent == 9:
-            inde = self.app_delegate.core.lightshow.independents.independents[8]
-            if self.app_delegate.virtual_console:
-                widget = self.app_delegate.virtual_console.independent9
+        for i in self.app_delegate.core.lightshow.independents.independents:
+            if i.number == independent:
+                inde = i
+                break
+        if inde is None:
+            return
+
         if msg.type == "note_off" or (
-            msg.type == "note_on" and msg.velocity == 127 and inde and inde.level == 255
+            msg.type == "note_on" and msg.velocity == 127 and inde.level == 255
         ):
-            if self.app_delegate.virtual_console and widget:
-                widget.set_active(False)
+            if self.app_delegate.core is not None and hasattr(
+                self.app_delegate.core, "action_registry"
+            ):
+                self.app_delegate.core.action_registry.execute(
+                    "independent.set_level", independent, 0.0
+                )
             else:
                 self._update_inde_button(inde, independent, 0)
-        elif msg.type == "note_on" and msg.velocity == 127 and inde and inde.level == 0:
-            if self.app_delegate.virtual_console and widget:
-                widget.set_active(True)
+        elif msg.type == "note_on" and msg.velocity == 127 and inde.level == 0:
+            if self.app_delegate.core is not None and hasattr(
+                self.app_delegate.core, "action_registry"
+            ):
+                self.app_delegate.core.action_registry.execute(
+                    "independent.set_level", independent, 1.0
+                )
             else:
                 self._update_inde_button(inde, independent, 255)
 

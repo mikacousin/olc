@@ -44,6 +44,7 @@ class VirtualConsoleWindow(Gtk.Window):
         self.app = app
         self.commandline = app.core.commandline
         self.updating_fader = False
+        self.updating_independent = False
 
         super().__init__(title="Virtual Console")
         self.set_default_size(400, 300)
@@ -1083,9 +1084,19 @@ class VirtualConsoleWindow(Gtk.Window):
                 typing.cast(typing.Any, widget).set_active(False)
             self.queue_draw()
         elif inde_idx is not None:
-            level = 255 if typing.cast(typing.Any, widget).get_active() else 0
-            self.app.core.lightshow.independents.independents[inde_idx].level = level
-            self.app.core.lightshow.independents.independents[inde_idx].update_dmx()
+            if self.updating_independent:
+                return
+            level = 1.0 if typing.cast(typing.Any, widget).get_active() else 0.0
+            if self.app is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute(
+                    "independent.set_level", inde_idx + 1, level
+                )
+            else:
+                raw_level = round(level * 255)
+                self.app.core.lightshow.independents.independents[
+                    inde_idx
+                ].level = raw_level
+                self.app.core.lightshow.independents.independents[inde_idx].update_dmx()
 
     def _inde_changed(self, widget: Gtk.Widget) -> None:
         """Independent value changed
@@ -1094,6 +1105,8 @@ class VirtualConsoleWindow(Gtk.Window):
             widget: Object changed
         """
         if self.is_learning_midi:
+            return
+        if self.updating_independent:
             return
         if widget == self.independent1:
             index = 0
@@ -1110,11 +1123,17 @@ class VirtualConsoleWindow(Gtk.Window):
         else:
             return
         value = typing.cast(typing.Any, widget).value
-        inde = self.app.core.lightshow.independents.independents[index]
-        inde.set_level(value)
-        if self.app.midi is not None:
-            midi_fader = self.app.midi.faders.inde_faders[index]
-            midi_fader.set_state(int(value))
+        level_float = value / 255.0
+        if self.app is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute(
+                "independent.set_level", index + 1, level_float
+            )
+        else:
+            inde = self.app.core.lightshow.independents.independents[index]
+            inde.set_level(int(value))
+            if self.app.midi is not None:
+                midi_fader = self.app.midi.faders.inde_faders[index]
+                midi_fader.set_state(int(value))
 
     def queue_draw(self) -> None:
         """Synchronize learning states before drawing."""
@@ -1140,4 +1159,27 @@ class VirtualConsoleWindow(Gtk.Window):
                     is_learning = True
                 attr.is_learning = is_learning
 
-        super().queue_draw()
+    def update_independent_display(self, number: int, level: float) -> None:
+        """Update independent slider or button state in GUI."""
+        self.updating_independent = True
+        try:
+            if number == 1:
+                self.independent1.value = level * 255
+            elif number == 2:
+                self.independent2.value = level * 255
+            elif number == 3:
+                self.independent3.value = level * 255
+            elif number == 4:
+                self.independent4.value = level * 255
+            elif number == 5:
+                self.independent5.value = level * 255
+            elif number == 6:
+                self.independent6.value = level * 255
+            elif number == 7:
+                self.independent7.set_active(level > 0.5)
+            elif number == 8:
+                self.independent8.set_active(level > 0.5)
+            elif number == 9:
+                self.independent9.set_active(level > 0.5)
+        finally:
+            self.updating_independent = False

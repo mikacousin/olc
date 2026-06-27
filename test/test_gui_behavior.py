@@ -1000,3 +1000,52 @@ def test_fader_set_page_action(app_gui: Application) -> None:
     # Clean up
     app_gui.virtual_console.close()
     process_events()
+
+
+def test_gui_independent_set_level_action(app_gui: Application) -> None:
+    """Test that independent.set_level action works and correctly updates Virtual
+    Console."""
+    # 1. Setup Virtual Console GUI
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+
+    # Get independent 1 (knob) and 7 (button)
+    inde_knob = app_gui.core.lightshow.independents.independents[0]
+    inde_button = app_gui.core.lightshow.independents.independents[6]
+
+    # Verify initial levels
+    assert inde_knob.level == 0
+    assert inde_button.level == 0
+
+    # 2. Execute set level to 50% on knob 1
+    app_gui.core.action_registry.execute("independent.set_level", 1, 0.5)
+    process_events()
+
+    assert inde_knob.level == 128
+    assert app_gui.virtual_console.independent1.value == 127.5
+
+    # 3. Simulate knob movement on IHM to 100%
+    app_gui.virtual_console.independent1.value = 255.0
+    app_gui.virtual_console._inde_changed(app_gui.virtual_console.independent1)
+    process_events()
+
+    assert inde_knob.level == 255
+
+    # 4. Execute set level to 100% on button 7
+    app_gui.core.action_registry.execute("independent.set_level", 7, 1.0)
+    process_events()
+
+    assert inde_button.level == 255
+    assert app_gui.virtual_console.independent7.get_active() is True
+
+    # 5. Simulate button click on IHM to turn off
+    app_gui.virtual_console.independent7.set_active(False)
+    app_gui.virtual_console._inde_clicked(app_gui.virtual_console.independent7)
+    process_events()
+
+    assert inde_button.level == 0
+
+    # Clean up
+    app_gui.virtual_console.close()
+    process_events()

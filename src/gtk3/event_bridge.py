@@ -207,6 +207,24 @@ class GuiEventBridge:
             ),
         )
         self.app.core.subscribe(
+            "independent.level_changed",
+            lambda number, level: self._run_idle(
+                self._on_independent_level_changed, number, level
+            ),
+        )
+        self.app.core.subscribe(
+            "independent.channels_changed",
+            lambda number: self._run_idle(
+                self._on_independent_channels_changed, number
+            ),
+        )
+        self.app.core.subscribe(
+            "independent.text_changed",
+            lambda number, text: self._run_idle(
+                self._on_independent_text_changed, number, text
+            ),
+        )
+        self.app.core.subscribe(
             "group.selected_changed",
             lambda group_nb: self._run_idle(self._on_group_selected_changed, group_nb),
         )
@@ -1108,6 +1126,34 @@ class GuiEventBridge:
         if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
             fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
             fader_tab.refresh()
+        return False
+
+    def _on_independent_level_changed(self, number: int, level: float) -> bool:
+        """Synchronize independent level changes to GUI and MIDI."""
+        if self.app.virtual_console:
+            self.app.virtual_console.update_independent_display(number, level)
+        if self.app.midi is not None:
+            if number <= 6:
+                midi_fader = self.app.midi.faders.inde_faders[number - 1]
+                midi_fader.set_state(round(level * 255))
+            else:
+                velocity = 0 if level < 0.5 else 127
+                self.app.midi.messages.notes.send(f"inde_{number}", velocity)
+        return False
+
+    def _on_independent_channels_changed(self, _number: int) -> bool:
+        """Refresh independent edit tab on channels configuration changes."""
+        if self.app.tabs and self.app.tabs.tabs.get("indes") is not None:
+            indes_tab = typing.cast(typing.Any, self.app.tabs.tabs["indes"])
+            indes_tab.channels_view.flowbox.queue_draw()
+            indes_tab.channels_view.update()
+        return False
+
+    def _on_independent_text_changed(self, _number: int, _text: str) -> bool:
+        """Refresh independent edit tab treeview on label changes."""
+        if self.app.tabs and self.app.tabs.tabs.get("indes") is not None:
+            indes_tab = typing.cast(typing.Any, self.app.tabs.tabs["indes"])
+            indes_tab.refresh()
         return False
 
 
