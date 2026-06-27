@@ -1136,6 +1136,9 @@ class GuiEventBridge:
             if number <= 6:
                 midi_fader = self.app.midi.faders.inde_faders[number - 1]
                 midi_fader.set_state(round(level * 255))
+                self.app.midi.messages.control_change.send(
+                    f"inde_led_{number}", 32 + int(level * 12)
+                )
             else:
                 velocity = 0 if level < 0.5 else 127
                 self.app.midi.messages.notes.send(f"inde_{number}", velocity)
