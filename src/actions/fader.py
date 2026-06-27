@@ -189,3 +189,40 @@ class FaderClearAction(Action):
         )
         self.app.lightshow.set_modified()
         self.app.emit("fader.changed", self.page, self.index)
+
+
+class FaderSetLevelAction(Action):
+    """Action to set fader level in real time."""
+
+    name = "fader.set_level"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.page: int = 1
+        self.index: int = 1
+        self.level: float = 0.0
+
+    def configure(self, page: int, index: int, level: float) -> None:
+        """Configure the action parameters.
+
+        Args:
+            page: Fader page number.
+            index: Fader index within the page.
+            level: The target intensity level (0.0 to 1.0).
+        """
+        self.page = page
+        self.index = index
+        self.level = level
+
+    def execute(self) -> None:
+        """Apply the level to the fader and emit event for remote synchronization."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader_bank.faders[self.page][self.index].set_level(self.level)
+        if self.page == fader_bank.active_page:
+            self.app.emit("fader.level_changed", self.index, self.level)

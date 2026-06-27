@@ -24,7 +24,6 @@ from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.gtk3.channel_time import ChanneltimeTab
 from olc.gtk3.fader import FaderTab
-from olc.midi.fader import FaderState
 
 if typing.TYPE_CHECKING:
     from olc.group import Group
@@ -1078,20 +1077,15 @@ class GuiEventBridge:
     def _on_fader_level_changed(self, fader_index: int, level: float) -> bool:
         """Synchronize fader level to GUI or MIDI controller."""
         if self.app.virtual_console:
-            self.app.virtual_console.faders[fader_index - 1].set_value(level)
-            self.app.virtual_console.fader_moved(
-                self.app.virtual_console.faders[fader_index - 1]
-            )
-        else:
-            if self.app.midi is not None:
-                midi_fader = self.app.midi.faders.faders[fader_index - 1]
-                midi_value = midi_fader.value
-                if level > midi_value:
-                    midi_fader.valid = FaderState.UP
-                elif level < midi_value:
-                    midi_fader.valid = FaderState.DOWN
-                else:
-                    midi_fader.valid = FaderState.VALID
+            self.app.virtual_console.updating_fader = True
+            try:
+                self.app.virtual_console.faders[fader_index - 1].set_value(level * 255)
+            finally:
+                self.app.virtual_console.updating_fader = False
+
+        if self.app.midi is not None:
+            midi_fader = self.app.midi.faders.faders[fader_index - 1]
+            midi_fader.set_state(level)
         return False
 
     def _on_fader_flash_changed(self, fader_index: int, _pressed: bool) -> bool:

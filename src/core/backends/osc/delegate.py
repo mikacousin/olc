@@ -207,10 +207,15 @@ class OSCDelegate:
             fader_index = int(address.split("/")[4])
             level = args[0]
 
-            fader = self.app.lightshow.fader_bank.get_fader(fader_index)
-            fader.set_level(level / 255)
-
-            self.app.emit("fader.level_changed", fader_index, level)
+            fader_bank = self.app.lightshow.fader_bank
+            if self.app is not None and hasattr(self.app, "action_registry"):
+                self.app.action_registry.execute(
+                    "fader.set_level", fader_bank.active_page, fader_index, level / 255
+                )
+            else:
+                fader = fader_bank.get_fader(fader_index)
+                fader.set_level(level / 255)
+                self.app.emit("fader.level_changed", fader_index, level / 255)
 
             if self.app.engine is not None:
                 self.app.engine.send_osc(address, level)

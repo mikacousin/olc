@@ -91,12 +91,14 @@ class MidiPitchWheel:
 
     def _update_fader(self, msg: mido.Message, index: int) -> None:
         val = (msg.pitch + 8192) / 16383
-        if self.app_delegate.virtual_console:
-            self.app_delegate.virtual_console.faders[index].set_value(val * 255)
-            self.app_delegate.virtual_console.fader_moved(
-                self.app_delegate.virtual_console.faders[index]
+        fader_bank = self.app_delegate.core.lightshow.fader_bank
+        number = index + 1
+        if self.app_delegate.core is not None and hasattr(
+            self.app_delegate.core, "action_registry"
+        ):
+            self.app_delegate.core.action_registry.execute(
+                "fader.set_level", fader_bank.active_page, number, val
             )
         else:
-            number = index + 1
-            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(number)
+            fader = fader_bank.get_fader(number)
             fader.set_level(val)

@@ -29,11 +29,13 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, Gtk  # noqa: E402
 from olc.cue import Cue  # noqa: E402
+from olc.fader_bank import FaderType  # noqa: E402
 from olc.group import Group  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.curve import CurveButton, CurvesTab  # noqa: E402
+from olc.gtk3.fader import FaderEdit, FaderTab  # noqa: E402
 from olc.gtk3.group import GroupTab  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.gtk3.patch_outputs import PatchOutputsTab  # noqa: E402
@@ -759,9 +761,6 @@ def test_group_tab_channel_selection(app_gui: Application) -> None:
 
 def test_fader_tab_behavior(app_gui: Application) -> None:
     """Test FaderTab configuration and undo/redo."""
-    from olc.fader import FaderType
-    from olc.gtk3.fader import FaderEdit, FaderTab
-
     # 1. Open faders tab
     app_gui.activate_action("faders", None)
     process_events()
@@ -886,3 +885,57 @@ def test_fader_tab_behavior(app_gui: Application) -> None:
         getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
         is None
     )
+
+
+def test_fader_set_level_action(app_gui: Application) -> None:
+    """Test that fader.set_level action works and correctly updates Virtual Console."""
+    # 1. Setup Virtual Console GUI
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+
+    # 2. Configure fader 1 as GROUP fader with Group A (channels {1: 255})
+    app_gui.core.lightshow.groups.clear()
+    group_a = Group(1.0, {1: 255}, "Group A")
+    app_gui.core.lightshow.groups.add(group_a)
+    process_events()
+
+    # Setup fader 1
+    app_gui.core.lightshow.fader_bank.set_fader(1, 1, FaderType.GROUP, 1.0)
+    process_events()
+
+    # Verify fader is GROUP and level is 0
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
+
+    # Verify GUI fader widget value is 0
+    gui_fader_widget = app_gui.virtual_console.faders[0]
+    assert gui_fader_widget.get_value() == 0.0
+
+    # 3. Execute fader.set_level action via registry
+    app_gui.core.action_registry.execute("fader.set_level", 1, 1, 0.8)  # 80%
+    process_events()
+
+    # 4. Asserts:
+    # A. Model level updated to 0.8
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.8
+    # B. DMX output reflects change (channel 1 is at 80% * 255 = 204)
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == 204
+    # C. GUI fader widget value updated to 0.8 * 255 = 204
+    assert gui_fader_widget.get_value() == 204.0
+
+    # 5. Move GUI fader slider directly to 50%
+    gui_fader_widget.set_value(127.5)  # 50%
+    # Trigger value-changed callback
+    app_gui.virtual_console.fader_moved(gui_fader_widget)
+    process_events()
+
+    # Model and DMX must reflect 50%
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.5
+    assert (
+        app_gui.core.lightshow.fader_bank.faders[1][1].dmx[0] == 128
+    )  # 0.5 * 255 rounded
+
+    # Close Virtual Console window
+    app_gui.virtual_console.close()
+    process_events()

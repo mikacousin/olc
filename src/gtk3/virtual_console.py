@@ -44,6 +44,7 @@ class VirtualConsoleWindow(Gtk.Window):
     def __init__(self, app: Application) -> None:
         self.app = app
         self.commandline = app.core.commandline
+        self.updating_fader = False
 
         super().__init__(title="Virtual Console")
         self.set_default_size(400, 300)
@@ -947,6 +948,9 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             fader: FaderWidget
         """
+        if self.updating_fader:
+            return
+
         if self.is_learning_midi and self.app.midi is not None:
             index = self.faders.index(fader) + 1
             text = f"fader_{index}"
@@ -956,10 +960,12 @@ class VirtualConsoleWindow(Gtk.Window):
             value = fader.get_value()
             index = self.faders.index(fader) + 1
             fader_bank = self.app.core.lightshow.fader_bank
-            fader_bank.faders[fader_bank.active_page][index].set_level(value / 255)
-            if self.app.midi is not None:
-                midi_fader = self.app.midi.faders.faders[self.faders.index(fader)]
-                midi_fader.set_state(value / 255)
+            if self.app is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute(
+                    "fader.set_level", fader_bank.active_page, index, value / 255
+                )
+            else:
+                fader_bank.faders[fader_bank.active_page][index].set_level(value / 255)
 
     def _fader_clicked(self, fader: FaderWidget) -> None:
         """Fader clicked

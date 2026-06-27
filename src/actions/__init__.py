@@ -47,7 +47,7 @@ from olc.actions.curve import (
     CurveUpdatePointsAction,
 )
 from olc.actions.edit import RedoAction, UndoAction
-from olc.actions.fader import FaderAssignAction, FaderClearAction
+from olc.actions.fader import FaderAssignAction, FaderClearAction, FaderSetLevelAction
 from olc.actions.group import (
     DeleteGroupAction,
     GroupRenameAction,
@@ -143,6 +143,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         StepUpdateChannelTimeAction,
         FaderAssignAction,
         FaderClearAction,
+        FaderSetLevelAction,
         SelectNoneChannelsAction,
     ]
 
