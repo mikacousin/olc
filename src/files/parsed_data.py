@@ -23,6 +23,7 @@ from olc.define import MAX_FADER_PER_PAGE
 from olc.fader import FaderType
 from olc.files.import_dialog import Action
 from olc.group import Group
+from olc.independent import IndependentType
 from olc.sequence import Sequence
 from olc.step import Step
 
@@ -193,7 +194,7 @@ class ParsedData:
         for inde_number, values in self.data["independents"].items():
             channels = values.get("channels")
             label = values.get("label")
-            inde_type = values.get("type", "knob")
+            inde_type = IndependentType(values.get("type", "knob"))
             for inde in self.lightshow.independents.independents:
                 if inde_number == inde.number:
                     inde.text = label

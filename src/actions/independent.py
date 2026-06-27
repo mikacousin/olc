@@ -20,6 +20,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
+from olc.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -162,7 +163,7 @@ class IndependentRenameAction(Action):
 
 
 class IndependentChangeTypeAction(Action):
-    """Action to change the type (knob or button) of an independent."""
+    """Action to change the type of an independent."""
 
     name = "independent.change_type"
     can_undo = True
@@ -175,18 +176,18 @@ class IndependentChangeTypeAction(Action):
         """
         super().__init__(app)
         self.number: int = 1
-        self.inde_type: str = "knob"
-        self.old_inde_type: str = "knob"
+        self.inde_type: IndependentType = IndependentType.KNOB
+        self.old_inde_type: IndependentType = IndependentType.KNOB
 
-    def configure(self, number: int, inde_type: str) -> None:
+    def configure(self, number: int, inde_type: str | IndependentType) -> None:
         """Configure the action parameters.
 
         Args:
             number: Independent number (1 to 9).
-            inde_type: New type (knob or button).
+            inde_type: New type.
         """
         self.number = number
-        self.inde_type = inde_type
+        self.inde_type = IndependentType(inde_type)
 
     def execute(self) -> None:
         """Change the independent type."""

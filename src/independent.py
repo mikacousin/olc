@@ -15,9 +15,18 @@
 from __future__ import annotations
 
 import typing
+from enum import StrEnum
 
 import numpy as np
 from olc.define import MAX_CHANNELS
+
+
+class IndependentType(StrEnum):
+    """Types of independent controls."""
+
+    KNOB = "knob"
+    BUTTON = "button"
+
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -35,7 +44,7 @@ class Independent:
         channels (set): channels present in independent
         levels (Dict[int, int]): channels levels
         text (str): independent text
-        inde_type (str): knob or button
+        inde_type (IndependentType): knob or button
         dmx (array): DMX levels
     """
 
@@ -46,7 +55,7 @@ class Independent:
         independents: Independents,
         text: str = "",
         levels: dict[int, int] | None = None,
-        inde_type: str = "knob",
+        inde_type: IndependentType = IndependentType.KNOB,
     ) -> None:
         self.number = number
         self.independents = independents
@@ -116,7 +125,7 @@ class Independents:
         for i in range(6):
             self.add(Independent(i + 1, self))
         for i in range(6, 9):
-            self.add(Independent(i + 1, self, inde_type="button"))
+            self.add(Independent(i + 1, self, inde_type=IndependentType.BUTTON))
 
     @property
     def app(self) -> CoreApplication | None:

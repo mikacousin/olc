@@ -21,6 +21,7 @@ import numpy as np
 from gi.repository import Gdk, Gtk
 from olc.define import MAX_CHANNELS
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
+from olc.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     import olc.gtk3.independent
@@ -147,7 +148,9 @@ class IndependentsTab(Gtk.Paned):
                 "independent.change_type", number, text
             )
         else:
-            self.lightshow.independents.independents[number - 1].inde_type = text
+            self.lightshow.independents.independents[
+                number - 1
+            ].inde_type = IndependentType(text)
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey

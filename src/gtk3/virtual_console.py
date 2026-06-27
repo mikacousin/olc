@@ -26,6 +26,7 @@ from olc.gtk3.widgets.go import GoWidget
 from olc.gtk3.widgets.knob import KnobWidget
 from olc.gtk3.widgets.pause import PauseWidget
 from olc.gtk3.widgets.toggle import ToggleWidget
+from olc.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     from olc.core.commandline import CoreCommandLine
@@ -1108,7 +1109,7 @@ class VirtualConsoleWindow(Gtk.Window):
 
         for idx, inde in enumerate(indes):
             name = f"inde_{inde.number}"
-            if inde.inde_type == "button":
+            if inde.inde_type == IndependentType.BUTTON:
                 widget: KnobWidget | ToggleWidget = ToggleWidget(
                     self.app.midi, text=name
                 )

@@ -24,6 +24,7 @@ from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.gtk3.channel_time import ChanneltimeTab
 from olc.gtk3.fader import FaderTab
+from olc.independent import IndependentType
 
 if typing.TYPE_CHECKING:
     from olc.group import Group
@@ -1166,7 +1167,9 @@ class GuiEventBridge:
             indes_tab.refresh()
         return False
 
-    def _on_independent_type_changed(self, _number: int, _inde_type: str) -> bool:
+    def _on_independent_type_changed(
+        self, _number: int, _inde_type: IndependentType
+    ) -> bool:
         """Refresh independent edit tab treeview and Virtual Console on type changes."""
         if self.app.tabs and self.app.tabs.tabs.get("indes") is not None:
             indes_tab = typing.cast(typing.Any, self.app.tabs.tabs["indes"])
