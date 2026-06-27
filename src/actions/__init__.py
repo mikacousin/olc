@@ -22,6 +22,7 @@ from olc.actions.channel import (
     SelectActiveChannelAction,
     SelectAddChannelAction,
     SelectAllChannelsAction,
+    SelectNoneChannelsAction,
     SelectRemoveChannelAction,
     SelectThruChannelAction,
     SetChannelLevelAction,
@@ -46,6 +47,7 @@ from olc.actions.curve import (
     CurveUpdatePointsAction,
 )
 from olc.actions.edit import RedoAction, UndoAction
+from olc.actions.fader import FaderAssignAction, FaderClearAction
 from olc.actions.group import (
     DeleteGroupAction,
     GroupRenameAction,
@@ -139,6 +141,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         StepUpdateTimesAction,
         StepUpdateTextAction,
         StepUpdateChannelTimeAction,
+        FaderAssignAction,
+        FaderClearAction,
+        SelectNoneChannelsAction,
     ]
 
     for action_class in actions_to_register:

@@ -123,8 +123,21 @@ class FaderBank:
             contents: Fader contents
         """
         if fader_type == self.get_fader_type(page, index):
+            current_fader = self.faders[page][index]
+            current_contents = getattr(current_fader, "contents", None)
+            current_id = None
+            if current_contents is not None:
+                if hasattr(current_contents, "index"):
+                    current_id = current_contents.index
+                elif hasattr(current_contents, "number"):
+                    current_id = current_contents.number
+
+            if current_id != contents:
+                current_fader.set_level(0)
+
             self._set_fader_contents(page, index, fader_type, contents)
         else:
+            self.faders[page][index].set_level(0)
             self._set_fader_type(page, index, fader_type, contents)
 
     def _set_fader_type(
@@ -174,6 +187,8 @@ class FaderBank:
             else:
                 self.faders[page][index] = FaderSequence(index, fader_bank_type)
             self.faders[page][index].set_level(0)
+        self.update_active_faders()
+        self.update_levels()
         self._refresh_faders_display(page, index)
 
     def _set_fader_contents(
@@ -184,26 +199,20 @@ class FaderBank:
         contents: dict[int, int] | float | None,
     ) -> None:
         if fader_type == FaderType.GROUP:
-            if (
-                self.lightshow
-                and isinstance(contents, (int, float))
-                and (group := self.lightshow.get_group(contents))
-            ):
-                self.faders[page][index].set_contents(group)
+            group = None
+            if self.lightshow and isinstance(contents, (int, float)):
+                group = self.lightshow.get_group(contents)
+            self.faders[page][index].set_contents(group)
         elif fader_type == FaderType.PRESET:
-            if (
-                self.lightshow
-                and isinstance(contents, (int, float))
-                and (cue := self.lightshow.get_cue(contents))
-            ):
-                self.faders[page][index].set_contents(cue)
+            cue = None
+            if self.lightshow and isinstance(contents, (int, float)):
+                cue = self.lightshow.get_cue(contents)
+            self.faders[page][index].set_contents(cue)
         elif fader_type == FaderType.SEQUENCE:
-            if (
-                self.lightshow
-                and isinstance(contents, (int, float))
-                and (chaser := self.lightshow.get_chaser(contents))
-            ):
-                self.faders[page][index].set_contents(chaser)
+            chaser = None
+            if self.lightshow and isinstance(contents, (int, float)):
+                chaser = self.lightshow.get_chaser(contents)
+            self.faders[page][index].set_contents(chaser)
         self._refresh_faders_display(page, index)
 
     def _refresh_faders_display(self, page: int, index: int) -> None:

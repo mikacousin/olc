@@ -170,15 +170,20 @@ class FaderGroup(Fader):
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
 
-    def set_contents(self, group: Group) -> None:
+    def set_contents(self, group: Group | None) -> None:
         """Set group
 
         Args:
             group: Fader Group
         """
         self.contents = group
-        self.text = self.contents.text
-        self.update_channels()
+        if group is not None:
+            self.text = group.text
+            self.update_channels()
+        else:
+            self.text = ""
+            self.channels.clear()
+            self.fader_bank.update_active_faders()
 
     def level_changed(self) -> None:
         """Fader level has changed"""
@@ -219,15 +224,20 @@ class FaderPreset(Fader):
             self.channels.add(channel)
         self.fader_bank.update_active_faders()
 
-    def set_contents(self, cue: Cue) -> None:
+    def set_contents(self, cue: Cue | None) -> None:
         """Set cue
 
         Args:
             cue: Cue to put in fader
         """
         self.contents = cue
-        self.text = self.contents.text
-        self.update_channels()
+        if cue is not None:
+            self.text = cue.text
+            self.update_channels()
+        else:
+            self.text = ""
+            self.channels.clear()
+            self.fader_bank.update_active_faders()
 
     def level_changed(self) -> None:
         """Fader level has changed"""
@@ -319,15 +329,20 @@ class FaderSequence(Fader):
         self.channels = self.contents.channels
         self.fader_bank.update_active_faders()
 
-    def set_contents(self, chaser: Sequence) -> None:
+    def set_contents(self, chaser: Sequence | None) -> None:
         """Set cue
 
         Args:
             chaser: Chaser to put in fader
         """
         self.contents = chaser
-        self.text = self.contents.text
-        self.update_channels()
+        if chaser is not None:
+            self.text = chaser.text
+            self.update_channels()
+        else:
+            self.text = ""
+            self.channels.clear()
+            self.fader_bank.update_active_faders()
 
     def level_changed(self) -> None:
         """Fader level has changed"""

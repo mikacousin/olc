@@ -172,22 +172,15 @@ class FaderEdit(Gtk.Box):
         self._contents_popup(vbox)
 
     def _on_type_changed(self, _widget: Gtk.ModelButton, fader_type: FaderType) -> None:
-        self.lightshow.fader_bank.set_fader(self.page, self.index, fader_type)
-
-        self.remove(self.contents_button)
-
-        if fader_type == FaderType.NONE:
-            self._fader_none()
-        elif fader_type == FaderType.MAIN:
-            self._fader_main()
-        elif fader_type == FaderType.GROUP:
-            self._fader_group()
-        elif fader_type == FaderType.PRESET:
-            self._fader_preset()
-        elif fader_type == FaderType.SEQUENCE:
-            self._fader_sequence()
-        self.add(self.contents_button)
-        self.show_all()
+        app = self.lightshow.app
+        core = getattr(app, "core", app)
+        if core is not None and hasattr(core, "action_registry"):
+            core.action_registry.execute(
+                "fader.assign", self.page, self.index, fader_type
+            )
+        else:
+            self.lightshow.fader_bank.set_fader(self.page, self.index, fader_type)
+            self.refresh()
 
     def _on_contents_changed(
         self,
@@ -205,7 +198,36 @@ class FaderEdit(Gtk.Box):
         if self.contents_button:
             # Max label size: 30 characters
             self.contents_button.set_label(f"{widget.get_label():<.30}")
-        self.lightshow.fader_bank.set_fader(self.page, self.index, fader_type, contents)
+        app = self.lightshow.app
+        core = getattr(app, "core", app)
+        if core is not None and hasattr(core, "action_registry"):
+            core.action_registry.execute(
+                "fader.assign", self.page, self.index, fader_type, contents
+            )
+        else:
+            self.lightshow.fader_bank.set_fader(
+                self.page, self.index, fader_type, contents
+            )
+            self.refresh()
+
+    def refresh(self) -> None:
+        """Refresh this fader widget representation in place."""
+        fader_type = self.lightshow.fader_bank.get_fader_type(self.page, self.index)
+
+        self.remove(self.contents_button)
+
+        if fader_type == FaderType.NONE:
+            self._fader_none()
+        elif fader_type == FaderType.MAIN:
+            self._fader_main()
+        elif fader_type == FaderType.GROUP:
+            self._fader_group()
+        elif fader_type == FaderType.PRESET:
+            self._fader_preset()
+        elif fader_type == FaderType.SEQUENCE:
+            self._fader_sequence()
+        self.add(self.contents_button)
+        self.show_all()
 
     def _contents_popup(self, vbox: Gtk.Box) -> None:
         """Create contents popover
@@ -243,6 +265,7 @@ class FaderTab(Gtk.Box):
         self.window = window
         self.settings = settings
         self.fader_bank = self.lightshow.fader_bank
+        self.fader_widgets: dict[tuple[int, int], FaderEdit] = {}
 
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.stack = Gtk.Stack()
@@ -261,12 +284,23 @@ class FaderTab(Gtk.Box):
         self.add(scrollable)
 
     def refresh(self) -> None:
-        """Refresh display"""
-        widgets = self.stack.get_children()
-        for widget in widgets:
-            self.stack.remove(widget)
-        self._populate_faders()
-        self.show_all()
+        """Refresh display in-place if structure hasn't changed, else rebuild pages."""
+        current_keys = set(self.fader_widgets.keys())
+        expected_keys = {
+            (page, index)
+            for page, faders in self.fader_bank.faders.items()
+            for index in faders.keys()
+        }
+
+        if current_keys != expected_keys:
+            widgets = self.stack.get_children()
+            for widget in widgets:
+                self.stack.remove(widget)
+            self._populate_faders()
+            self.show_all()
+        else:
+            for widget in self.fader_widgets.values():
+                widget.refresh()
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
@@ -274,6 +308,7 @@ class FaderTab(Gtk.Box):
 
     def _populate_faders(self) -> None:
         """Add faders to tab"""
+        self.fader_widgets.clear()
         for page, faders in self.fader_bank.faders.items():
             vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
             hbox1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -289,6 +324,7 @@ class FaderTab(Gtk.Box):
                     window=self.window,
                     settings=self.settings,
                 )
+                self.fader_widgets[(page, index)] = fader_edit
                 # Display faders on 2 lines
                 if index <= self.fader_bank.max_fader_per_page / 2:
                     hbox1.add(fader_edit)

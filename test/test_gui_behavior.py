@@ -755,3 +755,134 @@ def test_group_tab_channel_selection(app_gui: Application) -> None:
     process_events()
     assert selection_manager.selected_channels == []
     assert selection_manager.last_selected_channel is None
+
+
+def test_fader_tab_behavior(app_gui: Application) -> None:
+    """Test FaderTab configuration and undo/redo."""
+    from olc.fader import FaderType
+    from olc.gtk3.fader import FaderEdit, FaderTab
+
+    # 1. Open faders tab
+    app_gui.activate_action("faders", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    fader_tab = app_gui.tabs.tabs.get("faders")
+    assert isinstance(fader_tab, FaderTab)
+
+    # 2. Get first fader (page 1, index 1)
+    fader_edit = None
+    for child in fader_tab.stack.get_children():
+        if not isinstance(child, Gtk.Container):
+            continue
+        for hbox in child.get_children():
+            if not isinstance(hbox, Gtk.Container):
+                continue
+            for widget in hbox.get_children():
+                if (
+                    isinstance(widget, FaderEdit)
+                    and widget.page == 1
+                    and widget.index == 1
+                ):
+                    fader_edit = widget
+                    break
+            if fader_edit:
+                break
+        if fader_edit:
+            break
+
+    assert fader_edit is not None, "FaderEdit for page 1, index 1 not found"
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
+
+    # 3. Configure fader 1 as GROUP fader
+    app_gui.core.lightshow.groups.clear()
+    app_gui.core.lightshow.groups.add(Group(1.0, {}, "Group A"))
+    process_events()
+
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
+    assert (
+        getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
+        is None
+    )
+
+    # Setting type to GROUP
+    fader_edit._on_type_changed(Gtk.ModelButton(), FaderType.GROUP)
+    process_events()
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert (
+        getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
+        is None
+    )
+
+    # Setting contents to Group 1.0
+    mock_button = Gtk.ModelButton()
+    mock_button.set_label("1.0 : Group A")
+    fader_edit._on_contents_changed(mock_button, FaderType.GROUP, 1.0)
+    process_events()
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert (
+        getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
+        is not None
+    )
+
+    # Simulate raising the fader to 50%
+    app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.5
+
+    # 4. Change contents to Group B (2.0)
+    app_gui.core.lightshow.groups.add(Group(2.0, {}, "Group B"))
+    process_events()
+    mock_button2 = Gtk.ModelButton()
+    mock_button2.set_label("2.0 : Group B")
+    fader_edit._on_contents_changed(mock_button2, FaderType.GROUP, 2.0)
+    process_events()
+
+    # The fader level is reset to 0 upon content change
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
+    contents_b = getattr(
+        app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None
+    )
+    assert contents_b is not None
+    assert contents_b.index == 2.0
+
+    # Raise the fader again to 50%
+    app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
+
+    # 5. First Ctrl+Z (reverts contents to Group A)
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    # The level must be reset to 0 because content changed back to Group A (1.0)
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
+    contents_a = getattr(
+        app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None
+    )
+    assert contents_a is not None
+    assert contents_a.index == 1.0
+
+    # Raise the fader again to 50%
+    app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
+
+    # 6. Second Ctrl+Z (reverts contents to None)
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.GROUP
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
+    assert (
+        getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
+        is None
+    )
+
+    # Raise the fader again to 50% (should be inert on a type with None contents,
+    # but let's test the type change level reset)
+    app_gui.core.lightshow.fader_bank.faders[1][1].set_level(0.5)
+
+    # 7. Third Ctrl+Z (reverts type to NONE)
+    app_gui.activate_action("undo", None)
+    process_events()
+    assert app_gui.core.lightshow.fader_bank.get_fader_type(1, 1) == FaderType.NONE
+    assert app_gui.core.lightshow.fader_bank.faders[1][1].level == 0.0
+    assert (
+        getattr(app_gui.core.lightshow.fader_bank.faders[1][1], "contents", None)
+        is None
+    )

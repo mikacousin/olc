@@ -202,6 +202,12 @@ class GuiEventBridge:
             ),
         )
         self.app.core.subscribe(
+            "fader.changed",
+            lambda page, index: self._run_idle(
+                self._on_fader_assignment_changed, page, index
+            ),
+        )
+        self.app.core.subscribe(
             "group.selected_changed",
             lambda group_nb: self._run_idle(self._on_group_selected_changed, group_nb),
         )
@@ -1092,6 +1098,22 @@ class GuiEventBridge:
         """Queue a redraw on the virtual console flash button."""
         if self.app.virtual_console:
             self.app.virtual_console.flashes[fader_index - 1].queue_draw()
+        return False
+
+    def _on_fader_assignment_changed(self, _page: int, _index: int) -> bool:
+        """Refresh the FaderTab when a fader assignment changes
+        (assign/clear/undo/redo).
+
+        Args:
+            _page: Fader page number (unused, full refresh is simpler).
+            _index: Fader index within the page (unused).
+
+        Returns:
+            Always False (required for GLib.idle_add to remove the callback).
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("faders") is not None:
+            fader_tab = typing.cast(FaderTab, self.app.tabs.tabs["faders"])
+            fader_tab.refresh()
         return False
 
 
