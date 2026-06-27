@@ -1129,6 +1129,39 @@ class VirtualConsoleWindow(Gtk.Window):
 
         self.independents.show_all()
 
+    def rebuild_independent(self, number: int) -> None:
+        """Rebuild a specific independent widget on type change.
+
+        Args:
+            number: The independent number (1 to 9).
+        """
+        idx = number - 1
+        if not 0 <= idx < len(self.independent_widgets):
+            return
+
+        old_widget = self.independent_widgets[idx]
+        self.independents.remove(old_widget)
+
+        inde = self.app.core.lightshow.independents.independents[idx]
+        name = f"inde_{inde.number}"
+
+        if inde.inde_type == IndependentType.BUTTON:
+            widget: KnobWidget | ToggleWidget = ToggleWidget(self.app.midi, text=name)
+            widget.connect("clicked", self._inde_clicked)
+            if inde.level > 0.5:
+                widget.set_active(True)
+        else:
+            widget = KnobWidget(self.app.midi, text=name)
+            widget.connect("clicked", self._inde_clicked)
+            widget.connect("changed", self._inde_changed)
+            widget.value = inde.level * 255
+
+        self.independent_widgets[idx] = widget
+        col = idx % 3
+        row = idx // 3
+        self.independents.attach(widget, col, row, 1, 1)
+        widget.show_all()
+
     @property
     def independent1(self) -> KnobWidget:
         """Get independent 1 widget."""

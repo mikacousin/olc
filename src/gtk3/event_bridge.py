@@ -1175,7 +1175,7 @@ class GuiEventBridge:
             indes_tab = typing.cast(typing.Any, self.app.tabs.tabs["indes"])
             indes_tab.refresh()
         if self.app.virtual_console:
-            self.app.virtual_console.build_independents()
+            self.app.virtual_console.rebuild_independent(_number)
         return False
 
 
