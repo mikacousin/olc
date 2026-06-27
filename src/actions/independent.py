@@ -159,3 +159,52 @@ class IndependentRenameAction(Action):
     def redo(self) -> None:
         """Re-rename the independent."""
         self.execute()
+
+
+class IndependentChangeTypeAction(Action):
+    """Action to change the type (knob or button) of an independent."""
+
+    name = "independent.change_type"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.number: int = 1
+        self.inde_type: str = "knob"
+        self.old_inde_type: str = "knob"
+
+    def configure(self, number: int, inde_type: str) -> None:
+        """Configure the action parameters.
+
+        Args:
+            number: Independent number (1 to 9).
+            inde_type: New type (knob or button).
+        """
+        self.number = number
+        self.inde_type = inde_type
+
+    def execute(self) -> None:
+        """Change the independent type."""
+        independents = self.app.lightshow.independents
+        inde = independents.independents[self.number - 1]
+        self.old_inde_type = inde.inde_type
+        inde.inde_type = self.inde_type
+        self.app.lightshow.set_modified()
+        self.app.emit("independent.type_changed", self.number, self.inde_type)
+
+    def undo(self) -> None:
+        """Restore the previous type."""
+        independents = self.app.lightshow.independents
+        inde = independents.independents[self.number - 1]
+        inde.inde_type = self.old_inde_type
+        self.app.lightshow.set_modified()
+        self.app.emit("independent.type_changed", self.number, self.old_inde_type)
+
+    def redo(self) -> None:
+        """Re-apply the type change."""
+        self.execute()

@@ -310,63 +310,8 @@ class VirtualConsoleWindow(Gtk.Window):
 
         # Independents
         self.independents = Gtk.Grid()
-        self.independent1 = KnobWidget(self.app.midi, text="inde_1")
-        self.independent1.connect("clicked", self._inde_clicked)
-        self.independent1.connect("changed", self._inde_changed)
-        self.independent1.value = self.app.core.lightshow.independents.independents[
-            0
-        ].level
-        self.independent2 = KnobWidget(self.app.midi, text="inde_2")
-        self.independent2.connect("clicked", self._inde_clicked)
-        self.independent2.connect("changed", self._inde_changed)
-        self.independent2.value = self.app.core.lightshow.independents.independents[
-            1
-        ].level
-        self.independent3 = KnobWidget(self.app.midi, text="inde_3")
-        self.independent3.connect("clicked", self._inde_clicked)
-        self.independent3.connect("changed", self._inde_changed)
-        self.independent3.value = self.app.core.lightshow.independents.independents[
-            2
-        ].level
-        self.independent4 = KnobWidget(self.app.midi, text="inde_4")
-        self.independent4.connect("clicked", self._inde_clicked)
-        self.independent4.connect("changed", self._inde_changed)
-        self.independent4.value = self.app.core.lightshow.independents.independents[
-            3
-        ].level
-        self.independent5 = KnobWidget(self.app.midi, text="inde_5")
-        self.independent5.connect("clicked", self._inde_clicked)
-        self.independent5.connect("changed", self._inde_changed)
-        self.independent5.value = self.app.core.lightshow.independents.independents[
-            4
-        ].level
-        self.independent6 = KnobWidget(self.app.midi, text="inde_6")
-        self.independent6.connect("clicked", self._inde_clicked)
-        self.independent6.connect("changed", self._inde_changed)
-        self.independent6.value = self.app.core.lightshow.independents.independents[
-            5
-        ].level
-        self.independent7 = ToggleWidget(self.app.midi, text="inde_7")
-        self.independent8 = ToggleWidget(self.app.midi, text="inde_8")
-        self.independent9 = ToggleWidget(self.app.midi, text="inde_9")
-        self.independent7.connect("clicked", self._inde_clicked)
-        if self.app.core.lightshow.independents.independents[6].level:
-            self.independent7.set_active(True)
-        self.independent8.connect("clicked", self._inde_clicked)
-        if self.app.core.lightshow.independents.independents[7].level:
-            self.independent8.set_active(True)
-        self.independent9.connect("clicked", self._inde_clicked)
-        if self.app.core.lightshow.independents.independents[8].level:
-            self.independent9.set_active(True)
-        self.independents.attach(self.independent1, 0, 0, 1, 1)
-        self.independents.attach(self.independent2, 1, 0, 1, 1)
-        self.independents.attach(self.independent3, 2, 0, 1, 1)
-        self.independents.attach(self.independent4, 0, 1, 1, 1)
-        self.independents.attach(self.independent5, 1, 1, 1, 1)
-        self.independents.attach(self.independent6, 2, 1, 1, 1)
-        self.independents.attach(self.independent7, 0, 2, 1, 1)
-        self.independents.attach(self.independent8, 1, 2, 1, 1)
-        self.independents.attach(self.independent9, 2, 2, 1, 1)
+        self.independent_widgets: list[KnobWidget | ToggleWidget] = []
+        self.build_independents()
 
         # Go, Seq-, Seq+, Pause, Go Back
         self.go_pad = Gtk.Grid()
@@ -1061,42 +1006,30 @@ class VirtualConsoleWindow(Gtk.Window):
         Args:
             widget: Object clicked
         """
-        mapping = {
-            self.independent1: ("inde_1", None),
-            self.independent2: ("inde_2", None),
-            self.independent3: ("inde_3", None),
-            self.independent4: ("inde_4", None),
-            self.independent5: ("inde_5", None),
-            self.independent6: ("inde_6", None),
-            self.independent7: ("inde_7", 6),
-            self.independent8: ("inde_8", 7),
-            self.independent9: ("inde_9", 8),
-        }
-
-        if widget not in mapping:
+        if widget not in self.independent_widgets:
             return
 
-        name, inde_idx = mapping[widget]
+        idx = self.independent_widgets.index(widget)
+        inde = self.app.core.lightshow.independents.independents[idx]
+        name = f"inde_{inde.number}"
 
         if self.is_learning_midi and self.app.midi is not None:
             self.app.midi.learning = name
-            if widget in (self.independent7, self.independent8, self.independent9):
-                typing.cast(typing.Any, widget).set_active(False)
+            if isinstance(widget, ToggleWidget):
+                widget.set_active(False)
             self.queue_draw()
-        elif inde_idx is not None:
+        elif isinstance(widget, ToggleWidget):
             if self.updating_independent:
                 return
-            level = 1.0 if typing.cast(typing.Any, widget).get_active() else 0.0
+            level = 1.0 if widget.get_active() else 0.0
             if self.app is not None and hasattr(self.app.core, "action_registry"):
                 self.app.core.action_registry.execute(
-                    "independent.set_level", inde_idx + 1, level
+                    "independent.set_level", inde.number, level
                 )
             else:
                 raw_level = round(level * 255)
-                self.app.core.lightshow.independents.independents[
-                    inde_idx
-                ].level = raw_level
-                self.app.core.lightshow.independents.independents[inde_idx].update_dmx()
+                inde.level = raw_level
+                inde.update_dmx()
 
     def _inde_changed(self, widget: Gtk.Widget) -> None:
         """Independent value changed
@@ -1108,31 +1041,23 @@ class VirtualConsoleWindow(Gtk.Window):
             return
         if self.updating_independent:
             return
-        if widget == self.independent1:
-            index = 0
-        elif widget == self.independent2:
-            index = 1
-        elif widget == self.independent3:
-            index = 2
-        elif widget == self.independent4:
-            index = 3
-        elif widget == self.independent5:
-            index = 4
-        elif widget == self.independent6:
-            index = 5
-        else:
+        if widget not in self.independent_widgets:
             return
-        value = typing.cast(typing.Any, widget).value
+        idx = self.independent_widgets.index(typing.cast(typing.Any, widget))
+        if not isinstance(widget, KnobWidget):
+            return
+
+        value = widget.value
         level_float = value / 255.0
+        inde = self.app.core.lightshow.independents.independents[idx]
         if self.app is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute(
-                "independent.set_level", index + 1, level_float
+                "independent.set_level", inde.number, level_float
             )
         else:
-            inde = self.app.core.lightshow.independents.independents[index]
             inde.set_level(int(value))
             if self.app.midi is not None:
-                midi_fader = self.app.midi.faders.inde_faders[index]
+                midi_fader = self.app.midi.faders.inde_faders[idx]
                 midi_fader.set_state(int(value))
 
     def queue_draw(self) -> None:
@@ -1148,7 +1073,7 @@ class VirtualConsoleWindow(Gtk.Window):
                 is_learning = True
             self.pause.is_learning = is_learning
 
-        for attr in self.__dict__.values():
+        for attr in list(self.__dict__.values()) + list(self.independent_widgets):
             if isinstance(attr, ButtonWidget):
                 is_learning = False
                 if (
@@ -1163,23 +1088,87 @@ class VirtualConsoleWindow(Gtk.Window):
         """Update independent slider or button state in GUI."""
         self.updating_independent = True
         try:
-            if number == 1:
-                self.independent1.value = level * 255
-            elif number == 2:
-                self.independent2.value = level * 255
-            elif number == 3:
-                self.independent3.value = level * 255
-            elif number == 4:
-                self.independent4.value = level * 255
-            elif number == 5:
-                self.independent5.value = level * 255
-            elif number == 6:
-                self.independent6.value = level * 255
-            elif number == 7:
-                self.independent7.set_active(level > 0.5)
-            elif number == 8:
-                self.independent8.set_active(level > 0.5)
-            elif number == 9:
-                self.independent9.set_active(level > 0.5)
+            idx = number - 1
+            if 0 <= idx < len(self.independent_widgets):
+                widget = self.independent_widgets[idx]
+                if isinstance(widget, KnobWidget):
+                    widget.value = level * 255
+                elif isinstance(widget, ToggleWidget):
+                    widget.set_active(level > 0.5)
         finally:
             self.updating_independent = False
+
+    def build_independents(self) -> None:
+        """Dynamically build independent widgets based on model configuration."""
+        for child in self.independents.get_children():
+            self.independents.remove(child)
+
+        self.independent_widgets = []
+        indes = self.app.core.lightshow.independents.independents
+
+        for idx, inde in enumerate(indes):
+            name = f"inde_{inde.number}"
+            if inde.inde_type == "button":
+                widget: KnobWidget | ToggleWidget = ToggleWidget(
+                    self.app.midi, text=name
+                )
+                widget.connect("clicked", self._inde_clicked)
+                if inde.level > 0.5:
+                    widget.set_active(True)
+            else:
+                widget = KnobWidget(self.app.midi, text=name)
+                widget.connect("clicked", self._inde_clicked)
+                widget.connect("changed", self._inde_changed)
+                widget.value = inde.level * 255
+
+            self.independent_widgets.append(widget)
+            col = idx % 3
+            row = idx // 3
+            self.independents.attach(widget, col, row, 1, 1)
+
+        self.independents.show_all()
+
+    @property
+    def independent1(self) -> KnobWidget:
+        """Get independent 1 widget."""
+        return typing.cast(KnobWidget, self.independent_widgets[0])
+
+    @property
+    def independent2(self) -> KnobWidget:
+        """Get independent 2 widget."""
+        return typing.cast(KnobWidget, self.independent_widgets[1])
+
+    @property
+    def independent3(self) -> KnobWidget:
+        """Get independent 3 widget."""
+        return typing.cast(KnobWidget, self.independent_widgets[2])
+
+    @property
+    def independent4(self) -> KnobWidget:
+        """Get independent 4 widget."""
+        return typing.cast(KnobWidget, self.independent_widgets[3])
+
+    @property
+    def independent5(self) -> KnobWidget:
+        """Get independent 5 widget."""
+        return typing.cast(KnobWidget, self.independent_widgets[4])
+
+    @property
+    def independent6(self) -> KnobWidget:
+        """Get independent 6 widget."""
+        return typing.cast(KnobWidget, self.independent_widgets[5])
+
+    @property
+    def independent7(self) -> ToggleWidget:
+        """Get independent 7 widget."""
+        return typing.cast(ToggleWidget, self.independent_widgets[6])
+
+    @property
+    def independent8(self) -> ToggleWidget:
+        """Get independent 8 widget."""
+        return typing.cast(ToggleWidget, self.independent_widgets[7])
+
+    @property
+    def independent9(self) -> ToggleWidget:
+        """Get independent 9 widget."""
+        return typing.cast(ToggleWidget, self.independent_widgets[8])

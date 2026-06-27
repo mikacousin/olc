@@ -62,6 +62,7 @@ from olc.actions.group import (
     NewGroupAction,
 )
 from olc.actions.independent import (
+    IndependentChangeTypeAction,
     IndependentRenameAction,
     IndependentSetLevelAction,
     IndependentUpdateChannelsAction,
@@ -159,6 +160,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         IndependentRenameAction,
         IndependentSetLevelAction,
         IndependentUpdateChannelsAction,
+        IndependentChangeTypeAction,
     ]
 
     for action_class in actions_to_register:

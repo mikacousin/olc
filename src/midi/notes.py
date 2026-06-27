@@ -110,6 +110,12 @@ class MidiNotes:
             "record": [0, -1],
             "time": [0, -1],
             "delay": [0, -1],
+            "inde_1": [0, -1],
+            "inde_2": [0, -1],
+            "inde_3": [0, -1],
+            "inde_4": [0, -1],
+            "inde_5": [0, -1],
+            "inde_6": [0, -1],
             "inde_7": [0, 32],
             "inde_8": [0, 33],
             "inde_9": [0, 34],
@@ -219,6 +225,8 @@ class MidiNotes:
             midi_name: action string
             value: MIDI note velocity
         """
+        if midi_name not in self.cc_notes:
+            return
         channel, control = self.cc_notes[midi_name]
         if control != -1:
             cc_value = 127 if value > 0 else 0

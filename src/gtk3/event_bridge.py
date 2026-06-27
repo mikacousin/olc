@@ -47,6 +47,7 @@ class GuiEventBridge:
     UI refreshes safely on the GTK main loop using GLib.idle_add.
     """
 
+    # pylint: disable=too-many-statements
     def __init__(self, app: Application) -> None:
         """Initialize the event bridge and subscribe to Core events.
 
@@ -222,6 +223,12 @@ class GuiEventBridge:
             "independent.text_changed",
             lambda number, text: self._run_idle(
                 self._on_independent_text_changed, number, text
+            ),
+        )
+        self.app.core.subscribe(
+            "independent.type_changed",
+            lambda number, inde_type: self._run_idle(
+                self._on_independent_type_changed, number, inde_type
             ),
         )
         self.app.core.subscribe(
@@ -1157,6 +1164,15 @@ class GuiEventBridge:
         if self.app.tabs and self.app.tabs.tabs.get("indes") is not None:
             indes_tab = typing.cast(typing.Any, self.app.tabs.tabs["indes"])
             indes_tab.refresh()
+        return False
+
+    def _on_independent_type_changed(self, _number: int, _inde_type: str) -> bool:
+        """Refresh independent edit tab treeview and Virtual Console on type changes."""
+        if self.app.tabs and self.app.tabs.tabs.get("indes") is not None:
+            indes_tab = typing.cast(typing.Any, self.app.tabs.tabs["indes"])
+            indes_tab.refresh()
+        if self.app.virtual_console:
+            self.app.virtual_console.build_independents()
         return False
 
 

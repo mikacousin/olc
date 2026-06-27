@@ -74,11 +74,24 @@ class IndependentsTab(Gtk.Paned):
         self.treeview = Gtk.TreeView(model=self.liststore)
         self.treeview.set_enable_search(False)
         self.treeview.connect("cursor-changed", self.on_changed)
+        # Model for independent type combo box
+        liststore_types = Gtk.ListStore(str)
+        liststore_types.append(["knob"])
+        liststore_types.append(["button"])
+
         for i, column_title in enumerate(["Number", "Type", "Text"]):
-            renderer = Gtk.CellRendererText()
-            if i == 2:
+            if i == 1:
+                renderer = Gtk.CellRendererCombo()
                 renderer.set_property("editable", True)
-                renderer.connect("edited", self.text_edited)
+                renderer.set_property("model", liststore_types)
+                renderer.set_property("text-column", 0)
+                renderer.set_property("has-entry", False)
+                renderer.connect("edited", self.type_edited)
+            else:
+                renderer = Gtk.CellRendererText()
+                if i == 2:
+                    renderer.set_property("editable", True)
+                    renderer.connect("edited", self.text_edited)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             self.treeview.append_column(column)
         scrollable = Gtk.ScrolledWindow()
@@ -118,6 +131,23 @@ class IndependentsTab(Gtk.Paned):
             self.app.core.action_registry.execute("independent.rename", number, text)
         else:
             self.lightshow.independents.independents[number - 1].text = text
+
+    def type_edited(self, _widget: Gtk.Widget, path: str, text: str) -> None:
+        """Independent type edited
+
+        Args:
+            _widget: Widget clicked
+            path: Path to object
+            text: New type (knob or button)
+        """
+        self.liststore[path][1] = text
+        number = self.liststore[path][0]
+        if self.app is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute(
+                "independent.change_type", number, text
+            )
+        else:
+            self.lightshow.independents.independents[number - 1].inde_type = text
 
     def on_key_press_event(
         self, _widget: Gtk.Widget, event: Gdk.EventKey

@@ -193,10 +193,12 @@ class ParsedData:
         for inde_number, values in self.data["independents"].items():
             channels = values.get("channels")
             label = values.get("label")
+            inde_type = values.get("type", "knob")
             for inde in self.lightshow.independents.independents:
                 if inde_number == inde.number:
                     inde.text = label
                     inde.levels = channels
+                    inde.inde_type = inde_type
                     self.lightshow.independents.update(inde)
                     break
 

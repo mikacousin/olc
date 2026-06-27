@@ -42,6 +42,9 @@ class MidiControlChanges:
             "inde_4": [0, 19],
             "inde_5": [0, 20],
             "inde_6": [0, 21],
+            "inde_7": [0, -1],
+            "inde_8": [0, -1],
+            "inde_9": [0, -1],
             "inde_led_1": [0, 48],
             "inde_led_2": [0, 49],
             "inde_led_3": [0, 50],
@@ -87,6 +90,8 @@ class MidiControlChanges:
             midi_name: action string
             value: value to send
         """
+        if midi_name not in self.control_change:
+            return
         channel, control = self.control_change[midi_name]
         if control != -1:
             msg = mido.Message(
