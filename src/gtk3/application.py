@@ -734,6 +734,8 @@ class Application(Gtk.Application):
             self.virtual_console.show_all()
             self.add_window(self.virtual_console)
             self.event_bridge.sync_virtual_console()
+        else:
+            self.virtual_console.present()
 
     def _settings(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

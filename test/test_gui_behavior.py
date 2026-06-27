@@ -939,3 +939,26 @@ def test_fader_set_level_action(app_gui: Application) -> None:
     # Close Virtual Console window
     app_gui.virtual_console.close()
     process_events()
+
+
+def test_virtual_console_present_if_already_open(app_gui: Application) -> None:
+    """Test that virtual_console action calls present() if already open."""
+    # 1. Open the virtual console
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+
+    # 2. Patch present() method
+    from unittest.mock import patch
+
+    with patch.object(app_gui.virtual_console, "present") as mock_present:
+        # 3. Activate action again
+        app_gui.activate_action("virtual_console", None)
+        process_events()
+
+        # 4. Check that present was called
+        mock_present.assert_called_once()
+
+    # Clean up
+    app_gui.virtual_console.close()
+    process_events()
