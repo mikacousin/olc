@@ -18,7 +18,6 @@ from __future__ import annotations
 import typing
 
 from gi.repository import Gdk, Gtk
-from olc.define import MAX_FADER_PAGE
 from olc.gtk3.widgets.button import ButtonWidget
 from olc.gtk3.widgets.controller import ControllerWidget
 from olc.gtk3.widgets.fader import FaderWidget
@@ -504,27 +503,17 @@ class VirtualConsoleWindow(Gtk.Window):
             self.queue_draw()
         else:
             fader_bank = self.app.core.lightshow.fader_bank
+            target_page = fader_bank.active_page
             if widget is self.fader_page_plus:
-                fader_bank.active_page += 1
-                if fader_bank.active_page > MAX_FADER_PAGE:
-                    fader_bank.active_page = 1
+                target_page += 1
             elif widget is self.fader_page_minus:
-                fader_bank.active_page -= 1
-                if fader_bank.active_page < 1:
-                    fader_bank.active_page = MAX_FADER_PAGE
-            self.page_number.set_label(str(fader_bank.active_page))
-            # Redraw Faders and Flashes
-            for fader in fader_bank.faders[fader_bank.active_page].values():
-                text = f"fader_{fader.index + ((fader_bank.active_page - 1) * 10)}"
-                self.faders[fader.index - 1].text = text
-                val = round(fader.level * 255)
-                self.faders[fader.index - 1].set_value(val)
-                self.flashes[fader.index - 1].label = fader.text
-                self.flashes[fader.index - 1].queue_draw()
-            if self.app.midi is not None:
-                for fader in fader_bank.faders[fader_bank.active_page].values():
-                    self.app.midi.faders.faders[fader.index - 1].set_state(fader.level)
-                self.app.midi.messages.lcd.show_faders()
+                target_page -= 1
+
+            if self.app is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute("fader.set_page", target_page)
+            else:
+                fader_bank.active_page = target_page
+                self.update_page_display()
 
     def update_page_display(self) -> None:
         """Update fader page labels and values on virtual console and MIDI."""

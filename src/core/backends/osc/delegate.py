@@ -33,6 +33,20 @@ class OSCDelegate:
 
     def __init__(self, app: CoreApplication) -> None:
         self.app = app
+        self.app.subscribe("fader.page_changed", self._on_fader_page_changed)
+
+    def _on_fader_page_changed(self, page: int) -> None:
+        """Send OSC feedback when the active fader page changes."""
+        if self.app.engine is not None:
+            fader_bank = self.app.lightshow.fader_bank
+            self.app.engine.send_osc("/olc/fader/page", page)
+            for fader in fader_bank.faders[page].values():
+                self.app.engine.send_osc(
+                    f"/olc/fader/1/{fader.index}/label", fader.text
+                )
+                self.app.engine.send_osc(
+                    f"/olc/fader/1/{fader.index}/level", round(fader.level * 255)
+                )
 
     @make_method("/olc/command_line")
     def _commandline(self, _address: str, _args: list) -> None:
@@ -166,40 +180,26 @@ class OSCDelegate:
     @make_method("/olc/fader/page+")
     def _fader_page_plus(self, _address: str, _args: list) -> None:
         fader_bank = self.app.lightshow.fader_bank
-        fader_bank.active_page += 1
-        if fader_bank.active_page > MAX_FADER_PAGE:
-            fader_bank.active_page = 1
-
-        self.app.emit("fader.page_changed", fader_bank.active_page)
-
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/fader/page", fader_bank.active_page)
-            for fader in fader_bank.faders[fader_bank.active_page].values():
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/label", fader.text
-                )
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/level", round(fader.level * 255)
-                )
+        target_page = fader_bank.active_page + 1
+        if self.app is not None and hasattr(self.app, "action_registry"):
+            self.app.action_registry.execute("fader.set_page", target_page)
+        else:
+            if target_page > MAX_FADER_PAGE:
+                target_page = 1
+            fader_bank.active_page = target_page
+            self.app.emit("fader.page_changed", target_page)
 
     @make_method("/olc/fader/page-")
     def _fader_page_minus(self, _address: str, _args: list) -> None:
         fader_bank = self.app.lightshow.fader_bank
-        fader_bank.active_page -= 1
-        if fader_bank.active_page < 1:
-            fader_bank.active_page = MAX_FADER_PAGE
-
-        self.app.emit("fader.page_changed", fader_bank.active_page)
-
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/fader/page", fader_bank.active_page)
-            for fader in fader_bank.faders[fader_bank.active_page].values():
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/label", fader.text
-                )
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{fader.index}/level", round(fader.level * 255)
-                )
+        target_page = fader_bank.active_page - 1
+        if self.app is not None and hasattr(self.app, "action_registry"):
+            self.app.action_registry.execute("fader.set_page", target_page)
+        else:
+            if target_page < 1:
+                target_page = MAX_FADER_PAGE
+            fader_bank.active_page = target_page
+            self.app.emit("fader.page_changed", target_page)
 
     @make_method("/olc/fader/1/*/level")
     def _fader_level(self, address: str, args: list) -> None:

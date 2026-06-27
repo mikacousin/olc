@@ -580,25 +580,19 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.fader_page_plus.emit(
-                    "button-release-event", event
-                )
-        elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.fader_page_plus.emit(
-                    "button-press-event", event
+        if msg.velocity == 127:
+            fader_bank = self.app_delegate.core.lightshow.fader_bank
+            target_page = fader_bank.active_page + 1
+            if self.app_delegate.core is not None and hasattr(
+                self.app_delegate.core, "action_registry"
+            ):
+                self.app_delegate.core.action_registry.execute(
+                    "fader.set_page", target_page
                 )
             else:
-                self.app_delegate.core.lightshow.fader_bank.active_page += 1
-                if (
-                    self.app_delegate.core.lightshow.fader_bank.active_page
-                    > MAX_FADER_PAGE
-                ):
-                    self.app_delegate.core.lightshow.fader_bank.active_page = 1
+                if target_page > MAX_FADER_PAGE:
+                    target_page = 1
+                fader_bank.active_page = target_page
                 self.midi.update_faders()
 
     def page_minus(self, msg: mido.Message) -> None:
@@ -607,24 +601,19 @@ class MidiNotes:
         Args:
             msg: MIDI message
         """
-        if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.fader_page_minus.emit(
-                    "button-release-event", event
-                )
-        elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.fader_page_minus.emit(
-                    "button-press-event", event
+        if msg.velocity == 127:
+            fader_bank = self.app_delegate.core.lightshow.fader_bank
+            target_page = fader_bank.active_page - 1
+            if self.app_delegate.core is not None and hasattr(
+                self.app_delegate.core, "action_registry"
+            ):
+                self.app_delegate.core.action_registry.execute(
+                    "fader.set_page", target_page
                 )
             else:
-                self.app_delegate.core.lightshow.fader_bank.active_page -= 1
-                if self.app_delegate.core.lightshow.fader_bank.active_page < 1:
-                    self.app_delegate.core.lightshow.fader_bank.active_page = (
-                        MAX_FADER_PAGE
-                    )
+                if target_page < 1:
+                    target_page = MAX_FADER_PAGE
+                fader_bank.active_page = target_page
                 self.midi.update_faders()
 
     def _execute_midi_action(self, action: str, msg: mido.Message) -> None:

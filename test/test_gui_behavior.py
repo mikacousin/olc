@@ -962,3 +962,41 @@ def test_virtual_console_present_if_already_open(app_gui: Application) -> None:
     # Clean up
     app_gui.virtual_console.close()
     process_events()
+
+
+def test_fader_set_page_action(app_gui: Application) -> None:
+    """Test that fader.set_page action works and correctly updates Virtual Console."""
+    # 1. Setup Virtual Console GUI
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+
+    # Verify initial page is 1
+    assert app_gui.core.lightshow.fader_bank.active_page == 1
+    assert app_gui.virtual_console.page_number.get_label() == "1"
+
+    # 2. Execute fader.set_page action to switch to page 2
+    app_gui.core.action_registry.execute("fader.set_page", 2)
+    process_events()
+
+    # Verify page is 2 in model and GUI
+    assert app_gui.core.lightshow.fader_bank.active_page == 2
+    assert app_gui.virtual_console.page_number.get_label() == "2"
+
+    # 3. Click Page+ button on Virtual Console (should transition to page 3)
+    app_gui.virtual_console._on_fader_page(app_gui.virtual_console.fader_page_plus)
+    process_events()
+
+    assert app_gui.core.lightshow.fader_bank.active_page == 3
+    assert app_gui.virtual_console.page_number.get_label() == "3"
+
+    # 4. Click Page- button on Virtual Console (should transition back to page 2)
+    app_gui.virtual_console._on_fader_page(app_gui.virtual_console.fader_page_minus)
+    process_events()
+
+    assert app_gui.core.lightshow.fader_bank.active_page == 2
+    assert app_gui.virtual_console.page_number.get_label() == "2"
+
+    # Clean up
+    app_gui.virtual_console.close()
+    process_events()

@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
+from olc.define import MAX_FADER_PAGE
 from olc.fader import FaderType
 
 if typing.TYPE_CHECKING:
@@ -226,3 +227,41 @@ class FaderSetLevelAction(Action):
         fader_bank.faders[self.page][self.index].set_level(self.level)
         if self.page == fader_bank.active_page:
             self.app.emit("fader.level_changed", self.index, self.level)
+
+
+class FaderSetPageAction(Action):
+    """Action to set the active fader page in real time."""
+
+    name = "fader.set_page"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.page: int = 1
+
+    def configure(self, page: int) -> None:
+        """Configure the action parameters.
+
+        Args:
+            page: Fader page number.
+        """
+        self.page = page
+
+    def execute(self) -> None:
+        """Apply the active page to the fader bank and emit event."""
+        fader_bank = self.app.lightshow.fader_bank
+
+        target_page = self.page
+        if target_page < 1:
+            target_page = MAX_FADER_PAGE
+        elif target_page > MAX_FADER_PAGE:
+            target_page = 1
+
+        if fader_bank.active_page != target_page:
+            fader_bank.active_page = target_page
+            self.app.emit("fader.page_changed", target_page)
