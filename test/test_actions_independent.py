@@ -57,9 +57,7 @@ def test_independent_update_channels_action() -> None:
     app = CoreApplication(settings)
 
     received_events = []
-    app.subscribe(
-        "independent.channels_changed", received_events.append
-    )
+    app.subscribe("independent.channels_changed", received_events.append)
 
     inde = app.lightshow.independents.independents[0]
     assert inde.levels == {}
