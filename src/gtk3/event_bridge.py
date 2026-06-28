@@ -241,6 +241,12 @@ class GuiEventBridge:
             lambda cue_id: self._run_idle(self._on_cue_selected_changed, cue_id),
         )
         self.app.core.subscribe(
+            "button.pressed",
+            lambda name, pressed: self._run_idle(
+                self._on_button_pressed, name, pressed
+            ),
+        )
+        self.app.core.subscribe(
             "sequence.created",
             lambda seq: self._run_idle(self._on_sequence_created, seq),
         )
@@ -1176,6 +1182,16 @@ class GuiEventBridge:
             indes_tab.refresh()
         if self.app.virtual_console:
             self.app.virtual_console.rebuild_independent(_number)
+        return False
+
+    def _on_button_pressed(self, name: str, pressed: bool) -> bool:
+        """Handle visual button pressed/released state feedback on Virtual Console."""
+        vc = self.app.virtual_console
+        if vc and hasattr(vc, name):
+            widget = getattr(vc, name)
+            if hasattr(widget, "pressed"):
+                widget.pressed = pressed
+                widget.queue_draw()
         return False
 
 

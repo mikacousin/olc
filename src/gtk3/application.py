@@ -29,6 +29,7 @@ from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 from olc.backends import DMXBackend  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
+from olc.core.binding import MidiBinding, OscBinding  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
@@ -188,6 +189,21 @@ class Application(Gtk.Application):
 
         self.midi = Midi(app_type, refresh_settings)
         self.core.midi = self.midi
+
+        for name, note in [
+            ("playback.go", 94),
+            ("playback.go_back", 86),
+            ("playback.pause", 93),
+            ("playback.sequence_minus", 91),
+            ("playback.sequence_plus", 92),
+        ]:
+            self.core.action_registry.register_binding(
+                name, MidiBinding(name, "note", 0, note)
+            )
+            self.core.action_registry.register_binding(
+                name, OscBinding(name, f"/olc/{name.replace('.', '/')}")
+            )
+
         self.midi.messages.lcd.show_faders()
 
     def do_startup(self) -> None:

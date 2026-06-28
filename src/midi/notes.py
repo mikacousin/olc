@@ -17,7 +17,7 @@ from __future__ import annotations
 import typing
 
 import mido
-from gi.repository import Gdk, GLib
+from gi.repository import GLib
 from olc.define import MAX_FADER_PAGE
 from olc.gtk3.zoom import zoom
 
@@ -29,41 +29,38 @@ if typing.TYPE_CHECKING:
 
 # Mapping for simple actions to avoid duplicating methods.
 # Format: "action_name": ("virtual_console_widget_name",
-#                         Gdk.KEY_*, "command_line_string")
-# - virtual_console_widget_name: The attribute name in self.app_delegate.virtual_console
-# to emit button events.
-# - Gdk.KEY_*: The GDK keyval to simulate if the virtual console is not present.
-# - command_line_string: A character to add directly to the command line
-# (for numbers/dot).
+#                         "core_action_name",
+#                         "command_line_string",
+#                         "keypress_name")
 SIMPLE_ACTION_MAPPING = {
-    "at": ("at_level", Gdk.KEY_equal, None),
-    "percent_plus": ("percent_plus", Gdk.KEY_exclam, None),
-    "percent_minus": ("percent_minus", Gdk.KEY_colon, None),
-    "time": ("time", Gdk.KEY_T, None),
-    "delay": ("delay", Gdk.KEY_D, None),
-    "ch": ("channel", Gdk.KEY_c, None),
-    "thru": ("thru", Gdk.KEY_greater, None),
-    "plus": ("plus", Gdk.KEY_plus, None),
-    "minus": ("minus", Gdk.KEY_minus, None),
-    "all": ("all", Gdk.KEY_a, None),
-    "right": ("right", Gdk.KEY_Right, None),
-    "left": ("left", Gdk.KEY_Left, None),
-    "up": ("up", Gdk.KEY_Up, None),
-    "down": ("down", Gdk.KEY_Down, None),
-    "clear": ("clear", Gdk.KEY_BackSpace, None),
-    "update": ("update", Gdk.KEY_U, None),
-    "record": ("record", Gdk.KEY_R, None),
-    "number_0": ("zero", None, "0"),
-    "number_1": ("one", None, "1"),
-    "number_2": ("two", None, "2"),
-    "number_3": ("three", None, "3"),
-    "number_4": ("four", None, "4"),
-    "number_5": ("five", None, "5"),
-    "number_6": ("six", None, "6"),
-    "number_7": ("seven", None, "7"),
-    "number_8": ("eight", None, "8"),
-    "number_9": ("nine", None, "9"),
-    "dot": ("dot", None, "."),
+    "at": ("at_level", "channel.set_level_from_cmd", None, "equal"),
+    "percent_plus": ("percent_plus", "channel.level_plus", None, "exclam"),
+    "percent_minus": ("percent_minus", "channel.level_minus", None, "colon"),
+    "time": ("time", None, None, "t"),
+    "delay": ("delay", None, None, "d"),
+    "ch": ("channel", "channel.select_active", None, "c"),
+    "thru": ("thru", "channel.select_thru", None, "greater"),
+    "plus": ("plus", "channel.select_add", None, "plus"),
+    "minus": ("minus", "channel.select_remove", None, "minus"),
+    "all": ("all", "channel.select_all", None, "a"),
+    "right": ("right", None, None, "right"),
+    "left": ("left", None, None, "left"),
+    "up": ("up", None, None, "up"),
+    "down": ("down", None, None, "down"),
+    "clear": ("clear", "channel.select_none", None, "backspace"),
+    "update": ("update", None, None, "u"),
+    "record": ("record", None, None, "r"),
+    "number_0": ("zero", None, "0", None),
+    "number_1": ("one", None, "1", None),
+    "number_2": ("two", None, "2", None),
+    "number_3": ("three", None, "3", None),
+    "number_4": ("four", None, "4", None),
+    "number_5": ("five", None, "5", None),
+    "number_6": ("six", None, "6", None),
+    "number_7": ("seven", None, "7", None),
+    "number_8": ("eight", None, "8", None),
+    "number_9": ("nine", None, "9", None),
+    "dot": ("dot", None, ".", None),
 }
 
 
@@ -440,20 +437,13 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.goto.emit(
-                    "button-release-event", event
-                )
+            self.app_delegate.core.emit("button.pressed", "goto", False)
         elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.goto.emit("button-press-event", event)
-            else:
-                self.app_delegate.core.lightshow.main_playback.goto(
-                    self.app_delegate.core.commandline.get_string()
-                )
-                self.app_delegate.core.commandline.set_string("")
+            self.app_delegate.core.emit("button.pressed", "goto", True)
+            self.app_delegate.core.lightshow.main_playback.goto(
+                self.app_delegate.core.commandline.get_string()
+            )
+            self.app_delegate.core.commandline.set_string("")
 
     def sequence_minus(self, msg: mido.Message) -> None:
         """Seq -
@@ -488,19 +478,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.output.emit(
-                    "button-release-event", event
-                )
+            self.app_delegate.core.emit("button.pressed", "output", False)
         elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.output.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.patch_outputs(None, None)
+            self.app_delegate.core.emit("button.pressed", "output", True)
+            self.app_delegate.patch_outputs(None, None)
 
     def seq(self, msg: mido.Message) -> None:
         """Sequences
@@ -509,17 +490,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.seq.emit(
-                    "button-release-event", event
-                )
+            self.app_delegate.core.emit("button.pressed", "seq", False)
         elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.seq.emit("button-press-event", event)
-            else:
-                self.app_delegate.sequences(None, None)
+            self.app_delegate.core.emit("button.pressed", "seq", True)
+            self.app_delegate.sequences(None, None)
 
     def group(self, msg: mido.Message) -> None:
         """Groups
@@ -528,19 +502,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.group.emit(
-                    "button-release-event", event
-                )
+            self.app_delegate.core.emit("button.pressed", "group", False)
         elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.group.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.groups_cb(None, None)
+            self.app_delegate.core.emit("button.pressed", "group", True)
+            self.app_delegate.groups_cb(None, None)
 
     def preset(self, msg: mido.Message) -> None:
         """Presets
@@ -549,19 +514,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.preset.emit(
-                    "button-release-event", event
-                )
+            self.app_delegate.core.emit("button.pressed", "preset", False)
         elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.preset.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.memories_cb(None, None)
+            self.app_delegate.core.emit("button.pressed", "preset", True)
+            self.app_delegate.memories_cb(None, None)
 
     def track(self, msg: mido.Message) -> None:
         """Track channels
@@ -570,19 +526,10 @@ class MidiNotes:
             msg: MIDI message
         """
         if msg.velocity == 0:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                self.app_delegate.virtual_console.track.emit(
-                    "button-release-event", event
-                )
+            self.app_delegate.core.emit("button.pressed", "track", False)
         elif msg.velocity == 127:
-            if self.app_delegate.virtual_console:
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                self.app_delegate.virtual_console.track.emit(
-                    "button-press-event", event
-                )
-            else:
-                self.app_delegate.track_channels(None, None)
+            self.app_delegate.core.emit("button.pressed", "track", True)
+            self.app_delegate.track_channels(None, None)
 
     def page_plus(self, msg: mido.Message) -> None:
         """Increment Fader Page
@@ -632,24 +579,22 @@ class MidiNotes:
         if not mapping:
             return
 
-        vc_attr, keyval, string_to_add = mapping
+        vc_attr, core_action_name, string_to_add, keypress_name = mapping
 
         if msg.velocity == 0:
-            vc = self.app_delegate.virtual_console
-            if vc and hasattr(vc, vc_attr):
-                widget = getattr(vc, vc_attr)
-                event = Gdk.Event(Gdk.EventType.BUTTON_RELEASE)
-                widget.emit("button-release-event", event)
+            if vc_attr:
+                self.app_delegate.core.emit("button.pressed", vc_attr, False)
         elif msg.velocity == 127:
-            vc = self.app_delegate.virtual_console
-            if vc and hasattr(vc, vc_attr):
-                widget = getattr(vc, vc_attr)
-                event = Gdk.Event(Gdk.EventType.BUTTON_PRESS)
-                widget.emit("button-press-event", event)
-            else:
-                if string_to_add is not None:
-                    self.app_delegate.core.commandline.add_string(string_to_add)
-                elif keyval is not None and self.app_delegate.window:
-                    event = Gdk.EventKey()
-                    event.keyval = keyval
-                    self.app_delegate.window.on_key_press_event(None, event)
+            if vc_attr:
+                self.app_delegate.core.emit("button.pressed", vc_attr, True)
+
+            if string_to_add is not None:
+                self.app_delegate.core.commandline.add_string(string_to_add)
+            elif core_action_name is not None:
+                self.app_delegate.core.action_registry.execute(core_action_name)
+            elif keypress_name is not None and self.app_delegate.window:
+                keypress_func = getattr(
+                    self.app_delegate.window, f"_keypress_{keypress_name}", None
+                )
+                if keypress_func:
+                    keypress_func()
