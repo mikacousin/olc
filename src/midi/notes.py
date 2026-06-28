@@ -17,9 +17,7 @@ from __future__ import annotations
 import typing
 
 import mido
-from gi.repository import GLib
 from olc.define import MAX_FADER_PAGE
-from olc.gtk3.zoom import zoom
 
 if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
@@ -161,30 +159,30 @@ class MidiNotes:
             page = int((fader_index - 1) / 10)
             fader = int(fader_index - (page * 10))
             if page + 1 == self.app_delegate.core.lightshow.fader_bank.active_page:
-                GLib.idle_add(self.flash, msg, fader)
+                self.flash(msg, fader)
         elif key[:6] == "fader_":
             fader_index = int(key[6:])
             page = int((fader_index - 1) / 10)
             fader = int(fader_index - (page * 10))
             if page + 1 == self.app_delegate.core.lightshow.fader_bank.active_page:
-                GLib.idle_add(self.fader, msg, fader)
+                self.fader(msg, fader)
         elif key[:5] == "inde_":
-            GLib.idle_add(self._function_inde_button, msg, int(key[5:]))
+            self._function_inde_button(msg, int(key[5:]))
         elif key[:4] == "zoom":
-            GLib.idle_add(self._toggle_zoom, msg)
+            self._toggle_zoom(msg)
         elif key[:6] == "h_plus" or key[:6] == "v_plus":
-            GLib.idle_add(self._zoom_plus, msg)
+            self._zoom_plus(msg)
         elif key[:7] == "h_minus" or key[:7] == "v_minus":
-            GLib.idle_add(self._zoom_minus, msg)
+            self._zoom_minus(msg)
         elif key in SIMPLE_ACTION_MAPPING:
-            GLib.idle_add(self._execute_midi_action, key, msg)
+            self._execute_midi_action(key, msg)
         else:
             method_name = key.rsplit(".", maxsplit=1)[-1]
             func = getattr(self, f"_function_{method_name}", None) or getattr(
                 self, method_name, None
             )
             if func:
-                GLib.idle_add(func, msg)
+                func(msg)
 
     def scan(self, msg: mido.Message) -> None:
         """Scan MIDI notes
@@ -363,13 +361,13 @@ class MidiNotes:
 
     def _zoom_plus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
-        if self.zoom and self.app_delegate.window is not None:
-            zoom("in", self.app_delegate.window)
+        if self.zoom:
+            self.app_delegate.core.zoom("in")
 
     def _zoom_minus(self, _msg: mido.Message) -> None:
         """Zoom plus"""
-        if self.zoom and self.app_delegate.window is not None:
-            zoom("out", self.app_delegate.window)
+        if self.zoom:
+            self.app_delegate.core.zoom("out")
 
     def fader(self, msg: mido.Message, fader_index: int) -> None:
         """Send Fader position when released
@@ -481,7 +479,9 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "output", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "output", True)
-            self.app_delegate.patch_outputs(None, None)
+            self.app_delegate.core.action_registry.execute(
+                "gui.switch_tab", "patch_outputs"
+            )
 
     def seq(self, msg: mido.Message) -> None:
         """Sequences
@@ -493,7 +493,9 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "seq", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "seq", True)
-            self.app_delegate.sequences(None, None)
+            self.app_delegate.core.action_registry.execute(
+                "gui.switch_tab", "sequences"
+            )
 
     def group(self, msg: mido.Message) -> None:
         """Groups
@@ -505,7 +507,7 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "group", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "group", True)
-            self.app_delegate.groups_cb(None, None)
+            self.app_delegate.core.action_registry.execute("gui.switch_tab", "groups")
 
     def preset(self, msg: mido.Message) -> None:
         """Presets
@@ -517,7 +519,7 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "preset", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "preset", True)
-            self.app_delegate.memories_cb(None, None)
+            self.app_delegate.core.action_registry.execute("gui.switch_tab", "memories")
 
     def track(self, msg: mido.Message) -> None:
         """Track channels
@@ -529,7 +531,9 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "track", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "track", True)
-            self.app_delegate.track_channels(None, None)
+            self.app_delegate.core.action_registry.execute(
+                "gui.switch_tab", "track_channels"
+            )
 
     def page_plus(self, msg: mido.Message) -> None:
         """Increment Fader Page

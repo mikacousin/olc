@@ -24,6 +24,9 @@ from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.gtk3.channel_time import ChanneltimeTab
 from olc.gtk3.fader import FaderTab
+from olc.gtk3.patch_outputs import PatchOutputsTab
+from olc.gtk3.widgets.channel import ChannelWidget
+from olc.gtk3.widgets.channels_view import ChannelsView
 from olc.independent import IndependentType
 
 if typing.TYPE_CHECKING:
@@ -33,7 +36,6 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.group import GroupTab
     from olc.gtk3.patch_channels import PatchChannelsTab
-    from olc.gtk3.patch_outputs import PatchOutputsTab
     from olc.gtk3.sequence import SequenceTab
     from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.widgets.group import GroupWidget
@@ -245,6 +247,14 @@ class GuiEventBridge:
             lambda name, pressed: self._run_idle(
                 self._on_button_pressed, name, pressed
             ),
+        )
+        self.app.core.subscribe(
+            "gui.zoom_changed",
+            lambda level: self._run_idle(self._on_zoom_changed, level),
+        )
+        self.app.core.subscribe(
+            "gui.active_tab_changed",
+            lambda tab_name: self._run_idle(self._on_active_tab_changed, tab_name),
         )
         self.app.core.subscribe(
             "sequence.created",
@@ -1192,6 +1202,56 @@ class GuiEventBridge:
             if hasattr(widget, "pressed"):
                 widget.pressed = pressed
                 widget.queue_draw()
+        return False
+
+    def _on_zoom_changed(self, level: float) -> bool:
+        """Handle zoom change event in the active tab/view."""
+        if not self.app.window:
+            return False
+        tab = self.app.window.get_active_tab()
+        if not tab:
+            return False
+
+        view = None
+        if isinstance(tab, (ChannelsView, PatchOutputsTab)):
+            view = tab
+        else:
+            for child in tab.get_children():
+                if isinstance(child, ChannelsView):
+                    view = child
+
+        if view:
+            for flowboxchild in view.flowbox.get_children():
+                flowbox_child = typing.cast(Gtk.FlowBoxChild, flowboxchild)
+                child_widget = flowbox_child.get_child()
+                if child_widget and isinstance(child_widget, ChannelWidget):
+                    child_widget.scale = level
+                    flowboxchild.queue_draw()
+        return False
+
+    def _on_active_tab_changed(self, tab_name: str) -> bool:
+        """Handle active tab change event by switching active tab page."""
+        if tab_name in ("channels", "playback"):
+            if self.app.window:
+                self.app.window.playback.set_current_page(0)
+                self.app.window.playback.grab_focus()
+            return False
+
+        mapping = {
+            "patch_outputs": lambda: self.app.patch_outputs(None, None),
+            "patch_channels": lambda: self.app.patch_channels(None, None),
+            "track_channels": lambda: self.app.track_channels(None, None),
+            "memories": lambda: self.app.memories_cb(None, None),
+            "sequences": lambda: self.app.sequences(None, None),
+            "groups": lambda: self.app.groups_cb(None, None),
+            "indes": lambda: self.app.independents(None, None),
+            "curves": lambda: self.app.curves(None, None),
+            "faders": lambda: self.app.faders(None, None),
+            "settings": lambda: self.app.settings_cb(None, None),
+        }
+
+        if tab_name in mapping:
+            mapping[tab_name]()
         return False
 
 

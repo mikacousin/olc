@@ -349,16 +349,16 @@ class Application(Gtk.Application):
             "import_file": "_import_file",
             "export_ascii": "_export_ascii",
             "patch_outputs": "patch_outputs",
-            "patch_channels": "_patch_channels",
-            "curves": "_curves",
+            "patch_channels": "patch_channels",
+            "curves": "curves",
             "memories": "memories_cb",
             "groups": "groups_cb",
             "sequences": "sequences",
-            "faders": "_faders",
+            "faders": "faders",
             "track_channels": "track_channels",
-            "independents": "_independents",
+            "independents": "independents",
             "virtual_console": "_virtual_console",
-            "settings": "_settings",
+            "settings": "settings_cb",
             "show-help-overlay": "_shortcuts",
             "about": "_about",
             "undo": "_undo",
@@ -620,7 +620,7 @@ class Application(Gtk.Application):
                 self,
             )
 
-    def _patch_channels(
+    def patch_channels(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Channels Tab"""
@@ -697,7 +697,7 @@ class Application(Gtk.Application):
                 self,
             )
 
-    def _curves(
+    def curves(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Curves Edition Tab"""
@@ -712,7 +712,7 @@ class Application(Gtk.Application):
                 self.settings,
             )
 
-    def _faders(
+    def faders(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Faders Tab"""
@@ -727,7 +727,7 @@ class Application(Gtk.Application):
                 self.settings,
             )
 
-    def _independents(
+    def independents(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Independents Tab"""
@@ -753,7 +753,7 @@ class Application(Gtk.Application):
         else:
             self.virtual_console.present()
 
-    def _settings(
+    def settings_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Settings"""

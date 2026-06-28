@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import threading
 import typing
 
 from olc.actions import register_all_actions
@@ -103,6 +104,11 @@ class CoreApplication(EventDispatcher):
         )
         self.selected_cue: typing.Optional[tuple[float, int]] = None
         self.selected_group: typing.Optional[float] = None
+        self.zoom_level: float = 1.0
+        self.active_tab: str = "channels"
+        self._is_zooming: bool = False
+        self._zoom_start_level: float = 1.0
+        self._zoom_timer: typing.Optional[threading.Timer] = None
 
         # Auto-register action classes from the actions package
         self._register_actions()
@@ -159,3 +165,36 @@ class CoreApplication(EventDispatcher):
             self.midi.stop()
         if self.engine:
             self.engine.stop()
+
+    def zoom(self, direction: str) -> None:
+        """Adjust zoom level with debouncing, emitting events in real-time.
+
+        Args:
+            direction: Zoom direction, "in" or "out".
+        """
+        if not self._is_zooming:
+            self._is_zooming = True
+            self._zoom_start_level = self.zoom_level
+
+        current_zoom = self.zoom_level
+        if direction == "in":
+            new_zoom = min(current_zoom + 0.05, 2.0)
+        else:
+            new_zoom = max(current_zoom - 0.05, 0.5)
+
+        self.zoom_level = new_zoom
+        self.emit("gui.zoom_changed", new_zoom)
+
+        if self._zoom_timer is not None:
+            self._zoom_timer.cancel()
+
+        self._zoom_timer = threading.Timer(0.6, self._finalize_zoom)
+        self._zoom_timer.start()
+
+    def _finalize_zoom(self) -> None:
+        """Callback to finalize continuous zoom by executing Core Action."""
+        self._is_zooming = False
+        self._zoom_timer = None
+        final_zoom = self.zoom_level
+        self.zoom_level = self._zoom_start_level
+        self.action_registry.execute("gui.zoom", final_zoom)
