@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import contextlib
 import typing
 from typing import Callable
 
@@ -78,6 +79,7 @@ class Window(Gtk.ApplicationWindow):
         # Full screen
         self.full = False
         self.tabs_manager = tabs
+        self.block_switch_page = 0
 
         super().__init__(title="Open Lighting Console", application=app)
         self.set_default_size(1400, 1080)
@@ -126,6 +128,15 @@ class Window(Gtk.ApplicationWindow):
 
         self.add(paned)
 
+        self.live_view.connect("page-reordered", self._on_page_reordered, "live")
+        self.playback.connect("page-reordered", self._on_page_reordered, "playback")
+
+        self.live_view.connect("page-added", self._on_page_added, "live")
+        self.playback.connect("page-added", self._on_page_added, "playback")
+
+        self.live_view.connect("switch-page", self._on_switch_page, "live")
+        self.playback.connect("switch-page", self._on_switch_page, "playback")
+
         self.set_icon_name("olc")
 
     def get_active_tab(self) -> Gtk.Paned:
@@ -164,17 +175,135 @@ class Window(Gtk.ApplicationWindow):
     def move_tab(self) -> None:
         """Move focused tab on next notebook"""
         focus = typing.cast(typing.Any, self.get_focus())
+        if focus not in (self.live_view, self.playback):
+            return
         page = focus.get_current_page()
+        if page < 0:
+            return
         child = focus.get_nth_page(page)
-        label = focus.get_tab_label(child)
-        if focus is self.live_view:
-            self.live_view.detach_tab(child)
-            self.playback.append_page(child, label)
-            self.playback.set_current_page(-1)
+        tab_name = None
+        if child is self.playback.grid:
+            tab_name = "playback"
+        elif child is self.live_view.channels_view:
+            tab_name = "channels"
         else:
-            self.playback.detach_tab(child)
-            self.live_view.append_page(child, label)
-            self.live_view.set_current_page(-1)
+            if self.app.tabs:
+                for name, widget in self.app.tabs.tabs.items():
+                    if widget is child:
+                        tab_name = name
+                        break
+        if tab_name is None:
+            return
+
+        from_nb = "live" if focus is self.live_view else "playback"
+        to_nb = "playback" if focus is self.live_view else "live"
+        new_index = len(self.app.core.tabs.notebooks[to_nb])
+
+        self.app.core.action_registry.execute(
+            "gui.tab_move", tab_name, from_nb, to_nb, new_index
+        )
+
+    def _on_page_reordered(
+        self,
+        _notebook: Gtk.Notebook,
+        child: Gtk.Widget,
+        page_num: int,
+        notebook_id: str,
+    ) -> None:
+        """Handle manual tab drag and drop reordering by executing Core Action."""
+        tab_name = None
+        if child is self.playback.grid:
+            tab_name = "playback"
+        elif child is self.live_view.channels_view:
+            tab_name = "channels"
+        else:
+            if self.app.tabs:
+                for name, widget in self.app.tabs.tabs.items():
+                    if widget is child:
+                        tab_name = name
+                        break
+        if tab_name is None:
+            return
+
+        logical_index = page_num
+
+        if tab_name in self.app.core.tabs.notebooks[notebook_id]:
+            current_index = self.app.core.tabs.notebooks[notebook_id].index(tab_name)
+            if current_index != logical_index:
+                self.app.core.action_registry.execute(
+                    "gui.tab_move", tab_name, notebook_id, notebook_id, logical_index
+                )
+
+    def _on_page_added(
+        self,
+        _notebook: Gtk.Notebook,
+        child: Gtk.Widget,
+        page_num: int,
+        notebook_id: str,
+    ) -> None:
+        """Handle manual tab drag and drop between notebooks."""
+        if self.block_switch_page > 0:
+            return
+
+        tab_name = None
+        if child is self.playback.grid:
+            tab_name = "playback"
+        elif child is self.live_view.channels_view:
+            tab_name = "channels"
+        else:
+            if self.app.tabs:
+                for name, widget in self.app.tabs.tabs.items():
+                    if widget is child:
+                        tab_name = name
+                        break
+
+        if tab_name is None:
+            return
+
+        if self.app.core.tabs:
+            from_nb = self.app.core.tabs.get_notebook_of_tab(tab_name)
+            if from_nb is not None and from_nb != notebook_id:
+                self.app.core.action_registry.execute(
+                    "gui.tab_move", tab_name, from_nb, notebook_id, page_num
+                )
+
+    @contextlib.contextmanager
+    def blocking_switch_page(self) -> typing.Iterator[None]:
+        """Context manager to block switch-page signals."""
+        self.block_switch_page += 1
+        try:
+            yield
+        finally:
+            self.block_switch_page -= 1
+
+    def _on_switch_page(
+        self,
+        _notebook: Gtk.Notebook,
+        page: Gtk.Widget,
+        page_num: int,
+        notebook_id: str,
+    ) -> None:
+        """Handle manual tab switch by the user."""
+        if self.block_switch_page > 0 or page_num < 0:
+            return
+
+        tab_name = None
+        if page is self.playback.grid:
+            tab_name = "playback"
+        elif page is self.live_view.channels_view:
+            tab_name = "channels"
+        else:
+            if self.app.tabs:
+                for name, widget in self.app.tabs.tabs.items():
+                    if widget is page:
+                        tab_name = name
+                        break
+
+        if tab_name is None:
+            return
+
+        if self.app.core.tabs.active_tabs.get(notebook_id) != tab_name:
+            self.app.core.action_registry.execute("gui.tab_open", tab_name, notebook_id)
 
     def update_channels_display(self, step: int) -> None:
         """Update Channels levels display

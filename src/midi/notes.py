@@ -480,7 +480,7 @@ class MidiNotes:
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "output", True)
             self.app_delegate.core.action_registry.execute(
-                "gui.switch_tab", "patch_outputs"
+                "gui.tab_open", "patch_outputs"
             )
 
     def seq(self, msg: mido.Message) -> None:
@@ -493,9 +493,7 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "seq", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "seq", True)
-            self.app_delegate.core.action_registry.execute(
-                "gui.switch_tab", "sequences"
-            )
+            self.app_delegate.core.action_registry.execute("gui.tab_open", "sequences")
 
     def group(self, msg: mido.Message) -> None:
         """Groups
@@ -507,7 +505,7 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "group", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "group", True)
-            self.app_delegate.core.action_registry.execute("gui.switch_tab", "groups")
+            self.app_delegate.core.action_registry.execute("gui.tab_open", "groups")
 
     def preset(self, msg: mido.Message) -> None:
         """Presets
@@ -519,7 +517,7 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "preset", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "preset", True)
-            self.app_delegate.core.action_registry.execute("gui.switch_tab", "memories")
+            self.app_delegate.core.action_registry.execute("gui.tab_open", "memories")
 
     def track(self, msg: mido.Message) -> None:
         """Track channels
@@ -532,7 +530,7 @@ class MidiNotes:
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "track", True)
             self.app_delegate.core.action_registry.execute(
-                "gui.switch_tab", "track_channels"
+                "gui.tab_open", "track_channels"
             )
 
     def page_plus(self, msg: mido.Message) -> None:

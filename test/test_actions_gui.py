@@ -48,30 +48,79 @@ def test_zoom_action() -> None:
     assert received_events == [1.5, 1.0, 1.5]
 
 
-def test_switch_tab_action() -> None:
-    """Test SwitchTabAction and its undo/redo."""
+def test_tab_actions() -> None:
+    """Test tab management actions (open, close, move) and their undo/redo."""
     settings = MagicMock()
     app = CoreApplication(settings)
 
-    received_events = []
-    app.subscribe("gui.active_tab_changed", received_events.append)
+    assert app.tabs.active_tabs["playback"] == "playback"
+    assert app.tabs.notebooks["playback"] == ["playback"]
 
-    assert app.active_tab == "channels"
+    # 1. Execute tab_open for "patch_outputs"
+    app.action_registry.execute("gui.tab_open", "patch_outputs", "playback")
+    assert app.tabs.active_tabs["playback"] == "patch_outputs"
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs"]
 
-    # Execute switch
-    app.action_registry.execute("gui.switch_tab", "patch_outputs")
-    assert app.active_tab == "patch_outputs"
-    assert received_events == ["patch_outputs"]
-
-    # Undo
+    # Undo open (should close it and revert active tab to "playback")
     app.history.undo()
-    assert app.active_tab == "channels"
-    assert received_events == ["patch_outputs", "channels"]
+    assert app.tabs.active_tabs["playback"] == "playback"
+    assert app.tabs.notebooks["playback"] == ["playback"]
 
-    # Redo
+    # Redo open
     app.history.redo()
-    assert app.active_tab == "patch_outputs"
-    assert received_events == ["patch_outputs", "channels", "patch_outputs"]
+    assert app.tabs.active_tabs["playback"] == "patch_outputs"
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs"]
+
+    # 2. Open another tab "memories"
+    app.action_registry.execute("gui.tab_open", "memories", "playback")
+    assert app.tabs.active_tabs["playback"] == "memories"
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs", "memories"]
+
+    # 3. Move "memories" within same notebook to index 0
+    app.action_registry.execute("gui.tab_move", "memories", "playback", "playback", 0)
+    assert app.tabs.notebooks["playback"] == ["memories", "playback", "patch_outputs"]
+
+    # Undo move
+    app.history.undo()
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs", "memories"]
+
+    # Redo move
+    app.history.redo()
+    assert app.tabs.notebooks["playback"] == ["memories", "playback", "patch_outputs"]
+
+    # 4. Close "memories"
+    app.action_registry.execute("gui.tab_close", "memories")
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs"]
+    assert app.tabs.active_tabs["playback"] == "playback"
+
+    # Undo close
+    app.history.undo()
+    assert app.tabs.notebooks["playback"] == ["memories", "playback", "patch_outputs"]
+    assert app.tabs.active_tabs["playback"] == "memories"
+
+    # 5. Move "memories" between notebooks (playback to live)
+    assert app.tabs.notebooks["live"] == ["channels"]
+    assert app.tabs.active_tabs["live"] == "channels"
+
+    app.action_registry.execute("gui.tab_move", "memories", "playback", "live", 0)
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs"]
+    assert app.tabs.active_tabs["playback"] == "playback"
+    assert app.tabs.notebooks["live"] == ["memories", "channels"]
+    assert app.tabs.active_tabs["live"] == "memories"
+
+    # Undo move between notebooks
+    app.history.undo()
+    assert app.tabs.notebooks["playback"] == ["memories", "playback", "patch_outputs"]
+    assert app.tabs.active_tabs["playback"] == "memories"
+    assert app.tabs.notebooks["live"] == ["channels"]
+    assert app.tabs.active_tabs["live"] == "channels"
+
+    # Redo move between notebooks
+    app.history.redo()
+    assert app.tabs.notebooks["playback"] == ["playback", "patch_outputs"]
+    assert app.tabs.active_tabs["playback"] == "playback"
+    assert app.tabs.notebooks["live"] == ["memories", "channels"]
+    assert app.tabs.active_tabs["live"] == "memories"
 
 
 def test_zoom_debouncing() -> None:

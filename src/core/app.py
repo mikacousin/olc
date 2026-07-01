@@ -25,6 +25,7 @@ from olc.core.history import HistoryManager
 from olc.core.lightshow import LightShow
 from olc.core.registry import ActionRegistry
 from olc.core.selection import SelectionManager
+from olc.core.tabs import CoreTabs
 
 if typing.TYPE_CHECKING:
     from olc.backends import DMXBackend
@@ -50,6 +51,7 @@ class CoreApplication(EventDispatcher):
     history: HistoryManager
     selected_cue: typing.Optional[tuple[float, int]]
     selected_group: typing.Optional[float]
+    tabs: CoreTabs
 
     @property
     def core(self) -> CoreApplication:
@@ -105,7 +107,7 @@ class CoreApplication(EventDispatcher):
         self.selected_cue: typing.Optional[tuple[float, int]] = None
         self.selected_group: typing.Optional[float] = None
         self.zoom_level: float = 1.0
-        self.active_tab: str = "channels"
+        self.tabs: CoreTabs = CoreTabs(typing.cast(typing.Any, self))
         self._is_zooming: bool = False
         self._zoom_start_level: float = 1.0
         self._zoom_timer: typing.Optional[threading.Timer] = None

@@ -612,73 +612,67 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Outputs Tab"""
+        self.core.action_registry.execute("gui.tab_open", "patch_outputs")
+
+    def open_patch_outputs(self) -> None:
+        """Open Patch Outputs tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "patch_outputs",
-                PatchOutputsTab,
-                "Patch Outputs",
-                self,
-            )
+            self.tabs.open("patch_outputs", PatchOutputsTab, "Patch Outputs", self)
 
     def patch_channels(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Patch Channels Tab"""
+        self.core.action_registry.execute("gui.tab_open", "patch_channels")
+
+    def open_patch_channels(self) -> None:
+        """Open Patch Channels tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "patch_channels",
-                PatchChannelsTab,
-                "Patch Channels",
-                self,
-            )
+            self.tabs.open("patch_channels", PatchChannelsTab, "Patch Channels", self)
 
     def track_channels(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Track Channels Tab"""
+        self.core.action_registry.execute("gui.tab_open", "track_channels")
+
+    def open_track_channels(self) -> None:
+        """Open Track Channels tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "track_channels",
-                TrackChannelsTab,
-                "Track Channels",
-                self,
-            )
+            self.tabs.open("track_channels", TrackChannelsTab, "Track Channels", self)
 
     def memories_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Memories Tab"""
+        self.core.action_registry.execute("gui.tab_open", "memories")
+
+    def open_memories(self) -> None:
+        """Open Memories tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "memories",
-                CuesEditionTab,
-                "Memories",
-                self,
-            )
+            self.tabs.open("memories", CuesEditionTab, "Memories", self)
 
     def groups_cb(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Groups Tab"""
+        self.core.action_registry.execute("gui.tab_open", "groups")
+
+    def open_groups(self) -> None:
+        """Open Groups tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "groups",
-                GroupTab,
-                "Groups",
-                self,
-            )
+            self.tabs.open("groups", GroupTab, "Groups", self)
 
     def sequences(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Sequences Tab"""
+        self.core.action_registry.execute("gui.tab_open", "sequences")
+
+    def open_sequences(self) -> None:
+        """Open Sequences tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "sequences",
-                SequenceTab,
-                "Sequences",
-                self,
-            )
+            self.tabs.open("sequences", SequenceTab, "Sequences", self)
 
     def channeltime(self, sequence: Sequence, step: int) -> None:
         """Create Channel Time Tab
@@ -701,6 +695,10 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Curves Edition Tab"""
+        self.core.action_registry.execute("gui.tab_open", "curves")
+
+    def open_curves(self) -> None:
+        """Open Curves tab UI."""
         if self.tabs:
             self.tabs.open(
                 "curves",
@@ -716,6 +714,10 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Faders Tab"""
+        self.core.action_registry.execute("gui.tab_open", "faders")
+
+    def open_faders(self) -> None:
+        """Open Faders tab UI."""
         if self.tabs:
             self.tabs.open(
                 "faders",
@@ -731,13 +733,12 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Independents Tab"""
+        self.core.action_registry.execute("gui.tab_open", "indes")
+
+    def open_independents(self) -> None:
+        """Open Independents tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "indes",
-                IndependentsTab,
-                "Independents",
-                self,
-            )
+            self.tabs.open("indes", IndependentsTab, "Independents", self)
 
     def _virtual_console(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
@@ -757,13 +758,12 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Settings"""
+        self.core.action_registry.execute("gui.tab_open", "settings")
+
+    def open_settings(self) -> None:
+        """Open Settings tab UI."""
         if self.tabs:
-            self.tabs.open(
-                "settings",
-                SettingsTab,
-                "Settings",
-                self,
-            )
+            self.tabs.open("settings", SettingsTab, "Settings", self)
 
     def _shortcuts(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

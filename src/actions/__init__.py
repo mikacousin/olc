@@ -61,7 +61,7 @@ from olc.actions.group import (
     GroupUpdateChannelsAction,
     NewGroupAction,
 )
-from olc.actions.gui import SwitchTabAction, ZoomAction
+from olc.actions.gui import TabCloseAction, TabMoveAction, TabOpenAction, ZoomAction
 from olc.actions.independent import (
     IndependentChangeTypeAction,
     IndependentRenameAction,
@@ -163,7 +163,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         IndependentUpdateChannelsAction,
         IndependentChangeTypeAction,
         ZoomAction,
-        SwitchTabAction,
+        TabOpenAction,
+        TabCloseAction,
+        TabMoveAction,
     ]
 
     for action_class in actions_to_register:

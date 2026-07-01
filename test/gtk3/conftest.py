@@ -139,8 +139,14 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
         for tab_name in list(app.tabs.tabs.keys()):
             app.tabs.close(tab_name)
 
+    if app.window:
+        app.window.show_all()
+
     process_events()
 
     yield app
+
+    if app.window:
+        app.window.hide()
 
     process_events()

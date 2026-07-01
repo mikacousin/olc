@@ -253,8 +253,34 @@ class GuiEventBridge:
             lambda level: self._run_idle(self._on_zoom_changed, level),
         )
         self.app.core.subscribe(
+            "gui.tab_opened",
+            lambda tab_name, nb_id: self._run_idle(
+                self._on_tab_opened, tab_name, nb_id
+            ),
+        )
+        self.app.core.subscribe(
+            "gui.tab_opened_at",
+            lambda tab_name, nb_id, index: self._run_idle(
+                self._on_tab_opened_at, tab_name, nb_id, index
+            ),
+        )
+        self.app.core.subscribe(
+            "gui.tab_closed",
+            lambda tab_name, nb_id: self._run_idle(
+                self._on_tab_closed, tab_name, nb_id
+            ),
+        )
+        self.app.core.subscribe(
             "gui.active_tab_changed",
-            lambda tab_name: self._run_idle(self._on_active_tab_changed, tab_name),
+            lambda tab_name, nb_id: self._run_idle(
+                self._on_active_tab_changed, tab_name, nb_id
+            ),
+        )
+        self.app.core.subscribe(
+            "gui.tab_moved",
+            lambda tab_name, from_nb, to_nb, index: self._run_idle(
+                self._on_tab_moved, tab_name, from_nb, to_nb, index
+            ),
         )
         self.app.core.subscribe(
             "sequence.created",
@@ -1229,29 +1255,88 @@ class GuiEventBridge:
                     flowboxchild.queue_draw()
         return False
 
-    def _on_active_tab_changed(self, tab_name: str) -> bool:
-        """Handle active tab change event by switching active tab page."""
-        if tab_name in ("channels", "playback"):
-            if self.app.window:
-                self.app.window.playback.set_current_page(0)
-                self.app.window.playback.grab_focus()
+    def _on_tab_opened(self, tab_name: str, notebook_id: str) -> bool:
+        """Handle physical tab opening."""
+        if not self.app.window or not self.app.tabs:
             return False
 
-        mapping = {
-            "patch_outputs": lambda: self.app.patch_outputs(None, None),
-            "patch_channels": lambda: self.app.patch_channels(None, None),
-            "track_channels": lambda: self.app.track_channels(None, None),
-            "memories": lambda: self.app.memories_cb(None, None),
-            "sequences": lambda: self.app.sequences(None, None),
-            "groups": lambda: self.app.groups_cb(None, None),
-            "indes": lambda: self.app.independents(None, None),
-            "curves": lambda: self.app.curves(None, None),
-            "faders": lambda: self.app.faders(None, None),
-            "settings": lambda: self.app.settings_cb(None, None),
-        }
+        with self.app.window.blocking_switch_page():
+            app = typing.cast(typing.Any, self.app)
+            mapping = {
+                "patch_outputs": app.open_patch_outputs,
+                "patch_channels": app.open_patch_channels,
+                "track_channels": app.open_track_channels,
+                "memories": app.open_memories,
+                "sequences": app.open_sequences,
+                "groups": app.open_groups,
+                "indes": app.open_independents,
+                "curves": app.open_curves,
+                "faders": app.open_faders,
+                "settings": app.open_settings,
+            }
 
-        if tab_name in mapping:
-            mapping[tab_name]()
+            if tab_name in mapping:
+                original_default = self.app.tabs.default_notebook_id
+                self.app.tabs.default_notebook_id = notebook_id
+                try:
+                    mapping[tab_name]()
+                finally:
+                    self.app.tabs.default_notebook_id = original_default
+        return False
+
+    def _on_tab_opened_at(self, tab_name: str, notebook_id: str, index: int) -> bool:
+        """Handle physical tab opening at a specific index."""
+        if not self.app.window:
+            return False
+        with self.app.window.blocking_switch_page():
+            self._on_tab_opened(tab_name, notebook_id)
+            if self.app.tabs:
+                self.app.tabs.move(tab_name, notebook_id, notebook_id, index)
+        return False
+
+    def _on_tab_closed(self, tab_name: str, _notebook_id: str) -> bool:
+        """Handle physical tab closing."""
+        if not self.app.window:
+            return False
+        with self.app.window.blocking_switch_page():
+            if self.app.tabs:
+                self.app.tabs.close_physically(tab_name)
+        return False
+
+    def _on_active_tab_changed(self, tab_name: str, notebook_id: str) -> bool:
+        """Handle active tab change event by switching active tab page."""
+        if not self.app.window:
+            return False
+
+        with self.app.window.blocking_switch_page():
+            is_dyn = tab_name not in ("playback", "channels")
+            if self.app.tabs and is_dyn and self.app.tabs.tabs[tab_name] is None:
+                self._on_tab_opened(tab_name, notebook_id)
+            else:
+                if tab_name == "playback":
+                    tab = self.app.window.playback.grid
+                elif tab_name == "channels":
+                    tab = self.app.window.live_view.channels_view
+                else:
+                    tab = self.app.tabs.tabs[tab_name] if self.app.tabs else None
+
+                if tab:
+                    parent = tab.get_parent()
+                    if isinstance(parent, Gtk.Notebook):
+                        page = parent.page_num(tab)
+                        parent.set_current_page(page)
+                        parent.grab_focus()
+        return False
+
+    def _on_tab_moved(
+        self, tab_name: str, from_nb: str, to_nb: str, index: int
+    ) -> bool:
+        """Handle physical tab movement."""
+        if not self.app.window:
+            return False
+        with self.app.window.blocking_switch_page():
+            if self.app.tabs:
+                self.app.tabs.move(tab_name, from_nb, to_nb, index)
         return False
 
 

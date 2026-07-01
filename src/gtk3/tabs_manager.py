@@ -65,6 +65,7 @@ class Tabs:
         self.app = app
         self.window = None
         self.commandline = app.core.commandline
+        self.default_notebook_id = "playback"
 
         self.tabs = {
             "channel_time": None,
@@ -86,6 +87,7 @@ class Tabs:
         widget: typing.Any,  # noqa: ANN401
         label: str,
         *args: object,
+        notebook_id: str = "playback",
     ) -> None:
         """Open tab
 
@@ -94,43 +96,76 @@ class Tabs:
             widget: Widget to open
             label: Tab label
             *args: additional parameters
+            notebook_id: Notebook container ID
         """
         if self.window is None:
             return
+        if tab_name in ("playback", "channels"):
+            tab = (
+                self.window.playback.grid
+                if tab_name == "playback"
+                else self.window.live_view.channels_view
+            )
+            parent = tab.get_parent()
+            if isinstance(parent, Gtk.Notebook):
+                page = parent.page_num(tab)
+                parent.set_current_page(page)
+                parent.grab_focus()
+            return
+
+        if tab_name not in self.tabs:
+            return
+        nb_id = self.default_notebook_id if notebook_id == "playback" else notebook_id
+        notebook = self.window.live_view if nb_id == "live" else self.window.playback
         if self.tabs[tab_name] is None:
             self.tabs[tab_name] = widget(*args)
-            tab = self.tabs[tab_name]
-            assert tab is not None
+            tab_any = typing.cast(typing.Any, self.tabs[tab_name])
             # Label with a close icon
             button = Gtk.Button()
             button.set_relief(Gtk.ReliefStyle.NONE)
             button.add(Gtk.Image.new_from_stock(Gtk.STOCK_CLOSE, Gtk.IconSize.MENU))
             button.connect(
                 "clicked",
-                tab.on_close_icon,
+                tab_any.on_close_icon,
             )
             newlabel = Gtk.Box()
             newlabel.pack_start(Gtk.Label(label=label), False, False, 0)
             newlabel.pack_start(button, False, False, 0)
             newlabel.show_all()
-            self.window.playback.append_page(tab, newlabel)
-            self.window.playback.set_tab_reorderable(tab, True)
-            self.window.playback.set_tab_detachable(tab, True)
+            notebook.append_page(tab_any, newlabel)
+            notebook.set_tab_reorderable(tab_any, True)
+            notebook.set_tab_detachable(tab_any, True)
             self.window.show_all()
-            self.window.playback.set_current_page(-1)
+            notebook.set_current_page(-1)
         else:
             tab = self.tabs[tab_name]
             assert tab is not None
-            page = self.window.playback.page_num(tab)
-            self.window.playback.set_current_page(page)
-        self.window.playback.grab_focus()
+            parent = tab.get_parent()
+            if isinstance(parent, Gtk.Notebook):
+                notebook = parent
+            page = notebook.page_num(tab)
+            notebook.set_current_page(page)
+        notebook.grab_focus()
 
     def close(self, tab_name: str) -> None:
-        """Close tab
+        """Close tab by executing Core Action.
 
         Args:
             tab_name : Tab name found in self.tabs
         """
+        if tab_name not in self.tabs:
+            return
+        if self.tabs[tab_name]:
+            self.app.core.action_registry.execute("gui.tab_close", tab_name)
+
+    def close_physically(self, tab_name: str) -> None:
+        """Physically close and remove the tab widget.
+
+        Args:
+            tab_name: Tab name to remove.
+        """
+        if tab_name not in self.tabs:
+            return
         if self.tabs[tab_name]:
             self.commandline.set_string("")
             tab = self.tabs[tab_name]
@@ -141,6 +176,52 @@ class Tabs:
                 page = notebook_nb.page_num(tab)
                 notebook_nb.remove_page(page)
             self.tabs[tab_name] = None
+
+    def move(self, tab_name: str, _from_nb: str, to_nb: str, new_index: int) -> None:
+        """Physically move the tab widget between or within notebooks.
+
+        Args:
+            tab_name: Tab name.
+            _from_nb: Source notebook ID.
+            to_nb: Target notebook ID.
+            new_index: Target index in notebooks list.
+        """
+        if self.window is None:
+            return
+
+        if tab_name == "playback":
+            tab = self.window.playback.grid
+        elif tab_name == "channels":
+            tab = self.window.live_view.channels_view
+        else:
+            tab = self.tabs.get(tab_name)
+
+        if not tab:
+            return
+
+        to_notebook = self.window.live_view if to_nb == "live" else self.window.playback
+
+        target_physical_index = new_index
+
+        parent = tab.get_parent()
+        if parent is not to_notebook:
+            parent_nb = (
+                typing.cast(Gtk.Notebook, parent) if parent is not None else None
+            )
+            label = (
+                parent_nb.get_tab_label(tab)
+                if parent_nb is not None
+                else Gtk.Label(label=tab_name)
+            )
+            if parent is not None:
+                typing.cast(Gtk.Notebook, parent).detach_tab(tab)
+            to_notebook.append_page(tab, label)
+            to_notebook.set_tab_reorderable(tab, True)
+            to_notebook.set_tab_detachable(tab, True)
+
+        to_notebook.reorder_child(tab, target_physical_index)
+        to_notebook.set_current_page(target_physical_index)
+        to_notebook.grab_focus()
 
     def refresh_all(self) -> None:
         """Refresh all open tabs"""
