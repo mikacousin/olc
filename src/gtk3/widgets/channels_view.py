@@ -319,11 +319,13 @@ class ChannelsView(Gtk.Box):
         )
 
         channel_index = start
+        found = False
         for idx in range(start, MAX_CHANNELS):
             if self.lightshow.patch.is_patched(idx + 1):
                 channel_index = idx
+                found = True
                 break
-        if channel_index + 1 >= MAX_CHANNELS:
+        if not found:
             channel_index = self.lightshow.patch.get_first_patched_channel() - 1
         return channel_index
 
@@ -384,11 +386,13 @@ class ChannelsView(Gtk.Box):
         )
 
         channel_index = start
-        for idx in range(start, 0, -1):
+        found = False
+        for idx in range(start, -1, -1):
             if self.lightshow.patch.is_patched(idx + 1):
                 channel_index = idx
+                found = True
                 break
-        if channel_index < self.lightshow.patch.get_first_patched_channel() - 1:
+        if not found:
             channel_index = self.lightshow.patch.get_last_patched_channel() - 1
         return channel_index
 
