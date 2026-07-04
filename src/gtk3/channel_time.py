@@ -230,13 +230,6 @@ class ChanneltimeTab(Gtk.Paned):
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab with the icon clicked"""
-        # If channel times has no delay and no time, delete it
-        keys = list(self.step.channel_time.keys())
-        for channel in keys:
-            delay = self.step.channel_time[channel].delay
-            time = self.step.channel_time[channel].time
-            if delay == 0.0 and time == 0.0:
-                del self.step.channel_time[channel]
         self.tabs.close("channel_time")
 
     def on_key_press_event(
@@ -282,16 +275,14 @@ class ChanneltimeTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        # If channel times has no delay and no time, delete it
+    def cleanup(self) -> None:
+        """Cleanup channel times with delay=0.0 and time=0.0."""
         keys = list(self.step.channel_time.keys())
         for channel in keys:
             delay = self.step.channel_time[channel].delay
             time = self.step.channel_time[channel].time
             if delay == 0.0 and time == 0.0:
                 del self.step.channel_time[channel]
-        self.tabs.close("channel_time")
 
     def _keypress_backspace(self) -> None:
         self.commandline.set_string("")

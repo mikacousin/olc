@@ -137,9 +137,6 @@ class PatchOutputsTab(Gtk.Box):
 
     def on_close_icon(self, _widget: Gtk.Widget) -> None:
         """Close Tab on close clicked"""
-        if self.test:
-            self._stop_test()
-        self.backend.dmx.remove_output_callback(self.on_network_dmx_changed)
         self.tabs.close("patch_outputs")
 
     def select_outputs(self) -> None:
@@ -229,12 +226,11 @@ class PatchOutputsTab(Gtk.Box):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
+    def cleanup(self) -> None:
+        """Stop test and remove network DMX callbacks."""
         if self.test:
             self._stop_test()
         self.backend.dmx.remove_output_callback(self.on_network_dmx_changed)
-        self.tabs.close("patch_outputs")
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""

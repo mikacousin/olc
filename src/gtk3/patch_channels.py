@@ -153,10 +153,6 @@ class PatchChannelsTab(Gtk.Box):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("patch_channels")
-
     def _keypress_backspace(self) -> None:
         self.commandline.set_string("")
 

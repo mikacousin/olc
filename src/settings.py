@@ -221,11 +221,6 @@ class SettingsTab(Gtk.Box):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        if self.tabs is not None:
-            self.tabs.close("settings")
-
     def on_combo_change(self, _widget: Gtk.Widget, path: str, text: str) -> None:
         """Change rotatives mode
 

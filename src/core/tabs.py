@@ -38,6 +38,8 @@ class CoreTabs:
             "live": "channels",
             "playback": "playback",
         }
+        # Currently focused notebook container ID
+        self.active_notebook: str = "playback"
 
     def get_notebook_of_tab(self, tab_name: str) -> typing.Optional[str]:
         """Find which notebook container holds the given tab name."""
@@ -45,3 +47,18 @@ class CoreTabs:
             if tab_name in tab_list:
                 return nbid
         return None
+
+    def close_tab(self, tab_name: str) -> None:
+        """Close the specified tab by executing the tab_close action.
+
+        Args:
+            tab_name: The name of the tab to close.
+        """
+        if tab_name not in ("playback", "channels"):
+            self.app.action_registry.execute("gui.tab_close", tab_name)
+
+    def close_active_tab(self) -> None:
+        """Close the active tab of the currently active notebook."""
+        tab_name = self.active_tabs.get(self.active_notebook)
+        if tab_name:
+            self.close_tab(tab_name)

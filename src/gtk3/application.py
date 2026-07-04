@@ -225,6 +225,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.independents", ["<Control>i"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.history", ["<Shift><Control>h"])
+        self.set_accels_for_action("app.tab_close", ["<Control>w"])
         self.set_accels_for_action("app.about", ["F3"])
         self.set_accels_for_action("app.fullscreen", ["F11"])
         self.set_accels_for_action("app.undo", ["<Control>z"])
@@ -362,6 +363,7 @@ class Application(Gtk.Application):
             "virtual_console": "_virtual_console",
             "settings": "settings_cb",
             "history": "history_cb",
+            "tab_close": "tab_close_cb",
             "show-help-overlay": "_shortcuts",
             "about": "_about",
             "undo": "_undo",
@@ -778,6 +780,12 @@ class Application(Gtk.Application):
         """Open History tab UI."""
         if self.tabs:
             self.tabs.open("history", HistoryTab, _("History"), self)
+
+    def tab_close_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """Close the currently active tab."""
+        self.core.tabs.close_active_tab()
 
     def _shortcuts(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

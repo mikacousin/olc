@@ -197,10 +197,6 @@ class IndependentsTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("indes")
-
     def _keypress_backspace(self) -> None:
         self.commandline.set_string("")
 

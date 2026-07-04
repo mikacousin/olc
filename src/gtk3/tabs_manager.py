@@ -173,6 +173,9 @@ class Tabs:
             self.commandline.set_string("")
             tab = self.tabs[tab_name]
             assert tab is not None
+            cleanup_func = getattr(tab, "cleanup", None)
+            if callable(cleanup_func):
+                typing.cast(typing.Callable[[], None], cleanup_func)()
             notebook = tab.get_parent()
             if notebook is not None:
                 notebook_nb = typing.cast(Gtk.Notebook, notebook)

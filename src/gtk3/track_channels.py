@@ -209,10 +209,6 @@ class TrackChannelsTab(Gtk.Grid):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("track_channels")
-
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
         self.commandline.set_string("")

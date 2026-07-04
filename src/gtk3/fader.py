@@ -353,7 +353,3 @@ class FaderTab(Gtk.Box):
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
-
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("faders")

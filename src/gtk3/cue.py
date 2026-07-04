@@ -233,10 +233,6 @@ class CuesEditionTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("memories")
-
     def _keypress_backspace(self) -> None:
         self.commandline.set_string("")
 

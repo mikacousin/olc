@@ -139,7 +139,7 @@ class Window(Gtk.ApplicationWindow):
 
         self.set_icon_name("olc")
 
-    def get_active_tab(self) -> Gtk.Paned:
+    def get_active_tab(self) -> Gtk.Paned | None:
         """Get active tab
 
         Returns:
@@ -150,6 +150,11 @@ class Window(Gtk.ApplicationWindow):
             if widget in (self.live_view, self.playback):
                 break
             widget = widget.get_parent()
+        if not widget:
+            return None
+        notebook_id = "live" if widget is self.live_view else "playback"
+        if self.app.core.tabs:
+            self.app.core.tabs.active_notebook = notebook_id
         any_widget = typing.cast(typing.Any, widget)
         return any_widget.get_nth_page(any_widget.get_current_page())
 
@@ -286,6 +291,9 @@ class Window(Gtk.ApplicationWindow):
         """Handle manual tab switch by the user."""
         if self.block_switch_page > 0 or page_num < 0:
             return
+
+        if self.app.core.tabs:
+            self.app.core.tabs.active_notebook = notebook_id
 
         tab_name = None
         if page is self.playback.grid:

@@ -542,10 +542,6 @@ class CurvesTab(Gtk.Paned):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("curves")
-
     def _keypress_delete(self) -> None:
         """Delete selected point"""
         if not self.curve_edition.curve_nb or self.lightshow.app is None:

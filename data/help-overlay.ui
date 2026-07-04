@@ -124,9 +124,9 @@
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="esc">
+              <object class="GtkShortcutsShortcut" id="close_tab">
                 <property name="visible">1</property>
-                <property name="accelerator">Escape</property>
+                <property name="accelerator">&lt;ctrl&gt;W</property>
                 <property name="title" translatable="yes" context="shortcut window">Close Tab</property>
               </object>
             </child>

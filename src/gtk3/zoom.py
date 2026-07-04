@@ -35,6 +35,8 @@ def zoom(direction: str, window: Window | None) -> None:
     if window is None:
         return
     tab = window.get_active_tab()
+    if tab is None:
+        return
     children = tab.get_children()
 
     view = None

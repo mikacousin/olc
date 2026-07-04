@@ -410,10 +410,6 @@ class SequenceTab(Gtk.Grid):
             return func()
         return False
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("sequences")
-
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
         self.commandline.set_string("")

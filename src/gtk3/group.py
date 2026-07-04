@@ -477,10 +477,6 @@ class GroupTab(Gtk.Paned):
     def _keypress_backspace(self) -> None:
         self.commandline.set_string("")
 
-    def _keypress_escape(self) -> None:
-        """Close Tab"""
-        self.tabs.close("groups")
-
     def _keypress_l(self) -> None:
         """Open Popover to change label group"""
         if selected := self.flowbox.get_selected_children():
