@@ -24,6 +24,7 @@ from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
 from olc.gtk3.channel_time import ChanneltimeTab
 from olc.gtk3.fader import FaderTab
+from olc.gtk3.history import HistoryTab
 from olc.gtk3.patch_outputs import PatchOutputsTab
 from olc.gtk3.widgets.channel import ChannelWidget
 from olc.gtk3.widgets.channels_view import ChannelsView
@@ -281,6 +282,10 @@ class GuiEventBridge:
             lambda tab_name, from_nb, to_nb, index: self._run_idle(
                 self._on_tab_moved, tab_name, from_nb, to_nb, index
             ),
+        )
+        self.app.core.subscribe(
+            "history.changed",
+            lambda data: self._run_idle(self._on_history_changed, data),
         )
         self.app.core.subscribe(
             "sequence.created",
@@ -1273,6 +1278,7 @@ class GuiEventBridge:
                 "curves": app.open_curves,
                 "faders": app.open_faders,
                 "settings": app.open_settings,
+                "history": app.open_history,
             }
 
             if tab_name in mapping:
@@ -1337,6 +1343,15 @@ class GuiEventBridge:
         with self.app.window.blocking_switch_page():
             if self.app.tabs:
                 self.app.tabs.move(tab_name, from_nb, to_nb, index)
+        return False
+
+    def _on_history_changed(self, _data: dict[str, bool]) -> bool:
+        """Handle history changed event by refreshing history tab UI."""
+        if not self.app.tabs:
+            return False
+        history_tab = self.app.tabs.tabs.get("history")
+        if history_tab:
+            typing.cast(HistoryTab, history_tab).refresh()
         return False
 
 

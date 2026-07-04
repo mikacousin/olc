@@ -43,6 +43,7 @@ from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.gtk3.fader import FaderTab  # noqa: E402
 from olc.gtk3.group import GroupTab  # noqa: E402
+from olc.gtk3.history import HistoryTab  # noqa: E402
 from olc.gtk3.independent import IndependentsTab  # noqa: E402
 from olc.gtk3.lightshow import GtkLightShow  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
@@ -223,6 +224,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         self.set_accels_for_action("app.independents", ["<Control>i"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
+        self.set_accels_for_action("app.history", ["<Shift><Control>h"])
         self.set_accels_for_action("app.about", ["F3"])
         self.set_accels_for_action("app.fullscreen", ["F11"])
         self.set_accels_for_action("app.undo", ["<Control>z"])
@@ -359,6 +361,7 @@ class Application(Gtk.Application):
             "independents": "independents",
             "virtual_console": "_virtual_console",
             "settings": "settings_cb",
+            "history": "history_cb",
             "show-help-overlay": "_shortcuts",
             "about": "_about",
             "undo": "_undo",
@@ -764,6 +767,17 @@ class Application(Gtk.Application):
         """Open Settings tab UI."""
         if self.tabs:
             self.tabs.open("settings", SettingsTab, "Settings", self)
+
+    def history_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """History"""
+        self.core.action_registry.execute("gui.tab_open", "history")
+
+    def open_history(self) -> None:
+        """Open History tab UI."""
+        if self.tabs:
+            self.tabs.open("history", HistoryTab, _("History"), self)
 
     def _shortcuts(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

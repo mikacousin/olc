@@ -96,6 +96,13 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="history">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;H</property>
+                <property name="title" translatable="yes" context="shortcut window">Undo History</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="quit">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;ctrl&gt;Q</property>

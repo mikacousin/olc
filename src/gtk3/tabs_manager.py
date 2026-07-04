@@ -26,6 +26,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.curve import CurvesTab
     from olc.gtk3.fader import FaderTab
     from olc.gtk3.group import GroupTab
+    from olc.gtk3.history import HistoryTab
     from olc.gtk3.independent import IndependentsTab
     from olc.gtk3.patch_channels import PatchChannelsTab
     from olc.gtk3.patch_outputs import PatchOutputsTab
@@ -40,6 +41,7 @@ if typing.TYPE_CHECKING:
         | CurvesTab
         | FaderTab
         | GroupTab
+        | HistoryTab
         | IndependentsTab
         | PatchChannelsTab
         | PatchOutputsTab
@@ -72,6 +74,7 @@ class Tabs:
             "curves": None,
             "faders": None,
             "groups": None,
+            "history": None,
             "indes": None,
             "memories": None,
             "patch_outputs": None,

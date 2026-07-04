@@ -91,3 +91,13 @@ class HistoryManager:
         self._undo_stack.clear()
         self._redo_stack.clear()
         self.notify_ui_and_controllers()
+
+    @property
+    def undo_stack(self) -> list[Action]:
+        """Get the current undo stack."""
+        return self._undo_stack
+
+    @property
+    def redo_stack(self) -> list[Action]:
+        """Get the current redo stack."""
+        return self._redo_stack
