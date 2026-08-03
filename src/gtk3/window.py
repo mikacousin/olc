@@ -93,7 +93,7 @@ class Window(Gtk.ApplicationWindow):
         self.header.props.show_close_button = True
         box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         # Main Fader viewer
-        self.main_fader = MainFaderWidget(self.app.backend)
+        self.main_fader = MainFaderWidget(self.app.core.backend)
         box.add(self.main_fader)
         # Menu button
         button = Gtk.MenuButton()
@@ -480,7 +480,7 @@ class Window(Gtk.ApplicationWindow):
     def _create_preset(self, mem: float, step: int) -> None:
         """Create new Preset component"""
         channels = {}
-        if self.app.backend is not None and self.app.backend.dmx is not None:
+        if self.app.core.backend is not None and self.app.core.backend.dmx is not None:
             for channel, outputs in self.app.core.lightshow.patch.channels.items():
                 if not self.app.core.lightshow.patch.is_patched(channel):
                     continue
@@ -489,7 +489,7 @@ class Window(Gtk.ApplicationWindow):
                     univ = values[1]
                     if univ is not None and output is not None:
                         index = UNIVERSES.index(univ)
-                        if level := self.app.backend.dmx.frame[index][output - 1]:
+                        if level := self.app.core.backend.dmx.frame[index][output - 1]:
                             channels[channel] = level
         cue = Cue(1, mem, channels)
         self.app.core.lightshow.cues.insert(step - 1, cue)
@@ -521,12 +521,12 @@ class Window(Gtk.ApplicationWindow):
             i += 1
         i -= 1
 
-        if self.app.backend is not None and self.app.backend.dmx is not None:
+        if self.app.core.backend is not None and self.app.core.backend.dmx is not None:
             for univ in UNIVERSES:
                 for output in range(512):
                     channel = self.app.core.lightshow.patch.outputs[univ][output + 1][0]
                     index = UNIVERSES.index(univ)
-                    level = self.app.backend.dmx.frame[index][output]
+                    level = self.app.core.backend.dmx.frame[index][output]
 
                     self.app.core.lightshow.cues[i].channels[channel] = level
 
@@ -567,10 +567,10 @@ class Window(Gtk.ApplicationWindow):
                         output = out - 1
                         index = UNIVERSES.index(univ)
                         if (
-                            self.app.backend is not None
-                            and self.app.backend.dmx is not None
+                            self.app.core.backend is not None
+                            and self.app.core.backend.dmx is not None
                         ):
-                            level = self.app.backend.dmx.frame[index][output]
+                            level = self.app.core.backend.dmx.frame[index][output]
                             cue.channels[channel] = level
 
             # Tag filename as modified

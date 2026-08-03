@@ -25,7 +25,7 @@ from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
-    from olc.backends import DMXBackend
+    from olc.core.backends import DMXBackend
     from olc.core.lightshow import LightShow
 
 

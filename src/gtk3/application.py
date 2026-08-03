@@ -26,8 +26,8 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
-from olc.backends import DMXBackend  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
+from olc.core.backends import DMXBackend  # noqa: E402
 from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
 from olc.core.binding import MidiBinding, OscBinding  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
@@ -75,7 +75,6 @@ class Application(Gtk.Application):
     shortcuts: Gtk.Window | None
 
     def __init__(self, version: str, *args: object, **kwargs: object) -> None:
-        self.backend = None
         self.engine = None
         self.version = version
         super().__init__(
@@ -134,6 +133,11 @@ class Application(Gtk.Application):
         self.event_bridge = GuiEventBridge(app_type)
 
         self.patch_by_outputs = self.core.lightshow.patch_by_outputs
+
+    @property
+    def backend(self) -> DMXBackend | None:
+        """Get the backend from core."""
+        return self.core.backend if hasattr(self, "core") and self.core else None
 
     def do_activate(self) -> None:
         app_type = typing.cast("olc.gtk3.application.Application", self)
@@ -282,10 +286,7 @@ class Application(Gtk.Application):
         self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
         self.core.engine = self.engine
 
-        self.backend = DMXBackend(self.core.lightshow)
-        self.core.backend = self.backend
-
-        self.engine.start()
+        self.core.start()
 
         if self.settings.get_boolean("osc") and self.engine is not None:
             self.engine.start_osc(
@@ -297,17 +298,20 @@ class Application(Gtk.Application):
             self.engine.register_osc_delegate(self.osc_delegate)
 
         def on_patch_empty_cb() -> None:
-            if self.backend:
-                self.backend.dmx.all_outputs_at_zero()
+            if self.core.backend:
+                self.core.backend.dmx.all_outputs_at_zero()
 
         def on_unpatch_cb(index: int, output: int) -> None:
-            if self.backend:
-                self.backend.dmx.frame[index][output] = 0
+            if self.core.backend:
+                self.core.backend.dmx.frame[index][output] = 0
 
         self.core.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
         self.core.lightshow.patch.on_unpatch_cb = on_unpatch_cb
 
-        self.backend.dmx.add_notification_callback(self.on_backend_notification)
+        if self.core.backend:
+            self.core.backend.dmx.add_notification_callback(
+                self.on_backend_notification
+            )
         # Activate olc
         self.activate()
         arguments = command_line.get_arguments()
@@ -396,9 +400,9 @@ class Application(Gtk.Application):
                 chaser.thread.stop()
                 chaser.thread.join()
         # All channels at 0
-        if self.backend:
-            self.backend.dmx.levels["user"][:] = -1
-            self.backend.dmx.set_levels()
+        if self.core.backend:
+            self.core.backend.dmx.levels["user"][:] = -1
+            self.core.backend.dmx.set_levels()
         self.window.live_view.channels_view.flowbox.unselect_all()
         # Reset Patch
         self.core.lightshow.patch.patch_1on1()
@@ -471,10 +475,10 @@ class Application(Gtk.Application):
         open_dialog.destroy()
 
         # All channels at 0
-        if self.backend:
-            self.backend.dmx.levels["sequence"][:] = 0
-            self.backend.dmx.levels["user"][:] = -1
-            self.backend.dmx.set_levels()
+        if self.core.backend:
+            self.core.backend.dmx.levels["sequence"][:] = 0
+            self.core.backend.dmx.levels["user"][:] = -1
+            self.core.backend.dmx.set_levels()
 
     def _import_file(
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
@@ -850,12 +854,7 @@ class Application(Gtk.Application):
                 chaser.run = False
                 chaser.thread.stop()
                 chaser.thread.join()
-        if self.midi:
-            self.midi.stop()
-        if self.backend:
-            self.backend.stop()
-        if self.engine is not None:
-            self.engine.stop()
+        self.core.stop()
         self.quit()
         return False
 

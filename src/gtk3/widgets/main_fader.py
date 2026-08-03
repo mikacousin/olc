@@ -21,7 +21,7 @@ from gi.repository import Gdk, Gtk
 from olc.gtk3.widgets.common import rounded_rectangle
 
 if typing.TYPE_CHECKING:
-    from olc.backends import DMXBackend
+    from olc.core.backends import DMXBackend
 
 
 class MainFaderWidget(Gtk.Widget):

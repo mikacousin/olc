@@ -18,6 +18,7 @@ import threading
 import typing
 
 from olc.actions import register_all_actions
+from olc.core.backends import DMXBackend
 from olc.core.commandline import CoreCommandLine
 from olc.core.crossfade import CrossFade
 from olc.core.event import EventDispatcher
@@ -28,7 +29,6 @@ from olc.core.selection import SelectionManager
 from olc.core.tabs import CoreTabs
 
 if typing.TYPE_CHECKING:
-    from olc.backends import DMXBackend
     from olc.core.engine import CoreEngine
     from olc.midi import Midi
 
@@ -155,6 +155,7 @@ class CoreApplication(EventDispatcher):
 
     def start(self) -> None:
         """Start backend hardware and communications services."""
+        self.backend = DMXBackend(self.lightshow)
         if self.engine:
             self.engine.start()
         # OSC and MIDI are started by their respective managers/launchers

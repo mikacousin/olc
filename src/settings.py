@@ -43,7 +43,7 @@ class SettingsTab(Gtk.Box):
         self.settings = app.settings
         self.tabs = app.tabs
         self.midi = app.midi
-        self.backend = app.backend
+        self.backend = app.core.backend
         self.window = app.window
 
         super().__init__(orientation=Gtk.Orientation.VERTICAL)

@@ -24,7 +24,7 @@ from olc.gtk3.widgets.patch_channels import PatchChannelHeader, PatchChannelWidg
 if typing.TYPE_CHECKING:
     import olc.gtk3.patch_channels
     from gi.repository import Gio
-    from olc.backends import DMXBackend
+    from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
@@ -61,7 +61,9 @@ class PatchChannelsTab(Gtk.Box):
         )
         self.settings = app.settings
         self.backend = (
-            app.backend if app.backend is not None else typing.cast(typing.Any, None)
+            app.core.backend
+            if app.core.backend is not None
+            else typing.cast(typing.Any, None)
         )
         self.commandline = app.core.commandline
         self.last_chan_selected = ""

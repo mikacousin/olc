@@ -24,7 +24,7 @@ from olc.gtk3.widgets.patch_outputs import PatchWidget
 if typing.TYPE_CHECKING:
     import olc.gtk3.patch_outputs
     from gi.repository import Gio
-    from olc.backends import DMXBackend
+    from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
@@ -60,7 +60,9 @@ class PatchOutputsTab(Gtk.Box):
         )
         self.settings = app.settings
         self.backend = (
-            app.backend if app.backend is not None else typing.cast(typing.Any, None)
+            app.core.backend
+            if app.core.backend is not None
+            else typing.cast(typing.Any, None)
         )
         self.patch_by_outputs = app.core.lightshow.patch_by_outputs
         self.commandline = app.core.commandline

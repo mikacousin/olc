@@ -71,13 +71,12 @@ def app_gui_instance() -> Generator[Application, None, None]:
         kwargs["flags"] = Gio.ApplicationFlags.NON_UNIQUE
         original_init(self, *args, **kwargs)
 
-    Gtk.Application.__init__ = patched_init  # type: ignore
+    Gtk.Application.__init__ = patched_init
 
     app = Application("test-version")
     app.register(None)
 
     # Initialize Engine and Backend (normally done in do_command_line)
-    from olc.backends import DMXBackend
     from olc.core.engine import CoreEngine
     from olc.core.universe_config import Protocol, UniverseMap
     from olc.define import UNIVERSES
@@ -90,22 +89,20 @@ def app_gui_instance() -> Generator[Application, None, None]:
     app.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
     app.core.engine = app.engine
 
-    app.backend = DMXBackend(app.core.lightshow)
-    app.core.backend = app.backend
-
-    app.engine.start()
+    app.core.start()
 
     def on_patch_empty_cb() -> None:
-        if app.backend:
-            app.backend.dmx.all_outputs_at_zero()
+        if app.core.backend:
+            app.core.backend.dmx.all_outputs_at_zero()
 
     def on_unpatch_cb(index: int, output: int) -> None:
-        if app.backend:
-            app.backend.dmx.frame[index][output] = 0
+        if app.core.backend:
+            app.core.backend.dmx.frame[index][output] = 0
 
     app.core.lightshow.patch.on_patch_empty_cb = on_patch_empty_cb
     app.core.lightshow.patch.on_unpatch_cb = on_unpatch_cb
-    app.backend.dmx.add_notification_callback(app.on_backend_notification)
+    if app.core.backend:
+        app.core.backend.dmx.add_notification_callback(app.on_backend_notification)
 
     # Activate
     app.activate()
@@ -114,10 +111,7 @@ def app_gui_instance() -> Generator[Application, None, None]:
     yield app
 
     # Cleanup application window and stop engines
-    if app.engine:
-        app.engine.stop()
-    if app.backend:
-        app.backend.stop()
+    app.core.stop()
     if app.window:
         app.window.destroy()
     app.quit()

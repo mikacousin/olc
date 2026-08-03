@@ -24,7 +24,7 @@ from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 from olc.gtk3.widgets.curve import CurveWidget
 
 if typing.TYPE_CHECKING:
-    from olc.backends import DMXBackend
+    from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application
@@ -94,7 +94,9 @@ class PatchWidget(Gtk.DrawingArea):
         self.tab = tab
         self.commandline = app.core.commandline
         self.backend = (
-            app.backend if app.backend is not None else typing.cast(typing.Any, None)
+            app.core.backend
+            if app.core.backend is not None
+            else typing.cast(typing.Any, None)
         )
 
         super().__init__()

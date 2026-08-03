@@ -18,7 +18,6 @@ configure_file(
 )
 
 olc_sources = [
-  'backends.py',
   'channel_time.py',
   'cue.py',
   'curve.py',
