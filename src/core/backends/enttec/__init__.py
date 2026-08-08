@@ -61,7 +61,7 @@ class DmxUsbProManager:
         self._actual_port = None
         self._connected = False
         self._reconnect_task = None
-        self.notify: Callable[[str, *object], None] | None = None
+        self.notify: Callable[..., None] | None = None
 
     @property
     def is_connected(self) -> bool:
