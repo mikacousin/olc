@@ -22,11 +22,9 @@ import json
 import time
 import typing
 
-import numpy as np
 import zmq
 import zmq.asyncio
 from rich.panel import Panel
-from rich.table import Table
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -51,6 +49,11 @@ def value_style(v: int) -> str:  # pylint: disable=too-many-return-statements
     return "bold bright_white on red"
 
 
+_VALUE_STYLES: tuple[str, ...] = tuple(value_style(v) for v in range(256))
+_VALUE_STRS: tuple[str, ...] = tuple(f"{v:3d}" for v in range(256))
+_ROW_LABELS: tuple[str, ...] = tuple(f"{row * 16 + 1:3d}  " for row in range(32))
+
+
 class FrequencyMonitor(Horizontal):
     """Displays DMX frequency numeric panel and a Sparkline history."""
 
@@ -61,6 +64,8 @@ class FrequencyMonitor(Horizontal):
         self._last_update = 0.0
         self._history: list[float] = []
         self._max_history = 100
+        self._last_sparkline_update = 0.0
+        self._last_status_key: tuple[str, str, str, str] | None = None
 
     def compose(self) -> ComposeResult:
         """Create child widgets for the monitor."""
@@ -68,30 +73,39 @@ class FrequencyMonitor(Horizontal):
         yield Sparkline(id="freq-sparkline")
 
     def on_mount(self) -> None:
-        """Set up the periodic redraw interval."""
+        """Set up the periodic check interval for signal loss."""
         self._draw()
-        self.set_interval(0.5, self._draw)
+        self.set_interval(0.5, self._check_timeout)
+
+    def _check_timeout(self) -> None:
+        """Periodic check for signal loss."""
+        if self._last_update > 0.0 and (time.time() - self._last_update > 2.0):
+            self._draw()
 
     def refresh_data(self, frequency: float) -> None:
         """Update current frequency and sparkline data history."""
+        now = time.time()
         self._frequency = frequency
-        self._last_update = time.time()
+        self._last_update = now
 
-        # Revert to unrounded frequency to allow full vertical auto-scaling waveform
-        self._history.append(frequency)
-        if len(self._history) > self._max_history:
-            self._history.pop(0)
+        # Update sparkline at most every 0.25s (4 Hz) to avoid continuous UI
+        # recalculations
+        if now - self._last_sparkline_update >= 0.25:
+            self._last_sparkline_update = now
+            self._history.append(frequency)
+            if len(self._history) > self._max_history:
+                self._history.pop(0)
 
-        sparkline = self.query_one("#freq-sparkline", Sparkline)
-        sparkline.data = list(self._history)
+            sparkline = self.query_one("#freq-sparkline", Sparkline)
+            sparkline.data = list(self._history)
 
-        # Set sparkline color dynamically based on 43Hz threshold
-        if frequency < 43.0:
-            sparkline.set_class(True, "warning")
-            sparkline.set_class(False, "nominal")
-        else:
-            sparkline.set_class(True, "nominal")
-            sparkline.set_class(False, "warning")
+            # Set sparkline color dynamically based on 43Hz threshold
+            if frequency < 43.0:
+                sparkline.set_class(True, "warning")
+                sparkline.set_class(False, "nominal")
+            else:
+                sparkline.set_class(True, "nominal")
+                sparkline.set_class(False, "warning")
 
         self._draw()
 
@@ -107,11 +121,12 @@ class FrequencyMonitor(Horizontal):
         elif now - lu > signal_timeout:
             color, icon, status = "red", "✖", "SIGNAL LOST"
             fs = f"{freq:.2f}"
-            self._history.clear()
-            sparkline = self.query_one("#freq-sparkline", Sparkline)
-            sparkline.data = None
-            sparkline.set_class(False, "nominal")
-            sparkline.set_class(False, "warning")
+            if self._history:
+                self._history.clear()
+                sparkline = self.query_one("#freq-sparkline", Sparkline)
+                sparkline.data = None
+                sparkline.set_class(False, "nominal")
+                sparkline.set_class(False, "warning")
         elif 43.0 <= freq <= 45.0:
             color, icon, status = "green", "●", "NOMINAL"
             fs = f"{freq:.2f}"
@@ -121,6 +136,11 @@ class FrequencyMonitor(Horizontal):
         else:
             color, icon, status = "bright_red", "✖", "FREQUENCY ERROR"
             fs = f"{freq:.2f}"
+
+        status_key = (color, icon, status, fs)
+        if status_key == self._last_status_key:
+            return
+        self._last_status_key = status_key
 
         t = Text()
         t.append(f"  {fs} Hz  ", style=f"bold {color}")
@@ -144,6 +164,7 @@ class UniversePanel(Static):
         self._values = bytes(512)
         self._protocols: list[str] = []
         self._sync_active = False
+        self._dirty = False
 
     def on_mount(self) -> None:
         """Draw the initial DMX grid."""
@@ -153,6 +174,13 @@ class UniversePanel(Static):
     def protocols(self) -> list[str]:
         """Return the active protocols for this universe."""
         return self._protocols
+
+    def set_visible(self, visible: bool) -> None:
+        """Set visibility and trigger redraw if dirty."""
+        self.display = visible
+        if visible and self._dirty:
+            self._dirty = False
+            self._draw()
 
     def refresh_data(self, values: bytes, protocols: list[str] | None = None) -> None:
         """Update and redraw the universe DMX values."""
@@ -164,22 +192,29 @@ class UniversePanel(Static):
         if protocols is not None:
             self._protocols = protocols
             self._sync_active = any("(Sync)" in p for p in self._protocols)
+
+        if not self.display:
+            self._dirty = True
+            return
+
+        self._dirty = False
         self._draw()
 
     def _draw(self) -> None:
-        table = Table(box=None, show_header=False, padding=(0, 0))
-        table.add_column("lbl", width=5, no_wrap=True)
-        for _ in range(16):
-            table.add_column(width=4, no_wrap=True)
+        text = Text()
+        values = self._values
+        val_len = len(values)
 
         for row in range(32):
-            first_ch = row * 16 + 1
-            cells = [Text(f"{first_ch:3d} ", style="grey42")]
+            text.append(_ROW_LABELS[row], style="grey42")
+            base_idx = row * 16
             for col in range(16):
-                idx = row * 16 + col
-                v = self._values[idx] if idx < len(self._values) else 0
-                cells.append(Text(f"{v:3d}", style=value_style(v)))
-            table.add_row(*cells)
+                idx = base_idx + col
+                v = values[idx] if idx < val_len else 0
+                text.append(_VALUE_STRS[v], style=_VALUE_STYLES[v])
+                text.append(" ")
+            if row < 31:
+                text.append("\n")
 
         if self._protocols:
             protocols_str = "/".join(self._protocols)
@@ -190,7 +225,7 @@ class UniversePanel(Static):
 
         self.update(
             Panel(
-                table,
+                text,
                 title=f"[bold cyan]Universe {self.universe_id}[/bold cyan]  "
                 f"[dim]{protocols_str}[/dim]",
                 border_style=border_style,
@@ -336,7 +371,7 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
         # Update display of all existing panels
         for panel in self._universe_panels.values():
             if not panel.protocols:
-                panel.display = self.show_offline
+                panel.set_visible(self.show_offline)
 
         self._update_status_text()
 
@@ -349,10 +384,12 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
             active_count = sum(1 for p in self._universe_panels.values() if p.protocols)
             suffix = " (offline hidden)"
 
-        self.status_text = (
+        new_status = (
             f"Active universes: {active_count} | {self.last_hz:.1f} Hz | "
             f"{self.last_frames} frames{suffix}"
         )
+        if new_status != self.status_text:
+            self.status_text = new_status
 
     async def _listen_zmq(self) -> None:  # pylint: disable=too-many-locals
         ctx = zmq.asyncio.Context()
@@ -374,17 +411,13 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                     continue
                 uid = int(topic.split(":")[1])
 
-                metadata = json.loads(parts[1].decode("utf-8"))
+                metadata = json.loads(parts[1])
                 self.last_hz = metadata.get("hz", 0.0)
                 self.last_frames = metadata.get("frames", 0)
 
-                # Decode DMX data
-                data = np.frombuffer(parts[2], dtype=np.uint8)
-                protocols = metadata.get("protocols", [])
-
-                # Update cache
-                self._dmx_cache[uid] = bytes(data)
-                self._protocols_cache[uid] = protocols
+                # Update cache directly from bytes
+                self._dmx_cache[uid] = bytes(parts[2])
+                self._protocols_cache[uid] = metadata.get("protocols", [])
 
         except asyncio.CancelledError:
             sock.close()
@@ -415,6 +448,8 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
 
             if uid not in self._universe_panels:
                 panel = UniversePanel(uid)
+                is_visible = bool(protocols) or self.show_offline
+                panel.display = is_visible
                 # Find the first mounted panel with a larger ID to insert before it
                 larger_uids = [k for k in self._universe_panels if k > uid]
                 if larger_uids and self._universes_container is not None:
@@ -427,13 +462,9 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                 self._universe_panels[uid] = panel
 
             panel = self._universe_panels[uid]
+            is_visible = bool(protocols) or self.show_offline
+            panel.set_visible(is_visible)
             panel.refresh_data(data, protocols)
-
-            # Set display visibility based on offline status
-            if not panel.protocols:
-                panel.display = self.show_offline
-            else:
-                panel.display = True
 
         self._update_status_text()
 
