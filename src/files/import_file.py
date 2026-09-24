@@ -242,8 +242,8 @@ class ImportFile:
                 if chsr.index == sequence:
                     chaser = chsr
                     break
-                if chaser:
-                    self.lightshow.chasers.remove(chaser)
+            if chaser:
+                self.lightshow.chasers.remove(chaser)
 
     def _do_import_midi(self) -> None:
         if self.actions["midi"] is Action.IGNORE:
