@@ -17,6 +17,7 @@
 # pylint: disable=invalid-name, wrong-spelling-in-docstring, wrong-spelling-in-comment
 import argparse
 import asyncio
+import collections
 import dataclasses
 import json
 import time
@@ -24,11 +25,11 @@ import typing
 
 import zmq
 import zmq.asyncio
-from rich.panel import Panel
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.reactive import reactive
+from textual.widget import Widget
 from textual.widgets import Footer, Header, Sparkline, Static
 
 
@@ -50,7 +51,7 @@ def value_style(v: int) -> str:  # pylint: disable=too-many-return-statements
 
 
 _VALUE_STYLES: tuple[str, ...] = tuple(value_style(v) for v in range(256))
-_VALUE_STRS: tuple[str, ...] = tuple(f"{v:3d}" for v in range(256))
+_VALUE_STRS: tuple[str, ...] = tuple(f"{v:3d} " for v in range(256))
 _ROW_LABELS: tuple[str, ...] = tuple(f"{row * 16 + 1:3d}  " for row in range(32))
 
 
@@ -62,8 +63,7 @@ class FrequencyMonitor(Horizontal):
         self.zmq_addr = zmq_addr
         self._frequency = 0.0
         self._last_update = 0.0
-        self._history: list[float] = []
-        self._max_history = 100
+        self._history: collections.deque[float] = collections.deque(maxlen=100)
         self._last_sparkline_update = 0.0
         self._last_status_key: tuple[str, str, str, str] | None = None
 
@@ -93,8 +93,6 @@ class FrequencyMonitor(Horizontal):
         if now - self._last_sparkline_update >= 0.25:
             self._last_sparkline_update = now
             self._history.append(frequency)
-            if len(self._history) > self._max_history:
-                self._history.pop(0)
 
             sparkline = self.query_one("#freq-sparkline", Sparkline)
             sparkline.data = list(self._history)
@@ -147,9 +145,9 @@ class FrequencyMonitor(Horizontal):
         t.append(f"   {icon}  {status}", style=color)
         t.append(f"   target 44 Hz · {self.zmq_addr}", style="dim")
 
-        self.query_one("#freq-status", Static).update(
-            Panel(t, border_style=color, padding=(0, 1))
-        )
+        freq_status = self.query_one("#freq-status", Static)
+        freq_status.styles.border = ("round", color)
+        freq_status.update(t)
 
 
 class UniversePanel(Static):
@@ -175,10 +173,35 @@ class UniversePanel(Static):
         """Return the active protocols for this universe."""
         return self._protocols
 
+    def is_in_viewport(self) -> bool:
+        """Check if panel is currently within the visible scroll viewport."""
+        if not self.display:
+            return False
+        parent = self.parent
+        if not isinstance(parent, Widget):
+            return True
+        if parent.size.width <= 0:
+            return True
+        scroll_x = parent.scroll_x
+        viewport_width = parent.size.width
+        offset_x = self.region.x - parent.region.x + scroll_x
+        panel_width = self.region.width
+        if panel_width <= 0:
+            return True
+        return not (
+            offset_x + panel_width < scroll_x or offset_x > scroll_x + viewport_width
+        )
+
     def set_visible(self, visible: bool) -> None:
         """Set visibility and trigger redraw if dirty."""
         self.display = visible
         if visible and self._dirty:
+            self._dirty = False
+            self._draw()
+
+    def redraw_if_dirty(self) -> None:
+        """Redraw panel if visible, in viewport, and marked dirty."""
+        if self.display and self._dirty and self.is_in_viewport():
             self._dirty = False
             self._draw()
 
@@ -193,7 +216,7 @@ class UniversePanel(Static):
             self._protocols = protocols
             self._sync_active = any("(Sync)" in p for p in self._protocols)
 
-        if not self.display:
+        if not self.display or not self.is_in_viewport():
             self._dirty = True
             return
 
@@ -212,7 +235,6 @@ class UniversePanel(Static):
                 idx = base_idx + col
                 v = values[idx] if idx < val_len else 0
                 text.append(_VALUE_STRS[v], style=_VALUE_STYLES[v])
-                text.append(" ")
             if row < 31:
                 text.append("\n")
 
@@ -223,15 +245,9 @@ class UniversePanel(Static):
 
         border_style = "yellow" if self._sync_active else "cyan"
 
-        self.update(
-            Panel(
-                text,
-                title=f"[bold cyan]Universe {self.universe_id}[/bold cyan]  "
-                f"[dim]{protocols_str}[/dim]",
-                border_style=border_style,
-                padding=(0, 1),
-            )
-        )
+        self.border_title = f"Universe {self.universe_id}  {protocols_str}"
+        self.styles.border = ("round", border_style)
+        self.update(text)
 
 
 class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
@@ -256,6 +272,8 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
     #freq-status {
         width: 2fr;
         height: 3;
+        border: round yellow;
+        padding: 0 1;
     }
     #freq-sparkline {
         width: 1fr;
@@ -284,6 +302,8 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
     UniversePanel {
         width: auto;
         margin: 0 1 0 0;
+        border: round cyan;
+        padding: 0 1;
     }
     #placeholder {
         width: 1fr;
@@ -315,6 +335,7 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
         self.last_frames = 0
         self._dmx_cache: dict[int, bytes] = {}
         self._protocols_cache: dict[int, list[str]] = {}
+        self._dirty_uids: set[int] = set()
         self._frequency_monitor: FrequencyMonitor | None = None
         self._universes_container: Horizontal | None = None
 
@@ -346,10 +367,18 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
     def action_next_universe(self) -> None:
         """Scroll to the right to see the next universe."""
         self.query_one("#universes").scroll_relative(x=72, animate=True)
+        self.call_after_refresh(self._redraw_dirty_visible_panels)
 
     def action_prev_universe(self) -> None:
         """Scroll to the left to see the previous universe."""
         self.query_one("#universes").scroll_relative(x=-72, animate=True)
+        self.call_after_refresh(self._redraw_dirty_visible_panels)
+
+    def _redraw_dirty_visible_panels(self) -> None:
+        """Redraw any panels that became visible after scrolling and have pending
+        changes."""
+        for panel in self._universe_panels.values():
+            panel.redraw_if_dirty()
 
     def action_toggle_offline(self) -> None:
         """Toggle showing offline universes."""
@@ -406,10 +435,9 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                 if len(parts) != 3:
                     continue
 
-                topic = parts[0].decode("ascii")
-                if not topic.startswith("universe:"):
+                if not parts[0].startswith(b"universe:"):
                     continue
-                uid = int(topic.split(":")[1])
+                uid = int(parts[0][9:])
 
                 metadata = json.loads(parts[1])
                 self.last_hz = metadata.get("hz", 0.0)
@@ -418,6 +446,7 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                 # Update cache directly from bytes
                 self._dmx_cache[uid] = bytes(parts[2])
                 self._protocols_cache[uid] = metadata.get("protocols", [])
+                self._dirty_uids.add(uid)
 
         except asyncio.CancelledError:
             sock.close()
@@ -425,12 +454,19 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
 
     async def _render_cached_data(self) -> None:
         """Periodic UI render task pulling from ZMQ cache."""
-        if not self._dmx_cache:
-            return
-
-        # Frequency Monitor
+        # Frequency Monitor: update status/frequency
         if self._frequency_monitor is not None:
             self._frequency_monitor.refresh_data(self.last_hz)
+
+        self._update_status_text()
+
+        # If no universe data arrived, nothing more to do
+        if not self._dirty_uids:
+            return
+
+        # Snapshot and clear dirty set
+        dirty_uids = self._dirty_uids
+        self._dirty_uids = set()
 
         # Remove placeholder on first packet
         if self._placeholder_active:
@@ -440,10 +476,11 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
             except Exception:  # pylint: disable=broad-exception-caught
                 pass
 
-        # Create or update universe panels
-        # Copy cached state to avoid mutation during rendering
-        cached_dmx = list(self._dmx_cache.items())
-        for uid, data in sorted(cached_dmx):
+        # Update only dirty universes
+        for uid in dirty_uids:
+            data = self._dmx_cache.get(uid)
+            if data is None:
+                continue
             protocols = self._protocols_cache.get(uid, [])
 
             if uid not in self._universe_panels:
@@ -465,8 +502,6 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
             is_visible = bool(protocols) or self.show_offline
             panel.set_visible(is_visible)
             panel.refresh_data(data, protocols)
-
-        self._update_status_text()
 
 
 if __name__ == "__main__":
