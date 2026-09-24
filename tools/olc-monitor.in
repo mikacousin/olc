@@ -132,7 +132,7 @@ class FrequencyMonitor(Horizontal):
             color, icon, status = "yellow", "▲", "OUT OF TOLERANCE"
             fs = f"{freq:.2f}"
         else:
-            color, icon, status = "bright_red", "✖", "FREQUENCY ERROR"
+            color, icon, status = "red", "✖", "FREQUENCY ERROR"
             fs = f"{freq:.2f}"
 
         status_key = (color, icon, status, fs)
@@ -454,6 +454,9 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
 
     async def _render_cached_data(self) -> None:
         """Periodic UI render task pulling from ZMQ cache."""
+        if not self._dmx_cache:
+            return
+
         # Frequency Monitor: update status/frequency
         if self._frequency_monitor is not None:
             self._frequency_monitor.refresh_data(self.last_hz)
