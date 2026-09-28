@@ -323,7 +323,7 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
     status_text = reactive("Waiting for olcd...")
     show_offline = reactive(True)
 
-    def __init__(self, fps: float = 15.0, **kwargs: typing.Any) -> None:  # noqa: ANN401
+    def __init__(self, fps: float = 6.0, **kwargs: typing.Any) -> None:  # noqa: ANN401
         super().__init__(**kwargs)
         self.fps = fps
         self.zmq_addr = "tcp://127.0.0.1:5555"
@@ -512,8 +512,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--fps",
         type=float,
-        default=15.0,
-        help="UI refresh rate in frames per second (default: 15.0)",
+        default=6.0,
+        help="UI refresh rate in frames per second (default: 6.0)",
     )
     args = parser.parse_args()
 
