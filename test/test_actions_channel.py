@@ -257,3 +257,43 @@ def test_set_multi_channels_level_action() -> None:
     assert app.backend.dmx.levels["user"][3] == 150
     mock_dmx.set_levels.assert_called_once()
     assert set(received_events) == {(3, 200), (4, 150)}
+
+
+def test_channel_wheel_adjust_action_and_undo_redo() -> None:
+    """Test channel.wheel_adjust action execution, bounds clamping, and undo/redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 100, dtype=np.int16)}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    # Select channels 1 and 2
+    app.selected_channels = [1, 2]
+
+    # Adjust UP by 25
+    app.action_registry.execute("channel.wheel_adjust", 25, 1)
+    assert app.backend.dmx.levels["user"][0] == 125
+    assert app.backend.dmx.levels["user"][1] == 125
+
+    # Undo
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][0] == 100
+    assert app.backend.dmx.levels["user"][1] == 100
+
+    # Redo
+    app.history.redo()
+    assert app.backend.dmx.levels["user"][0] == 125
+    assert app.backend.dmx.levels["user"][1] == 125
+
+    # Adjust DOWN with clamping at 0
+    app.action_registry.execute("channel.wheel_adjust", 200, -1)
+    assert app.backend.dmx.levels["user"][0] == 0
+    assert app.backend.dmx.levels["user"][1] == 0
+
+    # Undo clamping
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][0] == 125
+    assert app.backend.dmx.levels["user"][1] == 125

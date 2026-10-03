@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 from olc.actions.channel import (
+    ChannelWheelAdjustAction,
     LevelMinusAction,
     LevelPlusAction,
     SelectActiveChannelAction,
@@ -74,6 +75,13 @@ from olc.actions.independent import (
     IndependentSetLevelAction,
     IndependentUpdateChannelsAction,
 )
+from olc.actions.midi import (
+    MidiAssignMappingAction,
+    MidiClearMappingsAction,
+    MidiLearnToggleAction,
+    MidiPortToggleAction,
+    MidiSetPortModeAction,
+)
 from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
@@ -87,6 +95,7 @@ from olc.actions.playback import (
     GoBackAction,
     PauseAction,
     PlaybackGotoAction,
+    PlaybackManualXFadeAction,
     SequenceMinusAction,
     SequencePlusAction,
 )
@@ -178,6 +187,13 @@ def register_all_actions(registry: ActionRegistry) -> None:
         CommandLineSetAction,
         FaderFlashAction,
         PlaybackGotoAction,
+        ChannelWheelAdjustAction,
+        PlaybackManualXFadeAction,
+        MidiPortToggleAction,
+        MidiSetPortModeAction,
+        MidiLearnToggleAction,
+        MidiAssignMappingAction,
+        MidiClearMappingsAction,
     ]
 
     for action_class in actions_to_register:

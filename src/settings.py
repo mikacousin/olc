@@ -230,30 +230,9 @@ class SettingsTab(Gtk.Box):
             text: New combo's text
         """
         self.liststore_midi[path][2] = text
-        relative1 = self.settings.get_strv("relative1")
-        relative2 = self.settings.get_strv("relative2")
-        makies = self.settings.get_strv("makie")
-        absolutes = self.settings.get_strv("absolute")
-        if self.liststore_midi[path][3] in relative1:
-            relative1.remove(self.liststore_midi[path][3])
-        elif self.liststore_midi[path][3] in relative2:
-            relative2.remove(self.liststore_midi[path][3])
-        elif self.liststore_midi[path][3] in absolutes:
-            absolutes.remove(self.liststore_midi[path][3])
-        elif self.liststore_midi[path][3] in makies:
-            makies.remove(self.liststore_midi[path][3])
-        if text == "Relative1":
-            relative1.append(self.liststore_midi[path][3])
-        elif text == "Relative2":
-            relative2.append(self.liststore_midi[path][3])
-        elif text == "Relative3 (Makie)":
-            makies.append(self.liststore_midi[path][3])
-        elif text == "Absolute":
-            absolutes.append(self.liststore_midi[path][3])
-        self.settings.set_strv("relative1", relative1)
-        self.settings.set_strv("relative2", relative2)
-        self.settings.set_strv("makie", makies)
-        self.settings.set_strv("absolute", absolutes)
+        port_name = self.liststore_midi[path][3]
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute("midi.set_port_mode", port_name, text)
 
     def on_midi_toggle(self, _widget: Gtk.Widget, path: str) -> None:
         """Active / Inactive MIDI controllers
@@ -262,49 +241,27 @@ class SettingsTab(Gtk.Box):
             _widget: Widget clicked
             path: button number
         """
-        midi_ports = self.settings.get_strv("midi-ports")
-        relative1 = self.settings.get_strv("relative1")
-        relative2 = self.settings.get_strv("relative2")
-        makies = self.settings.get_strv("makie")
-        absolutes = self.settings.get_strv("absolute")
-        self.liststore_midi[path][1] = not self.liststore_midi[path][1]
-        if self.liststore_midi[path][1]:
-            midi_ports.append(self.liststore_midi[path][3])
-            if self.liststore_midi[path][2] == "Relative1":
-                relative1.append(self.liststore_midi[path][3])
-            elif self.liststore_midi[path][2] == "Relative2":
-                relative2.append(self.liststore_midi[path][3])
-            elif self.liststore_midi[path][2] == "Relative3 (Makie)":
-                makies.append(self.liststore_midi[path][3])
-            elif self.liststore_midi[path][2] == "Absolute":
-                absolutes.append(self.liststore_midi[path][3])
-            else:
+        port_name = self.liststore_midi[path][3]
+        new_state = not self.liststore_midi[path][1]
+        self.liststore_midi[path][1] = new_state
+        if new_state:
+            if not self.liststore_midi[path][2]:
                 self.liststore_midi.set_value(
                     self.liststore_midi.get_iter(path), 2, "Relative3 (Makie)"
                 )
-                makies.append(self.liststore_midi[path][3])
-
+                if self.app.core is not None and hasattr(
+                    self.app.core, "action_registry"
+                ):
+                    self.app.core.action_registry.execute(
+                        "midi.set_port_mode", port_name, "Relative3 (Makie)"
+                    )
         else:
-            midi_ports.remove(self.liststore_midi[path][3])
-            if self.liststore_midi[path][3] in relative1:
-                relative1.remove(self.liststore_midi[path][3])
-            elif self.liststore_midi[path][3] in relative2:
-                relative2.remove(self.liststore_midi[path][3])
-            elif self.liststore_midi[path][3] in makies:
-                makies.remove(self.liststore_midi[path][3])
-            elif self.liststore_midi[path][3] in absolutes:
-                absolutes.remove(self.liststore_midi[path][3])
             self.liststore_midi.set_value(self.liststore_midi.get_iter(path), 2, "")
-        midi_ports = list(set(midi_ports))
-        self.settings.set_strv("midi-ports", midi_ports)
-        self.settings.set_strv("relative1", relative1)
-        self.settings.set_strv("relative2", relative2)
-        self.settings.set_strv("makie", makies)
-        self.settings.set_strv("absolute", absolutes)
-        if self.midi is not None:
-            GLib.idle_add(self.midi.ports.close)
-            GLib.idle_add(self.midi.ports.open, midi_ports)
-            self.midi.update_faders()
+
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute(
+                "midi.port_toggle", port_name, new_state
+            )
 
     def _artnet(self, builder: Gtk.Builder) -> None:
         # pylint: disable=too-many-locals,protected-access

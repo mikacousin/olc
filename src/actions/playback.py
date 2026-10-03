@@ -254,3 +254,48 @@ class PlaybackGotoAction(Action):
             "label": "GOTO",
             "target": self.target,
         }
+
+
+class PlaybackManualXFadeAction(Action):
+    """Action to manually adjust the crossfade sliders A or B."""
+
+    name = "playback.manual_xfade"
+    can_undo = False  # Real-time manual fader operation
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.fader: str = "a"
+        self.value: int = 0
+
+    def configure(self, fader: str = "a", value: int = 0) -> None:
+        """Configure the fader and level value.
+
+        Args:
+            fader: 'a' (or 'out') for crossfade_out, 'b' (or 'in') for crossfade_in.
+            value: Level value (0-255).
+        """
+        self.fader = fader
+        self.value = value
+
+    def execute(self) -> None:
+        """Execute the manual crossfade movement."""
+        crossfade = getattr(self.app, "crossfade", None)
+        if crossfade is None:
+            return
+
+        crossfade.manual = True
+        val = min(max(int(self.value), 0), 255)
+        fader_key = (
+            "a" if str(self.fader).lower() in ("a", "crossfade_out", "out") else "b"
+        )
+        scale = crossfade.scale_a if fader_key == "a" else crossfade.scale_b
+        scale.set_value(val)
+        crossfade.scale_moved(scale)
+
+        vc = getattr(self.app, "virtual_console", None)
+        if vc is not None:
+            vc_scale = vc.scale_a if fader_key == "a" else vc.scale_b
+            if hasattr(vc_scale, "set_value"):
+                vc_scale.set_value(val)
+
+        self.app.emit("playback.xfade_moved", fader_key, val)

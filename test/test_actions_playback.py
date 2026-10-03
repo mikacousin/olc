@@ -185,3 +185,33 @@ def test_goto_action_execution() -> None:
         "label": "GOTO",
         "target": "2.5",
     }
+
+
+def test_manual_xfade_action_execution() -> None:
+    """Test execution and event dispatching for PlaybackManualXFadeAction."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_crossfade = MagicMock()
+    mock_scale_a = MagicMock()
+    mock_scale_b = MagicMock()
+    mock_crossfade.scale_a = mock_scale_a
+    mock_crossfade.scale_b = mock_scale_b
+    app.crossfade = mock_crossfade
+
+    xfade_events = []
+    app.subscribe("playback.xfade_moved", lambda f, val: xfade_events.append((f, val)))
+
+    # Execute fader A
+    app.action_registry.execute("playback.manual_xfade", "a", 150)
+    assert mock_crossfade.manual is True
+    mock_scale_a.set_value.assert_called_once_with(150)
+    mock_crossfade.scale_moved.assert_called_once_with(mock_scale_a)
+    assert xfade_events == [("a", 150)]
+
+    # Execute fader B with clamping
+    mock_crossfade.scale_moved.reset_mock()
+    app.action_registry.execute("playback.manual_xfade", "crossfade_in", 300)
+    mock_scale_b.set_value.assert_called_once_with(255)
+    mock_crossfade.scale_moved.assert_called_once_with(mock_scale_b)
+    assert xfade_events == [("a", 150), ("b", 255)]

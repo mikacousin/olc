@@ -600,9 +600,9 @@ class MidiNotes:
                 )
             elif core_action_name is not None:
                 self.app_delegate.core.action_registry.execute(core_action_name)
-            elif keypress_name is not None and self.app_delegate.window:
-                keypress_func = getattr(
-                    self.app_delegate.window, f"_keypress_{keypress_name}", None
-                )
-                if keypress_func:
-                    keypress_func()
+            elif keypress_name is not None:
+                window = getattr(self.app_delegate, "window", None)
+                if window is not None:
+                    keypress_func = getattr(window, f"_keypress_{keypress_name}", None)
+                    if keypress_func:
+                        keypress_func()

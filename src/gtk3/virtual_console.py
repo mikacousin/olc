@@ -427,12 +427,9 @@ class VirtualConsoleWindow(Gtk.Window):
             button: Button clicked
             name: Name of the button
         """
-        if button.get_active() and name == "MIDI":
-            if self.app.midi is not None:
-                self.app.midi.learning = " "
-        elif name == "MIDI":
-            if self.app.midi is not None:
-                self.app.midi.learning = ""
+        if name == "MIDI":
+            action_name = " " if button.get_active() else None
+            self.app.core.action_registry.execute("midi.learn_toggle", action_name)
             if self.app.virtual_console:
                 self.app.virtual_console.queue_draw()
 
@@ -987,25 +984,20 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         if self.is_learning_midi:
             return
-        if self.app.window is None:
-            return
-        child = self.app.window.get_active_tab()
-        channels_view = None
-        if (
-            self.app.window.live_view
-            and child == self.app.window.live_view.channels_view
-        ):
-            channels_view = child
-        elif self.app.tabs and child in (
+        child = self.app.window.get_active_tab() if self.app.window else None
+        if self.app.tabs and child in (
             self.app.tabs.tabs["groups"],
             self.app.tabs.tabs["indes"],
             self.app.tabs.tabs["faders"],
             self.app.tabs.tabs["memories"],
             self.app.tabs.tabs["sequences"],
         ):
-            channels_view = typing.cast(typing.Any, child).channels_view
-        if channels_view:
-            typing.cast(typing.Any, channels_view).wheel_level(step, direction)
+            channels_view = getattr(child, "channels_view", None)
+            if channels_view and hasattr(channels_view, "wheel_level"):
+                typing.cast(typing.Any, channels_view).wheel_level(step, direction)
+                return
+        dir_val = 1 if direction == Gdk.ScrollDirection.UP else -1
+        self.app.core.action_registry.execute("channel.wheel_adjust", step, dir_val)
 
     def _inde_clicked(self, widget: KnobWidget | ToggleWidget) -> None:
         """Independent clicked

@@ -96,19 +96,7 @@ class MidiXFade:
             self.fader_out.value = 0
             self.fader_in.value = 0
 
-        if fader == self.fader_out:
-            if self.app_delegate.virtual_console:
-                self.app_delegate.virtual_console.scale_a.set_value(value)
-            else:
-                self.app_delegate.crossfade.scale_a.set_value(value)
-                self.app_delegate.crossfade.scale_moved(
-                    self.app_delegate.crossfade.scale_a
-                )
-        elif fader == self.fader_in:
-            if self.app_delegate.virtual_console:
-                self.app_delegate.virtual_console.scale_b.set_value(value)
-            else:
-                self.app_delegate.crossfade.scale_b.set_value(value)
-                self.app_delegate.crossfade.scale_moved(
-                    self.app_delegate.crossfade.scale_b
-                )
+        fader_key = "a" if fader == self.fader_out else "b"
+        self.app_delegate.core.action_registry.execute(
+            "playback.manual_xfade", fader_key, value
+        )

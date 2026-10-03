@@ -173,25 +173,10 @@ class MidiControlChanges:
             msg: MIDI message
         """
         step, direction = self.__get_step(msg, port)
-        if self.app_delegate.virtual_console:
-            self.app_delegate.virtual_console.wheel.emit("moved", direction, step)
-        elif self.app_delegate.window:
-            tab = self.app_delegate.window.get_active_tab()
-            channels_view = None
-            if tab == self.app_delegate.window.live_view.channels_view:
-                channels_view = tab
-            elif self.app_delegate.tabs is not None and tab in (
-                self.app_delegate.tabs.tabs["groups"],
-                self.app_delegate.tabs.tabs["indes"],
-                self.app_delegate.tabs.tabs["faders"],
-                self.app_delegate.tabs.tabs["memories"],
-                self.app_delegate.tabs.tabs["sequences"],
-            ):
-                channels_view = getattr(tab, "channels_view", None)
-            if channels_view is not None:
-                wheel_level_func = getattr(channels_view, "wheel_level", None)
-                if wheel_level_func is not None:
-                    wheel_level_func(step, direction)
+        dir_val = 1 if direction == Gdk.ScrollDirection.UP else -1
+        self.app_delegate.core.action_registry.execute(
+            "channel.wheel_adjust", step, dir_val
+        )
 
     def _function_fader(self, msg: mido.Message, fader_index: int) -> None:
         """Faders
@@ -202,18 +187,13 @@ class MidiControlChanges:
         """
         val = msg.value / 127
         midi_fader = self.midi.faders.faders[fader_index - 1]
-        fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
+        fader_bank = self.app_delegate.core.lightshow.fader_bank
+        fader = fader_bank.get_fader(fader_index)
         if not midi_fader.is_valid(val, fader.level):
             return
-        if self.app_delegate.virtual_console:
-            self.app_delegate.virtual_console.faders[fader_index - 1].set_value(
-                val * 255
-            )
-            self.app_delegate.virtual_console.fader_moved(
-                self.app_delegate.virtual_console.faders[fader_index - 1]
-            )
-        else:
-            GLib.idle_add(fader.set_level, val)
+        self.app_delegate.core.action_registry.execute(
+            "fader.set_level", fader_bank.active_page, fader_index, val
+        )
 
     def _function_inde(self, port: str, msg: mido.Message, independent: int) -> None:
         """Change independent knob level

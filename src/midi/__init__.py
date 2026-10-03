@@ -142,6 +142,7 @@ class Midi:
     xfade: MidiXFade
     ports: MidiPorts
     send: MidiSend
+    app_delegate: Application
     _pause_blink_timer: RepeatedTimer | None
     _pause_blink_state: bool
 
@@ -150,6 +151,7 @@ class Midi:
         app_delegate: Application,
         on_ports_changed: typing.Callable[[], None] | None = None,
     ) -> None:
+        self.app_delegate = app_delegate
         self.lightshow = app_delegate.core.lightshow
         self.learning = ""
         self.faders = MidiFaders()
@@ -195,6 +197,37 @@ class Midi:
         """
         if self.ports.ports:
             self.enqueue(msg)
+
+        core = getattr(self.app_delegate, "core", None)
+        if core is not None and hasattr(core, "action_registry") and self.learning:
+            if msg.type == "note_on":
+                core.action_registry.execute(
+                    "midi.assign_mapping",
+                    "note",
+                    self.learning,
+                    msg.channel,
+                    msg.note,
+                )
+                return
+            if msg.type == "control_change":
+                core.action_registry.execute(
+                    "midi.assign_mapping",
+                    "control_change",
+                    self.learning,
+                    msg.channel,
+                    msg.control,
+                )
+                return
+            if msg.type == "pitchwheel":
+                core.action_registry.execute(
+                    "midi.assign_mapping",
+                    "pitchwheel",
+                    self.learning,
+                    msg.channel,
+                    msg.pitch,
+                )
+                return
+
         if msg.type == "note_on":
             self.messages.notes.learn(msg, self.learning)
         elif msg.type == "control_change":
