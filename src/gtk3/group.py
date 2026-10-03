@@ -448,7 +448,7 @@ class GroupTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -462,10 +462,12 @@ class GroupTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -475,7 +477,7 @@ class GroupTab(Gtk.Paned):
         return False
 
     def _keypress_backspace(self) -> None:
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_l(self) -> None:
         """Open Popover to change label group"""
@@ -483,7 +485,7 @@ class GroupTab(Gtk.Paned):
             flowboxchild = selected[0]
             group_widget = typing.cast(GroupWidget, flowboxchild.get_child())
             group_widget.popover.popup()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_u(self) -> None:
         """Update Group"""
@@ -630,7 +632,7 @@ class GroupTab(Gtk.Paned):
         self.flowbox.invalidate_filter()
         self.channels_view.last_selected_channel = ""
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _update_fader_level(self) -> None:
         """Update selected fader channels levels"""
@@ -649,21 +651,21 @@ class GroupTab(Gtk.Paned):
         self.channels_view.at_level()
         self.channels_view.update()
         self._update_fader_level()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
         self.channels_view.level_minus()
         self.channels_view.update()
         self._update_fader_level()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_exclam(self) -> None:
         """Level + %"""
         self.channels_view.level_plus()
         self.channels_view.update()
         self._update_fader_level()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_n(self) -> None:
         """New Group"""
@@ -674,7 +676,7 @@ class GroupTab(Gtk.Paned):
         elif is_non_nul_float(keystring):
             group_nb = float(keystring)
         else:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
             return
 
         # Execute new group action
@@ -686,7 +688,7 @@ class GroupTab(Gtk.Paned):
         except ValueError:
             self.selected_group_number = None
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_delete(self) -> None:
         """Delete selected group"""

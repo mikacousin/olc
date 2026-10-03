@@ -170,7 +170,7 @@ class Tabs:
         if tab_name not in self.tabs:
             return
         if self.tabs[tab_name]:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
             tab = self.tabs[tab_name]
             assert tab is not None
             cleanup_func = getattr(tab, "cleanup", None)

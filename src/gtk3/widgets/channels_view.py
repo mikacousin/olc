@@ -552,21 +552,21 @@ class ChannelsView(Gtk.Box):
         self.select_next()
         self.grab_focus()
         if self.commandline:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_page_down(self) -> None:
         """Previous Channel"""
         self.select_previous()
         self.grab_focus()
         if self.commandline:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_c(self) -> None:
         """Channel"""
         self.select_channel()
         self.grab_focus()
         if self.commandline:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_divide(self) -> None:
         self._keypress_greater()
@@ -576,7 +576,7 @@ class ChannelsView(Gtk.Box):
         self.select_thru()
         self.grab_focus()
         if self.commandline:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_add(self) -> None:
         self._keypress_plus()
@@ -586,7 +586,7 @@ class ChannelsView(Gtk.Box):
         self.select_plus()
         self.grab_focus()
         if self.commandline:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_subtract(self) -> None:
         self._keypress_minus()
@@ -596,4 +596,4 @@ class ChannelsView(Gtk.Box):
         self.select_minus()
         self.grab_focus()
         if self.commandline:
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")

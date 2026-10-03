@@ -51,6 +51,7 @@ class CommandLineAppendCharAction(Action):
     def execute(self) -> None:
         """Save previous text and append character."""
         self.old_text = self.app.commandline.get_string()
+        self.can_undo = bool(self.char)
         self.app.commandline.add_string(self.char)
 
     def undo(self) -> None:
@@ -85,6 +86,7 @@ class CommandLineClearAction(Action):
     def execute(self) -> None:
         """Save previous text and clear the command line."""
         self.old_text = self.app.commandline.get_string()
+        self.can_undo = bool(self.old_text)
         self.app.commandline.set_string("")
 
     def undo(self) -> None:
@@ -128,6 +130,7 @@ class CommandLineSetAction(Action):
     def execute(self) -> None:
         """Save previous text and set new command line text."""
         self.old_text = self.app.commandline.get_string()
+        self.can_undo = self.old_text != self.text
         self.app.commandline.set_string(self.text)
 
     def undo(self) -> None:

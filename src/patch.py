@@ -324,7 +324,7 @@ class PatchByOutputs:
         return self.commandline.get_string()
 
     def _set_commandline_string(self, value: str) -> None:
-        self.commandline.set_string(value)
+        self.app.core.action_registry.execute("commandline.set", value)
 
     def get_output_universe(self, out: int) -> tuple[Optional[int], Optional[int]]:
         """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)

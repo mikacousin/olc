@@ -384,7 +384,7 @@ class SequenceTab(Gtk.Grid):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -398,10 +398,12 @@ class SequenceTab(Gtk.Grid):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -412,7 +414,7 @@ class SequenceTab(Gtk.Grid):
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_s(self) -> None:
         """Cycle Sequences"""
@@ -449,7 +451,7 @@ class SequenceTab(Gtk.Grid):
         """@ Level"""
         self.channels_view.at_level()
         self.channels_view.update()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_colon(self) -> None:
         """Level - %"""
@@ -530,7 +532,7 @@ class SequenceTab(Gtk.Grid):
         else:
             mem = float(keystring)
             found, step = sequence.get_step(cue=mem)
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
 
         if not found:
             self._create_cue(sequence, mem, step)

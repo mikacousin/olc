@@ -132,7 +132,7 @@ class PatchChannelsTab(Gtk.Box):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -146,17 +146,19 @@ class PatchChannelsTab(Gtk.Box):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
         return False
 
     def _keypress_backspace(self) -> None:
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_down(self) -> None:
         """Select Next Channel"""
@@ -173,7 +175,7 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(int(self.last_chan_selected) + 1)
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_up(self) -> None:
         """Select Previous Channel"""
@@ -189,7 +191,7 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(int(self.last_chan_selected) - 1)
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_c(self) -> None:
         """Select Channel"""
@@ -204,7 +206,7 @@ class PatchChannelsTab(Gtk.Box):
                     self.flowbox.select_child(child)
                     self.last_chan_selected = str(channel)
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_divide(self) -> None:
         """Thru"""
@@ -242,7 +244,7 @@ class PatchChannelsTab(Gtk.Box):
                     self.flowbox.select_child(child)
         self.last_chan_selected = str(to_chan - 1)
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def _keypress_m(self) -> None:
@@ -328,7 +330,7 @@ class PatchChannelsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.last_chan_selected = str(channel)
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_i(self) -> None:
         """Insert Output"""
@@ -376,7 +378,7 @@ class PatchChannelsTab(Gtk.Box):
                         widget_chan.queue_draw()
                     self.window.live_view.channels_view.update()
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_r(self) -> None:
         """Remove Output"""
@@ -424,7 +426,7 @@ class PatchChannelsTab(Gtk.Box):
                     widget_chan.queue_draw()
                 self.window.live_view.channels_view.update()
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _unpatch(self, output: int, universe: int) -> None:
         if universe in self.patch.outputs and output in self.patch.outputs[universe]:

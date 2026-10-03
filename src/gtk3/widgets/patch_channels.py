@@ -142,7 +142,7 @@ class PatchChannelWidget(Gtk.Widget):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Thru
-            self.commandline.set_string(str(self.channel))
+            self.app.core.action_registry.execute("commandline.set", str(self.channel))
             self.tab.thru()
         else:
             self.tab.flowbox.unselect_all()

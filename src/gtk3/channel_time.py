@@ -249,7 +249,7 @@ class ChanneltimeTab(Gtk.Paned):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -263,10 +263,12 @@ class ChanneltimeTab(Gtk.Paned):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
         # Channels View
         self.channels_view.on_key_press(keyname)
@@ -285,7 +287,7 @@ class ChanneltimeTab(Gtk.Paned):
                 del self.step.channel_time[channel]
 
     def _keypress_backspace(self) -> None:
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_q(self) -> None:
         """Previous Channel Time"""

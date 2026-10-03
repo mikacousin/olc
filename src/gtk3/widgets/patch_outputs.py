@@ -122,7 +122,9 @@ class PatchWidget(Gtk.DrawingArea):
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
             # Shift pressed: Thru
-            self.commandline.set_string(f"{self.output}.{self.universe}")
+            self.app.core.action_registry.execute(
+                "commandline.set", f"{self.output}.{self.universe}"
+            )
             self.tab.patch_by_outputs.thru()
         elif event.state & accel_mask == Gdk.ModifierType.CONTROL_MASK:
             # Control pressed: Toggle selected status
@@ -132,18 +134,24 @@ class PatchWidget(Gtk.DrawingArea):
             parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
             if parent.is_selected():
                 self.tab.flowbox.unselect_child(child)
-                self.commandline.set_string(f"{self.output}.{self.universe}")
+                self.app.core.action_registry.execute(
+                    "commandline.set", f"{self.output}.{self.universe}"
+                )
                 self.tab.patch_by_outputs.del_output()
             else:
                 self.tab.flowbox.select_child(child)
-                self.commandline.set_string(f"{self.output}.{self.universe}")
+                self.app.core.action_registry.execute(
+                    "commandline.set", f"{self.output}.{self.universe}"
+                )
                 self.tab.patch_by_outputs.add_output()
         else:
             child = self.tab.flowbox.get_child_at_index(widget_index)
             if not child:
                 return
             if not child.is_selected():
-                self.commandline.set_string(f"{self.output}.{self.universe}")
+                self.app.core.action_registry.execute(
+                    "commandline.set", f"{self.output}.{self.universe}"
+                )
                 self.tab.patch_by_outputs.select_output()
             elif (
                 self.universe in self.lightshow.patch.outputs

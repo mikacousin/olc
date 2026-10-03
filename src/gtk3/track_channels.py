@@ -189,7 +189,7 @@ class TrackChannelsTab(Gtk.Grid):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -203,7 +203,9 @@ class TrackChannelsTab(Gtk.Grid):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
@@ -211,7 +213,7 @@ class TrackChannelsTab(Gtk.Grid):
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_right(self) -> None:
         """Next Channel"""
@@ -307,7 +309,7 @@ class TrackChannelsTab(Gtk.Grid):
                             level,
                         )
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_c(self) -> None:
         """Select Channel"""
@@ -328,7 +330,7 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.update_display()
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_divide(self) -> None:
         """Channel Thru"""
@@ -392,7 +394,7 @@ class TrackChannelsTab(Gtk.Grid):
 
             self.update_display()
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_add(self) -> None:
         """Channel +"""
@@ -414,7 +416,7 @@ class TrackChannelsTab(Gtk.Grid):
                 self.window.live_view.channels_view.last_selected_channel = keystring
                 self.update_display()
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_kp_subtract(self) -> None:
         """Channel -"""
@@ -436,4 +438,4 @@ class TrackChannelsTab(Gtk.Grid):
                 self.window.live_view.channels_view.last_selected_channel = keystring
                 self.update_display()
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")

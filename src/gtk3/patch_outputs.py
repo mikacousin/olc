@@ -205,7 +205,7 @@ class PatchOutputsTab(Gtk.Box):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -219,10 +219,12 @@ class PatchOutputsTab(Gtk.Box):
             "KP_9",
             "KP_0",
         ):
-            self.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if keyname == "period":
-            self.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
         if func := getattr(self, f"_keypress_{keyname.lower()}", None):
             return func()
@@ -236,7 +238,7 @@ class PatchOutputsTab(Gtk.Box):
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _change_test_output(self, old: int, new: int) -> None:
         """Test a new output
@@ -274,13 +276,15 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(0)
             if child is not None:
                 self.flowbox.select_child(child)
-                self.commandline.set_string("1")
+                self.app.core.action_registry.execute("commandline.set", "1")
                 self.patch_by_outputs.select_output()
         elif self.patch_by_outputs.last < (NB_UNIVERSES * 512):
             old_output = self.patch_by_outputs.last
             new_output = old_output + 1
             output, universe = self.patch_by_outputs.get_output_universe(new_output)
-            self.commandline.set_string(f"{output}.{universe}")
+            self.app.core.action_registry.execute(
+                "commandline.set", f"{output}.{universe}"
+            )
             self.patch_by_outputs.select_output()
             if self.test:
                 self._change_test_output(old_output, new_output)
@@ -292,13 +296,15 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(0)
             if child is not None:
                 self.flowbox.select_child(child)
-                self.commandline.set_string("1")
+                self.app.core.action_registry.execute("commandline.set", "1")
                 self.patch_by_outputs.select_output()
         elif self.patch_by_outputs.last > 1:
             old_output = self.patch_by_outputs.last
             new_output = old_output - 1
             output, universe = self.patch_by_outputs.get_output_universe(new_output)
-            self.commandline.set_string(f"{output}.{universe}")
+            self.app.core.action_registry.execute(
+                "commandline.set", f"{output}.{universe}"
+            )
             self.patch_by_outputs.select_output()
             if self.test:
                 self._change_test_output(old_output, new_output)
@@ -310,7 +316,7 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(0)
             if child is not None:
                 self.flowbox.select_child(child)
-                self.commandline.set_string("1")
+                self.app.core.action_registry.execute("commandline.set", "1")
                 self.patch_by_outputs.select_output()
         else:
             old_output = self.patch_by_outputs.last
@@ -325,7 +331,9 @@ class PatchOutputsTab(Gtk.Box):
                     output, universe = self.patch_by_outputs.get_output_universe(
                         new_output
                     )
-                    self.commandline.set_string(f"{output}.{universe}")
+                    self.app.core.action_registry.execute(
+                        "commandline.set", f"{output}.{universe}"
+                    )
                     self.patch_by_outputs.select_output()
                     if self.test:
                         self._change_test_output(old_output, new_output)
@@ -337,7 +345,7 @@ class PatchOutputsTab(Gtk.Box):
             child = self.flowbox.get_child_at_index(0)
             if child is not None:
                 self.flowbox.select_child(child)
-                self.commandline.set_string("1")
+                self.app.core.action_registry.execute("commandline.set", "1")
                 self.patch_by_outputs.select_output()
         else:
             old_output = self.patch_by_outputs.last
@@ -352,7 +360,9 @@ class PatchOutputsTab(Gtk.Box):
                     output, universe = self.patch_by_outputs.get_output_universe(
                         new_output
                     )
-                    self.commandline.set_string(f"{output}.{universe}")
+                    self.app.core.action_registry.execute(
+                        "commandline.set", f"{output}.{universe}"
+                    )
                     self.patch_by_outputs.select_output()
                     if self.test:
                         self._change_test_output(old_output, new_output)
@@ -378,7 +388,7 @@ class PatchOutputsTab(Gtk.Box):
 
             index = UNIVERSES.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_t(self) -> None:
         """Test Output @ level"""
@@ -402,7 +412,7 @@ class PatchOutputsTab(Gtk.Box):
             index = UNIVERSES.index(univ)
             self.outputs[out - 1 + (512 * index)].queue_draw()
         self.test = True
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _stop_test(self) -> None:
         """Stop test mode"""
@@ -460,7 +470,7 @@ class PatchOutputsTab(Gtk.Box):
         sel = self.flowbox.get_selected_children()
         keystring = self.commandline.get_string()
         if keystring and (not sel or not is_int(keystring)):
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute("commandline.clear")
             return
         # If several outputs: choose how to patch
         if len(sel) > 1 and is_non_nul_int(keystring):
@@ -473,7 +483,7 @@ class PatchOutputsTab(Gtk.Box):
         self.patch_by_outputs.patch_channel(several)
 
         self.lightshow.set_modified()
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def on_network_dmx_changed(self, universe: int, outputs: list[int]) -> None:
         """Called when a network backend updates DMX levels.

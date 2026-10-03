@@ -365,7 +365,7 @@ class Window(Gtk.ApplicationWindow):
             return False
 
         if keyname in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"):
-            self.app.core.commandline.add_string(keyname)
+            self.app.core.action_registry.execute("commandline.append_char", keyname)
 
         if keyname in (
             "KP_1",
@@ -608,7 +608,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_i(self) -> None:
         """Change Time In of next step"""
@@ -634,7 +634,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_o(self) -> None:
         """Change Time Out of next step"""
@@ -660,7 +660,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_x(self) -> None:
         """Change Wait Time of next step"""
@@ -686,7 +686,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_d(self) -> None:
         """Change Delay In and Out of next step"""
@@ -716,7 +716,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_k(self) -> None:
         """Change Delay In of next step"""
@@ -742,7 +742,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_l(self) -> None:
         """Change Delay Out of next step"""
@@ -768,7 +768,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
 
 class Dialog(Gtk.Dialog):

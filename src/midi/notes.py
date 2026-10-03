@@ -455,7 +455,7 @@ class MidiNotes:
         """
         if msg.velocity == 127:
             self.app_delegate.core.action_registry.execute("playback.sequence_minus")
-            self.app_delegate.core.commandline.set_string("")
+            self.app_delegate.core.action_registry.execute("commandline.clear")
             self.send("playback.sequence_minus", 127)
         elif msg.velocity == 0:
             self.send("playback.sequence_minus", 0)
@@ -468,7 +468,7 @@ class MidiNotes:
         """
         if msg.velocity == 127:
             self.app_delegate.core.action_registry.execute("playback.sequence_plus")
-            self.app_delegate.core.commandline.set_string("")
+            self.app_delegate.core.action_registry.execute("commandline.clear")
             self.send("playback.sequence_plus", 127)
         elif msg.velocity == 0:
             self.send("playback.sequence_plus", 0)
