@@ -174,3 +174,33 @@ def test_fader_clear_emits_signal() -> None:
 
     assert len(received) == 1
     assert received[0] == (1, 5)
+
+
+def test_fader_flash() -> None:
+    """FaderFlashAction triggers flash on/off and emits fader.flash_changed."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    received: list[tuple[int, bool]] = []
+    app.subscribe(
+        "fader.flash_changed",
+        lambda idx, pressed: received.append((idx, pressed)),
+    )
+
+    fader = app.lightshow.fader_bank.faders[1][1]
+    fader.flash_on = MagicMock()
+    fader.flash_off = MagicMock()
+
+    # Flash ON
+    app.action_registry.execute("fader.flash", 1, 1, True)
+    fader.flash_on.assert_called_once()
+    assert received == [(1, True)]
+    action = app.action_registry.get("fader.flash")
+    assert action.get_feedback_state() == {"active": True, "index": 1}
+
+    # Flash OFF
+    app.action_registry.execute("fader.flash", 1, 1, False)
+    fader.flash_off.assert_called_once()
+    assert received == [(1, True), (1, False)]
+    action = app.action_registry.get("fader.flash")
+    assert action.get_feedback_state() == {"active": False, "index": 1}

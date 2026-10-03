@@ -30,6 +30,11 @@ from olc.actions.channel import (
     SetLevelFullAction,
     SetMultiChannelsLevelAction,
 )
+from olc.actions.commandline import (
+    CommandLineAppendCharAction,
+    CommandLineClearAction,
+    CommandLineSetAction,
+)
 from olc.actions.cue import (
     CueCopyAction,
     CueDeleteAction,
@@ -50,6 +55,7 @@ from olc.actions.edit import RedoAction, UndoAction
 from olc.actions.fader import (
     FaderAssignAction,
     FaderClearAction,
+    FaderFlashAction,
     FaderSetLevelAction,
     FaderSetPageAction,
 )
@@ -80,6 +86,7 @@ from olc.actions.playback import (
     GoAction,
     GoBackAction,
     PauseAction,
+    PlaybackGotoAction,
     SequenceMinusAction,
     SequencePlusAction,
 )
@@ -166,6 +173,11 @@ def register_all_actions(registry: ActionRegistry) -> None:
         TabOpenAction,
         TabCloseAction,
         TabMoveAction,
+        CommandLineAppendCharAction,
+        CommandLineClearAction,
+        CommandLineSetAction,
+        FaderFlashAction,
+        PlaybackGotoAction,
     ]
 
     for action_class in actions_to_register:

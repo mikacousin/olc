@@ -379,10 +379,12 @@ class Window(Gtk.ApplicationWindow):
             "KP_9",
             "KP_0",
         ):
-            self.app.core.commandline.add_string(keyname[3:])
+            self.app.core.action_registry.execute(
+                "commandline.append_char", keyname[3:]
+            )
 
         if keyname == "period":
-            self.app.core.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
         # Channels View
         self.live_view.channels_view.on_key_press(keyname)
@@ -406,11 +408,11 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_equal(self) -> None:
         """@ Level"""
         self.live_view.channels_view.at_level()
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_backspace(self) -> None:
         """Empty keys buffer"""
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_escape(self) -> None:
         """Deselect all channels"""
@@ -426,19 +428,19 @@ class Window(Gtk.ApplicationWindow):
     def _keypress_q(self) -> None:
         """Seq -"""
         self.app.core.action_registry.execute("playback.sequence_minus")
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_w(self) -> None:
         """Seq +"""
         self.app.core.action_registry.execute("playback.sequence_plus")
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_g(self) -> None:
         """Goto"""
-        self.app.core.lightshow.main_playback.goto(
-            self.app.core.commandline.get_string()
+        self.app.core.action_registry.execute(
+            "playback.goto", self.app.core.commandline.get_string()
         )
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_r(self) -> None:
         """Record new Step and new Preset"""
@@ -475,7 +477,7 @@ class Window(Gtk.ApplicationWindow):
         # Tag filename as modified
         self.app.core.lightshow.set_modified()
 
-        self.app.core.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def _create_preset(self, mem: float, step: int) -> None:
         """Create new Preset component"""

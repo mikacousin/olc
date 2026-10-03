@@ -55,13 +55,14 @@ class OSCDelegate:
                 "/olc/command_line", self.app.commandline.get_string()
             )
 
-    def _execute_action(self, name: str) -> None:
+    def _execute_action(self, name: str, *args: object) -> None:
         """Execute an action from the registry.
 
         Args:
             name: The action name.
+            *args: Arguments for the action.
         """
-        self.app.action_registry.execute(name)
+        self.app.action_registry.execute(name, *args)
 
     @make_method("/olc/key/go")
     def _go(self, _address: str, _args: list) -> None:
@@ -85,51 +86,51 @@ class OSCDelegate:
 
     @make_method("/olc/key/clear")
     def _clear(self, _address: str, _args: list) -> None:
-        self.app.commandline.set_string("")
+        self._execute_action("commandline.clear")
 
     @make_method("/olc/key/1")
     def _1(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("1")
+        self._execute_action("commandline.append_char", "1")
 
     @make_method("/olc/key/2")
     def _2(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("2")
+        self._execute_action("commandline.append_char", "2")
 
     @make_method("/olc/key/3")
     def _3(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("3")
+        self._execute_action("commandline.append_char", "3")
 
     @make_method("/olc/key/4")
     def _4(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("4")
+        self._execute_action("commandline.append_char", "4")
 
     @make_method("/olc/key/5")
     def _5(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("5")
+        self._execute_action("commandline.append_char", "5")
 
     @make_method("/olc/key/6")
     def _6(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("6")
+        self._execute_action("commandline.append_char", "6")
 
     @make_method("/olc/key/7")
     def _7(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("7")
+        self._execute_action("commandline.append_char", "7")
 
     @make_method("/olc/key/8")
     def _8(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("8")
+        self._execute_action("commandline.append_char", "8")
 
     @make_method("/olc/key/9")
     def _9(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("9")
+        self._execute_action("commandline.append_char", "9")
 
     @make_method("/olc/key/0")
     def _0(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string("0")
+        self._execute_action("commandline.append_char", "0")
 
     @make_method("/olc/key/.")
     def _period(self, _address: str, _args: list) -> None:
-        self.app.commandline.add_string(".")
+        self._execute_action("commandline.append_char", ".")
 
     @make_method("/olc/key/channel")
     def _channel(self, _address: str, _args: list) -> None:
@@ -225,15 +226,20 @@ class OSCDelegate:
     @make_method("/olc/fader/1/*/flash")
     def _fader_flash(self, address: str, args: list) -> None:
         try:
-            pressed = args[0]
+            pressed = bool(args[0])
             fader_index = int(address.split("/")[4])
-            fader = self.app.lightshow.fader_bank.get_fader(fader_index)
-            if pressed:
-                fader.flash_on()
+            fader_bank = self.app.lightshow.fader_bank
+            if self.app is not None and hasattr(self.app, "action_registry"):
+                self.app.action_registry.execute(
+                    "fader.flash", fader_bank.active_page, fader_index, pressed
+                )
             else:
-                fader.flash_off()
-
-            self.app.emit("fader.flash_changed", fader_index, pressed)
+                fader = fader_bank.get_fader(fader_index)
+                if pressed:
+                    fader.flash_on()
+                else:
+                    fader.flash_off()
+                self.app.emit("fader.flash_changed", fader_index, pressed)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_flash: {err}")
 

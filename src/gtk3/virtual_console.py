@@ -586,8 +586,10 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "goto"
             self.queue_draw()
         else:
-            self.app.core.lightshow.main_playback.goto(self.commandline.get_string())
-            self.commandline.set_string("")
+            self.app.core.action_registry.execute(
+                "playback.goto", self.commandline.get_string()
+            )
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _on_channel(self, _widget: Gtk.Widget) -> None:
         """Channel button"""
@@ -760,7 +762,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_0"
             self.queue_draw()
         else:
-            self.commandline.add_string("0")
+            self.app.core.action_registry.execute("commandline.append_char", "0")
 
     def _on_1(self, _widget: Gtk.Widget) -> None:
         """1"""
@@ -768,7 +770,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_1"
             self.queue_draw()
         else:
-            self.commandline.add_string("1")
+            self.app.core.action_registry.execute("commandline.append_char", "1")
 
     def _on_2(self, _widget: Gtk.Widget) -> None:
         """2"""
@@ -776,7 +778,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_2"
             self.queue_draw()
         else:
-            self.commandline.add_string("2")
+            self.app.core.action_registry.execute("commandline.append_char", "2")
 
     def _on_3(self, _widget: Gtk.Widget) -> None:
         """3"""
@@ -784,7 +786,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_3"
             self.queue_draw()
         else:
-            self.commandline.add_string("3")
+            self.app.core.action_registry.execute("commandline.append_char", "3")
 
     def _on_4(self, _widget: Gtk.Widget) -> None:
         """4"""
@@ -792,7 +794,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_4"
             self.queue_draw()
         else:
-            self.commandline.add_string("4")
+            self.app.core.action_registry.execute("commandline.append_char", "4")
 
     def _on_5(self, _widget: Gtk.Widget) -> None:
         """5"""
@@ -800,7 +802,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_5"
             self.queue_draw()
         else:
-            self.commandline.add_string("5")
+            self.app.core.action_registry.execute("commandline.append_char", "5")
 
     def _on_6(self, _widget: Gtk.Widget) -> None:
         """6"""
@@ -808,7 +810,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_6"
             self.queue_draw()
         else:
-            self.commandline.add_string("6")
+            self.app.core.action_registry.execute("commandline.append_char", "6")
 
     def _on_7(self, _widget: Gtk.Widget) -> None:
         """7"""
@@ -816,7 +818,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_7"
             self.queue_draw()
         else:
-            self.commandline.add_string("7")
+            self.app.core.action_registry.execute("commandline.append_char", "7")
 
     def _on_8(self, _widget: Gtk.Widget) -> None:
         """8"""
@@ -824,7 +826,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_8"
             self.queue_draw()
         else:
-            self.commandline.add_string("8")
+            self.app.core.action_registry.execute("commandline.append_char", "8")
 
     def _on_9(self, _widget: Gtk.Widget) -> None:
         """9"""
@@ -832,7 +834,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "number_9"
             self.queue_draw()
         else:
-            self.commandline.add_string("9")
+            self.app.core.action_registry.execute("commandline.append_char", "9")
 
     def _on_dot(self, _widget: Gtk.Widget) -> None:
         """."""
@@ -840,7 +842,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "dot"
             self.queue_draw()
         else:
-            self.commandline.add_string(".")
+            self.app.core.action_registry.execute("commandline.append_char", ".")
 
     def _flash_on(self, widget: Gtk.Widget, _event: Gdk.Event) -> None:
         """Flash button pressed
@@ -852,7 +854,9 @@ class VirtualConsoleWindow(Gtk.Window):
             for index, flash in enumerate(self.flashes):
                 if flash == widget:
                     fader_bank = self.app.core.lightshow.fader_bank
-                    fader_bank.faders[fader_bank.active_page][index + 1].flash_on()
+                    self.app.core.action_registry.execute(
+                        "fader.flash", fader_bank.active_page, index + 1, True
+                    )
 
     def _flash_off(self, widget: Gtk.Widget, _event: Gdk.Event) -> None:
         """Flash button released
@@ -864,7 +868,9 @@ class VirtualConsoleWindow(Gtk.Window):
             for index, flash in enumerate(self.flashes):
                 if flash == widget:
                     fader_bank = self.app.core.lightshow.fader_bank
-                    fader_bank.faders[fader_bank.active_page][index + 1].flash_off()
+                    self.app.core.action_registry.execute(
+                        "fader.flash", fader_bank.active_page, index + 1, False
+                    )
 
     def _on_flash(self, widget: FlashWidget) -> None:
         """Flash button clicked

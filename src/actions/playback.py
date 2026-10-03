@@ -19,6 +19,9 @@ import typing
 from olc.core.action import Action
 from olc.sequence import get_cue
 
+if typing.TYPE_CHECKING:
+    from olc.core.app import CoreApplication
+
 
 class GoAction(Action):
     """Action to trigger the GO command on the active sequence."""
@@ -209,4 +212,45 @@ class GoBackAction(Action):
         return {
             "active": on_go,
             "label": "GOBACK",
+        }
+
+
+class PlaybackGotoAction(Action):
+    """Action to go directly to a specific cue or step in the main playback."""
+
+    name = "playback.goto"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.target: str = ""
+
+    def configure(self, target: float | str | int) -> None:
+        """Configure the target cue.
+
+        Args:
+            target: Cue number (string or number).
+        """
+        self.target = str(target)
+
+    def execute(self) -> None:
+        """Execute the goto transition."""
+        main_playback = self.app.lightshow.main_playback
+        if not main_playback or not self.target:
+            return
+
+        main_playback.goto(self.target)
+        self.app.emit("playback.goto_triggered", self.get_feedback_state())
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state for the GOTO action."""
+        return {
+            "active": False,
+            "label": "GOTO",
+            "target": self.target,
         }

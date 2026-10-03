@@ -392,14 +392,17 @@ class MidiNotes:
             msg: MIDI message
             fader_index: Fader number
         """
+        fader_bank = self.app_delegate.core.lightshow.fader_bank
         if msg.velocity == 0:
             self.send(f"flash_{fader_index}", 0)
-            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
-            fader.flash_off()
+            self.app_delegate.core.action_registry.execute(
+                "fader.flash", fader_bank.active_page, fader_index, False
+            )
         elif msg.velocity == 127:
             self.send(f"flash_{fader_index}", 127)
-            fader = self.app_delegate.core.lightshow.fader_bank.get_fader(fader_index)
-            fader.flash_on()
+            self.app_delegate.core.action_registry.execute(
+                "fader.flash", fader_bank.active_page, fader_index, True
+            )
 
     def go(self, msg: mido.Message) -> None:
         """Go
@@ -438,10 +441,11 @@ class MidiNotes:
             self.app_delegate.core.emit("button.pressed", "goto", False)
         elif msg.velocity == 127:
             self.app_delegate.core.emit("button.pressed", "goto", True)
-            self.app_delegate.core.lightshow.main_playback.goto(
-                self.app_delegate.core.commandline.get_string()
+            self.app_delegate.core.action_registry.execute(
+                "playback.goto",
+                self.app_delegate.core.commandline.get_string(),
             )
-            self.app_delegate.core.commandline.set_string("")
+            self.app_delegate.core.action_registry.execute("commandline.clear")
 
     def sequence_minus(self, msg: mido.Message) -> None:
         """Seq -
@@ -591,7 +595,9 @@ class MidiNotes:
                 self.app_delegate.core.emit("button.pressed", vc_attr, True)
 
             if string_to_add is not None:
-                self.app_delegate.core.commandline.add_string(string_to_add)
+                self.app_delegate.core.action_registry.execute(
+                    "commandline.append_char", string_to_add
+                )
             elif core_action_name is not None:
                 self.app_delegate.core.action_registry.execute(core_action_name)
             elif keypress_name is not None and self.app_delegate.window:

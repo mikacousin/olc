@@ -154,3 +154,34 @@ def test_sequence_minus_action_execution() -> None:
     assert feedback["label"] == "SEQ-"
     assert feedback["position"] == 3
     assert feedback["timer"] == 0.1
+
+
+def test_goto_action_execution() -> None:
+    """Test execution and event dispatching for PlaybackGotoAction."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_playback = MagicMock()
+    app.lightshow.main_playback = mock_playback
+
+    goto_triggered_events = []
+    app.subscribe(
+        "playback.goto_triggered",
+        goto_triggered_events.append,
+    )
+
+    app.action_registry.execute("playback.goto", "2.5")
+
+    mock_playback.goto.assert_called_once_with("2.5")
+    assert len(goto_triggered_events) == 1
+    assert goto_triggered_events[0] == {
+        "active": False,
+        "label": "GOTO",
+        "target": "2.5",
+    }
+    action = app.action_registry.get("playback.goto")
+    assert action.get_feedback_state() == {
+        "active": False,
+        "label": "GOTO",
+        "target": "2.5",
+    }

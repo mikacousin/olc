@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Actions for fader assignment (fader.assign, fader.clear)."""
+"""Actions for fader operations (assign, clear, set_level, set_page, flash)."""
 
 from __future__ import annotations
 
@@ -265,3 +265,49 @@ class FaderSetPageAction(Action):
         if fader_bank.active_page != target_page:
             fader_bank.active_page = target_page
             self.app.emit("fader.page_changed", target_page)
+
+
+class FaderFlashAction(Action):
+    """Action to toggle a fader flash (press or release)."""
+
+    name = "fader.flash"
+    can_undo = False
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.page: int = 1
+        self.index: int = 1
+        self.pressed: bool = False
+
+    def configure(self, page: int, index: int, pressed: bool) -> None:
+        """Configure the flash action.
+
+        Args:
+            page: Fader page number.
+            index: Fader index within the page.
+            pressed: True if flash button is pressed, False if released.
+        """
+        self.page = page
+        self.index = index
+        self.pressed = pressed
+
+    def execute(self) -> None:
+        """Execute the flash action."""
+        fader_bank = self.app.lightshow.fader_bank
+        fader = fader_bank.faders[self.page][self.index]
+        if self.pressed:
+            fader.flash_on()
+        else:
+            fader.flash_off()
+
+        if self.page == fader_bank.active_page:
+            self.app.emit("fader.flash_changed", self.index, self.pressed)
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return the feedback state for this action."""
+        return {"active": self.pressed, "index": self.index}
