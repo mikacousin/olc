@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import numpy as np
 from olc.core.app import CoreApplication
 
 
@@ -168,3 +169,65 @@ def test_patch_select_output_and_undo_redo() -> None:
     app.history.redo()
     assert patch_by_outputs.outputs == [1, 2, 3, 4, 5]
     assert patch_by_outputs.last == 5
+
+
+def test_universe_blackout_and_undo_redo() -> None:
+    """Test universe.blackout action and its undo/redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    mock_universe = MagicMock()
+    initial_frame = np.full(512, 120, dtype=np.uint8)
+    mock_universe.snapshot.return_value = initial_frame.copy()
+    mock_engine.universe.return_value = mock_universe
+    app.engine = mock_engine
+
+    blackout_events: list[int] = []
+
+    def on_blackout_changed(univ_id: int) -> None:
+        blackout_events.append(univ_id)
+
+    app.subscribe("universe.blackout_changed", on_blackout_changed)
+
+    # Execute blackout on universe 2
+    app.action_registry.execute("universe.blackout", 2)
+    mock_engine.universe.assert_called_with(2)
+    mock_universe.blackout.assert_called_once()
+    assert blackout_events == [2]
+
+    # Undo blackout -> should restore initial frame
+    app.history.undo()
+    mock_universe.apply_array.assert_called_once()
+    assert np.array_equal(mock_universe.apply_array.call_args[0][0], initial_frame)
+    assert blackout_events == [2, 2]
+
+    # Redo blackout
+    app.history.redo()
+    assert mock_universe.blackout.call_count == 2
+    assert blackout_events == [2, 2, 2]
+
+
+def test_dmx_set_universe_levels() -> None:
+    """Test dmx.set_universe_levels action."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    dmx_events: list[tuple[int, dict[int, int]]] = []
+
+    def on_dmx_changed(univ_id: int, channels: dict[int, int]) -> None:
+        dmx_events.append((univ_id, channels))
+
+    app.subscribe("universe.dmx_changed", on_dmx_changed)
+
+    # Execute set_universe_levels
+    app.action_registry.execute("dmx.set_universe_levels", 1, {0: 255, 10: 128})
+    mock_engine.set_channels.assert_called_once_with(1, {0: 255, 10: 128})
+    assert len(dmx_events) == 1
+    assert dmx_events[0] == (1, {0: 255, 10: 128})
+
+    # Action should not be undoable
+    assert len(app.history.undo_stack) == 0

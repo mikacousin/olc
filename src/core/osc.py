@@ -231,8 +231,15 @@ class EngineOSCServer(CoreOSCServer):
                 for i in range(0, len(args), 2):
                     if i + 1 < len(args):
                         channels[int(args[i])] = int(args[i + 1])
-            # Direct channel assignment via CoreEngine
-            self._engine.set_channels(universe_id, channels)  # type: ignore
+
+            delegate_app = getattr(self._delegate, "app", None)
+            if delegate_app is not None and hasattr(delegate_app, "action_registry"):
+                delegate_app.action_registry.execute(
+                    "dmx.set_universe_levels", universe_id, channels
+                )
+            else:
+                # Direct channel assignment fallback via CoreEngine
+                self._engine.set_channels(universe_id, channels)  # type: ignore
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Engine] Error in set_channels: {err}")
 
@@ -243,6 +250,10 @@ class EngineOSCServer(CoreOSCServer):
         try:
             parts = address.split("/")
             universe_id = int(parts[3])
-            self._engine.blackout(universe_id)  # type: ignore
+            delegate_app = getattr(self._delegate, "app", None)
+            if delegate_app is not None and hasattr(delegate_app, "action_registry"):
+                delegate_app.action_registry.execute("universe.blackout", universe_id)
+            else:
+                self._engine.blackout(universe_id)  # type: ignore
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Engine] Error in blackout: {err}")

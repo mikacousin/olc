@@ -29,6 +29,7 @@ from olc.core.selection import SelectionManager
 from olc.core.tabs import CoreTabs
 
 if typing.TYPE_CHECKING:
+    from olc.core.backends.osc.delegate import OSCDelegate
     from olc.core.engine import CoreEngine
     from olc.midi import Midi
 
@@ -44,6 +45,7 @@ class CoreApplication(EventDispatcher):
     backend: typing.Optional[DMXBackend]
     engine: typing.Optional[CoreEngine]
     midi: typing.Optional[Midi]
+    osc_delegate: typing.Optional[OSCDelegate]
     crossfade: typing.Optional[CrossFade]
     commandline: CoreCommandLine
     live_selection: SelectionManager
@@ -85,6 +87,7 @@ class CoreApplication(EventDispatcher):
         self.backend = None
         self.engine = None
         self.midi = None
+        self.osc_delegate = None
 
         # For crossfade
         app_delegate = app if app is not None else self

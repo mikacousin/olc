@@ -152,6 +152,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         self.osc_server = None
         self.osc_client = None
         self._osc_delegate = None
+        self.app = None
 
         # Raise soft open files limit to support 1024+ universes
         try:

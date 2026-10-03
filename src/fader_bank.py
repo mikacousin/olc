@@ -239,16 +239,6 @@ class FaderBank:
                 app_any.virtual_console.flashes[
                     self.faders[page][index].index - 1
                 ].queue_draw()
-            # Refresh OSC
-            if self.app and hasattr(self.app, "engine") and self.app.engine is not None:
-                self.app.engine.send_osc("/olc/fader/page", page)
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{index}/label", self.faders[page][index].text
-                )
-                self.app.engine.send_osc(
-                    f"/olc/fader/1/{index}/level",
-                    round(self.faders[page][index].level * 255),
-                )
 
     def update_active_faders(self) -> None:
         """List faders with channels levels"""

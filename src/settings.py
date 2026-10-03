@@ -24,7 +24,6 @@ from typing import Callable
 import serial.tools.list_ports
 from gi.repository import Gdk, GLib, GObject, Gtk
 from olc.core.backends.enttec import resolve_port
-from olc.core.backends.osc.delegate import OSCDelegate
 from olc.core.universe_config import Protocol
 
 if typing.TYPE_CHECKING:
@@ -402,42 +401,38 @@ class SettingsTab(Gtk.Box):
             typing.cast(typing.Any, self.tabs.tabs["memories"]).channels_view.update()
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
-        self.settings.set_value("osc", GLib.Variant("b", state))
-        engine = self.app.engine
-        if engine is not None:
-            if state:
-                engine.start_osc(
-                    host=self.settings.get_string("osc-host"),
-                    client_port=self.settings.get_int("osc-client-port"),
-                    server_port=self.settings.get_int("osc-server-port"),
-                )
-                self.app.osc_delegate = OSCDelegate(self.app.core)
-                engine.register_osc_delegate(self.app.osc_delegate)
-            else:
-                engine.stop_osc()
-                self.app.osc_delegate = None
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute("osc.toggle", state)
+        else:
+            self.settings.set_value("osc", GLib.Variant("b", state))
 
     def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
         port = widget.get_value_as_int()
-        self.settings.set_value("osc-client-port", GLib.Variant("i", port))
-        engine = self.app.engine
-        if engine is not None:
-            engine.update_osc_client(port=port)
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute("osc.set_config", client_port=port)
+        else:
+            self.settings.set_value("osc-client-port", GLib.Variant("i", port))
+            if self.app.engine is not None:
+                self.app.engine.update_osc_client(port=port)
 
     def _server_port_changed(self, widget: Gtk.SpinButton) -> None:
         port = widget.get_value_as_int()
-        self.settings.set_value("osc-server-port", GLib.Variant("i", port))
-        engine = self.app.engine
-        if engine is not None:
-            engine.update_osc_server(port)
+        if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+            self.app.core.action_registry.execute("osc.set_config", server_port=port)
+        else:
+            self.settings.set_value("osc-server-port", GLib.Variant("i", port))
+            if self.app.engine is not None:
+                self.app.engine.update_osc_server(port)
 
     def _client_ip_changed(self, widget: Gtk.Entry) -> None:
         ip_addr = widget.get_text()
         if self._is_ip(ip_addr):
-            self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
-            engine = self.app.engine
-            if engine is not None:
-                engine.update_osc_client(host=ip_addr)
+            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
+                self.app.core.action_registry.execute("osc.set_config", host=ip_addr)
+            else:
+                self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
+                if self.app.engine is not None:
+                    self.app.engine.update_osc_client(host=ip_addr)
             parent = self.get_parent()
             if parent:
                 parent.grab_focus()

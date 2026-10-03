@@ -28,7 +28,6 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends import DMXBackend  # noqa: E402
-from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
 from olc.core.binding import MidiBinding, OscBinding  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
@@ -59,7 +58,7 @@ from olc.sequence import Sequence  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-public-methods
 class Application(Gtk.Application):
     """Application Class"""
 
@@ -284,18 +283,13 @@ class Application(Gtk.Application):
             universe_map.enable_protocol(u, Protocol.SACN)
 
         self.engine = CoreEngine(universe_map, monitor_port=5555, no_listen=True)
+        self.engine.app = self.core
         self.core.engine = self.engine
 
         self.core.start()
 
         if self.settings.get_boolean("osc") and self.engine is not None:
-            self.engine.start_osc(
-                host=self.settings.get_string("osc-host"),
-                client_port=self.settings.get_int("osc-client-port"),
-                server_port=self.settings.get_int("osc-server-port"),
-            )
-            self.osc_delegate = OSCDelegate(self.core)
-            self.engine.register_osc_delegate(self.osc_delegate)
+            self.core.action_registry.execute("osc.toggle", True)
 
         def on_patch_empty_cb() -> None:
             if self.core.backend:

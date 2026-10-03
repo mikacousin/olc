@@ -34,6 +34,12 @@ class OSCDelegate:
     def __init__(self, app: CoreApplication) -> None:
         self.app = app
         self.app.subscribe("fader.page_changed", self._on_fader_page_changed)
+        self.app.subscribe("fader.level_changed", self._on_fader_level_changed)
+        self.app.subscribe("fader.changed", self._on_fader_changed)
+        self.app.subscribe("commandline.changed", self._on_commandline_changed)
+        self.app.subscribe(
+            "patch.selected_outputs_changed", self._on_selected_outputs_changed
+        )
 
     def _on_fader_page_changed(self, page: int) -> None:
         """Send OSC feedback when the active fader page changes."""
@@ -47,6 +53,37 @@ class OSCDelegate:
                 self.app.engine.send_osc(
                     f"/olc/fader/1/{fader.index}/level", round(fader.level * 255)
                 )
+
+    def _on_fader_level_changed(self, fader_index: int, level: float) -> None:
+        """Send OSC feedback when a fader level changes."""
+        if self.app.engine is not None:
+            self.app.engine.send_osc(
+                f"/olc/fader/1/{fader_index}/level", round(level * 255)
+            )
+
+    def _on_fader_changed(self, page: int, index: int) -> None:
+        """Send OSC feedback when a fader label or assignment changes."""
+        if self.app.engine is not None:
+            fader_bank = self.app.lightshow.fader_bank
+            if page == fader_bank.active_page:
+                fader = fader_bank.faders[page][index]
+                self.app.engine.send_osc(f"/olc/fader/1/{index}/label", fader.text)
+                self.app.engine.send_osc(
+                    f"/olc/fader/1/{index}/level", round(fader.level * 255)
+                )
+
+    def _on_commandline_changed(self, keystring: str) -> None:
+        """Send OSC feedback when the logical command line changes."""
+        if self.app.engine is not None:
+            self.app.engine.send_osc("/olc/command_line", keystring)
+
+    def _on_selected_outputs_changed(self) -> None:
+        """Send OSC feedback when selected DMX outputs change."""
+        if self.app.engine is not None:
+            patch_by_outputs = self.app.lightshow.patch_by_outputs
+            self.app.engine.send_osc(
+                "/olc/patch/selected_outputs", patch_by_outputs.get_selected()
+            )
 
     @make_method("/olc/command_line")
     def _commandline(self, _address: str, _args: list) -> None:
@@ -217,9 +254,6 @@ class OSCDelegate:
                 fader = fader_bank.get_fader(fader_index)
                 fader.set_level(level / 255)
                 self.app.emit("fader.level_changed", fader_index, level / 255)
-
-            if self.app.engine is not None:
-                self.app.engine.send_osc(address, level)
         except Exception as err:  # pylint: disable=broad-exception-caught
             print(f"[OSC Delegate] Error in fader_level: {err}")
 

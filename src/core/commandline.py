@@ -35,9 +35,7 @@ class CoreCommandLine:
         self._keystring: str = ""
 
     def update(self) -> None:
-        """Send state changes via OSC and emit local core events."""
-        if self.app.engine is not None:
-            self.app.engine.send_osc("/olc/command_line", self._keystring)
+        """Emit local core events when command line state changes."""
         self.app.emit("commandline.changed", self._keystring)
 
     def add_string(self, string: str) -> None:

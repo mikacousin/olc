@@ -81,12 +81,6 @@ class Fader:
             self.app.midi.messages.pitchwheel.send(
                 midi_name, round(level * 16383) - 8192
             )
-        # OSC
-        if self.app and hasattr(self.app, "engine") and self.app.engine is not None:
-            page = 1
-            index = self.index
-            path = f"/olc/fader/{page}/{index}/level"
-            self.app.engine.send_osc(path, round(level * 255))
 
     def flash_on(self) -> None:
         """Flash fader at full"""

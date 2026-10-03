@@ -82,13 +82,19 @@ from olc.actions.midi import (
     MidiPortToggleAction,
     MidiSetPortModeAction,
 )
+from olc.actions.osc import (
+    OscSetConfigAction,
+    OscToggleAction,
+)
 from olc.actions.patch import (
+    DmxSetUniverseLevelsAction,
     PatchAddOutputAction,
     PatchClearAction,
     PatchSelectOutputAction,
     PatchSet1on1Action,
     PatchSetOutputCurveAction,
     PatchUnpatchOutputAction,
+    UniverseBlackoutAction,
 )
 from olc.actions.playback import (
     GoAction,
@@ -194,6 +200,10 @@ def register_all_actions(registry: ActionRegistry) -> None:
         MidiLearnToggleAction,
         MidiAssignMappingAction,
         MidiClearMappingsAction,
+        UniverseBlackoutAction,
+        DmxSetUniverseLevelsAction,
+        OscToggleAction,
+        OscSetConfigAction,
     ]
 
     for action_class in actions_to_register:
