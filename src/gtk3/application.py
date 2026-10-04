@@ -321,6 +321,7 @@ class Application(Gtk.Application):
                 tabs=self.tabs,
             )
             imported.parse()
+        self.core.history.clear()
         return False
 
     def on_backend_notification(self, title: str, body: str) -> None:
@@ -371,6 +372,8 @@ class Application(Gtk.Application):
         for name, func in actions.items():
             if function := getattr(self, func, None):
                 action = Gio.SimpleAction.new(name, None)
+                if name in ("undo", "redo"):
+                    action.set_enabled(False)
                 action.connect("activate", function)
                 self.add_action(action)
         return typing.cast(Gio.MenuModel, menu)

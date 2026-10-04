@@ -18,14 +18,19 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import gi
 import pytest
-from gi.repository import Gtk
-from olc.core.app import CoreApplication
-from olc.core.backends.osc.delegate import OSCDelegate
-from olc.core.osc import EngineOSCServer
-from olc.gtk3.event_bridge import GuiEventBridge
-from olc.gtk3.window import Window
-from olc.settings import SettingsTab
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+from olc.core.app import CoreApplication  # noqa: E402
+from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
+from olc.core.engine import CoreEngine  # noqa: E402
+from olc.core.osc import EngineOSCServer  # noqa: E402
+from olc.core.universe_config import UniverseMap  # noqa: E402
+from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
+from olc.gtk3.window import Window  # noqa: E402
+from olc.settings import SettingsTab  # noqa: E402
 
 
 def test_osc_toggle_enable_and_disable() -> None:
@@ -297,3 +302,40 @@ def test_window_key_press_delegation() -> None:
     # 3. Non-entry focused -> returns False immediately without calling event()
     win.get_focus.return_value = MagicMock(spec=Gtk.Button)
     assert win.on_window_key_press(MagicMock(), event) is False
+
+
+def test_osc_start_stop_reentrant_lock() -> None:
+    """Test repeated start_osc calls without deadlocking on CoreEngine._lock."""
+    engine = CoreEngine(UniverseMap(1), monitor_port=5555, no_listen=True)
+    engine._network_thread = MagicMock()  # pylint: disable=protected-access
+
+    # Start OSC first time
+    engine.start_osc("127.0.0.1", 8000, 9000)
+    assert engine.osc_server is not None
+    assert engine.osc_client is not None
+
+    # Start OSC second time while already running -> should call stop_osc() internally
+    # and re-acquire lock without deadlock
+    engine.start_osc("127.0.0.1", 8001, 9001)
+    assert engine.osc_server is not None
+    assert engine.osc_client is not None
+
+    # Cleanup
+    engine.stop_osc()
+    engine.stop()
+    assert engine.osc_server is None
+    assert engine.osc_client is None
+
+
+def test_osc_toggle_noop_not_undoable() -> None:
+    """Test osc.toggle does not create an undoable action when state does not
+    change."""
+    settings = MagicMock()
+    settings.get_boolean.return_value = True
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    # Executing toggle to True when already True should not push to history
+    app.action_registry.execute("osc.toggle", True)
+    assert len(app.history.undo_stack) == 0

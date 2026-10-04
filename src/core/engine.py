@@ -144,7 +144,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         no_transmit: bool = False,
     ) -> None:
         self._map = universe_map
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._no_listen = no_listen
         self._loopback = loopback
         self._no_transmit = no_transmit

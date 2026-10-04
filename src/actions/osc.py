@@ -54,6 +54,8 @@ class OscToggleAction(Action):
             elif hasattr(settings, "get_value"):
                 self.old_enable = bool(settings.get_value("osc"))
 
+        if self.old_enable == self.enable:
+            self.can_undo = False
         self._apply_toggle(self.enable)
 
     def undo(self) -> None:

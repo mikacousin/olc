@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import typing
 
-from gi.repository import GLib, Gtk, Pango
+from gi.repository import Gio, GLib, Gtk, Pango
 from olc.curve import LimitCurve, PointsCurve
 from olc.define import MAX_CHANNELS
 from olc.fader import FaderType
@@ -1368,8 +1368,14 @@ class GuiEventBridge:
                 self.app.tabs.move(tab_name, from_nb, to_nb, index)
         return False
 
-    def _on_history_changed(self, _data: dict[str, bool]) -> bool:
+    def _on_history_changed(self, data: dict[str, bool]) -> bool:
         """Handle history changed event by refreshing history tab UI."""
+        if undo_action := self.app.lookup_action("undo"):
+            if isinstance(undo_action, Gio.SimpleAction):
+                undo_action.set_enabled(data.get("can_undo", False))
+        if redo_action := self.app.lookup_action("redo"):
+            if isinstance(redo_action, Gio.SimpleAction):
+                redo_action.set_enabled(data.get("can_redo", False))
         if not self.app.tabs:
             return False
         history_tab = self.app.tabs.tabs.get("history")
