@@ -125,10 +125,9 @@ class SetChannelLevelAction(BaseChannelLevelAction):
         return f"<SetChannelLevelAction channel={self.channel} level={self.level}>"
 
 
-class SelectActiveChannelAction(Action):
-    """Action to select a channel logically by reading the commandline."""
+class BaseChannelSelectionAction(Action):
+    """Base class for channel selection actions in ActionRegistry."""
 
-    name = "channel.select_active"
     can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
@@ -138,56 +137,64 @@ class SelectActiveChannelAction(Action):
         self.new_selection: list[int] = []
         self.new_last_selected: typing.Optional[int] = None
 
-    def execute(self) -> None:
+    def _save_previous_selection(self) -> None:
+        """Capture previous selection state."""
         self.old_selection = list(self.app.selected_channels)
         self.old_last_selected = self.app.last_selected_channel
 
-        cmd_string = self.app.commandline.get_string()
-        if is_non_nul_int(cmd_string):
-            channel = int(cmd_string)
-            if 1 <= channel <= MAX_CHANNELS:
-                self.new_selection = [channel]
-                self.new_last_selected = channel
-            else:
-                self.new_selection = []
-                self.new_last_selected = None
-        else:
-            self.new_selection = []
-            self.new_last_selected = None
-
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.commandline.set_string("")
-
+    def _apply_selection(
+        self,
+        selection: list[int],
+        last_selected: typing.Optional[int],
+        clear_cmd: bool = False,
+    ) -> None:
+        """Apply new selection, optionally clear commandline, and emit event."""
+        self.new_selection = list(selection)
+        self.new_last_selected = last_selected
+        self.app.selected_channels = list(selection)
+        self.app.last_selected_channel = last_selected
+        if clear_cmd:
+            self.app.commandline.set_string("")
         self.app.emit("channels.selected_changed", self.app.selected_channels)
 
     def undo(self) -> None:
+        """Restore previous selection."""
         self.app.selected_channels = list(self.old_selection)
         self.app.last_selected_channel = self.old_last_selected
         self.app.emit("channels.selected_changed", self.app.selected_channels)
 
     def redo(self) -> None:
+        """Re-apply new selection."""
         self.app.selected_channels = list(self.new_selection)
         self.app.last_selected_channel = self.new_last_selected
         self.app.emit("channels.selected_changed", self.app.selected_channels)
 
 
-class SelectThruChannelAction(Action):
+class SelectActiveChannelAction(BaseChannelSelectionAction):
+    """Action to select a channel logically by reading the commandline."""
+
+    name = "channel.select_active"
+
+    def execute(self) -> None:
+        self._save_previous_selection()
+
+        cmd_string = self.app.commandline.get_string()
+        if is_non_nul_int(cmd_string):
+            channel = int(cmd_string)
+            if 1 <= channel <= MAX_CHANNELS:
+                self._apply_selection([channel], channel, clear_cmd=True)
+                return
+
+        self._apply_selection([], None, clear_cmd=True)
+
+
+class SelectThruChannelAction(BaseChannelSelectionAction):
     """Action to select a range of channels logically (Thru)."""
 
     name = "channel.select_thru"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.old_selection: list[int] = []
-        self.old_last_selected: typing.Optional[int] = None
-        self.new_selection: list[int] = []
-        self.new_last_selected: typing.Optional[int] = None
 
     def execute(self) -> None:
-        self.old_selection = list(self.app.selected_channels)
-        self.old_last_selected = self.app.last_selected_channel
+        self._save_previous_selection()
 
         cmd_string = self.app.commandline.get_string()
         if is_non_nul_int(cmd_string) and self.old_last_selected is not None:
@@ -196,146 +203,70 @@ class SelectThruChannelAction(Action):
             low = min(from_chan, to_chan)
             high = max(from_chan, to_chan)
 
-            self.new_selection = list(self.old_selection)
+            new_sel = list(self.old_selection)
             for ch in range(low, high + 1):
-                if 1 <= ch <= MAX_CHANNELS and ch not in self.new_selection:
-                    self.new_selection.append(ch)
-            self.new_last_selected = to_chan
+                if 1 <= ch <= MAX_CHANNELS and ch not in new_sel:
+                    new_sel.append(ch)
+            self._apply_selection(new_sel, to_chan, clear_cmd=True)
         else:
-            self.new_selection = list(self.old_selection)
-            self.new_last_selected = self.old_last_selected
-
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.commandline.set_string("")
-
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def undo(self) -> None:
-        self.app.selected_channels = list(self.old_selection)
-        self.app.last_selected_channel = self.old_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def redo(self) -> None:
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
+            self._apply_selection(
+                self.old_selection, self.old_last_selected, clear_cmd=True
+            )
 
 
-class SelectAddChannelAction(Action):
+class SelectAddChannelAction(BaseChannelSelectionAction):
     """Action to add a channel logically (+)."""
 
     name = "channel.select_add"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.old_selection: list[int] = []
-        self.old_last_selected: typing.Optional[int] = None
-        self.new_selection: list[int] = []
-        self.new_last_selected: typing.Optional[int] = None
 
     def execute(self) -> None:
-        self.old_selection = list(self.app.selected_channels)
-        self.old_last_selected = self.app.last_selected_channel
+        self._save_previous_selection()
 
         cmd_string = self.app.commandline.get_string()
         if is_non_nul_int(cmd_string):
             channel = int(cmd_string)
             if 1 <= channel <= MAX_CHANNELS:
-                self.new_selection = list(self.old_selection)
-                if channel not in self.new_selection:
-                    self.new_selection.append(channel)
-                self.new_last_selected = channel
-            else:
-                self.new_selection = list(self.old_selection)
-                self.new_last_selected = self.old_last_selected
-        else:
-            self.new_selection = list(self.old_selection)
-            self.new_last_selected = self.old_last_selected
+                new_sel = list(self.old_selection)
+                if channel not in new_sel:
+                    new_sel.append(channel)
+                self._apply_selection(new_sel, channel, clear_cmd=True)
+                return
 
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.commandline.set_string("")
-
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def undo(self) -> None:
-        self.app.selected_channels = list(self.old_selection)
-        self.app.last_selected_channel = self.old_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def redo(self) -> None:
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
+        self._apply_selection(
+            self.old_selection, self.old_last_selected, clear_cmd=True
+        )
 
 
-class SelectRemoveChannelAction(Action):
+class SelectRemoveChannelAction(BaseChannelSelectionAction):
     """Action to remove a channel logically (-)."""
 
     name = "channel.select_remove"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.old_selection: list[int] = []
-        self.old_last_selected: typing.Optional[int] = None
-        self.new_selection: list[int] = []
-        self.new_last_selected: typing.Optional[int] = None
 
     def execute(self) -> None:
-        self.old_selection = list(self.app.selected_channels)
-        self.old_last_selected = self.app.last_selected_channel
+        self._save_previous_selection()
 
         cmd_string = self.app.commandline.get_string()
         if is_non_nul_int(cmd_string):
             channel = int(cmd_string)
             if 1 <= channel <= MAX_CHANNELS:
-                self.new_selection = list(self.old_selection)
-                if channel in self.new_selection:
-                    self.new_selection.remove(channel)
-                self.new_last_selected = channel
-            else:
-                self.new_selection = list(self.old_selection)
-                self.new_last_selected = self.old_last_selected
-        else:
-            self.new_selection = list(self.old_selection)
-            self.new_last_selected = self.old_last_selected
+                new_sel = list(self.old_selection)
+                if channel in new_sel:
+                    new_sel.remove(channel)
+                self._apply_selection(new_sel, channel, clear_cmd=True)
+                return
 
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.commandline.set_string("")
-
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def undo(self) -> None:
-        self.app.selected_channels = list(self.old_selection)
-        self.app.last_selected_channel = self.old_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def redo(self) -> None:
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
+        self._apply_selection(
+            self.old_selection, self.old_last_selected, clear_cmd=True
+        )
 
 
-class SelectAllChannelsAction(Action):
+class SelectAllChannelsAction(BaseChannelSelectionAction):
     """Action to select all channels with intensity > 0."""
 
     name = "channel.select_all"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.old_selection: list[int] = []
-        self.old_last_selected: typing.Optional[int] = None
-        self.new_selection: list[int] = []
-        self.new_last_selected: typing.Optional[int] = None
 
     def execute(self) -> None:
-        self.old_selection = list(self.app.selected_channels)
-        self.old_last_selected = self.app.last_selected_channel
+        self._save_previous_selection()
 
         backend = getattr(self.app, "backend", None)
         selected = []
@@ -345,58 +276,19 @@ class SelectAllChannelsAction(Action):
                 if level > 0:
                     selected.append(ch)
 
-        self.new_selection = selected
-        self.new_last_selected = selected[-1] if selected else None
-
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def undo(self) -> None:
-        self.app.selected_channels = list(self.old_selection)
-        self.app.last_selected_channel = self.old_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def redo(self) -> None:
-        self.app.selected_channels = list(self.new_selection)
-        self.app.last_selected_channel = self.new_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
+        last = selected[-1] if selected else None
+        self._apply_selection(selected, last)
 
 
-class SelectNoneChannelsAction(Action):
+class SelectNoneChannelsAction(BaseChannelSelectionAction):
     """Action to clear all channel selection."""
 
     name = "channel.select_none"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        """Initialize the action.
-
-        Args:
-            app: The core application instance.
-        """
-        super().__init__(app)
-        self.old_selection: list[int] = []
-        self.old_last_selected: typing.Optional[int] = None
 
     def execute(self) -> None:
         """Clear channel selection and notify listeners."""
-        self.old_selection = list(self.app.selected_channels)
-        self.old_last_selected = self.app.last_selected_channel
-        self.app.selected_channels = []
-        self.app.last_selected_channel = None
-        self.app.commandline.set_string("")
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def undo(self) -> None:
-        self.app.selected_channels = list(self.old_selection)
-        self.app.last_selected_channel = self.old_last_selected
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
-
-    def redo(self) -> None:
-        self.app.selected_channels = []
-        self.app.last_selected_channel = None
-        self.app.emit("channels.selected_changed", self.app.selected_channels)
+        self._save_previous_selection()
+        self._apply_selection([], None, clear_cmd=True)
 
 
 class BaseSelectedChannelsLevelAction(BaseChannelLevelAction):

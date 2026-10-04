@@ -91,14 +91,23 @@ class SelectionAction(ABC):
             manager: The target SelectionManager instance.
         """
         self.manager = manager
+        self.old_selection: list[int] = []
+        self.old_last: typing.Optional[int] = None
+
+    def _save_previous(self) -> None:
+        """Save the previous selection state for undo."""
+        self.old_selection = list(self.manager.selected_channels)
+        self.old_last = self.manager.last_selected_channel
 
     @abstractmethod
     def execute(self) -> None:
         """Execute the action on the manager."""
 
-    @abstractmethod
     def undo(self) -> None:
         """Undo the selection changes."""
+        self.manager.selected_channels = list(self.old_selection)
+        self.manager.last_selected_channel = self.old_last
+        self.manager.notify_changed()
 
     def redo(self) -> None:
         """Redo the selection changes."""
@@ -114,8 +123,6 @@ class SelectActiveAction(SelectionAction):
     def __init__(self, manager: SelectionManager) -> None:
         super().__init__(manager)
         self.channel: int = 0
-        self.old_selection: list[int] = []
-        self.old_last: typing.Optional[int] = None
 
     def configure(self, channel: int = 0) -> None:
         """Configure the action with a channel index.
@@ -125,8 +132,7 @@ class SelectActiveAction(SelectionAction):
         self.channel = channel
 
     def execute(self) -> None:
-        self.old_selection = list(self.manager.selected_channels)
-        self.old_last = self.manager.last_selected_channel
+        self._save_previous()
 
         chan = self.channel
         if not chan:
@@ -142,11 +148,6 @@ class SelectActiveAction(SelectionAction):
             self.manager.last_selected_channel = chan
             self.manager.commandline.set_string("")
 
-    def undo(self) -> None:
-        self.manager.selected_channels = list(self.old_selection)
-        self.manager.last_selected_channel = self.old_last
-        self.manager.notify_changed()
-
 
 class SelectAddAction(SelectionAction):
     """Action to add a channel to the selection."""
@@ -156,8 +157,6 @@ class SelectAddAction(SelectionAction):
     def __init__(self, manager: SelectionManager) -> None:
         super().__init__(manager)
         self.channel: int = 0
-        self.old_selection: list[int] = []
-        self.old_last: typing.Optional[int] = None
 
     def configure(self, channel: int = 0) -> None:
         """Configure the action with a channel index to add.
@@ -167,8 +166,7 @@ class SelectAddAction(SelectionAction):
         self.channel = channel
 
     def execute(self) -> None:
-        self.old_selection = list(self.manager.selected_channels)
-        self.old_last = self.manager.last_selected_channel
+        self._save_previous()
 
         chan = self.channel
         if not chan:
@@ -187,11 +185,6 @@ class SelectAddAction(SelectionAction):
             self.manager.last_selected_channel = chan
             self.manager.commandline.set_string("")
 
-    def undo(self) -> None:
-        self.manager.selected_channels = list(self.old_selection)
-        self.manager.last_selected_channel = self.old_last
-        self.manager.notify_changed()
-
 
 class SelectRemoveAction(SelectionAction):
     """Action to remove a channel from the selection."""
@@ -201,8 +194,6 @@ class SelectRemoveAction(SelectionAction):
     def __init__(self, manager: SelectionManager) -> None:
         super().__init__(manager)
         self.channel: int = 0
-        self.old_selection: list[int] = []
-        self.old_last: typing.Optional[int] = None
 
     def configure(self, channel: int = 0) -> None:
         """Configure the action with a channel index to remove.
@@ -212,8 +203,7 @@ class SelectRemoveAction(SelectionAction):
         self.channel = channel
 
     def execute(self) -> None:
-        self.old_selection = list(self.manager.selected_channels)
-        self.old_last = self.manager.last_selected_channel
+        self._save_previous()
 
         chan = self.channel
         if not chan:
@@ -232,11 +222,6 @@ class SelectRemoveAction(SelectionAction):
             self.manager.last_selected_channel = chan
             self.manager.commandline.set_string("")
 
-    def undo(self) -> None:
-        self.manager.selected_channels = list(self.old_selection)
-        self.manager.last_selected_channel = self.old_last
-        self.manager.notify_changed()
-
 
 class SelectThruAction(SelectionAction):
     """Action to select a range of channels (Thru)."""
@@ -246,8 +231,6 @@ class SelectThruAction(SelectionAction):
     def __init__(self, manager: SelectionManager) -> None:
         super().__init__(manager)
         self.to_channel: int = 0
-        self.old_selection: list[int] = []
-        self.old_last: typing.Optional[int] = None
 
     def configure(self, to_channel: int = 0) -> None:
         """Configure the action with the target channel index of the range.
@@ -257,8 +240,7 @@ class SelectThruAction(SelectionAction):
         self.to_channel = to_channel
 
     def execute(self) -> None:
-        self.old_selection = list(self.manager.selected_channels)
-        self.old_last = self.manager.last_selected_channel
+        self._save_previous()
 
         to_chan = self.to_channel
         if not to_chan:
@@ -282,25 +264,14 @@ class SelectThruAction(SelectionAction):
             self.manager.last_selected_channel = to_chan
             self.manager.commandline.set_string("")
 
-    def undo(self) -> None:
-        self.manager.selected_channels = list(self.old_selection)
-        self.manager.last_selected_channel = self.old_last
-        self.manager.notify_changed()
-
 
 class SelectAllAction(SelectionAction):
     """Action to select all channels that have an intensity level > 0."""
 
     name = "select.all"
 
-    def __init__(self, manager: SelectionManager) -> None:
-        super().__init__(manager)
-        self.old_selection: list[int] = []
-        self.old_last: typing.Optional[int] = None
-
     def execute(self) -> None:
-        self.old_selection = list(self.manager.selected_channels)
-        self.old_last = self.manager.last_selected_channel
+        self._save_previous()
 
         new_sel = []
         if self.manager.get_level_callback is not None:
@@ -309,35 +280,14 @@ class SelectAllAction(SelectionAction):
                     new_sel.append(ch)
         self.manager.selected_channels = new_sel
 
-    def undo(self) -> None:
-        self.manager.selected_channels = list(self.old_selection)
-        self.manager.last_selected_channel = self.old_last
-        self.manager.notify_changed()
-
 
 class SelectNoneAction(SelectionAction):
     """Action to clear channel selection (select none)."""
 
     name = "select.none"
 
-    def __init__(self, manager: SelectionManager) -> None:
-        """Initialize the SelectNoneAction.
-
-        Args:
-            manager: The target SelectionManager instance.
-        """
-        super().__init__(manager)
-        self.old_selection: list[int] = []
-        self.old_last: typing.Optional[int] = None
-
     def execute(self) -> None:
-        self.old_selection = list(self.manager.selected_channels)
-        self.old_last = self.manager.last_selected_channel
+        self._save_previous()
         self.manager.selected_channels = []
         self.manager.last_selected_channel = None
         self.manager.commandline.set_string("")
-
-    def undo(self) -> None:
-        self.manager.selected_channels = list(self.old_selection)
-        self.manager.last_selected_channel = self.old_last
-        self.manager.notify_changed()
