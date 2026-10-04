@@ -107,6 +107,8 @@ from olc.actions.playback import (
     PauseAction,
     PlaybackGotoAction,
     PlaybackManualXFadeAction,
+    PlaybackRecordCueAction,
+    PlaybackUpdateActiveStepAction,
     SequenceMinusAction,
     SequencePlusAction,
 )
@@ -200,6 +202,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         PlaybackGotoAction,
         ChannelWheelAdjustAction,
         PlaybackManualXFadeAction,
+        PlaybackRecordCueAction,
+        PlaybackUpdateActiveStepAction,
         MidiPortToggleAction,
         MidiSetPortModeAction,
         MidiLearnToggleAction,

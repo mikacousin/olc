@@ -17,7 +17,10 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
+from olc.cue import Cue
+from olc.define import UNIVERSES
 from olc.sequence import get_cue
+from olc.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -271,3 +274,282 @@ class PlaybackManualXFadeAction(Action):
                 vc_scale.set_value(val)
 
         self.app.emit("playback.xfade_moved", fader_key, val)
+
+
+def capture_live_channels(app: CoreApplication) -> dict[int, int]:
+    """Capture current stage DMX levels mapped to show channels."""
+    channels: dict[int, int] = {}
+    patch = app.lightshow.patch
+    independents = getattr(app.lightshow, "independents", None)
+    inde_channels = independents.channels if independents is not None else set()
+
+    backend = getattr(app, "backend", None)
+    backend_dmx = getattr(backend, "dmx", None) if backend is not None else None
+
+    for channel, outputs in patch.channels.items():
+        if not patch.is_patched(channel):
+            continue
+        if channel in inde_channels:
+            continue
+        for values in outputs:
+            output = values[0]
+            univ = values[1]
+            if output is None or univ is None:
+                continue
+            level = 0
+            if backend_dmx is not None and univ in UNIVERSES:
+                idx = UNIVERSES.index(univ)
+                if idx < len(backend_dmx.frame):
+                    dimmer_idx = output - 1
+                    if 0 <= dimmer_idx < len(backend_dmx.frame[idx]):
+                        level = int(backend_dmx.frame[idx][dimmer_idx])
+            elif app.engine is not None:
+                try:
+                    level = int(app.engine.universe(univ).array[output - 1])
+                except (KeyError, IndexError, AttributeError):
+                    pass
+            channels[channel] = max(channels.get(channel, 0), level)
+    return channels
+
+
+class PlaybackRecordCueAction(Action):
+    """Action to capture live stage output and record a new Cue and step."""
+
+    name = "playback.record_cue"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.number: float | None = None
+        self.step: int | None = None
+        self.sequence: int = 1
+        self.created_cue: Cue | None = None
+        self.created_step: Step | None = None
+        self.old_position: int = 0
+
+    def configure(
+        self,
+        number: float | None = None,
+        step: int | None = None,
+        sequence: int = 1,
+    ) -> None:
+        """Configure parameters for recording cue.
+
+        Args:
+            number: Target cue number, or None to auto-compute next available number.
+            step: Insertion step index in sequence, or None for position + 1.
+            sequence: Sequence identifier (default 1 for main playback).
+        """
+        self.number = float(number) if number is not None else None
+        self.step = int(step) if step is not None else None
+        self.sequence = sequence
+
+    def execute(self) -> None:
+        """Execute recording of the live stage into a cue and step."""
+        lightshow = self.app.lightshow
+        main_playback = (
+            lightshow.main_playback
+            if self.sequence == 1
+            else lightshow.get_chaser(self.sequence)
+        )
+        if main_playback is None:
+            return
+
+        self.old_position = main_playback.position
+
+        # Determine target step and cue number
+        if self.number is None:
+            next_cue = main_playback.get_next_cue(step=self.old_position)
+            self.number = next_cue if next_cue is not None else 1.0
+            if self.step is None:
+                self.step = self.old_position + 1
+        elif self.step is None:
+            _found, step_idx = main_playback.get_step(cue=self.number)
+            self.step = step_idx
+
+        # Capture live stage channels (non-zero levels for new cue)
+        live_channels = capture_live_channels(self.app)
+        channels = {ch: lvl for ch, lvl in live_channels.items() if lvl > 0}
+
+        cue = Cue(self.sequence, self.number, channels)
+        self.created_cue = cue
+        lightshow.cues.insert(self.step - 1, cue)
+
+        step_object = Step(self.sequence, cue=cue)
+        self.created_step = step_object
+        main_playback.insert_step(self.step, step_object)
+        main_playback.position = self.step
+
+        main_playback.update_channels()
+        lightshow.set_modified()
+
+        self.app.emit("cue.created", self.sequence, self.number)
+        self.app.emit("step.inserted", float(self.sequence), self.step)
+        self.app.emit(
+            "playback.cue_recorded",
+            float(self.sequence),
+            self.step,
+            self.number,
+        )
+
+    def undo(self) -> None:
+        """Undo cue recording, removing step and cue and restoring position."""
+        lightshow = self.app.lightshow
+        main_playback = (
+            lightshow.main_playback
+            if self.sequence == 1
+            else lightshow.get_chaser(self.sequence)
+        )
+        if main_playback is None or self.number is None or self.step is None:
+            return
+
+        if self.created_step and self.created_step in main_playback.steps:
+            main_playback.steps.remove(self.created_step)
+            main_playback.last = len(main_playback.steps)
+
+        if self.created_cue:
+            lightshow.cues.remove(self.created_cue)
+
+        main_playback.position = self.old_position
+        main_playback.update_channels()
+        lightshow.set_modified()
+
+        self.app.emit("cue.deleted", self.sequence, self.number)
+        self.app.emit("step.deleted", float(self.sequence), self.step)
+        self.app.emit(
+            "playback.cue_recorded",
+            float(self.sequence),
+            self.old_position,
+            0.0,
+        )
+
+    def redo(self) -> None:
+        """Redo cue recording."""
+        lightshow = self.app.lightshow
+        main_playback = (
+            lightshow.main_playback
+            if self.sequence == 1
+            else lightshow.get_chaser(self.sequence)
+        )
+        if (
+            main_playback is None
+            or self.created_cue is None
+            or self.created_step is None
+            or self.step is None
+            or self.number is None
+        ):
+            return
+
+        lightshow.cues.insert(self.step - 1, self.created_cue)
+        main_playback.insert_step(self.step, self.created_step)
+        main_playback.position = self.step
+        main_playback.update_channels()
+        lightshow.set_modified()
+
+        self.app.emit("cue.created", self.sequence, self.number)
+        self.app.emit("step.inserted", float(self.sequence), self.step)
+        self.app.emit(
+            "playback.cue_recorded",
+            float(self.sequence),
+            self.step,
+            self.number,
+        )
+
+
+class PlaybackUpdateActiveStepAction(Action):
+    """Action to capture live stage output and update an existing cue."""
+
+    name = "playback.update_active_step"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.number: float | None = None
+        self.sequence: int = 1
+        self.target_cue: Cue | None = None
+        self.old_channels: dict[int, int] = {}
+        self.new_channels: dict[int, int] = {}
+
+    def configure(
+        self,
+        number: float | None = None,
+        sequence: int = 1,
+    ) -> None:
+        """Configure parameters for updating cue.
+
+        Args:
+            number: Target cue number, or None to use active playback step's cue.
+            sequence: Sequence identifier (default 1 for main playback).
+        """
+        self.number = float(number) if number is not None else None
+        self.sequence = sequence
+
+    def execute(self) -> None:
+        """Execute updating the target cue with live stage levels."""
+        lightshow = self.app.lightshow
+        main_playback = (
+            lightshow.main_playback
+            if self.sequence == 1
+            else lightshow.get_chaser(self.sequence)
+        )
+        if main_playback is None:
+            return
+
+        target_cue: Cue | None = None
+        if self.number is not None:
+            target_cue = lightshow.cues.get(self.number, self.sequence)
+        elif 0 <= main_playback.position < len(main_playback.steps):
+            target_cue = main_playback.steps[main_playback.position].cue
+
+        if target_cue is None:
+            return
+
+        self.target_cue = target_cue
+        self.old_channels = dict(target_cue.channels)
+
+        live_channels = capture_live_channels(self.app)
+        updated_channels = dict(target_cue.channels)
+        updated_channels.update(live_channels)
+        self.new_channels = updated_channels
+
+        target_cue.channels = self.new_channels
+        main_playback.update_channels()
+        lightshow.set_modified()
+
+        self.app.emit("cue.updated", target_cue.sequence, target_cue.number)
+
+    def undo(self) -> None:
+        """Undo cue update, restoring previous channel levels."""
+        if self.target_cue is None:
+            return
+
+        self.target_cue.channels = dict(self.old_channels)
+        lightshow = self.app.lightshow
+        main_playback = (
+            lightshow.main_playback
+            if self.sequence == 1
+            else lightshow.get_chaser(self.sequence)
+        )
+        if main_playback:
+            main_playback.update_channels()
+        lightshow.set_modified()
+
+        self.app.emit("cue.updated", self.target_cue.sequence, self.target_cue.number)
+
+    def redo(self) -> None:
+        """Redo cue update, re-applying captured channel levels."""
+        if self.target_cue is None:
+            return
+
+        self.target_cue.channels = dict(self.new_channels)
+        lightshow = self.app.lightshow
+        main_playback = (
+            lightshow.main_playback
+            if self.sequence == 1
+            else lightshow.get_chaser(self.sequence)
+        )
+        if main_playback:
+            main_playback.update_channels()
+        lightshow.set_modified()
+
+        self.app.emit("cue.updated", self.target_cue.sequence, self.target_cue.number)

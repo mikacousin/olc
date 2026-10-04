@@ -354,6 +354,29 @@ class GuiEventBridge:
             "dmx.blackout_all_changed",
             lambda state: self._run_idle(self._on_blackout_all_changed, state),
         )
+        self.app.core.subscribe(
+            "playback.cue_recorded",
+            lambda seq_idx, step_idx, cue_nb: self._run_idle(
+                self._on_cue_recorded, seq_idx, step_idx, cue_nb
+            ),
+        )
+
+    def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
+        """Handle cue recorded in playback sequence.
+
+        Args:
+            seq_idx: Sequence identifier.
+            step: Step index.
+            _cue_nb: Cue number.
+
+        Returns:
+            Always False.
+        """
+        if seq_idx == 1.0 and self.app.window:
+            if self.app.window.playback:
+                self.app.window.playback.update_xfade_display(step)
+            self.app.window.update_channels_display(step)
+        return False
 
     def _safe_refresh_patch_outputs(self) -> bool:
         """Refresh the patch outputs tab UI safely in the GTK thread.

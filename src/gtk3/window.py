@@ -19,12 +19,10 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gio, GLib, Gtk
-from olc.cue import Cue
-from olc.define import MAX_CHANNELS, UNIVERSES, string_to_time, time_to_string
+from olc.define import MAX_CHANNELS, string_to_time, time_to_string
 from olc.gtk3.widgets.main_fader import MainFaderWidget
 from olc.gtk3.window_channels import LiveView
 from olc.gtk3.window_playback import MainPlaybackView
-from olc.step import Step
 
 if typing.TYPE_CHECKING:
     import olc.gtk3.window
@@ -446,105 +444,22 @@ class Window(Gtk.ApplicationWindow):
 
     def _keypress_r(self) -> None:
         """Record new Step and new Preset"""
-        found = False
         keystring = self.app.core.commandline.get_string()
         if keystring == "":
-            # Find next free Cue
-            position = self.app.core.lightshow.main_playback.position
-            mem = self.app.core.lightshow.main_playback.get_next_cue(step=position)
-            step = position + 1
+            self.app.core.action_registry.execute("playback.record_cue")
         else:
-            # Use given number
             mem = float(keystring)
             found, step = self.app.core.lightshow.main_playback.get_step(cue=mem)
-
-        if mem is not None:
             if not found:
-                self._create_preset(mem, step)
-            else:  # Update Preset
-                self._update_preset(mem)
-
-        # Update Sequential edition Tabs
-        if self.app.tabs is not None and self.app.tabs.tabs["sequences"]:
-            sequences_tab = typing.cast(typing.Any, self.app.tabs.tabs["sequences"])
-            # Main Playback selected ?
-            path, _focus_column = sequences_tab.treeview1.get_cursor()
-            if path:
-                selected = path.get_indices()[0]
-                sequence = sequences_tab.liststore1[selected][0]
-                if sequence == self.app.core.lightshow.main_playback.index:
-                    # Yes, update it
-                    sequences_tab.on_sequence_changed()
-
-        # Tag filename as modified
-        self.app.core.lightshow.set_modified()
+                self.app.core.action_registry.execute(
+                    "playback.record_cue", number=mem, step=step
+                )
+            else:
+                self.app.core.action_registry.execute(
+                    "playback.update_active_step", number=mem
+                )
 
         self.app.core.action_registry.execute("commandline.clear")
-
-    def _create_preset(self, mem: float, step: int) -> None:
-        """Create new Preset component"""
-        channels = {}
-        if self.app.core.backend is not None and self.app.core.backend.dmx is not None:
-            for channel, outputs in self.app.core.lightshow.patch.channels.items():
-                if not self.app.core.lightshow.patch.is_patched(channel):
-                    continue
-                for values in outputs:
-                    output = values[0]
-                    univ = values[1]
-                    if univ is not None and output is not None:
-                        index = UNIVERSES.index(univ)
-                        if level := self.app.core.backend.dmx.frame[index][output - 1]:
-                            channels[channel] = level
-        cue = Cue(1, mem, channels)
-        self.app.core.lightshow.cues.insert(step - 1, cue)
-
-        # Update Presets Tab if exist
-        if self.app.tabs is not None and self.app.tabs.tabs["memories"]:
-            memories_tab = typing.cast(typing.Any, self.app.tabs.tabs["memories"])
-            nb_chan = len(channels)
-            memories_tab.liststore.insert(step - 1, [str(mem), "", nb_chan])
-
-        self.app.core.lightshow.main_playback.position = step
-
-        # Create Step
-        step_object = Step(1, cue=cue)
-        self.app.core.lightshow.main_playback.insert_step(step, step_object)
-
-        # Update Main Playback
-        self.playback.update_sequence_display()
-        self.playback.update_xfade_display(step)
-        self.update_channels_display(step)
-
-    def _update_preset(self, mem: float) -> None:
-        """Update existing Preset component"""
-        # Find Preset position
-        i = 0
-        for item in self.app.core.lightshow.cues:
-            if item.number > mem:
-                break
-            i += 1
-        i -= 1
-
-        if self.app.core.backend is not None and self.app.core.backend.dmx is not None:
-            for univ in UNIVERSES:
-                for output in range(512):
-                    channel = self.app.core.lightshow.patch.outputs[univ][output + 1][0]
-                    index = UNIVERSES.index(univ)
-                    level = self.app.core.backend.dmx.frame[index][output]
-
-                    self.app.core.lightshow.cues[i].channels[channel] = level
-
-        # Update Presets Tab if exist
-        if self.app.tabs is not None and self.app.tabs.tabs["memories"]:
-            memories_tab = typing.cast(typing.Any, self.app.tabs.tabs["memories"])
-            nb_chan = sum(
-                bool(self.app.core.lightshow.cues[i].channels.get(chan, 0))
-                for chan in range(1, MAX_CHANNELS + 1)
-            )
-
-            treeiter = memories_tab.liststore.get_iter(i)
-            memories_tab.liststore.set_value(treeiter, 2, nb_chan)
-            memories_tab.channels_view.update()
 
     def _keypress_u(self) -> None:
         """Update Cue"""
@@ -561,24 +476,9 @@ class Window(Gtk.ApplicationWindow):
         response = dialog.run()
 
         if response == Gtk.ResponseType.OK:
-            for channel, outputs in self.app.core.lightshow.patch.channels.items():
-                if not self.app.core.lightshow.patch.is_patched(channel):
-                    continue
-                if channel not in self.app.core.lightshow.independents.channels:
-                    out = outputs[0][0]
-                    univ = outputs[0][1]
-                    if out is not None and univ is not None:
-                        output = out - 1
-                        index = UNIVERSES.index(univ)
-                        if (
-                            self.app.core.backend is not None
-                            and self.app.core.backend.dmx is not None
-                        ):
-                            level = self.app.core.backend.dmx.frame[index][output]
-                            cue.channels[channel] = level
-
-            # Tag filename as modified
-            self.app.core.lightshow.set_modified()
+            self.app.core.action_registry.execute(
+                "playback.update_active_step", number=number
+            )
 
         dialog.destroy()
 
