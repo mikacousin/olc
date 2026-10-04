@@ -23,14 +23,45 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
 
 
-class SetChannelLevelAction(Action):
+class BaseChannelLevelAction(Action):
+    """Base class for channel level modification actions."""
+
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_levels: dict[int, int] = {}
+        self.new_levels: dict[int, int] = {}
+
+    def _apply_levels(self, levels_dict: dict[int, int]) -> None:
+        """Apply a dict of {channel: level} to user DMX levels and emit events."""
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch, lvl in levels_dict.items():
+                if 1 <= ch <= MAX_CHANNELS:
+                    backend.dmx.levels["user"][ch - 1] = lvl
+            self.app.lightshow.main_playback.update_channels()
+            backend.dmx.set_levels()
+
+        for ch, lvl in levels_dict.items():
+            self.app.emit("channel.level_changed", ch, lvl)
+
+    def undo(self) -> None:
+        """Undo the channel level changes."""
+        self._apply_levels(self.old_levels)
+
+    def redo(self) -> None:
+        """Redo the channel level changes."""
+        self._apply_levels(self.new_levels)
+
+
+class SetChannelLevelAction(BaseChannelLevelAction):
     """Action to set the DMX user-override level of a channel.
 
     Supports Undo/Redo by capturing the previous user level.
     """
 
     name = "channel.set_level"
-    can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
         """Initialize the Action.
@@ -41,7 +72,15 @@ class SetChannelLevelAction(Action):
         super().__init__(app)
         self.channel: int = 1
         self.level: int = -1
-        self.old_level: int = -1
+
+    @property
+    def old_level(self) -> int:
+        """The previous override level of the channel."""
+        return self.old_levels.get(self.channel, -1)
+
+    @old_level.setter
+    def old_level(self, val: int) -> None:
+        self.old_levels[self.channel] = val
 
     def configure(self, channel: int, level: int) -> None:
         """Configure the action with the target channel and level.
@@ -58,7 +97,6 @@ class SetChannelLevelAction(Action):
         channel = self.channel
         level = self.level
 
-        # Validate channel and level bounds
         if not 1 <= channel <= MAX_CHANNELS:
             raise ValueError(
                 f"Channel index must be between 1 and {MAX_CHANNELS}. Got {channel}."
@@ -66,40 +104,14 @@ class SetChannelLevelAction(Action):
         if not -1 <= level <= 255:
             raise ValueError(f"DMX Level must be between -1 and 255. Got {level}.")
 
-        # Access backend dmx override levels if initialized
         backend = getattr(self.app, "backend", None)
         if backend and backend.dmx:
-            # Capture the current override level (0-indexed in NumPy array)
-            self.old_level = int(backend.dmx.levels["user"][channel - 1])
-            # Set the new override level
-            backend.dmx.levels["user"][channel - 1] = level
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
+            self.old_levels[channel] = int(backend.dmx.levels["user"][channel - 1])
         else:
-            self.old_level = -1
+            self.old_levels[channel] = -1
 
-        # Emit the event so subscribers (like GUI) can refresh
-        self.app.emit("channel.level_changed", channel, level)
-
-    def undo(self) -> None:
-        """Undo the channel level change, restoring its previous value."""
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            backend.dmx.levels["user"][self.channel - 1] = self.old_level
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        self.app.emit("channel.level_changed", self.channel, self.old_level)
-
-    def redo(self) -> None:
-        """Redo the channel level change."""
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            backend.dmx.levels["user"][self.channel - 1] = self.level
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        self.app.emit("channel.level_changed", self.channel, self.level)
+        self.new_levels = {channel: level}
+        self._apply_levels(self.new_levels)
 
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Provides feedback state of the channel."""
@@ -387,23 +399,44 @@ class SelectNoneChannelsAction(Action):
         self.app.emit("channels.selected_changed", self.app.selected_channels)
 
 
-class SetLevelFromCmdAction(Action):
-    """Action to set the level of all selected channels from the commandline."""
-
-    name = "channel.set_level_from_cmd"
-    can_undo = True
+class BaseSelectedChannelsLevelAction(BaseChannelLevelAction):
+    """Base class for actions modifying levels on all currently selected channels."""
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.channels: list[int] = []
-        self.old_levels: dict[int, int] = {}
-        self.new_levels: dict[int, int] = {}
 
-    def execute(self) -> None:
+    def _capture_old_levels(self) -> bool:
+        """Capture current user levels for selected channels.
+
+        Returns:
+            True if channels were selected and backend is available, False otherwise.
+        """
         self.channels = list(self.app.selected_channels)
         self.old_levels = {}
         self.new_levels = {}
 
+        if not self.channels:
+            self.can_undo = False
+            return False
+
+        backend = getattr(self.app, "backend", None)
+        if backend and backend.dmx:
+            for ch in self.channels:
+                if 1 <= ch <= MAX_CHANNELS:
+                    self.old_levels[ch] = int(backend.dmx.levels["user"][ch - 1])
+            return True
+
+        self.can_undo = False
+        return False
+
+
+class SetLevelFromCmdAction(BaseSelectedChannelsLevelAction):
+    """Action to set the level of all selected channels from the commandline."""
+
+    name = "channel.set_level_from_cmd"
+
+    def execute(self) -> None:
         cmd_string = self.app.commandline.get_string()
         if not is_int(cmd_string):
             return
@@ -414,241 +447,87 @@ class SetLevelFromCmdAction(Action):
             level = int(round((level / 100) * 255))
         level = min(max(level, 0), 255)
 
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch in self.channels:
-                old_lvl = int(backend.dmx.levels["user"][ch - 1])
-                self.old_levels[ch] = old_lvl
-                self.new_levels[ch] = level
-                backend.dmx.levels["user"][ch - 1] = level
+        if not self._capture_old_levels():
+            return
 
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
+        self.new_levels = {ch: level for ch in self.channels}
         self.app.commandline.set_string("")
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
-
-    def undo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, old_lvl in self.old_levels.items():
-                backend.dmx.levels["user"][ch - 1] = old_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
-
-    def redo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, new_lvl in self.new_levels.items():
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+        self._apply_levels(self.new_levels)
 
 
-class SetLevelFullAction(Action):
+class SetLevelFullAction(BaseSelectedChannelsLevelAction):
     """Action to set the level of all selected channels to 100%."""
 
     name = "channel.set_level_full"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.channels: list[int] = []
-        self.old_levels: dict[int, int] = {}
-        self.new_levels: dict[int, int] = {}
 
     def execute(self) -> None:
-        self.channels = list(self.app.selected_channels)
-        self.old_levels = {}
-        self.new_levels = {}
-
-        level = 255
-
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch in self.channels:
-                old_lvl = int(backend.dmx.levels["user"][ch - 1])
-                self.old_levels[ch] = old_lvl
-                self.new_levels[ch] = level
-                backend.dmx.levels["user"][ch - 1] = level
-
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, level)
-
-    def undo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, old_lvl in self.old_levels.items():
-                backend.dmx.levels["user"][ch - 1] = old_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
-
-    def redo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, new_lvl in self.new_levels.items():
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+        if not self._capture_old_levels():
+            return
+        self.new_levels = {ch: 255 for ch in self.channels}
+        self._apply_levels(self.new_levels)
 
 
-class LevelPlusAction(Action):
+class BaseRelativeLevelAction(BaseSelectedChannelsLevelAction):
+    """Base class for relative level changes on selected channels."""
+
+    def _apply_delta(self, delta: int, use_percent: bool = False) -> None:
+        """Apply a relative offset to selected channel levels."""
+        if not self._capture_old_levels():
+            return
+
+        step = abs(delta)
+        direction = 1 if delta >= 0 else -1
+
+        for ch, old_lvl in self.old_levels.items():
+            if use_percent:
+                old_pct = round((old_lvl / 256) * 100)
+                new_pct = old_pct + (step if direction > 0 else -step)
+                new_lvl = min(max(round((new_pct / 100) * 256), 0), 255)
+            else:
+                new_lvl = min(max(old_lvl + delta, 0), 255)
+
+            if new_lvl != old_lvl:
+                self.new_levels[ch] = new_lvl
+
+        if self.new_levels:
+            self._apply_levels(self.new_levels)
+        else:
+            self.can_undo = False
+
+
+class LevelPlusAction(BaseRelativeLevelAction):
     """Action to increase the level of all selected channels."""
 
     name = "channel.level_plus"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.channels: list[int] = []
-        self.old_levels: dict[int, int] = {}
-        self.new_levels: dict[int, int] = {}
 
     def execute(self) -> None:
-        self.channels = list(self.app.selected_channels)
-        self.old_levels = {}
-        self.new_levels = {}
-
         step_level = getattr(self.app.settings, "get_int", lambda x: 10)(
             "percent-level"
         )
         percent = getattr(self.app.settings, "get_boolean", lambda x: False)("percent")
-
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch in self.channels:
-                old_lvl = int(backend.dmx.levels["user"][ch - 1])
-                self.old_levels[ch] = old_lvl
-
-                if percent:
-                    percent_level = round((old_lvl / 256) * 100) + step_level
-                    new_lvl = min(round((percent_level / 100) * 256), 255)
-                else:
-                    new_lvl = min(old_lvl + step_level, 255)
-
-                self.new_levels[ch] = new_lvl
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
-
-    def undo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, old_lvl in self.old_levels.items():
-                backend.dmx.levels["user"][ch - 1] = old_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
-
-    def redo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, new_lvl in self.new_levels.items():
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+        self._apply_delta(+step_level, use_percent=percent)
 
 
-class LevelMinusAction(Action):
+class LevelMinusAction(BaseRelativeLevelAction):
     """Action to decrease the level of all selected channels."""
 
     name = "channel.level_minus"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        super().__init__(app)
-        self.channels: list[int] = []
-        self.old_levels: dict[int, int] = {}
-        self.new_levels: dict[int, int] = {}
 
     def execute(self) -> None:
-        self.channels = list(self.app.selected_channels)
-        self.old_levels = {}
-        self.new_levels = {}
-
         step_level = getattr(self.app.settings, "get_int", lambda x: 10)(
             "percent-level"
         )
         percent = getattr(self.app.settings, "get_boolean", lambda x: False)("percent")
-
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch in self.channels:
-                old_lvl = int(backend.dmx.levels["user"][ch - 1])
-                self.old_levels[ch] = old_lvl
-
-                if percent:
-                    percent_level = round((old_lvl / 256) * 100) - step_level
-                    new_lvl = max(round((percent_level / 100) * 256), 0)
-                else:
-                    new_lvl = max(old_lvl - step_level, 0)
-
-                self.new_levels[ch] = new_lvl
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
-
-    def undo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, old_lvl in self.old_levels.items():
-                backend.dmx.levels["user"][ch - 1] = old_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.old_levels.get(ch, -1))
-
-    def redo(self) -> None:
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch, new_lvl in self.new_levels.items():
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch in self.channels:
-            self.app.emit("channel.level_changed", ch, self.new_levels.get(ch, -1))
+        self._apply_delta(-step_level, use_percent=percent)
 
 
-class SetMultiChannelsLevelAction(Action):
+class SetMultiChannelsLevelAction(BaseChannelLevelAction):
     """Action to set the DMX user-override level of multiple channels at once.
 
     Supports Undo/Redo by capturing the previous user levels.
     """
 
     name = "channel.set_multi_levels"
-    can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
         """Initialize the Action.
@@ -658,7 +537,6 @@ class SetMultiChannelsLevelAction(Action):
         """
         super().__init__(app)
         self.levels: dict[int, int] = {}
-        self.old_levels: dict[int, int] = {}
 
     def configure(self, levels: dict[int, int]) -> None:
         """Configure the action with a dictionary mapping channel -> level.
@@ -667,63 +545,32 @@ class SetMultiChannelsLevelAction(Action):
             levels: A dict of {channel: level} where channel is 1-based
                     and level is DMX intensity (0 to 255, or -1 to release).
         """
-        self.levels = levels
+        self.levels = dict(levels)
+        self.new_levels = dict(levels)
 
     def execute(self) -> None:
         """Execute the action, setting user levels on multiple channels."""
         self.old_levels = {}
         backend = getattr(self.app, "backend", None)
         if backend and backend.dmx:
-            for channel, level in self.levels.items():
+            for channel in self.levels:
                 if 1 <= channel <= MAX_CHANNELS:
                     self.old_levels[channel] = int(
                         backend.dmx.levels["user"][channel - 1]
                     )
-                    backend.dmx.levels["user"][channel - 1] = level
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for channel, level in self.levels.items():
-            self.app.emit("channel.level_changed", channel, level)
-
-    def undo(self) -> None:
-        """Undo the multiple channel level changes, restoring their previous values."""
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for channel, old_level in self.old_levels.items():
-                backend.dmx.levels["user"][channel - 1] = old_level
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for channel, old_level in self.old_levels.items():
-            self.app.emit("channel.level_changed", channel, old_level)
-
-    def redo(self) -> None:
-        """Redo the multiple channel level changes."""
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for channel, level in self.levels.items():
-                backend.dmx.levels["user"][channel - 1] = level
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for channel, level in self.levels.items():
-            self.app.emit("channel.level_changed", channel, level)
+        self.new_levels = dict(self.levels)
+        self._apply_levels(self.new_levels)
 
 
-class ChannelWheelAdjustAction(Action):
+class ChannelWheelAdjustAction(BaseRelativeLevelAction):
     """Action to adjust the level of selected channels using an encoder wheel."""
 
     name = "channel.wheel_adjust"
-    can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.step: int = 1
         self.direction: int = 1
-        self.channels: list[int] = []
-        self.old_levels: dict[int, int] = {}
-        self.new_levels: dict[int, int] = {}
 
     def configure(self, step: int = 1, direction: int = 1) -> None:
         """Configure the step and direction for the wheel adjustment.
@@ -737,60 +584,8 @@ class ChannelWheelAdjustAction(Action):
 
     def execute(self) -> None:
         """Execute the wheel level adjustment on selected channels."""
-        self.channels = list(self.app.selected_channels)
-        self.old_levels = {}
-        self.new_levels = {}
-
-        if not self.channels:
-            self.can_undo = False
-            return
-
         if self.step < 0:
             delta = self.step
         else:
             delta = self.step if self.direction > 0 else -self.step
-
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
-            for ch in self.channels:
-                old_lvl = int(backend.dmx.levels["user"][ch - 1])
-                new_lvl = min(max(old_lvl + delta, 0), 255)
-                if new_lvl != old_lvl:
-                    self.old_levels[ch] = old_lvl
-                    self.new_levels[ch] = new_lvl
-                    backend.dmx.levels["user"][ch - 1] = new_lvl
-
-            if self.new_levels:
-                self.app.lightshow.main_playback.update_channels()
-                backend.dmx.set_levels()
-            else:
-                self.can_undo = False
-        else:
-            self.can_undo = False
-
-        for ch, new_lvl in self.new_levels.items():
-            self.app.emit("channel.level_changed", ch, new_lvl)
-
-    def undo(self) -> None:
-        """Revert the wheel level changes."""
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx and self.old_levels:
-            for ch, old_lvl in self.old_levels.items():
-                backend.dmx.levels["user"][ch - 1] = old_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch, old_lvl in self.old_levels.items():
-            self.app.emit("channel.level_changed", ch, old_lvl)
-
-    def redo(self) -> None:
-        """Reapply the wheel level changes."""
-        backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx and self.new_levels:
-            for ch, new_lvl in self.new_levels.items():
-                backend.dmx.levels["user"][ch - 1] = new_lvl
-            self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
-
-        for ch, new_lvl in self.new_levels.items():
-            self.app.emit("channel.level_changed", ch, new_lvl)
+        self._apply_delta(delta, use_percent=False)

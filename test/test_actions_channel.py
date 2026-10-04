@@ -297,3 +297,129 @@ def test_channel_wheel_adjust_action_and_undo_redo() -> None:
     app.history.undo()
     assert app.backend.dmx.levels["user"][0] == 125
     assert app.backend.dmx.levels["user"][1] == 125
+
+
+def test_channel_level_plus_minus_and_undo_redo() -> None:
+    """Test channel.level_plus and channel.level_minus actions."""
+    settings = MagicMock()
+    settings.get_int.return_value = 10
+    settings.get_boolean.return_value = False
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 50, dtype=np.int16)}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    app.selected_channels = [1, 2]
+
+    # Test level_plus
+    app.action_registry.execute("channel.level_plus")
+    assert app.backend.dmx.levels["user"][0] == 60
+    assert app.backend.dmx.levels["user"][1] == 60
+
+    # Undo level_plus
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][0] == 50
+    assert app.backend.dmx.levels["user"][1] == 50
+
+    # Redo level_plus
+    app.history.redo()
+    assert app.backend.dmx.levels["user"][0] == 60
+    assert app.backend.dmx.levels["user"][1] == 60
+
+    # Test level_minus
+    app.action_registry.execute("channel.level_minus")
+    assert app.backend.dmx.levels["user"][0] == 50
+    assert app.backend.dmx.levels["user"][1] == 50
+
+    # Undo level_minus
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][0] == 60
+    assert app.backend.dmx.levels["user"][1] == 60
+
+    # Test with percent mode enabled
+    settings.get_boolean.return_value = True
+    app.action_registry.execute("channel.level_plus")
+    assert app.backend.dmx.levels["user"][0] > 60
+
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][0] == 60
+
+
+def test_channel_set_level_full_and_from_cmd() -> None:
+    """Test channel.set_level_full and channel.set_level_from_cmd actions."""
+    settings = MagicMock()
+    settings.get_boolean.return_value = False
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 20, dtype=np.int16)}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    app.selected_channels = [3, 4]
+
+    # Test set_level_full
+    app.action_registry.execute("channel.set_level_full")
+    assert app.backend.dmx.levels["user"][2] == 255
+    assert app.backend.dmx.levels["user"][3] == 255
+
+    # Undo
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][2] == 20
+    assert app.backend.dmx.levels["user"][3] == 20
+
+    # Redo
+    app.history.redo()
+    assert app.backend.dmx.levels["user"][2] == 255
+    assert app.backend.dmx.levels["user"][3] == 255
+
+    # Test set_level_from_cmd
+    app.commandline.set_string("128")
+    app.action_registry.execute("channel.set_level_from_cmd")
+    assert app.backend.dmx.levels["user"][2] == 128
+    assert app.backend.dmx.levels["user"][3] == 128
+    assert app.commandline.get_string() == ""
+
+    # Undo
+    app.history.undo()
+    assert app.backend.dmx.levels["user"][2] == 255
+    assert app.backend.dmx.levels["user"][3] == 255
+
+    # Redo
+    app.history.redo()
+    assert app.backend.dmx.levels["user"][2] == 128
+    assert app.backend.dmx.levels["user"][3] == 128
+
+    # Test set_level_from_cmd with percent mode
+    settings.get_boolean.return_value = True
+    app.commandline.set_string("50")
+    app.action_registry.execute("channel.set_level_from_cmd")
+    assert app.backend.dmx.levels["user"][2] == int(round((50 / 100) * 255))
+
+
+def test_channel_level_actions_empty_selection() -> None:
+    """Test level actions when no channel is selected."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": np.full(MAX_CHANNELS, 0, dtype=np.int16)}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    app.selected_channels = []
+
+    # None of these should throw
+    app.action_registry.execute("channel.wheel_adjust", 10, 1)
+    app.action_registry.execute("channel.level_plus")
+    app.action_registry.execute("channel.level_minus")
+    app.action_registry.execute("channel.set_level_full")
+    app.commandline.set_string("100")
+    app.action_registry.execute("channel.set_level_from_cmd")
+    # Command line should remain untouched if no channel was selected
+    assert app.commandline.get_string() == "100"
