@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from olc.actions.commandline import CommandLineAppendCharAction
 from olc.core.app import CoreApplication
 
 
@@ -93,3 +94,20 @@ def test_commandline_set_execution_and_undo() -> None:
     # Redo sets "world"
     app.history.redo()
     assert app.commandline.get_string() == "world"
+
+
+def test_commandline_append_char_keyword_and_unchanged() -> None:
+    """Test append_char with keyword parameter and unchanged edge cases."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    action = app.action_registry.get("commandline.append_char")
+    assert isinstance(action, CommandLineAppendCharAction)
+    action.configure(char="9")
+    action.execute()
+    assert app.commandline.get_string() == "9"
+
+    # Setting identical text should not be undoable
+    app.action_registry.execute("commandline.set", "9")
+    set_action = app.action_registry.get("commandline.set")
+    assert set_action.can_undo is False

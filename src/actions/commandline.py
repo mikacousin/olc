@@ -24,85 +24,6 @@ if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
 
 
-class CommandLineAppendCharAction(Action):
-    """Action to append a character to the command line."""
-
-    name = "commandline.append_char"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        """Initialize the action.
-
-        Args:
-            app: The core application instance.
-        """
-        super().__init__(app)
-        self.char: str = ""
-        self.old_text: str = ""
-
-    def configure(self, char: str) -> None:
-        """Configure the character to append.
-
-        Args:
-            char: The character or string segment to append.
-        """
-        self.char = str(char)
-
-    def execute(self) -> None:
-        """Save previous text and append character."""
-        self.old_text = self.app.commandline.get_string()
-        self.can_undo = bool(self.char)
-        self.app.commandline.add_string(self.char)
-
-    def undo(self) -> None:
-        """Revert the command line text to the state before append."""
-        super().undo()
-        self.app.commandline.set_string(self.old_text)
-
-    def redo(self) -> None:
-        """Reapply the append action."""
-        self.execute()
-
-    def get_feedback_state(self) -> dict[str, typing.Any]:
-        """Return the feedback state for this action."""
-        return {"text": self.app.commandline.get_string()}
-
-
-class CommandLineClearAction(Action):
-    """Action to clear the command line."""
-
-    name = "commandline.clear"
-    can_undo = True
-
-    def __init__(self, app: CoreApplication) -> None:
-        """Initialize the action.
-
-        Args:
-            app: The core application instance.
-        """
-        super().__init__(app)
-        self.old_text: str = ""
-
-    def execute(self) -> None:
-        """Save previous text and clear the command line."""
-        self.old_text = self.app.commandline.get_string()
-        self.can_undo = bool(self.old_text)
-        self.app.commandline.set_string("")
-
-    def undo(self) -> None:
-        """Restore the command line text prior to clearing."""
-        super().undo()
-        self.app.commandline.set_string(self.old_text)
-
-    def redo(self) -> None:
-        """Reapply the clear action."""
-        self.execute()
-
-    def get_feedback_state(self) -> dict[str, typing.Any]:
-        """Return the feedback state for this action."""
-        return {"text": self.app.commandline.get_string()}
-
-
 class CommandLineSetAction(Action):
     """Action to set the exact text of the command line."""
 
@@ -119,7 +40,7 @@ class CommandLineSetAction(Action):
         self.text: str = ""
         self.old_text: str = ""
 
-    def configure(self, text: str) -> None:
+    def configure(self, text: str = "") -> None:
         """Configure the target text.
 
         Args:
@@ -145,3 +66,49 @@ class CommandLineSetAction(Action):
     def get_feedback_state(self) -> dict[str, typing.Any]:
         """Return the feedback state for this action."""
         return {"text": self.app.commandline.get_string()}
+
+
+class CommandLineClearAction(CommandLineSetAction):
+    """Action to clear the command line."""
+
+    name = "commandline.clear"
+
+    def configure(self, text: str = "") -> None:
+        """Clear action sets empty text."""
+        self.text = ""
+
+    def execute(self) -> None:
+        """Save previous text and clear the command line."""
+        self.text = ""
+        super().execute()
+
+
+class CommandLineAppendCharAction(CommandLineSetAction):
+    """Action to append a character to the command line."""
+
+    name = "commandline.append_char"
+
+    def __init__(self, app: CoreApplication) -> None:
+        """Initialize the action.
+
+        Args:
+            app: The core application instance.
+        """
+        super().__init__(app)
+        self.char: str = ""
+
+    def configure(self, text: str = "", char: str = "") -> None:
+        """Configure the character to append.
+
+        Args:
+            text: The character or string segment to append.
+            char: Optional keyword alias for text.
+        """
+        self.char = str(char if char else text)
+
+    def execute(self) -> None:
+        """Save previous text and append character."""
+        self.old_text = self.app.commandline.get_string()
+        self.can_undo = bool(self.char)
+        self.text = self.old_text + self.char
+        self.app.commandline.add_string(self.char)
