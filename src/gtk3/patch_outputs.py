@@ -256,7 +256,9 @@ class PatchOutputsTab(Gtk.Box):
                 universe_old = widget_old.universe
                 level = self.backend.dmx.user_outputs.get((output_old, universe_old), 0)
                 # Old output at 0
-                self.backend.dmx.send_user_output(output_old, universe_old, 0)
+                self.app.core.action_registry.execute(
+                    "dmx.test_output", output_old, universe_old, 0
+                )
 
                 # New output at old output level
                 child_new = self.flowbox.get_child_at_index(new)
@@ -265,8 +267,8 @@ class PatchOutputsTab(Gtk.Box):
                     if widget_new is not None:
                         output_new = widget_new.output
                         universe_new = widget_new.universe
-                        self.backend.dmx.send_user_output(
-                            output_new, universe_new, level
+                        self.app.core.action_registry.execute(
+                            "dmx.test_output", output_new, universe_new, level
                         )
 
     def _keypress_right(self) -> None:
@@ -381,13 +383,8 @@ class PatchOutputsTab(Gtk.Box):
             level = int(round((level / 100) * 255))
         level = min(level, 255)
         outputs = self.get_selected_outputs()
-        for output in outputs:
-            out = output[0]
-            univ = output[1]
-            self.backend.dmx.send_user_output(out, univ, level)
-
-            index = UNIVERSES.index(univ)
-            self.outputs[out - 1 + (512 * index)].queue_draw()
+        if outputs:
+            self.app.core.action_registry.execute("dmx.test_output", outputs, 1, level)
         self.app.core.action_registry.execute("commandline.clear")
 
     def _keypress_t(self) -> None:
@@ -407,16 +404,13 @@ class PatchOutputsTab(Gtk.Box):
             output = selected_outputs[0]
             out = output[0]
             univ = output[1]
-            self.backend.dmx.send_user_output(out, univ, level)
-
-            index = UNIVERSES.index(univ)
-            self.outputs[out - 1 + (512 * index)].queue_draw()
+            self.app.core.action_registry.execute("dmx.test_output", out, univ, level)
         self.test = True
         self.app.core.action_registry.execute("commandline.clear")
 
     def _stop_test(self) -> None:
         """Stop test mode"""
-        self.backend.dmx.user_outputs.clear()
+        self.app.core.action_registry.execute("dmx.clear_user_outputs")
         self.test = False
 
     def get_selected_outputs(self) -> list[tuple[int, int]]:

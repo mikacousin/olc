@@ -20,7 +20,7 @@ import typing
 
 from gi.repository import Gio, GLib, Gtk, Pango
 from olc.curve import LimitCurve, PointsCurve
-from olc.define import MAX_CHANNELS
+from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.fader import FaderType
 from olc.gtk3.channel_time import ChanneltimeTab
 from olc.gtk3.fader import FaderTab
@@ -336,6 +336,73 @@ class GuiEventBridge:
                 self._on_midi_port_mode_changed, port_name, mode
             ),
         )
+        self.app.core.subscribe(
+            "dmx.user_output_changed",
+            lambda universe, output, level: self._run_idle(
+                self._on_user_output_changed, universe, output, level
+            ),
+        )
+        self.app.core.subscribe(
+            "dmx.user_outputs_cleared",
+            lambda: self._run_idle(self._safe_refresh_patch_outputs),
+        )
+        self.app.core.subscribe(
+            "dmx.user_outputs_changed",
+            lambda: self._run_idle(self._safe_refresh_patch_outputs),
+        )
+        self.app.core.subscribe(
+            "dmx.blackout_all_changed",
+            lambda state: self._run_idle(self._on_blackout_all_changed, state),
+        )
+
+    def _safe_refresh_patch_outputs(self) -> bool:
+        """Refresh the patch outputs tab UI safely in the GTK thread.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("patch_outputs") is not None:
+            patch_outputs = typing.cast(
+                PatchOutputsTab, self.app.tabs.tabs["patch_outputs"]
+            )
+            patch_outputs.refresh()
+        return False
+
+    def _on_user_output_changed(self, universe: int, output: int, _level: int) -> bool:
+        """Refresh the specific patch output widget safely in the GTK thread.
+
+        Args:
+            universe: Universe identifier.
+            output: Output number (1-512).
+            _level: Output level (0-255).
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs and self.app.tabs.tabs.get("patch_outputs") is not None:
+            patch_outputs = typing.cast(
+                PatchOutputsTab, self.app.tabs.tabs["patch_outputs"]
+            )
+            if universe in UNIVERSES:
+                idx = UNIVERSES.index(universe)
+                output_idx = output - 1 + (512 * idx)
+                if 0 <= output_idx < len(patch_outputs.outputs):
+                    patch_outputs.outputs[output_idx].queue_draw()
+        return False
+
+    def _on_blackout_all_changed(self, _state: bool) -> bool:
+        """Handle blackout all changed event to update live view and patch outputs.
+
+        Args:
+            _state: True if blackout active, False otherwise.
+
+        Returns:
+            Always False.
+        """
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.update()
+        self._safe_refresh_patch_outputs()
+        return False
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
         """Run a function safely in the GTK main loop, discarding return value.

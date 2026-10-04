@@ -53,7 +53,10 @@ from olc.actions.curve import (
     CurveUpdatePointsAction,
 )
 from olc.actions.dmx import (
+    DmxBlackoutAllAction,
+    DmxClearUserOutputsAction,
     DmxSetUniverseLevelsAction,
+    DmxTestOutputAction,
     UniverseBlackoutAction,
 )
 from olc.actions.edit import RedoAction, UndoAction
@@ -204,6 +207,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         MidiClearMappingsAction,
         UniverseBlackoutAction,
         DmxSetUniverseLevelsAction,
+        DmxTestOutputAction,
+        DmxClearUserOutputsAction,
+        DmxBlackoutAllAction,
         OscToggleAction,
         OscSetConfigAction,
     ]

@@ -136,3 +136,179 @@ class DmxSetUniverseLevelsAction(Action):
                         frame[ch] = int(np.clip(val, 0, 255))
 
         self.app.emit("universe.dmx_changed", self.universe, self.channels)
+
+
+class DmxTestOutputAction(Action):
+    """Action to set a test level on DMX output(s)."""
+
+    name = "dmx.test_output"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.targets: list[tuple[int, int]] = []
+        self.level: int = 255
+        self.old_levels: dict[tuple[int, int], int] = {}
+
+    def configure(
+        self,
+        output: int | list[tuple[int, int]],
+        universe: int = 1,
+        level: int = 255,
+    ) -> None:
+        """Configure the action with target output(s) and test level.
+
+        Args:
+            output: Single output (1-512) or list of (output, universe) tuples.
+            universe: DMX universe identifier if output is an integer.
+            level: Level to apply (0-255).
+        """
+        if isinstance(output, list):
+            self.targets = list(output)
+            self.level = level if level != 255 else (universe if universe != 1 else 255)
+        else:
+            self.targets = [(output, universe)]
+            self.level = level
+
+    def execute(self) -> None:
+        """Apply test level to configured outputs."""
+        backend = getattr(self.app, "backend", None)
+        self.old_levels = {}
+        for out, univ in self.targets:
+            old = 0
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                old = backend.dmx.user_outputs.get((out, univ), 0)
+                backend.dmx.send_user_output(out, univ, self.level)
+            elif self.app.engine is not None:
+                try:
+                    old = int(self.app.engine.universe(univ).array[out - 1])
+                    self.app.engine.universe(univ).array[out - 1] = self.level
+                except (KeyError, IndexError, AttributeError):
+                    pass
+            self.old_levels[(out, univ)] = old
+            self.app.emit("dmx.user_output_changed", univ, out, self.level)
+
+    def undo(self) -> None:
+        """Restore previous output levels prior to test."""
+        backend = getattr(self.app, "backend", None)
+        for (out, univ), old in self.old_levels.items():
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                backend.dmx.send_user_output(out, univ, old)
+            elif self.app.engine is not None:
+                try:
+                    self.app.engine.universe(univ).array[out - 1] = old
+                except (KeyError, IndexError, AttributeError):
+                    pass
+            self.app.emit("dmx.user_output_changed", univ, out, old)
+
+    def redo(self) -> None:
+        """Re-apply test level to target outputs."""
+        backend = getattr(self.app, "backend", None)
+        for out, univ in self.targets:
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                backend.dmx.send_user_output(out, univ, self.level)
+            elif self.app.engine is not None:
+                try:
+                    self.app.engine.universe(univ).array[out - 1] = self.level
+                except (KeyError, IndexError, AttributeError):
+                    pass
+            self.app.emit("dmx.user_output_changed", univ, out, self.level)
+
+
+class DmxClearUserOutputsAction(Action):
+    """Action to clear all active test/user output overrides."""
+
+    name = "dmx.clear_user_outputs"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_user_outputs: dict[tuple[int, int], int] = {}
+
+    def execute(self) -> None:
+        """Clear all active user outputs, setting them back to 0."""
+        backend = getattr(self.app, "backend", None)
+        self.old_user_outputs = {}
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            self.old_user_outputs = dict(backend.dmx.user_outputs)
+            for out, univ in list(self.old_user_outputs.keys()):
+                backend.dmx.send_user_output(out, univ, 0)
+            backend.dmx.user_outputs.clear()
+        self.app.emit("dmx.user_outputs_cleared")
+
+    def undo(self) -> None:
+        """Restore previous user output levels prior to clear."""
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            for (out, univ), lvl in self.old_user_outputs.items():
+                backend.dmx.send_user_output(out, univ, lvl)
+                self.app.emit("dmx.user_output_changed", univ, out, lvl)
+        self.app.emit("dmx.user_outputs_changed")
+
+    def redo(self) -> None:
+        """Re-apply clear on user outputs."""
+        self.execute()
+
+
+class DmxBlackoutAllAction(Action):
+    """Action to blackout all DMX universes simultaneously."""
+
+    name = "dmx.blackout_all"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.old_frames: dict[int, np.ndarray] = {}
+
+    def execute(self) -> None:
+        """Execute blackout on all universes."""
+        self.old_frames = {}
+
+        for universe in UNIVERSES:
+            if self.app.engine is not None:
+                try:
+                    univ = self.app.engine.universe(universe)
+                    self.old_frames[universe] = univ.snapshot()
+                    univ.blackout()
+                except KeyError:
+                    pass
+
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            for idx, universe in enumerate(UNIVERSES):
+                if universe not in self.old_frames:
+                    self.old_frames[universe] = backend.dmx.frame[idx].copy()
+                backend.dmx.frame[idx].fill(0)
+
+        self.app.emit("dmx.blackout_all_changed", True)
+
+    def undo(self) -> None:
+        """Restore all universes prior to blackout."""
+        for universe, old_frame in self.old_frames.items():
+            if self.app.engine is not None:
+                try:
+                    self.app.engine.universe(universe).apply_array(old_frame)
+                except KeyError:
+                    pass
+            backend = getattr(self.app, "backend", None)
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                if universe in UNIVERSES:
+                    idx = UNIVERSES.index(universe)
+                    np.copyto(backend.dmx.frame[idx], old_frame)
+
+        self.app.emit("dmx.blackout_all_changed", False)
+
+    def redo(self) -> None:
+        """Re-apply blackout on all universes."""
+        for universe in UNIVERSES:
+            if self.app.engine is not None:
+                try:
+                    self.app.engine.universe(universe).blackout()
+                except KeyError:
+                    pass
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            for idx in range(len(UNIVERSES)):
+                backend.dmx.frame[idx].fill(0)
+
+        self.app.emit("dmx.blackout_all_changed", True)
