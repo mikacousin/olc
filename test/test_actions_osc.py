@@ -18,14 +18,20 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+from gi.repository import Gtk
 from olc.core.app import CoreApplication
 from olc.core.backends.osc.delegate import OSCDelegate
 from olc.core.osc import EngineOSCServer
+from olc.gtk3.event_bridge import GuiEventBridge
+from olc.gtk3.window import Window
+from olc.settings import SettingsTab
 
 
 def test_osc_toggle_enable_and_disable() -> None:
     """Test osc.toggle action to enable and disable OSC services."""
     settings = MagicMock()
+    settings.get_boolean.return_value = False
     settings.get_string.return_value = "192.168.1.100"
     settings.get_int.side_effect = lambda key: (
         8001 if key == "osc-client-port" else 9001
@@ -52,15 +58,19 @@ def test_osc_toggle_enable_and_disable() -> None:
     )
     mock_engine.register_osc_delegate.assert_called_once()
     assert getattr(app, "osc_delegate", None) is not None
+    assert len(app.history.undo_stack) == 1
 
-    # Verify not undoable
-    assert len(app.history.undo_stack) == 0
-
-    # 2. Disable OSC
-    app.action_registry.execute("osc.toggle", False)
+    # Undo toggle -> Disable OSC
+    app.history.undo()
     assert toggled_events == [True, False]
     mock_engine.stop_osc.assert_called_once()
     assert getattr(app, "osc_delegate", None) is None
+
+    # Redo toggle -> Re-enable OSC
+    app.history.redo()
+    assert toggled_events == [True, False, True]
+    assert mock_engine.start_osc.call_count == 2
+    assert getattr(app, "osc_delegate", None) is not None
 
 
 def test_osc_set_config_and_undo_redo() -> None:
@@ -168,3 +178,122 @@ def test_engine_osc_server_action_dispatch() -> None:
     # 3. Dispatch set_channels route (pairs format)
     server.dispatch("/olc/universe/3/set_channels", [5, 200, 6, 100])
     assert dmx_events[-1] == (3, {5: 200, 6: 100})
+
+
+def test_event_bridge_osc_settings_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test GuiEventBridge routes osc.config_changed and osc.toggled to SettingsTab."""
+    monkeypatch.setattr("gi.repository.GLib.idle_add", lambda func, *args: func(*args))
+    mock_app = MagicMock()
+    core = CoreApplication(MagicMock())
+    mock_app.core = core
+
+    mock_settings_tab = MagicMock()
+    mock_app.tabs = MagicMock()
+    mock_app.tabs.tabs = {"settings": mock_settings_tab}
+
+    _bridge = GuiEventBridge(mock_app)
+
+    # 1. Trigger osc.config_changed via action undo
+    core.emit("osc.config_changed", "192.168.1.55", 8055, 9055)
+    mock_settings_tab.update_osc_config.assert_called_once_with(
+        "192.168.1.55", 8055, 9055
+    )
+
+    # 2. Trigger osc.toggled via action undo
+    core.emit("osc.toggled", False)
+    mock_settings_tab.update_osc_toggle.assert_called_once_with(False)
+
+
+def test_settings_tab_update_osc() -> None:
+    """Test SettingsTab programmatic updates for OSC widgets."""
+    # pylint: disable=protected-access
+    tab = SettingsTab.__new__(SettingsTab)
+    tab._updating_settings = False
+    tab.entry_client_ip = MagicMock()
+    tab.entry_client_ip.get_text.return_value = "127.0.0.1"
+    tab.spin_client_port = MagicMock()
+    tab.spin_client_port.get_value_as_int.return_value = 8000
+    tab.spin_client_port.get_text.return_value = "8000"
+    tab.spin_server_port = MagicMock()
+    tab.spin_server_port.get_value_as_int.return_value = 9000
+    tab.spin_server_port.get_text.return_value = "9000"
+    tab.switch_osc = MagicMock()
+    tab.switch_osc.get_state.return_value = True
+
+    tab.update_osc_config("192.168.0.99", 8099, 9099)
+    tab.entry_client_ip.set_text.assert_called_once_with("192.168.0.99")
+    tab.spin_client_port.set_value.assert_called_once_with(8099)
+    tab.spin_server_port.set_value.assert_called_once_with(9099)
+    assert not tab._updating_settings
+
+    # Verify updating when text is dirty/uncommitted
+    tab.spin_client_port.get_value_as_int.return_value = 8099
+    tab.spin_client_port.get_text.return_value = "9999"  # dirty text
+    tab.spin_client_port.set_value.reset_mock()
+    tab.update_osc_config("192.168.0.99", 8099, 9099)
+    tab.spin_client_port.set_value.assert_called_once_with(8099)
+
+    tab.update_osc_toggle(False)
+    tab.switch_osc.set_state.assert_called_once_with(False)
+    tab.switch_osc.set_active.assert_called_once_with(False)
+    assert not tab._updating_settings
+
+
+def test_settings_tab_client_ip_focus_out() -> None:
+    """Test SettingsTab validates IP on focus out."""
+    # pylint: disable=protected-access
+    tab = SettingsTab.__new__(SettingsTab)
+    tab._updating_settings = False
+    tab.settings = MagicMock()
+    tab.settings.get_string.return_value = "127.0.0.1"
+    tab.app = MagicMock()
+    tab.get_parent = MagicMock(return_value=None)
+
+    entry = MagicMock(spec=Gtk.Entry)
+
+    # 1. IP unchanged -> no action executed
+    entry.get_text.return_value = "127.0.0.1"
+    res = tab._on_client_ip_focus_out(entry, MagicMock())
+    assert res is False
+    tab.app.core.action_registry.execute.assert_not_called()
+
+    # 2. IP changed to valid IP -> osc.set_config executed
+    entry.get_text.return_value = "192.168.1.50"
+    res = tab._on_client_ip_focus_out(entry, MagicMock())
+    assert res is False
+    tab.app.core.action_registry.execute.assert_called_once_with(
+        "osc.set_config", host="192.168.1.50"
+    )
+
+    # 3. IP changed to invalid IP -> text reverted
+    entry.get_text.return_value = "invalid_ip"
+    tab.app.core.action_registry.execute.reset_mock()
+    res = tab._on_client_ip_focus_out(entry, MagicMock())
+    assert res is False
+    tab.app.core.action_registry.execute.assert_not_called()
+    entry.set_text.assert_called_once_with("127.0.0.1")
+
+
+def test_window_key_press_delegation() -> None:
+    """Test on_window_key_press delegates to focused entry and allows global
+    shortcuts."""
+    win = Window.__new__(Window)
+    mock_entry = MagicMock(spec=Gtk.Entry)
+    win.get_focus = MagicMock(return_value=mock_entry)  # type: ignore[method-assign]
+
+    event = MagicMock()
+
+    # 1. Widget consumes event (e.g. space, text typing, Ctrl+C) -> returns True
+    mock_entry.event.return_value = True
+    assert win.on_window_key_press(MagicMock(), event) is True
+    mock_entry.event.assert_called_once_with(event)
+
+    # 2. Widget does not consume event (e.g. Ctrl+Z, Ctrl+Y, Ctrl+S) -> returns False
+    mock_entry.event.reset_mock()
+    mock_entry.event.return_value = False
+    assert win.on_window_key_press(MagicMock(), event) is False
+    mock_entry.event.assert_called_once_with(event)
+
+    # 3. Non-entry focused -> returns False immediately without calling event()
+    win.get_focus.return_value = MagicMock(spec=Gtk.Button)
+    assert win.on_window_key_press(MagicMock(), event) is False

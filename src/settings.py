@@ -87,13 +87,14 @@ class SettingsTab(Gtk.Box):
         widget4.set_value(self.settings.get_double("go-back-time"))
 
     def _setup_osc(self, builder: Gtk.Builder) -> None:
-        widget = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
-        widget.set_state(self.settings.get_boolean("osc"))
+        self.switch_osc = typing.cast(Gtk.Switch, builder.get_object("switch_osc"))
+        self.switch_osc.set_state(self.settings.get_boolean("osc"))
 
         self.entry_client_ip = typing.cast(
             Gtk.Entry, builder.get_object("entry_client_ip")
         )
         self.entry_client_ip.set_text(self.settings.get_string("osc-host"))
+        self.entry_client_ip.connect("focus-out-event", self._on_client_ip_focus_out)
 
         self.spin_client_port = typing.cast(
             Gtk.SpinButton, builder.get_object("spin_client_port")
@@ -401,12 +402,16 @@ class SettingsTab(Gtk.Box):
             typing.cast(typing.Any, self.tabs.tabs["memories"]).channels_view.update()
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.toggle", state)
         else:
             self.settings.set_value("osc", GLib.Variant("b", state))
 
     def _client_port_changed(self, widget: Gtk.SpinButton) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
         port = widget.get_value_as_int()
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.set_config", client_port=port)
@@ -416,6 +421,8 @@ class SettingsTab(Gtk.Box):
                 self.app.engine.update_osc_client(port=port)
 
     def _server_port_changed(self, widget: Gtk.SpinButton) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
         port = widget.get_value_as_int()
         if self.app.core is not None and hasattr(self.app.core, "action_registry"):
             self.app.core.action_registry.execute("osc.set_config", server_port=port)
@@ -424,20 +431,68 @@ class SettingsTab(Gtk.Box):
             if self.app.engine is not None:
                 self.app.engine.update_osc_server(port)
 
+    def _on_client_ip_focus_out(
+        self, widget: Gtk.Entry, _event: Gdk.EventFocus
+    ) -> bool:
+        self._client_ip_changed(widget)
+        return False
+
     def _client_ip_changed(self, widget: Gtk.Entry) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
         ip_addr = widget.get_text()
         if self._is_ip(ip_addr):
-            if self.app.core is not None and hasattr(self.app.core, "action_registry"):
-                self.app.core.action_registry.execute("osc.set_config", host=ip_addr)
-            else:
-                self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
-                if self.app.engine is not None:
-                    self.app.engine.update_osc_client(host=ip_addr)
+            if ip_addr != self.settings.get_string("osc-host"):
+                if self.app.core is not None and hasattr(
+                    self.app.core, "action_registry"
+                ):
+                    self.app.core.action_registry.execute(
+                        "osc.set_config", host=ip_addr
+                    )
+                else:
+                    self.settings.set_value("osc-host", GLib.Variant("s", ip_addr))
+                    if self.app.engine is not None:
+                        self.app.engine.update_osc_client(host=ip_addr)
             parent = self.get_parent()
             if parent:
                 parent.grab_focus()
         else:
             widget.set_text(self.settings.get_string("osc-host"))
+
+    def update_osc_config(self, host: str, client_port: int, server_port: int) -> None:
+        """Update OSC widgets from external config change or undo/redo."""
+        self._updating_settings = True
+        try:
+            if (
+                host
+                and hasattr(self, "entry_client_ip")
+                and self.entry_client_ip.get_text() != host
+            ):
+                self.entry_client_ip.set_text(host)
+            if client_port > 0 and hasattr(self, "spin_client_port"):
+                if (
+                    self.spin_client_port.get_value_as_int() != client_port
+                    or self.spin_client_port.get_text() != str(client_port)
+                ):
+                    self.spin_client_port.set_value(client_port)
+            if server_port > 0 and hasattr(self, "spin_server_port"):
+                if (
+                    self.spin_server_port.get_value_as_int() != server_port
+                    or self.spin_server_port.get_text() != str(server_port)
+                ):
+                    self.spin_server_port.set_value(server_port)
+        finally:
+            self._updating_settings = False
+
+    def update_osc_toggle(self, state: bool) -> None:
+        """Update OSC switch state from external toggle change or undo/redo."""
+        self._updating_settings = True
+        try:
+            if hasattr(self, "switch_osc") and self.switch_osc.get_state() != state:
+                self.switch_osc.set_state(state)
+                self.switch_osc.set_active(state)
+        finally:
+            self._updating_settings = False
 
     def _is_ip(self, string: str) -> bool:
         try:

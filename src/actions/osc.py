@@ -30,11 +30,12 @@ class OscToggleAction(Action):
     """Action to enable or disable OSC networking."""
 
     name = "osc.toggle"
-    can_undo = False
+    can_undo = True
 
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.enable: bool = False
+        self.old_enable: bool = False
 
     def configure(self, enable: bool) -> None:
         """Configure whether OSC networking should be enabled.
@@ -48,14 +49,32 @@ class OscToggleAction(Action):
         """Execute OSC toggle."""
         settings = getattr(self.app, "settings", None)
         if settings is not None:
+            if hasattr(settings, "get_boolean"):
+                self.old_enable = bool(settings.get_boolean("osc"))
+            elif hasattr(settings, "get_value"):
+                self.old_enable = bool(settings.get_value("osc"))
+
+        self._apply_toggle(self.enable)
+
+    def undo(self) -> None:
+        """Revert OSC toggle state."""
+        self._apply_toggle(self.old_enable)
+
+    def redo(self) -> None:
+        """Reapply OSC toggle state."""
+        self._apply_toggle(self.enable)
+
+    def _apply_toggle(self, enable: bool) -> None:
+        settings = getattr(self.app, "settings", None)
+        if settings is not None:
             if hasattr(settings, "set_value"):
-                settings.set_value("osc", GLib.Variant("b", self.enable))
+                settings.set_value("osc", GLib.Variant("b", enable))
             elif hasattr(settings, "set_boolean"):
-                settings.set_boolean("osc", self.enable)
+                settings.set_boolean("osc", enable)
 
         engine = getattr(self.app, "engine", None)
         if engine is not None:
-            if self.enable:
+            if enable:
                 host = "127.0.0.1"
                 client_port = 8000
                 server_port = 9000
@@ -78,7 +97,7 @@ class OscToggleAction(Action):
                 engine.stop_osc()
                 self.app.osc_delegate = None
 
-        self.app.emit("osc.toggled", self.enable)
+        self.app.emit("osc.toggled", enable)
 
 
 class OscSetConfigAction(Action):

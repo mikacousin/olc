@@ -339,13 +339,15 @@ class Window(Gtk.ApplicationWindow):
         """Handle window-level key press events.
 
         If a text entry or cell editable widget is focused, we manually send the
-        event to it and consume the event to prevent application-wide accelerators
-        (like space key triggering 'playback.go') from stealing the keys.
+        event to it. If the widget consumes it (like text typing, navigation, or
+        space key), we return True to prevent accelerators (like space triggering
+        'playback.go') from stealing the keys. If the widget does not handle it
+        (like Ctrl+Z, Ctrl+Y, Ctrl+S), we return False to let GTK activate the
+        corresponding application accelerators.
         """
         focused = self.get_focus()
         if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
-            focused.event(event)
-            return True
+            return bool(focused.event(event))
         return False
 
     def on_key_press_event(

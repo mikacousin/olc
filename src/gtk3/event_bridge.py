@@ -41,6 +41,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.track_channels import TrackChannelsTab
     from olc.gtk3.widgets.group import GroupWidget
     from olc.sequence import Sequence
+    from olc.settings import SettingsTab
 
 
 # pylint: disable=too-few-public-methods, too-many-lines
@@ -312,6 +313,16 @@ class GuiEventBridge:
             lambda seq_idx, step_idx: self._run_idle(
                 self._on_step_changed, seq_idx, step_idx
             ),
+        )
+        self.app.core.subscribe(
+            "osc.config_changed",
+            lambda host, client_port, server_port: self._run_idle(
+                self._on_osc_config_changed, host, client_port, server_port
+            ),
+        )
+        self.app.core.subscribe(
+            "osc.toggled",
+            lambda state: self._run_idle(self._on_osc_toggled, state),
         )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
@@ -1352,6 +1363,22 @@ class GuiEventBridge:
         history_tab = self.app.tabs.tabs.get("history")
         if history_tab:
             typing.cast(HistoryTab, history_tab).refresh()
+        return False
+
+    def _on_osc_config_changed(
+        self, host: str, client_port: int, server_port: int
+    ) -> bool:
+        """Handle OSC config change to update Settings tab if open."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.update_osc_config(host, client_port, server_port)
+        return False
+
+    def _on_osc_toggled(self, state: bool) -> bool:
+        """Handle OSC toggle change to update Settings tab if open."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.update_osc_toggle(state)
         return False
 
 
