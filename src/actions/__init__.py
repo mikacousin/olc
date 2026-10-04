@@ -52,6 +52,10 @@ from olc.actions.curve import (
     CurveSetLimitAction,
     CurveUpdatePointsAction,
 )
+from olc.actions.dmx import (
+    DmxSetUniverseLevelsAction,
+    UniverseBlackoutAction,
+)
 from olc.actions.edit import RedoAction, UndoAction
 from olc.actions.fader import (
     FaderAssignAction,
@@ -87,14 +91,12 @@ from olc.actions.osc import (
     OscToggleAction,
 )
 from olc.actions.patch import (
-    DmxSetUniverseLevelsAction,
     PatchAddOutputAction,
     PatchClearAction,
     PatchSelectOutputAction,
     PatchSet1on1Action,
     PatchSetOutputCurveAction,
     PatchUnpatchOutputAction,
-    UniverseBlackoutAction,
 )
 from olc.actions.playback import (
     GoAction,
