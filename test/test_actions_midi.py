@@ -20,7 +20,11 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+from gi.repository import Gtk
 from olc.core.app import CoreApplication
+from olc.gtk3.event_bridge import GuiEventBridge
+from olc.settings import SettingsTab
 
 
 def test_midi_port_toggle_action_and_undo_redo() -> None:
@@ -230,3 +234,63 @@ def test_midi_clear_mappings_action_and_undo_redo() -> None:
     assert mock_notes.notes["clear"] == [0, 50]
     assert mock_cc.control_change["wheel"] == [0, 16]
     assert mock_pitch.pitchwheel["fader_1"] == 0
+
+
+def test_event_bridge_midi_settings_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test GuiEventBridge routes midi.port_toggled and midi.port_mode_changed
+    to SettingsTab."""
+    monkeypatch.setattr("gi.repository.GLib.idle_add", lambda func, *args: func(*args))
+    mock_app = MagicMock()
+    core = CoreApplication(MagicMock())
+    mock_app.core = core
+
+    mock_settings_tab = MagicMock()
+    mock_app.tabs = MagicMock()
+    mock_app.tabs.tabs = {"settings": mock_settings_tab}
+
+    _bridge = GuiEventBridge(mock_app)
+
+    # 1. Trigger midi.port_toggled via action undo
+    core.emit("midi.port_toggled", "BCF2000", True)
+    mock_settings_tab.update_midi_port_toggle.assert_called_once_with("BCF2000", True)
+
+    # 2. Trigger midi.port_mode_changed via action undo
+    core.emit("midi.port_mode_changed", "BCF2000", "Absolute")
+    mock_settings_tab.update_midi_port_mode.assert_called_once_with(
+        "BCF2000", "Absolute"
+    )
+
+
+def test_settings_tab_update_midi() -> None:
+    """Test SettingsTab updates liststore_midi on port toggle and mode change."""
+    # pylint: disable=protected-access
+    tab = SettingsTab.__new__(SettingsTab)
+    tab.settings = MagicMock()
+    tab.settings.get_strv.side_effect = lambda k: ["BCF2000"] if k == "makie" else []
+
+    tab.liststore_midi = Gtk.ListStore(str, bool, str, str)
+    tab.liststore_midi.append(["BCF2000", False, "", "BCF2000"])
+    tab.liststore_midi.append(["nanoKONTROL", True, "Absolute", "nanoKONTROL"])
+
+    # 1. Test update_midi_port_toggle enabling a port
+    tab.update_midi_port_toggle("BCF2000", True)
+    assert tab.liststore_midi[0][1] is True
+    assert tab.liststore_midi[0][2] == "Relative3 (Makie)"
+
+    # 2. Test update_midi_port_toggle disabling a port
+    tab.update_midi_port_toggle("BCF2000", False)
+    assert tab.liststore_midi[0][1] is False
+    assert tab.liststore_midi[0][2] == ""
+
+    # 3. Test update_midi_port_mode with various mode strings
+    tab.update_midi_port_mode("nanoKONTROL", "Relative1")
+    assert tab.liststore_midi[1][2] == "Relative1"
+
+    tab.update_midi_port_mode("nanoKONTROL", "mackie")
+    assert tab.liststore_midi[1][2] == "Relative3 (Makie)"
+
+    tab.update_midi_port_mode("nanoKONTROL", "relative2")
+    assert tab.liststore_midi[1][2] == "Relative2"
+
+    tab.update_midi_port_mode("nanoKONTROL", "absolute")
+    assert tab.liststore_midi[1][2] == "Absolute"

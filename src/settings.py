@@ -144,49 +144,29 @@ class SettingsTab(Gtk.Box):
         treeview.append_column(column_combo)
         midi_grid.add(treeview)
 
+    def _get_midi_port_mode(self, port_name: str) -> str:
+        """Get the display mode name for a MIDI port from settings."""
+        if port_name in self.settings.get_strv("relative1"):
+            return "Relative1"
+        if port_name in self.settings.get_strv("relative2"):
+            return "Relative2"
+        if port_name in self.settings.get_strv("makie"):
+            return "Relative3 (Makie)"
+        if port_name in self.settings.get_strv("absolute"):
+            return "Absolute"
+        return "Relative3 (Makie)"
+
     def _populate_midi_ports(self) -> None:
         default = self.settings.get_strv("midi-ports")
-        relative1 = self.settings.get_strv("relative1")
-        relative2 = self.settings.get_strv("relative2")
-        makies = self.settings.get_strv("makie")
-        absolutes = self.settings.get_strv("absolute")
         ports_list = []
         if self.midi is not None and self.midi.ports is not None:
             ports_list = self.midi.ports.mido_ports or []
         for midi_port in sorted(list(set(ports_list))):
             if midi_port in default:
-                if midi_port in relative1:
-                    self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative1", midi_port]
-                    )
-                elif midi_port in relative2:
-                    self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative2", midi_port]
-                    )
-                elif midi_port in makies:
-                    self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
-                    )
-                elif midi_port in absolutes:
-                    self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Absolute", midi_port]
-                    )
-                else:
-                    # Default: Mackie mode
-                    self.liststore_midi.append(
-                        [midi_port.split(":")[0], True, "Relative3 (Makie)", midi_port]
-                    )
-                    makies.append(midi_port)
-                    if midi_port in absolutes:
-                        absolutes.remove(midi_port)
-                    elif midi_port in relative1:
-                        relative1.remove(midi_port)
-                    elif midi_port in relative2:
-                        relative2.remove(midi_port)
-                    self.settings.set_strv("relative1", relative1)
-                    self.settings.set_strv("relative2", relative2)
-                    self.settings.set_strv("makie", makies)
-                    self.settings.set_strv("absolute", absolutes)
+                mode = self._get_midi_port_mode(midi_port)
+                self.liststore_midi.append(
+                    [midi_port.split(":")[0], True, mode, midi_port]
+                )
             else:
                 self.liststore_midi.append(
                     [midi_port.split(":")[0], False, "", midi_port]
@@ -245,16 +225,20 @@ class SettingsTab(Gtk.Box):
         new_state = not self.liststore_midi[path][1]
         self.liststore_midi[path][1] = new_state
         if new_state:
-            if not self.liststore_midi[path][2]:
-                self.liststore_midi.set_value(
-                    self.liststore_midi.get_iter(path), 2, "Relative3 (Makie)"
+            mode = self._get_midi_port_mode(port_name)
+            self.liststore_midi.set_value(self.liststore_midi.get_iter(path), 2, mode)
+            has_mode = any(
+                port_name in self.settings.get_strv(m)
+                for m in ("relative1", "relative2", "makie", "absolute")
+            )
+            if (
+                not has_mode
+                and self.app.core is not None
+                and hasattr(self.app.core, "action_registry")
+            ):
+                self.app.core.action_registry.execute(
+                    "midi.set_port_mode", port_name, "Relative3 (Makie)"
                 )
-                if self.app.core is not None and hasattr(
-                    self.app.core, "action_registry"
-                ):
-                    self.app.core.action_registry.execute(
-                        "midi.set_port_mode", port_name, "Relative3 (Makie)"
-                    )
         else:
             self.liststore_midi.set_value(self.liststore_midi.get_iter(path), 2, "")
 
@@ -262,6 +246,35 @@ class SettingsTab(Gtk.Box):
             self.app.core.action_registry.execute(
                 "midi.port_toggle", port_name, new_state
             )
+
+    def update_midi_port_toggle(self, port_name: str, enable: bool) -> None:
+        """Update MIDI port toggle state from external action or undo/redo."""
+        if not hasattr(self, "liststore_midi"):
+            return
+        for row in self.liststore_midi:
+            if row[3] == port_name:
+                row[1] = enable
+                row[2] = self._get_midi_port_mode(port_name) if enable else ""
+                break
+
+    def update_midi_port_mode(self, port_name: str, mode: str) -> None:
+        """Update MIDI port encoder mode from external action or undo/redo."""
+        if not hasattr(self, "liststore_midi"):
+            return
+        display_mode = mode
+        lower = mode.lower()
+        if "makie" in lower or "mackie" in lower or "relative3" in lower:
+            display_mode = "Relative3 (Makie)"
+        elif "relative1" in lower:
+            display_mode = "Relative1"
+        elif "relative2" in lower:
+            display_mode = "Relative2"
+        elif "absolute" in lower:
+            display_mode = "Absolute"
+        for row in self.liststore_midi:
+            if row[3] == port_name:
+                row[2] = display_mode
+                break
 
     def _artnet(self, builder: Gtk.Builder) -> None:
         # pylint: disable=too-many-locals,protected-access

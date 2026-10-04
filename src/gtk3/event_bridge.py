@@ -324,6 +324,18 @@ class GuiEventBridge:
             "osc.toggled",
             lambda state: self._run_idle(self._on_osc_toggled, state),
         )
+        self.app.core.subscribe(
+            "midi.port_toggled",
+            lambda port_name, enable: self._run_idle(
+                self._on_midi_port_toggled, port_name, enable
+            ),
+        )
+        self.app.core.subscribe(
+            "midi.port_mode_changed",
+            lambda port_name, mode: self._run_idle(
+                self._on_midi_port_mode_changed, port_name, mode
+            ),
+        )
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
         """Run a function safely in the GTK main loop, discarding return value.
@@ -1379,6 +1391,20 @@ class GuiEventBridge:
         if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             settings_tab.update_osc_toggle(state)
+        return False
+
+    def _on_midi_port_toggled(self, port_name: str, enable: bool) -> bool:
+        """Handle MIDI port toggle to update Settings tab if open."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.update_midi_port_toggle(port_name, enable)
+        return False
+
+    def _on_midi_port_mode_changed(self, port_name: str, mode: str) -> bool:
+        """Handle MIDI port mode change to update Settings tab if open."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            settings_tab.update_midi_port_mode(port_name, mode)
         return False
 
 
