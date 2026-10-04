@@ -81,112 +81,84 @@ class PauseAction(Action):
         }
 
 
-class SequencePlusAction(Action):
+class PlaybackStepNavigateAction(Action):
+    """Base class for sequence step navigation actions (SEQ+, SEQ-)."""
+
+    can_undo = False
+    label: str = ""
+    event_name: str = ""
+    direction: int = 1
+
+    def execute(self) -> None:
+        """Execute the sequence step navigation."""
+        main_playback = self.app.lightshow.main_playback
+        if not main_playback:
+            return
+
+        if self.direction > 0:
+            main_playback.sequence_plus()
+        else:
+            main_playback.sequence_minus()
+
+        if self.event_name:
+            self.app.emit(self.event_name, self.get_feedback_state())
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Provides feedback state of the sequence step selection."""
+        main_playback = self.app.lightshow.main_playback
+        if not main_playback:
+            return {}
+
+        pos = main_playback.position
+        step = main_playback.steps[pos] if pos < len(main_playback.steps) else None
+        next_step = (
+            main_playback.steps[pos + 1] if pos + 1 < len(main_playback.steps) else None
+        )
+
+        return {
+            "active": False,
+            "timer": 0.1,
+            "label": self.label,
+            "position": pos,
+            "last": main_playback.last,
+            "next_total_time": next_step.total_time if next_step else 0.0,
+            "next_time_in": next_step.time_in if next_step else 0.0,
+            "next_time_out": next_step.time_out if next_step else 0.0,
+            "next_delay_in": next_step.delay_in if next_step else 0.0,
+            "next_delay_out": next_step.delay_out if next_step else 0.0,
+            "next_wait": next_step.wait if next_step else 0.0,
+            "next_channel_time": next_step.channel_time if next_step else False,
+            "cue_number": get_cue(step).number if (step and get_cue(step)) else 0.0,
+            "cue_text": step.text if step else "",
+            "next_cue_number": (
+                get_cue(next_step).number if (next_step and get_cue(next_step)) else 0.0
+            ),
+            "next_cue_text": next_step.text if next_step else "",
+        }
+
+
+class SequencePlusAction(PlaybackStepNavigateAction):
     """Action to select the next sequence step in the playback.
 
     Jumps directly to the next cue.
     """
 
     name = "playback.sequence_plus"
-    can_undo = False
-
-    def execute(self) -> None:
-        """Execute the action, switching to the next step directly."""
-        main_playback = self.app.lightshow.main_playback
-        if not main_playback:
-            return
-
-        main_playback.sequence_plus()
-
-        # Notify event with feedback
-        self.app.emit("playback.sequence_plus_triggered", self.get_feedback_state())
-
-    def get_feedback_state(self) -> dict[str, typing.Any]:
-        """Provides feedback state of the sequence step selection."""
-        main_playback = self.app.lightshow.main_playback
-        if not main_playback:
-            return {}
-
-        pos = main_playback.position
-        step = main_playback.steps[pos] if pos < len(main_playback.steps) else None
-        next_step = (
-            main_playback.steps[pos + 1] if pos + 1 < len(main_playback.steps) else None
-        )
-
-        return {
-            "active": False,
-            "timer": 0.1,
-            "label": "SEQ+",
-            "position": pos,
-            "last": main_playback.last,
-            "next_total_time": next_step.total_time if next_step else 0.0,
-            "next_time_in": next_step.time_in if next_step else 0.0,
-            "next_time_out": next_step.time_out if next_step else 0.0,
-            "next_delay_in": next_step.delay_in if next_step else 0.0,
-            "next_delay_out": next_step.delay_out if next_step else 0.0,
-            "next_wait": next_step.wait if next_step else 0.0,
-            "next_channel_time": next_step.channel_time if next_step else False,
-            "cue_number": get_cue(step).number if (step and get_cue(step)) else 0.0,
-            "cue_text": step.text if step else "",
-            "next_cue_number": (
-                get_cue(next_step).number if (next_step and get_cue(next_step)) else 0.0
-            ),
-            "next_cue_text": next_step.text if next_step else "",
-        }
+    label = "SEQ+"
+    event_name = "playback.sequence_plus_triggered"
+    direction = 1
 
 
-class SequenceMinusAction(Action):
+class SequenceMinusAction(PlaybackStepNavigateAction):
     """Action to select the previous sequence step in the playback.
 
     Jumps directly to the previous cue.
     """
 
     name = "playback.sequence_minus"
-    can_undo = False
-
-    def execute(self) -> None:
-        """Execute the action, switching to the previous step directly."""
-        main_playback = self.app.lightshow.main_playback
-        if not main_playback:
-            return
-
-        main_playback.sequence_minus()
-
-        # Notify event with feedback
-        self.app.emit("playback.sequence_minus_triggered", self.get_feedback_state())
-
-    def get_feedback_state(self) -> dict[str, typing.Any]:
-        """Provides feedback state of the sequence step selection."""
-        main_playback = self.app.lightshow.main_playback
-        if not main_playback:
-            return {}
-
-        pos = main_playback.position
-        step = main_playback.steps[pos] if pos < len(main_playback.steps) else None
-        next_step = (
-            main_playback.steps[pos + 1] if pos + 1 < len(main_playback.steps) else None
-        )
-
-        return {
-            "active": False,
-            "timer": 0.1,
-            "label": "SEQ-",
-            "position": pos,
-            "last": main_playback.last,
-            "next_total_time": next_step.total_time if next_step else 0.0,
-            "next_time_in": next_step.time_in if next_step else 0.0,
-            "next_time_out": next_step.time_out if next_step else 0.0,
-            "next_delay_in": next_step.delay_in if next_step else 0.0,
-            "next_delay_out": next_step.delay_out if next_step else 0.0,
-            "next_wait": next_step.wait if next_step else 0.0,
-            "next_channel_time": next_step.channel_time if next_step else False,
-            "cue_number": get_cue(step).number if (step and get_cue(step)) else 0.0,
-            "cue_text": step.text if step else "",
-            "next_cue_number": (
-                get_cue(next_step).number if (next_step and get_cue(next_step)) else 0.0
-            ),
-            "next_cue_text": next_step.text if next_step else "",
-        }
+    label = "SEQ-"
+    event_name = "playback.sequence_minus_triggered"
+    direction = -1
 
 
 class GoBackAction(Action):

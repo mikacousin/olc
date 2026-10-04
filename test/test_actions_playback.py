@@ -215,3 +215,48 @@ def test_manual_xfade_action_execution() -> None:
     mock_scale_b.set_value.assert_called_once_with(255)
     mock_crossfade.scale_moved.assert_called_once_with(mock_scale_b)
     assert xfade_events == [("a", 150), ("b", 255)]
+
+
+def test_playback_step_navigate_action_feedback_with_steps() -> None:
+    """Test detailed feedback state of PlaybackStepNavigateAction when steps exist."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_playback = MagicMock()
+    mock_playback.position = 0
+    mock_playback.last = 2
+
+    # Step 0
+    step0 = MagicMock()
+    step0.text = "Cue 1 text"
+    cue0 = MagicMock()
+    cue0.number = 1.0
+    step0.cue = cue0
+
+    # Step 1 (next)
+    step1 = MagicMock()
+    step1.text = "Cue 2 text"
+    step1.total_time = 5.0
+    step1.time_in = 3.0
+    step1.time_out = 3.0
+    step1.delay_in = 1.0
+    step1.delay_out = 1.0
+    step1.wait = 0.5
+    step1.channel_time = False
+    cue1 = MagicMock()
+    cue1.number = 2.0
+    step1.cue = cue1
+
+    mock_playback.steps = [step0, step1]
+    app.lightshow.main_playback = mock_playback
+
+    app.action_registry.execute("playback.sequence_plus")
+    action = app.action_registry.get("playback.sequence_plus")
+    feedback = action.get_feedback_state()
+
+    assert feedback["cue_number"] == 1.0
+    assert feedback["cue_text"] == "Cue 1 text"
+    assert feedback["next_cue_number"] == 2.0
+    assert feedback["next_cue_text"] == "Cue 2 text"
+    assert feedback["next_total_time"] == 5.0
+    assert feedback["next_delay_in"] == 1.0
