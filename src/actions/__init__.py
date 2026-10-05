@@ -121,6 +121,10 @@ from olc.actions.sequence import (
     StepUpdateTextAction,
     StepUpdateTimesAction,
 )
+from olc.actions.show import (
+    ShowNewAction,
+    ShowResetUserLevelsAction,
+)
 
 if typing.TYPE_CHECKING:
     from olc.core.registry import ActionRegistry
@@ -216,6 +220,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         DmxBlackoutAllAction,
         OscToggleAction,
         OscSetConfigAction,
+        ShowNewAction,
+        ShowResetUserLevelsAction,
     ]
 
     for action_class in actions_to_register:

@@ -52,7 +52,6 @@ from olc.gtk3.tabs_manager import Tabs  # noqa: E402
 from olc.gtk3.track_channels import TrackChannelsTab  # noqa: E402
 from olc.gtk3.virtual_console import VirtualConsoleWindow  # noqa: E402
 from olc.gtk3.window import Window  # noqa: E402
-from olc.independent import Independents  # noqa: E402
 from olc.midi import Midi  # noqa: E402
 from olc.sequence import Sequence  # noqa: E402
 from olc.settings import SettingsTab  # noqa: E402
@@ -388,42 +387,7 @@ class Application(Gtk.Application):
 
     def _new(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """New show"""
-        assert self.window is not None
-        assert self.tabs is not None
-        # Stop Chasers
-        for chaser in self.core.lightshow.chasers:
-            if chaser.run and chaser.thread:
-                chaser.run = False
-                chaser.thread.stop()
-                chaser.thread.join()
-        # All channels at 0
-        if self.core.backend:
-            self.core.backend.dmx.levels["user"][:] = -1
-            self.core.backend.dmx.set_levels()
-        self.window.live_view.channels_view.flowbox.unselect_all()
-        # Reset Patch
-        self.core.lightshow.patch.patch_1on1()
-        # Reset Main Playback
-        self.core.lightshow.main_playback = Sequence(1, "Main Playback")
-        self.core.lightshow.main_playback.position = 0
-        self.core.lightshow.main_playback.update_channels()
-        # Delete cues, groups, chasers, faders
-        self.core.lightshow.cues.clear()
-        self.core.lightshow.groups.clear()
-        del self.core.lightshow.chasers[:]
-        self.core.lightshow.fader_bank.reset_faders()
-        self.core.lightshow.independents = Independents()
-        # Redraw Sequential Window
-        self.window.playback.update_sequence_display()
-        self.window.playback.update_xfade_display(
-            self.core.lightshow.main_playback.position
-        )
-        self.window.update_channels_display(self.core.lightshow.main_playback.position)
-
-        # Redraw all open tabs
-        self.tabs.refresh_all()
-
-        self.window.live_view.channels_view.last_selected_channel = ""
+        self.core.action_registry.execute("show.new")
 
     def _open(self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None) -> None:
         """create a file chooser dialog to open:

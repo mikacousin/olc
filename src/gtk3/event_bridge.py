@@ -360,6 +360,18 @@ class GuiEventBridge:
                 self._on_cue_recorded, seq_idx, step_idx, cue_nb
             ),
         )
+        self.app.core.subscribe(
+            "show.new",
+            lambda: self._run_idle(self._safe_on_show_new),
+        )
+        self.app.core.subscribe(
+            "show.user_levels_reset",
+            lambda: self._run_idle(self._on_user_levels_reset),
+        )
+        self.app.core.subscribe(
+            "show.user_levels_restored",
+            lambda: self._run_idle(self._on_user_levels_reset),
+        )
 
     def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
         """Handle cue recorded in playback sequence.
@@ -425,6 +437,32 @@ class GuiEventBridge:
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
         self._safe_refresh_patch_outputs()
+        return False
+
+    def _safe_on_show_new(self) -> bool:
+        """Handle show.new event in GUI main thread."""
+        if self.app.window is not None:
+            if self.app.window.live_view is not None:
+                self.app.window.live_view.channels_view.flowbox.unselect_all()
+                self.app.window.live_view.channels_view.last_selected_channel = ""
+            if self.app.window.playback is not None:
+                self.app.window.playback.update_sequence_display()
+                self.app.window.playback.update_xfade_display(
+                    self.app.core.lightshow.main_playback.position
+                )
+            self.app.window.update_channels_display(
+                self.app.core.lightshow.main_playback.position
+            )
+            if self.app.window.header is not None:
+                self.app.window.header.set_subtitle("")
+        if self.app.tabs is not None:
+            self.app.tabs.refresh_all()
+        return False
+
+    def _on_user_levels_reset(self) -> bool:
+        """Handle user levels reset event to refresh channels view."""
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.update()
         return False
 
     def _run_idle(self, func: typing.Callable[..., bool], *args: object) -> None:
