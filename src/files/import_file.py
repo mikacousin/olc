@@ -140,9 +140,14 @@ class ImportFile:
         self.parser.read()
         self.lightshow.add_recent_file()
 
-    def parse_sync(self) -> None:
-        """Start reading file synchronously"""
-        self.parser.read_sync()
+    def parse_sync(self, auto_import: bool = True) -> None:
+        """Start reading file synchronously.
+
+        Args:
+            auto_import: If True, automatically import or prompt via dialog.
+                If False, only parse and clean data.
+        """
+        self.parser.read_sync(auto_import=auto_import)
         self.lightshow.add_recent_file()
 
     def load_all(self) -> None:
@@ -161,6 +166,10 @@ class ImportFile:
             if response == Gtk.ResponseType.OK:
                 self._do_import()
                 self.lightshow.set_modified()
+
+    def do_import(self) -> None:
+        """Execute the import process."""
+        self._do_import()
 
     def _do_import(self) -> None:
         self._do_import_curves()

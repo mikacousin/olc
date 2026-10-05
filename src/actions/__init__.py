@@ -123,6 +123,7 @@ from olc.actions.sequence import (
 )
 from olc.actions.show import (
     ShowExportAsciiAction,
+    ShowImportAction,
     ShowNewAction,
     ShowOpenAction,
     ShowResetUserLevelsAction,
@@ -228,6 +229,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         ShowOpenAction,
         ShowSaveAction,
         ShowExportAsciiAction,
+        ShowImportAction,
     ]
 
     for action_class in actions_to_register:

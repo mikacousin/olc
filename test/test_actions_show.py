@@ -253,3 +253,81 @@ def test_show_actions_error_handling() -> None:
     # show.export_ascii with empty path
     with pytest.raises(ValueError):
         app.action_registry.execute("show.export_ascii", "")
+
+    # show.import with empty path
+    with pytest.raises(ValueError):
+        app.action_registry.execute("show.import", "")
+
+    # show.import with nonexistent file
+    with pytest.raises(FileNotFoundError):
+        app.action_registry.execute("show.import", "/nonexistent/path/file.asc")
+
+
+def test_show_import_ascii_and_undo_redo() -> None:
+    """Test show.import action with ASCII file and verify full Undo/Redo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Initial state
+    app.lightshow.groups.add(Group(index=99.0, channels={1: 100}, text="Initial Group"))
+    app.lightshow.cues.add(Cue(1, 99.0, channels={1: 50}, text="Initial Cue"))
+    app.lightshow.patch.outputs[1][47] = [1, 0]
+    app.lightshow.patch.invalidate_cache()
+    app.lightshow.set_not_modified()
+
+    imported_events: list[tuple[str, object]] = []
+    app.subscribe(
+        "show.imported",
+        lambda path, opts: imported_events.append((path, opts)),
+    )
+
+    # Import sample file
+    app.action_registry.execute("show.import", "test/sample.asc")
+
+    assert len(imported_events) == 1
+    assert app.lightshow.modified is True
+    # In sample file, output 47 is patched to channel 7
+    assert app.lightshow.patch.outputs[1][47] == [7, 0]
+
+    # Verify cue from sample file was imported
+    assert app.lightshow.cues.get(1.0, 0) is not None
+
+    # Undo
+    app.history.undo()
+    assert len(imported_events) == 2
+    assert app.lightshow.patch.outputs[1][47] == [1, 0]
+    assert app.lightshow.groups.get(99.0) is not None
+    assert app.lightshow.cues.get(99.0, 1) is not None
+    assert app.lightshow.modified is False
+
+    # Redo
+    app.history.redo()
+    assert len(imported_events) == 3
+    assert app.lightshow.patch.outputs[1][47] == [7, 0]
+    assert app.lightshow.modified is True
+
+
+def test_show_import_partial_options() -> None:
+    """Test show.import with specific options (ignore patch, replace cues)."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Set initial patch
+    app.lightshow.patch.outputs[1][47] = [42, 0]
+    app.lightshow.patch.invalidate_cache()
+
+    # Import with patch ignored
+    options = {
+        "patch": "IGNORE",
+        "curves": "IGNORE",
+        "groups": "IGNORE",
+        "independents": "IGNORE",
+        "faders": "IGNORE",
+        "midi": "IGNORE",
+    }
+    app.action_registry.execute("show.import", "test/sample.asc", options)
+
+    # Patch should NOT have changed because of IGNORE
+    assert app.lightshow.patch.outputs[1][47] == [42, 0]
+    # Cues should have been imported
+    assert app.lightshow.cues.get(1.0, 0) is not None

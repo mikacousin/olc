@@ -376,6 +376,10 @@ class GuiEventBridge:
             "show.loaded",
             lambda path: self._run_idle(self._safe_on_show_loaded, path),
         )
+        self.app.core.subscribe(
+            "show.imported",
+            lambda *args: self._run_idle(self._safe_on_show_imported),
+        )
 
     def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
         """Handle cue recorded in playback sequence.
@@ -502,6 +506,10 @@ class GuiEventBridge:
         ):
             self.app.midi.messages.lcd.show_faders()
         return False
+
+    def _safe_on_show_imported(self) -> bool:
+        """Handle show.imported event in GUI main thread."""
+        return self._safe_on_show_loaded("")
 
     def _on_user_levels_reset(self) -> bool:
         """Handle user levels reset event to refresh channels view."""

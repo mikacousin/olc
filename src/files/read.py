@@ -50,7 +50,7 @@ class ReadFile:
         self.importation = importation
         self.contents = ""
 
-    def _process_data(self, data: bytes) -> None:
+    def _process_data(self, data: bytes, auto_import: bool = True) -> None:
         if self.compressed:
             try:
                 data = gzip.decompress(data)
@@ -60,6 +60,8 @@ class ReadFile:
         self.contents = str(from_bytes(data).best())
         self.parse()
         self.imported.data.clean()
+        if not auto_import:
+            return
         if self.importation:
             self.imported.select_data()
         else:
@@ -79,14 +81,19 @@ class ReadFile:
         """Read all file"""
         self.imported.file.load_contents_async(None, self._load_cb, None)
 
-    def read_sync(self) -> None:
-        """Read all file synchronously."""
+    def read_sync(self, auto_import: bool = True) -> None:
+        """Read all file synchronously.
+
+        Args:
+            auto_import: If True, automatically import or prompt via dialog.
+                If False, only parse and clean data.
+        """
         try:
             _success, data, _etag = self.imported.file.load_contents(None)
         except GLib.GError as error:
             self._error_dialog(str(error))
             return
-        self._process_data(data)
+        self._process_data(data, auto_import=auto_import)
 
     def parse(self) -> None:
         """Parse file

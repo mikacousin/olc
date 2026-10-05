@@ -33,6 +33,7 @@ from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
+from olc.files.import_dialog import DialogData  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
@@ -435,6 +436,7 @@ class Application(Gtk.Application):
         if response == Gtk.ResponseType.ACCEPT:
             filename = open_dialog.get_filename()
             if filename is None:
+                open_dialog.destroy()
                 return
             extension = "".join(
                 [s for s in pathlib.Path(filename).suffixes if " " not in s]
@@ -457,8 +459,19 @@ class Application(Gtk.Application):
                 tabs=self.tabs,
                 importation=True,
             )
-            imported.parse()
-        open_dialog.destroy()
+            imported.parse_sync(auto_import=False)
+            open_dialog.destroy()
+
+            if self.window is not None:
+                dialog = DialogData(self.window, imported.data.data, imported.actions)
+                dlg_response = dialog.run()
+                dialog.destroy()
+                if dlg_response == Gtk.ResponseType.OK:
+                    self.core.action_registry.execute(
+                        "show.import", filename, imported.actions
+                    )
+        else:
+            open_dialog.destroy()
 
     def _export_ascii(
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
