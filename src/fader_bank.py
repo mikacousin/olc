@@ -84,6 +84,14 @@ class FaderBank:
         self.channels = set()
         self.active_faders = set()
         self.update_active_faders()
+        if (
+            self.app
+            and hasattr(self.app, "backend")
+            and self.app.backend
+            and hasattr(self.app.backend, "dmx")
+            and getattr(self.app.backend.dmx, "main_fader", None)
+        ):
+            self.app.backend.dmx.main_fader.set_level(1.0)
 
     def get_fader_type(self, page: int, index: int) -> FaderType:
         """Get Fader type
@@ -137,7 +145,8 @@ class FaderBank:
 
             self._set_fader_contents(page, index, fader_type, contents)
         else:
-            self.faders[page][index].set_level(0)
+            if not isinstance(self.faders[page][index], FaderMain):
+                self.faders[page][index].set_level(0)
             self._set_fader_type(page, index, fader_type, contents)
 
     def _set_fader_type(

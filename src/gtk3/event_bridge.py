@@ -455,6 +455,11 @@ class GuiEventBridge:
             )
             if self.app.window.header is not None:
                 self.app.window.header.set_subtitle("")
+            if (
+                hasattr(self.app.window, "main_fader")
+                and self.app.window.main_fader is not None
+            ):
+                self.app.window.main_fader.queue_draw()
         if self.app.tabs is not None:
             self.app.tabs.refresh_all()
         return False
