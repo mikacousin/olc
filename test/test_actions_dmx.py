@@ -19,21 +19,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import numpy as np
-from olc.actions.dmx import DmxSetUniverseLevelsAction, UniverseBlackoutAction
-from olc.actions.patch import (
-    DmxSetUniverseLevelsAction as PatchDmx,
-)
-from olc.actions.patch import (
-    UniverseBlackoutAction as PatchBlackout,
-)
 from olc.core.app import CoreApplication
 from olc.define import UNIVERSES
-
-
-def test_dmx_actions_backward_compatible_reexport() -> None:
-    """Test backwards-compatibility re-exports in olc.actions.patch."""
-    assert PatchDmx is DmxSetUniverseLevelsAction
-    assert PatchBlackout is UniverseBlackoutAction
 
 
 def test_universe_blackout_action_and_undo_redo() -> None:

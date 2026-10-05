@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import typing
 
-from olc.actions.dmx import DmxSetUniverseLevelsAction, UniverseBlackoutAction
 from olc.core.action import Action
 
 if typing.TYPE_CHECKING:
@@ -337,12 +336,10 @@ class PatchSelectOutputAction(Action):
 
 
 __all__ = [
-    "DmxSetUniverseLevelsAction",
     "PatchAddOutputAction",
     "PatchClearAction",
     "PatchSelectOutputAction",
     "PatchSet1on1Action",
     "PatchSetOutputCurveAction",
     "PatchUnpatchOutputAction",
-    "UniverseBlackoutAction",
 ]
