@@ -32,7 +32,6 @@ from olc.core.binding import MidiBinding, OscBinding  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402
 from olc.core.universe_config import Protocol, UniverseMap  # noqa: E402
 from olc.define import UNIVERSES  # noqa: E402
-from olc.files.export_file import ExportFile  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
@@ -260,19 +259,9 @@ class Application(Gtk.Application):
                 response = dialog.run()
                 dialog.destroy()
                 if response == Gtk.ResponseType.OK:
-                    self.core.lightshow.file = command_line.create_file_for_arg(
-                        filename
-                    )
-                    imported = ImportFile(
-                        self.core.lightshow,
-                        self.core.lightshow.file,
-                        FileType.OLC,
-                        window=self.window,
-                        midi=self.midi,
-                        settings=self.settings,
-                        tabs=self.tabs,
-                    )
-                    imported.parse()
+                    gfile = command_line.create_file_for_arg(filename)
+                    if path := gfile.get_path():
+                        self.core.action_registry.execute("show.open", path)
             return False
 
         # Set up UniverseMap for CoreEngine
@@ -309,17 +298,9 @@ class Application(Gtk.Application):
         self.activate()
         arguments = command_line.get_arguments()
         if len(arguments) > 1:
-            self.core.lightshow.file = command_line.create_file_for_arg(arguments[1])
-            imported = ImportFile(
-                self.core.lightshow,
-                self.core.lightshow.file,
-                FileType.OLC,
-                window=self.window,
-                midi=self.midi,
-                settings=self.settings,
-                tabs=self.tabs,
-            )
-            imported.parse()
+            gfile = command_line.create_file_for_arg(arguments[1])
+            if path := gfile.get_path():
+                self.core.action_registry.execute("show.open", path)
         self.core.history.clear()
         return False
 
@@ -419,27 +400,11 @@ class Application(Gtk.Application):
         response = open_dialog.run()
 
         if response == Gtk.ResponseType.ACCEPT:
-            self.core.lightshow.file = open_dialog.get_file()
-            # Load file
-            imported = ImportFile(
-                self.core.lightshow,
-                self.core.lightshow.file,
-                FileType.OLC,
-                window=self.window,
-                midi=self.midi,
-                settings=self.settings,
-                tabs=self.tabs,
-            )
-            imported.parse()
+            if filename := open_dialog.get_filename():
+                self.core.action_registry.execute("show.open", filename)
 
         # destroy the FileChooserNative
         open_dialog.destroy()
-
-        # All channels at 0
-        if self.core.backend:
-            self.core.backend.dmx.levels["sequence"][:] = 0
-            self.core.backend.dmx.levels["user"][:] = -1
-            self.core.backend.dmx.set_levels()
 
     def _import_file(
         self, _action: Gio.SimpleAction, _parameter: GLib.Variant | None
@@ -511,24 +476,16 @@ class Application(Gtk.Application):
         response = dialog.run()
 
         if response == Gtk.ResponseType.ACCEPT:
-            exported = ExportFile(
-                dialog.get_file(), FileType.ASCII, self.core.lightshow
-            )
-            exported.write()
+            if filename := dialog.get_filename():
+                self.core.action_registry.execute("show.export_ascii", filename)
         dialog.destroy()
 
     def _save(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Save"""
-        if self.core.lightshow.file is not None:
-            exported = ExportFile(
-                self.core.lightshow.file,
-                FileType.OLC,
-                self.core.lightshow,
-                midi=self.midi,
-            )
-            exported.write()
+        if self.core.lightshow.file_path:
+            self.core.action_registry.execute("show.save")
         else:
             self._saveas(_action, _parameter)
 
@@ -563,18 +520,8 @@ class Application(Gtk.Application):
 
         # if response is "ACCEPT" (the button "Save" has been clicked)
         if response == Gtk.ResponseType.ACCEPT:
-            # self.core.lightshow.file is the currently selected file
-            self.core.lightshow.file = save_dialog.get_file()
-            # save to file
-            exported = ExportFile(
-                self.core.lightshow.file,
-                FileType.OLC,
-                self.core.lightshow,
-                midi=self.midi,
-            )
-            exported.write()
-            # Set Main Window's title with file name
-            self.core.lightshow.set_not_modified()
+            if filename := save_dialog.get_filename():
+                self.core.action_registry.execute("show.save", filename)
         # destroy the FileChooserNative
         save_dialog.destroy()
 

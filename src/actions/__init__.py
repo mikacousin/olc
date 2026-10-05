@@ -122,8 +122,11 @@ from olc.actions.sequence import (
     StepUpdateTimesAction,
 )
 from olc.actions.show import (
+    ShowExportAsciiAction,
     ShowNewAction,
+    ShowOpenAction,
     ShowResetUserLevelsAction,
+    ShowSaveAction,
 )
 
 if typing.TYPE_CHECKING:
@@ -222,6 +225,9 @@ def register_all_actions(registry: ActionRegistry) -> None:
         OscSetConfigAction,
         ShowNewAction,
         ShowResetUserLevelsAction,
+        ShowOpenAction,
+        ShowSaveAction,
+        ShowExportAsciiAction,
     ]
 
     for action_class in actions_to_register:

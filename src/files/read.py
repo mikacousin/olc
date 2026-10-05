@@ -50,14 +50,7 @@ class ReadFile:
         self.importation = importation
         self.contents = ""
 
-    def _load_cb(
-        self, file: Gio.File, result: Gio.AsyncResult, user_data: object = None
-    ) -> None:
-        try:
-            _success, data, _etag = file.load_contents_finish(result)
-        except GLib.GError as error:
-            self._error_dialog(str(error))
-            return
+    def _process_data(self, data: bytes) -> None:
         if self.compressed:
             try:
                 data = gzip.decompress(data)
@@ -72,9 +65,28 @@ class ReadFile:
         else:
             self.imported.load_all()
 
+    def _load_cb(
+        self, file: Gio.File, result: Gio.AsyncResult, user_data: object = None
+    ) -> None:
+        try:
+            _success, data, _etag = file.load_contents_finish(result)
+        except GLib.GError as error:
+            self._error_dialog(str(error))
+            return
+        self._process_data(data)
+
     def read(self) -> None:
         """Read all file"""
         self.imported.file.load_contents_async(None, self._load_cb, None)
+
+    def read_sync(self) -> None:
+        """Read all file synchronously."""
+        try:
+            _success, data, _etag = self.imported.file.load_contents(None)
+        except GLib.GError as error:
+            self._error_dialog(str(error))
+            return
+        self._process_data(data)
 
     def parse(self) -> None:
         """Parse file
@@ -85,6 +97,8 @@ class ReadFile:
         raise NotImplementedError
 
     def _error_dialog(self, message: str) -> None:
+        if self.window is None:
+            return
         dialog = Gtk.MessageDialog(
             transient_for=self.window,
             message_type=Gtk.MessageType.ERROR,

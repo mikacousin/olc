@@ -140,6 +140,11 @@ class ImportFile:
         self.parser.read()
         self.lightshow.add_recent_file()
 
+    def parse_sync(self) -> None:
+        """Start reading file synchronously"""
+        self.parser.read_sync()
+        self.lightshow.add_recent_file()
+
     def load_all(self) -> None:
         """Load all file"""
         for sequence in self.data.data["sequences"]:
@@ -277,7 +282,7 @@ class ImportFile:
     def _update_ui(self) -> None:
         if self.window is not None and self.window.live_view is not None:
             self.window.live_view.channels_view.update()
-        if self.tabs:
+        if self.tabs and hasattr(self.tabs, "refresh_all"):
             self.tabs.refresh_all()
         if self.window is not None and self.window.header is not None:
             cue = self.lightshow.main_playback.steps[1].cue

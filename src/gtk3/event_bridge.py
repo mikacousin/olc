@@ -372,6 +372,10 @@ class GuiEventBridge:
             "show.user_levels_restored",
             lambda: self._run_idle(self._on_user_levels_reset),
         )
+        self.app.core.subscribe(
+            "show.loaded",
+            lambda path: self._run_idle(self._safe_on_show_loaded, path),
+        )
 
     def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
         """Handle cue recorded in playback sequence.
@@ -462,6 +466,41 @@ class GuiEventBridge:
                 self.app.window.main_fader.queue_draw()
         if self.app.tabs is not None:
             self.app.tabs.refresh_all()
+        return False
+
+    def _safe_on_show_loaded(self, _path: str) -> bool:
+        """Handle show.loaded event in GUI main thread."""
+        if self.app.window is not None:
+            if self.app.window.live_view is not None:
+                self.app.window.live_view.channels_view.update()
+                self.app.window.live_view.channels_view.flowbox.unselect_all()
+                self.app.window.live_view.channels_view.last_selected_channel = ""
+            if self.app.window.playback is not None:
+                self.app.window.playback.update_xfade_display(0)
+                self.app.window.playback.update_sequence_display()
+            if self.app.window.header is not None:
+                steps = self.app.core.lightshow.main_playback.steps
+                if len(steps) > 1 and steps[1].cue is not None:
+                    cue = steps[1].cue
+                    number = cue.number
+                    text = cue.text
+                    subtitle = f"Mem. : 0.0 - Next Mem. : {number} {text}"
+                else:
+                    subtitle = ""
+                self.app.window.header.set_subtitle(subtitle)
+            if (
+                hasattr(self.app.window, "main_fader")
+                and self.app.window.main_fader is not None
+            ):
+                self.app.window.main_fader.queue_draw()
+        if self.app.tabs is not None:
+            self.app.tabs.refresh_all()
+        if (
+            self.app.midi
+            and self.app.midi.messages
+            and getattr(self.app.midi.messages, "lcd", None)
+        ):
+            self.app.midi.messages.lcd.show_faders()
         return False
 
     def _on_user_levels_reset(self) -> bool:

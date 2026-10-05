@@ -12,12 +12,14 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for show life cycle actions (show.new, show.reset_user_levels)."""
+"""Unit tests for show life cycle actions (show.new, show.open, show.save, etc.)."""
 
 from __future__ import annotations
 
+import pathlib
 from unittest.mock import MagicMock
 
+import pytest
 from olc.core.app import CoreApplication
 from olc.cue import Cue
 from olc.fader import FaderType
@@ -144,3 +146,110 @@ def test_show_new_resets_main_fader_to_100_percent() -> None:
     # Main fader must be 1.0 (100%)
     if app.backend and app.backend.dmx:
         assert app.backend.dmx.main_fader.value == 1.0
+
+
+def test_show_open_ascii() -> None:
+    """Test show.open with sample ASCII file."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    loaded_events: list[str] = []
+    app.subscribe("show.loaded", loaded_events.append)
+
+    app.action_registry.execute("show.open", "test/sample.asc")
+
+    assert len(loaded_events) == 1
+    assert app.lightshow.basename == "sample.asc"
+    assert app.lightshow.modified is False
+    assert app.lightshow.patch.outputs[1][47] == [7, 0]
+    assert len(app.history.undo_stack) == 0
+
+
+def test_show_save_and_reopen_olc(tmp_path: pathlib.Path) -> None:
+    """Test saving show to OLC format and reopening in a new session."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    app.lightshow.cues.add(Cue(1, 2.5))
+    app.lightshow.groups.add(Group(index=1.0, channels={1: 255, 2: 128}))
+    app.action_registry.execute("patch.add_output", 5, 20, 1)
+
+    save_path = str(tmp_path / "test_show.olc")
+    saved_events: list[str] = []
+    app.subscribe("show.saved", saved_events.append)
+
+    app.action_registry.execute("show.save", save_path)
+
+    assert len(saved_events) == 1
+    assert pathlib.Path(save_path).exists()
+    assert app.lightshow.modified is False
+    assert app.lightshow.basename == "test_show.olc"
+
+    # Re-open in a fresh application instance
+    app2 = CoreApplication(settings)
+    app2.action_registry.execute("show.open", save_path)
+
+    assert app2.lightshow.basename == "test_show.olc"
+    assert app2.lightshow.modified is False
+    group = app2.lightshow.groups.get(1.0)
+    assert group is not None
+    assert group.channels == {1: 255, 2: 128}
+    assert app2.lightshow.patch.outputs[1][20] == [5, 0]
+
+
+def test_show_save_without_path(tmp_path: pathlib.Path) -> None:
+    """Test show.save without argument uses existing lightshow.file_path."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    save_path = str(tmp_path / "existing.olc")
+
+    # First save with path
+    app.action_registry.execute("show.save", save_path)
+    assert app.lightshow.file_path == save_path
+
+    # Mark modified
+    app.lightshow.set_modified()
+    assert app.lightshow.modified is True
+
+    # Save again without arguments
+    app.action_registry.execute("show.save")
+    assert app.lightshow.modified is False
+
+
+def test_show_export_ascii(tmp_path: pathlib.Path) -> None:
+    """Test exporting show to USITT ASCII format."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    export_path = str(tmp_path / "exported.asc")
+    exported_events: list[tuple[str, str]] = []
+    app.subscribe("show.exported", lambda p, fmt: exported_events.append((p, fmt)))
+
+    app.action_registry.execute("show.export_ascii", export_path)
+
+    assert len(exported_events) == 1
+    assert exported_events[0] == (export_path, "ascii")
+    assert pathlib.Path(export_path).exists()
+
+
+def test_show_actions_error_handling() -> None:
+    """Test error handling for show persistence actions."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # Missing file for show.open
+    with pytest.raises(FileNotFoundError):
+        app.action_registry.execute("show.open", "/nonexistent/path/file.olc")
+
+    # Empty path for show.open
+    with pytest.raises(ValueError):
+        app.action_registry.execute("show.open", "")
+
+    # show.save with no path configured
+    app.lightshow.file_path = None
+    with pytest.raises(ValueError):
+        app.action_registry.execute("show.save")
+
+    # show.export_ascii with empty path
+    with pytest.raises(ValueError):
+        app.action_registry.execute("show.export_ascii", "")
