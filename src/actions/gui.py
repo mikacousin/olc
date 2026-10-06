@@ -352,3 +352,47 @@ class TabMoveAction(Action):
             "to_nb": self.to_nb,
             "new_index": self.new_index,
         }
+
+
+class VirtualConsoleOpenAction(Action):
+    """Action to request opening or presenting the virtual console window."""
+
+    name = "gui.open_virtual_console"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Emit event requesting to open or present virtual console window."""
+        self.app.emit("gui.virtual_console_requested")
+
+
+class FullscreenToggleAction(Action):
+    """Action to toggle main window full screen mode."""
+
+    name = "gui.toggle_fullscreen"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Emit event requesting to toggle full screen."""
+        self.app.emit("gui.fullscreen_toggle_requested")
+
+
+class ShortcutsOpenAction(Action):
+    """Action to request opening the keyboard shortcuts overlay."""
+
+    name = "gui.open_shortcuts"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Emit event requesting to open shortcuts window."""
+        self.app.emit("gui.shortcuts_requested")
+
+
+class AboutOpenAction(Action):
+    """Action to request opening the about dialog."""
+
+    name = "gui.open_about"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Emit event requesting to open about dialog."""
+        self.app.emit("gui.about_requested")

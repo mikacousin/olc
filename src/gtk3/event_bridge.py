@@ -392,6 +392,22 @@ class GuiEventBridge:
                 self._on_universe_config_updated, universe
             ),
         )
+        self.app.core.subscribe(
+            "gui.virtual_console_requested",
+            lambda: self._run_idle(self._on_virtual_console_requested),
+        )
+        self.app.core.subscribe(
+            "gui.fullscreen_toggle_requested",
+            lambda: self._run_idle(self._on_fullscreen_toggle_requested),
+        )
+        self.app.core.subscribe(
+            "gui.shortcuts_requested",
+            lambda: self._run_idle(self._on_shortcuts_requested),
+        )
+        self.app.core.subscribe(
+            "gui.about_requested",
+            lambda: self._run_idle(self._on_about_requested),
+        )
 
     def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
         """Handle cue recorded in playback sequence.
@@ -1612,6 +1628,31 @@ class GuiEventBridge:
             if hasattr(settings_tab, "update_universe_ui"):
                 settings_tab.update_universe_ui(universe)
         return False
+
+    def _on_virtual_console_requested(self) -> bool:
+        """Handle request to open or present virtual console window."""
+        if hasattr(self.app, "open_virtual_console"):
+            self.app.open_virtual_console()
+        return False
+
+    def _on_fullscreen_toggle_requested(self) -> bool:
+        """Handle request to toggle window full screen."""
+        if self.app.window:
+            self.app.window.fullscreen_toggle()
+        return False
+
+    def _on_shortcuts_requested(self) -> bool:
+        """Handle request to open shortcuts window."""
+        if hasattr(self.app, "open_shortcuts"):
+            self.app.open_shortcuts()
+        return False
+
+    def _on_about_requested(self) -> bool:
+        """Handle request to open about dialog."""
+        if hasattr(self.app, "open_about"):
+            self.app.open_about()
+        return False
+
 
 
 

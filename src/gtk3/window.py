@@ -165,7 +165,9 @@ class Window(Gtk.ApplicationWindow):
             self.live_view.grab_focus()
 
     def fullscreen_toggle(
-        self, _action: Gio.SimpleAction, _param: GLib.Variant | None
+        self,
+        _action: Gio.SimpleAction | None = None,
+        _param: GLib.Variant | None = None,
     ) -> None:
         """Toggle full screen"""
         if self.full:

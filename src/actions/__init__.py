@@ -77,7 +77,16 @@ from olc.actions.group import (
     GroupUpdateChannelsAction,
     NewGroupAction,
 )
-from olc.actions.gui import TabCloseAction, TabMoveAction, TabOpenAction, ZoomAction
+from olc.actions.gui import (
+    AboutOpenAction,
+    FullscreenToggleAction,
+    ShortcutsOpenAction,
+    TabCloseAction,
+    TabMoveAction,
+    TabOpenAction,
+    VirtualConsoleOpenAction,
+    ZoomAction,
+)
 from olc.actions.independent import (
     IndependentChangeTypeAction,
     IndependentRenameAction,
@@ -205,6 +214,10 @@ def register_all_actions(registry: ActionRegistry) -> None:
         TabOpenAction,
         TabCloseAction,
         TabMoveAction,
+        VirtualConsoleOpenAction,
+        FullscreenToggleAction,
+        ShortcutsOpenAction,
+        AboutOpenAction,
         CommandLineAppendCharAction,
         CommandLineClearAction,
         CommandLineSetAction,

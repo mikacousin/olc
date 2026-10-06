@@ -178,7 +178,10 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.pause", ["<Control>space"])
         # Full screen
         action = Gio.SimpleAction.new("fullscreen", None)
-        action.connect("activate", self.window.fullscreen_toggle)
+        action.connect(
+            "activate",
+            lambda *_: self.core.action_registry.execute("gui.toggle_fullscreen"),
+        )
         self.add_action(action)
 
         # For Manual crossfade
@@ -674,6 +677,10 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Virtual Console Window"""
+        self.core.action_registry.execute("gui.open_virtual_console")
+
+    def open_virtual_console(self) -> None:
+        """Open or present Virtual Console window."""
         if not self.virtual_console:
             self.virtual_console = VirtualConsoleWindow(
                 typing.cast("olc.gtk3.application.Application", self)
@@ -716,11 +723,16 @@ class Application(Gtk.Application):
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
     ) -> None:
         """Create Shortcuts Window"""
+        self.core.action_registry.execute("gui.open_shortcuts")
+
+    def open_shortcuts(self) -> None:
+        """Open or present Shortcuts window."""
         builder = Gtk.Builder()
         builder.add_from_resource("/com/github/mikacousin/olc/gtk/help-overlay.ui")
         self.shortcuts = typing.cast(Gtk.Window, builder.get_object("help_overlay"))
         if self.shortcuts:
-            self.shortcuts.set_transient_for(self.window)
+            if self.window:
+                self.shortcuts.set_transient_for(self.window)
             self.shortcuts.show()
 
     def _about(
@@ -730,6 +742,10 @@ class Application(Gtk.Application):
         @param action as Gio.SimpleAction
         @param param as GLib.Variant
         """
+        self.core.action_registry.execute("gui.open_about")
+
+    def open_about(self) -> None:
+        """Open or present About dialog."""
         if not self.about_window:
             builder = Gtk.Builder()
             builder.add_from_resource("/com/github/mikacousin/olc/AboutDialog.ui")
@@ -737,7 +753,8 @@ class Application(Gtk.Application):
                 Gtk.AboutDialog, builder.get_object("about_dialog")
             )
             if self.about_window:
-                self.about_window.set_transient_for(self.window)
+                if self.window:
+                    self.about_window.set_transient_for(self.window)
                 self.about_window.connect("response", self._about_response)
                 self.about_window.show()
         else:
