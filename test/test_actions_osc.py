@@ -131,7 +131,7 @@ def test_osc_delegate_telemetry_events() -> None:
     app.osc_delegate = delegate
 
     # 1. Test commandline.changed telemetry
-    app.commandline.set_string("1 THRU 10 @ 80")
+    app.action_registry.execute("commandline.set", "1 THRU 10 @ 80")
     mock_engine.send_osc.assert_called_with("/olc/command_line", "1 THRU 10 @ 80")
 
     # 2. Test fader.level_changed telemetry

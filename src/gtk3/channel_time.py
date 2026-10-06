@@ -196,7 +196,7 @@ class ChanneltimeTab(Gtk.Paned):
                 delay=delay_val,
             )
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def time_edited(self, _widget: Gtk.Widget, path_to_cell: str, text: str) -> None:
         """Time changed
@@ -222,7 +222,7 @@ class ChanneltimeTab(Gtk.Paned):
                 time=time_val,
             )
 
-        self.commandline.set_string("")
+        self.app.core.action_registry.execute("commandline.clear")
 
     def on_channeltime_changed(self, _treeview: Gtk.TreeView) -> None:
         """Select a Channel Time"""
