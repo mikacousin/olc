@@ -380,6 +380,18 @@ class GuiEventBridge:
             "show.imported",
             lambda *args: self._run_idle(self._safe_on_show_imported),
         )
+        self.app.core.subscribe(
+            "universe.protocol_changed",
+            lambda universe, protocol, enabled: self._run_idle(
+                self._on_universe_config_updated, universe
+            ),
+        )
+        self.app.core.subscribe(
+            "universe.config_changed",
+            lambda universe, changed: self._run_idle(
+                self._on_universe_config_updated, universe
+            ),
+        )
 
     def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
         """Handle cue recorded in playback sequence.
@@ -1592,6 +1604,15 @@ class GuiEventBridge:
             settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
             settings_tab.update_midi_port_mode(port_name, mode)
         return False
+
+    def _on_universe_config_updated(self, universe: int) -> bool:
+        """Handle universe config/protocol update to refresh Settings tab if open."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "update_universe_ui"):
+                settings_tab.update_universe_ui(universe)
+        return False
+
 
 
 def update_ui(subtitle: str, app: Application | None = None) -> None:

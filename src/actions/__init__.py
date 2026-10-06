@@ -58,6 +58,8 @@ from olc.actions.dmx import (
     DmxSetUniverseLevelsAction,
     DmxTestOutputAction,
     UniverseBlackoutAction,
+    UniverseSetConfigAction,
+    UniverseSetProtocolAction,
 )
 from olc.actions.edit import RedoAction, UndoAction
 from olc.actions.fader import (
@@ -218,6 +220,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         MidiAssignMappingAction,
         MidiClearMappingsAction,
         UniverseBlackoutAction,
+        UniverseSetProtocolAction,
+        UniverseSetConfigAction,
         DmxSetUniverseLevelsAction,
         DmxTestOutputAction,
         DmxClearUserOutputsAction,

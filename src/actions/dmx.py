@@ -20,6 +20,7 @@ import typing
 
 import numpy as np
 from olc.core.action import Action
+from olc.core.universe_config import Protocol, UniverseConfig
 from olc.define import UNIVERSES
 
 if typing.TYPE_CHECKING:
@@ -312,3 +313,216 @@ class DmxBlackoutAllAction(Action):
                 backend.dmx.frame[idx].fill(0)
 
         self.app.emit("dmx.blackout_all_changed", True)
+
+
+def _normalize_protocol(protocol: str | Protocol | object) -> Protocol:
+    """Normalize string or Protocol value to Protocol member.
+
+    Args:
+        protocol: Protocol value or string name.
+
+    Returns:
+        Corresponding Protocol member.
+    """
+    if isinstance(protocol, Protocol):
+        return protocol
+    if isinstance(protocol, str):
+        proto_upper = protocol.strip().upper()
+        if proto_upper in ("ARTNET", "ART_NET", "ART-NET"):
+            return Protocol.ARTNET
+        if proto_upper in ("SACN", "S_ACN", "E1.31"):
+            return Protocol.SACN
+        if proto_upper in ("DMX_USB_PRO", "DMXUSBPRO", "ENTTEC"):
+            return Protocol.DMX_USB_PRO
+    raise ValueError(f"Unknown universe protocol: {protocol}")
+
+
+class UniverseSetProtocolAction(Action):
+    """Action to enable or disable an output protocol on a universe."""
+
+    name = "universe.set_protocol"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.universe: int = 1
+        self.protocol: Protocol = Protocol.ARTNET
+        self.enabled: bool = True
+        self.old_enabled: bool = False
+
+    def configure(
+        self, universe: int, protocol: str | Protocol, enabled: bool = True
+    ) -> None:
+        """Configure the action with target universe, protocol, and state.
+
+        Args:
+            universe: Non-negative universe number.
+            protocol: Protocol name or Protocol value.
+            enabled: True to enable protocol, False to disable.
+        """
+        self.universe = universe
+        self.protocol = _normalize_protocol(protocol)
+        self.enabled = enabled
+
+    def execute(self) -> None:
+        """Enable or disable the protocol on the universe."""
+        engine = getattr(self.app, "engine", None)
+        if engine is None:
+            raise RuntimeError("Engine is not available")
+
+        if self.universe not in engine.universe_map:
+            raise ValueError(f"Universe {self.universe} not found")
+
+        config = engine.universe_map[self.universe]
+        self.old_enabled = self.protocol in config.protocols
+
+        if self.enabled:
+            config.enable(self.protocol)
+        else:
+            config.disable(self.protocol)
+
+        engine.reload_universe(self.universe)
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit(
+            "universe.protocol_changed",
+            self.universe,
+            self.protocol.name,
+            self.enabled,
+        )
+
+    def undo(self) -> None:
+        """Restore previous protocol enable/disable state."""
+        engine = getattr(self.app, "engine", None)
+        if engine is None or self.universe not in engine.universe_map:
+            return
+
+        config = engine.universe_map[self.universe]
+        if self.old_enabled:
+            config.enable(self.protocol)
+        else:
+            config.disable(self.protocol)
+
+        engine.reload_universe(self.universe)
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit(
+            "universe.protocol_changed",
+            self.universe,
+            self.protocol.name,
+            self.old_enabled,
+        )
+
+    def redo(self) -> None:
+        """Re-apply protocol enable/disable state."""
+        self.execute()
+
+
+class UniverseSetConfigAction(Action):
+    """Action to update parameters of a universe with Undo/Redo."""
+
+    name = "universe.set_config"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.universe: int = 1
+        self.settings: dict[str, typing.Any] = {}
+        self.old_settings: dict[str, typing.Any] = {}
+
+    def configure(
+        self,
+        universe: int,
+        settings: dict[str, typing.Any] | None = None,
+        **kwargs: object,
+    ) -> None:
+        """Configure the action with target universe and settings dictionary.
+
+        Args:
+            universe: Non-negative universe identifier.
+            settings: Dictionary of configuration parameters.
+            **kwargs: Extra parameters passed as keyword arguments.
+        """
+        self.universe = universe
+        combined = dict(settings or {})
+        combined.update(kwargs)
+        self.settings = combined
+
+    def execute(self) -> None:
+        """Apply configured parameters to the universe."""
+        engine = getattr(self.app, "engine", None)
+        if engine is None:
+            raise RuntimeError("Engine is not available")
+
+        if self.universe not in engine.universe_map:
+            raise ValueError(f"Universe {self.universe} not found")
+
+        config = engine.universe_map[self.universe]
+        self.old_settings = {}
+        self._apply_dict(config, self.settings, self.old_settings)
+
+        engine.reload_universe(self.universe)
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.config_changed", self.universe, dict(self.settings))
+
+    def undo(self) -> None:
+        """Restore previous configuration parameters."""
+        engine = getattr(self.app, "engine", None)
+        if engine is None or self.universe not in engine.universe_map:
+            return
+
+        config = engine.universe_map[self.universe]
+        self._apply_dict(config, self.old_settings, {})
+
+        engine.reload_universe(self.universe)
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.config_changed", self.universe, dict(self.old_settings))
+
+    def redo(self) -> None:
+        """Re-apply configuration parameters."""
+        self.execute()
+
+    @staticmethod
+    def _apply_dict(
+        config: UniverseConfig,
+        source: dict[str, typing.Any],
+        target_old: dict[str, typing.Any],
+    ) -> None:
+        """Helper to apply settings dictionary and record previous values."""
+        if "artnet_net" in source:
+            target_old["artnet_net"] = config.artnet.net
+            config.artnet.net = int(source["artnet_net"])
+        if "artnet_sub" in source:
+            target_old["artnet_sub"] = config.artnet.sub
+            config.artnet.sub = int(source["artnet_sub"])
+        if "artnet_sync_active" in source:
+            target_old["artnet_sync_active"] = config.artnet.sync_active
+            config.artnet.sync_active = bool(source["artnet_sync_active"])
+
+        if "sacn_priority" in source:
+            target_old["sacn_priority"] = config.sacn.priority
+            config.sacn.priority = int(source["sacn_priority"])
+        if "sacn_sync_address" in source:
+            target_old["sacn_sync_address"] = config.sacn.sync_address
+            config.sacn.sync_address = int(source["sacn_sync_address"])
+
+        if "dmx_usb_pro_port" in source:
+            target_old["dmx_usb_pro_port"] = config.dmx_usb_pro.port
+            config.dmx_usb_pro.port = str(source["dmx_usb_pro_port"])
+        if "dmx_usb_pro_port_index" in source:
+            target_old["dmx_usb_pro_port_index"] = config.dmx_usb_pro.port_index
+            config.dmx_usb_pro.port_index = int(source["dmx_usb_pro_port_index"])
+        if "dmx_usb_pro_model" in source:
+            target_old["dmx_usb_pro_model"] = config.dmx_usb_pro.model
+            config.dmx_usb_pro.model = str(source["dmx_usb_pro_model"])
+
+        if "protocols" in source:
+            target_old["protocols"] = set(config.protocols)
+            protos = {_normalize_protocol(p) for p in source["protocols"]}
+            config.set_protocols(protos)

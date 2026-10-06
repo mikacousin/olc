@@ -30,7 +30,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.application import Application
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-lines
 class SettingsTab(Gtk.Box):
     """Settings"""
 
@@ -547,6 +547,50 @@ class SettingsTab(Gtk.Box):
 
         return serial_ports
 
+    def update_universe_ui(self, universe: int) -> None:
+        """Update widgets for given universe from core/engine state."""
+        if universe not in self.universe_widgets:
+            return
+        engine = getattr(self.app, "engine", None)
+        if engine is None or universe not in engine.universe_map:
+            return
+        config = engine.universe_map[universe]
+        widgets = self.universe_widgets[universe]
+
+        self._updating_settings = True
+        try:
+            widgets["artnet_check"].set_active(Protocol.ARTNET in config.protocols)
+            widgets["net_spin"].set_value(config.artnet.net)
+            widgets["sub_spin"].set_value(config.artnet.sub)
+            widgets["sync_switch"].set_active(config.artnet.sync_active)
+
+            widgets["sacn_check"].set_active(Protocol.SACN in config.protocols)
+            widgets["prio_spin"].set_value(config.sacn.priority)
+            widgets["sacn_sync_spin"].set_value(config.sacn.sync_address)
+
+            widgets["dmx_usb_pro_check"].set_active(
+                Protocol.DMX_USB_PRO in config.protocols
+            )
+
+            current_port = config.dmx_usb_pro.port
+            model = widgets["port_combo"].get_model()
+            active_idx = 0
+            if model:
+                for idx, row in enumerate(model):
+                    sp = row[0]
+                    if sp == current_port or sp.startswith(f"{current_port} "):
+                        active_idx = idx
+                        break
+            widgets["port_combo"].set_active(active_idx)
+
+            widgets["port_index_combo"].set_active_id(
+                str(config.dmx_usb_pro.port_index)
+            )
+            widgets["model_combo"].set_active_id(config.dmx_usb_pro.model)
+        finally:
+            self._updating_settings = False
+
+
     def _create_universes_tab(self) -> Gtk.Box:
         # pylint: disable=too-many-locals,too-many-statements
         engine = getattr(self.app, "engine", None)
@@ -895,36 +939,62 @@ class SettingsTab(Gtk.Box):
                         if port_name == other_port_name and port_idx == other_port_idx:
                             # Deactivate other conflict
                             other_check.set_active(False)
+                            if (
+                                self.app is not None
+                                and hasattr(self.app, "core")
+                                and self.app.core is not None
+                                and hasattr(self.app.core, "action_registry")
+                            ):
+                                self.app.core.action_registry.execute(
+                                    "universe.set_protocol",
+                                    universe=other_u,
+                                    protocol=Protocol.DMX_USB_PRO,
+                                    enabled=False,
+                                )
 
                 protocols.add(Protocol.DMX_USB_PRO)
 
-            config.set_protocols(protocols)
-
-            # 2. Update Art-Net parameters
-            config.artnet.net = int(widgets["net_spin"].get_value())
-            config.artnet.sub = int(widgets["sub_spin"].get_value())
-            config.artnet.sync_active = widgets["sync_switch"].get_active()
-
-            # 3. Update sACN parameters
-            config.sacn.priority = int(widgets["prio_spin"].get_value())
-            config.sacn.sync_address = int(widgets["sacn_sync_spin"].get_value())
-
-            # 4. Update DMX USB Pro parameters
             selected_text = widgets["port_combo"].get_active_text() or "Auto-detect"
-            config.dmx_usb_pro.port = selected_text.split(" ")[0]
-            config.dmx_usb_pro.port_index = int(
-                widgets["port_index_combo"].get_active_id() or "1"
-            )
-            config.dmx_usb_pro.model = (
-                widgets["model_combo"].get_active_id() or "Auto-detect"
-            )
+            port_name = selected_text.split(" ")[0]
+            port_idx = int(widgets["port_index_combo"].get_active_id() or "1")
+            model_name = widgets["model_combo"].get_active_id() or "Auto-detect"
 
-            # 5. Hot-reload engine senders/listeners
-            engine.reload_universe(universe)
+            settings_dict: dict[str, typing.Any] = {
+                "protocols": protocols,
+                "artnet_net": int(widgets["net_spin"].get_value()),
+                "artnet_sub": int(widgets["sub_spin"].get_value()),
+                "artnet_sync_active": widgets["sync_switch"].get_active(),
+                "sacn_priority": int(widgets["prio_spin"].get_value()),
+                "sacn_sync_address": int(widgets["sacn_sync_spin"].get_value()),
+                "dmx_usb_pro_port": port_name,
+                "dmx_usb_pro_port_index": port_idx,
+                "dmx_usb_pro_model": model_name,
+            }
 
-            # 6. Mark show file as modified
-            if self.app is not None:
-                self.app.core.lightshow.set_modified()
+            if (
+                self.app is not None
+                and hasattr(self.app, "core")
+                and self.app.core is not None
+                and hasattr(self.app.core, "action_registry")
+            ):
+                self.app.core.action_registry.execute(
+                    "universe.set_config",
+                    universe=universe,
+                    settings=settings_dict,
+                )
+            else:
+                config.set_protocols(protocols)
+                config.artnet.net = settings_dict["artnet_net"]
+                config.artnet.sub = settings_dict["artnet_sub"]
+                config.artnet.sync_active = settings_dict["artnet_sync_active"]
+                config.sacn.priority = settings_dict["sacn_priority"]
+                config.sacn.sync_address = settings_dict["sacn_sync_address"]
+                config.dmx_usb_pro.port = settings_dict["dmx_usb_pro_port"]
+                config.dmx_usb_pro.port_index = settings_dict["dmx_usb_pro_port_index"]
+                config.dmx_usb_pro.model = settings_dict["dmx_usb_pro_model"]
+                engine.reload_universe(universe)
+                if self.app is not None:
+                    self.app.core.lightshow.set_modified()
         finally:
             self._updating_settings = False
 
