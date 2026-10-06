@@ -408,6 +408,20 @@ class GuiEventBridge:
             "gui.about_requested",
             lambda: self._run_idle(self._on_about_requested),
         )
+        self.app.core.subscribe(
+            "gui.theme_changed",
+            lambda dark_theme: self._run_idle(self._on_theme_changed, dark_theme),
+        )
+        self.app.core.subscribe(
+            "gui.percent_display_changed",
+            lambda percent: self._run_idle(self._on_percent_display_changed, percent),
+        )
+        self.app.core.subscribe(
+            "gui.default_time_changed",
+            lambda default_time: self._run_idle(
+                self._on_default_time_changed, default_time
+            ),
+        )
 
     def _on_cue_recorded(self, seq_idx: float, step: int, _cue_nb: float) -> bool:
         """Handle cue recorded in playback sequence.
@@ -1652,6 +1666,40 @@ class GuiEventBridge:
         if hasattr(self.app, "open_about"):
             self.app.open_about()
         return False
+
+    def _on_theme_changed(self, dark_theme: bool) -> bool:
+        """Handle application theme change event."""
+        if settings := Gtk.Settings.get_default():
+            settings.set_property("gtk-application-prefer-dark-theme", dark_theme)
+        return False
+
+    def _on_percent_display_changed(self, percent: bool) -> bool:
+        """Handle percentage display toggle event."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "update_percent_ui"):
+                settings_tab.update_percent_ui(percent)
+
+        if self.app.window is not None and self.app.window.live_view:
+            self.app.window.live_view.channels_view.update()
+
+        if self.app.tabs:
+            for tab_key in ("sequences", "groups", "memories"):
+                tab_obj = self.app.tabs.tabs.get(tab_key)
+                if tab_obj is not None:
+                    channels_view = getattr(tab_obj, "channels_view", None)
+                    if channels_view is not None and hasattr(channels_view, "update"):
+                        channels_view.update()
+        return False
+
+    def _on_default_time_changed(self, default_time: float) -> bool:
+        """Handle default cue transfer time change event."""
+        if self.app.tabs and self.app.tabs.tabs.get("settings") is not None:
+            settings_tab = typing.cast("SettingsTab", self.app.tabs.tabs["settings"])
+            if hasattr(settings_tab, "update_default_time_ui"):
+                settings_tab.update_default_time_ui(default_time)
+        return False
+
 
 
 

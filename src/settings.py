@@ -71,16 +71,20 @@ class SettingsTab(Gtk.Box):
         self.pack_start(settings_dialog, True, True, 0)
 
     def _setup_appearance(self, builder: Gtk.Builder) -> None:
-        widget1 = typing.cast(Gtk.Switch, builder.get_object("switch_percent"))
-        widget1.set_state(self.settings.get_boolean("percent"))
+        self.switch_percent = typing.cast(
+            Gtk.Switch, builder.get_object("switch_percent")
+        )
+        self.switch_percent.set_state(self.settings.get_boolean("percent"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
         widget2 = typing.cast(Gtk.SpinButton, builder.get_object("spin_percent_level"))
         widget2.set_adjustment(adjustment)
         widget2.set_value(self.settings.get_int("percent-level"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
-        widget3 = typing.cast(Gtk.SpinButton, builder.get_object("spin_default_time"))
-        widget3.set_adjustment(adjustment)
-        widget3.set_value(self.settings.get_double("default-time"))
+        self.spin_default_time = typing.cast(
+            Gtk.SpinButton, builder.get_object("spin_default_time")
+        )
+        self.spin_default_time.set_adjustment(adjustment)
+        self.spin_default_time.set_value(self.settings.get_double("default-time"))
         adjustment = Gtk.Adjustment(0, 1, 100, 1, 10, 0)
         widget4 = typing.cast(Gtk.SpinButton, builder.get_object("spin_go_back_time"))
         widget4.set_adjustment(adjustment)
@@ -383,36 +387,51 @@ class SettingsTab(Gtk.Box):
         self.settings.set_value("percent-level", GLib.Variant("i", lvl))
 
     def _on_change_default_time(self, widget: Gtk.SpinButton) -> None:
+        if getattr(self, "_updating_settings", False):
+            return
         time = widget.get_value()
-        self.settings.set_value("default-time", GLib.Variant("d", time))
+        if (
+            self.app is not None
+            and hasattr(self.app, "core")
+            and self.app.core is not None
+            and hasattr(self.app.core, "action_registry")
+        ):
+            self.app.core.action_registry.execute(
+                "gui.set_default_time", default_time=time
+            )
+        else:
+            self.settings.set_value("default-time", GLib.Variant("d", time))
 
     def _on_change_go_back_time(self, widget: Gtk.SpinButton) -> None:
         time = widget.get_value()
         self.settings.set_value("go-back-time", GLib.Variant("d", time))
 
-    def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> None:
+    def _update_ui_percent(self, _widget: Gtk.Switch, state: bool) -> bool:
         """Change levels view (0-100) or (0-255)
 
         Args:
+            _widget: Gtk.Switch widget
             state: State of the toggle
+
+        Returns:
+            Always False for event handler.
         """
-        self.settings.set_value("percent", GLib.Variant("b", state))
-
-        # Force redraw of main window
-        if self.window is not None:
-            self.window.live_view.channels_view.update()
-
-        # Redraw Sequences Tab if open
-        if self.tabs is not None and self.tabs.tabs["sequences"]:
-            typing.cast(typing.Any, self.tabs.tabs["sequences"]).channels_view.update()
-
-        # Redraw Groups Tab if exist
-        if self.tabs is not None and self.tabs.tabs["groups"]:
-            typing.cast(typing.Any, self.tabs.tabs["groups"]).channels_view.update()
-
-        # Redraw Memories Tab if exist
-        if self.tabs is not None and self.tabs.tabs["memories"]:
-            typing.cast(typing.Any, self.tabs.tabs["memories"]).channels_view.update()
+        if getattr(self, "_updating_settings", False):
+            return False
+        if (
+            self.app is not None
+            and hasattr(self.app, "core")
+            and self.app.core is not None
+            and hasattr(self.app.core, "action_registry")
+        ):
+            self.app.core.action_registry.execute(
+                "gui.set_percent_display", percent=state
+            )
+        else:
+            self.settings.set_value("percent", GLib.Variant("b", state))
+            if self.window is not None:
+                self.window.live_view.channels_view.update()
+        return False
 
     def _switch_osc(self, _widget: Gtk.Switch, state: bool) -> None:
         if getattr(self, "_updating_settings", False):
@@ -506,6 +525,31 @@ class SettingsTab(Gtk.Box):
                 self.switch_osc.set_active(state)
         finally:
             self._updating_settings = False
+
+    def update_percent_ui(self, percent: bool) -> None:
+        """Update percent display switch from external event or undo/redo."""
+        self._updating_settings = True
+        try:
+            if hasattr(self, "switch_percent") and self.switch_percent is not None:
+                if self.switch_percent.get_state() != percent:
+                    self.switch_percent.set_state(percent)
+                    self.switch_percent.set_active(percent)
+        finally:
+            self._updating_settings = False
+
+    def update_default_time_ui(self, default_time: float) -> None:
+        """Update default time spin button from external event or undo/redo."""
+        self._updating_settings = True
+        try:
+            if (
+                hasattr(self, "spin_default_time")
+                and self.spin_default_time is not None
+            ):
+                if self.spin_default_time.get_value() != default_time:
+                    self.spin_default_time.set_value(default_time)
+        finally:
+            self._updating_settings = False
+
 
     def _is_ip(self, string: str) -> bool:
         try:

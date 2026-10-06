@@ -54,6 +54,7 @@ class CoreApplication(EventDispatcher):
     selected_cue: typing.Optional[tuple[float, int]]
     selected_group: typing.Optional[float]
     tabs: CoreTabs
+    dark_theme: bool
 
     @property
     def core(self) -> CoreApplication:
@@ -110,6 +111,7 @@ class CoreApplication(EventDispatcher):
         self.selected_cue: typing.Optional[tuple[float, int]] = None
         self.selected_group: typing.Optional[float] = None
         self.zoom_level: float = 1.0
+        self.dark_theme: bool = True
         self.tabs: CoreTabs = CoreTabs(typing.cast(typing.Any, self))
         self._is_zooming: bool = False
         self._zoom_start_level: float = 1.0

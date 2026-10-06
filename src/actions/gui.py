@@ -396,3 +396,138 @@ class AboutOpenAction(Action):
     def execute(self) -> None:
         """Emit event requesting to open about dialog."""
         self.app.emit("gui.about_requested")
+
+
+class SetThemeAction(Action):
+    """Action to set dark or light application theme."""
+
+    name = "gui.set_theme"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.dark_theme: bool = True
+        self.old_dark_theme: bool = True
+
+    def configure(self, dark_theme: bool = True) -> None:
+        """Configure the target theme setting.
+
+        Args:
+            dark_theme: True for dark theme, False for light theme.
+        """
+        self.dark_theme = dark_theme
+
+    def execute(self) -> None:
+        """Apply theme setting and emit notification."""
+        self.old_dark_theme = getattr(self.app, "dark_theme", True)
+        self.app.dark_theme = self.dark_theme
+        self.app.emit("gui.theme_changed", self.dark_theme)
+
+    def undo(self) -> None:
+        """Restore previous theme setting."""
+        self.app.dark_theme = self.old_dark_theme
+        self.app.emit("gui.theme_changed", self.old_dark_theme)
+
+    def redo(self) -> None:
+        """Re-apply theme setting."""
+        self.execute()
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return theme state metadata."""
+        return {"dark_theme": self.dark_theme}
+
+
+class SetPercentDisplayAction(Action):
+    """Action to toggle or set percentage channel level display."""
+
+    name = "gui.set_percent_display"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.percent: bool = False
+        self.old_percent: bool = False
+
+    def configure(self, percent: bool) -> None:
+        """Configure the percentage display setting.
+
+        Args:
+            percent: True to display levels as percentage, False for DMX values.
+        """
+        self.percent = percent
+
+    def execute(self) -> None:
+        """Apply percent display setting and emit notification."""
+        settings = getattr(self.app, "settings", None)
+        if settings is not None and hasattr(settings, "get_boolean"):
+            self.old_percent = settings.get_boolean("percent")
+            if hasattr(settings, "set_boolean"):
+                settings.set_boolean("percent", self.percent)
+        else:
+            self.old_percent = False
+
+        self.app.emit("gui.percent_display_changed", self.percent)
+
+    def undo(self) -> None:
+        """Restore previous percent display setting."""
+        settings = getattr(self.app, "settings", None)
+        if settings is not None and hasattr(settings, "set_boolean"):
+            settings.set_boolean("percent", self.old_percent)
+
+        self.app.emit("gui.percent_display_changed", self.old_percent)
+
+    def redo(self) -> None:
+        """Re-apply percent display setting."""
+        self.execute()
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return percent display state metadata."""
+        return {"percent": self.percent}
+
+
+class SetDefaultTimeAction(Action):
+    """Action to set default cue transfer time."""
+
+    name = "gui.set_default_time"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.default_time: float = 0.0
+        self.old_default_time: float = 0.0
+
+    def configure(self, default_time: float) -> None:
+        """Configure default cue transfer time.
+
+        Args:
+            default_time: Transfer time in seconds.
+        """
+        self.default_time = float(default_time)
+
+    def execute(self) -> None:
+        """Apply default transfer time and emit notification."""
+        settings = getattr(self.app, "settings", None)
+        if settings is not None and hasattr(settings, "get_double"):
+            self.old_default_time = settings.get_double("default-time")
+            if hasattr(settings, "set_double"):
+                settings.set_double("default-time", self.default_time)
+        else:
+            self.old_default_time = 0.0
+
+        self.app.emit("gui.default_time_changed", self.default_time)
+
+    def undo(self) -> None:
+        """Restore previous default transfer time."""
+        settings = getattr(self.app, "settings", None)
+        if settings is not None and hasattr(settings, "set_double"):
+            settings.set_double("default-time", self.old_default_time)
+
+        self.app.emit("gui.default_time_changed", self.old_default_time)
+
+    def redo(self) -> None:
+        """Re-apply default transfer time."""
+        self.execute()
+
+    def get_feedback_state(self) -> dict[str, typing.Any]:
+        """Return default time metadata."""
+        return {"default_time": self.default_time}
