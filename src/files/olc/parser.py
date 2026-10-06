@@ -48,15 +48,16 @@ class OlcParser(ReadFile):
         except json.decoder.JSONDecodeError:
             self._error_dialog("Input file is not a valid file: JSONDecodeError")
             return
-        self.data["curves"] = contents.get("curves")
-        self.data["patch"] = contents.get("patch")
-        self.data["sequences"] = contents.get("sequences")
-        self.data["presets"] = contents.get("cues")
-        self.data["groups"] = contents.get("groups")
-        self.data["faders"] = contents.get("faders")
-        self.data["independents"] = contents.get("independents")
-        self.data["midi"] = contents.get("midi_mapping")
-        self.data["universes"] = contents.get("universes")
+        self.data["curves"] = contents.get("curves") or {}
+        self.data["patch"] = contents.get("patch") or {}
+        self.data["sequences"] = contents.get("sequences") or {}
+        self.data["cues"] = contents.get("cues") or {}
+        self.data["presets"] = self.data["cues"]
+        self.data["groups"] = contents.get("groups") or {}
+        self.data["faders"] = contents.get("faders") or {}
+        self.data["independents"] = contents.get("independents") or {}
+        self.data["midi"] = contents.get("midi_mapping") or {}
+        self.data["universes"] = contents.get("universes") or {}
 
     def _int_float_str(self, key: int | float | str) -> int | float | str:
         if is_int(key):

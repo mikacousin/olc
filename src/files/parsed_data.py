@@ -154,6 +154,8 @@ class ParsedData:
 
     def import_groups(self) -> None:
         """Import groups data"""
+        if not self.data.get("groups"):
+            return
         for group_number, values in self.data["groups"].items():
             channels = values.get("channels")
             label = values.get("label")
