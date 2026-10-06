@@ -195,10 +195,8 @@ class ShowOpenAction(Action):
             lightshow,
             gio_file,
             file_type,
-            window=getattr(self.app, "window", None),
             midi=getattr(self.app, "midi", None),
             settings=getattr(self.app, "settings", None),
-            tabs=getattr(self.app, "tabs", None),
         )
         imported.parse_sync()
 
@@ -466,10 +464,8 @@ class ShowImportAction(Action):
             lightshow,
             gio_file,
             file_type,
-            window=getattr(self.app, "window", None),
             midi=getattr(self.app, "midi", None),
             settings=getattr(self.app, "settings", None),
-            tabs=getattr(self.app, "tabs", None),
             importation=True,
         )
         imported.parse_sync(auto_import=False)
