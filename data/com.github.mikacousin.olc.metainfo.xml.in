@@ -33,6 +33,11 @@
         <p>This release introduces a major architectural overhaul centered around the new CoreEngine, brings visual upgrades to cue playback, introduces new companion utilities, and resolves key stability and hardware compatibility bugs.</p>
       </description>
     </release>
+    <release version="0.11.0.beta" date="2026-10-07">
+      <description>
+        <p>This release introduces dynamic hot-configuration of DMX universes without restarts, multi-notebook tab management with drag-and-drop, an interactive undo history tab, a massive core action refactoring for headless operation, and major CPU performance optimizations in olc-monitor.</p>
+      </description>
+    </release>
   </releases>
   <screenshots>
     <screenshot type="default">
