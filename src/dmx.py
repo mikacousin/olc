@@ -19,7 +19,7 @@ from typing import Callable, Optional
 
 import numpy as np
 from gi.repository import GLib
-from olc.define import DMX_INTERVAL, MAX_CHANNELS, NB_UNIVERSES, UNIVERSES
+from olc.define import DMX_INTERVAL, MAX_CHANNELS
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
 from olc.timer import RepeatedTimer
@@ -68,8 +68,8 @@ class Dmx:
             }
         )
         # DMX values
-        self.frame = [np.zeros(512, dtype=np.uint8) for _ in range(NB_UNIVERSES)]
-        self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in range(NB_UNIVERSES)]
+        self.frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
+        self._old_frame = [np.zeros(512, dtype=np.uint8) for _ in self.patch.universes]
         self._old_channel_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         # To test outputs
         self.user_outputs = {}
@@ -79,6 +79,24 @@ class Dmx:
         self.notification_callbacks = []
         # Thread to send DMX every DMX_INTERVAL ms
         self.thread = RepeatedTimer(DMX_INTERVAL / 1000, self.send)
+
+    def add_universe(self, universe: int) -> None:
+        """Add a universe frame to Dmx."""
+        index = self.patch.universes.index(universe)
+        self.frame.insert(index, np.zeros(512, dtype=np.uint8))
+        self._old_frame.insert(index, np.zeros(512, dtype=np.uint8))
+
+    def remove_universe(self, universe: int, index: int | None = None) -> None:
+        """Remove a universe frame from Dmx."""
+        to_del = [key for key in self.user_outputs if key[1] == universe]
+        for key in to_del:
+            del self.user_outputs[key]
+        if index is None:
+            if universe in self.patch.universes:
+                index = self.patch.universes.index(universe)
+        if index is not None and 0 <= index < len(self.frame):
+            self.frame.pop(index)
+            self._old_frame.pop(index)
 
     def get_composite_level(self, channel_idx: int) -> tuple[int, dict[str, float]]:
         """Get the composite level and state color for a channel (0-indexed).
@@ -142,9 +160,9 @@ class Dmx:
         out_levels = np.round(out_levels * self.main_fader.value).astype(np.uint8)
 
         # Distribute levels to self.frame using advanced indexing
-        for index in range(NB_UNIVERSES):
+        for index in range(len(self.patch.universes)):
             univ_mask = self.patch.map_dst_universes == index
-            if np.any(univ_mask):
+            if np.any(univ_mask) and index < len(self.frame):
                 self.frame[index][self.patch.map_dst_outputs[univ_mask]] = out_levels[
                     univ_mask
                 ]
@@ -153,7 +171,9 @@ class Dmx:
         """Send DMX values to CoreEngine"""
         if self.lightshow.app is not None and self.lightshow.app.engine is not None:
             engine = self.lightshow.app.engine
-            for index, universe in enumerate(UNIVERSES):
+            for index, universe in enumerate(self.patch.universes):
+                if index >= len(self.frame) or index >= len(self._old_frame):
+                    break
                 current_frame = self.frame[index]
                 old_frame = self._old_frame[index]
                 if not np.array_equal(current_frame, old_frame):
@@ -163,7 +183,9 @@ class Dmx:
                             self.trigger_output_callbacks, universe, changed_outputs
                         )
                     np.copyto(self._old_frame[index], current_frame)
-                engine.universe(universe).apply_array(current_frame)
+                univ_slot = engine.universe(universe)
+                if univ_slot is not None:
+                    univ_slot.apply_array(current_frame)
 
             # Compute composite levels for all channels to check for modifications
             self.patch.update_numpy_cache_if_dirty()
@@ -204,26 +226,33 @@ class Dmx:
 
     def all_outputs_at_zero(self) -> None:
         """All DMX outputs to 0"""
-        for index, universe in enumerate(UNIVERSES):
-            self.frame[index].fill(0)
+        for index, universe in enumerate(self.patch.universes):
+            if index < len(self.frame):
+                self.frame[index].fill(0)
             if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-                self.lightshow.app.engine.universe(universe).blackout()
+                univ_slot = self.lightshow.app.engine.universe(universe)
+                if univ_slot is not None:
+                    univ_slot.blackout()
 
     def send_user_output(self, output: int, universe: int, level: int) -> None:
         """Send level to an output
 
         Args:
             output: Output number (1-512)
-            universe: Universe number (one in UNIVERSES)
+            universe: Universe number (one in patch.universes)
             level: Output level (0-255)
         """
         self.user_outputs[(output, universe)] = level
-        index = UNIVERSES.index(universe)
-        self.frame[index][output - 1] = level
+        if universe in self.patch.universes:
+            index = self.patch.universes.index(universe)
+            if index < len(self.frame):
+                self.frame[index][output - 1] = level
         if not level:
-            self.user_outputs.pop((output, universe))
+            self.user_outputs.pop((output, universe), None)
         if self.lightshow.app is not None and self.lightshow.app.engine is not None:
-            self.lightshow.app.engine.universe(universe).array[output - 1] = level
+            univ_slot = self.lightshow.app.engine.universe(universe)
+            if univ_slot is not None:
+                univ_slot.array[output - 1] = level
 
     def add_output_callback(self, callback: Callable[[int, list[int]], None]) -> None:
         """Register a callback for output level changes."""

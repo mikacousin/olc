@@ -19,7 +19,7 @@ import typing
 
 from olc.cue import Cues
 from olc.curve import Curves
-from olc.define import UNIVERSES
+from olc.define import DEFAULT_UNIVERSES
 from olc.fader_bank import FaderBank
 from olc.group import Groups
 from olc.independent import Independents
@@ -100,7 +100,7 @@ class LightShow(ShowFile):
         # Independents
         self.independents = Independents(lightshow_type)
         # Patch
-        self.patch = DMXPatch(UNIVERSES)
+        self.patch = DMXPatch(list(DEFAULT_UNIVERSES))
         self.patch_by_outputs = PatchByOutputs(
             typing.cast(typing.Any, app or self.app), self.patch
         )

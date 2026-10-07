@@ -452,6 +452,77 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
         self._reload_artnet(uid, config)
         self._reload_sacn(uid, config)
 
+    def add_universe(
+        self, uid: int, config: UniverseConfig | None = None
+    ) -> DMXUniverse:
+        """Add a universe dynamically at runtime under lock.
+
+        Args:
+            uid: Universe identifier.
+            config: Optional existing configuration. If None, created in universe_map.
+
+        Returns:
+            The DMXUniverse instance.
+        """
+        with self._lock:
+            if uid in self._slots:
+                return self._slots[uid].universe
+
+            if uid not in self._map:
+                cfg = self._map.add_universe(uid) if config is None else config
+                if config is not None and uid not in self._map:
+                    self._map.add_universe(uid)
+                    self._map._universes[uid] = config  # pylint: disable=protected-access
+            else:
+                cfg = self._map[uid]
+
+            dest_ip = "127.0.0.1" if self._loopback else "255.255.255.255"
+            sacn_multicast = not self._loopback
+
+            dmx_usb_pro_manager = self._reload_dmx_usb_pro(uid, cfg)
+
+            senders = (
+                []
+                if self._no_transmit
+                else _build_senders(
+                    cfg,
+                    self._artnet_manager,
+                    dest_ip=dest_ip,
+                    sacn_multicast=sacn_multicast,
+                    dmx_usb_pro_manager=dmx_usb_pro_manager,
+                    sacn_cid=self._sacn_manager._cid,
+                )
+            )
+
+            slot = _RuntimeSlot(universe=DMXUniverse(uid), senders=senders)
+            self._slots[uid] = slot
+
+            self._reload_artnet(uid, cfg)
+            self._reload_sacn(uid, cfg)
+
+            return slot.universe
+
+    def remove_universe(self, uid: int) -> None:
+        """Remove a universe dynamically at runtime under lock.
+
+        Args:
+            uid: Universe identifier.
+        """
+        with self._lock:
+            if uid not in self._slots:
+                return
+
+            self.blackout(uid)
+            if uid in self._map:
+                cfg = self._map[uid]
+                cfg.disable_all()
+                self._reload_artnet(uid, cfg)
+                self._reload_sacn(uid, cfg)
+                self._reload_dmx_usb_pro(uid, cfg)
+                self._map.remove_universe(uid)
+
+            del self._slots[uid]
+
     def blackout(self, uid: int) -> None:
         """Zero all channels of a universe immediately."""
         self._get_slot(uid).universe.blackout()

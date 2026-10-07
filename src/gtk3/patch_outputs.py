@@ -18,12 +18,14 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import NB_UNIVERSES, UNIVERSES, is_int, is_non_nul_int
+
+from olc.define import is_int, is_non_nul_int
 from olc.gtk3.widgets.patch_outputs import PatchWidget
 
 if typing.TYPE_CHECKING:
-    import olc.gtk3.patch_outputs
     from gi.repository import Gio
+
+    import olc.gtk3.patch_outputs
     from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
@@ -93,7 +95,7 @@ class PatchOutputsTab(Gtk.Box):
         self.outputs = []
         self.channels = []
 
-        for universe in UNIVERSES:
+        for universe in self.patch.universes:
             for out in range(1, 513):
                 output = PatchWidget(
                     universe,
@@ -101,7 +103,7 @@ class PatchOutputsTab(Gtk.Box):
                     self.app,
                     typing.cast("olc.gtk3.patch_outputs.PatchOutputsTab", self),
                 )
-                self.outputs.extend([output])
+                self.outputs.append(output)
                 self.flowbox.add(output)
 
         # Set name for CSS style
@@ -280,7 +282,7 @@ class PatchOutputsTab(Gtk.Box):
                 self.flowbox.select_child(child)
                 self.app.core.action_registry.execute("commandline.set", "1")
                 self.patch_by_outputs.select_output()
-        elif self.patch_by_outputs.last < (NB_UNIVERSES * 512):
+        elif self.patch_by_outputs.last < (len(self.patch.universes) * 512):
             old_output = self.patch_by_outputs.last
             new_output = old_output + 1
             output, universe = self.patch_by_outputs.get_output_universe(new_output)
@@ -479,6 +481,38 @@ class PatchOutputsTab(Gtk.Box):
         self.lightshow.set_modified()
         self.app.core.action_registry.execute("commandline.clear")
 
+    def rebuild_outputs_ui(self) -> None:
+        """Rebuild the output widgets in flowbox for all active universes."""
+        self._updating_selection = True
+        try:
+            for child in self.flowbox.get_children():
+                self.flowbox.remove(child)
+            self.outputs = []
+            for universe in self.patch.universes:
+                for out in range(1, 513):
+                    output = PatchWidget(
+                        universe,
+                        out,
+                        self.app,
+                        typing.cast("olc.gtk3.patch_outputs.PatchOutputsTab", self),
+                    )
+                    self.outputs.append(output)
+                    self.flowbox.add(output)
+
+            for child in self.flowbox.get_children():
+                child.set_name("flowbox_outputs")
+            self.flowbox.show_all()
+        finally:
+            self._updating_selection = False
+
+    def add_universe_ui(self, _universe: int) -> None:
+        """Add outputs for newly added universe."""
+        self.rebuild_outputs_ui()
+
+    def remove_universe_ui(self, _universe: int) -> None:
+        """Remove outputs for removed universe."""
+        self.rebuild_outputs_ui()
+
     def on_network_dmx_changed(self, universe: int, outputs: list[int]) -> None:
         """Called when a network backend updates DMX levels.
 
@@ -486,12 +520,16 @@ class PatchOutputsTab(Gtk.Box):
             universe: Universe number
             outputs: List of changed output indices
         """
+        if universe not in self.patch.universes:
+            return
+        idx = self.patch.universes.index(universe)
         for output in outputs:
             if self.patch.outputs.get(universe) and self.patch.outputs[universe].get(
                 output + 1
             ):
-                idx = UNIVERSES.index(universe)
-                self.outputs[output + (idx * 512)].queue_draw()
+                output_idx = output + (idx * 512)
+                if output_idx < len(self.outputs):
+                    self.outputs[output_idx].queue_draw()
 
 
 class SeveralOutputsDialog(Gtk.Dialog):

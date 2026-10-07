@@ -18,8 +18,6 @@ from __future__ import annotations
 
 import typing
 
-from olc.define import UNIVERSES
-
 from .base import BaseEventBridgeHandler
 
 if typing.TYPE_CHECKING:
@@ -58,6 +56,14 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         self.app.core.subscribe(
             "dmx.blackout_all_changed",
             lambda state: self._run_idle(self._on_blackout_all_changed, state),
+        )
+        self.app.core.subscribe(
+            "universe.added",
+            lambda universe: self._run_idle(self._on_universe_added, universe),
+        )
+        self.app.core.subscribe(
+            "universe.removed",
+            lambda universe: self._run_idle(self._on_universe_removed, universe),
         )
         self.app.core.subscribe(
             "universe.protocol_changed",
@@ -136,11 +142,74 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
             patch_outputs = typing.cast(
                 "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
             )
-            if universe in UNIVERSES:
-                idx = UNIVERSES.index(universe)
+            universes = self.app.core.lightshow.patch.universes
+            if universe in universes:
+                idx = universes.index(universe)
                 output_idx = output - 1 + (512 * idx)
                 if 0 <= output_idx < len(patch_outputs.outputs):
                     patch_outputs.outputs[output_idx].queue_draw()
+        return False
+
+    def _on_universe_added(self, universe: int) -> bool:
+        """Handle universe added event to refresh UI components.
+
+        Args:
+            universe: Universe identifier.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("patch_outputs") is not None:
+                patch_outputs = typing.cast(
+                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+                )
+                if hasattr(patch_outputs, "add_universe_ui"):
+                    patch_outputs.add_universe_ui(universe)
+            if self.app.tabs.tabs.get("patch_channels") is not None:
+                patch_channels = typing.cast(
+                    "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
+                )
+                patch_channels.refresh()
+            if self.app.tabs.tabs.get("settings") is not None:
+                settings_tab = typing.cast(
+                    "SettingsTab", self.app.tabs.tabs["settings"]
+                )
+                if hasattr(settings_tab, "add_universe_ui"):
+                    settings_tab.add_universe_ui(universe)
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.update()
+        return False
+
+    def _on_universe_removed(self, universe: int) -> bool:
+        """Handle universe removed event to refresh UI components.
+
+        Args:
+            universe: Universe identifier.
+
+        Returns:
+            Always False.
+        """
+        if self.app.tabs:
+            if self.app.tabs.tabs.get("patch_outputs") is not None:
+                patch_outputs = typing.cast(
+                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
+                )
+                if hasattr(patch_outputs, "remove_universe_ui"):
+                    patch_outputs.remove_universe_ui(universe)
+            if self.app.tabs.tabs.get("patch_channels") is not None:
+                patch_channels = typing.cast(
+                    "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
+                )
+                patch_channels.refresh()
+            if self.app.tabs.tabs.get("settings") is not None:
+                settings_tab = typing.cast(
+                    "SettingsTab", self.app.tabs.tabs["settings"]
+                )
+                if hasattr(settings_tab, "remove_universe_ui"):
+                    settings_tab.remove_universe_ui(universe)
+        if self.app.window and self.app.window.live_view:
+            self.app.window.live_view.channels_view.update()
         return False
 
     def _on_blackout_all_changed(self, _state: bool) -> bool:

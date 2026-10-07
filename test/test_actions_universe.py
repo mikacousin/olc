@@ -19,6 +19,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+
 from olc.core.app import CoreApplication
 from olc.core.universe_config import Protocol, UniverseMap
 from olc.gtk3.event_bridge import GuiEventBridge
@@ -231,6 +232,14 @@ def test_event_bridge_universe_settings_sync(monkeypatch: pytest.MonkeyPatch) ->
     core.emit("universe.config_changed", 2, {"artnet_net": 1})
     mock_settings_tab.update_universe_ui.assert_called_once_with(2)
 
+    # 3. Trigger universe.added
+    core.emit("universe.added", 5)
+    mock_settings_tab.add_universe_ui.assert_called_once_with(5)
+
+    # 4. Trigger universe.removed
+    core.emit("universe.removed", 5)
+    mock_settings_tab.remove_universe_ui.assert_called_once_with(5)
+
 
 def test_settings_tab_update_universe_ui() -> None:
     """Test SettingsTab.update_universe_ui refreshes widget states."""
@@ -273,3 +282,55 @@ def test_settings_tab_update_universe_ui() -> None:
     widgets["sync_switch"].set_active.assert_called_once_with(True)
     widgets["sacn_check"].set_active.assert_called_once_with(False)
     assert not tab._updating_settings
+
+
+def test_settings_tab_add_remove_universe_ui() -> None:
+    """Test SettingsTab.add_universe_ui and remove_universe_ui life cycle."""
+    # pylint: disable=protected-access
+    tab = SettingsTab.__new__(SettingsTab)
+    tab.universes_box = MagicMock()
+    tab.universe_frames = {}
+    tab.universe_widgets = {}
+    tab.delete_universe_buttons = {}
+
+    fake_frame1 = MagicMock()
+    fake_frame2 = MagicMock()
+    tab._create_universe_frame = MagicMock(side_effect=[fake_frame1, fake_frame2])
+
+    # Add universe 1
+    tab.add_universe_ui(1)
+    assert 1 in tab.universe_frames
+    assert tab.universe_frames[1] == fake_frame1
+    fake_frame1.show_all.assert_called_once()
+
+    # Add universe 2
+    tab.add_universe_ui(2)
+    assert 2 in tab.universe_frames
+    assert tab.universe_frames[2] == fake_frame2
+
+    # Remove universe 1
+    tab.remove_universe_ui(1)
+    assert 1 not in tab.universe_frames
+    tab.universes_box.remove.assert_called_once_with(fake_frame1)
+    fake_frame1.destroy.assert_called_once()
+
+
+def test_settings_tab_delete_buttons_sensitivity() -> None:
+    """Test delete button sensitivity when 1 vs multiple universes."""
+    # pylint: disable=protected-access
+    tab = SettingsTab.__new__(SettingsTab)
+    btn1 = MagicMock()
+    btn2 = MagicMock()
+    tab.delete_universe_buttons = {1: btn1, 2: btn2}
+
+    # 2 universes: can delete
+    tab.universe_frames = {1: MagicMock(), 2: MagicMock()}
+    tab._update_delete_buttons_sensitivity()
+    btn1.set_sensitive.assert_called_with(True)
+    btn2.set_sensitive.assert_called_with(True)
+
+    # 1 universe: cannot delete
+    tab.universe_frames = {1: MagicMock()}
+    tab._update_delete_buttons_sensitivity()
+    btn1.set_sensitive.assert_called_with(False)
+    btn2.set_sensitive.assert_called_with(False)

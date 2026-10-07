@@ -27,6 +27,7 @@ def test_dmx_send_triggers_callbacks() -> None:
 
     # Mock lightshow and app
     lightshow = MagicMock()
+    lightshow.patch.universes = list(UNIVERSES)
     lightshow.patch.is_patched.return_value = False
     lightshow.patch.is_patched_mask = np.zeros(MAX_CHANNELS, dtype=bool)
     lightshow.independents.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
@@ -84,3 +85,32 @@ def test_dmx_send_triggers_callbacks() -> None:
 
         # Verify engine.universe was updated
         assert engine.universe(UNIVERSES[0]).array[:] == list(dmx.frame[0])
+
+
+def test_dmx_add_remove_universe() -> None:
+    """Test dynamic addition and removal of universes in Dmx."""
+    lightshow = MagicMock()
+    lightshow.patch.universes = [1, 2, 3, 4]
+    with patch("olc.dmx.RepeatedTimer"):
+        dmx = Dmx(backend=None, lightshow=lightshow)
+
+    assert len(dmx.frame) == 4
+    assert len(dmx._old_frame) == 4
+
+    # Add universe 5
+    lightshow.patch.universes.append(5)
+    dmx.add_universe(5)
+    assert len(dmx.frame) == 5
+    assert len(dmx._old_frame) == 5
+    assert dmx.frame[4].shape == (512,)
+
+    # Remove universe 2 (index 1)
+    dmx.send_user_output(1, 2, 255)
+    assert (1, 2) in dmx.user_outputs
+
+    idx_2 = lightshow.patch.universes.index(2)
+    lightshow.patch.universes.remove(2)
+    dmx.remove_universe(2, index=idx_2)
+    assert len(dmx.frame) == 4
+    assert len(dmx._old_frame) == 4
+    assert (1, 2) not in dmx.user_outputs

@@ -18,12 +18,11 @@ import unicodedata
 
 from gi.repository import Gio
 
-UNIVERSES = [1, 2, 3, 4]
+DEFAULT_UNIVERSES = [1, 2, 3, 4]
+UNIVERSES = list(DEFAULT_UNIVERSES)
 NB_UNIVERSES = len(UNIVERSES)
 
 MAX_CHANNELS = 1024
-# Can't have more channels than outputs
-MAX_CHANNELS = min(MAX_CHANNELS, NB_UNIVERSES * 512)
 
 MAX_FADER_PAGE = 10
 MAX_FADER_PER_PAGE = 10

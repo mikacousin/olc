@@ -12,9 +12,9 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+from collections.abc import ItemsView, Iterable, Iterator, KeysView, ValuesView
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Iterator
 
 
 class Protocol(Enum):
@@ -129,10 +129,16 @@ class UniverseMap:
 
     _universes: dict[int, UniverseConfig]
 
-    def __init__(self, num_universes: int = 256) -> None:
-        if num_universes < 1:
-            raise ValueError("num_universe must be at least 1")
-        self._universes = {uid: UniverseConfig(uid) for uid in range(num_universes)}
+    def __init__(self, num_universes: int | Iterable[int] = 256) -> None:
+        if isinstance(num_universes, int):
+            if num_universes < 1:
+                raise ValueError("num_universe must be at least 1")
+            self._universes = {uid: UniverseConfig(uid) for uid in range(num_universes)}
+        else:
+            uids = list(num_universes)
+            if not uids:
+                raise ValueError("Universe collection must contain at least 1 universe")
+            self._universes = {uid: UniverseConfig(uid) for uid in uids}
 
     def __getitem__(self, universe_id: int) -> UniverseConfig:
         self._check_exists(universe_id)
@@ -146,6 +152,37 @@ class UniverseMap:
 
     def __len__(self) -> int:
         return len(self._universes)
+
+    def get(
+        self, universe_id: int, default: UniverseConfig | None = None
+    ) -> UniverseConfig | None:
+        """Get universe config if present, else default."""
+        return self._universes.get(universe_id, default)
+
+    def keys(self) -> KeysView[int]:
+        """Return universe IDs."""
+        return self._universes.keys()
+
+    def values(self) -> ValuesView[UniverseConfig]:
+        """Return universe configurations."""
+        return self._universes.values()
+
+    def items(self) -> ItemsView[int, UniverseConfig]:
+        """Return universe ID and configuration items."""
+        return self._universes.items()
+
+    def add_universe(self, universe_id: int) -> UniverseConfig:
+        """Add a universe if it does not already exist, and return its config."""
+        if universe_id < 0:
+            raise ValueError("universe_id must be non-negative")
+        if universe_id not in self._universes:
+            self._universes[universe_id] = UniverseConfig(universe_id)
+        return self._universes[universe_id]
+
+    def remove_universe(self, universe_id: int) -> None:
+        """Remove a universe configuration."""
+        self._check_exists(universe_id)
+        del self._universes[universe_id]
 
     def set_protocols(self, universe_id: int, protocols: set[Protocol]) -> None:
         """Replace the active protocol set entirely"""
@@ -165,7 +202,12 @@ class UniverseMap:
 
     def _check_exists(self, universe_id: int) -> None:
         if universe_id not in self._universes:
+            if self._universes and min(self._universes.keys()) == 0:
+                raise KeyError(
+                    f"Universe {universe_id} does not exist "
+                    f"(valid range: 0-{len(self._universes) - 1})"
+                )
             raise KeyError(
                 f"Universe {universe_id} does not exist "
-                f"(valid range: 0-{len(self._universes) - 1})"
+                f"(valid universes: {sorted(self._universes.keys())})"
             )

@@ -57,7 +57,9 @@ from olc.actions.dmx import (
     DmxClearUserOutputsAction,
     DmxSetUniverseLevelsAction,
     DmxTestOutputAction,
+    UniverseAddAction,
     UniverseBlackoutAction,
+    UniverseRemoveAction,
     UniverseSetConfigAction,
     UniverseSetProtocolAction,
 )
@@ -238,6 +240,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         MidiLearnToggleAction,
         MidiAssignMappingAction,
         MidiClearMappingsAction,
+        UniverseAddAction,
+        UniverseRemoveAction,
         UniverseBlackoutAction,
         UniverseSetProtocolAction,
         UniverseSetConfigAction,

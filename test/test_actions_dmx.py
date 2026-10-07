@@ -19,8 +19,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
+
 from olc.core.app import CoreApplication
 from olc.define import UNIVERSES
+from olc.patch import DMXPatch
 
 
 def test_universe_blackout_action_and_undo_redo() -> None:
@@ -248,3 +251,94 @@ def test_dmx_blackout_all_action_and_undo_redo() -> None:
     for frame in mock_backend.dmx.frame:
         assert np.all(frame == 0)
     assert blackout_all_events == [True, False, True]
+
+
+def test_universe_add_action_and_undo_redo() -> None:
+    """Test universe.add action execution, undo, redo, and validation."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    mock_engine.universe_map = {1: MagicMock(), 2: MagicMock()}
+    app.engine = mock_engine
+
+    mock_backend = MagicMock()
+    mock_backend.dmx.patch.universes = [1, 2]
+    app.backend = mock_backend
+
+    added_events: list[int] = []
+    removed_events: list[int] = []
+    app.subscribe("universe.added", added_events.append)
+    app.subscribe("universe.removed", removed_events.append)
+
+    # Execute adding universe 3
+    app.action_registry.execute("universe.add", 3)
+    mock_engine.add_universe.assert_called_once_with(3, None)
+    mock_backend.dmx.patch.add_universe.assert_called_once_with(3)
+    mock_backend.dmx.add_universe.assert_called_once_with(3)
+    assert added_events == [3]
+
+    # Undo
+    app.history.undo()
+    mock_backend.dmx.remove_universe.assert_called_once()
+    mock_backend.dmx.patch.remove_universe.assert_called_once_with(3)
+    mock_engine.remove_universe.assert_called_once_with(3)
+    assert removed_events == [3]
+
+    # Redo
+    app.history.redo()
+    assert mock_engine.add_universe.call_count == 2
+    assert added_events == [3, 3]
+
+
+def test_universe_remove_action_and_undo_redo_with_patch() -> None:
+    """Test universe.remove unpatching and restoration on undo."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    mock_engine = MagicMock()
+    mock_engine.universe_map = {1: MagicMock(), 2: MagicMock()}
+    app.engine = mock_engine
+
+    patch = DMXPatch()
+    patch.universes = [1, 2]
+    # Patch channel 10 to universe 2, output 5, curve 2
+    patch.add_output(10, 5, 2, 2)
+    assert patch.outputs[2][5] == [10, 2]
+
+    lightshow = MagicMock()
+    lightshow.patch = patch
+    app.lightshow = lightshow
+
+    mock_backend = MagicMock()
+    mock_backend.dmx.patch = patch
+    app.backend = mock_backend
+
+    added_events: list[int] = []
+    removed_events: list[int] = []
+    app.subscribe("universe.added", added_events.append)
+    app.subscribe("universe.removed", removed_events.append)
+
+    # Remove universe 2
+    app.action_registry.execute("universe.remove", 2)
+    mock_engine.remove_universe.assert_called_once_with(2)
+    assert 2 not in patch.universes
+    assert 2 not in patch.outputs
+    assert removed_events == [2]
+
+    # Undo
+    app.history.undo()
+    assert 2 in patch.universes
+    assert 2 in patch.outputs
+    assert patch.outputs[2][5] == [10, 2]
+    assert added_events == [2]
+
+    # Redo
+    app.history.redo()
+    assert 2 not in patch.universes
+    assert removed_events == [2, 2]
+
+    # Removing the last remaining universe should raise ValueError
+    mock_engine.universe_map = {1: MagicMock()}
+    with pytest.raises(ValueError, match="Cannot remove the last universe"):
+        app.action_registry.execute("universe.remove", 1)

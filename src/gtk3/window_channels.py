@@ -18,7 +18,8 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
-from olc.define import UNIVERSES, is_int
+
+from olc.define import is_int
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
@@ -254,8 +255,11 @@ class LiveChannelsView(ChannelsView):
                 out = output[0]
                 univ = output[1]
                 if out is not None and univ is not None:
-                    index = UNIVERSES.index(univ)
-                    level = self.app.core.backend.dmx.frame[index][out - 1]
+                    patch_universes = self.app.core.lightshow.patch.universes
+                    if univ in patch_universes:
+                        index = patch_universes.index(univ)
+                        if index < len(self.app.core.backend.dmx.frame):
+                            level = self.app.core.backend.dmx.frame[index][out - 1]
             if level is not None:
                 if direction == Gdk.ScrollDirection.UP:
                     new_level = min(level + step, 255)

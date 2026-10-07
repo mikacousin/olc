@@ -20,6 +20,7 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
+
 from olc.core.universe_config import Protocol  # noqa: E402
 from olc.cue import Cue  # noqa: E402
 from olc.files.ascii.parser import AsciiParser  # noqa: E402
@@ -31,8 +32,9 @@ from olc.independent import Independents  # noqa: E402
 from olc.step import Step  # noqa: E402
 
 if typing.TYPE_CHECKING:
-    import olc.files.import_file
     from gi.repository import Gio
+
+    import olc.files.import_file
     from olc.core.engine import CoreEngine
     from olc.core.lightshow import LightShow
     from olc.gtk3.tabs_manager import Tabs
@@ -173,6 +175,8 @@ class ImportFile:
 
     def _do_import(self) -> None:
         self._do_import_curves()
+        if self.file_type is FileType.OLC:
+            self._do_import_universes()
         self._do_import_patch()
         self._do_import_sequences()
         self._do_import_groups()
@@ -181,7 +185,6 @@ class ImportFile:
         self._do_import_faders()
         if self.file_type is FileType.OLC:
             self._do_import_midi()
-            self._do_import_universes()
         self._update_ui()
 
     def _do_import_curves(self) -> None:
@@ -272,21 +275,31 @@ class ImportFile:
         if not universes_data:
             return
 
-        if self.lightshow.app is None:
+        app = self.lightshow.app
+        if app is None:
             return
-        engine = self.lightshow.app.engine
-        if engine is None:
-            return
+        engine = app.engine
+        backend = getattr(app, "backend", None)
 
         for u_str, val in universes_data.items():
             try:
                 u = int(u_str)
             except ValueError:
                 continue
-            if u not in engine.universe_map:
-                continue
 
-            _import_single_universe(u, val, engine)
+            if engine is not None and u not in engine.universe_map:
+                engine.add_universe(u)
+
+            if u not in self.lightshow.patch.universes:
+                self.lightshow.patch.add_universe(u)
+
+            if backend is not None and getattr(backend, "dmx", None) is not None:
+                if u not in backend.dmx.patch.universes:
+                    backend.dmx.patch.add_universe(u)
+                backend.dmx.add_universe(u)
+
+            if engine is not None:
+                _import_single_universe(u, val, engine)
 
     def _update_ui(self) -> None:
         if self.window is not None and self.window.live_view is not None:

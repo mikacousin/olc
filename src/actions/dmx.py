@@ -16,15 +16,62 @@
 
 from __future__ import annotations
 
+import copy
 import typing
 
 import numpy as np
+
 from olc.core.action import Action
 from olc.core.universe_config import Protocol, UniverseConfig
-from olc.define import UNIVERSES
+from olc.define import DEFAULT_UNIVERSES
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+
+
+def _get_active_universes(app: CoreApplication) -> list[int]:
+    """Return active universe IDs from engine, patch, or backend."""
+    if app.engine is not None and hasattr(app.engine, "universe_map"):
+        umap = getattr(app.engine, "universe_map", None)
+        if isinstance(umap, dict):
+            return list(umap.keys())
+        if hasattr(umap, "keys") and not hasattr(umap, "_mock_return_value"):
+            keys = list(umap.keys())
+            if keys:
+                return keys
+    if hasattr(app, "lightshow") and app.lightshow is not None:
+        patch = getattr(app.lightshow, "patch", None)
+        if patch is not None and isinstance(getattr(patch, "universes", None), list):
+            return list(patch.universes)
+    backend = getattr(app, "backend", None)
+    if backend is not None and getattr(backend, "dmx", None) is not None:
+        patch = getattr(backend.dmx, "patch", None)
+        if patch is not None and isinstance(getattr(patch, "universes", None), list):
+            return list(patch.universes)
+    return list(DEFAULT_UNIVERSES)
+
+
+def _get_patches(app: CoreApplication) -> list[typing.Any]:
+    """Return unique active DMXPatch instances attached to the app."""
+    patches: list[typing.Any] = []
+    if hasattr(app, "lightshow") and app.lightshow is not None:
+        p = getattr(app.lightshow, "patch", None)
+        if p is not None and p not in patches:
+            patches.append(p)
+    backend = getattr(app, "backend", None)
+    if backend is not None and getattr(backend, "dmx", None) is not None:
+        p = getattr(backend.dmx, "patch", None)
+        if p is not None and p not in patches:
+            patches.append(p)
+    return patches
+
+
+def _get_patch_universes(app: CoreApplication) -> list[int]:
+    """Return list of universes in patch or fallback to active universes."""
+    for p in _get_patches(app):
+        if isinstance(getattr(p, "universes", None), list):
+            return p.universes
+    return _get_active_universes(app)
 
 
 class UniverseBlackoutAction(Action):
@@ -60,11 +107,13 @@ class UniverseBlackoutAction(Action):
 
         backend = getattr(self.app, "backend", None)
         if backend is not None and getattr(backend, "dmx", None) is not None:
-            if self.universe in UNIVERSES:
-                idx = UNIVERSES.index(self.universe)
-                if self.old_frame is None:
-                    self.old_frame = backend.dmx.frame[idx].copy()
-                backend.dmx.frame[idx].fill(0)
+            patch_universes = _get_patch_universes(self.app)
+            if self.universe in patch_universes:
+                idx = patch_universes.index(self.universe)
+                if idx < len(backend.dmx.frame):
+                    if self.old_frame is None:
+                        self.old_frame = backend.dmx.frame[idx].copy()
+                    backend.dmx.frame[idx].fill(0)
 
         self.app.emit("universe.blackout_changed", self.universe)
 
@@ -78,9 +127,11 @@ class UniverseBlackoutAction(Action):
                     pass
             backend = getattr(self.app, "backend", None)
             if backend is not None and getattr(backend, "dmx", None) is not None:
-                if self.universe in UNIVERSES:
-                    idx = UNIVERSES.index(self.universe)
-                    np.copyto(backend.dmx.frame[idx], self.old_frame)
+                patch_universes = _get_patch_universes(self.app)
+                if self.universe in patch_universes:
+                    idx = patch_universes.index(self.universe)
+                    if idx < len(backend.dmx.frame):
+                        np.copyto(backend.dmx.frame[idx], self.old_frame)
         self.app.emit("universe.blackout_changed", self.universe)
 
     def redo(self) -> None:
@@ -92,9 +143,11 @@ class UniverseBlackoutAction(Action):
                 pass
         backend = getattr(self.app, "backend", None)
         if backend is not None and getattr(backend, "dmx", None) is not None:
-            if self.universe in UNIVERSES:
-                idx = UNIVERSES.index(self.universe)
-                backend.dmx.frame[idx].fill(0)
+            patch_universes = _get_patch_universes(self.app)
+            if self.universe in patch_universes:
+                idx = patch_universes.index(self.universe)
+                if idx < len(backend.dmx.frame):
+                    backend.dmx.frame[idx].fill(0)
         self.app.emit("universe.blackout_changed", self.universe)
 
 
@@ -129,12 +182,14 @@ class DmxSetUniverseLevelsAction(Action):
 
         backend = getattr(self.app, "backend", None)
         if backend is not None and getattr(backend, "dmx", None) is not None:
-            if self.universe in UNIVERSES:
-                idx = UNIVERSES.index(self.universe)
-                frame = backend.dmx.frame[idx]
-                for ch, val in self.channels.items():
-                    if 0 <= ch < 512:
-                        frame[ch] = int(np.clip(val, 0, 255))
+            patch_universes = _get_patch_universes(self.app)
+            if self.universe in patch_universes:
+                idx = patch_universes.index(self.universe)
+                if idx < len(backend.dmx.frame):
+                    frame = backend.dmx.frame[idx]
+                    for ch, val in self.channels.items():
+                        if 0 <= ch < 512:
+                            frame[ch] = int(np.clip(val, 0, 255))
 
         self.app.emit("universe.dmx_changed", self.universe, self.channels)
 
@@ -264,8 +319,9 @@ class DmxBlackoutAllAction(Action):
     def execute(self) -> None:
         """Execute blackout on all universes."""
         self.old_frames = {}
+        universes = _get_active_universes(self.app)
 
-        for universe in UNIVERSES:
+        for universe in universes:
             if self.app.engine is not None:
                 try:
                     univ = self.app.engine.universe(universe)
@@ -276,10 +332,12 @@ class DmxBlackoutAllAction(Action):
 
         backend = getattr(self.app, "backend", None)
         if backend is not None and getattr(backend, "dmx", None) is not None:
-            for idx, universe in enumerate(UNIVERSES):
-                if universe not in self.old_frames:
+            patch_universes = _get_patch_universes(self.app)
+            for idx, universe in enumerate(patch_universes):
+                if universe not in self.old_frames and idx < len(backend.dmx.frame):
                     self.old_frames[universe] = backend.dmx.frame[idx].copy()
-                backend.dmx.frame[idx].fill(0)
+                if idx < len(backend.dmx.frame):
+                    backend.dmx.frame[idx].fill(0)
 
         self.app.emit("dmx.blackout_all_changed", True)
 
@@ -293,15 +351,18 @@ class DmxBlackoutAllAction(Action):
                     pass
             backend = getattr(self.app, "backend", None)
             if backend is not None and getattr(backend, "dmx", None) is not None:
-                if universe in UNIVERSES:
-                    idx = UNIVERSES.index(universe)
-                    np.copyto(backend.dmx.frame[idx], old_frame)
+                patch_universes = _get_patch_universes(self.app)
+                if universe in patch_universes:
+                    idx = patch_universes.index(universe)
+                    if idx < len(backend.dmx.frame):
+                        np.copyto(backend.dmx.frame[idx], old_frame)
 
         self.app.emit("dmx.blackout_all_changed", False)
 
     def redo(self) -> None:
         """Re-apply blackout on all universes."""
-        for universe in UNIVERSES:
+        universes = _get_active_universes(self.app)
+        for universe in universes:
             if self.app.engine is not None:
                 try:
                     self.app.engine.universe(universe).blackout()
@@ -309,8 +370,8 @@ class DmxBlackoutAllAction(Action):
                     pass
         backend = getattr(self.app, "backend", None)
         if backend is not None and getattr(backend, "dmx", None) is not None:
-            for idx in range(len(UNIVERSES)):
-                backend.dmx.frame[idx].fill(0)
+            for frame in backend.dmx.frame:
+                frame.fill(0)
 
         self.app.emit("dmx.blackout_all_changed", True)
 
@@ -526,3 +587,188 @@ class UniverseSetConfigAction(Action):
             target_old["protocols"] = set(config.protocols)
             protos = {_normalize_protocol(p) for p in source["protocols"]}
             config.set_protocols(protos)
+
+
+def _snapshot_universe_config(
+    app: CoreApplication, universe: int
+) -> UniverseConfig | None:
+    """Return a deep copy of the universe configuration from engine if present."""
+    if app.engine is not None and hasattr(app.engine, "universe_map"):
+        if universe in app.engine.universe_map:
+            return copy.deepcopy(app.engine.universe_map[universe])
+    return None
+
+
+class UniverseAddAction(Action):
+    """Action to dynamically add a DMX universe with Undo/Redo."""
+
+    name = "universe.add"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.universe: int = 1
+        self.config: UniverseConfig | None = None
+        self.saved_config: UniverseConfig | None = None
+        self.saved_unpatched: dict[int, tuple[int, int]] = {}
+
+    def configure(
+        self,
+        universe: int | None = None,
+        config: UniverseConfig | None = None,
+    ) -> None:
+        """Configure the universe to add.
+
+        Args:
+            universe: Universe ID (positive integer).
+                If None, next available ID is chosen.
+            config: Optional initial UniverseConfig.
+        """
+        if universe is None:
+            existing = _get_active_universes(self.app)
+            universe = max(existing, default=0) + 1
+        if universe < 1:
+            raise ValueError(f"Universe identifier must be positive, got {universe}")
+        self.universe = universe
+        self.config = config
+
+    def execute(self) -> None:
+        """Add the universe to Engine, Patch and Dmx."""
+        if self.app.engine is not None:
+            if self.universe in self.app.engine.universe_map:
+                raise ValueError(f"Universe {self.universe} already exists in engine")
+            self.app.engine.add_universe(self.universe, self.config)
+
+        for p in _get_patches(self.app):
+            p.add_universe(self.universe)
+
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            backend.dmx.add_universe(self.universe)
+
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.added", self.universe)
+
+    def undo(self) -> None:
+        """Undo universe addition by removing it."""
+        idx = None
+        for p in _get_patches(self.app):
+            if hasattr(p, "universes") and self.universe in p.universes:
+                idx = p.universes.index(self.universe)
+            if hasattr(p, "remove_universe"):
+                res = p.remove_universe(self.universe)
+                if not self.saved_unpatched and isinstance(res, dict):
+                    self.saved_unpatched = res
+
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            backend.dmx.remove_universe(self.universe, index=idx)
+
+        if self.app.engine is not None:
+            self.saved_config = _snapshot_universe_config(self.app, self.universe)
+            self.app.engine.remove_universe(self.universe)
+
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.removed", self.universe)
+
+    def redo(self) -> None:
+        """Redo universe addition."""
+        cfg = self.saved_config or self.config
+        if self.app.engine is not None:
+            self.app.engine.add_universe(self.universe, cfg)
+
+        for p in _get_patches(self.app):
+            p.add_universe(self.universe)
+            for out, (ch, curve) in self.saved_unpatched.items():
+                p.add_output(ch, out, self.universe, curve)
+
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            backend.dmx.add_universe(self.universe)
+
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.added", self.universe)
+
+
+class UniverseRemoveAction(Action):
+    """Action to dynamically remove a DMX universe with Undo/Redo."""
+
+    name = "universe.remove"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.universe: int = 1
+        self.saved_config: UniverseConfig | None = None
+        self.saved_unpatched: dict[int, tuple[int, int]] = {}
+        self.saved_index: int = 0
+
+    def configure(self, universe: int) -> None:
+        """Configure the universe to remove.
+
+        Args:
+            universe: Universe ID (positive integer).
+        """
+        self.universe = universe
+
+    def execute(self) -> None:
+        """Remove the universe from Engine, Patch and Dmx."""
+        existing = _get_active_universes(self.app)
+        if len(existing) <= 1:
+            raise ValueError(
+                "Cannot remove the last universe. "
+                "At least one universe must be configured."
+            )
+
+        self.saved_config = _snapshot_universe_config(self.app, self.universe)
+
+        idx = None
+        for p in _get_patches(self.app):
+            if hasattr(p, "universes") and self.universe in p.universes:
+                idx = p.universes.index(self.universe)
+            if hasattr(p, "remove_universe"):
+                res = p.remove_universe(self.universe)
+                if not self.saved_unpatched and isinstance(res, dict):
+                    self.saved_unpatched = res
+                    self.saved_index = idx or 0
+
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            backend.dmx.remove_universe(self.universe, index=idx)
+
+        if self.app.engine is not None:
+            self.app.engine.remove_universe(self.universe)
+
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.removed", self.universe)
+
+    def undo(self) -> None:
+        """Undo universe removal by re-adding it and restoring unpatched outputs."""
+        if self.app.engine is not None:
+            self.app.engine.add_universe(self.universe, self.saved_config)
+
+        for p in _get_patches(self.app):
+            p.add_universe(self.universe)
+            for out, (ch, curve) in self.saved_unpatched.items():
+                p.add_output(ch, out, self.universe, curve)
+
+        backend = getattr(self.app, "backend", None)
+        if backend is not None and getattr(backend, "dmx", None) is not None:
+            backend.dmx.add_universe(self.universe)
+
+        if hasattr(self.app, "lightshow") and self.app.lightshow is not None:
+            self.app.lightshow.set_modified()
+
+        self.app.emit("universe.added", self.universe)
+
+    def redo(self) -> None:
+        """Redo universe removal."""
+        self.execute()

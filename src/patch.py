@@ -18,7 +18,8 @@ import typing
 from typing import Optional
 
 import numpy as np
-from olc.define import MAX_CHANNELS, NB_UNIVERSES, UNIVERSES, is_int
+
+from olc.define import DEFAULT_UNIVERSES, MAX_CHANNELS, is_int
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -45,8 +46,10 @@ class DMXPatch:
     channels: dict[int, list[list[Optional[int]]]]
     outputs: dict[int, dict[int, list[int]]]
 
-    def __init__(self, universes: list[int]) -> None:
-        self.universes = universes
+    def __init__(self, universes: list[int] | None = None) -> None:
+        self.universes = (
+            list(universes) if universes is not None else list(DEFAULT_UNIVERSES)
+        )
         self.channels = {}
         self.outputs = {}
         self.on_patch_empty_cb: typing.Callable[[], None] | None = None
@@ -121,14 +124,56 @@ class DMXPatch:
             output: Dimmer number (1-512)
             univ: Universe number (one of UNIVERSES in define module)
         """
-        del self.outputs[univ][output]
-        self.channels[channel].remove([output, univ])
+        if univ in self.outputs:
+            self.outputs[univ].pop(output, None)
+        if [output, univ] in self.channels[channel]:
+            self.channels[channel].remove([output, univ])
         if not self.channels[channel]:
             self.channels[channel] = [[None, None]]
-        index = self.universes.index(univ)
-        if self.on_unpatch_cb:
-            self.on_unpatch_cb(index, output - 1)
+        if univ in self.universes:
+            index = self.universes.index(univ)
+            if self.on_unpatch_cb:
+                self.on_unpatch_cb(index, output - 1)
         self._numpy_cache_dirty = True
+
+    def add_universe(self, univ: int) -> None:
+        """Add a universe to the patch if not already present.
+
+        Args:
+            univ: Universe identifier.
+        """
+        if univ not in self.universes:
+            self.universes.append(univ)
+            self.universes.sort()
+            self._numpy_cache_dirty = True
+
+    def remove_universe(self, univ: int) -> dict[int, tuple[int, int]]:
+        """Remove a universe from the patch and unpatch all its outputs.
+
+        Args:
+            univ: Universe identifier.
+
+        Returns:
+            Dictionary of unpatched mappings {output: (channel, curve)} for undo.
+        """
+        unpatched: dict[int, tuple[int, int]] = {}
+        if univ in self.outputs:
+            for out, val in list(self.outputs[univ].items()):
+                unpatched[out] = (val[0], val[1])
+
+        for channel, outputs in list(self.channels.items()):
+            for out in list(outputs):
+                if len(out) > 1 and out[1] == univ and out[0] is not None:
+                    self.unpatch(channel, out[0], univ)
+
+        if univ in self.outputs:
+            del self.outputs[univ]
+
+        if univ in self.universes:
+            self.universes.remove(univ)
+
+        self._numpy_cache_dirty = True
+        return unpatched
 
     def update_numpy_cache_if_dirty(self) -> None:
         """Update cached mappings if dirty."""
@@ -163,9 +208,9 @@ class DMXPatch:
             for out in outputs:
                 output = out[0]
                 universe = out[1]
-                if universe and output:
+                if universe in self.universes and output:
                     src_channels.append(channel - 1)
-                    dst_universes.append(UNIVERSES.index(universe))
+                    dst_universes.append(self.universes.index(universe))
                     dst_outputs.append(output - 1)
 
                     # Curve number
@@ -297,7 +342,7 @@ class PatchByOutputs:
 
         # Select next output
         output_index = self.last
-        if output_index < NB_UNIVERSES * 512:
+        if output_index < len(self.patch.universes) * 512:
             output_index += 1
         output, universe = self.get_output_universe(output_index)
         self._set_commandline_string(f"{output}.{universe}")
@@ -327,7 +372,8 @@ class PatchByOutputs:
         self.app.core.action_registry.execute("commandline.set", value)
 
     def get_output_universe(self, out: int) -> tuple[Optional[int], Optional[int]]:
-        """Returns output.universe corresponding to output index (1-NB_UNIVERSES * 512)
+        """Returns output.universe corresponding to output index
+        (1 to count of universes * 512).
 
         Args:
             out: output index
@@ -337,9 +383,10 @@ class PatchByOutputs:
         """
         output = None
         universe = None
-        if 0 < out <= (NB_UNIVERSES * 512):
+        max_out = len(self.patch.universes) * 512
+        if 0 < out <= max_out:
             univ_index = int((out - 1) / 512)
-            universe = UNIVERSES[univ_index]
+            universe = self.patch.universes[univ_index]
             output = out - (univ_index * 512)
         return (output, universe)
 
@@ -349,8 +396,8 @@ class PatchByOutputs:
         output = None
         if out is None or univ is None:
             return None
-        if (0 < out <= 512) and univ in UNIVERSES:
-            univ_index = UNIVERSES.index(univ)
+        if (0 < out <= 512) and univ in self.patch.universes:
+            univ_index = self.patch.universes.index(univ)
             output = out + (univ_index * 512)
         return output
 
@@ -368,7 +415,7 @@ class PatchByOutputs:
                     universe = int(split[1])
         else:
             output = int(keystring)
-            universe = UNIVERSES[0]
+            universe = self.patch.universes[0] if self.patch.universes else 1
         return (output, universe)
 
     def _string_to_channel(self) -> Optional[int]:

@@ -18,8 +18,8 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
+
 from olc.curve import LimitCurve
-from olc.define import UNIVERSES
 from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 from olc.gtk3.widgets.curve import CurveWidget
 
@@ -117,7 +117,11 @@ class PatchWidget(Gtk.DrawingArea):
         Args:
             event: Event with Keyboard modifiers
         """
-        index = UNIVERSES.index(self.universe)
+        index = (
+            self.tab.patch.universes.index(self.universe)
+            if self.universe in self.tab.patch.universes
+            else 0
+        )
         widget_index = self.output - 1 + (512 * index)
         accel_mask = Gtk.accelerator_get_default_mod_mask()
         if event.state & accel_mask == Gdk.ModifierType.SHIFT_MASK:
@@ -297,15 +301,19 @@ class PatchWidget(Gtk.DrawingArea):
             # Unpatched output
             cr.set_source_rgb(0.6, 0.4, 0.1)
             rounded_rectangle(cr, area, 10)
-        index = UNIVERSES.index(self.universe)
-        if self.backend.dmx.frame[index][self.output - 1]:
-            level = self.backend.dmx.frame[index][self.output - 1]
-            # cr.move_to(0, 0)
-            cr.set_source_rgba(
-                0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
-            )
-            area = (1, allocation.width - 2, 1, allocation.height - 2)
-            rounded_rectangle_fill(cr, area, 10)
+        if self.universe in self.tab.patch.universes:
+            index = self.tab.patch.universes.index(self.universe)
+            if (
+                index < len(self.backend.dmx.frame)
+                and self.backend.dmx.frame[index][self.output - 1]
+            ):
+                level = self.backend.dmx.frame[index][self.output - 1]
+                # cr.move_to(0, 0)
+                cr.set_source_rgba(
+                    0.3 + (0.2 / 255 * level), 0.3, 0.3 - (0.3 / 255 * level), 0.6
+                )
+                area = (1, allocation.width - 2, 1, allocation.height - 2)
+                rounded_rectangle_fill(cr, area, 10)
 
     def _draw_output_number(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output number
@@ -356,19 +364,25 @@ class PatchWidget(Gtk.DrawingArea):
             cr: Cairo context
             allocation: Widget allocation
         """
-        index = UNIVERSES.index(self.universe)
-        if self.backend.dmx.frame[index][self.output - 1]:
-            cr.set_source_rgb(0.7, 0.7, 0.7)
-            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
-            cr.set_font_size(10 * self.scale)
-            level = self.backend.dmx.frame[index][self.output - 1]
-            text = str(level)
-            (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-            cr.move_to(
-                allocation.width / 2 - width / 2,
-                allocation.height / 2 - (height - 20) / 2,
-            )
-            cr.show_text(text)
+        if self.universe in self.tab.patch.universes:
+            index = self.tab.patch.universes.index(self.universe)
+            if (
+                index < len(self.backend.dmx.frame)
+                and self.backend.dmx.frame[index][self.output - 1]
+            ):
+                cr.set_source_rgb(0.7, 0.7, 0.7)
+                cr.select_font_face(
+                    "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
+                )
+                cr.set_font_size(10 * self.scale)
+                level = self.backend.dmx.frame[index][self.output - 1]
+                text = str(level)
+                (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
+                cr.move_to(
+                    allocation.width / 2 - width / 2,
+                    allocation.height / 2 - (height - 20) / 2,
+                )
+                cr.show_text(text)
 
     def _draw_curve(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Dimmer Curve
