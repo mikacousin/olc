@@ -28,7 +28,7 @@
     </ul>
   </description>
   <releases>
-    <release version="0.11.0.beta" date="2026-10-07">
+    <release version="0.11.1.beta" date="2026-10-07">
       <description>
         <p>This release introduces dynamic hot-configuration of DMX universes without restarts, multi-notebook tab management with drag-and-drop, an interactive undo history tab, a massive core action refactoring for headless operation, and major CPU performance optimizations in olc-monitor.</p>
       </description>
