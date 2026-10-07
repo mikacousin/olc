@@ -63,8 +63,8 @@ def main() -> None:
     app = CoreApplication(settings)
 
     # 3. Create the UniverseMap and CoreEngine
-    universe_map = UniverseMap(max(UNIVERSES) + 1)
-    for u in range(1, 5):
+    universe_map = UniverseMap(UNIVERSES)
+    for u in UNIVERSES:
         universe_map.enable_protocol(u, Protocol.ARTNET)
         universe_map.enable_protocol(u, Protocol.SACN)
 

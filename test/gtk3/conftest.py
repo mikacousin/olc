@@ -28,6 +28,7 @@ import pytest
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gio, Gtk  # noqa: E402
+
 from olc.gtk3.application import Application  # noqa: E402
 
 
@@ -81,8 +82,8 @@ def app_gui_instance() -> Generator[Application, None, None]:
     from olc.core.universe_config import Protocol, UniverseMap
     from olc.define import UNIVERSES
 
-    universe_map = UniverseMap(max(UNIVERSES) + 1)
-    for u in range(1, 5):
+    universe_map = UniverseMap(UNIVERSES)
+    for u in UNIVERSES:
         universe_map.enable_protocol(u, Protocol.ARTNET)
         universe_map.enable_protocol(u, Protocol.SACN)
 

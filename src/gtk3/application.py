@@ -26,6 +26,7 @@ import gi
 gi.require_version("Gdk", "3.0")
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends import DMXBackend  # noqa: E402
 from olc.core.binding import MidiBinding, OscBinding  # noqa: E402
@@ -269,8 +270,8 @@ class Application(Gtk.Application):
             return False
 
         # Set up UniverseMap for CoreEngine
-        universe_map = UniverseMap(max(UNIVERSES) + 1)
-        for u in range(1, 5):
+        universe_map = UniverseMap(UNIVERSES)
+        for u in UNIVERSES:
             universe_map.enable_protocol(u, Protocol.ARTNET)
             universe_map.enable_protocol(u, Protocol.SACN)
 
