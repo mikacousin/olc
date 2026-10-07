@@ -1,8 +1,11 @@
+import json
 import time
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+
+# pylint: disable=protected-access
 from olc.core.engine import CoreEngine
 from olc.core.universe_config import Protocol, UniverseMap
 
@@ -266,6 +269,49 @@ class TestCoreEngineZMQ:
         assert engine._zmq_ctx is None
 
         engine.stop()
+
+    @patch("zmq.Context")
+    def test_zmq_remove_universe_published(self, mock_zmq_context: MagicMock) -> None:
+        """CoreEngine sends a deletion message on ZeroMQ when a universe is removed."""
+        mock_ctx_instance = mock_zmq_context.return_value
+        mock_socket = MagicMock()
+        mock_ctx_instance.socket.return_value = mock_socket
+
+        umap = UniverseMap([1, 2])
+        engine = CoreEngine(umap, monitor_port=5555)
+
+        engine.remove_universe(2)
+
+        # Verify send_multipart was called with topic universe:2 and deleted: True
+        mock_socket.send_multipart.assert_called_once()
+        parts = mock_socket.send_multipart.call_args[0][0]
+        assert parts[0] == b"universe:2"
+        meta = json.loads(parts[1].decode("utf-8"))
+        assert meta["deleted"] is True
+        assert meta["active_universes"] == [1]
+        assert parts[2] == b""
+
+        engine.stop()
+
+    @patch("zmq.Context")
+    def test_zmq_broadcast_active_universes(self, mock_zmq_context: MagicMock) -> None:
+        """ZeroMQ monitoring messages include active_universes in metadata."""
+        mock_ctx_instance = mock_zmq_context.return_value
+        mock_socket = MagicMock()
+        mock_ctx_instance.socket.return_value = mock_socket
+
+        umap = UniverseMap([1, 3])
+        engine = CoreEngine(umap, hz=50.0, monitor_port=5555, monitor_fps=50.0)
+        engine.start()
+        time.sleep(0.1)
+        engine.stop()
+
+        assert mock_socket.send_multipart.called
+        for call_args in mock_socket.send_multipart.call_args_list:
+            parts = call_args[0][0]
+            meta = json.loads(parts[1].decode("utf-8"))
+            assert "active_universes" in meta
+            assert meta["active_universes"] == [1, 3]
 
 
 class TestCoreEngineNoTransmit:

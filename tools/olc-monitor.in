@@ -336,6 +336,8 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
         self._dmx_cache: dict[int, bytes] = {}
         self._protocols_cache: dict[int, list[str]] = {}
         self._dirty_uids: set[int] = set()
+        self._deleted_uids: set[int] = set()
+        self._last_active_universes: set[int] | None = None
         self._frequency_monitor: FrequencyMonitor | None = None
         self._universes_container: Horizontal | None = None
 
@@ -443,24 +445,60 @@ class OLCMonitor(App):  # pylint: disable=too-many-instance-attributes
                 self.last_hz = metadata.get("hz", 0.0)
                 self.last_frames = metadata.get("frames", 0)
 
-                # Update cache directly from bytes
-                self._dmx_cache[uid] = bytes(parts[2])
-                self._protocols_cache[uid] = metadata.get("protocols", [])
-                self._dirty_uids.add(uid)
+                active_univs = metadata.get("active_universes")
+                if active_univs is not None:
+                    self._last_active_universes = set(active_univs)
+
+                if metadata.get("deleted", False):
+                    self._deleted_uids.add(uid)
+                    self._dmx_cache.pop(uid, None)
+                    self._protocols_cache.pop(uid, None)
+                    self._dirty_uids.discard(uid)
+                else:
+                    # Update cache directly from bytes
+                    self._dmx_cache[uid] = bytes(parts[2])
+                    self._protocols_cache[uid] = metadata.get("protocols", [])
+                    self._dirty_uids.add(uid)
+                    self._deleted_uids.discard(uid)
 
         except asyncio.CancelledError:
             sock.close()
             ctx.term()
 
+    async def _remove_orphan_and_deleted_universes(self) -> None:
+        """Remove panels for deleted or orphaned universes."""
+        to_remove = set(self._deleted_uids)
+        if self._last_active_universes is not None:
+            orphans = set(self._universe_panels.keys()) - self._last_active_universes
+            to_remove.update(orphans)
+
+        for uid in to_remove:
+            panel = self._universe_panels.pop(uid, None)
+            if panel is not None:
+                await panel.remove()
+            self._dmx_cache.pop(uid, None)
+            self._protocols_cache.pop(uid, None)
+            self._dirty_uids.discard(uid)
+            self._deleted_uids.discard(uid)
+
+        # Re-display placeholder if all universes are removed
+        if not self._universe_panels and not self._placeholder_active:
+            if self._universes_container is not None:
+                try:
+                    await self._universes_container.mount(
+                        Static("Waiting for DMX data...", id="placeholder")
+                    )
+                    self._placeholder_active = True
+                except Exception:  # pylint: disable=broad-exception-caught
+                    pass
+
     async def _render_cached_data(self) -> None:
         """Periodic UI render task pulling from ZMQ cache."""
-        if not self._dmx_cache:
-            return
-
         # Frequency Monitor: update status/frequency
         if self._frequency_monitor is not None:
             self._frequency_monitor.refresh_data(self.last_hz)
 
+        await self._remove_orphan_and_deleted_universes()
         self._update_status_text()
 
         # If no universe data arrived, nothing more to do

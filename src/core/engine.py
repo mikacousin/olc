@@ -523,6 +523,18 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
 
             del self._slots[uid]
 
+            if self._zmq_pub is not None:
+                metadata = {
+                    "hz": self.effective_hz,
+                    "frames": self.frame_count,
+                    "protocols": [],
+                    "deleted": True,
+                    "active_universes": list(self._slots.keys()),
+                }
+                meta_bytes = json.dumps(metadata).encode("utf-8")
+                topic = f"universe:{uid}".encode("ascii")
+                self._zmq_pub.send_multipart([topic, meta_bytes, b""])
+
     def blackout(self, uid: int) -> None:
         """Zero all channels of a universe immediately."""
         self._get_slot(uid).universe.blackout()
@@ -688,6 +700,7 @@ class CoreEngine:  # pylint: disable=too-many-instance-attributes,too-many-branc
                     "hz": self.effective_hz,
                     "frames": self.frame_count,
                     "protocols": protocols,
+                    "active_universes": list(self._slots.keys()),
                 }
                 meta_bytes = json.dumps(metadata).encode("utf-8")
                 topic = f"universe:{uid}".encode("ascii")
