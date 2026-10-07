@@ -550,7 +550,6 @@ class SettingsTab(Gtk.Box):
         finally:
             self._updating_settings = False
 
-
     def _is_ip(self, string: str) -> bool:
         try:
             ipaddress.ip_address(string)
@@ -633,7 +632,6 @@ class SettingsTab(Gtk.Box):
             widgets["model_combo"].set_active_id(config.dmx_usb_pro.model)
         finally:
             self._updating_settings = False
-
 
     def _create_universes_tab(self) -> Gtk.Box:
         # pylint: disable=too-many-locals,too-many-statements

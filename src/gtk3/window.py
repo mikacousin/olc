@@ -273,7 +273,7 @@ class Window(Gtk.ApplicationWindow):
                 )
 
     @contextlib.contextmanager
-    def blocking_switch_page(self) -> typing.Iterator[None]:
+    def blocking_switch_page(self) -> typing.Generator[None]:
         """Context manager to block switch-page signals."""
         self.block_switch_page += 1
         try:
@@ -364,8 +364,7 @@ class Window(Gtk.ApplicationWindow):
         state = getattr(event, "state", 0) or 0
         modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
         if bool(
-            modifiers
-            & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
+            modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
         ):
             return False
 

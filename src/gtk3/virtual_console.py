@@ -403,9 +403,7 @@ class VirtualConsoleWindow(Gtk.Window):
         # Send keyboard events to a dispatch function
         self.connect("key_press_event", self.on_key_press_event)
 
-    def on_key_press_event(
-        self, widget: Gtk.Widget, event: Gdk.EventKey
-    ) -> bool:
+    def on_key_press_event(self, widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
         """Handle keyboard events for Virtual Console.
 
         Closes the window on Control+W, ignores Control/Alt combinations,
@@ -420,9 +418,9 @@ class VirtualConsoleWindow(Gtk.Window):
         """
         state = getattr(event, "state", 0) or 0
         modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
-        if (
-            bool(modifiers & Gdk.ModifierType.CONTROL_MASK)
-            and event.keyval in (Gdk.KEY_w, Gdk.KEY_W)
+        if bool(modifiers & Gdk.ModifierType.CONTROL_MASK) and event.keyval in (
+            Gdk.KEY_w,
+            Gdk.KEY_W,
         ):
             self.close()
             return True

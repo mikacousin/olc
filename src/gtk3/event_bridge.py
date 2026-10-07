@@ -1701,9 +1701,6 @@ class GuiEventBridge:
         return False
 
 
-
-
-
 def update_ui(subtitle: str, app: Application | None = None) -> None:
     """Update user interface when Step is in scene. (Relocated to GUI Bridge)"""
     if not app:
