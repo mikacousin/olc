@@ -401,10 +401,41 @@ class VirtualConsoleWindow(Gtk.Window):
         self.add(self.grid)
 
         # Send keyboard events to a dispatch function
+        self.connect("key_press_event", self.on_key_press_event)
+
+    def on_key_press_event(
+        self, widget: Gtk.Widget, event: Gdk.EventKey
+    ) -> bool:
+        """Handle keyboard events for Virtual Console.
+
+        Closes the window on Control+W, ignores Control/Alt combinations,
+        and delegates standard keys to the main window live view.
+
+        Args:
+            widget: Gtk Widget.
+            event: Gdk.EventKey.
+
+        Returns:
+            True if event handled, False otherwise.
+        """
+        state = getattr(event, "state", 0) or 0
+        modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
+        if (
+            bool(modifiers & Gdk.ModifierType.CONTROL_MASK)
+            and event.keyval in (Gdk.KEY_w, Gdk.KEY_W)
+        ):
+            self.close()
+            return True
+
+        if bool(
+            modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
+        ):
+            return False
+
         if self.app.window is not None and self.app.window.live_view is not None:
-            self.connect(
-                "key_press_event", self.app.window.live_view.on_key_press_event
-            )
+            res = self.app.window.live_view.on_key_press_event(widget, event)
+            return bool(res)
+        return False
 
     @property
     def is_learning_midi(self) -> bool:

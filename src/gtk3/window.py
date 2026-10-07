@@ -361,6 +361,14 @@ class Window(Gtk.ApplicationWindow):
         Returns:
             function() or False
         """
+        state = getattr(event, "state", 0) or 0
+        modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
+        if bool(
+            modifiers
+            & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
+        ):
+            return False
+
         keyname = Gdk.keyval_name(event.keyval)
 
         if keyname is None:

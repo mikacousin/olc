@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """GUI behavior tests for the Faders tab and Virtual Console faders."""
 
-# pylint: disable=redefined-outer-name, protected-access, too-many-statements, import-outside-toplevel, too-many-locals
+# pylint: disable=redefined-outer-name, protected-access, too-many-statements, import-outside-toplevel, too-many-locals, no-name-in-module
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ import gi
 import pytest
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk  # noqa: E402
+from gi.repository import Gdk, Gtk  # noqa: E402
 from olc.fader_bank import FaderType  # noqa: E402
 from olc.group import Group  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
@@ -274,4 +274,68 @@ def test_fader_set_page_action(app_gui: Application) -> None:
 
     # Clean up
     app_gui.virtual_console.close()
+    process_events()
+
+
+def test_virtual_console_ctrl_w_closes_window_without_sequence_step(
+    app_gui: Application,
+) -> None:
+    """Test that Control+W on focused virtual console closes it without
+    advancing sequence.
+    """
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    initial_pos = app_gui.core.lightshow.main_playback.position
+
+    event_ctrl_w = Gdk.EventKey()
+    event_ctrl_w.keyval = Gdk.KEY_w
+    event_ctrl_w.state = Gdk.ModifierType.CONTROL_MASK
+
+    handled = vc.on_key_press_event(vc, event_ctrl_w)
+    process_events()
+
+    assert handled is True
+    assert app_gui.virtual_console is None
+    assert app_gui.core.lightshow.main_playback.position == initial_pos
+
+
+def test_window_on_key_press_event_ignores_ctrl_w(app_gui: Application) -> None:
+    """Test that main Window.on_key_press_event ignores keys with Control modifier."""
+    assert app_gui.window is not None
+    initial_pos = app_gui.core.lightshow.main_playback.position
+
+    event_ctrl_w = Gdk.EventKey()
+    event_ctrl_w.keyval = Gdk.KEY_w
+    event_ctrl_w.state = Gdk.ModifierType.CONTROL_MASK
+
+    res = app_gui.window.on_key_press_event(app_gui.window, event_ctrl_w)
+    process_events()
+
+    assert res is False
+    assert app_gui.core.lightshow.main_playback.position == initial_pos
+
+
+def test_virtual_console_normal_key_delegates_to_live_view(
+    app_gui: Application,
+) -> None:
+    """Test that normal keys without modifiers delegate to live view."""
+    app_gui.activate_action("virtual_console", None)
+    process_events()
+    assert app_gui.virtual_console is not None
+    vc = app_gui.virtual_console
+
+    event_num = Gdk.EventKey()
+    event_num.keyval = Gdk.KEY_9
+    event_num.state = Gdk.ModifierType(0)
+
+    vc.on_key_press_event(vc, event_num)
+    process_events()
+
+    assert app_gui.core.commandline.get_string() == "9"
+    app_gui.core.action_registry.execute("commandline.clear")
+
+    vc.close()
     process_events()
