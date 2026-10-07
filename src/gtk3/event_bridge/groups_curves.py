@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from gi.repository import Gtk
+
 from olc.curve import LimitCurve, PointsCurve
 from olc.fader import FaderType
 from olc.gtk3.fader import FaderTab
@@ -199,9 +200,7 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
             self._slow_refresh_curves(curves_tab, curve_nb)
         return False
 
-    def _fast_refresh_active_curve(
-        self, curves_tab: CurvesTab, curve_nb: int
-    ) -> None:
+    def _fast_refresh_active_curve(self, curves_tab: CurvesTab, curve_nb: int) -> None:
         """Perform a fast local UI update on the currently active curve."""
         curve = curves_tab.lightshow.curves.get_curve(curve_nb)
         if curve is None:

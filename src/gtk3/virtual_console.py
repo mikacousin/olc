@@ -18,6 +18,7 @@ from __future__ import annotations
 import typing
 
 from gi.repository import Gdk, Gtk
+
 from olc.gtk3.widgets.button import ButtonWidget
 from olc.gtk3.widgets.controller import ControllerWidget
 from olc.gtk3.widgets.fader import FaderWidget
