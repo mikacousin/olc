@@ -37,7 +37,7 @@ except ImportError as err:
 
 sys.path.insert(1, "@pythondir@")
 
-from olc.backends import DMXBackend
+from olc.core.backends import DMXBackend
 from olc.core.app import CoreApplication
 from olc.core.binding import OscBinding
 from olc.core.engine import CoreEngine
