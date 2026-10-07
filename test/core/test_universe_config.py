@@ -1,4 +1,5 @@
 import pytest
+
 from olc.core.universe_config import (
     ArtNetSettings,
     Protocol,
@@ -171,3 +172,18 @@ class TestUniverseMap:
         assert configs[0].universe_id == 0
         assert configs[1].universe_id == 1
         assert configs[2].universe_id == 2
+
+    def test_mapping_methods(self) -> None:
+        """Test get, keys, values, items methods on UniverseMap."""
+        umap = UniverseMap([1, 2, 4])
+        u1 = umap.get(1)
+        assert u1 is not None
+        assert u1.universe_id == 1
+        assert umap.get(99) is None
+        assert list(umap.keys()) == [1, 2, 4]
+        assert [c.universe_id for c in umap.values()] == [1, 2, 4]
+        assert [(uid, c.universe_id) for uid, c in umap.items()] == [
+            (1, 1),
+            (2, 2),
+            (4, 4),
+        ]
