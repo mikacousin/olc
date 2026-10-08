@@ -15,13 +15,26 @@
 from __future__ import annotations
 
 import typing
+from gettext import gettext as _
 
 from gi.repository import Gtk
+from olc.curve import LimitCurve
 from olc.gtk3.widgets.common import rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     import cairo
     from olc.core.lightshow import LightShow
+    from olc.curve import Curve
+
+
+def get_curve_display_name(curve: Curve | None) -> str:
+    """Return translated curve name for display, appending limit % for LimitCurve."""
+    if curve is None:
+        return ""
+    name = _(curve.name)
+    if isinstance(curve, LimitCurve):
+        return f"{name} {round((curve.limit / 255) * 100)}%"
+    return name
 
 
 class CurveWidget(Gtk.Button):

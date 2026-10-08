@@ -31,6 +31,16 @@ if typing.TYPE_CHECKING:
     from olc.core.lightshow import LightShow
     from olc.midi import Midi
 
+LEGACY_CURVE_NAMES: dict[str, str] = {
+    "Linéaire": "Linear",
+    "Racine carrée": "Square root",
+    "Limite à": "Limit",
+    "Limite": "Limit",
+    "Segments": "Segment",
+    "Interpolation": "Interpolate",
+    "Full à 1%": "Full at 1%",
+}
+
 
 class ParsedData:
     """To store imported information"""
@@ -141,7 +151,7 @@ class ParsedData:
                         curve.add_point(point[0], point[1])
             label = values.get("label")
             if label:
-                curve.name = label
+                curve.name = LEGACY_CURVE_NAMES.get(label, label)
 
     def import_patch(self) -> None:
         """Import data patch"""

@@ -317,6 +317,18 @@ msgstr "Interpolation"
 msgid "Full at 1%"
 msgstr "Full à 1%"
 
+msgid "IES Square"
+msgstr "Carré IES"
+
+msgid "Slow Bottom"
+msgstr "Bas lent"
+
+msgid "Fast Bottom"
+msgstr "Bas rapide"
+
+msgid "Fast Top"
+msgstr "Haut rapide"
+
 msgid "Select curve"
 msgstr "Sélectionner une courbe"
 

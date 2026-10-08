@@ -23,6 +23,7 @@ from gi.repository import Gtk
 from olc.curve import LimitCurve, PointsCurve
 from olc.fader import FaderType
 from olc.gtk3.fader import FaderTab
+from olc.gtk3.widgets.curve import get_curve_display_name
 from olc.independent import IndependentType
 
 from .base import BaseEventBridgeHandler
@@ -207,10 +208,7 @@ class GroupCurveBridgeHandler(BaseEventBridgeHandler):
             return
 
         # Update title
-        text = curve.name
-        if isinstance(curve, LimitCurve):
-            text += f" {round((curve.limit / 255) * 100)}%"
-        curves_tab.curve_edition.header.set_title(text)
+        curves_tab.curve_edition.header.set_title(get_curve_display_name(curve))
 
         # Update scale slider value (safely using updating flag to avoid loops)
         if (

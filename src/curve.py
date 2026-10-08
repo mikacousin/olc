@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import typing
-from gettext import gettext as _
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator
@@ -72,7 +71,7 @@ class LinearCurve(Curve):
     """Linear"""
 
     def __init__(self) -> None:
-        super().__init__(name=_("Linear"))
+        super().__init__(name="Linear")
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -83,7 +82,7 @@ class SquareRootCurve(Curve):
     """Square Root, TV2, Linear Light"""
 
     def __init__(self) -> None:
-        super().__init__(name=_("Square root"))
+        super().__init__(name="Square root")
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -99,7 +98,7 @@ class LimitCurve(Curve):
 
     def __init__(self, limit: int = 255) -> None:
         self.limit = limit
-        super().__init__(name=_("Limit"), editable=True)
+        super().__init__(name="Limit", editable=True)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -166,7 +165,7 @@ class SegmentsCurve(PointsCurve):
     """Curve with segments"""
 
     def __init__(self) -> None:
-        super().__init__(name=_("Segment"), editable=True)
+        super().__init__(name="Segment", editable=True)
 
     def populate_values(self) -> None:
         """Calculate each value of curve"""
@@ -189,7 +188,7 @@ class InterpolateCurve(PointsCurve):
     """Interpolate Curve"""
 
     def __init__(self) -> None:
-        super().__init__(name=_("Interpolate"), editable=True)
+        super().__init__(name="Interpolate", editable=True)
 
     def populate_values(self) -> None:
         if not hasattr(self, "values_array") or self.values_array is None:
@@ -223,9 +222,9 @@ class Curves:
 
     def _default_curves(self) -> None:
         curves = {
-            2: (_("Full at 1%"), SegmentsCurve, ((2, 0), (3, 255))),
+            2: ("Full at 1%", SegmentsCurve, ((2, 0), (3, 255))),
             3: (
-                _("IES Square"),
+                "IES Square",
                 InterpolateCurve,
                 (
                     (13, 18),
@@ -250,7 +249,7 @@ class Curves:
                 ),
             ),
             4: (
-                _("Slow Bottom"),
+                "Slow Bottom",
                 InterpolateCurve,
                 (
                     (13, 8),
@@ -275,7 +274,7 @@ class Curves:
                 ),
             ),
             5: (
-                _("Fast Bottom"),
+                "Fast Bottom",
                 InterpolateCurve,
                 (
                     (13, 26),
@@ -300,7 +299,7 @@ class Curves:
                 ),
             ),
             6: (
-                _("Fast Top"),
+                "Fast Top",
                 InterpolateCurve,
                 (
                     (13, 13),

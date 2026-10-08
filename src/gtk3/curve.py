@@ -22,7 +22,7 @@ import cairo
 from gi.repository import Gdk, Gtk
 from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.gtk3.patch_outputs import PatchOutputsTab
-from olc.gtk3.widgets.curve import CurveWidget
+from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 from olc.gtk3.widgets.curve_point import CurvePointWidget
 from olc.gtk3.widgets.edit_curve import EditCurveWidget
 
@@ -139,10 +139,7 @@ class CurveEdition(Gtk.Box):
         curve = self.lightshow.curves.get_curve(curve_nb)
         if curve is None:
             return
-        text = curve.name
-        if isinstance(curve, LimitCurve):
-            text += f" {round((curve.limit / 255) * 100)}%"
-        self.header.set_title(text)
+        self.header.set_title(get_curve_display_name(curve))
         for child in self.header.get_children():
             child.destroy()
         if curve.editable:
@@ -314,9 +311,7 @@ class CurveEdition(Gtk.Box):
             # During drag: update curve value in-place and redraw UI
             curve.limit = int(widget.get_value())
             curve.populate_values()
-            text = curve.name
-            text += f" {round((curve.limit / 255) * 100)}%"
-            self.header.set_title(text)
+            self.header.set_title(get_curve_display_name(curve))
             self.lightshow.app.core.emit("curve.changed", self.curve_nb)
         else:
             # Discrete change (e.g. keyboard arrows, scroll wheel, or click without
@@ -324,9 +319,7 @@ class CurveEdition(Gtk.Box):
             self.lightshow.app.core.action_registry.execute(
                 "curve.set_limit", self.curve_nb, int(widget.get_value())
             )
-            text = curve.name
-            text += f" {round((curve.limit / 255) * 100)}%"
-            self.header.set_title(text)
+            self.header.set_title(get_curve_display_name(curve))
 
     def on_toggled(self, button: CurvePointWidget, _name: object) -> None:
         """Curve point clicked
@@ -369,7 +362,7 @@ class CurveButton(CurveWidget):
         entry = Gtk.Entry()
         entry.set_has_frame(False)
         if self.curve is not None:
-            entry.set_text(self.curve.name)
+            entry.set_text(_(self.curve.name))
         else:
             entry.set_text("")
         entry.connect("activate", self.on_edit)
@@ -389,7 +382,7 @@ class CurveButton(CurveWidget):
         if self.curve is not None:
             self.curve.name = text
             tab = typing.cast(CurvesTab, self.tabs.tabs["curves"])
-            tab.curve_edition.header.set_title(text)
+            tab.curve_edition.header.set_title(get_curve_display_name(self.curve))
             self.popover.popdown()
             self.lightshow.set_modified()
 

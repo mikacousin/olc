@@ -21,7 +21,7 @@ from gi.repository import Gdk, Gtk
 
 from olc.curve import LimitCurve
 from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
-from olc.gtk3.widgets.curve import CurveWidget
+from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 
 if typing.TYPE_CHECKING:
     from olc.core.backends import DMXBackend
@@ -188,9 +188,7 @@ class PatchWidget(Gtk.DrawingArea):
         self.stack.set_transition_duration(500)
         for number, curve in self.lightshow.curves.curves.items():
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-            label = curve.name
-            if isinstance(curve, LimitCurve):
-                label += f" {round((curve.limit / 255) * 100)}%"
+            label = get_curve_display_name(curve)
             box.pack_start(Gtk.Label(label=label), False, False, 10)
             box.pack_start(
                 CurvePatchOutputWidget(number, self.lightshow, self, self.tab),
