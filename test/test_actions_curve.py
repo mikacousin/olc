@@ -108,3 +108,26 @@ def test_curve_actions_and_undo_redo() -> None:
     app.history.redo()
     assert curve_nb not in curves.curves
     assert app.lightshow.patch.outputs[1][1][1] == 0
+
+
+def test_curve_actions_normalized_inputs() -> None:
+    """Test curve actions with normalized float inputs."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    curves = app.lightshow.curves
+
+    norm_curve_nb = typing.cast(
+        int, app.action_registry.execute("curve.new", "segments")
+    )
+    app.action_registry.execute(
+        "curve.update_points",
+        norm_curve_nb,
+        [(0.0, 0.0), (0.5, 0.25), (1.0, 1.0)],
+    )
+    norm_curve = typing.cast(SegmentsCurve, curves.get_curve(norm_curve_nb))
+    assert norm_curve.points[1] == (128, 64)
+
+    norm_limit_nb = typing.cast(int, app.action_registry.execute("curve.new", "limit"))
+    app.action_registry.execute("curve.set_limit", norm_limit_nb, 0.5)
+    norm_limit = typing.cast(LimitCurve, curves.get_curve(norm_limit_nb))
+    assert norm_limit.limit == 128

@@ -18,6 +18,7 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
+
 from olc.curve import InterpolateCurve, SegmentsCurve
 
 if typing.TYPE_CHECKING:
@@ -103,7 +104,11 @@ class EditCurveWidget(Gtk.DrawingArea):
         x_curve = max(min(x_curve, 255), 0)
         y_curve = max(min(y_curve, 255), 0)
         if tab.curve_edition.label:
-            tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
+            pct_x = round(x_curve / 2.55, 1)
+            pct_y = round(y_curve / 2.55, 1)
+            tab.curve_edition.label.set_label(
+                f"{x_curve}, {y_curve} ({pct_x:.1f}%, {pct_y:.1f}%)"
+            )
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw Edit Curve Widget

@@ -12,6 +12,8 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+"""Transfer curves module supporting normalized, 8-bit, and 16-bit resolutions."""
+
 from __future__ import annotations
 
 import typing
@@ -24,75 +26,173 @@ if typing.TYPE_CHECKING:
 
 
 class Curve:
-    """Curve object"""
+    """Base transfer curve object supporting multi-resolution evaluation."""
 
     name: str  # Curve name
     editable: bool  # Editable Curve or not
-    values_array: np.ndarray  # For fast array look up
+    values_array: np.ndarray  # 8-bit lookup table (256 entries)
+    values_array_16bit: np.ndarray  # 16-bit lookup table (65536 entries)
 
     def __init__(self, name: str = "", editable: bool = False) -> None:
         self.name = name
         self.editable = editable
         self.values_array = np.zeros(256, dtype=np.uint8)
+        self.values_array_16bit = np.zeros(65536, dtype=np.uint16)
         self.populate_values()
 
     def get_level(self, level: int) -> int:
-        """Get precalculated curve levels.
+        """Get precalculated curve level for 8-bit input.
 
         Args:
             level: input level (0 - 255)
 
         Returns:
-            new level
+            new 8-bit level
         """
-        return int(self.values_array[level])
+        clamped = max(0, min(255, level))
+        return int(self.values_array[clamped])
 
-    def populate_values(self) -> None:
-        """Calculate each value of curve
+    def get_level_16bit(self, level: int) -> int:
+        """Get precalculated curve level for 16-bit input.
 
-        Raises:
-            NotImplementedError: Must be implemented in subclass
+        Args:
+            level: input level (0 - 65535)
+
+        Returns:
+            new 16-bit level
+        """
+        clamped = max(0, min(65535, level))
+        return int(self.values_array_16bit[clamped])
+
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        """Evaluate the curve in the continuous normalized [0.0, 1.0] domain.
+
+        Args:
+            values: Input value or array in [0.0, 1.0]
+
+        Returns:
+            Output value or array in [0.0, 1.0]
         """
         raise NotImplementedError
 
+    def evaluate_8bit(self, levels: int | np.ndarray) -> int | np.ndarray:
+        """Evaluate the curve for 8-bit integer level(s) [0..255].
+
+        Args:
+            levels: Integer or NumPy array of integers in [0..255]
+
+        Returns:
+            Transformed integer level(s) in [0..255]
+        """
+        if isinstance(levels, (int, np.integer)):
+            clamped = int(max(0, min(255, int(levels))))
+            return int(self.values_array[clamped])
+        arr = np.clip(np.asarray(levels, dtype=np.int64), 0, 255)
+        return self.values_array[arr]
+
+    def evaluate_16bit(self, levels: int | np.ndarray) -> int | np.ndarray:
+        """Evaluate the curve for 16-bit integer level(s) [0..65535].
+
+        Args:
+            levels: Integer or NumPy array of integers in [0..65535]
+
+        Returns:
+            Transformed integer level(s) in [0..65535]
+        """
+        if isinstance(levels, (int, np.integer)):
+            clamped = int(max(0, min(65535, int(levels))))
+            return int(self.values_array_16bit[clamped])
+        arr = np.clip(np.asarray(levels, dtype=np.int64), 0, 65535)
+        return self.values_array_16bit[arr]
+
+    def evaluate_range(
+        self,
+        level: float | np.ndarray,
+        in_min: float = 0.0,
+        in_max: float = 255.0,
+        out_min: float = 0.0,
+        out_max: float = 255.0,
+    ) -> float | np.ndarray:
+        """Evaluate the curve mapped from [in_min, in_max] to [out_min, out_max].
+
+        Args:
+            level: Input level or array
+            in_min: Minimum of input range
+            in_max: Maximum of input range
+            out_min: Minimum of output range
+            out_max: Maximum of output range
+
+        Returns:
+            Output level or array mapped to [out_min, out_max]
+        """
+        in_span = in_max - in_min
+        out_span = out_max - out_min
+        if in_span == 0:
+            return out_min
+
+        norm_in = np.clip((np.asarray(level) - in_min) / in_span, 0.0, 1.0)
+        norm_out = self.evaluate_normalized(norm_in)
+        result = out_min + norm_out * out_span
+        if isinstance(level, (int, float, np.number)):
+            return float(result)
+        return result
+
+    def populate_values(self) -> None:
+        """Calculate each value of 8-bit and 16-bit lookup tables."""
+        raise NotImplementedError
+
     def is_all_zero(self) -> bool:
-        """Test if all curve values are 0
+        """Test if all curve values are 0.
 
         Returns:
             True if all zero, else False
         """
         if isinstance(self, LimitCurve) and self.limit == 0:
-            # LimitCurve at 0%
             return True
         return bool(np.all(self.values_array == 0))
 
 
 class LinearCurve(Curve):
-    """Linear"""
+    """Linear transfer curve."""
 
     def __init__(self) -> None:
         super().__init__(name="Linear")
 
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        if isinstance(values, (int, float)):
+            return max(0.0, min(1.0, float(values)))
+        return np.clip(values, 0.0, 1.0)
+
     def populate_values(self) -> None:
-        """Calculate each value of curve"""
+        """Populate 8-bit and 16-bit lookup tables."""
         self.values_array = np.arange(256, dtype=np.uint8)
+        self.values_array_16bit = np.arange(65536, dtype=np.uint16)
 
 
 class SquareRootCurve(Curve):
-    """Square Root, TV2, Linear Light"""
+    """Square Root (TV2, Linear Light) transfer curve."""
 
     def __init__(self) -> None:
         super().__init__(name="Square root")
 
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        if isinstance(values, (int, float)):
+            clamped = max(0.0, min(1.0, float(values)))
+            return float(np.sqrt(clamped))
+        return np.sqrt(np.clip(values, 0.0, 1.0))
+
     def populate_values(self) -> None:
-        """Calculate each value of curve"""
+        """Populate 8-bit and 16-bit lookup tables."""
         self.values_array = np.round(np.sqrt(np.arange(256)) * np.sqrt(255)).astype(
             np.uint8
         )
+        self.values_array_16bit = np.round(
+            np.sqrt(np.arange(65536)) * np.sqrt(65535)
+        ).astype(np.uint16)
 
 
 class LimitCurve(Curve):
-    """Proportional limitation"""
+    """Proportional limitation transfer curve."""
 
     limit: int  # Limit value (0 - 255)
 
@@ -100,15 +200,27 @@ class LimitCurve(Curve):
         self.limit = limit
         super().__init__(name="Limit", editable=True)
 
+    @property
+    def normalized_limit(self) -> float:
+        """Return the limit as a normalized fraction [0.0, 1.0]."""
+        return max(0.0, min(1.0, self.limit / 255.0))
+
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        factor = self.normalized_limit
+        if isinstance(values, (int, float)):
+            clamped = max(0.0, min(1.0, float(values)))
+            return float(clamped * factor)
+        return np.clip(values, 0.0, 1.0) * factor
+
     def populate_values(self) -> None:
-        """Calculate each value of curve"""
-        self.values_array = np.round(np.arange(256) * (self.limit / 255.0)).astype(
-            np.uint8
-        )
+        """Populate 8-bit and 16-bit lookup tables."""
+        factor = self.limit / 255.0
+        self.values_array = np.round(np.arange(256) * factor).astype(np.uint8)
+        self.values_array_16bit = np.round(np.arange(65536) * factor).astype(np.uint16)
 
 
 class PointsCurve(Curve):
-    """Curve defined by points"""
+    """Base class for curves defined by control points."""
 
     points: list[tuple[int, int]]
 
@@ -116,29 +228,31 @@ class PointsCurve(Curve):
         self.points = [(0, 0), (255, 255)]
         super().__init__(name=name, editable=editable)
 
-    def populate_values(self) -> None:
-        """Calculate each value of curve
-
-        Raises:
-            NotImplementedError: Must be implemented in subclass
-        """
-        raise NotImplementedError
+    @property
+    def normalized_points(self) -> list[tuple[float, float]]:
+        """Return control points in normalized [0.0, 1.0] domain."""
+        return [(p[0] / 255.0, p[1] / 255.0) for p in self.points]
 
     def add_point(self, x: int, y: int) -> None:
-        """Add point to segment curve
+        """Add point to curve.
 
         Args:
             x: X coordinate (0 - 255)
             y: Y coordinate (0 - 255)
         """
-        if not any(x in point for point in self.points):
-            point = (x, y)
-            self.points.append(point)
+        x_clamped = min(max(int(round(x)), 0), 255)
+        y_clamped = min(max(int(round(y)), 0), 255)
+        if not any(x_clamped == point[0] for point in self.points):
+            self.points.append((x_clamped, y_clamped))
             self.points.sort()
             self.populate_values()
 
+    def add_normalized_point(self, x: float, y: float) -> None:
+        """Add point using normalized coordinates [0.0, 1.0]."""
+        self.add_point(int(round(x * 255.0)), int(round(y * 255.0)))
+
     def del_point(self, point_number: int) -> None:
-        """Remove a point curve
+        """Remove a point from curve.
 
         Args:
             point_number: Point index to remove
@@ -147,67 +261,104 @@ class PointsCurve(Curve):
         self.populate_values()
 
     def set_point(self, point_number: int, x: int, y: int) -> None:
-        """Change point values
+        """Change point values.
 
         Args:
             point_number: Point index
             x: X coordinate (0 - 255)
             y: Y coordinate (0 - 255)
         """
-        x = min(max(x, 0), 255)
-        y = min(max(y, 0), 255)
-        if 0 <= point_number <= len(self.points) - 1:
-            self.points[point_number] = (x, y)
+        x_clamped = min(max(int(round(x)), 0), 255)
+        y_clamped = min(max(int(round(y)), 0), 255)
+        if 0 <= point_number < len(self.points):
+            self.points[point_number] = (x_clamped, y_clamped)
             self.populate_values()
+
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        raise NotImplementedError
+
+    def populate_values(self) -> None:
+        raise NotImplementedError
 
 
 class SegmentsCurve(PointsCurve):
-    """Curve with segments"""
+    """Linear segments curve."""
 
     def __init__(self) -> None:
         super().__init__(name="Segment", editable=True)
 
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        xp = [p[0] / 255.0 for p in self.points]
+        fp = [p[1] / 255.0 for p in self.points]
+        if isinstance(values, (int, float)):
+            clamped = max(0.0, min(1.0, float(values)))
+            return float(np.interp(clamped, xp, fp))
+        return np.interp(np.clip(values, 0.0, 1.0), xp, fp)
+
     def populate_values(self) -> None:
-        """Calculate each value of curve"""
+        """Calculate 8-bit and 16-bit lookup tables."""
         if not hasattr(self, "values_array") or self.values_array is None:
             self.values_array = np.zeros(256, dtype=np.uint8)
-        intervals = len(self.points) - 1
-        for i in range(intervals):
-            x_start = self.points[i][0]
-            y_start = self.points[i][1]
-            x_end = self.points[i + 1][0]
-            y_end = self.points[i + 1][1]
-            for x in range(x_start, x_end + 1):
-                val = round(
-                    y_start + (((x - x_start) / (x_end - x_start)) * (y_end - y_start))
-                )
-                self.values_array[x] = val
+        if not hasattr(self, "values_array_16bit") or self.values_array_16bit is None:
+            self.values_array_16bit = np.zeros(65536, dtype=np.uint16)
+
+        # 8-bit table
+        xp_8 = [p[0] for p in self.points]
+        fp_8 = [p[1] for p in self.points]
+        self.values_array = np.round(np.interp(np.arange(256), xp_8, fp_8)).astype(
+            np.uint8
+        )
+
+        # 16-bit table
+        xp_16 = [p[0] / 255.0 * 65535.0 for p in self.points]
+        fp_16 = [p[1] / 255.0 * 65535.0 for p in self.points]
+        self.values_array_16bit = np.round(
+            np.interp(np.arange(65536), xp_16, fp_16)
+        ).astype(np.uint16)
 
 
 class InterpolateCurve(PointsCurve):
-    """Interpolate Curve"""
+    """Monotonic cubic spline curve using PCHIP interpolation."""
 
     def __init__(self) -> None:
         super().__init__(name="Interpolate", editable=True)
 
+    def _get_interpolator(self) -> PchipInterpolator:
+        xp = [p[0] / 255.0 for p in self.points]
+        fp = [p[1] / 255.0 for p in self.points]
+        return PchipInterpolator(xp, fp)
+
+    def evaluate_normalized(self, values: float | np.ndarray) -> float | np.ndarray:
+        spl = self._get_interpolator()
+        if isinstance(values, (int, float)):
+            clamped = max(0.0, min(1.0, float(values)))
+            return float(np.clip(spl(clamped), 0.0, 1.0))
+        return np.clip(spl(np.clip(values, 0.0, 1.0)), 0.0, 1.0)
+
     def populate_values(self) -> None:
+        """Calculate 8-bit and 16-bit lookup tables using PCHIP."""
         if not hasattr(self, "values_array") or self.values_array is None:
             self.values_array = np.zeros(256, dtype=np.uint8)
-        x = []
-        y = []
-        for point in self.points:
-            x.append(point[0])
-            y.append(point[1])
-        spl = PchipInterpolator(x, y)
-        for i in range(256):
-            val = min(max(round(float(spl(i))), 0), 255)
-            self.values_array[i] = val
+        if not hasattr(self, "values_array_16bit") or self.values_array_16bit is None:
+            self.values_array_16bit = np.zeros(65536, dtype=np.uint16)
+
+        spl = self._get_interpolator()
+
+        # 8-bit table
+        grid_8 = np.linspace(0.0, 1.0, 256)
+        vals_8 = np.clip(np.round(spl(grid_8) * 255.0), 0.0, 255.0)
+        self.values_array = vals_8.astype(np.uint8)
+
+        # 16-bit table
+        grid_16 = np.linspace(0.0, 1.0, 65536)
+        vals_16 = np.clip(np.round(spl(grid_16) * 65535.0), 0.0, 65535.0)
+        self.values_array_16bit = vals_16.astype(np.uint16)
 
 
 class Curves:
-    """Curves supported by application
+    """Curves supported by application.
 
-    Curve numbers from 0 to 9 are reserved
+    Curve numbers from 0 to 9 are reserved.
     """
 
     curves: dict[int, Curve]
@@ -334,7 +485,7 @@ class Curves:
             self.curves[number] = curve_obj
 
     def get_curve(self, number: int) -> Curve | None:
-        """Get Curve with number
+        """Get Curve with number.
 
         Args:
             number: Curve number (key in dictionary)
@@ -345,7 +496,7 @@ class Curves:
         return self.curves.get(number)
 
     def find_limit_curve(self, limit: int) -> int:
-        """Find CurveLimit number if a curve with limit exist
+        """Find CurveLimit number if a curve with limit exists.
 
         Args:
             limit: Limit value (0 - 255)
@@ -359,7 +510,7 @@ class Curves:
         return 0
 
     def add_curve(self, curve: Curve) -> int:
-        """Add curve to curves list
+        """Add curve to curves list.
 
         Args:
             curve: Curve to add
@@ -374,7 +525,7 @@ class Curves:
         return 0
 
     def del_curve(self, curve_nb: int) -> None:
-        """Delete curve
+        """Delete curve.
 
         Args:
             curve_nb: Curve number
@@ -388,7 +539,7 @@ class Curves:
         self.curves.pop(curve_nb, None)
 
     def reset(self) -> None:
-        """Delete additional curves"""
+        """Delete additional curves."""
         keys = []
         for curve_nb in self.curves:
             if curve_nb >= 10:

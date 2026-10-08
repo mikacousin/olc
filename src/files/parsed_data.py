@@ -127,28 +127,47 @@ class ParsedData:
             if value != -1:
                 self.midi.messages.pitchwheel.pitchwheel[action] = value
 
+    @staticmethod
+    def _create_curve_from_dict(
+        values: dict,
+    ) -> LimitCurve | SegmentsCurve | InterpolateCurve | None:
+        """Create a curve instance from serialized dictionary."""
+        curve_type = values.get("type")
+        if curve_type == "LimitCurve":
+            limit_val = values["limit"]
+            limit_int = (
+                int(round(limit_val * 255.0))
+                if isinstance(limit_val, float) and 0.0 <= limit_val <= 1.0
+                else int(limit_val)
+            )
+            return LimitCurve(limit=limit_int)
+        if curve_type == "SegmentsCurve":
+            curve: SegmentsCurve | InterpolateCurve = SegmentsCurve()
+        elif curve_type == "InterpolateCurve":
+            curve = InterpolateCurve()
+        else:
+            return None
+
+        points = values.get("points", [])
+        is_norm = values.get("normalized", False) or any(
+            isinstance(p[0], float) and 0.0 < p[0] < 1.0 for p in points
+        )
+        for point in points:
+            if is_norm:
+                curve.add_normalized_point(float(point[0]), float(point[1]))
+            else:
+                curve.add_point(int(round(point[0])), int(round(point[1])))
+        return curve
+
     def import_curves(self) -> None:
         """Import curves data"""
         if not self.data["curves"]:
             return
         for curve_nb, values in self.data["curves"].items():
-            curve_type = values["type"]
-            curve = None
-            if curve_type == "LimitCurve":
-                limit = values["limit"]
-                curve = LimitCurve(limit=limit)
-            elif curve_type == "SegmentsCurve":
-                curve = SegmentsCurve()
-            elif curve_type == "InterpolateCurve":
-                curve = InterpolateCurve()
+            curve = self._create_curve_from_dict(values)
             if not curve:
-                return
+                continue
             self.lightshow.curves.curves[curve_nb] = curve
-            if curve_type in ("SegmentsCurve", "InterpolateCurve"):
-                points = values["points"]
-                for point in points:
-                    if isinstance(curve, (SegmentsCurve, InterpolateCurve)):
-                        curve.add_point(point[0], point[1])
             label = values.get("label")
             if label:
                 curve.name = LEGACY_CURVE_NAMES.get(label, label)

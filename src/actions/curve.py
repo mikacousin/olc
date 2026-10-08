@@ -184,7 +184,9 @@ class CurveUpdatePointsAction(Action):
         self.points: list[tuple[int, int]] = []
         self.old_points: list[tuple[int, int]] = []
 
-    def configure(self, curve_nb: int, points: list[tuple[int, int]]) -> None:
+    def configure(
+        self, curve_nb: int, points: list[tuple[int | float, int | float]]
+    ) -> None:
         """Configure the action with the curve number and new point list.
 
         Args:
@@ -192,7 +194,20 @@ class CurveUpdatePointsAction(Action):
             points: The new list of (x, y) control points.
         """
         self.curve_nb = curve_nb
-        self.points = list(points)
+        cleaned: list[tuple[int, int]] = []
+        is_norm = any(isinstance(p[0], float) and 0.0 < p[0] < 1.0 for p in points)
+        for p in points:
+            px, py = p[0], p[1]
+            if is_norm and isinstance(px, float) and 0.0 <= px <= 1.0:
+                ix = int(round(px * 255.0))
+            else:
+                ix = int(round(px))
+            if is_norm and isinstance(py, float) and 0.0 <= py <= 1.0:
+                iy = int(round(py * 255.0))
+            else:
+                iy = int(round(py))
+            cleaned.append((max(0, min(255, ix)), max(0, min(255, iy))))
+        self.points = cleaned
 
     def execute(self) -> None:
         """Execute the action, applying the configured points to the curve."""
@@ -246,15 +261,18 @@ class CurveSetLimitAction(Action):
         self.limit: int = 255
         self.old_limit: int = 255
 
-    def configure(self, curve_nb: int, limit: int) -> None:
+    def configure(self, curve_nb: int, limit: int | float) -> None:
         """Configure the action with the curve number and new limit value.
 
         Args:
             curve_nb: The number of the LimitCurve to update.
-            limit: The new limit value (0-255).
+            limit: The new limit value (0-255 or 0.0-1.0).
         """
         self.curve_nb = curve_nb
-        self.limit = limit
+        if isinstance(limit, float) and 0.0 <= limit <= 1.0:
+            self.limit = int(round(limit * 255.0))
+        else:
+            self.limit = int(round(limit))
 
     def execute(self) -> None:
         """Execute the action, applying the configured limit to the curve."""

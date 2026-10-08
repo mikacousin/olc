@@ -22,6 +22,7 @@ from gi.repository import Gdk, GObject, Gtk
 
 if typing.TYPE_CHECKING:
     import cairo
+
     from olc.core.lightshow import LightShow
     from olc.curve import PointsCurve
     from olc.gtk3.curve import CurvesTab
@@ -182,12 +183,16 @@ class CurvePointWidget(Gtk.DrawingArea):
             )
             # First point
             if self.number == 0 and tab.curve_edition.label:
-                tab.curve_edition.label.set_label(f"0, {y_curve}")
+                pct_y = round(y_curve / 2.55, 1)
+                tab.curve_edition.label.set_label(f"0, {y_curve} (0.0%, {pct_y:.1f}%)")
                 self.curve.points[self.number] = (0, y_curve)
                 fixed.move(widget, 16, y)
             # Last point
             elif self.number == len(self.curve.points) - 1 and tab.curve_edition.label:
-                tab.curve_edition.label.set_label(f"255, {y_curve}")
+                pct_y = round(y_curve / 2.55, 1)
+                tab.curve_edition.label.set_label(
+                    f"255, {y_curve} (100.0%, {pct_y:.1f}%)"
+                )
                 self.curve.points[self.number] = (255, y_curve)
                 fixed.move(widget, 976, y)
             # Don't move before/after previous/next point
@@ -196,7 +201,11 @@ class CurvePointWidget(Gtk.DrawingArea):
                 and not x_curve >= self.curve.points[self.number + 1][0]
                 and tab.curve_edition.label
             ):
-                tab.curve_edition.label.set_label(f"{x_curve}, {y_curve}")
+                pct_x = round(x_curve / 2.55, 1)
+                pct_y = round(y_curve / 2.55, 1)
+                tab.curve_edition.label.set_label(
+                    f"{x_curve}, {y_curve} ({pct_x:.1f}%, {pct_y:.1f}%)"
+                )
                 if any(x_curve in point for point in self.curve.points):
                     if self.curve.points[self.number][0] == x_curve:
                         self.curve.points[self.number] = (x_curve, y_curve)
