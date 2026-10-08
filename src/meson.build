@@ -66,3 +66,8 @@ install_subdir(
   'gtk3',
   install_dir: join_paths(python_dir, 'olc')
 )
+
+install_subdir(
+  'devices',
+  install_dir: join_paths(python_dir, 'olc')
+)
