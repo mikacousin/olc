@@ -17,6 +17,8 @@ from __future__ import annotations
 import typing
 
 from olc.core.action import Action
+from olc.devices.device import LightingDevice
+from olc.devices.fixture import FixtureDefinition
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -335,11 +337,115 @@ class PatchSelectOutputAction(Action):
         self.app.emit("patch.selected_outputs_changed")
 
 
+class PatchDeviceAction(Action):
+    """Action to patch a lighting device."""
+
+    name = "patch.device"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.fixture_def: typing.Optional[FixtureDefinition] = None
+        self.universe: int = 1
+        self.address: int = 1
+        self.mode_name: typing.Optional[str] = None
+        self.label: str = ""
+        self.old_device_dict: typing.Optional[dict[str, typing.Any]] = None
+
+    def configure(  # pylint: disable=too-many-arguments, too-many-positional-arguments
+        self,
+        device_id: int,
+        fixture_def: FixtureDefinition,
+        universe: int,
+        address: int,
+        mode_name: typing.Optional[str] = None,
+        label: str = "",
+    ) -> None:
+        """Configure the action with fixture patching parameters."""
+        self.device_id = device_id
+        self.fixture_def = fixture_def
+        self.universe = universe
+        self.address = address
+        self.mode_name = mode_name
+        self.label = label
+
+    def execute(self) -> None:
+        patch = self.app.lightshow.patch
+        old_dev = patch.get_device(self.device_id)
+        self.old_device_dict = old_dev.to_dict() if old_dev else None
+
+        if self.fixture_def is not None:
+            patch.patch_device(
+                device_id=self.device_id,
+                fixture_def=self.fixture_def,
+                universe=self.universe,
+                address=self.address,
+                mode_name=self.mode_name,
+                label=self.label,
+            )
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def undo(self) -> None:
+        patch = self.app.lightshow.patch
+        patch.unpatch_device(self.device_id)
+        if self.old_device_dict is not None:
+            restored = LightingDevice.from_dict(self.old_device_dict)
+            patch.restore_device(restored)
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+    def redo(self) -> None:
+        self.execute()
+
+
+class PatchUnpatchDeviceAction(Action):
+    """Action to unpatch a lighting device."""
+
+    name = "patch.unpatch_device"
+    can_undo = True
+
+    def __init__(self, app: CoreApplication) -> None:
+        super().__init__(app)
+        self.device_id: int = 1
+        self.old_device_dict: typing.Optional[dict[str, typing.Any]] = None
+
+    def configure(self, device_id: int) -> None:
+        """Configure the action with the device ID to unpatch."""
+        self.device_id = device_id
+
+    def execute(self) -> None:
+        patch = self.app.lightshow.patch
+        old_dev = patch.get_device(self.device_id)
+        if old_dev is not None:
+            self.old_device_dict = old_dev.to_dict()
+            patch.unpatch_device(self.device_id)
+            self.app.lightshow.set_modified()
+            self.app.emit("patch.changed")
+
+    def undo(self) -> None:
+        if self.old_device_dict is not None:
+            patch = self.app.lightshow.patch
+            restored = LightingDevice.from_dict(self.old_device_dict)
+            patch.restore_device(restored)
+            self.app.lightshow.set_modified()
+            self.app.emit("patch.changed")
+
+    def redo(self) -> None:
+        patch = self.app.lightshow.patch
+        patch.unpatch_device(self.device_id)
+        self.app.lightshow.set_modified()
+        self.app.emit("patch.changed")
+
+
 __all__ = [
     "PatchAddOutputAction",
     "PatchClearAction",
+    "PatchDeviceAction",
     "PatchSelectOutputAction",
     "PatchSet1on1Action",
     "PatchSetOutputCurveAction",
+    "PatchUnpatchDeviceAction",
     "PatchUnpatchOutputAction",
 ]

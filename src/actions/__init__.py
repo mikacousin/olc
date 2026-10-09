@@ -112,9 +112,11 @@ from olc.actions.osc import (
 from olc.actions.patch import (
     PatchAddOutputAction,
     PatchClearAction,
+    PatchDeviceAction,
     PatchSelectOutputAction,
     PatchSet1on1Action,
     PatchSetOutputCurveAction,
+    PatchUnpatchDeviceAction,
     PatchUnpatchOutputAction,
 )
 from olc.actions.playback import (
@@ -191,6 +193,8 @@ def register_all_actions(registry: ActionRegistry) -> None:
         RedoAction,
         PatchAddOutputAction,
         PatchUnpatchOutputAction,
+        PatchDeviceAction,
+        PatchUnpatchDeviceAction,
         PatchClearAction,
         PatchSelectOutputAction,
         PatchSet1on1Action,

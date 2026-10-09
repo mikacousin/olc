@@ -19,6 +19,7 @@ from typing import Callable, Optional
 
 import numpy as np
 from gi.repository import GLib
+
 from olc.define import DMX_INTERVAL, MAX_CHANNELS
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
@@ -166,6 +167,23 @@ class Dmx:
                 self.frame[index][self.patch.map_dst_outputs[univ_mask]] = out_levels[
                     univ_mask
                 ]
+
+        # Distribute multi-parameter device channels (Pan, Tilt, Color, Gobo...)
+        if (
+            hasattr(self.patch, "device_channel_refs")
+            and self.patch.device_channel_refs
+        ):
+            dev_vals = np.fromiter(
+                (ch.value for _, ch in self.patch.device_channel_refs),
+                dtype=np.uint8,
+                count=len(self.patch.device_channel_refs),
+            )
+            for index in range(len(self.patch.universes)):
+                univ_mask = self.patch.map_dev_dst_universes == index
+                if np.any(univ_mask) and index < len(self.frame):
+                    self.frame[index][self.patch.map_dev_dst_outputs[univ_mask]] = (
+                        dev_vals[univ_mask]
+                    )
 
     def send(self) -> None:
         """Send DMX values to CoreEngine"""
