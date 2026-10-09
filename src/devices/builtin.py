@@ -166,6 +166,67 @@ def create_rgba_definition() -> FixtureDefinition:
     )
 
 
+def create_moving_head_definition() -> FixtureDefinition:
+    """Create a generic moving head spot fixture definition with physical ranges."""
+    mode = DmxModeDefinition(
+        name="Standard 8ch",
+        channel_defs=[
+            ChannelDefinition(
+                ChannelType.PAN,
+                offset=0,
+                fine_offset=1,
+                label="Pan",
+                physical_min=-270.0,
+                physical_max=270.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.TILT,
+                offset=2,
+                fine_offset=3,
+                label="Tilt",
+                physical_min=-135.0,
+                physical_max=135.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.INTENSITY,
+                offset=4,
+                fine_offset=5,
+                label="Dimmer",
+                physical_min=0.0,
+                physical_max=1.0,
+                physical_unit="%",
+            ),
+            ChannelDefinition(
+                ChannelType.STROBE,
+                offset=6,
+                label="Shutter",
+                physical_min=1.0,
+                physical_max=25.0,
+                physical_unit="Hz",
+            ),
+            ChannelDefinition(
+                ChannelType.ZOOM,
+                offset=7,
+                label="Zoom",
+                physical_min=10.0,
+                physical_max=35.0,
+                physical_unit="deg",
+            ),
+        ],
+        description="Standard 8-channel generic moving head spot",
+    )
+
+    return FixtureDefinition(
+        manufacturer="Generic",
+        model="Moving Head Spot",
+        fixture_type=FixtureType.MOVING_HEAD,
+        dmx_modes=[mode],
+        notes="Generic moving head spot with 16-bit Pan/Tilt/Dimmer",
+    )
+
+
 def populate_builtin_library(
     library: FixtureLibrary | None = None,
 ) -> FixtureLibrary:
@@ -176,4 +237,5 @@ def populate_builtin_library(
     lib.register(create_rgb_definition())
     lib.register(create_rgbw_definition())
     lib.register(create_rgba_definition())
+    lib.register(create_moving_head_definition())
     return lib

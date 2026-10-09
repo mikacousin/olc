@@ -14,7 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the devices subsystem."""
 
-# pylint: disable=missing-function-docstring, redefined-outer-name
+# pylint: disable=missing-function-docstring, redefined-outer-name, protected-access
 
 import pytest
 
@@ -37,6 +37,7 @@ from olc.devices import (
     GdtfImporter,
     LightingDevice,
     create_dimmer_definition,
+    create_moving_head_definition,
     create_rgb_definition,
     create_rgba_definition,
     create_rgbw_definition,
@@ -592,3 +593,196 @@ def test_gdtf_importer_sanity() -> None:
             importer.load("non_existent.gdtf")
         with pytest.raises(ImportError):
             importer.load_from_bytes(b"dummy")
+
+
+# ---------------------------------------------------------------------------
+# Physical Parameters and Moving Head Tests
+# ---------------------------------------------------------------------------
+
+
+def test_channel_physical_conversion() -> None:
+    ch = Channel(
+        channel_type=ChannelType.PAN,
+        universe=1,
+        address=1,
+        physical_min=-270.0,
+        physical_max=270.0,
+        physical_unit="deg",
+    )
+    assert ch.physical_value == pytest.approx(-270.0)
+
+    # Convert center (0 deg) -> 128 (approx)
+    dmx_center = ch.physical_to_dmx(0.0)
+    assert dmx_center == 128
+    ch.set_physical_value(0.0)
+    assert ch.value == 128
+    assert ch.physical_value == pytest.approx(0.88, abs=1.5)  # 8-bit resolution
+
+    # Min and max bounds
+    assert ch.physical_to_dmx(-270.0) == 0
+    assert ch.physical_to_dmx(270.0) == 255
+    # Clamping
+    assert ch.physical_to_dmx(-300.0) == 0
+    assert ch.physical_to_dmx(500.0) == 255
+
+
+def test_lighting_device_pan_tilt_physical_16bit() -> None:
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(fixture_id=1, label="Spot1", universe=1, address=1)
+
+    assert dev.pan_degrees == pytest.approx(-270.0)
+    assert dev.tilt_degrees == pytest.approx(-135.0)
+
+    # Set center positions
+    dev.set_position_degrees(0.0, 0.0)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.01)
+    assert dev.tilt_degrees == pytest.approx(0.0, abs=0.01)
+
+    # Check 16-bit values at center
+    assert dev.pan_16bit == pytest.approx(32768, abs=2)
+    assert dev.tilt_16bit == pytest.approx(32768, abs=2)
+
+    # Check exact positive angle
+    dev.set_pan_degrees(135.0)  # 3/4 of range -> ~49151
+    assert dev.pan_degrees == pytest.approx(135.0, abs=0.01)
+    assert dev.pan_16bit == pytest.approx(49151, abs=2)
+
+    # Clamping beyond physical range
+    dev.set_pan_degrees(360.0)
+    assert dev.pan_degrees == pytest.approx(270.0, abs=0.01)
+    dev.set_tilt_degrees(-200.0)
+    assert dev.tilt_degrees == pytest.approx(-135.0, abs=0.01)
+
+    # Raw 16-bit setters
+    dev.set_pan_16bit(0)
+    assert dev.pan_degrees == pytest.approx(-270.0, abs=0.01)
+    dev.set_pan_16bit(65535)
+    assert dev.pan_degrees == pytest.approx(270.0, abs=0.01)
+
+    # Legacy 8-bit setters
+    dev.set_pan(128)
+    assert dev.pan_16bit == 32768
+    tilt_ch = dev.get_channel(ChannelType.TILT)
+    assert tilt_ch is not None
+    assert dev.pan_tilt == (128, tilt_ch.value)
+
+
+def test_lighting_device_pan_tilt_non_contiguous_and_inverted() -> None:
+    # Mode with Fine in front of Coarse (Fine @ offset 0, Coarse @ offset 5)
+    mode = DmxModeDefinition(
+        name="InvertedPan",
+        channel_defs=[
+            ChannelDefinition(
+                ChannelType.PAN,
+                offset=5,
+                fine_offset=0,
+                label="Pan",
+                physical_min=-180.0,
+                physical_max=180.0,
+                physical_unit="deg",
+            )
+        ],
+    )
+    fix_def = FixtureDefinition("Test", "InvertedPanSpot", dmx_modes=[mode])
+    dev = fix_def.instantiate(fixture_id=2, label="InvertedDev", universe=1, address=1)
+
+    # Set +90 degrees -> 3/4 of 360 deg range -> val_16 = 49151 (0xBFFF)
+    dev.set_pan_degrees(90.0)
+    assert dev.pan_degrees == pytest.approx(90.0, abs=0.01)
+
+    dmx = dev.dmx_values()
+    # Fine is @ addr 1 (offset 0), Coarse is @ addr 6 (offset 5)
+    coarse_val = dmx[(1, 6)]
+    fine_val = dmx[(1, 1)]
+    reconstructed = (coarse_val << 8) | fine_val
+    assert reconstructed == pytest.approx(49151, abs=2)
+
+
+def test_lighting_device_optical_strobe_cct_physical() -> None:
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(fixture_id=3, label="OpticSpot", universe=1, address=1)
+
+    # Zoom (10 deg to 35 deg)
+    assert dev.zoom_degrees == pytest.approx(10.0, abs=0.1)
+    dev.set_zoom_degrees(22.5)  # exact midpoint
+    assert dev.zoom_degrees == pytest.approx(22.5, abs=0.2)
+    dev.set_zoom_degrees(50.0)  # clamped to max
+    assert dev.zoom_degrees == pytest.approx(35.0, abs=0.1)
+
+    # Shutter / Strobe (1 Hz to 25 Hz)
+    assert dev.strobe_hz == pytest.approx(1.0, abs=0.1)
+    dev.set_strobe_hz(13.0)  # midpoint
+    assert dev.strobe_hz == pytest.approx(13.0, abs=0.2)
+
+    # Add a CCT channel to test color temperature
+    cct_ch = Channel(
+        channel_type=ChannelType.COLOR_TEMP,
+        universe=1,
+        address=10,
+        physical_min=2700.0,
+        physical_max=6500.0,
+        physical_unit="K",
+    )
+    dev.add_channel(cct_ch)
+    assert dev.color_temp_kelvin == pytest.approx(2700.0, abs=10.0)
+    dev.set_color_temp_kelvin(4600.0)
+    assert dev.color_temp_kelvin == pytest.approx(4600.0, abs=30.0)
+
+
+def test_moving_head_builtin_library() -> None:
+    lib = populate_builtin_library()
+    spot_def = lib.get("Generic", "Moving Head Spot")
+    assert spot_def is not None
+    assert spot_def.fixture_type == FixtureType.MOVING_HEAD
+    assert spot_def.default_mode().footprint() == 8
+
+
+def test_physical_serialization() -> None:
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(
+        fixture_id=10, label="SerializedHead", universe=1, address=1
+    )
+    dev.set_position_degrees(45.0, -30.0)
+    dev.set_zoom_degrees(20.0)
+
+    data = dev.to_dict()
+    # Verify physical metadata exists in serialized dictionary
+    pan_dict = [
+        c for c in data["channels"] if c["channel_type"] == "pan" and not c["fine"]
+    ][0]
+    assert pan_dict["physical_min"] == -270.0
+    assert pan_dict["physical_max"] == 270.0
+    assert pan_dict["physical_unit"] == "deg"
+
+    # Restore from dict
+    restored = LightingDevice.from_dict(data)
+    assert restored.pan_degrees == pytest.approx(45.0, abs=0.05)
+    assert restored.tilt_degrees == pytest.approx(-30.0, abs=0.05)
+    assert restored.zoom_degrees == pytest.approx(20.0, abs=0.2)
+
+
+def test_gdtf_physical_adaptation() -> None:
+    importer = GdtfImporter()
+    gdtf_channel = {
+        "attribute": "Pan",
+        "offset": [1, 2],
+        "default": 0,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "attribute": "Pan",
+                        "dmx_from": 0,
+                        "dmx_to": 65535,
+                        "physical_from": -270.0,
+                        "physical_to": 270.0,
+                    }
+                ]
+            }
+        ],
+    }
+    cd = importer._adapt_channel(gdtf_channel)
+    assert cd is not None
+    assert cd.physical_min == -270.0
+    assert cd.physical_max == 270.0
+    assert cd.physical_unit == "deg"

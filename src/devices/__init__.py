@@ -19,6 +19,7 @@ Includes fixtures, color calibration, GDTF, and patch management.
 
 from .builtin import (
     create_dimmer_definition,
+    create_moving_head_definition,
     create_rgb_definition,
     create_rgba_definition,
     create_rgbw_definition,
@@ -73,6 +74,7 @@ __all__ = [
     "FixtureLibrary",
     # builtin
     "create_dimmer_definition",
+    "create_moving_head_definition",
     "create_rgb_definition",
     "create_rgbw_definition",
     "create_rgba_definition",

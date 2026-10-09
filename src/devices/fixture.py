@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class ChannelDefinition:
+class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
     """Relative channel template in a DMX mode.
 
     Uses a relative 0-based offset. The absolute address is determined
@@ -51,6 +51,9 @@ class ChannelDefinition:
     default_value: int = 0
     fine_offset: Optional[int] = None
     ranges: list[ChannelRange] = field(default_factory=list)
+    physical_min: float = 0.0
+    physical_max: float = 1.0
+    physical_unit: str = ""
 
     def __post_init__(self) -> None:
         self.label = self.label or self.channel_type.value
@@ -78,6 +81,9 @@ class ChannelDefinition:
                 default_value=self.default_value,
                 label=self.label,
                 ranges=list(self.ranges),
+                physical_min=self.physical_min,
+                physical_max=self.physical_max,
+                physical_unit=self.physical_unit,
             )
         ]
 
@@ -91,6 +97,9 @@ class ChannelDefinition:
                     default_value=0,
                     fine=True,
                     label=f"{self.label}_fine",
+                    physical_min=self.physical_min,
+                    physical_max=self.physical_max,
+                    physical_unit=self.physical_unit,
                 )
             )
 

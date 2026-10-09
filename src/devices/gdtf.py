@@ -67,6 +67,20 @@ GDTF_ATTRIBUTE_MAP: dict[str, ChannelType] = {
     "Effects1": ChannelType.MACRO,
     "ColorMacro1": ChannelType.MACRO,
     "Reset": ChannelType.RESET,
+    "ColorTemperature": ChannelType.COLOR_TEMP,
+    "CTC": ChannelType.COLOR_TEMP,
+    "CTC1": ChannelType.COLOR_TEMP,
+}
+
+GDTF_PHYSICAL_DEFAULTS: dict[ChannelType, tuple[float, float, str]] = {
+    ChannelType.PAN: (-270.0, 270.0, "deg"),
+    ChannelType.TILT: (-135.0, 135.0, "deg"),
+    ChannelType.ZOOM: (10.0, 40.0, "deg"),
+    ChannelType.STROBE: (1.0, 25.0, "Hz"),
+    ChannelType.FOCUS: (1.0, 50.0, "m"),
+    ChannelType.COLOR_TEMP: (2700.0, 6500.0, "K"),
+    ChannelType.INTENSITY: (0.0, 1.0, "%"),
+    ChannelType.IRIS: (0.0, 100.0, "%"),
 }
 
 _FIXTURE_TYPE_KEYWORDS: list[tuple[str, FixtureType]] = [
@@ -93,6 +107,27 @@ def _infer_fixture_type(name: str, description: str = "") -> FixtureType:
         if keyword in text:
             return ftype
     return FixtureType.GENERIC
+
+
+def _resolve_physical_bounds(
+    ch_type: ChannelType, p_from: object, p_to: object
+) -> tuple[float, float, str]:
+    def_min, def_max, def_unit = GDTF_PHYSICAL_DEFAULTS.get(ch_type, (0.0, 1.0, ""))
+    if isinstance(p_from, (int, float, str)) and isinstance(p_to, (int, float, str)):
+        try:
+            f_from = float(p_from)
+            f_to = float(p_to)
+            if (
+                ch_type in (ChannelType.PAN, ChannelType.TILT)
+                and f_from == 0.0
+                and f_to == 1.0
+            ):
+                return def_min, def_max, def_unit
+            if f_from != f_to:
+                return f_from, f_to, def_unit
+        except (ValueError, TypeError):
+            pass
+    return def_min, def_max, def_unit
 
 
 class GdtfImporter:
@@ -171,7 +206,9 @@ class GdtfImporter:
             name=getattr(mode, "name", "Default"), channel_defs=channel_defs
         )
 
-    def _adapt_channel(self, ch: dict[str, Any]) -> Optional[ChannelDefinition]:
+    def _adapt_channel(  # pylint: disable=too-many-locals
+        self, ch: dict[str, Any]
+    ) -> Optional[ChannelDefinition]:
         attr_name = ch.get("attribute", "NoFeature")
         if attr_name in ("NoFeature", ""):
             return None
@@ -196,13 +233,28 @@ class GdtfImporter:
             )
         ]
 
+        target_cf = (
+            real_functions[0]
+            if real_functions
+            else (all_functions[0] if all_functions else {})
+        )
+        p_from = target_cf.get("physical_from")
+        p_to = target_cf.get("physical_to")
+
         if len(real_functions) <= 1:
+            ch_type = _attr_to_channel_type(attr_name)
+            phys_min, phys_max, phys_unit = _resolve_physical_bounds(
+                ch_type, p_from, p_to
+            )
             return ChannelDefinition(
-                channel_type=_attr_to_channel_type(attr_name),
+                channel_type=ch_type,
                 offset=offset,
                 label=attr_name,
                 default_value=default_val,
                 fine_offset=fine_offset,
+                physical_min=phys_min,
+                physical_max=phys_max,
+                physical_unit=phys_unit,
             )
 
         ranges = [r for r in map(self._adapt_function, real_functions) if r is not None]
@@ -211,6 +263,7 @@ class GdtfImporter:
 
         types = {r.channel_type for r in ranges}
         ch_type = types.pop() if len(types) == 1 else ChannelType.GENERIC
+        phys_min, phys_max, phys_unit = _resolve_physical_bounds(ch_type, p_from, p_to)
 
         return ChannelDefinition(
             channel_type=ch_type,
@@ -219,6 +272,9 @@ class GdtfImporter:
             default_value=default_val,
             fine_offset=fine_offset,
             ranges=ranges,
+            physical_min=phys_min,
+            physical_max=phys_max,
+            physical_unit=phys_unit,
         )
 
     def _adapt_function(self, cf: dict[str, Any]) -> Optional[ChannelRange]:
@@ -230,16 +286,24 @@ class GdtfImporter:
         dmx_from = cf.get("dmx_from", 0)
         dmx_to = cf.get("dmx_to", 255)
         default = cf.get("default", dmx_from)
+        ch_type = _attr_to_channel_type(attr)
+
+        p_from = cf.get("physical_from")
+        p_to = cf.get("physical_to")
+        phys_min, phys_max, phys_unit = _resolve_physical_bounds(ch_type, p_from, p_to)
 
         snap_names = [cs["name"] for cs in cf.get("channel_sets", []) if cs.get("name")]
 
         return ChannelRange(
             label=name,
-            channel_type=_attr_to_channel_type(attr),
+            channel_type=ch_type,
             value_min=min(dmx_from, dmx_to),
             value_max=max(dmx_from, dmx_to),
             snap_value=default,
             description=", ".join(snap_names) if snap_names else name,
+            physical_min=phys_min,
+            physical_max=phys_max,
+            physical_unit=phys_unit,
         )
 
     @staticmethod

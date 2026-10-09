@@ -14,6 +14,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """DMX primitives: address, channel, channel range, and patched lighting device."""
 
+# pylint: disable=too-many-lines
+
 from __future__ import annotations
 
 import time
@@ -55,6 +57,7 @@ class ChannelType(Enum):
     PRISM = "prism"
     MACRO = "macro"
     RESET = "reset"
+    COLOR_TEMP = "color_temp"
     GENERIC = "generic"
 
 
@@ -122,7 +125,7 @@ class DmxAddress:
 
 
 @dataclass
-class ChannelRange:
+class ChannelRange:  # pylint: disable=too-many-instance-attributes
     """Sub-range of values on a channel associated with a semantic feature.
 
     Common examples:
@@ -139,6 +142,9 @@ class ChannelRange:
     value_max: int
     snap_value: Optional[int] = None
     description: str = ""
+    physical_min: Optional[float] = None
+    physical_max: Optional[float] = None
+    physical_unit: str = ""
 
     def __post_init__(self) -> None:
         if not (0 <= self.value_min <= 255 and 0 <= self.value_max <= 255):
@@ -211,6 +217,9 @@ class Channel:  # pylint: disable=too-many-instance-attributes
     fine: bool = False
     label: str = ""
     ranges: list[ChannelRange] = field(default_factory=list)
+    physical_min: float = 0.0
+    physical_max: float = 1.0
+    physical_unit: str = ""
 
     def __post_init__(self) -> None:
         DmxAddress(self.universe, self.address)  # Validate address bounds
@@ -272,6 +281,31 @@ class Channel:  # pylint: disable=too-many-instance-attributes
     def set_percent(self, percent: float) -> None:
         """Set level from percentage [0.0..100.0]."""
         self.value = round(max(0.0, min(100.0, percent)) / 100.0 * 255.0)
+
+    def dmx_to_physical(self, dmx_value: Optional[int] = None) -> float:
+        """Convert an 8-bit DMX value [0..255] to a physical value."""
+        val = self.value if dmx_value is None else max(0, min(255, dmx_value))
+        norm = val / 255.0
+        return self.physical_min + norm * (self.physical_max - self.physical_min)
+
+    def physical_to_dmx(self, physical_value: float) -> int:
+        """Convert a physical value to an 8-bit DMX value [0..255]."""
+        p_min = self.physical_min
+        p_max = self.physical_max
+        if p_max == p_min:
+            return 0
+        clamped = max(min(p_min, p_max), min(max(p_min, p_max), float(physical_value)))
+        norm = (clamped - p_min) / (p_max - p_min)
+        return round(norm * 255.0)
+
+    @property
+    def physical_value(self) -> float:
+        """Current channel level expressed in physical units."""
+        return self.dmx_to_physical()
+
+    def set_physical_value(self, physical_value: float) -> None:
+        """Set channel level from physical value."""
+        self.set_value(self.physical_to_dmx(physical_value))
 
     def reset(self) -> None:
         """Reset value to default value."""
@@ -616,23 +650,154 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     base_val = self._base_emitters.get(ch.channel_type, 0.0)
                     ch.set_value(round(base_val * 255.0))
 
-    # Position controls
+    # Physical and multi-resolution helpers
+    def _get_coarse_fine_channels(
+        self, channel_type: ChannelType
+    ) -> tuple[Optional[Channel], Optional[Channel]]:
+        """Get (coarse_channel, fine_channel) for the specified ChannelType."""
+        coarse_ch = self.get_channel(channel_type)
+        fine_ch = None
+        for ch in self.channels:
+            if ch.channel_type == channel_type and ch.fine:
+                fine_ch = ch
+                break
+        return coarse_ch, fine_ch
+
+    def _set_physical_parameter(self, channel_type: ChannelType, value: float) -> None:
+        """Set a parameter value using physical range (supports 8/16-bit)."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(channel_type)
+        if coarse_ch is None:
+            return
+
+        p_min = coarse_ch.physical_min
+        p_max = coarse_ch.physical_max
+        if p_max == p_min:
+            norm = 0.0
+        else:
+            clamped = max(min(p_min, p_max), min(max(p_min, p_max), float(value)))
+            norm = (clamped - p_min) / (p_max - p_min)
+
+        if fine_ch is not None:
+            val_16 = round(norm * 65535.0)
+            coarse_ch.set_value((val_16 >> 8) & 0xFF)
+            fine_ch.set_value(val_16 & 0xFF)
+        else:
+            val_8 = round(norm * 255.0)
+            coarse_ch.set_value(val_8)
+
+    def _get_physical_parameter(self, channel_type: ChannelType) -> Optional[float]:
+        """Get parameter value in physical units, reconstructing 16-bit if available."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(channel_type)
+        if coarse_ch is None:
+            return None
+
+        p_min = coarse_ch.physical_min
+        p_max = coarse_ch.physical_max
+
+        if fine_ch is not None:
+            raw_16 = (coarse_ch.value << 8) | fine_ch.value
+            norm = raw_16 / 65535.0
+        else:
+            norm = coarse_ch.value / 255.0
+
+        return p_min + norm * (p_max - p_min)
+
+    # Position controls (8-bit, 16-bit and physical degrees)
     def set_position(self, pan: int, tilt: int) -> None:
-        """Set pan and tilt coordinates."""
+        """Set pan and tilt coordinates (8-bit) [0..255]."""
         self.set_pan(pan)
         self.set_tilt(tilt)
 
+    def set_position_16bit(self, pan: int, tilt: int) -> None:
+        """Set pan and tilt coordinates (16-bit) [0..65535]."""
+        self.set_pan_16bit(pan)
+        self.set_tilt_16bit(tilt)
+
+    def set_position_degrees(self, pan: float, tilt: float) -> None:
+        """Set pan and tilt coordinates in physical degrees."""
+        self.set_pan_degrees(pan)
+        self.set_tilt_degrees(tilt)
+
     def set_pan(self, pan: int) -> None:
-        """Set pan coordinate [0..255]."""
-        ch = self.get_channel(ChannelType.PAN)
-        if ch:
-            ch.set_value(pan)
+        """Set pan coordinate (8-bit) [0..255]."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(ChannelType.PAN)
+        if coarse_ch:
+            coarse_ch.set_value(pan)
+        if fine_ch:
+            fine_ch.set_value(0)
+
+    def set_pan_16bit(self, pan: int) -> None:
+        """Set pan coordinate (16-bit) [0..65535]."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(ChannelType.PAN)
+        clamped = max(0, min(65535, int(pan)))
+        if fine_ch and coarse_ch:
+            coarse_ch.set_value((clamped >> 8) & 0xFF)
+            fine_ch.set_value(clamped & 0xFF)
+        elif coarse_ch:
+            coarse_ch.set_value(round(clamped / 65535.0 * 255.0))
 
     def set_tilt(self, tilt: int) -> None:
-        """Set tilt coordinate [0..255]."""
-        ch = self.get_channel(ChannelType.TILT)
-        if ch:
-            ch.set_value(tilt)
+        """Set tilt coordinate (8-bit) [0..255]."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(ChannelType.TILT)
+        if coarse_ch:
+            coarse_ch.set_value(tilt)
+        if fine_ch:
+            fine_ch.set_value(0)
+
+    def set_tilt_16bit(self, tilt: int) -> None:
+        """Set tilt coordinate (16-bit) [0..65535]."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(ChannelType.TILT)
+        clamped = max(0, min(65535, int(tilt)))
+        if fine_ch and coarse_ch:
+            coarse_ch.set_value((clamped >> 8) & 0xFF)
+            fine_ch.set_value(clamped & 0xFF)
+        elif coarse_ch:
+            coarse_ch.set_value(round(clamped / 65535.0 * 255.0))
+
+    def set_pan_degrees(self, angle: float) -> None:
+        """Set pan coordinate in physical degrees."""
+        self._set_physical_parameter(ChannelType.PAN, angle)
+
+    def set_tilt_degrees(self, angle: float) -> None:
+        """Set tilt coordinate in physical degrees."""
+        self._set_physical_parameter(ChannelType.TILT, angle)
+
+    @property
+    def pan_16bit(self) -> int:
+        """Return pan coordinate as 16-bit integer [0..65535]."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(ChannelType.PAN)
+        if not coarse_ch:
+            return 0
+        if fine_ch:
+            return (coarse_ch.value << 8) | fine_ch.value
+        return coarse_ch.value * 257
+
+    @property
+    def tilt_16bit(self) -> int:
+        """Return tilt coordinate as 16-bit integer [0..65535]."""
+        coarse_ch, fine_ch = self._get_coarse_fine_channels(ChannelType.TILT)
+        if not coarse_ch:
+            return 0
+        if fine_ch:
+            return (coarse_ch.value << 8) | fine_ch.value
+        return coarse_ch.value * 257
+
+    @property
+    def pan_degrees(self) -> float:
+        """Return pan coordinate in physical degrees."""
+        val = self._get_physical_parameter(ChannelType.PAN)
+        return val if val is not None else 0.0
+
+    @property
+    def tilt_degrees(self) -> float:
+        """Return tilt coordinate in physical degrees."""
+        val = self._get_physical_parameter(ChannelType.TILT)
+        return val if val is not None else 0.0
+
+    @property
+    def position_degrees(self) -> tuple[float, float]:
+        """Return (pan_degrees, tilt_degrees) tuple."""
+        return (self.pan_degrees, self.tilt_degrees)
 
     @property
     def pan_tilt(self) -> tuple[int, int]:
@@ -640,6 +805,45 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         pan_ch = self.get_channel(ChannelType.PAN)
         tilt_ch = self.get_channel(ChannelType.TILT)
         return (pan_ch.value if pan_ch else 0, tilt_ch.value if tilt_ch else 0)
+
+    # Optical controls (Zoom, Focus)
+    def set_zoom_degrees(self, angle: float) -> None:
+        """Set beam zoom angle in degrees."""
+        self._set_physical_parameter(ChannelType.ZOOM, angle)
+
+    @property
+    def zoom_degrees(self) -> Optional[float]:
+        """Return beam zoom angle in degrees, or None if no ZOOM channel."""
+        return self._get_physical_parameter(ChannelType.ZOOM)
+
+    def set_focus_meters(self, distance: float) -> None:
+        """Set focus distance in meters."""
+        self._set_physical_parameter(ChannelType.FOCUS, distance)
+
+    @property
+    def focus_meters(self) -> Optional[float]:
+        """Return focus distance in meters, or None if no FOCUS channel."""
+        return self._get_physical_parameter(ChannelType.FOCUS)
+
+    # Strobe frequency control
+    def set_strobe_hz(self, freq: float) -> None:
+        """Set strobe flash frequency in Hertz."""
+        self._set_physical_parameter(ChannelType.STROBE, freq)
+
+    @property
+    def strobe_hz(self) -> Optional[float]:
+        """Return strobe frequency in Hertz, or None if no STROBE channel."""
+        return self._get_physical_parameter(ChannelType.STROBE)
+
+    # Color temperature control (CCT)
+    def set_color_temp_kelvin(self, kelvin: float) -> None:
+        """Set correlated color temperature in Kelvin."""
+        self._set_physical_parameter(ChannelType.COLOR_TEMP, kelvin)
+
+    @property
+    def color_temp_kelvin(self) -> Optional[float]:
+        """Return color temperature in Kelvin, or None if no COLOR_TEMP channel."""
+        return self._get_physical_parameter(ChannelType.COLOR_TEMP)
 
     def blackout(self) -> None:
         """Set intensity to zero (blackout)."""
@@ -737,6 +941,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     "default_value": ch.default_value,
                     "fine": ch.fine,
                     "label": ch.label,
+                    "physical_min": ch.physical_min,
+                    "physical_max": ch.physical_max,
+                    "physical_unit": ch.physical_unit,
                     "ranges": [
                         {
                             "label": r.label,
@@ -745,6 +952,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                             "value_max": r.value_max,
                             "snap_value": r.snap_value,
                             "description": r.description,
+                            "physical_min": r.physical_min,
+                            "physical_max": r.physical_max,
+                            "physical_unit": r.physical_unit,
                         }
                         for r in ch.ranges
                     ],
@@ -766,6 +976,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     value_max=r["value_max"],
                     snap_value=r.get("snap_value"),
                     description=r.get("description", ""),
+                    physical_min=r.get("physical_min"),
+                    physical_max=r.get("physical_max"),
+                    physical_unit=r.get("physical_unit", ""),
                 )
                 for r in cd.get("ranges", [])
             ]
@@ -779,6 +992,9 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     fine=cd.get("fine", False),
                     label=cd.get("label", ""),
                     ranges=ranges,
+                    physical_min=cd.get("physical_min", 0.0),
+                    physical_max=cd.get("physical_max", 1.0),
+                    physical_unit=cd.get("physical_unit", ""),
                 )
             )
         device = cls(
