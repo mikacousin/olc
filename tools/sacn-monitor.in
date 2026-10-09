@@ -15,7 +15,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # pylint: disable=invalid-name,too-many-instance-attributes,too-many-locals
-# pylint: disable=wrong-spelling-in-comment,wrong-spelling-in-docstring
 # pylint: disable=no-name-in-module,no-member,protected-access
 # pylint: disable=too-many-statements,too-many-branches
 """sACN network and universe visualization tool using GTK4.

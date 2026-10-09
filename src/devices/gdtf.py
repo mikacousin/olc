@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=wrong-spelling-in-comment, wrong-spelling-in-docstring
 """GDTF (General Device Type Format, DIN SPEC 15800) import adapter."""
 
 from __future__ import annotations

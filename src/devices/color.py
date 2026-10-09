@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=wrong-spelling-in-comment, wrong-spelling-in-docstring
 """Color science module.
 
 Provides CIE xyY, XYZ, sRGB spaces, emitter profiles, and NNLS matching.

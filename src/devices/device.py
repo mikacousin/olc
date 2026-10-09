@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=wrong-spelling-in-comment, wrong-spelling-in-docstring
 """DMX primitives: address, channel, channel range, and patched lighting device."""
 
 from __future__ import annotations

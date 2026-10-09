@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=protected-access,wrong-spelling-in-comment,wrong-spelling-in-docstring
+# pylint: disable=protected-access
 import asyncio
 import contextlib
 import socket
@@ -23,6 +23,7 @@ from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from olc.core.backends.sacn import SacnManager
 from olc.core.backends.sacn.merge import MergeMode, SacnMerger
 from olc.core.backends.sacn.network import SacnNetwork, SacnProtocol

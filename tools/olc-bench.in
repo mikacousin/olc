@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# pylint: disable=wrong-spelling-in-comment,wrong-spelling-in-docstring
 # pylint: disable=broad-exception-caught,too-many-locals,invalid-name,unexpected-keyword-arg
 """Stress testing and benchmarking tool for OLC CoreEngine.
 

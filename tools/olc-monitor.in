@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-# pylint: disable=invalid-name, wrong-spelling-in-docstring, wrong-spelling-in-comment
+# pylint: disable=invalid-name
 import argparse
 import asyncio
 import collections

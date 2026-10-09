@@ -12,7 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=protected-access,unexpected-keyword-arg,import-outside-toplevel,wrong-spelling-in-comment
+# pylint: disable=protected-access,unexpected-keyword-arg,import-outside-toplevel
 import asyncio
 import ipaddress
 import socket
@@ -21,6 +21,7 @@ import typing
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from olc.core.backends.artnet import ArtNetManager
 from olc.core.backends.artnet.artnet import Discovery, Listeners, Sender
 from olc.core.backends.artnet.merge import ArtDmxMerger, MergeMode

@@ -14,8 +14,6 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Configuration for Pytest."""
 
-# pylint: disable=wrong-spelling-in-comment, wrong-spelling-in-docstring
-
 from __future__ import annotations
 
 import os

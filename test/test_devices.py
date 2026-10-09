@@ -12,7 +12,6 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-# pylint: disable=wrong-spelling-in-comment, wrong-spelling-in-docstring
 """Unit tests for the devices subsystem."""
 
 # pylint: disable=missing-function-docstring, redefined-outer-name
