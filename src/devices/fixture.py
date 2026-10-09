@@ -193,6 +193,7 @@ class FixtureDefinition:  # pylint: disable=too-many-instance-attributes
             channels=channels,
             group=group,
             notes=f"{self.full_name} — {mode.name}",
+            color_profile=self.color_profile,
         )
 
     @property

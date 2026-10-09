@@ -21,6 +21,7 @@ import pytest
 
 from olc.devices import (
     CIEXYZ,
+    COLOR_CHANNEL_TYPES,
     GDTF_ATTRIBUTE_MAP,
     HAS_PYGDTF,
     Channel,
@@ -268,6 +269,128 @@ def test_lighting_device_osc_and_serialization() -> None:
     int_ch = restored.get_channel(ChannelType.INTENSITY)
     assert int_ch is not None
     assert int_ch.value == c_int.value
+    assert restored.intensity_8bit == 204
+
+
+def test_lighting_device_virtual_dimmer() -> None:
+    c_r = Channel(ChannelType.RED, universe=1, address=1)
+    c_g = Channel(ChannelType.GREEN, universe=1, address=2)
+    c_b = Channel(ChannelType.BLUE, universe=1, address=3)
+    dev = LightingDevice(
+        fixture_id=20,
+        label="LED Bar",
+        fixture_type=FixtureType.LED_PAR,
+        channels=[c_r, c_g, c_b],
+    )
+
+    assert not dev.has_physical_dimmer
+    assert dev.uses_virtual_dimmer
+    assert len(COLOR_CHANNEL_TYPES) >= 3
+
+    # Default virtual dimmer is 1.0 (open)
+    assert dev.intensity == 1.0
+    assert dev.intensity_percent == 100.0
+
+    # Setting color at full intensity outputs full DMX values
+    dev.set_color_rgb(255, 128, 0)
+    assert c_r.value == 255
+    assert c_g.value == 128
+    assert c_b.value == 0
+    assert dev.color_rgb == (255, 128, 0)
+
+    # Dimming down to 50% scales outputs but preserves base color
+    dev.set_intensity(0.5)
+    assert dev.intensity == 0.5
+    assert dev.intensity_percent == 50.0
+    assert c_r.value == 128
+    assert c_g.value == 64
+    assert c_b.value == 0
+    assert dev.color_rgb == (255, 128, 0)
+
+    # Dimming down to 0% zeroes DMX outputs while keeping base color
+    dev.set_intensity(0.0)
+    assert c_r.value == 0
+    assert c_g.value == 0
+    assert c_b.value == 0
+    assert dev.color_rgb == (255, 128, 0)
+
+    # Restoring intensity restores exact DMX output
+    dev.set_intensity(1.0)
+    assert c_r.value == 255
+    assert c_g.value == 128
+    assert c_b.value == 0
+
+    # Setting color while dimmed scales correctly
+    dev.set_intensity(0.5)
+    dev.set_color_hex("#00FF00")
+    assert dev.color_rgb == (0, 255, 0)
+    assert c_r.value == 0
+    assert c_g.value == 128
+    assert c_b.value == 0
+
+    # Blackout zeroes output
+    dev.blackout()
+    assert dev.intensity == 0.0
+    assert c_g.value == 0
+
+
+def test_lighting_device_normalized_intensity() -> None:
+    c_coarse = Channel(ChannelType.INTENSITY, universe=1, address=1, fine=False)
+    c_fine = Channel(ChannelType.INTENSITY, universe=1, address=2, fine=True)
+    dev = LightingDevice(
+        fixture_id=21,
+        label="Dim 16b",
+        fixture_type=FixtureType.DIMMER,
+        channels=[c_coarse, c_fine],
+    )
+
+    assert dev.has_physical_dimmer
+    assert dev.has_16bit_dimmer
+    assert not dev.uses_virtual_dimmer
+
+    # Set normalized float [0.0, 1.0]
+    dev.set_intensity(0.5)
+    assert dev.intensity == 0.5
+    assert dev.intensity_percent == 50.0
+    assert c_coarse.value == 0x80
+    assert c_fine.value == 0x00
+
+    # Set 16-bit integer directly
+    dev.set_intensity_16bit(0xABCD)
+    assert c_coarse.value == 0xAB
+    assert c_fine.value == 0xCD
+    assert dev.intensity_16bit == 0xABCD
+
+    # Set 8-bit integer compatibility (> 1 auto-detection)
+    dev.set_intensity(128)
+    assert dev.intensity == pytest.approx(128 / 255.0, abs=1e-3)
+
+
+def test_lighting_device_with_color_profile() -> None:
+    profile = profile_from_emitters(
+        "RGB_Calibrated",
+        [
+            ("Red", 0.640, 0.330, 21.26, 625.0),
+            ("Green", 0.300, 0.600, 71.52, 525.0),
+            ("Blue", 0.150, 0.060, 7.22, 465.0),
+        ],
+    )
+    c_r = Channel(ChannelType.RED, universe=1, address=1)
+    c_g = Channel(ChannelType.GREEN, universe=1, address=2)
+    c_b = Channel(ChannelType.BLUE, universe=1, address=3)
+    dev = LightingDevice(
+        fixture_id=22,
+        label="Calibrated PAR",
+        fixture_type=FixtureType.LED_PAR,
+        channels=[c_r, c_g, c_b],
+        color_profile=profile,
+    )
+
+    dev.set_intensity(1.0)
+    dev.set_color_cie(0.640, 0.330, 21.26)
+    assert c_r.value > 200
+    assert c_g.value == 0
+    assert c_b.value == 0
 
 
 # ---------------------------------------------------------------------------

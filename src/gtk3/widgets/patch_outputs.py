@@ -19,7 +19,6 @@ import typing
 import cairo
 from gi.repository import Gdk, Gtk
 
-from olc.curve import LimitCurve
 from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
 

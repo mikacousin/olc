@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+# pylint: disable=wrong-spelling-in-comment, wrong-spelling-in-docstring
 """DMX primitives: address, channel, channel range, and patched lighting device."""
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
+
+from .color import CIExyY, ColorMatcher, FixtureColorProfile, sRGB
 
 
 class FixtureType(Enum):
@@ -54,6 +57,17 @@ class ChannelType(Enum):
     MACRO = "macro"
     RESET = "reset"
     GENERIC = "generic"
+
+
+COLOR_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
+    {
+        ChannelType.RED,
+        ChannelType.GREEN,
+        ChannelType.BLUE,
+        ChannelType.WHITE,
+        ChannelType.AMBER,
+    }
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -320,6 +334,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         channels: Optional[list[Channel]] = None,
         group: str = "",
         notes: str = "",
+        color_profile: Optional[FixtureColorProfile] = None,
     ) -> None:
         self.fixture_id = fixture_id
         self.label = label
@@ -327,13 +342,32 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self.channels: list[Channel] = channels or []
         self.group = group
         self.notes = notes
+        self.color_profile = color_profile
         self._enabled = True
         self._locked = False
         self._created_at = time.time()
 
+        # Virtual controls and normalized states
+        self._intensity: float = 0.0 if self.has_physical_dimmer else 1.0
+        self._target_color: sRGB = sRGB(1.0, 1.0, 1.0)
+        self._target_cie: CIExyY = CIExyY(0.3127, 0.3290, 100.0)
+        self._base_emitters: dict[ChannelType, float] = {}
+        self._init_base_emitters()
+
+    def _init_base_emitters(self) -> None:
+        """Initialize base emitter levels to open white."""
+        for ch in self.channels:
+            if ch.channel_type in COLOR_CHANNEL_TYPES:
+                self._base_emitters[ch.channel_type] = 1.0
+
     def add_channel(self, channel: Channel) -> LightingDevice:
         """Add a Channel to this device."""
         self.channels.append(channel)
+        if channel.channel_type in COLOR_CHANNEL_TYPES:
+            if channel.channel_type not in self._base_emitters:
+                self._base_emitters[channel.channel_type] = 1.0
+        if channel.channel_type == ChannelType.INTENSITY:
+            self._intensity = 0.0
         return self
 
     def get_channel(self, channel_type: ChannelType) -> Optional[Channel]:
@@ -381,57 +415,250 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             return "unpatched"
         return " | ".join(f"U{u}:{s}-{e}" for u, (s, e) in fp.items())
 
-    # High-level controls
-    def set_intensity(self, value: int) -> None:
-        """Set primary intensity channel value."""
-        ch = self.get_channel(ChannelType.INTENSITY)
-        if ch:
-            ch.set_value(value)
+    # Dimmer and virtual dimmer properties
+    @property
+    def has_physical_dimmer(self) -> bool:
+        """True if the device has at least one physical INTENSITY channel."""
+        return any(ch.channel_type == ChannelType.INTENSITY for ch in self.channels)
+
+    @property
+    def has_16bit_dimmer(self) -> bool:
+        """True if the physical dimmer is 16-bit (coarse + fine)."""
+        return any(
+            ch.channel_type == ChannelType.INTENSITY and ch.fine for ch in self.channels
+        )
+
+    @property
+    def uses_virtual_dimmer(self) -> bool:
+        """True if fixture has color emitters but no physical INTENSITY channel."""
+        return not self.has_physical_dimmer and any(
+            ch.channel_type in COLOR_CHANNEL_TYPES for ch in self.channels
+        )
+
+    # Intensity controls [0.0, 1.0]
+    @property
+    def intensity(self) -> float:
+        """Normalized intensity level in range [0.0, 1.0]."""
+        return self._intensity
+
+    @property
+    def intensity_8bit(self) -> int:
+        """Intensity level as an 8-bit integer in range [0..255]."""
+        return round(self._intensity * 255.0)
+
+    @property
+    def intensity_16bit(self) -> int:
+        """Intensity level as a 16-bit integer in range [0..65535]."""
+        return round(self._intensity * 65535.0)
+
+    @property
+    def intensity_percent(self) -> float:
+        """Intensity level as a percentage in range [0.0..100.0]."""
+        return round(self._intensity * 100.0, 1)
+
+    def set_intensity(self, value: float | int) -> None:
+        """Set intensity level.
+
+        Accepts normalized float [0.0, 1.0] or 8-bit int [0..255].
+        Values > 1.0 are treated as 8-bit integers and normalized.
+        """
+        if isinstance(value, (int, float)) and value > 1.0:
+            norm_val = max(0.0, min(1.0, float(value) / 255.0))
+        else:
+            norm_val = max(0.0, min(1.0, float(value)))
+        self._intensity = norm_val
+        self._apply_intensity()
+
+    def set_intensity_8bit(self, value: int) -> None:
+        """Set intensity from 8-bit integer [0..255]."""
+        self.set_intensity(max(0, min(255, value)) / 255.0)
+
+    def set_intensity_16bit(self, value: int) -> None:
+        """Set intensity from 16-bit integer [0..65535]."""
+        clamped = max(0, min(65535, value))
+        self._intensity = clamped / 65535.0
+        self._apply_intensity()
 
     def set_intensity_percent(self, percent: float) -> None:
-        """Set primary intensity channel percentage."""
-        ch = self.get_channel(ChannelType.INTENSITY)
-        if ch:
-            ch.set_percent(percent)
+        """Set intensity from percentage [0.0..100.0]."""
+        self.set_intensity(max(0.0, min(100.0, percent)) / 100.0)
+
+    def _apply_intensity(self) -> None:
+        """Propagate current intensity to DMX channels."""
+        if self.has_physical_dimmer:
+            coarse_ch = self.get_channel(ChannelType.INTENSITY)
+            fine_ch = None
+            for ch in self.channels:
+                if ch.channel_type == ChannelType.INTENSITY and ch.fine:
+                    fine_ch = ch
+                    break
+
+            if fine_ch is not None and coarse_ch is not None:
+                val_16 = round(self._intensity * 65535.0)
+                coarse_ch.set_value((val_16 >> 8) & 0xFF)
+                fine_ch.set_value(val_16 & 0xFF)
+            elif coarse_ch is not None:
+                coarse_ch.set_value(round(self._intensity * 255.0))
+        elif self.uses_virtual_dimmer:
+            self._apply_virtual_dimmer()
+
+    def _apply_virtual_dimmer(self) -> None:
+        """Scale base emitter levels by current intensity and update DMX channels."""
+        for ch in self.channels:
+            if ch.channel_type in COLOR_CHANNEL_TYPES:
+                base_val = self._base_emitters.get(ch.channel_type, 0.0)
+                scaled_dmx = round(base_val * self._intensity * 255.0)
+                ch.set_value(max(0, min(255, scaled_dmx)))
+
+    # Color controls
+    @property
+    def color_rgb(self) -> tuple[int, int, int]:
+        """Return (r, g, b) tuple [0..255] of base target color."""
+        return self._target_color.to_255()
+
+    @property
+    def color_srgb(self) -> sRGB:
+        """Return target color as normalized sRGB instance."""
+        return self._target_color
+
+    @property
+    def color_cie(self) -> CIExyY:
+        """Return target color as CIE xyY chromaticity."""
+        return self._target_cie
+
+    def set_color_srgb(self, r: float, g: float, b: float) -> None:
+        """Set color from normalized sRGB components [0.0, 1.0]."""
+        r_norm = max(0.0, min(1.0, float(r)))
+        g_norm = max(0.0, min(1.0, float(g)))
+        b_norm = max(0.0, min(1.0, float(b)))
+        self._target_color = sRGB(r_norm, g_norm, b_norm)
+        self._target_cie = self._target_color.to_XYZ().to_xyY()
+
+        if self.color_profile is not None:
+            self._solve_emitters_from_cie(self._target_cie)
+        else:
+            self._base_emitters[ChannelType.RED] = r_norm
+            self._base_emitters[ChannelType.GREEN] = g_norm
+            self._base_emitters[ChannelType.BLUE] = b_norm
+        self._apply_color()
+
+    def set_color_rgb(self, r: int, g: int, b: int) -> None:
+        """Set color from 8-bit integer RGB components [0..255]."""
+        self.set_color_srgb(r / 255.0, g / 255.0, b / 255.0)
+
+    def set_color_hex(self, hex_str: str) -> None:
+        """Set color from HTML hex string (#RRGGBB)."""
+        c = sRGB.from_hex(hex_str)
+        self.set_color_srgb(c.r, c.g, c.b)
+
+    def set_color_cie(
+        self,
+        x: float,
+        y: float,
+        Y: float = 100.0,  # pylint: disable=invalid-name
+    ) -> None:
+        """Set color from CIE xyY chromaticity coordinates."""
+        self._target_cie = CIExyY(x, y, Y)
+        srgb = self._target_cie.to_XYZ().to_srgb()
+        self._target_color = srgb
+        if self.color_profile is not None:
+            self._solve_emitters_from_cie(self._target_cie)
+        else:
+            self._base_emitters[ChannelType.RED] = srgb.r
+            self._base_emitters[ChannelType.GREEN] = srgb.g
+            self._base_emitters[ChannelType.BLUE] = srgb.b
+        self._apply_color()
 
     def set_color(self, r: int, g: int, b: int, w: int = 0, a: int = 0) -> None:
-        """Set color emitter channel values."""
-        for ch_type, val in (
-            (ChannelType.RED, r),
-            (ChannelType.GREEN, g),
-            (ChannelType.BLUE, b),
-            (ChannelType.WHITE, w),
-            (ChannelType.AMBER, a),
-        ):
-            ch = self.get_channel(ch_type)
-            if ch:
-                ch.set_value(val)
+        """Set color emitter channel values directly [0..255]."""
+        r_norm = max(0, min(255, r)) / 255.0
+        g_norm = max(0, min(255, g)) / 255.0
+        b_norm = max(0, min(255, b)) / 255.0
+        w_norm = max(0, min(255, w)) / 255.0
+        a_norm = max(0, min(255, a)) / 255.0
 
+        self._base_emitters[ChannelType.RED] = r_norm
+        self._base_emitters[ChannelType.GREEN] = g_norm
+        self._base_emitters[ChannelType.BLUE] = b_norm
+        self._base_emitters[ChannelType.WHITE] = w_norm
+        self._base_emitters[ChannelType.AMBER] = a_norm
+
+        self._target_color = sRGB(r_norm, g_norm, b_norm)
+        self._target_cie = self._target_color.to_XYZ().to_xyY()
+        self._apply_color()
+
+    def _solve_emitters_from_cie(self, cie: CIExyY) -> None:
+        """Calculate emitter fractions using NNLS ColorMatcher."""
+        if self.color_profile is None:
+            return
+        matcher = ColorMatcher([self.color_profile])
+        matches = matcher.match_cie(cie.x, cie.y, cie.Y)
+        result = matches.get(self.color_profile.fixture_name)
+        if result:
+            name_map = {
+                "red": ChannelType.RED,
+                "green": ChannelType.GREEN,
+                "blue": ChannelType.BLUE,
+                "white": ChannelType.WHITE,
+                "amber": ChannelType.AMBER,
+            }
+            for emitter_name, dmx_val in result.as_dict().items():
+                ctype = name_map.get(emitter_name.lower())
+                if ctype:
+                    self._base_emitters[ctype] = dmx_val / 255.0
+
+    def _apply_color(self) -> None:
+        """Apply base emitters to DMX channels."""
+        if self.uses_virtual_dimmer:
+            self._apply_virtual_dimmer()
+        else:
+            for ch in self.channels:
+                if ch.channel_type in COLOR_CHANNEL_TYPES:
+                    base_val = self._base_emitters.get(ch.channel_type, 0.0)
+                    ch.set_value(round(base_val * 255.0))
+
+    # Position controls
     def set_position(self, pan: int, tilt: int) -> None:
         """Set pan and tilt coordinates."""
-        for ch_type, val in ((ChannelType.PAN, pan), (ChannelType.TILT, tilt)):
-            ch = self.get_channel(ch_type)
-            if ch:
-                ch.set_value(val)
+        self.set_pan(pan)
+        self.set_tilt(tilt)
+
+    def set_pan(self, pan: int) -> None:
+        """Set pan coordinate [0..255]."""
+        ch = self.get_channel(ChannelType.PAN)
+        if ch:
+            ch.set_value(pan)
+
+    def set_tilt(self, tilt: int) -> None:
+        """Set tilt coordinate [0..255]."""
+        ch = self.get_channel(ChannelType.TILT)
+        if ch:
+            ch.set_value(tilt)
+
+    @property
+    def pan_tilt(self) -> tuple[int, int]:
+        """Return (pan, tilt) tuple [0..255]."""
+        pan_ch = self.get_channel(ChannelType.PAN)
+        tilt_ch = self.get_channel(ChannelType.TILT)
+        return (pan_ch.value if pan_ch else 0, tilt_ch.value if tilt_ch else 0)
 
     def blackout(self) -> None:
-        """Set intensity and color emitter channels to zero."""
-        light_types = {
-            ChannelType.INTENSITY,
-            ChannelType.RED,
-            ChannelType.GREEN,
-            ChannelType.BLUE,
-            ChannelType.WHITE,
-            ChannelType.AMBER,
-        }
-        for ch in self.channels:
-            if ch.channel_type in light_types:
-                ch.set_value(0)
+        """Set intensity to zero (blackout)."""
+        self.set_intensity(0.0)
+
+    def reset(self) -> None:
+        """Reset device to initial state."""
+        self.reset_all()
 
     def reset_all(self) -> None:
         """Reset all channels to default values."""
         for ch in self.channels:
             ch.reset()
+        self._intensity = 0.0 if self.has_physical_dimmer else 1.0
+        self._target_color = sRGB(0.0, 0.0, 0.0)
+        self._target_cie = CIExyY(0.3127, 0.3290, 0.0)
+        for k in self._base_emitters:
+            self._base_emitters[k] = 0.0
 
     def activate_range(self, channel_label: str, range_label: str) -> None:
         """Activate range on channel specified by label."""
@@ -463,8 +690,12 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         return f"{base}/{sub_path.lstrip('/')}" if sub_path else base
 
     def to_osc_bundle(self) -> list[tuple[str, int]]:
-        """Generate OSC address/value pairs for all channels."""
-        return [(self.osc_address(ch.label), ch.value) for ch in self.channels]
+        """Generate OSC address/value pairs for all channels and intensity."""
+        bundle: list[tuple[str, int]] = [
+            (self.osc_address("intensity"), round(self.intensity_percent))
+        ]
+        bundle.extend((self.osc_address(ch.label), ch.value) for ch in self.channels)
+        return bundle
 
     def describe_channels(self) -> str:
         """Return textual description of all channels and ranges."""
@@ -493,6 +724,11 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "group": self.group,
             "notes": self.notes,
             "enabled": self._enabled,
+            "intensity": self._intensity,
+            "target_color": self._target_color.to_hex(),
+            "base_emitters": {
+                ch_type.value: val for ch_type, val in self._base_emitters.items()
+            },
             "channels": [
                 {
                     "channel_type": ch.channel_type.value,
@@ -555,6 +791,16 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             notes=data.get("notes", ""),
         )
         device._enabled = data.get("enabled", True)
+        if "intensity" in data:
+            device.set_intensity(data["intensity"])
+        if "target_color" in data:
+            device.set_color_hex(data["target_color"])
+        if "base_emitters" in data:
+            device._base_emitters = {
+                ChannelType(k): float(v) for k, v in data["base_emitters"].items()
+            }
+            if device.uses_virtual_dimmer:
+                device._apply_virtual_dimmer()
         return device
 
     @property

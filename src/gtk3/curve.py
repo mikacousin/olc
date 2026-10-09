@@ -20,6 +20,7 @@ from typing import Callable, Optional
 
 import cairo
 from gi.repository import Gdk, Gtk
+
 from olc.curve import InterpolateCurve, LimitCurve, PointsCurve, SegmentsCurve
 from olc.gtk3.patch_outputs import PatchOutputsTab
 from olc.gtk3.widgets.curve import CurveWidget, get_curve_display_name
@@ -28,6 +29,7 @@ from olc.gtk3.widgets.edit_curve import EditCurveWidget
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.lightshow import LightShow
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window

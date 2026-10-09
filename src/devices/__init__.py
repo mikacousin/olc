@@ -38,6 +38,7 @@ from .color import (
     sRGB,
 )
 from .device import (
+    COLOR_CHANNEL_TYPES,
     Channel,
     ChannelRange,
     ChannelType,
@@ -65,6 +66,7 @@ __all__ = [
     "Channel",
     "FixtureType",
     "LightingDevice",
+    "COLOR_CHANNEL_TYPES",
     # fixture
     "ChannelDefinition",
     "DmxModeDefinition",
