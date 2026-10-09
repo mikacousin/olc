@@ -168,7 +168,7 @@ def create_rgba_definition() -> FixtureDefinition:
 
 def create_moving_head_definition() -> FixtureDefinition:
     """Create a generic moving head spot fixture definition with physical ranges."""
-    mode = DmxModeDefinition(
+    mode_16bit = DmxModeDefinition(
         name="Standard 8ch",
         channel_defs=[
             ChannelDefinition(
@@ -218,12 +218,67 @@ def create_moving_head_definition() -> FixtureDefinition:
         description="Standard 8-channel generic moving head spot",
     )
 
+    mode_24bit = DmxModeDefinition(
+        name="Extended 24-bit 11ch",
+        channel_defs=[
+            ChannelDefinition(
+                ChannelType.PAN,
+                offset=0,
+                fine_offset=1,
+                ultra_fine_offset=2,
+                label="Pan",
+                physical_min=-270.0,
+                physical_max=270.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.TILT,
+                offset=3,
+                fine_offset=4,
+                ultra_fine_offset=5,
+                label="Tilt",
+                physical_min=-135.0,
+                physical_max=135.0,
+                physical_unit="deg",
+            ),
+            ChannelDefinition(
+                ChannelType.INTENSITY,
+                offset=6,
+                fine_offset=7,
+                ultra_fine_offset=8,
+                label="Dimmer",
+                physical_min=0.0,
+                physical_max=1.0,
+                physical_unit="%",
+            ),
+            ChannelDefinition(
+                ChannelType.STROBE,
+                offset=9,
+                label="Shutter",
+                physical_min=1.0,
+                physical_max=25.0,
+                physical_unit="Hz",
+            ),
+            ChannelDefinition(
+                ChannelType.ZOOM,
+                offset=10,
+                label="Zoom",
+                physical_min=10.0,
+                physical_max=35.0,
+                physical_unit="deg",
+            ),
+        ],
+        description=(
+            "Extended 11-channel generic moving head spot with 24-bit Pan/Tilt/Dimmer"
+        ),
+    )
+
     return FixtureDefinition(
         manufacturer="Generic",
         model="Moving Head Spot",
         fixture_type=FixtureType.MOVING_HEAD,
-        dmx_modes=[mode],
-        notes="Generic moving head spot with 16-bit Pan/Tilt/Dimmer",
+        dmx_modes=[mode_16bit, mode_24bit],
+        notes="Generic moving head spot with 16-bit and 24-bit modes",
     )
 
 

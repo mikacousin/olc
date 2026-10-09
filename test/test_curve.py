@@ -239,3 +239,16 @@ def test_normalized_points() -> None:
     assert len(norm) == 3
     assert norm[1][0] == pytest.approx(0.5, abs=0.01)
     assert norm[1][1] == pytest.approx(0.25, abs=0.01)
+
+
+def test_evaluate_24bit() -> None:
+    linear = LinearCurve()
+    assert linear.get_level_24bit(0) == 0
+    assert linear.get_level_24bit(8388608) == 8388608
+    assert linear.get_level_24bit(16777215) == 16777215
+    assert linear.evaluate_24bit(16777215) == 16777215
+
+    sq = SquareRootCurve()
+    assert sq.get_level_24bit(0) == 0
+    assert sq.get_level_24bit(4194304) == pytest.approx(8388608, abs=2)
+    assert sq.get_level_24bit(16777215) == 16777215

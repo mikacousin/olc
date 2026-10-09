@@ -50,6 +50,7 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
     label: str = ""
     default_value: int = 0
     fine_offset: Optional[int] = None
+    ultra_fine_offset: Optional[int] = None
     ranges: list[ChannelRange] = field(default_factory=list)
     physical_min: float = 0.0
     physical_max: float = 1.0
@@ -61,7 +62,8 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
     def to_channel(self, universe: int, base_address: int) -> list[Channel]:
         """Instantiate this template into absolute Channel instance(s).
 
-        Returns 2 channels if fine_offset is specified (16-bit coarse + fine).
+        Returns 2 channels if fine_offset is specified (16-bit coarse + fine),
+        or 3 channels if ultra_fine_offset is also specified (24-bit).
         Automatically handles universe overflows when address exceeds 512.
         """
 
@@ -103,6 +105,23 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                 )
             )
 
+        if self.ultra_fine_offset is not None:
+            uu, au = resolve(universe, base_address + self.ultra_fine_offset)
+            channels.append(
+                Channel(
+                    channel_type=self.channel_type,
+                    universe=uu,
+                    address=au,
+                    default_value=0,
+                    fine=False,
+                    ultra_fine=True,
+                    label=f"{self.label}_ultra_fine",
+                    physical_min=self.physical_min,
+                    physical_max=self.physical_max,
+                    physical_unit=self.physical_unit,
+                )
+            )
+
         return channels
 
 
@@ -115,16 +134,22 @@ class DmxModeDefinition:
     description: str = ""
 
     def channel_count(self) -> int:
-        """Total number of channels including 16-bit fine channels."""
+        """Total number of channels including fine and ultra-fine channels."""
         count = len(self.channel_defs)
         count += sum(1 for cd in self.channel_defs if cd.fine_offset is not None)
+        count += sum(1 for cd in self.channel_defs if cd.ultra_fine_offset is not None)
         return count
 
     def footprint(self) -> int:
-        """Footprint: highest offset + 1 (including fine channels)."""
+        """Footprint: highest offset + 1 (including fine and ultra-fine channels)."""
         offsets = [cd.offset for cd in self.channel_defs]
         offsets += [
             cd.fine_offset for cd in self.channel_defs if cd.fine_offset is not None
+        ]
+        offsets += [
+            cd.ultra_fine_offset
+            for cd in self.channel_defs
+            if cd.ultra_fine_offset is not None
         ]
         return max(offsets) + 1 if offsets else 0
 

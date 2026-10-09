@@ -786,3 +786,152 @@ def test_gdtf_physical_adaptation() -> None:
     assert cd.physical_min == -270.0
     assert cd.physical_max == 270.0
     assert cd.physical_unit == "deg"
+
+
+def test_channel_definition_24bit() -> None:
+    cd = ChannelDefinition(
+        ChannelType.PAN,
+        offset=0,
+        fine_offset=1,
+        ultra_fine_offset=2,
+        label="Pan",
+        physical_min=-270.0,
+        physical_max=270.0,
+        physical_unit="deg",
+    )
+    channels = cd.to_channel(universe=1, base_address=1)
+    assert len(channels) == 3
+    coarse, fine, ultra = channels[0], channels[1], channels[2]
+    assert coarse.is_coarse and not coarse.is_fine and not coarse.is_ultra_fine
+    assert coarse.resolution_byte_index == 0
+    assert fine.is_fine and not fine.is_coarse and not fine.is_ultra_fine
+    assert fine.resolution_byte_index == 1
+    assert ultra.is_ultra_fine and not ultra.is_coarse and not ultra.is_fine
+    assert ultra.resolution_byte_index == 2
+    assert ultra.label == "Pan_ultra_fine"
+    assert ultra.address == 3
+
+
+def test_moving_head_24bit_mode() -> None:
+    fix_def = create_moving_head_definition()
+    assert len(fix_def.dmx_modes) == 2
+    mode_24 = fix_def.get_mode("Extended 24-bit 11ch")
+    assert mode_24.channel_count() == 11
+    assert mode_24.footprint() == 11
+
+    dev = fix_def.instantiate(
+        fixture_id=1,
+        label="MH24",
+        universe=1,
+        address=1,
+        mode_name="Extended 24-bit 11ch",
+    )
+    assert dev.channel_count() == 11
+    assert dev.has_physical_dimmer
+    assert dev.has_16bit_dimmer
+    assert dev.has_24bit_dimmer
+
+
+def test_lighting_device_24bit_controls() -> None:
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(
+        fixture_id=1,
+        label="MH24",
+        universe=1,
+        address=1,
+        mode_name="Extended 24-bit 11ch",
+    )
+
+    # 1. Intensity 24-bit
+    dev.set_intensity_24bit(0)
+    assert dev.intensity_24bit == 0
+    dim_coarse = dev.get_channel(ChannelType.INTENSITY)
+    assert dim_coarse is not None
+    dim_fine = [
+        c for c in dev.channels if c.channel_type == ChannelType.INTENSITY and c.fine
+    ][0]
+    dim_ultra = [
+        c
+        for c in dev.channels
+        if c.channel_type == ChannelType.INTENSITY and c.ultra_fine
+    ][0]
+    assert dim_coarse.value == 0
+    assert dim_fine.value == 0
+    assert dim_ultra.value == 0
+
+    # Half intensity in 24-bit: 8388608 -> coarse=128, fine=0, ultra=0
+    dev.set_intensity_24bit(8388608)
+    assert dim_coarse.value == 128
+    assert dim_fine.value == 0
+    assert dim_ultra.value == 0
+    assert dev.intensity_24bit == 8388608
+
+    # Arbitrary 24-bit value: 0x123456 = 1193046
+    dev.set_intensity_24bit(0x123456)
+    assert dim_coarse.value == 0x12
+    assert dim_fine.value == 0x34
+    assert dim_ultra.value == 0x56
+    assert dev.intensity_24bit == 0x123456
+
+    # 2. Pan and Tilt 24-bit
+    dev.set_position_24bit(0xABCDEF, 0x112233)
+    assert dev.pan_24bit == 0xABCDEF
+    assert dev.tilt_24bit == 0x112233
+    assert dev.position_24bit == (0xABCDEF, 0x112233)
+
+    # 3. 24-bit physical degrees
+    # Center 0.0 deg for Pan (-270 to +270) -> norm=0.5 -> 0x800000 = 8388608
+    dev.set_position_degrees(0.0, 0.0)
+    assert dev.pan_24bit == 8388608
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.0001)
+    assert dev.tilt_degrees == pytest.approx(0.0, abs=0.0001)
+
+    # Micro-angle shift: +1.0 deg
+    dev.set_pan_degrees(1.0)
+    assert dev.pan_degrees == pytest.approx(1.0, abs=0.0001)
+
+
+def test_24bit_serialization() -> None:
+    fix_def = create_moving_head_definition()
+    dev = fix_def.instantiate(
+        fixture_id=5,
+        label="Spot24",
+        universe=1,
+        address=1,
+        mode_name="Extended 24-bit 11ch",
+    )
+    dev.set_pan_24bit(0xFEDCBA)
+    dev.set_intensity_24bit(0x654321)
+
+    data = dev.to_dict()
+    restored = LightingDevice.from_dict(data)
+    assert restored.has_24bit_dimmer
+    assert restored.pan_24bit == 0xFEDCBA
+    assert restored.intensity_24bit == 0x654321
+
+
+def test_gdtf_24bit_adaptation() -> None:
+    importer = GdtfImporter()
+    gdtf_channel = {
+        "attribute": "Pan",
+        "offset": [1, 2, 3],
+        "default": 0,
+        "logical_channels": [
+            {
+                "channel_functions": [
+                    {
+                        "attribute": "Pan",
+                        "dmx_from": 0,
+                        "dmx_to": 16777215,
+                        "physical_from": -270.0,
+                        "physical_to": 270.0,
+                    }
+                ]
+            }
+        ],
+    }
+    cd = importer._adapt_channel(gdtf_channel)
+    assert cd is not None
+    assert cd.offset == 0
+    assert cd.fine_offset == 1
+    assert cd.ultra_fine_offset == 2

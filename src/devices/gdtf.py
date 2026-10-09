@@ -216,6 +216,7 @@ class GdtfImporter:
         offsets = ch.get("offset", [1])
         offset = offsets[0] - 1  # 0-based
         fine_offset = offsets[1] - 1 if len(offsets) > 1 else None
+        ultra_fine_offset = offsets[2] - 1 if len(offsets) > 2 else None
         default_val = ch.get("default", 0)
 
         all_functions: list[dict[str, Any]] = []
@@ -252,6 +253,7 @@ class GdtfImporter:
                 label=attr_name,
                 default_value=default_val,
                 fine_offset=fine_offset,
+                ultra_fine_offset=ultra_fine_offset,
                 physical_min=phys_min,
                 physical_max=phys_max,
                 physical_unit=phys_unit,
@@ -271,6 +273,7 @@ class GdtfImporter:
             label=attr_name,
             default_value=default_val,
             fine_offset=fine_offset,
+            ultra_fine_offset=ultra_fine_offset,
             ranges=ranges,
             physical_min=phys_min,
             physical_max=phys_max,

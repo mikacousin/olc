@@ -105,6 +105,41 @@ class Curve:
         arr = np.clip(np.asarray(levels, dtype=np.int64), 0, 65535)
         return self.values_array_16bit[arr]
 
+    def get_level_24bit(self, level: int) -> int:
+        """Get curve level for 24-bit input.
+
+        Evaluates the continuous normalized curve to preserve memory.
+
+        Args:
+            level: input level (0 - 16777215)
+
+        Returns:
+            new 24-bit level
+        """
+        clamped = max(0, min(16777215, int(level)))
+        norm = clamped / 16777215.0
+        out_norm = float(self.evaluate_normalized(norm))
+        return int(np.clip(round(out_norm * 16777215.0), 0, 16777215))
+
+    def evaluate_24bit(self, levels: int | np.ndarray) -> int | np.ndarray:
+        """Evaluate the curve for 24-bit integer level(s) [0..16777215].
+
+        Uses continuous normalized evaluation without a giant 67MB lookup table.
+
+        Args:
+            levels: Integer or NumPy array of integers in [0..16777215]
+
+        Returns:
+            Transformed integer level(s) in [0..16777215]
+        """
+        if isinstance(levels, (int, np.integer)):
+            return self.get_level_24bit(int(levels))
+        arr = np.clip(np.asarray(levels, dtype=np.float64), 0.0, 16777215.0)
+        norm = arr / 16777215.0
+        out_norm = self.evaluate_normalized(norm)
+        res = np.round(out_norm * 16777215.0)
+        return np.clip(res, 0.0, 16777215.0).astype(np.int64)
+
     def evaluate_range(
         self,
         level: float | np.ndarray,
