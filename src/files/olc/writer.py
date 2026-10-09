@@ -23,6 +23,7 @@ from olc.files.write import WriteFile
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.lightshow import LightShow
     from olc.midi import Midi
     from olc.sequence import Sequence
@@ -124,18 +125,28 @@ class OlcWriter(WriteFile):
                     ] = {"delay": times.delay, "time": times.time}
             if step.text:
                 self.data["sequences"][seq_index]["steps"][index]["label"] = step.text
-            self.data["sequences"][seq_index]["cues"][step.cue.number] = {
+            cue_dict: dict[str, typing.Any] = {
                 "label": step.cue.text,
                 "channels": step.cue.channels,
             }
+            if step.cue.device_values:
+                cue_dict["device_values"] = step.cue.device_values
+            if step.cue.is_block:
+                cue_dict["is_block"] = step.cue.is_block
+            self.data["sequences"][seq_index]["cues"][step.cue.number] = cue_dict
 
     def _cues(self) -> None:
         self.data["cues"] = {}
         for cue in self.lightshow.cues:
-            self.data["cues"][cue.number] = {
+            c_dict: dict[str, typing.Any] = {
                 "label": cue.text,
                 "channels": cue.channels,
             }
+            if cue.device_values:
+                c_dict["device_values"] = cue.device_values
+            if cue.is_block:
+                c_dict["is_block"] = cue.is_block
+            self.data["cues"][cue.number] = c_dict
 
     def _groups(self) -> None:
         self.data["groups"] = {}

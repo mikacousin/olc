@@ -1095,6 +1095,61 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         for k in self._base_emitters:
             self._base_emitters[k] = 0.0
 
+    def _apply_color_param(self, value: Any) -> None:  # noqa: ANN401
+        """Apply color parameter from hex string or RGB tuple."""
+        if isinstance(value, str):
+            self.set_color_hex(value)
+        elif isinstance(value, (tuple, list)) and len(value) >= 3:
+            self.set_color_rgb(int(value[0]), int(value[1]), int(value[2]))
+
+    def _apply_gobo_param(self, value: Any) -> None:  # noqa: ANN401
+        """Apply gobo parameter from value or range label."""
+        gobo_ch = self.get_channel(ChannelType.GOBO_WHEEL)
+        if gobo_ch is not None:
+            if isinstance(value, int):
+                gobo_ch.set_value(value)
+            elif isinstance(value, str):
+                for r in gobo_ch.ranges:
+                    if r.label.lower() == value.lower():
+                        gobo_ch.activate_range(r.label)
+                        break
+
+    def apply_device_parameter(  # pylint: disable=too-many-branches
+        self,
+        param_name: str,
+        value: Any,  # noqa: ANN401
+    ) -> None:
+        """Apply a named parameter value (physical units or normalized).
+
+        Args:
+            param_name: Parameter name (intensity, pan, tilt, color, zoom, focus, etc.)
+            value: Target value.
+        """
+        p_lower = param_name.lower()
+        if p_lower == "intensity":
+            self.set_intensity(value)
+        elif p_lower == "pan":
+            self.set_pan_degrees(float(value))
+        elif p_lower == "tilt":
+            self.set_tilt_degrees(float(value))
+        elif p_lower in ("color", "colour"):
+            self._apply_color_param(value)
+        elif p_lower == "zoom":
+            self.set_zoom_degrees(float(value))
+        elif p_lower == "focus":
+            self.set_focus_meters(float(value))
+        elif p_lower == "strobe":
+            self.set_strobe_hz(float(value))
+        elif p_lower in ("color_temp", "colortemp", "cct"):
+            self.set_color_temp_kelvin(float(value))
+        elif p_lower in ("gobo", "gobo_wheel"):
+            self._apply_gobo_param(value)
+
+    def apply_device_values(self, values: dict[str, Any]) -> None:
+        """Apply a batch of parameter values to this device."""
+        for name, val in values.items():
+            self.apply_device_parameter(name, val)
+
     def activate_range(self, channel_label: str, range_label: str) -> None:
         """Activate range on channel specified by label."""
         self._channel_by_label(channel_label).activate_range(range_label)

@@ -234,6 +234,14 @@ class ParsedData:
                     self.lightshow.independents.update(inde)
                     break
 
+    @staticmethod
+    def _apply_cue_metadata(cue: Cue, cue_dict: dict[str, typing.Any]) -> None:
+        """Apply device_values and is_block metadata to a cue."""
+        dev_vals = cue_dict.get("device_values")
+        if dev_vals:
+            cue.device_values = {int(k): dict(v) for k, v in dev_vals.items()}
+        cue.is_block = bool(cue_dict.get("is_block", False))
+
     def import_presets(self) -> None:
         """Import presets data"""
         for preset_number, values in self.data["cues"].items():
@@ -247,6 +255,7 @@ class ParsedData:
                 cue = Cue(0, preset_number, channels, label)
                 self.lightshow.cues.add(cue)
                 self.lightshow.main_playback.update_channels()
+            self._apply_cue_metadata(cue, values)
 
     def import_main_playback(self, sequence: int, action: Action) -> None:
         """Import Main Playback
@@ -263,10 +272,9 @@ class ParsedData:
     def _replace_main_playback(self, sequence: int) -> None:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
-            cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
-                "channels"
-            ]
-            cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
+            cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
+            cue_channels = cue_dict["channels"]
+            cue_text = cue_dict["label"]
             cue = self.lightshow.cues.get(cue_number, 0)
             if cue is not None:
                 # If cue exist, update it
@@ -276,6 +284,7 @@ class ParsedData:
                 # Else, create it
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
                 self.lightshow.cues.add(cue)
+            self._apply_cue_metadata(cue, cue_dict)
             channel_time = {}
             if values.get("channel_time"):
                 for channel, times in values.get("channel_time").items():
@@ -300,10 +309,9 @@ class ParsedData:
         del self.lightshow.main_playback.steps[-1]
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
-            cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
-                "channels"
-            ]
-            cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
+            cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
+            cue_channels = cue_dict["channels"]
+            cue_text = cue_dict["label"]
             found, step_nb = self.lightshow.main_playback.get_step(cue_number)
             if found:
                 # If cue exist, update it
@@ -311,6 +319,7 @@ class ParsedData:
                 if cue:
                     cue.channels = cue_channels
                     cue.text = cue_text
+                    self._apply_cue_metadata(cue, cue_dict)
                 self.lightshow.main_playback.steps[step_nb - 1].text = values.get(
                     "label"
                 )
@@ -318,6 +327,7 @@ class ParsedData:
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
                 self.lightshow.cues.add(cue)
                 self.lightshow.main_playback.update_channels()
+                self._apply_cue_metadata(cue, cue_dict)
                 channel_time = {}
                 if values.get("channel_time"):
                     for channel, times in values.get("channel_time").items():
@@ -363,22 +373,23 @@ class ParsedData:
     def _merge_chaser(self, sequence: int, index: int) -> None:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
-            cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
-                "channels"
-            ]
-            cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
+            cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
+            cue_channels = cue_dict["channels"]
+            cue_text = cue_dict["label"]
             found, step_nb = self.lightshow.chasers[index].get_step(cue_number)
             if found:
                 cue = self.lightshow.chasers[index].steps[step_nb - 1].cue
                 if cue:
                     cue.channels = cue_channels
                     cue.text = cue_text
+                    self._apply_cue_metadata(cue, cue_dict)
                 self.lightshow.chasers[index].steps[step_nb - 1].text = values.get(
                     "label"
                 )
             else:
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
                 self.lightshow.chasers[index].cues.add(cue)
+                self._apply_cue_metadata(cue, cue_dict)
                 channel_time = {}
                 if values.get("channel_time"):
                     for channel, times in values.get("channel_time").items():
@@ -401,20 +412,21 @@ class ParsedData:
     def _replace_chaser(self, sequence: int, index: int) -> None:
         for values in self.data["sequences"][sequence]["steps"].values():
             cue_number = values.get("cue")
-            cue_channels = self.data["sequences"][sequence]["cues"][cue_number][
-                "channels"
-            ]
-            cue_text = self.data["sequences"][sequence]["cues"][cue_number]["label"]
+            cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
+            cue_channels = cue_dict["channels"]
+            cue_text = cue_dict["label"]
             for cue in self.lightshow.chasers[index].cues:
                 if cue.number == cue_number:
                     # If cue exist, update it
                     cue.channels = cue_channels
                     cue.text = cue_text
+                    self._apply_cue_metadata(cue, cue_dict)
                     break
             else:
                 # Else, create it
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
                 self.lightshow.chasers[index].cues.add(cue)
+                self._apply_cue_metadata(cue, cue_dict)
             channel_time = {}
             if values.get("channel_time"):
                 for channel, times in values.get("channel_time").items():

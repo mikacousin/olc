@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 import numpy as np
+
 from olc.define import MAX_CHANNELS
 from olc.editor import TempChannelsEditor
 
@@ -67,19 +68,25 @@ class Cue:
     _channels: CueChannels  # Channels levels
     text: str  # Cue text
     _channels_array: np.ndarray | None
+    device_values: dict[int, dict[str, typing.Any]]
+    is_block: bool
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
         sequence: int,
         number: float,
         channels: dict[int, int] | None = None,
         text: str = "",
+        device_values: dict[int, dict[str, typing.Any]] | None = None,
+        is_block: bool = False,
     ) -> None:
         self.sequence = sequence
         self.number = number
         self._channels_array = None
         self._channels = CueChannels(self, channels or {})
         self.text = text
+        self.device_values = device_values if device_values is not None else {}
+        self.is_block = is_block
 
     @property
     def channels(self) -> dict[int, int]:
@@ -129,6 +136,54 @@ class Cue:
             channel's level (0-255)
         """
         return self.channels.get(channel, 0)
+
+    def set_device_parameter(
+        self,
+        device_id: int,
+        param_name: str,
+        value: typing.Any,  # noqa: ANN401
+    ) -> None:
+        """Set a physical parameter value for a specific device in this cue."""
+        if device_id not in self.device_values:
+            self.device_values[device_id] = {}
+        self.device_values[device_id][param_name] = value
+
+    def get_device_parameter(
+        self,
+        device_id: int,
+        param_name: str,
+        default: typing.Any = None,  # noqa: ANN401
+    ) -> typing.Any:  # noqa: ANN401
+        """Get a physical parameter value for a specific device in this cue."""
+        return self.device_values.get(device_id, {}).get(param_name, default)
+
+    def get_device_parameters(self, device_id: int) -> dict[str, typing.Any]:
+        """Get all parameter values defined for a specific device in this cue."""
+        return self.device_values.get(device_id, {})
+
+    def has_device(self, device_id: int) -> bool:
+        """True if any parameters are explicitly defined for device_id."""
+        return device_id in self.device_values and bool(self.device_values[device_id])
+
+    def clear_device(self, device_id: int) -> None:
+        """Remove all explicit parameter values for device_id."""
+        self.device_values.pop(device_id, None)
+
+    def to_dict(self) -> dict[str, typing.Any]:
+        """Serialize Cue to a dictionary."""
+        d: dict[str, typing.Any] = {
+            "sequence": self.sequence,
+            "number": self.number,
+            "label": self.text,
+            "channels": dict(self.channels),
+        }
+        if self.device_values:
+            d["device_values"] = {
+                int(k): dict(v) for k, v in self.device_values.items()
+            }
+        if self.is_block:
+            d["is_block"] = self.is_block
+        return d
 
 
 class Cues:

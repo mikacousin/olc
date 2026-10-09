@@ -20,14 +20,18 @@ import typing
 from typing import Optional
 
 import numpy as np
+
+from olc.core.tracking import TrackingEngine
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.step import Step
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.app import CoreApplication
     from olc.core.lightshow import LightShow
+    from olc.patch import PatchManager
 
 
 def get_cue(step: Step) -> typing.Any:  # noqa: ANN401
@@ -72,6 +76,8 @@ class Sequence:
         self.run = False
         # Thread for Go and GoBack
         self.thread = None
+        # Tracking mode (False = Cue-Only, True = Tracking for intensity)
+        self.tracking_mode = False
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
@@ -80,6 +86,32 @@ class Sequence:
         self.add_step(step)
         # Last Step
         self.add_step(step)
+
+    @property
+    def patch(self) -> Optional[PatchManager]:
+        """Get PatchManager from lightshow if available."""
+        if self.lightshow is not None:
+            return getattr(self.lightshow, "patch", None)
+        return None
+
+    def load_step(self, step_index: int) -> None:
+        """Directly load and apply a sequence step state to DMX outputs."""
+        if not self.steps or step_index < 0 or step_index >= len(self.steps):
+            return
+        self.position = step_index
+        resolved = TrackingEngine.resolve_step_state(
+            self, step_index, tracking_mode=self.tracking_mode, patch=self.patch
+        )
+        if self.backend is not None and hasattr(self.backend, "dmx"):
+            n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
+            self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+            if self.patch is not None:
+                for dev_id, params in resolved.device_values.items():
+                    dev = self.patch.get_device(dev_id)
+                    if dev is not None:
+                        dev.apply_device_values(params)
+            self.backend.dmx.set_levels()
+        self.update_channels()
 
     @property
     def on_go(self) -> bool:
@@ -534,12 +566,28 @@ class ThreadGo(threading.Thread):
     def _finalize_go(self) -> None:
         """Finish load cue after sequence transition"""
         if self.sequence.position < self.sequence.last - 1:
-            target_cue = get_cue(self.sequence.steps[self.sequence.position + 1])
+            target_step_idx = self.sequence.position + 1
         else:
-            target_cue = get_cue(self.sequence.steps[0])
+            target_step_idx = 0
+
+        # Resolve full sequential state via TrackingEngine
+        resolved = TrackingEngine.resolve_step_state(
+            self.sequence,
+            target_step_idx,
+            tracking_mode=self.sequence.tracking_mode,
+            patch=self.sequence.patch,
+        )
 
         # Block-copy levels to sequential dmx levels
-        self.backend.dmx.levels["sequence"][:] = target_cue.channels_array
+        n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
+        self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+
+        # Apply multi-parameter device values
+        if self.sequence.patch is not None:
+            for dev_id, params in resolved.device_values.items():
+                dev = self.sequence.patch.get_device(dev_id)
+                if dev is not None:
+                    dev.apply_device_values(params)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:
@@ -649,10 +697,19 @@ class ThreadGo(threading.Thread):
         self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
         self.backend.dmx.set_levels()
 
-    def _calculate_transitions_go(self, i: float, step: Step) -> np.ndarray:
+    def _calculate_transitions_go(  # pylint: disable=too-many-locals
+        self, i: float, step: Step
+    ) -> np.ndarray:
         """Calculate fade levels using array operations."""
         old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = get_cue(step).channels_array.astype(np.int32)
+        next_step_idx = self.sequence.position + 1
+        resolved = TrackingEngine.resolve_step_state(
+            self.sequence,
+            next_step_idx,
+            tracking_mode=self.sequence.tracking_mode,
+            patch=self.sequence.patch,
+        )
+        next_levels = resolved.channels.astype(np.int32)
         lvls = old_levels.copy()
 
         # Decays (channels going down)
@@ -805,10 +862,23 @@ class ThreadGoBack(threading.Thread):
 
     def _finalize_goback(self, prev_step: int) -> None:
         """Finish load cue after sequence transition"""
-        target_cue = get_cue(self.sequence.steps[prev_step])
+        resolved = TrackingEngine.resolve_step_state(
+            self.sequence,
+            prev_step,
+            tracking_mode=self.sequence.tracking_mode,
+            patch=self.sequence.patch,
+        )
 
         # Block-copy levels to sequential dmx levels
-        self.backend.dmx.levels["sequence"][:] = target_cue.channels_array
+        n_ch = min(len(self.backend.dmx.levels["sequence"]), len(resolved.channels))
+        self.backend.dmx.levels["sequence"][:n_ch] = resolved.channels[:n_ch]
+
+        # Apply multi-parameter device values
+        if self.sequence.patch is not None:
+            for dev_id, params in resolved.device_values.items():
+                dev = self.sequence.patch.get_device(dev_id)
+                if dev is not None:
+                    dev.apply_device_values(params)
 
         self.sequence.on_go = False
         if self.app is not None and self.app.crossfade is not None:

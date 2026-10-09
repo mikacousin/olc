@@ -377,6 +377,90 @@ class PatchManager:
 
         return patched
 
+    def exchange_fixture(  # pylint: disable=too-many-arguments, too-many-positional-arguments, too-many-locals
+        self,
+        device_id: int,
+        new_fixture_def: FixtureDefinition,
+        new_mode_name: Optional[str] = None,
+        universe: Optional[int] = None,
+        address: Optional[int] = None,
+        label: Optional[str] = None,
+        force: bool = False,
+    ) -> LightingDevice:
+        """Exchange fixture definition for an existing device.
+
+        Physical attributes stored in Cues (degrees, colors, zoom, etc.) remain intact
+        and will be translated by the new fixture definition to its native DMX channels.
+
+        Args:
+            device_id: ID of the device to replace.
+            new_fixture_def: The new FixtureDefinition to use.
+            new_mode_name: Mode name (defaults to fixture's default_mode).
+            universe: Universe (if None, reuses existing device universe).
+            address: DMX address (if None, reuses existing device address).
+            label: Device label (if None, reuses existing label or default).
+            force: If True, overwrite collisions at the target address.
+
+        Returns:
+            The newly instantiated LightingDevice.
+        """
+        old_dev = self.get_device(device_id)
+        target_univ = universe
+        target_addr = address
+        target_label = label
+        curve_id = 0
+
+        if old_dev is not None:
+            if target_univ is None and old_dev.channels:
+                target_univ = old_dev.channels[0].universe
+            if target_addr is None and old_dev.channels:
+                target_addr = old_dev.channels[0].address
+            if target_label is None:
+                target_label = old_dev.label
+            curve_id = old_dev.curve_id
+
+        if target_univ is None:
+            target_univ = self.universes[0] if self.universes else 1
+        if target_addr is None:
+            target_addr = 1
+
+        mode = (
+            new_fixture_def.get_mode(new_mode_name)
+            if new_mode_name
+            else new_fixture_def.default_mode()
+        )
+        footprint = mode.footprint()
+        if footprint > 0:
+            collisions = self.check_collision(
+                target_univ, target_addr, footprint, ignore_device_id=device_id
+            )
+            if collisions:
+                if not force:
+                    c = collisions[0]
+                    raise PatchCollisionError(
+                        universe=c[0],
+                        address=c[1],
+                        colliding_device_id=c[2],
+                        new_device_id=device_id,
+                    )
+                for c_univ, c_addr, _ in collisions:
+                    self.unpatch_address(c_univ, c_addr)
+
+        if old_dev is not None:
+            self.unpatch_device(device_id)
+
+        new_dev = self.patch_device(
+            device_id=device_id,
+            fixture_def=new_fixture_def,
+            universe=target_univ,
+            address=target_addr,
+            mode_name=mode.name,
+            label=target_label or f"{new_fixture_def.model} {device_id}",
+            force=force,
+        )
+        new_dev.curve_id = curve_id
+        return new_dev
+
     def get_device(self, device_id: int) -> Optional[LightingDevice]:
         """Get a registered LightingDevice by ID."""
         return self.devices.get(device_id)
