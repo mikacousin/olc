@@ -28,6 +28,8 @@ from .device import (
     ChannelType,
     FixtureType,
     LightingDevice,
+    MergeMode,
+    get_default_merge_mode,
 )
 
 if TYPE_CHECKING:
@@ -55,9 +57,12 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
     physical_min: float = 0.0
     physical_max: float = 1.0
     physical_unit: str = ""
+    merge_mode: Optional[MergeMode] = None
 
     def __post_init__(self) -> None:
         self.label = self.label or self.channel_type.value
+        if self.merge_mode is None:
+            self.merge_mode = get_default_merge_mode(self.channel_type)
 
     def to_channel(self, universe: int, base_address: int) -> list[Channel]:
         """Instantiate this template into absolute Channel instance(s).
@@ -86,6 +91,7 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                 physical_min=self.physical_min,
                 physical_max=self.physical_max,
                 physical_unit=self.physical_unit,
+                merge_mode=self.merge_mode,
             )
         ]
 
@@ -102,6 +108,7 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                     physical_min=self.physical_min,
                     physical_max=self.physical_max,
                     physical_unit=self.physical_unit,
+                    merge_mode=self.merge_mode,
                 )
             )
 
@@ -119,6 +126,7 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
                     physical_min=self.physical_min,
                     physical_max=self.physical_max,
                     physical_unit=self.physical_unit,
+                    merge_mode=self.merge_mode,
                 )
             )
 

@@ -21,9 +21,12 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from .color import CIExyY, ColorMatcher, FixtureColorProfile, sRGB
+
+if TYPE_CHECKING:
+    from olc.curve import Curve
 
 
 class FixtureType(Enum):
@@ -70,6 +73,20 @@ COLOR_CHANNEL_TYPES: frozenset[ChannelType] = frozenset(
         ChannelType.AMBER,
     }
 )
+
+
+class MergeMode(Enum):
+    """Semantic merge mode for a DMX channel."""
+
+    HTP = "htp"
+    LTP = "ltp"
+
+
+def get_default_merge_mode(channel_type: ChannelType) -> MergeMode:
+    """Return default merge mode (HTP or LTP) for a given ChannelType."""
+    if channel_type == ChannelType.INTENSITY:
+        return MergeMode.HTP
+    return MergeMode.LTP
 
 
 @dataclass(frozen=True, order=True)
@@ -221,12 +238,25 @@ class Channel:  # pylint: disable=too-many-instance-attributes, too-many-public-
     physical_min: float = 0.0
     physical_max: float = 1.0
     physical_unit: str = ""
+    merge_mode: Optional[MergeMode] = None
 
     def __post_init__(self) -> None:
         DmxAddress(self.universe, self.address)  # Validate address bounds
         self.label = self.label or self.channel_type.value
+        if self.merge_mode is None:
+            self.merge_mode = get_default_merge_mode(self.channel_type)
         self._validate_ranges()
         self._clamp()
+
+    @property
+    def is_htp(self) -> bool:
+        """True if this channel follows HTP (Highest Takes Precedence) merge rule."""
+        return self.merge_mode == MergeMode.HTP
+
+    @property
+    def is_ltp(self) -> bool:
+        """True if this channel follows LTP (Latest Takes Precedence) merge rule."""
+        return self.merge_mode == MergeMode.LTP
 
     @property
     def is_coarse(self) -> bool:
@@ -406,11 +436,38 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._created_at = time.time()
 
         # Virtual controls and normalized states
+        self.curve_id: int = 0
+        self._curve: Optional[Curve] = None
+        self._curve_provider: Optional[Callable[[int], Optional[Curve]]] = None
         self._intensity: float = 0.0 if self.has_physical_dimmer else 1.0
         self._target_color: sRGB = sRGB(1.0, 1.0, 1.0)
         self._target_cie: CIExyY = CIExyY(0.3127, 0.3290, 100.0)
         self._base_emitters: dict[ChannelType, float] = {}
         self._init_base_emitters()
+
+    def set_curve_id(self, curve_id: int) -> None:
+        """Set curve ID for the device intensity transfer function."""
+        self.curve_id = max(0, int(curve_id))
+
+    def set_curve(self, curve: Optional[Curve]) -> None:
+        """Directly assign a Curve instance."""
+        self._curve = curve
+        if curve is not None and hasattr(curve, "number"):
+            self.curve_id = getattr(curve, "number", 0)
+
+    def set_curve_provider(
+        self, provider: Optional[Callable[[int], Optional[Curve]]]
+    ) -> None:
+        """Set a callable (curve_id -> Curve) to resolve curves dynamically."""
+        self._curve_provider = provider
+
+    def get_effective_curve(self) -> Optional[Curve]:
+        """Resolve effective Curve instance if assigned."""
+        if self._curve is not None:
+            return self._curve
+        if self.curve_id != 0 and self._curve_provider is not None:
+            return self._curve_provider(self.curve_id)
+        return None
 
     def _init_base_emitters(self) -> None:
         """Initialize base emitter levels to open white."""
@@ -591,7 +648,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self.set_intensity(max(0.0, min(100.0, percent)) / 100.0)
 
     def _apply_intensity(self) -> None:
-        """Propagate current intensity to DMX channels."""
+        """Propagate intensity to DMX channels, applying effective curve if any."""
+        curve = self.get_effective_curve()
         if self.has_physical_dimmer:
             coarse_ch, fine_ch, ultra_fine_ch = self._get_resolution_channels(
                 ChannelType.INTENSITY
@@ -601,25 +659,32 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 and fine_ch is not None
                 and coarse_ch is not None
             ):
-                val_24 = round(self._intensity * 16777215.0)
+                raw_24 = round(self._intensity * 16777215.0)
+                val_24 = curve.get_level_24bit(raw_24) if curve else raw_24
                 coarse_ch.set_value((val_24 >> 16) & 0xFF)
                 fine_ch.set_value((val_24 >> 8) & 0xFF)
                 ultra_fine_ch.set_value(val_24 & 0xFF)
             elif fine_ch is not None and coarse_ch is not None:
-                val_16 = round(self._intensity * 65535.0)
+                raw_16 = round(self._intensity * 65535.0)
+                val_16 = curve.get_level_16bit(raw_16) if curve else raw_16
                 coarse_ch.set_value((val_16 >> 8) & 0xFF)
                 fine_ch.set_value(val_16 & 0xFF)
             elif coarse_ch is not None:
-                coarse_ch.set_value(round(self._intensity * 255.0))
+                raw_8 = round(self._intensity * 255.0)
+                val_8 = curve.get_level(raw_8) if curve else raw_8
+                coarse_ch.set_value(val_8)
         elif self.uses_virtual_dimmer:
-            self._apply_virtual_dimmer()
+            self._apply_virtual_dimmer(curve=curve)
 
-    def _apply_virtual_dimmer(self) -> None:
-        """Scale base emitter levels by current intensity and update DMX channels."""
+    def _apply_virtual_dimmer(self, curve: Optional[Curve] = None) -> None:
+        """Scale base emitter levels by current intensity (curved if assigned)."""
+        eff_intensity = (
+            curve.evaluate_normalized(self._intensity) if curve else self._intensity
+        )
         for ch in self.channels:
             if ch.channel_type in COLOR_CHANNEL_TYPES:
                 base_val = self._base_emitters.get(ch.channel_type, 0.0)
-                scaled_dmx = round(base_val * self._intensity * 255.0)
+                scaled_dmx = round(base_val * eff_intensity * 255.0)
                 ch.set_value(max(0, min(255, scaled_dmx)))
 
     # Color controls
@@ -1094,6 +1159,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             "group": self.group,
             "notes": self.notes,
             "enabled": self._enabled,
+            "curve_id": self.curve_id,
             "intensity": self._intensity,
             "target_color": self._target_color.to_hex(),
             "base_emitters": {
@@ -1109,6 +1175,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     "fine": ch.fine,
                     "ultra_fine": ch.ultra_fine,
                     "label": ch.label,
+                    "merge_mode": ch.merge_mode.value if ch.merge_mode else "htp",
                     "physical_min": ch.physical_min,
                     "physical_max": ch.physical_max,
                     "physical_unit": ch.physical_unit,
@@ -1150,9 +1217,15 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                 )
                 for r in cd.get("ranges", [])
             ]
+            ctype = ChannelType(cd["channel_type"])
+            mm = (
+                MergeMode(cd["merge_mode"])
+                if "merge_mode" in cd
+                else get_default_merge_mode(ctype)
+            )
             channels.append(
                 Channel(
-                    channel_type=ChannelType(cd["channel_type"]),
+                    channel_type=ctype,
                     universe=cd["universe"],
                     address=cd["address"],
                     value=cd.get("value", 0),
@@ -1164,6 +1237,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     physical_min=cd.get("physical_min", 0.0),
                     physical_max=cd.get("physical_max", 1.0),
                     physical_unit=cd.get("physical_unit", ""),
+                    merge_mode=mm,
                 )
             )
         device = cls(
@@ -1175,6 +1249,7 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             notes=data.get("notes", ""),
         )
         device._enabled = data.get("enabled", True)
+        device.curve_id = data.get("curve_id", 0)
         if "intensity" in data:
             device.set_intensity(data["intensity"])
         if "target_color" in data:

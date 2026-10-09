@@ -27,6 +27,8 @@ from olc.devices.fixture import FixtureDefinition
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
     from olc.core.commandline import CoreCommandLine
+    from olc.core.lightshow import LightShow
+    from olc.curve import Curve
     from olc.gtk3.application import Application
 
 
@@ -66,7 +68,12 @@ class PatchManager:
     channels: dict[int, list[list[Optional[int]]]]
     outputs: dict[int, dict[int, list[int]]]
 
-    def __init__(self, universes: list[int] | None = None) -> None:
+    def __init__(
+        self,
+        universes: list[int] | None = None,
+        lightshow: Optional[LightShow] = None,
+    ) -> None:
+        self.lightshow = lightshow
         self.universes = (
             list(universes) if universes is not None else list(DEFAULT_UNIVERSES)
         )
@@ -87,12 +94,23 @@ class PatchManager:
         self.device_channel_refs: list[tuple[LightingDevice, Channel]] = []
         self.map_dev_dst_universes = np.array([], dtype=np.intp)
         self.map_dev_dst_outputs = np.array([], dtype=np.intp)
+        self.map_dev_is_htp = np.array([], dtype=bool)
 
         self.patch_1on1()
 
     def invalidate_cache(self) -> None:
         """Invalidate the numpy cache."""
         self._numpy_cache_dirty = True
+
+    def _get_curve_by_id(self, curve_id: int) -> Optional[Curve]:
+        """Resolve a curve by ID from the parent lightshow if available."""
+        lightshow = getattr(self, "lightshow", None)
+        if lightshow is not None:
+            curves = getattr(lightshow, "curves", None)
+            if curves is not None and hasattr(curves, "get_curve"):
+                curve: Optional[Curve] = curves.get_curve(curve_id)
+                return curve
+        return None
 
     # -------------------------------------------------------------------------
     # Collision and Address Grid Inspection
@@ -204,6 +222,7 @@ class PatchManager:
             address=address,
             mode_name=mode.name,
         )
+        device.set_curve_provider(self._get_curve_by_id)
         self.devices[device_id] = device
 
         for ch in device.channels:
@@ -263,6 +282,7 @@ class PatchManager:
             label=label or f"Dimmer {channel}",
             force=force,
         )
+        dev.set_curve_id(curve)
         if universe in self.outputs and address in self.outputs[universe]:
             self.outputs[universe][address][1] = curve
         self._numpy_cache_dirty = True
@@ -367,6 +387,7 @@ class PatchManager:
 
     def restore_device(self, device: LightingDevice) -> None:
         """Restore an existing device instance into the patch registry."""
+        device.set_curve_provider(self._get_curve_by_id)
         self.devices[device.fixture_id] = device
         for ch in device.channels:
             if ch.universe not in self._grid:
@@ -583,6 +604,7 @@ class PatchManager:
         dev_refs: list[tuple[LightingDevice, Channel]] = []
         dev_dst_univs = []
         dev_dst_outs = []
+        dev_is_htp = []
 
         for dev in self.devices.values():
             for ch in dev.channels:
@@ -594,10 +616,12 @@ class PatchManager:
                         dev_refs.append((dev, ch))
                         dev_dst_univs.append(self.universes.index(ch.universe))
                         dev_dst_outs.append(ch.address - 1)
+                        dev_is_htp.append(ch.is_htp)
 
         self.device_channel_refs = dev_refs
         self.map_dev_dst_universes = np.array(dev_dst_univs, dtype=np.intp)
         self.map_dev_dst_outputs = np.array(dev_dst_outs, dtype=np.intp)
+        self.map_dev_is_htp = np.array(dev_is_htp, dtype=bool)
 
     def get_first_patched_channel(self) -> int:
         """Return first patched channel."""

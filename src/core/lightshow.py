@@ -100,7 +100,7 @@ class LightShow(ShowFile):
         # Independents
         self.independents = Independents(lightshow_type)
         # Patch
-        self.patch = DMXPatch(list(DEFAULT_UNIVERSES))
+        self.patch = DMXPatch(list(DEFAULT_UNIVERSES), lightshow=lightshow_type)
         self.patch_by_outputs = PatchByOutputs(
             typing.cast(typing.Any, app or self.app), self.patch
         )

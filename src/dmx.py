@@ -175,14 +175,24 @@ class Dmx:
         ):
             dev_vals = np.fromiter(
                 (ch.value for _, ch in self.patch.device_channel_refs),
-                dtype=np.uint8,
+                dtype=np.float64,
                 count=len(self.patch.device_channel_refs),
             )
+            # Scale HTP channels by Main Fader, leaving LTP channels untouched
+            if hasattr(self.patch, "map_dev_is_htp") and np.any(
+                self.patch.map_dev_is_htp
+            ):
+                htp_mask = self.patch.map_dev_is_htp
+                dev_vals[htp_mask] = np.round(
+                    dev_vals[htp_mask] * self.main_fader.value
+                )
+
+            dev_vals_u8 = dev_vals.astype(np.uint8)
             for index in range(len(self.patch.universes)):
                 univ_mask = self.patch.map_dev_dst_universes == index
                 if np.any(univ_mask) and index < len(self.frame):
                     self.frame[index][self.patch.map_dev_dst_outputs[univ_mask]] = (
-                        dev_vals[univ_mask]
+                        dev_vals_u8[univ_mask]
                     )
 
     def send(self) -> None:
