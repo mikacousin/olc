@@ -167,3 +167,65 @@ def test_window_key_controller_handling() -> None:
     ret = win._on_key_controller_pressed(MagicMock(), Gdk.KEY_BackSpace, 0, no_mod)
     assert ret is True
     mock_app.core.action_registry.execute.assert_called_with("commandline.backspace")
+
+
+def test_virtual_console_commandline_buttons() -> None:
+    """Test VirtualConsoleWindow button handlers trigger commandline actions."""
+    from olc.gtk3.virtual_console import VirtualConsoleWindow
+
+    mock_app = MagicMock()
+    mock_app.core.commandline = MagicMock()
+    mock_app.core.action_registry = MagicMock()
+    mock_app.midi = None
+
+    vc = VirtualConsoleWindow.__new__(VirtualConsoleWindow)
+    vc.app = mock_app
+    vc.commandline = mock_app.core.commandline
+
+    # Test enter
+    vc._on_enter(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with("commandline.execute")
+
+    # Test backspace
+    vc._on_backspace(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with("commandline.backspace")
+
+    # Test clear
+    vc._on_clear(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with("commandline.clear")
+
+    # Test syntax keywords
+    vc._on_goto(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", "GOTO CUE "
+    )
+
+    vc._on_delete(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", "DELETE "
+    )
+
+    vc._on_full(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", " AT FULL"
+    )
+
+    vc._on_out(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", " AT OUT"
+    )
+
+    vc._on_odd(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", " ODD"
+    )
+
+    vc._on_even(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", " EVEN"
+    )
+
+    vc._on_block(MagicMock())
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", " BLOCK"
+    )
