@@ -33,6 +33,7 @@ from olc.core.parser.ast_nodes import (
     UnblockCueCommandNode,
     UpdateCueCommandNode,
 )
+from olc.core.parser.highlighter import highlight_commandline_markup
 from olc.core.parser.parser import CommandParser, CommandSyntaxError
 from olc.core.parser.tokens import TokenType
 
@@ -223,3 +224,36 @@ def test_parser_expected_tokens() -> None:
     # After RECORD CUE
     expected_rec_cue = parser.get_expected_tokens("RECORD CUE")
     assert TokenType.NUMBER in expected_rec_cue
+
+
+def test_highlight_commandline_markup() -> None:
+    # 1. Empty string
+    assert highlight_commandline_markup("") == ""
+
+    # 2. Basic command: 1 THRU 10 AT 80
+    markup = highlight_commandline_markup("1 THRU 10 AT 80")
+    assert '<span foreground="#4FC3F7">1</span>' in markup
+    assert '<span foreground="#FFB74D">THRU</span>' in markup
+    assert '<span foreground="#4FC3F7">10</span>' in markup
+    assert '<span foreground="#F06292" weight="bold">AT</span>' in markup
+    assert '<span foreground="#4FC3F7">80</span>' in markup
+
+    # 3. Attribute command with hex color and pan/tilt: 1 PAN 45 COLOR #FF8800
+    markup_attr = highlight_commandline_markup("1 PAN 45 COLOR #FF8800")
+    assert '<span foreground="#69F0AE" weight="bold">PAN</span>' in markup_attr
+    assert '<span foreground="#69F0AE" weight="bold">COLOR</span>' in markup_attr
+    assert '<span foreground="#FF8800" weight="bold">#FF8800</span>' in markup_attr
+
+    # 4. Named color: COLOR RED
+    markup_red = highlight_commandline_markup("COLOR RED")
+    assert '<span foreground="#FF0000" weight="bold">RED</span>' in markup_red
+
+    # 5. HTML escaping: safety against <, >, &
+    markup_esc = highlight_commandline_markup('1 < 2 & "foo"')
+    assert "&lt;" in markup_esc
+    assert "&amp;" in markup_esc
+    assert "< 2" not in markup_esc
+
+    # 6. Mismatch characters: underline error
+    markup_err = highlight_commandline_markup("1 $ 2")
+    assert '<span foreground="#FF5252" underline="error">$</span>' in markup_err

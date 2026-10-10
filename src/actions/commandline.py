@@ -120,9 +120,9 @@ class CommandLineExecuteAction(Action):
     name = "commandline.execute"
     can_undo = False
 
-    def execute(self) -> None:
+    def execute(self) -> object:
         """Execute the command line."""
-        self.app.commandline.execute()
+        return self.app.commandline.execute()
 
 
 class CommandLineBackspaceAction(Action):

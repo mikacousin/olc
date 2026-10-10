@@ -333,3 +333,41 @@ def test_virtual_console_button_sensitivity() -> None:
     assert btn.pressed is True
     btn.set_sensitive(False)
     assert btn.pressed is False
+
+
+def test_commandline_widget_rendering_and_events() -> None:
+    """Test CommandLineWidget prompt, Pango markup rendering, and error feedback."""
+    from olc.gtk3.widgets.commandline import CommandLineWidget
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_gui_app = MagicMock()
+    mock_gui_app.core = app
+
+    widget = CommandLineWidget(mock_gui_app)
+
+    # 1. Prompt check
+    assert "Live &gt;" in widget.prompt_label.get_label()
+
+    # 2. Typing in command line updates markup
+    widget._on_changed_ui("1 THRU 5 AT 80")
+    label_text = widget.command_label.get_label()
+    assert "THRU" in label_text
+    assert "AT" in label_text
+    assert "80" in label_text
+
+    # 3. Error feedback rendering
+    widget._on_error_ui("Syntax Error: Unknown token")
+    error_text = widget.feedback_label.get_label()
+    assert "⚠ Syntax Error: Unknown token" in error_text
+
+    # 4. Input change clears error feedback
+    widget._on_changed_ui("1")
+    assert widget.feedback_label.get_label() == ""
+
+    # 5. Success execution feedback
+    widget._on_executed_ui("Cue 1 recorded")
+    assert "Cue 1 recorded" in widget.feedback_label.get_label()
+
+    # 6. Cleanup
+    widget.destroy()

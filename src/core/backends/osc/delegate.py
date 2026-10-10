@@ -14,6 +14,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import re
 import typing
 
 from olc.core.osc import make_method
@@ -92,14 +93,45 @@ class OSCDelegate:
                 "/olc/command_line", self.app.commandline.get_string()
             )
 
-    def _execute_action(self, name: str, *args: object) -> None:
+    @make_method("/olc/cmd")
+    def _cmd(self, _address: str, args: list) -> None:
+        """Execute a full command line string received via OSC.
+
+        Strips any optional trailing ENTER keyword and triggers execution.
+        Sends execution status feedback back on /olc/cmd/status if engine is running.
+
+        Args:
+            _address: The OSC address pattern (/olc/cmd).
+            args: OSC arguments, expecting the command string as args[0].
+        """
+        if not args or not isinstance(args[0], str):
+            return
+
+        raw_cmd = args[0].strip()
+        if not raw_cmd:
+            return
+
+        clean_cmd = re.sub(r"(?i)\s+ENTER$", "", raw_cmd).strip()
+        self._execute_action("commandline.set", clean_cmd)
+        result = self._execute_action("commandline.execute")
+
+        if self.app.engine is not None and hasattr(result, "success"):
+            status_msg = (
+                "OK" if result.success else str(getattr(result, "message", "Error"))
+            )
+            self.app.engine.send_osc("/olc/cmd/status", status_msg)
+
+    def _execute_action(self, name: str, *args: object) -> object:
         """Execute an action from the registry.
 
         Args:
             name: The action name.
             *args: Arguments for the action.
+
+        Returns:
+            The return value of the action.
         """
-        self.app.action_registry.execute(name, *args)
+        return self.app.action_registry.execute(name, *args)
 
     @make_method("/olc/key/go")
     def _go(self, _address: str, _args: list) -> None:

@@ -21,6 +21,7 @@ from typing import Callable
 from gi.repository import Gdk, Gio, GLib, Gtk
 
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
+from olc.gtk3.widgets.commandline import CommandLineWidget
 from olc.gtk3.widgets.main_fader import MainFaderWidget
 from olc.gtk3.window_channels import LiveView
 from olc.gtk3.window_playback import MainPlaybackView
@@ -29,39 +30,6 @@ if typing.TYPE_CHECKING:
     import olc.gtk3.window
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
-
-
-# pylint: disable=too-few-public-methods
-class CommandLineWidget:
-    """Display keyboard entries in GTK UI using a Gtk.Statusbar."""
-
-    def __init__(self, app: Application) -> None:
-        """Initialize the CommandLine widget.
-
-        Args:
-            app: The main application instance.
-        """
-        self.app = app
-        self.statusbar = Gtk.Statusbar()
-        self.context_id = self.statusbar.get_context_id("keypress")
-        self.widget = Gtk.Grid()
-        label = Gtk.Label(label="Input : ")
-        self.widget.add(label)
-        self.widget.attach_next_to(self.statusbar, label, Gtk.PositionType.RIGHT, 1, 1)
-
-        self.app.core.subscribe("commandline.changed", self.on_changed)
-
-    def on_changed(self, keystring: str) -> None:
-        """Callback triggered when the logical command line changes.
-
-        Args:
-            keystring: The new command line string.
-        """
-        GLib.idle_add(self._update_ui, keystring)
-
-    def _update_ui(self, keystring: str) -> bool:
-        self.statusbar.push(self.context_id, keystring)
-        return False
 
 
 # pylint: disable=too-many-instance-attributes
@@ -338,7 +306,7 @@ class Window(Gtk.ApplicationWindow):
                 widget.next_level = next_level
                 widget.queue_draw()
 
-    def _on_key_controller_pressed(
+    def _on_key_controller_pressed(  # pylint: disable=too-many-return-statements,too-many-branches
         self,
         _controller: Gtk.EventControllerKey,
         keyval: int,

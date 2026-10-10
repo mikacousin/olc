@@ -340,3 +340,41 @@ def test_osc_toggle_noop_not_undoable() -> None:
     # Executing toggle to True when already True should not push to history
     app.action_registry.execute("osc.toggle", True)
     assert len(app.history.undo_stack) == 0
+
+
+def test_osc_delegate_cmd_execution() -> None:
+    """Test /olc/cmd endpoint in OSCDelegate executes command and sends status."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_engine = MagicMock()
+    app.engine = mock_engine
+
+    delegate = OSCDelegate(app)
+
+    # 1. Valid command execution
+    delegate._cmd("/olc/cmd", ["1 THRU 5 AT 80"])  # pylint: disable=protected-access
+    mock_engine.send_osc.assert_called_with("/olc/cmd/status", "OK")
+
+    # 2. Stripping trailing ENTER keyword (case-insensitive)
+    delegate._cmd("/olc/cmd", ["10 AT FULL Enter"])  # pylint: disable=protected-access
+    assert app.commandline.get_string() == ""  # Successful execution clears buffer
+    mock_engine.send_osc.assert_called_with("/olc/cmd/status", "OK")
+
+    # 3. Syntax error execution -> status sends error message
+    mock_engine.send_osc.reset_mock()
+    delegate._cmd("/olc/cmd", ["1 AT INVALID_TOKEN"])  # pylint: disable=protected-access
+    assert mock_engine.send_osc.called
+    status_call = [
+        call
+        for call in mock_engine.send_osc.call_args_list
+        if call[0][0] == "/olc/cmd/status"
+    ]
+    assert len(status_call) == 1
+    assert "Syntax Error" in status_call[0][0][1]
+
+    # 4. Empty or invalid args are safely ignored
+    mock_engine.send_osc.reset_mock()
+    delegate._cmd("/olc/cmd", [])  # pylint: disable=protected-access
+    delegate._cmd("/olc/cmd", [""])  # pylint: disable=protected-access
+    delegate._cmd("/olc/cmd", [123])  # pylint: disable=protected-access
+    mock_engine.send_osc.assert_not_called()
