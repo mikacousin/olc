@@ -354,6 +354,9 @@ class Window(Gtk.ApplicationWindow):
             return True
 
         if keyval == Gdk.KEY_Tab:
+            if self.app.core.commandline.get_string().strip():
+                self.app.core.action_registry.execute("commandline.autocomplete")
+                return True
             self.toggle_focus()
             return True
 

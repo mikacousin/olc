@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import typing
 
+from olc.core.parser.completer import CommandCompleter, CompletionResult
 from olc.core.parser.executor import CommandExecutor, CommandResult
 from olc.core.parser.parser import CommandParser, CommandSyntaxError
 
@@ -38,6 +39,7 @@ class CoreCommandLine:
         self._keystring: str = ""
         self.parser = CommandParser()
         self.executor = CommandExecutor(app)
+        self.completer = CommandCompleter(self.parser, getattr(app, "lightshow", None))
         self.history: list[str] = []
         self.history_index: int = -1
 
@@ -51,6 +53,7 @@ class CoreCommandLine:
         Args:
             string: The string to append.
         """
+        self.completer.reset_cycle()
         self._keystring += string
         self.update()
 
@@ -60,8 +63,26 @@ class CoreCommandLine:
         Args:
             string: The new command line string.
         """
+        self.completer.reset_cycle()
         self._keystring = string
         self.update()
+
+    def autocomplete(self) -> CompletionResult:
+        """Attempt to auto-complete the current command line buffer with Tab.
+
+        Returns:
+            CompletionResult containing the outcome and suggestions.
+        """
+        if self.completer.lightshow is None and hasattr(self.app, "lightshow"):
+            self.completer.lightshow = self.app.lightshow
+
+        result = self.completer.complete(self._keystring)
+        if result.has_completed:
+            self._keystring = result.new_text
+            self.update()
+        if result.candidates:
+            self.app.emit("commandline.suggestions", result.candidates)
+        return result
 
     def get_string(self) -> str:
         """Return the current command line string.
@@ -73,10 +94,12 @@ class CoreCommandLine:
 
     def clear(self) -> None:
         """Clear the current command line buffer."""
+        self.completer.reset_cycle()
         self.set_string("")
 
     def backspace(self) -> None:
         """Remove the last character from the command line buffer."""
+        self.completer.reset_cycle()
         if self._keystring:
             self.set_string(self._keystring[:-1])
 

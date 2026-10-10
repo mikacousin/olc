@@ -33,6 +33,7 @@ from olc.actions.channel import (
 )
 from olc.actions.commandline import (
     CommandLineAppendCharAction,
+    CommandLineAutocompleteAction,
     CommandLineBackspaceAction,
     CommandLineClearAction,
     CommandLineExecuteAction,
@@ -235,6 +236,7 @@ def register_all_actions(registry: ActionRegistry) -> None:
         SetPercentDisplayAction,
         SetDefaultTimeAction,
         CommandLineAppendCharAction,
+        CommandLineAutocompleteAction,
         CommandLineClearAction,
         CommandLineSetAction,
         CommandLineExecuteAction,

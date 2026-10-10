@@ -544,7 +544,7 @@ class CommandParser:
         if last.type == TokenType.GOTO:
             return [TokenType.CUE, TokenType.NUMBER]
 
-        if last.type == TokenType.CUE:
+        if last.type in (TokenType.CUE, TokenType.GROUP):
             return [TokenType.NUMBER]
 
         return []

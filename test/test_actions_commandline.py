@@ -369,5 +369,22 @@ def test_commandline_widget_rendering_and_events() -> None:
     widget._on_executed_ui("Cue 1 recorded")
     assert "Cue 1 recorded" in widget.feedback_label.get_label()
 
-    # 6. Cleanup
+    # 6. Suggestions pill feedback
+    widget._on_suggestions_ui(["THRU", "AT", "+", "-"])
+    sugg_text = widget.feedback_label.get_label()
+    assert "THRU" in sugg_text
+    assert "AT" in sugg_text
+
+    # 7. Cleanup
     widget.destroy()
+
+
+def test_commandline_autocomplete_action() -> None:
+    """Test commandline.autocomplete action execution."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    app.action_registry.execute("commandline.set", "1")
+    app.action_registry.execute("commandline.autocomplete")
+    # Must complete to '1 THRU '
+    assert app.commandline.get_string() == "1 THRU "

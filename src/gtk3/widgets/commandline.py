@@ -75,6 +75,7 @@ class CommandLineWidget:
         self.app.core.subscribe("commandline.changed", self.on_changed)
         self.app.core.subscribe("commandline.error", self.on_error)
         self.app.core.subscribe("commandline.executed", self.on_executed)
+        self.app.core.subscribe("commandline.suggestions", self.on_suggestions)
 
     def on_changed(self, keystring: str) -> None:
         """Callback triggered when the logical command line changes.
@@ -122,6 +123,30 @@ class CommandLineWidget:
             self.feedback_label.set_text("")
         return False
 
+    def on_suggestions(self, candidates: list[str]) -> None:
+        """Callback triggered when multiple completion candidates are available.
+
+        Args:
+            candidates: List of valid token/command completion strings.
+        """
+        GLib.idle_add(self._on_suggestions_ui, candidates)
+
+    def _on_suggestions_ui(self, candidates: list[str]) -> bool:
+        if not candidates:
+            return False
+
+        max_show = 7
+        shown = candidates[:max_show]
+        escaped_items = [html.escape(c, quote=True) for c in shown]
+        if len(candidates) > max_show:
+            escaped_items.append("…")
+
+        pill_text = " | ".join(escaped_items)
+        self.feedback_label.set_markup(
+            f'<span foreground="#FFB74D">[{pill_text}]</span>'
+        )
+        return False
+
     def _render_text(self, text: str) -> None:
         """Render command line text with syntax highlighting and trailing cursor."""
         cursor = '<span foreground="#888888">_</span>'
@@ -141,3 +166,4 @@ class CommandLineWidget:
         self.app.core.unsubscribe("commandline.changed", self.on_changed)
         self.app.core.unsubscribe("commandline.error", self.on_error)
         self.app.core.unsubscribe("commandline.executed", self.on_executed)
+        self.app.core.unsubscribe("commandline.suggestions", self.on_suggestions)

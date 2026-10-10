@@ -156,3 +156,14 @@ class CommandLineHistoryNextAction(Action):
     def execute(self) -> None:
         """Recall next command."""
         self.app.commandline.history_next()
+
+
+class CommandLineAutocompleteAction(Action):
+    """Action to auto-complete or cycle through command tokens using Tab."""
+
+    name = "commandline.autocomplete"
+    can_undo = False
+
+    def execute(self) -> object:
+        """Trigger command line auto-completion."""
+        return self.app.commandline.autocomplete()
