@@ -19,10 +19,12 @@ from typing import Callable, Optional
 
 import mido
 from gi.repository import GLib
+
 from olc.timer import RepeatedTimer
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.midi import Midi
 
 

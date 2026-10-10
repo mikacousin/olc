@@ -18,12 +18,14 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
+
 from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.gtk3.widgets.patch_channels import PatchChannelHeader, PatchChannelWidget
 
 if typing.TYPE_CHECKING:
-    import olc.gtk3.patch_channels
     from gi.repository import Gio
+
+    import olc.gtk3.patch_channels
     from olc.core.backends import DMXBackend
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow

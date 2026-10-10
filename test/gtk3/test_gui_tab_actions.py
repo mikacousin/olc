@@ -20,8 +20,8 @@ import typing
 
 import pytest
 from gi.repository import Gtk
-from olc.gtk3.application import Application
 
+from olc.gtk3.application import Application
 from test.gtk3.conftest import process_events  # pylint: disable=wrong-import-order
 
 pytestmark = pytest.mark.gui

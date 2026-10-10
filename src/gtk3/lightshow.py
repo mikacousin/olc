@@ -17,10 +17,12 @@ from __future__ import annotations
 import typing
 
 from gi.repository import GLib, Gtk
+
 from olc.core.lightshow import LightShow
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.app import CoreApplication
 
 

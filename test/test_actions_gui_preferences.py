@@ -19,6 +19,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+
 from olc.core.app import CoreApplication
 from olc.gtk3.event_bridge import GuiEventBridge
 from olc.settings import SettingsTab

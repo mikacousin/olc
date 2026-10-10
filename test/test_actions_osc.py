@@ -23,6 +23,7 @@ import pytest
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
+
 from olc.core.app import CoreApplication  # noqa: E402
 from olc.core.backends.osc.delegate import OSCDelegate  # noqa: E402
 from olc.core.engine import CoreEngine  # noqa: E402

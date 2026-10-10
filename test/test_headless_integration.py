@@ -20,6 +20,7 @@ import pathlib
 from unittest.mock import MagicMock
 
 import numpy as np
+
 from olc.core.app import CoreApplication
 from olc.core.universe_config import Protocol, UniverseMap
 from olc.cue import Cue

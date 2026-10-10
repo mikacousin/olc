@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from gi.repository import Gio, Gtk
+
 from olc.gtk3.history import HistoryTab
 from olc.gtk3.patch_outputs import PatchOutputsTab
 from olc.gtk3.widgets.channel import ChannelWidget

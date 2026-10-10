@@ -18,12 +18,14 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
+
 from olc.define import MAX_CHANNELS
 from olc.gtk3.widgets.track_channels import TrackChannelsHeader, TrackChannelsWidget
 
 if typing.TYPE_CHECKING:
-    import olc.gtk3.track_channels
     from gi.repository import Gio
+
+    import olc.gtk3.track_channels
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application

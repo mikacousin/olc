@@ -22,6 +22,7 @@ import pathlib
 import typing
 
 from gi.repository import Gio
+
 from olc.core.action import Action
 from olc.cue import Cue
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE

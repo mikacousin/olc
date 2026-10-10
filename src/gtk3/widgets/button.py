@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import cairo
 from gi.repository import Gdk, GObject, Gtk
+
 from olc.gtk3.widgets.common import rounded_rectangle, rounded_rectangle_fill
 
 

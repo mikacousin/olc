@@ -18,6 +18,7 @@ import typing
 from unittest.mock import MagicMock, patch
 
 import serial
+
 from olc.core.backends.enttec import DmxUsbProManager, resolve_port
 from olc.core.senders import DmxUsbProSender
 from olc.core.universe_data import DMXUniverse

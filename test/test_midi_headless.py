@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 
 import mido
 import numpy as np
+
 from olc.core.app import CoreApplication
 from olc.define import MAX_CHANNELS
 from olc.midi import Midi

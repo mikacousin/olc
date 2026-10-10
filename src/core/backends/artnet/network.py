@@ -22,6 +22,7 @@ from socket import AF_INET, SO_BROADCAST, SO_REUSEADDR, SOCK_DGRAM, SOL_SOCKET, 
 from struct import pack
 
 import ifaddr
+
 from olc.core.backends.artnet.protocol import PORT
 
 if typing.TYPE_CHECKING:

@@ -112,3 +112,47 @@ class CommandLineAppendCharAction(CommandLineSetAction):
         self.can_undo = bool(self.char)
         self.text = self.old_text + self.char
         self.app.commandline.add_string(self.char)
+
+
+class CommandLineExecuteAction(Action):
+    """Action to validate and execute the current command line buffer (ENTER)."""
+
+    name = "commandline.execute"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Execute the command line."""
+        self.app.commandline.execute()
+
+
+class CommandLineBackspaceAction(Action):
+    """Action to remove the last character of the command line."""
+
+    name = "commandline.backspace"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Remove last character."""
+        self.app.commandline.backspace()
+
+
+class CommandLineHistoryPrevAction(Action):
+    """Action to recall previous command line entry from history."""
+
+    name = "commandline.history_prev"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Recall previous command."""
+        self.app.commandline.history_prev()
+
+
+class CommandLineHistoryNextAction(Action):
+    """Action to recall next command line entry from history."""
+
+    name = "commandline.history_next"
+    can_undo = False
+
+    def execute(self) -> None:
+        """Recall next command."""
+        self.app.commandline.history_next()

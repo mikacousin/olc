@@ -12,11 +12,14 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
-"""Logical command line state model."""
+"""Logical command line state model and execution coordinator."""
 
 from __future__ import annotations
 
 import typing
+
+from olc.core.parser.executor import CommandExecutor, CommandResult
+from olc.core.parser.parser import CommandParser, CommandSyntaxError
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
@@ -33,6 +36,10 @@ class CoreCommandLine:
         """
         self.app = app
         self._keystring: str = ""
+        self.parser = CommandParser()
+        self.executor = CommandExecutor(app)
+        self.history: list[str] = []
+        self.history_index: int = -1
 
     def update(self) -> None:
         """Emit local core events when command line state changes."""
@@ -63,3 +70,69 @@ class CoreCommandLine:
             The raw keystring.
         """
         return self._keystring
+
+    def clear(self) -> None:
+        """Clear the current command line buffer."""
+        self.set_string("")
+
+    def backspace(self) -> None:
+        """Remove the last character from the command line buffer."""
+        if self._keystring:
+            self.set_string(self._keystring[:-1])
+
+    def history_prev(self) -> None:
+        """Recall previous command from history."""
+        if not self.history:
+            return
+
+        if self.history_index == -1:
+            self.history_index = len(self.history) - 1
+        elif self.history_index > 0:
+            self.history_index -= 1
+
+        self.set_string(self.history[self.history_index])
+
+    def history_next(self) -> None:
+        """Recall next command from history."""
+        if not self.history or self.history_index == -1:
+            return
+
+        if self.history_index < len(self.history) - 1:
+            self.history_index += 1
+            self.set_string(self.history[self.history_index])
+        else:
+            self.history_index = -1
+            self.set_string("")
+
+    def execute(self) -> CommandResult:
+        """Parse and execute the current command line buffer.
+
+        Returns:
+            CommandResult with execution outcome.
+        """
+        raw_cmd = self._keystring.strip()
+        if not raw_cmd:
+            return CommandResult(True, "Empty command line")
+
+        # Save to command history
+        if not self.history or self.history[-1] != raw_cmd:
+            self.history.append(raw_cmd)
+        self.history_index = -1
+
+        try:
+            node = self.parser.parse(raw_cmd)
+            result = self.executor.execute(node)
+
+            if result.success:
+                # Clear buffer on successful execution
+                self.set_string("")
+                self.app.emit("commandline.executed", result.message)
+            else:
+                self.app.emit("commandline.error", result.message)
+
+            return result
+
+        except CommandSyntaxError as exc:
+            err_msg = f"Syntax Error: {exc.message}"
+            self.app.emit("commandline.error", err_msg)
+            return CommandResult(False, err_msg)

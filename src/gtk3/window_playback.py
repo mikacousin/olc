@@ -18,6 +18,7 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk, Pango
+
 from olc.define import time_to_string
 from olc.gtk3.widgets.sequential import SequentialWidget
 

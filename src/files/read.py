@@ -23,6 +23,7 @@ from gi.repository import GLib, Gtk
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.files.import_file import ImportFile
 
 

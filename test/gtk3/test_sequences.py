@@ -25,6 +25,7 @@ import pytest
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
+
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
 from olc.gtk3.sequence import SequenceTab  # noqa: E402

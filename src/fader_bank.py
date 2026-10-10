@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 import numpy as np
+
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
 from olc.fader import (
     Fader,

@@ -23,6 +23,7 @@ from olc.files.write import WriteFile
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.lightshow import LightShow
 
 

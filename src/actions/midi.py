@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 import mido
+
 from olc.core.action import Action
 
 if typing.TYPE_CHECKING:

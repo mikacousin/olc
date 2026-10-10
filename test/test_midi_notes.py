@@ -19,6 +19,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import mido
+
 from olc.files.olc.writer import OlcWriter
 from olc.files.parsed_data import ParsedData
 from olc.midi.notes import MidiNotes

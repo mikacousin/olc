@@ -19,6 +19,7 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gio, GLib, Gtk
+
 from olc.define import MAX_CHANNELS, string_to_time, time_to_string
 from olc.gtk3.widgets.main_fader import MainFaderWidget
 from olc.gtk3.window_channels import LiveView
@@ -83,7 +84,9 @@ class Window(Gtk.ApplicationWindow):
         self.set_default_size(1400, 1080)
         self.set_name("olc")
         self.connect("delete-event", self.app.exit)
-        self.connect("key-press-event", self.on_window_key_press)
+        self.key_controller = Gtk.EventControllerKey.new(self)
+        self.key_controller.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        self.key_controller.connect("key-pressed", self._on_key_controller_pressed)
 
         # Header Bar
         self.header = Gtk.HeaderBar(title="Open Lighting Console")
@@ -335,16 +338,104 @@ class Window(Gtk.ApplicationWindow):
                 widget.next_level = next_level
                 widget.queue_draw()
 
-    def on_window_key_press(self, _widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
-        """Handle window-level key press events.
+    def _on_key_controller_pressed(
+        self,
+        _controller: Gtk.EventControllerKey,
+        keyval: int,
+        _keycode: int,
+        state: Gdk.ModifierType,
+    ) -> bool:
+        """Handle window-level key press events via modern EventControllerKey.
 
-        If a text entry or cell editable widget is focused, we manually send the
-        event to it. If the widget consumes it (like text typing, navigation, or
-        space key), we return True to prevent accelerators (like space triggering
-        'playback.go') from stealing the keys. If the widget does not handle it
-        (like Ctrl+Z, Ctrl+Y, Ctrl+S), we return False to let GTK activate the
-        corresponding application accelerators.
+        Returns True if the event was consumed, False to allow propagation.
         """
+        focused = self.get_focus()
+        if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
+            return False
+
+        modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
+        ctrl_alt = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK
+        if bool(modifiers & ctrl_alt):
+            return False
+
+        # Command line validation / execution (ENTER)
+        if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
+            self.app.core.action_registry.execute("commandline.execute")
+            return True
+
+        if keyval == Gdk.KEY_BackSpace:
+            self.app.core.action_registry.execute("commandline.backspace")
+            return True
+
+        if keyval == Gdk.KEY_Escape:
+            self.app.core.action_registry.execute("commandline.clear")
+            self.live_view.channels_view.flowbox.unselect_all()
+            self.live_view.channels_view.last_selected_channel = ""
+            if self.app.tabs and "track_channels" in self.app.tabs.tabs:
+                tc = typing.cast(typing.Any, self.app.tabs.tabs["track_channels"])
+                if tc:
+                    tc.update_display()
+            return True
+
+        if keyval == Gdk.KEY_Up:
+            self.app.core.action_registry.execute("commandline.history_prev")
+            return True
+
+        if keyval == Gdk.KEY_Down:
+            self.app.core.action_registry.execute("commandline.history_next")
+            return True
+
+        if keyval == Gdk.KEY_Tab:
+            self.toggle_focus()
+            return True
+
+        if keyval == Gdk.KEY_ISO_Left_Tab:
+            self.move_tab()
+            return True
+
+        if keyval in (Gdk.KEY_Left, Gdk.KEY_Page_Down):
+            self.live_view.channels_view.select_previous()
+            return True
+
+        if keyval in (Gdk.KEY_Right, Gdk.KEY_Page_Up):
+            self.live_view.channels_view.select_next()
+            return True
+
+        # Keypad digits (KP_0 .. KP_9)
+        if Gdk.KEY_KP_0 <= keyval <= Gdk.KEY_KP_9:
+            char = str(keyval - Gdk.KEY_KP_0)
+            self.app.core.action_registry.execute("commandline.append_char", char)
+            return True
+
+        # Keypad operators
+        if keyval == Gdk.KEY_KP_Decimal:
+            self.app.core.action_registry.execute("commandline.append_char", ".")
+            return True
+
+        if keyval == Gdk.KEY_KP_Add:
+            self.app.core.action_registry.execute("commandline.append_char", " + ")
+            return True
+
+        if keyval == Gdk.KEY_KP_Subtract:
+            self.app.core.action_registry.execute("commandline.append_char", " - ")
+            return True
+
+        if keyval == Gdk.KEY_KP_Divide:
+            self.app.core.action_registry.execute("commandline.append_char", " / ")
+            return True
+
+        # Printable Unicode characters (letters, numbers, space, symbols)
+        unichar = Gdk.keyval_to_unicode(keyval)
+        if unichar > 0:
+            char = chr(unichar)
+            if char.isprintable():
+                self.app.core.action_registry.execute("commandline.append_char", char)
+                return True
+
+        return False
+
+    def on_window_key_press(self, _widget: Gtk.Widget, event: Gdk.EventKey) -> bool:
+        """Compatibility wrapper for legacy key-press event delegation."""
         focused = self.get_focus()
         if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
             return bool(focused.event(event))

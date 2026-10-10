@@ -18,10 +18,12 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
+
 from olc.fader import FaderGroup, FaderMain, FaderPreset, FaderSequence, FaderType
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.lightshow import LightShow
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.window import Window

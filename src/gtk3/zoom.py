@@ -22,6 +22,7 @@ from olc.gtk3.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gtk
+
     from olc.gtk3.window import Window
 
 

@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import pytest
+
 from olc.gtk3.application import Application  # noqa: E402
 
 from test.gtk3.conftest import process_events  # noqa: E402 # isort: skip # pylint: disable=wrong-import-order

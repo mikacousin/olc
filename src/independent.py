@@ -18,6 +18,7 @@ import typing
 from enum import StrEnum
 
 import numpy as np
+
 from olc.define import MAX_CHANNELS
 
 

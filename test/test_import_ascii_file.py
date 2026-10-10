@@ -6,6 +6,7 @@ import pytest
 gi.require_version("Gtk", "3.0")
 from charset_normalizer import from_bytes  # noqa: E402
 from gi.repository import Gio  # noqa: E402
+
 from olc.core.lightshow import LightShow  # noqa: E402
 from olc.files.file_type import FileType  # noqa: E402
 from olc.files.import_file import ImportFile  # noqa: E402

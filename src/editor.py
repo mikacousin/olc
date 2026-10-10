@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 import numpy as np
+
 from olc.define import MAX_CHANNELS
 
 if typing.TYPE_CHECKING:

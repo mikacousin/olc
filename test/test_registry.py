@@ -20,6 +20,7 @@ import typing
 from unittest.mock import MagicMock
 
 import pytest
+
 from olc.core.action import Action
 from olc.core.app import CoreApplication
 

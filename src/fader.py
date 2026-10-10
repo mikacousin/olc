@@ -20,6 +20,7 @@ import typing
 from enum import IntEnum
 
 import numpy as np
+
 from olc.define import MAX_CHANNELS
 
 if typing.TYPE_CHECKING:

@@ -111,3 +111,59 @@ def test_commandline_append_char_keyword_and_unchanged() -> None:
     app.action_registry.execute("commandline.set", "9")
     set_action = app.action_registry.get("commandline.set")
     assert set_action.can_undo is False
+
+
+def test_commandline_execute_backspace_and_history() -> None:
+    """Test execute, backspace, and history navigation actions."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+
+    # 1. Backspace
+    app.commandline.set_string("123")
+    app.action_registry.execute("commandline.backspace")
+    assert app.commandline.get_string() == "12"
+
+    # 2. Execute command
+    app.commandline.set_string("1 THRU 4")
+    app.action_registry.execute("commandline.execute")
+    # On success, buffer is cleared and selection is updated
+    assert app.commandline.get_string() == ""
+    assert app.selected_channels == [1, 2, 3, 4]
+
+    # 3. History recall
+    app.action_registry.execute("commandline.history_prev")
+    assert app.commandline.get_string() == "1 THRU 4"
+
+    app.action_registry.execute("commandline.history_next")
+    assert app.commandline.get_string() == ""
+
+
+def test_window_key_controller_handling() -> None:
+    """Test Window._on_key_controller_pressed routes keys and handles shortcuts."""
+    from gi.repository import Gdk
+
+    from olc.gtk3.window import Window
+
+    win = Window.__new__(Window)
+    win.get_focus = MagicMock(return_value=None)
+    mock_app = MagicMock()
+    win.get_application = MagicMock(return_value=mock_app)
+    win.live_view = MagicMock()
+
+    # Digits from keypad
+    no_mod = Gdk.ModifierType(0)
+    ret = win._on_key_controller_pressed(MagicMock(), Gdk.KEY_KP_5, 0, no_mod)
+    assert ret is True
+    mock_app.core.action_registry.execute.assert_called_with(
+        "commandline.append_char", "5"
+    )
+
+    # Enter
+    ret = win._on_key_controller_pressed(MagicMock(), Gdk.KEY_Return, 0, no_mod)
+    assert ret is True
+    mock_app.core.action_registry.execute.assert_called_with("commandline.execute")
+
+    # BackSpace
+    ret = win._on_key_controller_pressed(MagicMock(), Gdk.KEY_BackSpace, 0, no_mod)
+    assert ret is True
+    mock_app.core.action_registry.execute.assert_called_with("commandline.backspace")

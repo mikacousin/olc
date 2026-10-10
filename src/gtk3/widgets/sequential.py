@@ -19,6 +19,7 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
+
 from olc.define import MAX_CHANNELS, time_to_string
 
 if typing.TYPE_CHECKING:

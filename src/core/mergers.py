@@ -15,6 +15,7 @@
 import time
 
 import numpy as np
+
 from olc.core.universe_data import NUM_CHANNELS
 
 

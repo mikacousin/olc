@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 import mido
+
 from olc.midi.fader import MIDIFader
 
 if typing.TYPE_CHECKING:

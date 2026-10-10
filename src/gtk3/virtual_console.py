@@ -511,10 +511,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "time"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_T
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " TIME ")
 
     def _on_delay(self, _widget: Gtk.Widget) -> None:
         """Delay button"""
@@ -522,10 +519,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "delay"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_D
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " DELAY ")
 
     def _on_go(self, _widget: Gtk.Widget) -> None:
         """Go"""
@@ -623,11 +617,6 @@ class VirtualConsoleWindow(Gtk.Window):
         if self.is_learning_midi and self.app.midi is not None:
             self.app.midi.learning = "ch"
             self.queue_draw()
-        else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_c
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
 
     def _on_thru(self, _widget: Gtk.Widget) -> None:
         """Thru"""
@@ -635,10 +624,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "thru"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_greater
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " THRU ")
 
     def _on_plus(self, _widget: Gtk.Widget) -> None:
         """+ button"""
@@ -646,10 +632,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "plus"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_plus
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " + ")
 
     def _on_minus(self, _widget: Gtk.Widget) -> None:
         """- button"""
@@ -657,10 +640,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "minus"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_minus
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " - ")
 
     def _on_all(self, _widget: Gtk.Widget) -> None:
         """All"""
@@ -668,10 +648,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "all"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_a
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", "ALL")
 
     def _on_at(self, _widget: Gtk.Widget) -> None:
         """At level"""
@@ -679,10 +656,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "at"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_equal
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " AT ")
 
     def _on_percent_plus(self, _widget: Gtk.Widget) -> None:
         """% +"""
@@ -690,10 +664,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "percent_plus"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_exclam
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " AT + 10")
 
     def _on_percent_minus(self, _widget: Gtk.Widget) -> None:
         """% -"""
@@ -701,10 +672,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "percent_minus"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_colon
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.append_char", " AT - 10")
 
     def _on_update(self, _widget: Gtk.Widget) -> None:
         """Update"""
@@ -712,10 +680,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "update"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_U
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute(
+                "commandline.append_char", "UPDATE CUE "
+            )
 
     def _on_record(self, _widget: Gtk.Widget) -> None:
         """Record"""
@@ -723,10 +690,9 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "record"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_R
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute(
+                "commandline.append_char", "RECORD CUE "
+            )
 
     def _on_right(self, _widget: Gtk.Widget) -> None:
         """Right arrow"""
@@ -734,10 +700,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "right"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Right
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            if self.app.window and hasattr(self.app.window, "live_view"):
+                self.app.window.live_view.channels_view.select_next()
 
     def _on_left(self, _widget: Gtk.Widget) -> None:
         """Left arrow"""
@@ -745,10 +709,8 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "left"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Left
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            if self.app.window and hasattr(self.app.window, "live_view"):
+                self.app.window.live_view.channels_view.select_previous()
 
     def _on_up(self, _widget: Gtk.Widget) -> None:
         """Up arrow"""
@@ -756,10 +718,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "up"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Up
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.history_prev")
 
     def _on_down(self, _widget: Gtk.Widget) -> None:
         """Down arrow"""
@@ -767,10 +726,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "down"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_Down
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.history_next")
 
     def _on_clear(self, _widget: Gtk.Widget) -> None:
         """Clear"""
@@ -778,10 +734,7 @@ class VirtualConsoleWindow(Gtk.Window):
             self.app.midi.learning = "clear"
             self.queue_draw()
         else:
-            event = Gdk.EventKey()
-            event.keyval = Gdk.KEY_BackSpace
-            if self.app.window is not None:
-                self.app.window.on_key_press_event(self, event)
+            self.app.core.action_registry.execute("commandline.clear")
 
     def _on_zero(self, _widget: Gtk.Widget) -> None:
         """0"""

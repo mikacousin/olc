@@ -15,6 +15,7 @@
 from unittest.mock import MagicMock
 
 from gi.repository import Gio
+
 from olc.core.universe_config import Protocol, UniverseMap
 from olc.files.file_type import FileType
 from olc.files.import_file import ImportFile

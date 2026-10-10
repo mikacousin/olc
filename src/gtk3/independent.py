@@ -19,13 +19,15 @@ from typing import Callable
 
 import numpy as np
 from gi.repository import Gdk, Gtk
+
 from olc.define import MAX_CHANNELS
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 from olc.independent import IndependentType
 
 if typing.TYPE_CHECKING:
-    import olc.gtk3.independent
     from gi.repository import Gio
+
+    import olc.gtk3.independent
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application

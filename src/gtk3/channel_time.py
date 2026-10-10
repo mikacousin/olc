@@ -18,11 +18,13 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
+
 from olc.channel_time import ChannelTime
 from olc.gtk3.widgets.channels_view import ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application

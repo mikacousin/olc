@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from gi.repository import Gtk
+
 from olc.core.app import CoreApplication
 from olc.gtk3.event_bridge import GuiEventBridge
 from olc.settings import SettingsTab

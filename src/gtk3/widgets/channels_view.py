@@ -18,6 +18,7 @@ import typing
 from typing import Any, Callable, Optional
 
 from gi.repository import Gdk, Gtk
+
 from olc.core.selection import (
     SelectActiveAction,
     SelectAddAction,
@@ -32,6 +33,7 @@ from olc.gtk3.widgets.channel import ChannelWidget
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application

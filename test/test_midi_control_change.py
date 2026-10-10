@@ -20,6 +20,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import mido
+
 from olc.midi.control_change import MidiControlChanges
 from olc.midi.xfade import MidiXFade
 

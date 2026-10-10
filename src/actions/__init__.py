@@ -33,7 +33,11 @@ from olc.actions.channel import (
 )
 from olc.actions.commandline import (
     CommandLineAppendCharAction,
+    CommandLineBackspaceAction,
     CommandLineClearAction,
+    CommandLineExecuteAction,
+    CommandLineHistoryNextAction,
+    CommandLineHistoryPrevAction,
     CommandLineSetAction,
 )
 from olc.actions.cue import (
@@ -233,6 +237,10 @@ def register_all_actions(registry: ActionRegistry) -> None:
         CommandLineAppendCharAction,
         CommandLineClearAction,
         CommandLineSetAction,
+        CommandLineExecuteAction,
+        CommandLineBackspaceAction,
+        CommandLineHistoryPrevAction,
+        CommandLineHistoryNextAction,
         FaderFlashAction,
         PlaybackGotoAction,
         ChannelWheelAdjustAction,

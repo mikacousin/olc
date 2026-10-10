@@ -18,10 +18,12 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
+
 from olc.gtk3.widgets.common import rounded_rectangle_fill
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.gtk3.track_channels import TrackChannelsTab
 
 

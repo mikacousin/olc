@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import pytest
+
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.widgets.knob import KnobWidget
 from olc.gtk3.widgets.toggle import ToggleWidget

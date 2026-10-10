@@ -43,8 +43,6 @@ class LiveView(Gtk.Notebook):
         self.set_tab_reorderable(self.channels_view, True)
         self.set_tab_detachable(self.channels_view, True)
 
-        self.connect("key_press_event", self.on_key_press_event)
-
     @property
     def app(self) -> Application:
         """Get parent application instance safely."""

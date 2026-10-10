@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Deque
 
 import mido
+
 from olc.midi.control_change import MidiControlChanges
 from olc.midi.fader import MIDIFader
 from olc.midi.lcd import MackieLCD

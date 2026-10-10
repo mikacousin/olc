@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from gi.repository import GLib
+
 from olc.core.action import Action
 from olc.core.backends.osc.delegate import OSCDelegate
 

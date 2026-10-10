@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 import mido
+
 from olc.define import MAX_FADER_PAGE
 
 if typing.TYPE_CHECKING:

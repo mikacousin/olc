@@ -17,6 +17,7 @@ from __future__ import annotations
 import typing
 
 from gi.repository import Gio
+
 from olc.files.ascii.writer import AsciiWriter
 from olc.files.file_type import FileType
 from olc.files.olc.writer import OlcWriter

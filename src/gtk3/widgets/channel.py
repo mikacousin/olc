@@ -18,10 +18,12 @@ import typing
 
 import cairo
 from gi.repository import Gdk, Gtk
+
 from olc.core.selection import SelectAddAction, SelectRemoveAction, SelectThruAction
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.gtk3.application import Application

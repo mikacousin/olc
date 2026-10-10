@@ -20,6 +20,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+
 from olc.core.app import CoreApplication
 from olc.define import MAX_CHANNELS
 

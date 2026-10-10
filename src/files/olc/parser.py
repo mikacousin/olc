@@ -22,6 +22,7 @@ from olc.files.read import ReadFile
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gtk
+
     from olc.files.import_file import ImportFile
 
 

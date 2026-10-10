@@ -25,6 +25,7 @@ import pytest
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
+
 from olc.group import Group  # noqa: E402
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.group import GroupTab  # noqa: E402

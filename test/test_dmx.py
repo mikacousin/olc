@@ -16,6 +16,7 @@
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+
 from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.dmx import Dmx
 

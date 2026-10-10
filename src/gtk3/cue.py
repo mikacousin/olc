@@ -18,12 +18,14 @@ import typing
 from typing import Callable
 
 from gi.repository import Gdk, Gtk
+
 from olc.define import MAX_CHANNELS, is_float, is_int
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
+
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
     from olc.cue import Cue

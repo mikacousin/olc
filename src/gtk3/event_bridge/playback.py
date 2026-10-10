@@ -19,6 +19,7 @@ from __future__ import annotations
 import typing
 
 from gi.repository import GLib, Pango
+
 from olc.define import MAX_CHANNELS
 from olc.gtk3.channel_time import ChanneltimeTab
 

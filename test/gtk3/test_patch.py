@@ -23,6 +23,7 @@ import pytest
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk  # noqa: E402
+
 from olc.gtk3.application import Application  # noqa: E402
 from olc.gtk3.patch_channels import PatchChannelsTab  # noqa: E402
 from olc.gtk3.patch_outputs import PatchOutputsTab  # noqa: E402

@@ -20,6 +20,7 @@ import pathlib
 from unittest.mock import MagicMock
 
 import pytest
+
 from olc.core.app import CoreApplication
 from olc.cue import Cue
 from olc.fader import FaderType
