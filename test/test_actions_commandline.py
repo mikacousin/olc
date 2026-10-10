@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for CommandLine actions (append_char, clear, set)."""
+# pylint: disable=protected-access,import-outside-toplevel
 
 from __future__ import annotations
 
@@ -229,3 +230,106 @@ def test_virtual_console_commandline_buttons() -> None:
     mock_app.core.action_registry.execute.assert_called_with(
         "commandline.append_char", " BLOCK"
     )
+
+
+def test_virtual_console_button_sensitivity() -> None:
+    """Test VirtualConsoleWindow updates button sensitivity based on command text."""
+    from olc.core.parser.tokens import TokenType
+    from olc.gtk3.virtual_console import VirtualConsoleWindow
+    from olc.gtk3.widgets.button import ButtonWidget
+
+    mock_app = MagicMock()
+    mock_app.midi = None
+
+    vc = VirtualConsoleWindow.__new__(VirtualConsoleWindow)
+    vc.app = mock_app
+
+    # Create dummy buttons
+    buttons = [
+        "zero",
+        "one",
+        "two",
+        "three",
+        "four",
+        "five",
+        "six",
+        "seven",
+        "eight",
+        "nine",
+        "dot",
+        "enter",
+        "thru",
+        "plus",
+        "minus",
+        "all",
+        "odd",
+        "even",
+        "at_level",
+        "full",
+        "out",
+        "percent_plus",
+        "percent_minus",
+        "block",
+        "delete",
+        "goto",
+    ]
+    for b in buttons:
+        setattr(vc, b, ButtonWidget(b))
+    vc.queue_draw = MagicMock()
+
+    # 1. Empty commandline
+    vc.commandline = MagicMock()
+    vc.commandline.get_string.return_value = ""
+    vc.commandline.parser.get_expected_tokens.return_value = [
+        TokenType.NUMBER,
+        TokenType.GROUP,
+        TokenType.ALL,
+        TokenType.RECORD,
+        TokenType.GOTO,
+        TokenType.DELETE,
+    ]
+    vc.update_button_sensitivity()
+
+    # Digits and All, Delete, Goto should be sensitive
+    assert vc.one.get_sensitive() is True
+    assert vc.all.get_sensitive() is True
+    assert vc.delete.get_sensitive() is True
+    # Enter and Thru should NOT be sensitive when empty
+    assert vc.enter.get_sensitive() is False
+    assert vc.thru.get_sensitive() is False
+    assert vc.at_level.get_sensitive() is False
+
+    # 2. After typing "1"
+    vc.commandline.get_string.return_value = "1"
+    vc.commandline.parser.get_expected_tokens.return_value = [
+        TokenType.THRU,
+        TokenType.PLUS,
+        TokenType.MINUS,
+        TokenType.AT,
+        TokenType.NUMBER,
+    ]
+    vc.update_button_sensitivity()
+
+    assert vc.one.get_sensitive() is True
+    assert vc.two.get_sensitive() is True
+    assert vc.enter.get_sensitive() is True
+    assert vc.thru.get_sensitive() is True
+    assert vc.at_level.get_sensitive() is True
+    assert vc.delete.get_sensitive() is False
+
+    # 3. Test ButtonWidget respects sensitive state on press and release
+    btn = ButtonWidget("Test")
+    btn.set_sensitive(False)
+    clicked_mock = MagicMock()
+    btn.connect("clicked", clicked_mock)
+    btn.on_press(MagicMock(), MagicMock())
+    btn.on_release(MagicMock(), MagicMock())
+    clicked_mock.assert_not_called()
+    assert btn.pressed is False
+
+    # Test state-flags-changed resets pressed
+    btn.set_sensitive(True)
+    btn.on_press(MagicMock(), MagicMock())
+    assert btn.pressed is True
+    btn.set_sensitive(False)
+    assert btn.pressed is False

@@ -19,6 +19,7 @@ import typing
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.parser.tokens import TokenType
 from olc.gtk3.widgets.button import ButtonWidget
 from olc.gtk3.widgets.controller import ControllerWidget
 from olc.gtk3.widgets.fader import FaderWidget
@@ -404,6 +405,10 @@ class VirtualConsoleWindow(Gtk.Window):
 
         self.add(self.grid)
 
+        # Listen for command line text changes to dynamically update button sensitivity
+        self.app.core.subscribe("commandline.changed", self._on_commandline_changed)
+        self.update_button_sensitivity()
+
         # Send keyboard events to a dispatch function
         self.connect("key_press_event", self.on_key_press_event)
 
@@ -450,8 +455,60 @@ class VirtualConsoleWindow(Gtk.Window):
         Returns:
             False to propagate the event further
         """
+        self.app.core.unsubscribe("commandline.changed", self._on_commandline_changed)
         self.app.virtual_console = None
         return False
+
+    def _on_commandline_changed(self, _text: str) -> None:
+        """Handle commandline buffer changes by refreshing button sensitivity."""
+        self.update_button_sensitivity()
+
+    def update_button_sensitivity(self) -> None:
+        """Enable or disable commandline buttons based on parser expectations."""
+        if self.is_learning_midi:
+            return
+
+        cmd_text = self.commandline.get_string()
+        expected = set(self.commandline.parser.get_expected_tokens(cmd_text))
+        is_empty = not cmd_text.strip()
+
+        # Numeric pad: numbers are valid if NUMBER expected or command empty
+        can_number = (TokenType.NUMBER in expected) or is_empty
+        for num_btn in (
+            self.zero,
+            self.one,
+            self.two,
+            self.three,
+            self.four,
+            self.five,
+            self.six,
+            self.seven,
+            self.eight,
+            self.nine,
+            self.dot,
+        ):
+            num_btn.set_sensitive(can_number)
+
+        # Enter is sensitive if non-empty (or valid syntax candidate)
+        self.enter.set_sensitive(not is_empty)
+
+        # Syntax / action tokens
+        self.thru.set_sensitive(TokenType.THRU in expected)
+        self.plus.set_sensitive(TokenType.PLUS in expected)
+        self.minus.set_sensitive(TokenType.MINUS in expected)
+        self.all.set_sensitive(TokenType.ALL in expected or is_empty)
+        self.odd.set_sensitive(TokenType.ODD in expected)
+        self.even.set_sensitive(TokenType.EVEN in expected)
+        self.at_level.set_sensitive(TokenType.AT in expected)
+        self.full.set_sensitive(TokenType.FULL in expected)
+        self.out.set_sensitive(TokenType.OUT in expected)
+        self.percent_plus.set_sensitive(TokenType.AT in expected)
+        self.percent_minus.set_sensitive(TokenType.AT in expected)
+        self.block.set_sensitive(TokenType.BLOCK in expected)
+        self.delete.set_sensitive(TokenType.DELETE in expected or is_empty)
+        self.goto.set_sensitive(TokenType.GOTO in expected or is_empty)
+
+        self.queue_draw()
 
     def _on_button_toggled(self, button: Gtk.ToggleButton, name: str) -> None:
         """MIDI learn On / Off

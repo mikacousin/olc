@@ -46,17 +46,30 @@ class ButtonWidget(Gtk.Widget):
 
         self.connect("button-press-event", self.on_press)
         self.connect("button-release-event", self.on_release)
+        self.connect("state-flags-changed", self._on_state_flags_changed)
+
+    def _on_state_flags_changed(
+        self, _widget: Gtk.Widget, _flags: Gtk.StateFlags
+    ) -> None:
+        """Reset pressed state if widget becomes insensitive."""
+        if not self.get_sensitive() and self.pressed:
+            self.pressed = False
+            self.queue_draw()
 
     def on_press(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button pressed"""
+        if not self.get_sensitive() and not self.is_learning:
+            return
         self.pressed = True
         self.queue_draw()
-        self.emit("clicked")
 
     def on_release(self, _tgt: Gtk.Widget, _ev: Gdk.EventButton) -> None:
         """Button released"""
+        was_pressed = self.pressed
         self.pressed = False
         self.queue_draw()
+        if was_pressed and (self.get_sensitive() or self.is_learning):
+            self.emit("clicked")
 
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw button
@@ -65,8 +78,11 @@ class ButtonWidget(Gtk.Widget):
             cr: Cairo context
         """
         # Draw rounded box
+        is_disabled = not self.get_sensitive() and not self.is_learning
         if self.text == "None":
             cr.set_source_rgb(0.4, 0.4, 0.4)
+        elif is_disabled:
+            cr.set_source_rgb(0.12, 0.12, 0.12)
         elif self.pressed:
             if self.is_learning:
                 cr.set_source_rgb(0.2, 0.1, 0.1)
@@ -78,11 +94,16 @@ class ButtonWidget(Gtk.Widget):
             cr.set_source_rgb(0.2, 0.2, 0.2)
         area = (1, self.WIDTH - 2, 1, self.HEIGHT - 2)
         rounded_rectangle_fill(cr, area, self.RADIUS)
-        cr.set_source_rgb(0.1, 0.1, 0.1)
+        if is_disabled:
+            cr.set_source_rgb(0.08, 0.08, 0.08)
+        else:
+            cr.set_source_rgb(0.1, 0.1, 0.1)
         rounded_rectangle(cr, area, self.RADIUS)
         # Draw Text
         if self.text == "None":
             cr.set_source_rgb(0.5, 0.5, 0.5)
+        elif is_disabled:
+            cr.set_source_rgb(0.35, 0.35, 0.35)
         else:
             cr.set_source_rgb(0.8, 0.8, 0.8)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)

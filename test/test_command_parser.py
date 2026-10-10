@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for CommandParser."""
+# pylint: disable=missing-function-docstring
 
 from __future__ import annotations
 
@@ -202,8 +203,9 @@ def test_parser_expected_tokens() -> None:
     assert TokenType.NUMBER in expected_start
     assert TokenType.RECORD in expected_start
 
-    # After channel number
+    # After channel number (without space: can type more digits, ex 1 -> 12)
     expected_num = parser.get_expected_tokens("1")
+    assert TokenType.NUMBER in expected_num
     assert TokenType.THRU in expected_num
     assert TokenType.AT in expected_num
     assert TokenType.PLUS in expected_num
@@ -213,3 +215,11 @@ def test_parser_expected_tokens() -> None:
     assert TokenType.NUMBER in expected_at
     assert TokenType.FULL in expected_at
     assert TokenType.OUT in expected_at
+
+    # After GOTO CUE
+    expected_goto_cue = parser.get_expected_tokens("GOTO CUE")
+    assert TokenType.NUMBER in expected_goto_cue
+
+    # After RECORD CUE
+    expected_rec_cue = parser.get_expected_tokens("RECORD CUE")
+    assert TokenType.NUMBER in expected_rec_cue

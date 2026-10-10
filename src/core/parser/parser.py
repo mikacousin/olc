@@ -462,7 +462,7 @@ class CommandParser:
             tok,
         )
 
-    def get_expected_tokens(  # pylint: disable=too-many-return-statements
+    def get_expected_tokens(  # pylint: disable=too-many-return-statements,too-many-branches
         self, text: str
     ) -> list[TokenType]:
         """Inspect a partial command string and return expected token types next.
@@ -500,7 +500,7 @@ class CommandParser:
         last = active_tokens[-1]
 
         if last.type in (TokenType.NUMBER, TokenType.ALL):
-            return [
+            res = [
                 TokenType.THRU,
                 TokenType.PLUS,
                 TokenType.MINUS,
@@ -509,6 +509,11 @@ class CommandParser:
                 TokenType.AT,
                 *ATTRIBUTE_TOKENS.keys(),
             ]
+            # If the user is currently typing a multi-digit number (no trailing space),
+            # allow entering more digits
+            if last.type == TokenType.NUMBER and not text.endswith(" "):
+                res.append(TokenType.NUMBER)
+            return res
 
         if last.type == TokenType.THRU:
             return [TokenType.NUMBER]
@@ -533,7 +538,13 @@ class CommandParser:
         if last.type == TokenType.RECORD:
             return [TokenType.CUE, TokenType.NUMBER]
 
+        if last.type == TokenType.UPDATE:
+            return [TokenType.CUE, TokenType.NUMBER]
+
         if last.type == TokenType.GOTO:
             return [TokenType.CUE, TokenType.NUMBER]
+
+        if last.type == TokenType.CUE:
+            return [TokenType.NUMBER]
 
         return []
