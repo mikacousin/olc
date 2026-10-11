@@ -445,6 +445,26 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self._base_emitters: dict[ChannelType, float] = {}
         self._init_base_emitters()
 
+    @property
+    def device_id(self) -> int:
+        """Logical device identifier (alias for fixture_id)."""
+        return self.fixture_id
+
+    @property
+    def universe(self) -> int:
+        """Primary starting DMX universe of this device."""
+        if not self.channels:
+            return 1
+        return min(ch.universe for ch in self.channels)
+
+    @property
+    def address(self) -> int:
+        """Primary starting DMX address of this device."""
+        if not self.channels:
+            return 1
+        u = self.universe
+        return min(ch.address for ch in self.channels if ch.universe == u)
+
     def set_curve_id(self, curve_id: int) -> None:
         """Set curve ID for the device intensity transfer function."""
         self.curve_id = max(0, int(curve_id))

@@ -87,16 +87,13 @@ class PatchDmxBridgeHandler(BaseEventBridgeHandler):
         if self.app.window and self.app.window.live_view:
             self.app.window.live_view.channels_view.update()
         if self.app.tabs:
-            if self.app.tabs.tabs.get("patch_outputs") is not None:
-                patch_outputs = typing.cast(
-                    "PatchOutputsTab", self.app.tabs.tabs["patch_outputs"]
-                )
-                patch_outputs.refresh()
-            if self.app.tabs.tabs.get("patch_channels") is not None:
-                patch_channels = typing.cast(
-                    "PatchChannelsTab", self.app.tabs.tabs["patch_channels"]
-                )
-                patch_channels.refresh()
+            self.app.tabs.refresh_all()
+            for tab_key in ("sequences", "groups", "memories"):
+                tab_obj = self.app.tabs.tabs.get(tab_key)
+                if tab_obj is not None:
+                    channels_view = getattr(tab_obj, "channels_view", None)
+                    if channels_view is not None and hasattr(channels_view, "update"):
+                        channels_view.update()
         return False
 
     def _safe_refresh_patch_outputs(self) -> bool:

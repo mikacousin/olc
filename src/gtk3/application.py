@@ -39,6 +39,7 @@ from olc.files.import_file import ImportFile  # noqa: E402
 from olc.gtk3.channel_time import ChanneltimeTab  # noqa: E402
 from olc.gtk3.cue import CuesEditionTab  # noqa: E402
 from olc.gtk3.curve import CurvesTab  # noqa: E402
+from olc.gtk3.device_inspector import DeviceInspectorWidget  # noqa: E402
 from olc.gtk3.dialog import ConfirmationDialog  # noqa: E402
 from olc.gtk3.event_bridge import GuiEventBridge  # noqa: E402
 from olc.gtk3.fader import FaderTab  # noqa: E402
@@ -229,6 +230,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.faders", ["<Control>f"])
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         self.set_accels_for_action("app.independents", ["<Control>i"])
+        self.set_accels_for_action("app.device_inspector", ["<Shift><Control>i"])
         self.set_accels_for_action("app.virtual_console", ["<Shift><Control>c"])
         self.set_accels_for_action("app.history", ["<Shift><Control>h"])
         self.set_accels_for_action("app.tab_close", ["<Control>w"])
@@ -344,6 +346,7 @@ class Application(Gtk.Application):
             "faders": "faders",
             "track_channels": "track_channels",
             "independents": "independents",
+            "device_inspector": "device_inspector_cb",
             "virtual_console": "_virtual_console",
             "settings": "settings_cb",
             "history": "history_cb",
@@ -673,6 +676,22 @@ class Application(Gtk.Application):
         """Open Independents tab UI."""
         if self.tabs:
             self.tabs.open("indes", IndependentsTab, "Independents", self)
+
+    def device_inspector_cb(
+        self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None
+    ) -> None:
+        """Create Device Inspector Tab"""
+        self.core.action_registry.execute("gui.tab_open", "device_inspector")
+
+    def open_device_inspector(self) -> None:
+        """Open Device Inspector tab UI."""
+        if self.tabs:
+            self.tabs.open(
+                "device_inspector",
+                DeviceInspectorWidget,
+                _("Device Inspector"),
+                self,
+            )
 
     def _virtual_console(
         self, _action: Gio.SimpleAction | None, _parameter: GLib.Variant | None

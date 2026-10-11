@@ -64,6 +64,10 @@
       <attribute name="action">app.independents</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">Device Inspector</attribute>
+      <attribute name="action">app.device_inspector</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">Virtual Console</attribute>
       <attribute name="action">app.virtual_console</attribute>
     </item>

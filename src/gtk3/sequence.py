@@ -15,10 +15,12 @@
 from __future__ import annotations
 
 import typing
+from enum import Enum
 from typing import Callable, Optional
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.tracking import TrackingEngine
 from olc.define import MAX_CHANNELS, is_int, string_to_time, time_to_string
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
@@ -33,6 +35,104 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channel import ChannelWidget
     from olc.gtk3.window import Window
+
+
+class TrackingDisplayState(Enum):
+    """Industry-standard visual classification of a parameter in a sequence step."""
+
+    HARD_VALUE = "hard_value"
+    TRACKED_VALUE = "tracked_value"
+    INTENSITY_UP = "intensity_up"
+    INTENSITY_DOWN = "intensity_down"
+    BLOCK = "block"
+    INACTIVE = "inactive"
+
+
+TRACKING_COLORS: dict[TrackingDisplayState, dict[str, float]] = {
+    TrackingDisplayState.HARD_VALUE: {"red": 0.95, "green": 0.95, "blue": 0.95},
+    TrackingDisplayState.TRACKED_VALUE: {"red": 0.2, "green": 0.85, "blue": 0.95},
+    TrackingDisplayState.INTENSITY_UP: {"red": 0.3, "green": 0.6, "blue": 1.0},
+    TrackingDisplayState.INTENSITY_DOWN: {"red": 0.3, "green": 0.85, "blue": 0.4},
+    TrackingDisplayState.BLOCK: {"red": 0.9, "green": 0.3, "blue": 0.9},
+    TrackingDisplayState.INACTIVE: {"red": 0.6, "green": 0.6, "blue": 0.6},
+}
+
+
+def get_tracking_color(state: TrackingDisplayState) -> dict[str, float]:
+    """Return a copy of the RGB color dictionary for a TrackingDisplayState."""
+    return dict(
+        TRACKING_COLORS.get(state, TRACKING_COLORS[TrackingDisplayState.INACTIVE])
+    )
+
+
+def classify_channel_tracking_state(  # pylint: disable=too-many-return-statements
+    sequence: Sequence, step_index: int, channel: int
+) -> tuple[TrackingDisplayState, int]:
+    """Classify a channel's tracking state and resolved level at a sequence step.
+
+    Returns:
+        Tuple of (TrackingDisplayState, resolved_8bit_level).
+    """
+    if (
+        not sequence.steps
+        or step_index < 0
+        or step_index >= len(sequence.steps)
+        or not 1 <= channel <= MAX_CHANNELS
+    ):
+        return TrackingDisplayState.INACTIVE, 0
+
+    cue = sequence.steps[step_index].cue
+    if cue is None:
+        return TrackingDisplayState.INACTIVE, 0
+
+    tracking_mode = getattr(sequence, "tracking_mode", False)
+    curr_resolved = TrackingEngine.resolve_step_state(
+        sequence, step_index, tracking_mode=tracking_mode
+    )
+    curr_level = int(curr_resolved.channels[channel - 1])
+    if curr_level == 0 and channel in curr_resolved.device_values:
+        dev_int = curr_resolved.device_values[channel].get("intensity")
+        if isinstance(dev_int, (int, float)):
+            curr_level = round(
+                float(dev_int) * 255.0 if float(dev_int) <= 1.0 else float(dev_int)
+            )
+
+    prev_level = 0
+    if step_index > 1:
+        prev_resolved = TrackingEngine.resolve_step_state(
+            sequence, step_index - 1, tracking_mode=tracking_mode
+        )
+        prev_level = int(prev_resolved.channels[channel - 1])
+        if prev_level == 0 and channel in prev_resolved.device_values:
+            prev_int = prev_resolved.device_values[channel].get("intensity")
+            if isinstance(prev_int, (int, float)):
+                prev_level = round(
+                    float(prev_int) * 255.0
+                    if float(prev_int) <= 1.0
+                    else float(prev_int)
+                )
+
+    is_explicit_move = channel in cue.channels or (
+        hasattr(cue, "device_values")
+        and "intensity" in cue.device_values.get(channel, {})
+    )
+
+    if getattr(cue, "is_block", False) and (
+        is_explicit_move or curr_level > 0 or channel in curr_resolved.device_values
+    ):
+        return TrackingDisplayState.BLOCK, curr_level
+
+    if is_explicit_move:
+        if step_index > 1 and curr_level != prev_level:
+            if curr_level > prev_level:
+                return TrackingDisplayState.INTENSITY_UP, curr_level
+            return TrackingDisplayState.INTENSITY_DOWN, curr_level
+        return TrackingDisplayState.HARD_VALUE, curr_level
+
+    if curr_level > 0 or channel in curr_resolved.device_values:
+        return TrackingDisplayState.TRACKED_VALUE, curr_level
+
+    return TrackingDisplayState.INACTIVE, 0
 
 
 # pylint: disable=too-many-instance-attributes, too-many-lines
@@ -58,10 +158,53 @@ class SequenceTab(Gtk.Grid):
 
         Gtk.Grid.__init__(self)
         self.set_column_homogeneous(True)
+        self._setup_header_bar()
         self._setup_sequences_list()
         self._setup_cues_list()
-        self.attach(self.treeview1, 0, 0, 1, 1)
+        self.attach(self.header_box, 0, 0, 1, 1)
+        self.attach_next_to(
+            self.treeview1, self.header_box, Gtk.PositionType.BOTTOM, 1, 1
+        )
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
+
+    def _setup_header_bar(self) -> None:
+        """Create top control bar with Tracking vs Cue-Only mode switch."""
+        self.header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.header_box.set_margin_start(6)
+        self.header_box.set_margin_end(6)
+        self.header_box.set_margin_top(4)
+        self.header_box.set_margin_bottom(2)
+
+        initial_tracking = getattr(self.lightshow.main_playback, "tracking_mode", False)
+        self.tracking_mode_btn = Gtk.ToggleButton(
+            label="Mode: Tracking" if initial_tracking else "Mode: Cue-Only"
+        )
+        self.tracking_mode_btn.set_active(initial_tracking)
+        self.tracking_mode_btn.connect("toggled", self._on_tracking_mode_toggled)
+        self.header_box.pack_start(self.tracking_mode_btn, False, False, 0)
+
+    def _on_tracking_mode_toggled(self, button: Gtk.ToggleButton) -> None:
+        self.set_tracking_mode(button.get_active())
+
+    def set_tracking_mode(self, enabled: bool) -> None:
+        """Set Tracking mode (True) or Cue-Only mode (False) on active sequence."""
+        seq = self.get_selected_sequence() or self.lightshow.main_playback
+        seq.tracking_mode = enabled
+        self.lightshow.main_playback.tracking_mode = enabled
+        if self.tracking_mode_btn.get_active() != enabled:
+            self.tracking_mode_btn.set_active(enabled)
+        self.tracking_mode_btn.set_label(
+            "Mode: Tracking" if enabled else "Mode: Cue-Only"
+        )
+        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.flowbox.queue_draw()
+
+    def toggle_tracking_mode(self) -> bool:
+        """Toggle between Cue-Only and Tracking mode and return new state."""
+        seq = self.get_selected_sequence() or self.lightshow.main_playback
+        new_state = not getattr(seq, "tracking_mode", False)
+        self.set_tracking_mode(new_state)
+        return new_state
 
     def _setup_sequences_list(self) -> None:
         """Setup the sequence selection list"""
@@ -861,7 +1004,7 @@ class SeqChannelsView(ChannelsView):
             )
 
     def filter_channels(self, child: Gtk.FlowBoxChild, _user_data: object) -> bool:
-        """Filter channels to display"""
+        """Filter channels to display and apply tracking color coding."""
         if not self.tabs or not self.tabs.tabs["sequences"]:
             child.set_visible(False)
             return False
@@ -870,8 +1013,20 @@ class SeqChannelsView(ChannelsView):
             child.set_visible(False)
             return False
         channel = child.get_index() + 1
+        tracking_state, resolved_level = classify_channel_tracking_state(
+            sequence, step, channel
+        )
+        widget = child.get_child()
+        if widget is not None:
+            channel_widget = typing.cast("ChannelWidget", widget)
+            channel_widget.color_level = get_tracking_color(tracking_state)
+
         cue = sequence.steps[step].cue
-        channel_level = cue.channels.get(channel, 0) if cue is not None else 0
+        if getattr(sequence, "tracking_mode", False):
+            channel_level = resolved_level
+        else:
+            channel_level = cue.channels.get(channel, 0) if cue is not None else 0
+
         if self.view_mode == VIEW_MODES["Active"]:
             return self._filter_active(child, channel_level)
         if self.view_mode == VIEW_MODES["Patched"]:

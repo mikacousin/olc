@@ -274,6 +274,7 @@ class PatchWidget(Gtk.DrawingArea):
         """
         area = (1, allocation.width - 2, 1, allocation.height - 2)
         parent = typing.cast("Gtk.FlowBoxChild", self.get_parent())
+        occupant = self.lightshow.patch.get_address_occupant(self.universe, self.output)
         if (
             self.universe in self.lightshow.patch.outputs
             and self.output in self.lightshow.patch.outputs[self.universe]
@@ -294,6 +295,12 @@ class PatchWidget(Gtk.DrawingArea):
                 if parent.is_selected():
                     cr.set_source_rgb(0.6, 0.4, 0.1)
                     rounded_rectangle(cr, area, 10)
+        elif occupant is not None and occupant > 0:
+            cr.set_source_rgb(0.3, 0.3, 0.3)
+            rounded_rectangle_fill(cr, area, 10)
+            if parent.is_selected():
+                cr.set_source_rgb(0.6, 0.4, 0.1)
+                rounded_rectangle(cr, area, 10)
         elif parent.is_selected():
             # Unpatched output
             cr.set_source_rgb(0.6, 0.4, 0.1)
@@ -341,18 +348,24 @@ class PatchWidget(Gtk.DrawingArea):
         cr.set_source_rgb(0.9, 0.6, 0.2)
         cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
         cr.set_font_size(11 * self.scale)
+        ch_num = 0
         if (
             self.universe in self.lightshow.patch.outputs
             and self.output in self.lightshow.patch.outputs[self.universe]
         ):
-            text = str(self.lightshow.patch.outputs[self.universe][self.output][0])
+            ch_num = self.lightshow.patch.outputs[self.universe][self.output][0]
+        else:
+            occ = self.lightshow.patch.get_address_occupant(self.universe, self.output)
+            if occ is not None:
+                ch_num = occ
+        if ch_num > 0:
+            text = str(ch_num)
             (_x, _y, width, height, _dx, _dy) = cr.text_extents(text)
-            if self.lightshow.patch.outputs[self.universe][self.output][0] > 0:
-                cr.move_to(
-                    allocation.width / 2 - width / 2,
-                    3 * (allocation.height / 4 - (height - 20) / 4),
-                )
-                cr.show_text(text)
+            cr.move_to(
+                allocation.width / 2 - width / 2,
+                3 * (allocation.height / 4 - (height - 20) / 4),
+            )
+            cr.show_text(text)
 
     def _draw_output_level(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw Output level

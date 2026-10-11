@@ -274,6 +274,7 @@ class ShowSystemBridgeHandler(BaseEventBridgeHandler):
                 "sequences": app.open_sequences,
                 "groups": app.open_groups,
                 "indes": app.open_independents,
+                "device_inspector": app.open_device_inspector,
                 "curves": app.open_curves,
                 "faders": app.open_faders,
                 "settings": app.open_settings,

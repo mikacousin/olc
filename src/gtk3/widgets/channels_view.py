@@ -192,6 +192,7 @@ class ChannelsView(Gtk.Box):
     def update(self) -> None:
         """Update channels display"""
         self.flowbox.invalidate_filter()
+        self.flowbox.queue_draw()
 
     def get_channel_widget(self, channel: int) -> Optional[ChannelWidget]:
         """Get ChannelWidget of channel number

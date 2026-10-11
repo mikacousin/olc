@@ -314,6 +314,26 @@ class FixtureLibrary:
         ]
         return ColorMatcher(profiles)
 
+    def keys(self) -> list[str]:
+        """Return 'Manufacturer:Model' display keys for all registered definitions."""
+        return [f"{d.manufacturer}:{d.model}" for d in self._definitions.values()]
+
+    def get_by_key(self, key: str) -> Optional[FixtureDefinition]:
+        """Lookup a fixture definition by 'Manufacturer:Model' or key string."""
+        if "::" in key:
+            parts = key.split("::", 1)
+            return self._definitions.get(self._key(parts[0], parts[1]))
+        if ":" in key:
+            parts = key.split(":", 1)
+            return self._definitions.get(self._key(parts[0], parts[1]))
+        for d in self._definitions.values():
+            if (
+                d.full_name.lower() == key.strip().lower()
+                or d.model.lower() == key.strip().lower()
+            ):
+                return d
+        return None
+
     def all(self) -> list[FixtureDefinition]:
         """Return all registered fixture definitions."""
         return list(self._definitions.values())

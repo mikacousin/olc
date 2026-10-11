@@ -24,6 +24,7 @@ if typing.TYPE_CHECKING:
     from olc.gtk3.channel_time import ChanneltimeTab
     from olc.gtk3.cue import CuesEditionTab
     from olc.gtk3.curve import CurvesTab
+    from olc.gtk3.device_inspector import DeviceInspectorWidget
     from olc.gtk3.fader import FaderTab
     from olc.gtk3.group import GroupTab
     from olc.gtk3.history import HistoryTab
@@ -39,6 +40,7 @@ if typing.TYPE_CHECKING:
         ChanneltimeTab
         | CuesEditionTab
         | CurvesTab
+        | DeviceInspectorWidget
         | FaderTab
         | GroupTab
         | HistoryTab
@@ -72,6 +74,7 @@ class Tabs:
         self.tabs = {
             "channel_time": None,
             "curves": None,
+            "device_inspector": None,
             "faders": None,
             "groups": None,
             "history": None,

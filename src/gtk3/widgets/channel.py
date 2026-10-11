@@ -20,12 +20,14 @@ import cairo
 from gi.repository import Gdk, Gtk
 
 from olc.core.selection import SelectAddAction, SelectRemoveAction, SelectThruAction
+from olc.devices.device import COLOR_CHANNEL_TYPES, ChannelType, FixtureType
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
 
     from olc.core.commandline import CoreCommandLine
     from olc.core.lightshow import LightShow
+    from olc.devices.device import LightingDevice
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
     from olc.gtk3.widgets.channels_view import ChannelsView
@@ -127,6 +129,37 @@ class ChannelWidget(Gtk.DrawingArea):
         else:
             channels_view.selection_manager.execute_action(SelectAddAction, channel_num)
 
+    def get_patched_device(self) -> LightingDevice | None:
+        """Return the LightingDevice patched at this channel ID, if any."""
+        return self.lightshow.patch.devices.get(int(self.channel))
+
+    def has_color_capability(self) -> bool:
+        """Return True if the patched device has color emitter channels."""
+        dev = self.get_patched_device()
+        if dev is None:
+            return False
+        return any(ch.channel_type in COLOR_CHANNEL_TYPES for ch in dev.channels)
+
+    def get_preview_rgb(self) -> tuple[float, float, float] | None:
+        """Return normalized (r, g, b) preview color for color-capable devices."""
+        dev = self.get_patched_device()
+        if dev is None or not self.has_color_capability():
+            return None
+        srgb = dev.color_srgb
+        return (srgb.r, srgb.g, srgb.b)
+
+    def is_moving_head(self) -> bool:
+        """Return True if the patched device is a moving head or has Pan/Tilt."""
+        dev = self.get_patched_device()
+        if dev is None:
+            return False
+        if dev.fixture_type == FixtureType.MOVING_HEAD:
+            return True
+        return any(
+            ch.channel_type in (ChannelType.PAN, ChannelType.TILT)
+            for ch in dev.channels
+        )
+
     def do_draw(self, cr: cairo.Context) -> bool:
         """Draw widget
 
@@ -140,10 +173,49 @@ class ChannelWidget(Gtk.DrawingArea):
 
         self._draw_background(cr, allocation)
         self._draw_channel_number(cr)
+        self._draw_device_indicators(cr, allocation)
         self._draw_level(cr, percent_level)
         self._draw_level_bar(cr, allocation)
         self._draw_next_level(cr, percent_level)
         return False
+
+    def _draw_device_indicators(
+        self, cr: cairo.Context, allocation: Gdk.Rectangle
+    ) -> None:
+        """Draw color preview dot/strip and moving-head badge if applicable."""
+        rgb = self.get_preview_rgb()
+        has_color = rgb is not None
+        if rgb is not None:
+            r, g, b = rgb
+            # Header color preview dot
+            cx = 11 * self.scale
+            cy = 13 * self.scale
+            radius = 4.5 * self.scale
+            cr.arc(cx, cy, radius, 0, 6.2831853)
+            cr.set_source_rgb(r, g, b)
+            cr.fill_preserve()
+            cr.set_source_rgb(0.75, 0.75, 0.75)
+            cr.set_line_width(1.0)
+            cr.stroke()
+
+            # Bottom color strip
+            strip_h = max(2.0, 3.0 * self.scale)
+            cr.rectangle(
+                4,
+                self.width - 4 - strip_h,
+                allocation.width - 14,
+                strip_h,
+            )
+            cr.set_source_rgb(r, g, b)
+            cr.fill()
+
+        if self.is_moving_head():
+            cr.set_source_rgb(0.3, 0.85, 0.95)
+            cr.select_font_face("Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD)
+            cr.set_font_size(9 * self.scale)
+            x_pos = 20 * self.scale if has_color else 7 * self.scale
+            cr.move_to(x_pos, 15 * self.scale)
+            cr.show_text("ML")
 
     def _draw_background(self, cr: cairo.Context, allocation: Gdk.Rectangle) -> None:
         """Draw background"""
