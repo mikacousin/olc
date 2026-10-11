@@ -249,3 +249,23 @@ def test_editing_tab_navigation_and_f2_rename(
 
     seq_tab.on_close_icon(seq_tab)
     process_events()
+
+
+@pytest.mark.gui
+def test_shortcuts_window_and_menu_items(app_gui: Application) -> None:
+    """Verify help-overlay.ui and app-menu.ui load all updated entries."""
+    app_gui.open_shortcuts()
+    process_events()
+    assert app_gui.shortcuts is not None
+    app_gui.shortcuts.hide()
+    app_gui.shortcuts.destroy()
+    app_gui.shortcuts = None
+
+    menu = app_gui.setup_app_menu()
+    labels: list[str] = []
+    for i in range(menu.get_n_items()):
+        val = menu.get_item_attribute_value(i, "label", None)
+        if val is not None:
+            labels.append(val.get_string())
+    assert "Patch Channels & Devices" in labels
+    assert "Device Inspector" in labels

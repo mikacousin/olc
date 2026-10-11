@@ -36,6 +36,10 @@
       <attribute name="action">app.patch_outputs</attribute>
     </item>
     <item>
+      <attribute name="label" translatable="yes">Patch Channels &amp; Devices</attribute>
+      <attribute name="action">app.patch_channels</attribute>
+    </item>
+    <item>
       <attribute name="label" translatable="yes">Curves</attribute>
       <attribute name="action">app.curves</attribute>
     </item>

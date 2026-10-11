@@ -3,14 +3,70 @@
   <object class="GtkShortcutsWindow" id="help_overlay">
     <property name="modal">True</property>
     <child>
-      <object class="GtkShortcutsSection"  id="shortcuts">
+      <object class="GtkShortcutsSection" id="shortcuts">
         <property name="visible">1</property>
         <property name="section-name">shortcuts</property>
         <property name="max-height">12</property>
         <child>
           <object class="GtkShortcutsGroup" id="general">
             <property name="visible">1</property>
-            <property name="title" translatable="yes" context="shortcut window">General</property>
+            <property name="title" translatable="yes" context="shortcut window">General &amp; File</property>
+            <child>
+              <object class="GtkShortcutsShortcut" id="open">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;O</property>
+                <property name="title" translatable="yes" context="shortcut window">Open</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="save">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;S</property>
+                <property name="title" translatable="yes" context="shortcut window">Save</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="save_as">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;S</property>
+                <property name="title" translatable="yes" context="shortcut window">Save As</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="import_file">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;O</property>
+                <property name="title" translatable="yes" context="shortcut window">Import File</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="undo">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;Z</property>
+                <property name="title" translatable="yes" context="shortcut window">Undo</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="redo">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;Z</property>
+                <property name="title" translatable="yes" context="shortcut window">Redo</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="redo_y">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;Y</property>
+                <property name="title" translatable="yes" context="shortcut window">Redo (alt)</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="close_tab">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;W</property>
+                <property name="title" translatable="yes" context="shortcut window">Close Tab</property>
+              </object>
+            </child>
             <child>
               <object class="GtkShortcutsShortcut" id="fullscreen">
                 <property name="visible">1</property>
@@ -26,26 +82,18 @@
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="open">
+              <object class="GtkShortcutsShortcut" id="quit">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;O</property>
-                <property name="title" translatable="yes" context="shortcut window">Open ASCII File</property>
+                <property name="accelerator">&lt;ctrl&gt;Q</property>
+                <property name="title" translatable="yes" context="shortcut window">Quit</property>
               </object>
             </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="save">
-                <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;S</property>
-                <property name="title" translatable="yes" context="shortcut window">Save ASCII File</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="save_as">
-                <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;S</property>
-                <property name="title" translatable="yes" context="shortcut window">Save with file name</property>
-              </object>
-            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkShortcutsGroup" id="tabs_windows">
+            <property name="visible">1</property>
+            <property name="title" translatable="yes" context="shortcut window">Tabs &amp; Windows</property>
             <child>
               <object class="GtkShortcutsShortcut" id="patch_outputs">
                 <property name="visible">1</property>
@@ -57,14 +105,14 @@
               <object class="GtkShortcutsShortcut" id="patch_channels">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;P</property>
-                <property name="title" translatable="yes" context="shortcut window">Patch Channels</property>
+                <property name="title" translatable="yes" context="shortcut window">Patch Channels &amp; Devices</property>
               </object>
             </child>
             <child>
-              <object class="GtkShortcutsShortcut" id="faders">
+              <object class="GtkShortcutsShortcut" id="groups">
                 <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;F</property>
-                <property name="title" translatable="yes" context="shortcut window">Faders</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;G</property>
+                <property name="title" translatable="yes" context="shortcut window">Groups</property>
               </object>
             </child>
             <child>
@@ -79,6 +127,13 @@
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;T</property>
                 <property name="title" translatable="yes" context="shortcut window">Track Channels</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="faders">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;F</property>
+                <property name="title" translatable="yes" context="shortcut window">Faders</property>
               </object>
             </child>
             <child>
@@ -109,41 +164,6 @@
                 <property name="title" translatable="yes" context="shortcut window">Undo History</property>
               </object>
             </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="quit">
-                <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;Q</property>
-                <property name="title" translatable="yes" context="shortcut window">Quit</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="undo">
-                <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;Z</property>
-                <property name="title" translatable="yes" context="shortcut window">Undo</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="redo">
-                <property name="visible">1</property>
-                <property name="accelerator">&lt;shift&gt;&lt;ctrl&gt;Z</property>
-                <property name="title" translatable="yes" context="shortcut window">Redo</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="close_tab">
-                <property name="visible">1</property>
-                <property name="accelerator">&lt;ctrl&gt;W</property>
-                <property name="title" translatable="yes" context="shortcut window">Close Tab</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut" id="backspace">
-                <property name="visible">1</property>
-                <property name="accelerator">BackSpace</property>
-                <property name="title" translatable="yes" context="shortcut window">Backspace</property>
-              </object>
-            </child>
           </object>
         </child>
         <child>
@@ -162,6 +182,20 @@
                 <property name="visible">1</property>
                 <property name="accelerator">Tab</property>
                 <property name="title" translatable="yes" context="shortcut window">Autocomplete / Switch Focus</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="move_tab">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;Shift&gt;Tab</property>
+                <property name="title" translatable="yes" context="shortcut window">Move Tab to other pane</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="backspace">
+                <property name="visible">1</property>
+                <property name="accelerator">BackSpace</property>
+                <property name="title" translatable="yes" context="shortcut window">Delete last character</property>
               </object>
             </child>
             <child>
@@ -186,6 +220,20 @@
               </object>
             </child>
             <child>
+              <object class="GtkShortcutsShortcut" id="page_up">
+                <property name="visible">1</property>
+                <property name="accelerator">Page_Up</property>
+                <property name="title" translatable="yes" context="shortcut window">Next Channel / Curve Point</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="page_down">
+                <property name="visible">1</property>
+                <property name="accelerator">Page_Down</property>
+                <property name="title" translatable="yes" context="shortcut window">Previous Channel / Curve Point</property>
+              </object>
+            </child>
+            <child>
               <object class="GtkShortcutsShortcut" id="up">
                 <property name="visible">1</property>
                 <property name="accelerator">Up</property>
@@ -199,12 +247,26 @@
                 <property name="title" translatable="yes" context="shortcut window">History Next / Move Down</property>
               </object>
             </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="shift_up">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;Shift&gt;Up</property>
+                <property name="title" translatable="yes" context="shortcut window">Command Line History Prev</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="shift_down">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;Shift&gt;Down</property>
+                <property name="title" translatable="yes" context="shortcut window">Command Line History Next</property>
+              </object>
+            </child>
           </object>
         </child>
         <child>
           <object class="GtkShortcutsGroup" id="channels">
             <property name="visible">1</property>
-            <property name="title" translatable="yes" context="shortcut window">Select Channels &amp; View</property>
+            <property name="title" translatable="yes" context="shortcut window">Channels &amp; Levels</property>
             <child>
               <object class="GtkShortcutsShortcut" id="filter_channels">
                 <property name="visible">1</property>
@@ -219,12 +281,6 @@
                 <property name="title" translatable="yes" context="shortcut window">All active channels</property>
               </object>
             </child>
-          </object>
-        </child>
-        <child>
-          <object class="GtkShortcutsGroup" id="levels">
-            <property name="visible">1</property>
-            <property name="title" translatable="yes" context="shortcut window">Levels</property>
             <child>
               <object class="GtkShortcutsShortcut" id="+%">
                 <property name="visible">1</property>
@@ -244,12 +300,19 @@
         <child>
           <object class="GtkShortcutsGroup" id="sequence">
             <property name="visible">1</property>
-            <property name="title" translatable="yes" context="shortcut window">Sequence &amp; Playback</property>
+            <property name="title" translatable="yes" context="shortcut window">Sequence, Playback &amp; Edition</property>
             <child>
               <object class="GtkShortcutsShortcut" id="go">
                 <property name="visible">1</property>
-                <property name="accelerator">space &lt;ctrl&gt;G</property>
+                <property name="accelerator">space</property>
                 <property name="title" translatable="yes" context="shortcut window">Go</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="go_ctrl_g">
+                <property name="visible">1</property>
+                <property name="accelerator">&lt;ctrl&gt;G</property>
+                <property name="title" translatable="yes" context="shortcut window">Go (everywhere)</property>
               </object>
             </child>
             <child>
@@ -270,14 +333,14 @@
               <object class="GtkShortcutsShortcut" id="seq+">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;alt&gt;Down</property>
-                <property name="title" translatable="yes" context="shortcut window">Next Step / Cue</property>
+                <property name="title" translatable="yes" context="shortcut window">Next Step / Cue / Group</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut" id="seq-">
                 <property name="visible">1</property>
                 <property name="accelerator">&lt;alt&gt;Up</property>
-                <property name="title" translatable="yes" context="shortcut window">Prev Step / Cue</property>
+                <property name="title" translatable="yes" context="shortcut window">Prev Step / Cue / Group</property>
               </object>
             </child>
             <child>
@@ -285,6 +348,20 @@
                 <property name="visible">1</property>
                 <property name="accelerator">F2</property>
                 <property name="title" translatable="yes" context="shortcut window">Rename Step / Cue / Group</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="insert_item">
+                <property name="visible">1</property>
+                <property name="accelerator">Insert</property>
+                <property name="title" translatable="yes" context="shortcut window">Insert Cue / Channel Time</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut" id="delete_item">
+                <property name="visible">1</property>
+                <property name="accelerator">Delete</property>
+                <property name="title" translatable="yes" context="shortcut window">Delete Step / Cue / Curve Point</property>
               </object>
             </child>
           </object>

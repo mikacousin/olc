@@ -325,7 +325,13 @@ class Application(Gtk.Application):
             Gio.Menu
         """
         builder = Gtk.Builder()
-        builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
+        local_menu = (
+            pathlib.Path(__file__).resolve().parents[2] / "data" / "app-menu.ui"
+        )
+        if local_menu.is_file():
+            builder.add_from_file(str(local_menu))
+        else:
+            builder.add_from_resource("/com/github/mikacousin/olc/menus.ui")
         menu = builder.get_object("app-menu")
         assert menu is not None, (
             "Required 'app-menu' object not found in builder resource"
@@ -748,7 +754,13 @@ class Application(Gtk.Application):
     def open_shortcuts(self) -> None:
         """Open or present Shortcuts window."""
         builder = Gtk.Builder()
-        builder.add_from_resource("/com/github/mikacousin/olc/gtk/help-overlay.ui")
+        local_help = (
+            pathlib.Path(__file__).resolve().parents[2] / "data" / "help-overlay.ui"
+        )
+        if local_help.is_file():
+            builder.add_from_file(str(local_help))
+        else:
+            builder.add_from_resource("/com/github/mikacousin/olc/gtk/help-overlay.ui")
         self.shortcuts = typing.cast(Gtk.Window, builder.get_object("help_overlay"))
         if self.shortcuts:
             if self.window:
