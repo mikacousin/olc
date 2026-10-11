@@ -240,6 +240,37 @@ class CuesEditionTab(Gtk.Paned):
     def _keypress_backspace(self) -> None:
         self.app.core.action_registry.execute("commandline.clear")
 
+    def _keypress_q(self) -> None:
+        """Previous Cue."""
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            if path.prev():
+                self.treeview.set_cursor(path)
+        elif len(self.liststore) > 0:
+            self.treeview.set_cursor(Gtk.TreePath.new_first())
+
+    def _keypress_w(self) -> None:
+        """Next Cue."""
+        path, _focus_column = self.treeview.get_cursor()
+        if path:
+            path.next()
+            if path.get_indices()[0] < len(self.liststore):
+                self.treeview.set_cursor(path)
+        elif len(self.liststore) > 0:
+            self.treeview.set_cursor(Gtk.TreePath.new_first())
+
+    def rename_selected(self) -> None:
+        """Start editing the text cell of the selected cue."""
+        path, _focus_column = self.treeview.get_cursor()
+        col = self.treeview.get_column(1)
+        if path is not None and col is not None:
+            self.treeview.grab_focus()
+            self.treeview.set_cursor(path, col, True)
+
+    def _keypress_f2(self) -> None:
+        """Rename selected Cue."""
+        self.rename_selected()
+
     def _keypress_equal(self) -> None:
         """@ level"""
         self.channels_view.at_level()

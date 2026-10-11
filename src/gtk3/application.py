@@ -161,7 +161,7 @@ class Application(Gtk.Application):
             lambda *_: self.core.action_registry.execute("playback.go"),
         )
         self.add_action(action)
-        self.set_accels_for_action("app.go", ["space"])
+        self.set_accels_for_action("app.go", ["<Control>g", "space"])
         # Go Back
         action = Gio.SimpleAction.new("go_back", None)
         action.connect(
@@ -227,7 +227,7 @@ class Application(Gtk.Application):
         self.set_accels_for_action("app.patch_channels", ["<Shift><Control>p"])
         self.set_accels_for_action("app.groups", ["<Shift><Control>g"])
         self.set_accels_for_action("app.sequences", ["<Control>t"])
-        self.set_accels_for_action("app.faders", ["<Control>f"])
+        self.set_accels_for_action("app.faders", ["<Shift><Control>f"])
         self.set_accels_for_action("app.track_channels", ["<Shift><Control>t"])
         self.set_accels_for_action("app.independents", ["<Control>i"])
         self.set_accels_for_action("app.device_inspector", ["<Shift><Control>i"])

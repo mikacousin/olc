@@ -30,6 +30,7 @@ if typing.TYPE_CHECKING:
     import olc.gtk3.window
     from olc.gtk3.application import Application
     from olc.gtk3.tabs_manager import Tabs
+    from olc.gtk3.widgets.channels_view import ChannelsView
 
 
 # pylint: disable=too-many-instance-attributes
@@ -306,6 +307,171 @@ class Window(Gtk.ApplicationWindow):
                 widget.next_level = next_level
                 widget.queue_draw()
 
+    def _get_active_page(self) -> Gtk.Widget | None:
+        """Return the currently active notebook page widget."""
+        page = self.get_active_tab()
+        if page is not None:
+            return page
+        active_nb = "live"
+        if hasattr(self.app, "core") and self.app.core.tabs:
+            active_nb = getattr(self.app.core.tabs, "active_notebook", "live") or "live"
+        notebook = self.playback if active_nb == "playback" else self.live_view
+        idx = notebook.get_current_page()
+        if idx >= 0:
+            return notebook.get_nth_page(idx)
+        return None
+
+    def _get_active_channels_view(self) -> ChannelsView:
+        """Return the ChannelsView of the focused notebook page, or live_view's."""
+        page = self._get_active_page()
+        if page is not None:
+            cv = getattr(page, "channels_view", None)
+            if cv is not None:
+                return typing.cast("ChannelsView", cv)
+            if hasattr(page, "toggle_view_mode") and hasattr(page, "select_all"):
+                return typing.cast("ChannelsView", page)
+        return self.live_view.channels_view
+
+    def _is_editing_tab_focused(self) -> bool:
+        """Return True if the active page is an editing tab."""
+        page = self._get_active_page()
+        return page is not None and page not in (
+            self.live_view.channels_view,
+            self.playback.grid,
+        )
+
+    def _handle_modifier_shortcuts(  # pylint: disable=too-many-return-statements
+        self, keyval: int, modifiers: int
+    ) -> bool:
+        """Handle Ctrl / Alt keyboard shortcuts before GTK accelerators."""
+        if modifiers == int(Gdk.ModifierType.CONTROL_MASK):
+            if keyval in (Gdk.KEY_f, Gdk.KEY_F):
+                cv = self._get_active_channels_view()
+                cv.toggle_view_mode()
+                cv.grab_focus()
+                return True
+            if keyval in (Gdk.KEY_a, Gdk.KEY_A):
+                cv = self._get_active_channels_view()
+                cv.select_all()
+                cv.grab_focus()
+                return True
+            if keyval == Gdk.KEY_Up:
+                cv = self._get_active_channels_view()
+                cv.level_plus()
+                cv.update()
+                return True
+            if keyval == Gdk.KEY_Down:
+                cv = self._get_active_channels_view()
+                cv.level_minus()
+                cv.update()
+                return True
+        elif modifiers == int(Gdk.ModifierType.MOD1_MASK):
+            if keyval == Gdk.KEY_Up:
+                if self._is_editing_tab_focused():
+                    page = self._get_active_page()
+                    if page is not None and (
+                        func := getattr(page, "_keypress_q", None)
+                    ):
+                        func()
+                        return True
+                self.app.core.action_registry.execute("playback.sequence_minus")
+                self.app.core.action_registry.execute("commandline.clear")
+                return True
+            if keyval == Gdk.KEY_Down:
+                if self._is_editing_tab_focused():
+                    page = self._get_active_page()
+                    if page is not None and (
+                        func := getattr(page, "_keypress_w", None)
+                    ):
+                        func()
+                        return True
+                self.app.core.action_registry.execute("playback.sequence_plus")
+                self.app.core.action_registry.execute("commandline.clear")
+                return True
+        return False
+
+    def _handle_navigation_keys(  # pylint: disable=too-many-return-statements,too-many-branches
+        self, keyval: int, modifiers: int
+    ) -> bool | None:
+        """Handle navigation and function keys (arrows, PageUp/Down, F2, Delete)."""
+        if modifiers == int(Gdk.ModifierType.SHIFT_MASK):
+            if keyval == Gdk.KEY_Up:
+                self.app.core.action_registry.execute("commandline.history_prev")
+                return True
+            if keyval == Gdk.KEY_Down:
+                self.app.core.action_registry.execute("commandline.history_next")
+                return True
+
+        if keyval == Gdk.KEY_F2 and modifiers == 0:
+            page = self._get_active_page()
+            if page is not None and hasattr(page, "rename_selected"):
+                typing.cast(typing.Any, page).rename_selected()
+                return True
+            return False
+
+        if keyval not in (
+            Gdk.KEY_Up,
+            Gdk.KEY_Down,
+            Gdk.KEY_Left,
+            Gdk.KEY_Right,
+            Gdk.KEY_Page_Up,
+            Gdk.KEY_Page_Down,
+            Gdk.KEY_Delete,
+            Gdk.KEY_Insert,
+        ):
+            return None
+
+        if self._is_editing_tab_focused():
+            page = self._get_active_page()
+            if page is None:
+                return False
+            stack = getattr(page, "stack", None)
+            if (
+                stack is not None
+                and hasattr(stack, "get_visible_child_name")
+                and stack.get_visible_child_name() == "devices"
+            ):
+                return False
+            keyname = Gdk.keyval_name(keyval)
+            if keyname:
+                if func := getattr(page, f"_keypress_{keyname.lower()}", None):
+                    func()
+                    return True
+                cv = getattr(page, "channels_view", None)
+                if cv is not None and keyval in (Gdk.KEY_Page_Up, Gdk.KEY_Page_Down):
+                    if cv_func := getattr(cv, f"_keypress_{keyname.lower()}", None):
+                        cv_func()
+                        return True
+            return False
+
+        if keyval == Gdk.KEY_Up:
+            self.app.core.action_registry.execute("commandline.history_prev")
+            return True
+        if keyval == Gdk.KEY_Down:
+            self.app.core.action_registry.execute("commandline.history_next")
+            return True
+        if keyval in (Gdk.KEY_Left, Gdk.KEY_Page_Down):
+            self.live_view.channels_view.select_previous()
+            return True
+        if keyval in (Gdk.KEY_Right, Gdk.KEY_Page_Up):
+            self.live_view.channels_view.select_next()
+            return True
+        return False
+
+    def _clear_on_escape(self) -> None:
+        """Clear command line and unselect channels on Escape."""
+        self.app.core.action_registry.execute("commandline.clear")
+        self.live_view.channels_view.flowbox.unselect_all()
+        self.live_view.channels_view.last_selected_channel = ""
+        active_cv = self._get_active_channels_view()
+        if active_cv is not self.live_view.channels_view:
+            active_cv.flowbox.unselect_all()
+            active_cv.last_selected_channel = ""
+        if self.app.tabs and "track_channels" in self.app.tabs.tabs:
+            tc = typing.cast(typing.Any, self.app.tabs.tabs["track_channels"])
+            if tc:
+                tc.update_display()
+
     def _on_key_controller_pressed(  # pylint: disable=too-many-return-statements,too-many-branches
         self,
         _controller: Gtk.EventControllerKey,
@@ -317,14 +483,32 @@ class Window(Gtk.ApplicationWindow):
 
         Returns True if the event was consumed, False to allow propagation.
         """
+        modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
+
+        # Universal GO shortcut (<Control>g) works everywhere, even in text entries
+        if modifiers == int(Gdk.ModifierType.CONTROL_MASK) and keyval in (
+            Gdk.KEY_g,
+            Gdk.KEY_G,
+        ):
+            self.app.core.action_registry.execute("playback.go")
+            return True
+
         focused = self.get_focus()
         if focused and isinstance(focused, (Gtk.Entry, Gtk.CellEditable)):
             return False
 
-        modifiers = int(state) & Gtk.accelerator_get_default_mod_mask()
-        ctrl_alt = Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK
-        if bool(modifiers & ctrl_alt):
-            return False
+        if bool(
+            modifiers & (Gdk.ModifierType.CONTROL_MASK | Gdk.ModifierType.MOD1_MASK)
+        ):
+            return self._handle_modifier_shortcuts(keyval, modifiers)
+
+        # Spacebar triggers GO when the command line is empty, or appends a space
+        if keyval == Gdk.KEY_space:
+            if not self.app.core.commandline.get_string().strip():
+                self.app.core.action_registry.execute("playback.go")
+            else:
+                self.app.core.action_registry.execute("commandline.append_char", " ")
+            return True
 
         # Command line validation / execution (ENTER)
         if keyval in (Gdk.KEY_Return, Gdk.KEY_KP_Enter):
@@ -336,21 +520,7 @@ class Window(Gtk.ApplicationWindow):
             return True
 
         if keyval == Gdk.KEY_Escape:
-            self.app.core.action_registry.execute("commandline.clear")
-            self.live_view.channels_view.flowbox.unselect_all()
-            self.live_view.channels_view.last_selected_channel = ""
-            if self.app.tabs and "track_channels" in self.app.tabs.tabs:
-                tc = typing.cast(typing.Any, self.app.tabs.tabs["track_channels"])
-                if tc:
-                    tc.update_display()
-            return True
-
-        if keyval == Gdk.KEY_Up:
-            self.app.core.action_registry.execute("commandline.history_prev")
-            return True
-
-        if keyval == Gdk.KEY_Down:
-            self.app.core.action_registry.execute("commandline.history_next")
+            self._clear_on_escape()
             return True
 
         if keyval == Gdk.KEY_Tab:
@@ -364,13 +534,9 @@ class Window(Gtk.ApplicationWindow):
             self.move_tab()
             return True
 
-        if keyval in (Gdk.KEY_Left, Gdk.KEY_Page_Down):
-            self.live_view.channels_view.select_previous()
-            return True
-
-        if keyval in (Gdk.KEY_Right, Gdk.KEY_Page_Up):
-            self.live_view.channels_view.select_next()
-            return True
+        nav_handled = self._handle_navigation_keys(keyval, modifiers)
+        if nav_handled is not None:
+            return nav_handled
 
         # Keypad digits (KP_0 .. KP_9)
         if Gdk.KEY_KP_0 <= keyval <= Gdk.KEY_KP_9:
@@ -395,7 +561,7 @@ class Window(Gtk.ApplicationWindow):
             self.app.core.action_registry.execute("commandline.append_char", " / ")
             return True
 
-        # Printable Unicode characters (letters, numbers, space, symbols)
+        # Printable Unicode characters (letters, numbers, symbols)
         unichar = Gdk.keyval_to_unicode(keyval)
         if unichar > 0:
             char = chr(unichar)

@@ -135,7 +135,7 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
     return TrackingDisplayState.INACTIVE, 0
 
 
-# pylint: disable=too-many-instance-attributes, too-many-lines
+# pylint: disable=too-many-instance-attributes, too-many-lines, too-many-public-methods
 class SequenceTab(Gtk.Grid):
     """Tab to edit sequences"""
 
@@ -647,6 +647,18 @@ class SequenceTab(Gtk.Grid):
             self.window.app.core.action_registry.execute(
                 "sequence.delete_step", sequence.index, step
             )
+
+    def rename_selected(self) -> None:
+        """Start editing the text cell of the selected step."""
+        path, _focus_column = self.treeview2.get_cursor()
+        col = self.treeview2.get_column(2)
+        if path is not None and col is not None:
+            self.treeview2.grab_focus()
+            self.treeview2.set_cursor(path, col, True)
+
+    def _keypress_f2(self) -> None:
+        """Rename selected Step."""
+        self.rename_selected()
 
     def _keypress_n(self) -> None:
         """New Chaser"""

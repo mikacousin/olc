@@ -489,6 +489,22 @@ class GroupTab(Gtk.Paned):
             group_widget.popover.popup()
         self.app.core.action_registry.execute("commandline.clear")
 
+    def rename_selected(self) -> None:
+        """Open popover to rename the selected group."""
+        self._keypress_l()
+
+    def _keypress_f2(self) -> None:
+        """Rename selected Group."""
+        self.rename_selected()
+
+    def _keypress_q(self) -> None:
+        """Previous Group."""
+        self._keypress_left()
+
+    def _keypress_w(self) -> None:
+        """Next Group."""
+        self._keypress_right()
+
     def _keypress_u(self) -> None:
         """Update Group"""
         self.channels_view.flowbox.unselect_all()
