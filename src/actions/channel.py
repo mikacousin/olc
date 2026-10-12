@@ -36,12 +36,33 @@ class BaseChannelLevelAction(Action):
     def _apply_levels(self, levels_dict: dict[int, int]) -> None:
         """Apply a dict of {channel: level} to user DMX levels and emit events."""
         backend = getattr(self.app, "backend", None)
-        if backend and backend.dmx:
+        dmx = getattr(backend, "dmx", None) if backend is not None else None
+        patch = getattr(self.app.lightshow, "patch", None)
+
+        if dmx is not None:
             for ch, lvl in levels_dict.items():
                 if 1 <= ch <= MAX_CHANNELS:
-                    backend.dmx.levels["user"][ch - 1] = lvl
+                    dmx.levels["user"][ch - 1] = lvl
+
+        if patch is not None:
+            seq_arr = (
+                dmx.levels.get("sequence")
+                if dmx is not None and isinstance(dmx.levels, dict)
+                else None
+            )
+            for ch, lvl in levels_dict.items():
+                dev = patch.get_device(ch)
+                if dev is not None and hasattr(dev, "set_intensity"):
+                    if lvl >= 0:
+                        dev.set_intensity(lvl / 255.0)
+                    elif seq_arr is not None and 1 <= ch <= len(seq_arr):
+                        dev.set_intensity(int(seq_arr[ch - 1]) / 255.0)
+                    else:
+                        dev.set_intensity(0.0)
+
+        if dmx is not None:
             self.app.lightshow.main_playback.update_channels()
-            backend.dmx.set_levels()
+            dmx.set_levels()
 
         for ch, lvl in levels_dict.items():
             self.app.emit("channel.level_changed", ch, lvl)

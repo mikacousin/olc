@@ -19,9 +19,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import numpy as np
+import pytest
 
 from olc.core.app import CoreApplication
 from olc.cue import Cue
+from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
 from olc.step import Step
 
 
@@ -392,3 +394,72 @@ def test_playback_update_active_step_and_undo_redo() -> None:
     assert initial_cue.channels[1] == 255
     assert initial_cue.channels[2] == 0
     assert len(cue_updated_events) == 3
+
+
+def test_playback_record_and_update_multi_parameter_devices_and_virtual_dimmer() -> (
+    None
+):
+    """Verify record_cue, update_active_step, and channel actions capture devices."""
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    app.lightshow.patch.patch_empty()
+
+    mh = app.lightshow.patch.patch_device(1, create_moving_head_definition(), 1, 1)
+    led = app.lightshow.patch.patch_device(2, create_rgb_definition(), 1, 20)
+
+    mock_backend = MagicMock()
+    mock_backend.dmx.frame = [np.zeros(512, dtype=np.uint8) for _ in range(4)]
+    mock_backend.dmx.levels = {
+        "sequence": np.zeros(512, dtype=np.uint8),
+        "user": np.full(512, -1, dtype=np.int16),
+    }
+    app.backend = mock_backend
+
+    # Set LED intensity via channel.set_level action -> must sync Virtual Dimmer!
+    app.action_registry.execute("channel.set_level", 2, 204)
+    assert led.intensity == pytest.approx(204 / 255.0, abs=0.01)
+
+    # Set Moving Head intensity, Pan, Tilt, Zoom and LED Color
+    app.action_registry.execute("channel.set_level", 1, 255)
+    mh.set_pan_degrees(90.0)
+    mh.set_tilt_degrees(-30.0)
+    mh.set_zoom_degrees(25.0)
+    led.set_color_srgb(0.0, 1.0, 0.0)
+
+    # Record Cue 1.0 via playback.record_cue
+    app.action_registry.execute("playback.record_cue")
+    cue1 = app.lightshow.cues.get(1.0, 1)
+    assert cue1 is not None
+    assert cue1.channels[1] == 255
+    assert cue1.channels[2] == 204
+    assert cue1.device_values[1]["pan"] == pytest.approx(90.0, abs=0.5)
+    assert cue1.device_values[1]["tilt"] == pytest.approx(-30.0, abs=0.5)
+    assert cue1.device_values[1]["zoom"] == pytest.approx(25.0, abs=0.5)
+    assert cue1.device_values[1]["intensity"] == pytest.approx(1.0, abs=0.01)
+    assert cue1.device_values[2]["color"].lower() == "#00ff00"
+    assert cue1.device_values[2]["intensity"] == pytest.approx(204 / 255.0, abs=0.01)
+
+    # Modify Pan and Color on stage and update active step (Cue 1.0)
+    mh.set_pan_degrees(180.0)
+    led.set_color_srgb(0.0, 0.0, 1.0)
+    app.action_registry.execute("channel.set_level", 2, 0)
+    app.action_registry.execute("playback.update_active_step", 1.0)
+
+    assert cue1.device_values[1]["pan"] == pytest.approx(180.0, abs=0.5)
+    assert cue1.device_values[2]["color"].lower() == "#0000ff"
+    assert cue1.device_values[2]["intensity"] == pytest.approx(0.0, abs=0.01)
+    assert cue1.channels[2] == 0
+
+    # Undo update_active_step -> restores Pan 90°, Green, and intensity 204/255
+    app.history.undo()
+    assert cue1.device_values[1]["pan"] == pytest.approx(90.0, abs=0.5)
+    assert cue1.device_values[2]["color"].lower() == "#00ff00"
+    assert cue1.device_values[2]["intensity"] == pytest.approx(204 / 255.0, abs=0.01)
+    assert cue1.channels[2] == 204
+
+    # Redo update_active_step -> re-applies Pan 180°, Blue, and intensity 0.0
+    app.history.redo()
+    assert cue1.device_values[1]["pan"] == pytest.approx(180.0, abs=0.5)
+    assert cue1.device_values[2]["color"].lower() == "#0000ff"
+    assert cue1.device_values[2]["intensity"] == pytest.approx(0.0, abs=0.01)
+    assert cue1.channels[2] == 0

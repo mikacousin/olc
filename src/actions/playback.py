@@ -14,11 +14,12 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 from __future__ import annotations
 
+import copy
 import typing
 
 from olc.core.action import Action
 from olc.cue import Cue
-from olc.define import UNIVERSES
+from olc.define import MAX_CHANNELS, UNIVERSES
 from olc.sequence import get_cue
 from olc.step import Step
 
@@ -276,7 +277,62 @@ class PlaybackManualXFadeAction(Action):
         self.app.emit("playback.xfade_moved", fader_key, val)
 
 
-def capture_live_channels(app: CoreApplication) -> dict[int, int]:
+def _is_device_channel_modified(dev: typing.Any, ch_type_val: str) -> bool:  # noqa: ANN401
+    """Check if any resolution channel of ch_type_val differs from default_value."""
+    for ch in getattr(dev, "channels", []):
+        ctype = getattr(ch, "channel_type", None)
+        if getattr(ctype, "value", ctype) == ch_type_val:
+            if getattr(ch, "value", 0) != getattr(ch, "default_value", 0):
+                return True
+    return False
+
+
+def _extract_device_active_values(  # pylint: disable=too-many-branches
+    dev: typing.Any,  # noqa: ANN401
+) -> dict[str, typing.Any]:
+    """Extract active physical parameters from a LightingDevice instance."""
+    vals: dict[str, typing.Any] = {}
+    if hasattr(dev, "channels"):
+        if _is_device_channel_modified(dev, "pan"):
+            vals["pan"] = dev.pan_degrees
+        if _is_device_channel_modified(dev, "tilt"):
+            vals["tilt"] = dev.tilt_degrees
+        if _is_device_channel_modified(dev, "zoom") and dev.zoom_degrees is not None:
+            vals["zoom"] = dev.zoom_degrees
+        if _is_device_channel_modified(dev, "focus") and dev.focus_meters is not None:
+            vals["focus"] = dev.focus_meters
+        if _is_device_channel_modified(dev, "strobe") and dev.strobe_hz is not None:
+            vals["strobe"] = dev.strobe_hz
+        if (
+            _is_device_channel_modified(dev, "color_temp")
+            and dev.color_temp_kelvin is not None
+        ):
+            vals["cct"] = dev.color_temp_kelvin
+        if (
+            _is_device_channel_modified(dev, "iris")
+            and getattr(dev, "iris", None) is not None
+        ):
+            vals["iris"] = dev.iris
+        if getattr(dev, "gobo", None) is not None:
+            vals["gobo"] = dev.gobo
+        base_emitters = getattr(dev, "_base_emitters", {})
+        if any(v > 0.0 for v in base_emitters.values()):
+            vals["color"] = dev.color_srgb.to_hex()
+    else:
+        if hasattr(dev, "pan_degrees") and getattr(dev, "pan_degrees", 0.0) != 0.0:
+            vals["pan"] = dev.pan_degrees
+        if hasattr(dev, "tilt_degrees") and getattr(dev, "tilt_degrees", 0.0) != 0.0:
+            vals["tilt"] = dev.tilt_degrees
+        if hasattr(dev, "zoom_degrees") and dev.zoom_degrees is not None:
+            vals["zoom"] = dev.zoom_degrees
+        if hasattr(dev, "color_srgb") and hasattr(dev.color_srgb, "to_hex"):
+            vals["color"] = dev.color_srgb.to_hex()
+    return vals
+
+
+def capture_live_channels(  # pylint: disable=too-many-locals, too-many-branches
+    app: CoreApplication,
+) -> dict[int, int]:
     """Capture current stage DMX levels mapped to show channels."""
     channels: dict[int, int] = {}
     patch = app.lightshow.patch
@@ -309,7 +365,53 @@ def capture_live_channels(app: CoreApplication) -> dict[int, int]:
                 except (KeyError, IndexError, AttributeError):
                     pass
             channels[channel] = max(channels.get(channel, 0), level)
+
+    # Also capture multi-parameter devices (including Virtual Dimmer fixtures)
+    user_levels = (
+        backend_dmx.levels.get("user", [])
+        if backend_dmx is not None and isinstance(backend_dmx.levels, dict)
+        else []
+    )
+    for dev_id, dev in getattr(patch, "devices", {}).items():
+        if dev_id in inde_channels:
+            continue
+        dev_lvl = int(round(float(getattr(dev, "intensity", 0.0)) * 255.0))
+        if 1 <= dev_id <= min(MAX_CHANNELS, len(user_levels)):
+            u_lvl = int(user_levels[dev_id - 1])
+            if u_lvl >= 0:
+                dev_lvl = max(dev_lvl, u_lvl)
+        channels[dev_id] = max(channels.get(dev_id, 0), dev_lvl)
+
     return channels
+
+
+def capture_live_devices(
+    app: CoreApplication,
+    live_channels: dict[int, int] | None = None,
+) -> dict[int, dict[str, typing.Any]]:
+    """Capture active multi-parameter device attributes and intensities."""
+    device_values: dict[int, dict[str, typing.Any]] = {}
+    patch = getattr(app.lightshow, "patch", None)
+    if patch is None:
+        return device_values
+
+    independents = getattr(app.lightshow, "independents", None)
+    inde_channels = independents.channels if independents is not None else set()
+
+    for dev_id, dev in getattr(patch, "devices", {}).items():
+        if dev_id in inde_channels:
+            continue
+        vals = _extract_device_active_values(dev)
+        dev_int = float(getattr(dev, "intensity", 0.0))
+        if live_channels is not None and dev_id in live_channels:
+            ch_int = live_channels[dev_id] / 255.0
+            dev_int = max(dev_int, ch_int)
+        if dev_int > 0.0:
+            vals["intensity"] = dev_int
+        if vals:
+            device_values[dev_id] = vals
+
+    return device_values
 
 
 class PlaybackRecordCueAction(Action):
@@ -367,11 +469,17 @@ class PlaybackRecordCueAction(Action):
             _found, step_idx = main_playback.get_step(cue=self.number)
             self.step = step_idx
 
-        # Capture live stage channels (non-zero levels for new cue)
+        # Capture live stage channels and multi-parameter device values
         live_channels = capture_live_channels(self.app)
         channels = {ch: lvl for ch, lvl in live_channels.items() if lvl > 0}
+        device_values = capture_live_devices(self.app, live_channels)
 
-        cue = Cue(self.sequence, self.number, channels)
+        cue = Cue(
+            self.sequence,
+            self.number,
+            channels,
+            device_values=device_values,
+        )
         self.created_cue = cue
         lightshow.cues.insert(self.step - 1, cue)
 
@@ -469,6 +577,8 @@ class PlaybackUpdateActiveStepAction(Action):
         self.target_cue: Cue | None = None
         self.old_channels: dict[int, int] = {}
         self.new_channels: dict[int, int] = {}
+        self.old_device_values: dict[int, dict[str, typing.Any]] = {}
+        self.new_device_values: dict[int, dict[str, typing.Any]] = {}
 
     def configure(
         self,
@@ -485,7 +595,7 @@ class PlaybackUpdateActiveStepAction(Action):
         self.sequence = sequence
 
     def execute(self) -> None:
-        """Execute updating the target cue with live stage levels."""
+        """Execute updating the target cue with live stage levels and device values."""
         lightshow = self.app.lightshow
         main_playback = (
             lightshow.main_playback
@@ -506,24 +616,40 @@ class PlaybackUpdateActiveStepAction(Action):
 
         self.target_cue = target_cue
         self.old_channels = dict(target_cue.channels)
+        self.old_device_values = copy.deepcopy(target_cue.device_values)
 
         live_channels = capture_live_channels(self.app)
         updated_channels = dict(target_cue.channels)
         updated_channels.update(live_channels)
         self.new_channels = updated_channels
 
-        target_cue.channels = self.new_channels
+        live_devices = capture_live_devices(self.app, live_channels)
+        updated_devices = copy.deepcopy(target_cue.device_values)
+        for dev_id, vals in live_devices.items():
+            updated_devices.setdefault(dev_id, {}).update(vals)
+        for dev_id, lvl in live_channels.items():
+            if (
+                lvl == 0
+                and dev_id in updated_devices
+                and "intensity" in updated_devices[dev_id]
+            ):
+                updated_devices[dev_id]["intensity"] = 0.0
+        self.new_device_values = updated_devices
+
+        target_cue.channels = dict(self.new_channels)
+        target_cue.device_values = copy.deepcopy(self.new_device_values)
         main_playback.update_channels()
         lightshow.set_modified()
 
         self.app.emit("cue.updated", target_cue.sequence, target_cue.number)
 
     def undo(self) -> None:
-        """Undo cue update, restoring previous channel levels."""
+        """Undo cue update, restoring previous channel levels and device values."""
         if self.target_cue is None:
             return
 
         self.target_cue.channels = dict(self.old_channels)
+        self.target_cue.device_values = copy.deepcopy(self.old_device_values)
         lightshow = self.app.lightshow
         main_playback = (
             lightshow.main_playback
@@ -537,11 +663,12 @@ class PlaybackUpdateActiveStepAction(Action):
         self.app.emit("cue.updated", self.target_cue.sequence, self.target_cue.number)
 
     def redo(self) -> None:
-        """Redo cue update, re-applying captured channel levels."""
+        """Redo cue update, re-applying captured channel levels and device values."""
         if self.target_cue is None:
             return
 
         self.target_cue.channels = dict(self.new_channels)
+        self.target_cue.device_values = copy.deepcopy(self.new_device_values)
         lightshow = self.app.lightshow
         main_playback = (
             lightshow.main_playback
