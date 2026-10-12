@@ -43,6 +43,7 @@ from olc.step import Step
 
 if typing.TYPE_CHECKING:
     from olc.core.app import CoreApplication
+    from olc.core.lightshow import LightShow
 
 
 @dataclasses.dataclass
@@ -338,16 +339,10 @@ class CommandExecutor:
             except ValueError:
                 pass
 
-    def _execute_record_cue(  # pylint: disable=too-many-locals,too-many-branches
-        self, node: RecordCueCommandNode
-    ) -> CommandResult:
-        lightshow = getattr(self.app, "lightshow", None)
-        if not lightshow or not lightshow.main_playback:
-            return CommandResult(False, "Main playback sequence not available")
-
-        main_playback = lightshow.main_playback
-
-        # Capture current channel and device levels
+    def _capture_live_cue_state(
+        self, lightshow: LightShow
+    ) -> tuple[dict[int, int], dict[int, dict[str, typing.Any]]]:
+        """Capture current live user channel levels and device values."""
         channels_dict: dict[int, int] = {}
         backend = getattr(self.app, "backend", None)
         if backend and getattr(backend, "dmx", None):
@@ -358,14 +353,32 @@ class CommandExecutor:
                 if lvl > 0:
                     channels_dict[ch] = lvl
 
-        # Capture moving light parameters
         device_values: dict[int, dict[str, typing.Any]] = {}
         patch = getattr(lightshow, "patch", None)
         if patch is not None:
             for dev_id, dev in patch.devices.items():
                 vals = self._get_device_active_values(dev)
+                dev_int = float(getattr(dev, "intensity", 0.0))
+                if dev_id in channels_dict:
+                    dev_int = max(dev_int, channels_dict[dev_id] / 255.0)
+                elif dev_int > 0.0:
+                    channels_dict[dev_id] = int(round(dev_int * 255.0))
+                if dev_int > 0.0:
+                    vals["intensity"] = dev_int
                 if vals:
                     device_values[dev_id] = vals
+
+        return channels_dict, device_values
+
+    def _execute_record_cue(  # pylint: disable=too-many-locals,too-many-branches
+        self, node: RecordCueCommandNode
+    ) -> CommandResult:
+        lightshow = getattr(self.app, "lightshow", None)
+        if not lightshow or not lightshow.main_playback:
+            return CommandResult(False, "Main playback sequence not available")
+
+        main_playback = lightshow.main_playback
+        channels_dict, device_values = self._capture_live_cue_state(lightshow)
 
         # Check if cue already exists in sequence
         existing_cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(
@@ -387,25 +400,47 @@ class CommandExecutor:
             )
             lightshow.cues.add(cue)
 
-        # Create or update step in main_playback
+        # Create or update step in main_playback (preserving sentinel last step)
         step = None
-        for s in main_playback.steps:
+        existing_step_idx = -1
+        for idx, s in enumerate(main_playback.steps):
             if s.cue and s.cue.number == node.cue_id:
                 step = s
+                existing_step_idx = idx
                 break
         if step is None:
             time_in = node.time_in if node.time_in is not None else 5.0
-            time_out = node.time_out if node.time_out is not None else time_in
-            delay_in = node.delay if node.delay is not None else 0.0
             step = Step(
                 sequence=main_playback.index,
                 cue=cue,
                 time_in=time_in,
-                time_out=time_out,
-                delay_in=delay_in,
+                time_out=node.time_out if node.time_out is not None else time_in,
+                delay_in=node.delay if node.delay is not None else 0.0,
             )
-            main_playback.steps.append(step)
-            main_playback.last = len(main_playback.steps)
+            if (
+                len(main_playback.steps) >= 2
+                and main_playback.steps[-1].cue is not None
+                and main_playback.steps[-1].cue.number == 0.0
+            ):
+                _found, step_idx = main_playback.get_step(cue=node.cue_id)
+                step_idx = max(1, min(step_idx, len(main_playback.steps) - 1))
+            else:
+                step_idx = len(main_playback.steps)
+                for idx, s in enumerate(main_playback.steps):
+                    if s.cue and s.cue.number > node.cue_id:
+                        step_idx = idx
+                        break
+            main_playback.insert_step(step_idx, step)
+            main_playback.update_channels()
+            lightshow.set_modified()
+            self.app.emit("cue.created", 1, node.cue_id)
+            self.app.emit("step.inserted", float(main_playback.index), step_idx)
+            self.app.emit(
+                "playback.cue_recorded",
+                float(main_playback.index),
+                step_idx,
+                node.cue_id,
+            )
         else:
             if node.time_in is not None:
                 step.time_in = node.time_in
@@ -415,9 +450,11 @@ class CommandExecutor:
             if node.delay is not None:
                 step.delay_in = node.delay
             step.update_total_time()
+            main_playback.update_channels()
+            lightshow.set_modified()
+            self.app.emit("cue.updated", 1, node.cue_id)
+            self.app.emit("step.updated", float(main_playback.index), existing_step_idx)
 
-        lightshow.set_modified()
-        self.app.emit("cue.created", 1, node.cue_id)
         return CommandResult(True, f"Recorded Cue {node.cue_id}")
 
     def _execute_update_cue(  # pylint: disable=too-many-locals,too-many-branches
@@ -459,9 +496,15 @@ class CommandExecutor:
         if patch is not None:
             for dev_id, dev in patch.devices.items():
                 vals = self._get_device_active_values(dev)
+                dev_int = float(getattr(dev, "intensity", 0.0))
+                if dev_id in cue.channels and cue.channels[dev_id] > 0:
+                    dev_int = max(dev_int, cue.channels[dev_id] / 255.0)
+                if dev_int > 0.0:
+                    vals["intensity"] = dev_int
                 if vals:
                     cue.device_values.setdefault(dev_id, {}).update(vals)
 
+        lightshow.main_playback.update_channels()
         lightshow.set_modified()
         self.app.emit("cue.updated", 1, cue_num)
         return CommandResult(True, f"Updated Cue {cue_num}")

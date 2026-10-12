@@ -353,3 +353,69 @@ def test_sequence_plus_minus_and_ltp_interpolation() -> None:
     )
     assert spot.pan_degrees == pytest.approx(50.0, abs=0.1)
     assert spot.tilt_degrees == pytest.approx(-25.0, abs=0.1)
+
+
+def test_executor_record_cue_preserves_sentinel_and_sorted_order() -> None:
+    """Verify RECORD CUE inserts steps before the sentinel step in sorted order."""
+    import pytest
+
+    from olc.devices.builtin import create_rgb_definition
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    mock_backend = MagicMock()
+    mock_dmx = MagicMock()
+    mock_dmx.levels = {"user": [0] * 512, "sequence": [0] * 512}
+    mock_backend.dmx = mock_dmx
+    app.backend = mock_backend
+
+    patch = app.lightshow.patch
+    patch.patch_empty()
+    led = patch.patch_device(1, create_rgb_definition(), 1, 1)
+
+    seq = app.lightshow.main_playback
+    # Fresh sequence has [Step(Cue 0), Step(Cue 0)]
+    assert len(seq.steps) == 2
+    assert seq.steps[0].cue is not None and seq.steps[0].cue.number == 0.0
+    assert seq.steps[-1].cue is not None and seq.steps[-1].cue.number == 0.0
+
+    inserted_events: list[tuple[float, int]] = []
+    updated_events: list[tuple[float, int]] = []
+    app.subscribe("step.inserted", lambda s, idx: inserted_events.append((s, idx)))
+    app.subscribe("step.updated", lambda s, idx: updated_events.append((s, idx)))
+
+    executor = CommandExecutor(app)
+    parser = CommandParser()
+
+    # Set LED (Virtual Dimmer) to 100% Red and record Cue 5
+    executor.execute(parser.parse("1 AT 100 COLOR RED"))
+    assert led.intensity == pytest.approx(1.0)
+    executor.execute(parser.parse("RECORD CUE 5 TIME 3"))
+
+    # Cue 5 must be at steps[1], and sentinel Cue 0 must remain at steps[-1] (steps[2])
+    assert len(seq.steps) == 3
+    assert seq.steps[0].cue is not None and seq.steps[0].cue.number == 0.0
+    assert seq.steps[1].cue is not None and seq.steps[1].cue.number == 5.0
+    assert seq.steps[2].cue is not None and seq.steps[2].cue.number == 0.0
+    assert inserted_events == [(1.0, 1)]
+    assert seq.steps[1].cue.device_values[1]["intensity"] == pytest.approx(1.0)
+    assert seq.steps[1].cue.channels[1] == 255
+
+    # Record Cue 2 -> inserted at steps[1] before Cue 5 (moves to steps[2])
+    executor.execute(parser.parse("1 AT 50 COLOR BLUE"))
+    executor.execute(parser.parse("RECORD CUE 2 TIME 2"))
+
+    assert len(seq.steps) == 4
+    assert [s.cue.number for s in seq.steps if s.cue is not None] == [
+        0.0,
+        2.0,
+        5.0,
+        0.0,
+    ]
+    assert inserted_events == [(1.0, 1), (1.0, 1)]
+
+    # Re-record Cue 5 with new time -> updates existing step at index 2
+    executor.execute(parser.parse("RECORD CUE 5 TIME 4"))
+    assert len(seq.steps) == 4
+    assert seq.steps[2].time_in == 4.0
+    assert updated_events == [(1.0, 2)]
