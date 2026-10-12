@@ -115,3 +115,66 @@ def test_dmx_add_remove_universe() -> None:
     assert len(dmx.frame) == 4
     assert len(dmx._old_frame) == 4
     assert (1, 2) not in dmx.user_outputs
+
+
+def test_dmx_get_composite_level_tracking_and_manual_colors() -> None:
+    """Test Dmx.get_composite_level tracking, manual, fader, and indep colors."""
+    from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
+        TRACKING_COLORS,
+        TrackingDisplayState,
+    )
+    from olc.cue import Cue  # pylint: disable=import-outside-toplevel
+    from olc.sequence import Sequence  # pylint: disable=import-outside-toplevel
+    from olc.step import Step  # pylint: disable=import-outside-toplevel
+
+    lightshow = MagicMock()
+    lightshow.patch.universes = [1]
+    lightshow.independents.dmx = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+
+    seq = Sequence(index=1, type_seq="Main")
+    seq.tracking_mode = True
+    seq.steps.clear()
+    seq.steps.append(Step(sequence=1))
+    seq.steps.append(Step(sequence=1, cue=Cue(1, 1.0, {1: 120, 2: 200})))
+    seq.steps.append(Step(sequence=1, cue=Cue(1, 2.0, {2: 255, 3: 80})))
+    seq.position = 2
+    seq.on_go = False
+    lightshow.main_playback = seq
+
+    with patch("olc.dmx.RepeatedTimer"):
+        dmx = Dmx(backend=None, lightshow=lightshow)
+
+    dmx.levels["sequence"][:3] = [120, 255, 80]
+
+    # Channel 1: tracked from Step 1 -> Cyan (TRACKED_VALUE)
+    assert dmx.get_composite_level(0) == (
+        120,
+        TRACKING_COLORS[TrackingDisplayState.TRACKED_VALUE],
+    )
+
+    # Channel 2: increased from 200 to 255 -> Blue (INTENSITY_UP)
+    assert dmx.get_composite_level(1) == (
+        255,
+        TRACKING_COLORS[TrackingDisplayState.INTENSITY_UP],
+    )
+
+    # Manual operator override on Channel 1 -> Red/Coral (MANUAL)
+    dmx.levels["user"][0] = 180
+    assert dmx.get_composite_level(0) == (
+        180,
+        {"red": 0.95, "green": 0.35, "blue": 0.35},
+    )
+
+    # Higher HTP fader overrides manual level and color -> Green
+    dmx.levels["faders"][0] = 210
+    assert dmx.get_composite_level(0) == (
+        210,
+        {"red": 0.4, "green": 0.7, "blue": 0.4},
+    )
+
+    # Higher HTP independent overrides fader -> Indigo Blue
+    lightshow.independents.dmx[0] = 240
+    assert dmx.get_composite_level(0) == (
+        240,
+        {"red": 0.4, "green": 0.4, "blue": 0.7},
+    )

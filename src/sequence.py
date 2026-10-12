@@ -189,17 +189,32 @@ class Sequence:
             return True
         return False
 
+    def _add_cue_channels(self, cue: Optional[Cue]) -> None:
+        """Add conventional and multi-parameter device channels from cue."""
+        if cue is None:
+            return
+        for channel in cue.channels:
+            self.channels.add(channel)
+        for dev_id in getattr(cue, "device_values", {}):
+            if 1 <= dev_id <= MAX_CHANNELS:
+                self.channels.add(dev_id)
+
     def update_channels(self) -> None:
         """Update channels present in sequence"""
         self.channels.clear()
         for step in self.steps:
-            if step.cue is not None:
-                for channel in step.cue.channels:
-                    self.channels.add(channel)
+            self._add_cue_channels(step.cue)
         if self.app is not None and self.backend is not None:
             for channel, level in enumerate(self.backend.dmx.levels["user"]):
                 if level != -1:
                     self.channels.add(channel + 1)
+        if self.patch is not None:
+            for dev_id, dev in getattr(self.patch, "devices", {}).items():
+                if (
+                    1 <= dev_id <= MAX_CHANNELS
+                    and float(getattr(dev, "intensity", 0.0)) > 0.0
+                ):
+                    self.channels.add(dev_id)
 
     def add_step(self, step: Step) -> None:
         """Add step at the end
@@ -210,9 +225,7 @@ class Sequence:
         self.steps.append(step)
         self.last = len(self.steps)
         # Channels used in sequential
-        if step.cue is not None:
-            for channel in step.cue.channels:
-                self.channels.add(channel)
+        self._add_cue_channels(step.cue)
 
     def insert_step(self, index: int, step: Step) -> None:
         """Insert step at index
@@ -224,9 +237,7 @@ class Sequence:
         self.steps.insert(index, step)
         self.last = len(self.steps)
         # Channels used in sequential
-        if step.cue is not None:
-            for channel in step.cue.channels:
-                self.channels.add(channel)
+        self._add_cue_channels(step.cue)
 
     def get_step(self, cue: Optional[float] = None) -> tuple[bool, int]:
         """Get Cue Step
@@ -301,18 +312,32 @@ class Sequence:
             and self.last > 1
             and self.position < self.last - 1
         ):
-            next_cue = self.steps[self.position + 1].cue
-            next_level = (
-                next_cue.channels.get(channel, 0) if next_cue is not None else 0
-            )
-        elif self.last:
-            first_cue = self.steps[0].cue
-            next_level = (
-                first_cue.channels.get(channel, 0) if first_cue is not None else 0
-            )
+            target_step_idx = self.position + 1
+        elif self.last and self.steps:
+            target_step_idx = 0
         else:
-            next_level = level
-        return next_level
+            return level
+
+        resolved = TrackingEngine.resolve_step_state(
+            self,
+            target_step_idx,
+            tracking_mode=self.tracking_mode,
+            patch=self.patch,
+            mib_enabled=False,
+        )
+        next_level = (
+            int(resolved.channels[channel - 1])
+            if 1 <= channel <= len(resolved.channels)
+            else 0
+        )
+        if channel in resolved.device_values:
+            dev_int = resolved.device_values[channel].get("intensity")
+            if isinstance(dev_int, (int, float)):
+                dev_lvl = round(
+                    float(dev_int) * 255.0 if float(dev_int) <= 1.0 else float(dev_int)
+                )
+                next_level = max(next_level, dev_lvl)
+        return max(0, min(255, next_level))
 
     def sequence_plus(self) -> None:
         """Sequence +"""

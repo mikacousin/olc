@@ -219,3 +219,49 @@ def test_sequence_tab_ifcb_columns_and_action(app_gui: Application) -> None:
     process_events()
     assert step.time_position is None
     assert seq_tab.liststore2[0][8] == ""
+
+
+@pytest.mark.gui
+def test_live_view_tracking_and_manual_colors(app_gui: Application) -> None:
+    """Test LiveView channel widgets tracking and manual Red/Coral colors."""
+    main_pb = app_gui.core.lightshow.main_playback
+    main_pb.tracking_mode = True
+    main_pb.steps.clear()
+    main_pb.steps.append(Step(sequence=1))
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 1.0, {1: 120, 2: 200})))
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 2.0, {2: 255, 3: 80})))
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0, {})))
+    main_pb.last = len(main_pb.steps)
+    main_pb.position = 2
+    main_pb.on_go = False
+
+    assert app_gui.window is not None
+    assert app_gui.core.backend is not None
+    dmx = app_gui.core.backend.dmx
+    dmx.levels["faders"].fill(0)
+    app_gui.core.lightshow.independents.dmx.fill(0)
+    dmx.levels["sequence"][0] = 120
+    dmx.levels["sequence"][1] = 255
+    dmx.levels["sequence"][2] = 80
+    dmx.levels["user"].fill(-1)
+
+    app_gui.window.update_channels_display(2)
+    process_events()
+
+    w1 = app_gui.window.live_view.channels_view.get_channel_widget(1)
+    w2 = app_gui.window.live_view.channels_view.get_channel_widget(2)
+    assert w1 is not None
+    assert w2 is not None
+    assert w1.level == 120
+    assert w1.color_level == TRACKING_COLORS[TrackingDisplayState.TRACKED_VALUE]
+    assert w2.level == 255
+    assert w2.color_level == TRACKING_COLORS[TrackingDisplayState.INTENSITY_UP]
+
+    # Set manual level on channel 1 -> Red/Coral
+    dmx.levels["user"][0] = 180
+    app_gui.window.live_view.update_channel_widget(1, 0)
+    process_events()
+    assert w1.level == 180
+    assert w1.color_level == TRACKING_COLORS[TrackingDisplayState.MANUAL]
+    assert w1.color_level == {"red": 0.95, "green": 0.35, "blue": 0.35}
+    dmx.levels["user"].fill(-1)

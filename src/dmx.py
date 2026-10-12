@@ -20,6 +20,11 @@ from typing import Callable, Optional
 import numpy as np
 from gi.repository import GLib
 
+from olc.core.tracking import (
+    TrackingDisplayState,
+    classify_channel_tracking_state,
+    get_tracking_color,
+)
 from olc.define import DMX_INTERVAL, MAX_CHANNELS
 from olc.main_fader import MainFader
 from olc.patch import DMXPatch
@@ -108,13 +113,15 @@ class Dmx:
         Returns:
             Tuple of (composite_level, color_dict)
         """
-        color_level = {"red": 0.9, "green": 0.9, "blue": 0.9}
+        main_pb = self.lightshow.main_playback
+        state, _ = classify_channel_tracking_state(
+            main_pb, getattr(main_pb, "position", 0), channel_idx + 1
+        )
+        color_level = get_tracking_color(state)
         level = self.levels["sequence"][channel_idx]
-        if (
-            not self.lightshow.main_playback.on_go
-            and self.levels["user"][channel_idx] != -1
-        ):
+        if not main_pb.on_go and self.levels["user"][channel_idx] != -1:
             level = self.levels["user"][channel_idx]
+            color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         if self.levels["faders"][channel_idx] > level:
             level = self.levels["faders"][channel_idx]
             color_level = {"red": 0.4, "green": 0.7, "blue": 0.4}
@@ -240,16 +247,12 @@ class Dmx:
         app_any = typing.cast(typing.Any, self.lightshow.app)
         if app_any is not None and app_any.window is not None:
             live_view = app_any.window.live_view
+            main_pb = self.lightshow.main_playback
             for channel in changed_channels:
-                step = self.lightshow.main_playback.steps[
-                    self.lightshow.main_playback.position
-                ]
-                seq_level = 0
-                if step.cue is not None:
-                    seq_level = step.cue.channels.get(channel, 0)
-                seq_next_level = self.lightshow.main_playback.get_next_channel_level(
-                    channel, seq_level
+                _, seq_level = classify_channel_tracking_state(
+                    main_pb, main_pb.position, channel
                 )
+                seq_next_level = main_pb.get_next_channel_level(channel, seq_level)
                 live_view.update_channel_widget(channel, seq_next_level)
 
     def all_outputs_at_zero(self) -> None:

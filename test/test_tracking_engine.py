@@ -632,3 +632,46 @@ def test_ifcb_explicit_family_time_overrides_mib() -> None:
     assert res2.device_values[1]["color"] == "#ff0000"
     assert res2.device_values[1]["pan"] == pytest.approx(0.0)
     assert res2.mib_parameters.get(1) == {"color"}
+
+
+def test_sequence_get_next_channel_level_and_channels_tracking() -> None:
+    """get_next_channel_level and Sequence.channels respect tracking and devices."""
+    seq = create_mock_sequence()
+    seq.steps.clear()
+    seq.channels.clear()
+    seq.last = 0
+
+    # Step 0: Cue 0
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    # Step 1 (Cue 1): Conventional Ch 1 at 200, Device 2 at intensity 0.5 (128)
+    cue1 = Cue(1, 1.0, channels={1: 200})
+    cue1.set_device_parameter(2, "intensity", 0.5)
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    # Step 2 (Cue 2): Ch 3 at 100 (Ch 1 and Dev 2 untouched -> tracked in Tracking mode)
+    cue2 = Cue(1, 2.0, channels={3: 100})
+    seq.insert_step(2, Step(sequence=1, cue=cue2))
+
+    # Sentinel Step 3 (Cue 0)
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    # Verify Sequence.channels contains conventional channels and device_values keys
+    assert seq.channels == {1, 2, 3}
+    seq.update_channels()
+    assert seq.channels == {1, 2, 3}
+
+    # At Step 1 (next step is Step 2):
+    seq.position = 1
+
+    # 1. Cue-Only mode (tracking_mode = False): Ch 1 and Dev 2 drop to 0 in Step 2
+    seq.tracking_mode = False
+    assert seq.get_next_channel_level(1, 200) == 0
+    assert seq.get_next_channel_level(2, 128) == 0
+    assert seq.get_next_channel_level(3, 0) == 100
+
+    # 2. Tracking mode (tracking_mode = True): Ch 1 (200) and Dev 2 (128) track
+    seq.tracking_mode = True
+    assert seq.get_next_channel_level(1, 200) == 200
+    assert seq.get_next_channel_level(2, 128) == 128
+    assert seq.get_next_channel_level(3, 0) == 100

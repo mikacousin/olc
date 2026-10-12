@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import typing
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Any, Optional
 
 import numpy as np
@@ -46,6 +47,115 @@ DEFAULT_PHYSICAL_VALUES: dict[str, Any] = {
     "strobe": 0.0,
     "color_temp": 3200.0,
 }
+
+
+class TrackingDisplayState(Enum):
+    """Industry-standard visual classification of a parameter in a sequence step."""
+
+    HARD_VALUE = "hard_value"
+    TRACKED_VALUE = "tracked_value"
+    INTENSITY_UP = "intensity_up"
+    INTENSITY_DOWN = "intensity_down"
+    BLOCK = "block"
+    MIB = "mib"
+    MANUAL = "manual"
+    INACTIVE = "inactive"
+
+
+TRACKING_COLORS: dict[TrackingDisplayState, dict[str, float]] = {
+    TrackingDisplayState.HARD_VALUE: {"red": 0.95, "green": 0.95, "blue": 0.95},
+    TrackingDisplayState.TRACKED_VALUE: {"red": 0.2, "green": 0.85, "blue": 0.95},
+    TrackingDisplayState.INTENSITY_UP: {"red": 0.3, "green": 0.6, "blue": 1.0},
+    TrackingDisplayState.INTENSITY_DOWN: {"red": 0.3, "green": 0.85, "blue": 0.4},
+    TrackingDisplayState.BLOCK: {"red": 0.9, "green": 0.3, "blue": 0.9},
+    TrackingDisplayState.MIB: {"red": 0.95, "green": 0.75, "blue": 0.2},
+    TrackingDisplayState.MANUAL: {"red": 0.95, "green": 0.35, "blue": 0.35},
+    TrackingDisplayState.INACTIVE: {"red": 0.6, "green": 0.6, "blue": 0.6},
+}
+
+
+def get_tracking_color(state: TrackingDisplayState) -> dict[str, float]:
+    """Return a copy of the RGB color dictionary for a TrackingDisplayState."""
+    return dict(
+        TRACKING_COLORS.get(state, TRACKING_COLORS[TrackingDisplayState.INACTIVE])
+    )
+
+
+def classify_channel_tracking_state(  # pylint: disable=too-many-return-statements, too-many-branches
+    sequence: Any,  # noqa: ANN401
+    step_index: int,
+    channel: int,
+) -> tuple[TrackingDisplayState, int]:
+    """Classify a channel's tracking state and resolved level at a sequence step.
+
+    Returns:
+        Tuple of (TrackingDisplayState, resolved_8bit_level).
+    """
+    steps = getattr(sequence, "steps", None)
+    if (
+        not isinstance(steps, list)
+        or not steps
+        or step_index < 0
+        or step_index >= len(steps)
+        or not 1 <= channel <= MAX_CHANNELS
+    ):
+        return TrackingDisplayState.INACTIVE, 0
+
+    cue = steps[step_index].cue
+    if cue is None:
+        return TrackingDisplayState.INACTIVE, 0
+
+    tracking_mode = getattr(sequence, "tracking_mode", False)
+    curr_resolved = TrackingEngine.resolve_step_state(
+        sequence, step_index, tracking_mode=tracking_mode
+    )
+    curr_level = int(curr_resolved.channels[channel - 1])
+    if curr_level == 0 and channel in curr_resolved.device_values:
+        dev_int = curr_resolved.device_values[channel].get("intensity")
+        if isinstance(dev_int, (int, float)):
+            curr_level = round(
+                float(dev_int) * 255.0 if float(dev_int) <= 1.0 else float(dev_int)
+            )
+
+    prev_level = 0
+    if step_index > 1:
+        prev_resolved = TrackingEngine.resolve_step_state(
+            sequence, step_index - 1, tracking_mode=tracking_mode
+        )
+        prev_level = int(prev_resolved.channels[channel - 1])
+        if prev_level == 0 and channel in prev_resolved.device_values:
+            prev_int = prev_resolved.device_values[channel].get("intensity")
+            if isinstance(prev_int, (int, float)):
+                prev_level = round(
+                    float(prev_int) * 255.0
+                    if float(prev_int) <= 1.0
+                    else float(prev_int)
+                )
+
+    is_explicit_move = channel in cue.channels or (
+        hasattr(cue, "device_values")
+        and "intensity" in cue.device_values.get(channel, {})
+    )
+
+    if getattr(cue, "is_block", False) and (
+        is_explicit_move or curr_level > 0 or channel in curr_resolved.device_values
+    ):
+        return TrackingDisplayState.BLOCK, curr_level
+
+    if curr_level == 0 and curr_resolved.mib_parameters.get(channel):
+        return TrackingDisplayState.MIB, 0
+
+    if is_explicit_move:
+        if step_index > 1 and curr_level != prev_level:
+            if curr_level > prev_level:
+                return TrackingDisplayState.INTENSITY_UP, curr_level
+            return TrackingDisplayState.INTENSITY_DOWN, curr_level
+        return TrackingDisplayState.HARD_VALUE, curr_level
+
+    if curr_level > 0 or channel in curr_resolved.device_values:
+        return TrackingDisplayState.TRACKED_VALUE, curr_level
+
+    return TrackingDisplayState.INACTIVE, 0
 
 
 @dataclass

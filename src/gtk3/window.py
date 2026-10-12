@@ -291,18 +291,26 @@ class Window(Gtk.ApplicationWindow):
         Args:
             step: Step
         """
-        step_obj = self.app.core.lightshow.main_playback.steps[step]
-        cue = step_obj.cue
-        next_step_obj = self.app.core.lightshow.main_playback.steps[step + 1]
-        next_cue = next_step_obj.cue
+        from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
+            classify_channel_tracking_state,
+            get_tracking_color,
+        )
+
+        main_pb = self.app.core.lightshow.main_playback
+        dmx = self.app.core.backend.dmx if self.app.core.backend is not None else None
 
         for channel in range(1, MAX_CHANNELS + 1):
-            level = cue.channels.get(channel, 0) if cue is not None else 0
-            next_level = (
-                next_cue.channels.get(channel, 0) if next_cue is not None else 0
-            )
+            state, level = classify_channel_tracking_state(main_pb, step, channel)
+            color_level = get_tracking_color(state)
+            if dmx is not None and step == main_pb.position:
+                comp_level, comp_color = dmx.get_composite_level(channel - 1)
+                if comp_level > 0 or dmx.levels["user"][channel - 1] != -1:
+                    level = comp_level
+                    color_level = comp_color
+            next_level = main_pb.get_next_channel_level(channel, level)
             widget = self.live_view.channels_view.get_channel_widget(channel)
             if widget is not None:
+                widget.color_level = color_level
                 widget.level = level
                 widget.next_level = next_level
                 widget.queue_draw()

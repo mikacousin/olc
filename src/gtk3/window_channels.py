@@ -151,21 +151,10 @@ class LiveChannelsView(ChannelsView):
         Returns:
             Channel next level (0 - 255)
         """
-        position = self.app.core.lightshow.main_playback.position
-        if (
-            self.app.core.lightshow.main_playback.last > 1
-            and position < self.app.core.lightshow.main_playback.last - 1
-            and self.app.core.lightshow.main_playback.last
-            <= len(self.app.core.lightshow.main_playback.steps)
-        ):
-            cue = self.app.core.lightshow.main_playback.steps[position + 1].cue
-            next_level = cue.channels.get(channel, 0) if cue is not None else 0
-        elif self.app.core.lightshow.main_playback.last:
-            cue = self.app.core.lightshow.main_playback.steps[0].cue
-            next_level = cue.channels.get(channel, 0) if cue is not None else 0
-        else:
-            next_level = typing.cast(typing.Any, channel_widget).level
-        return next_level
+        current_level = int(typing.cast(typing.Any, channel_widget).level)
+        return self.app.core.lightshow.main_playback.get_next_channel_level(
+            channel, current_level
+        )
 
     def set_channel_level(self, channel: int, level: int) -> None:
         """Set channel level using the unified core ActionRegistry."""

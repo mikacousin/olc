@@ -51,12 +51,15 @@ def update_ui(subtitle: str, app: Application | None = None) -> None:
 
         # Update Channels display
         if app.window.live_view:
+            from olc.core.tracking import (  # pylint: disable=import-outside-toplevel
+                classify_channel_tracking_state,
+            )
+
             main_playback = app.core.lightshow.main_playback
-            step = main_playback.steps[main_playback.position]
             for channel in range(1, MAX_CHANNELS + 1):
-                seq_level = 0
-                if step.cue is not None:
-                    seq_level = step.cue.channels.get(channel, 0)
+                _, seq_level = classify_channel_tracking_state(
+                    main_playback, main_playback.position, channel
+                )
                 seq_next_level = main_playback.get_next_channel_level(
                     channel, seq_level
                 )
