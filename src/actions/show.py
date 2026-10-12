@@ -347,6 +347,12 @@ def _copy_step(step: Step) -> Step:
         wait=step.wait,
         channel_time=channel_time,
         text=step.text,
+        time_position=step.time_position,
+        delay_position=step.delay_position,
+        time_color=step.time_color,
+        delay_color=step.delay_color,
+        time_beam=step.time_beam,
+        delay_beam=step.delay_beam,
     )
 
 

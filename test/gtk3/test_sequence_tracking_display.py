@@ -176,3 +176,46 @@ def test_sequence_tab_tracking_mode_toggle(app_gui: Application) -> None:
     assert "MIB: OFF" in seq_tab.mib_btn.get_label()
 
     seq_tab.set_mib_enabled(True)
+
+
+@pytest.mark.gui
+def test_sequence_tab_ifcb_columns_and_action(app_gui: Application) -> None:
+    """Test Pos, Color, and Beam columns in SequenceTab and step.update_times."""
+    app_gui.core.action_registry.execute("sequence.insert_step", 1.0, 1, 1.0, {1: 200})
+    app_gui.activate_action("sequences", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    seq_tab = app_gui.tabs.tabs.get("sequences")
+    assert isinstance(seq_tab, SequenceTab)
+    seq_tab.refresh()
+    process_events()
+
+    col_titles = [col.get_title() for col in seq_tab.treeview2.get_columns()]
+    assert col_titles[8:12] == ["Pos", "Color", "Beam", "Channel Time"]
+
+    app_gui.core.action_registry.execute(
+        "step.update_times",
+        1.0,
+        1,
+        time_position=4.0,
+        time_color=1.5,
+        time_beam=0.0,
+    )
+    process_events()
+
+    step = app_gui.core.lightshow.main_playback.steps[1]
+    assert step.time_position == pytest.approx(4.0)
+    assert step.time_color == pytest.approx(1.5)
+    assert step.time_beam == pytest.approx(0.0)
+    assert seq_tab.liststore2[0][8] == "4"
+    assert seq_tab.liststore2[0][9] == "1.5"
+    assert seq_tab.liststore2[0][10] == "0"
+
+    # Reset Pos to inherited (None) by passing -1.0
+    app_gui.core.action_registry.execute(
+        "step.update_times", 1.0, 1, time_position=-1.0
+    )
+    process_events()
+    assert step.time_position is None
+    assert seq_tab.liststore2[0][8] == ""

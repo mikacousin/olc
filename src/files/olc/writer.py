@@ -137,6 +137,19 @@ class OlcWriter(WriteFile):
                 )
             if step.wait:
                 self.data["sequences"][seq_index]["steps"][index]["wait"] = step.wait
+            for ifcb_attr in (
+                "time_position",
+                "delay_position",
+                "time_color",
+                "delay_color",
+                "time_beam",
+                "delay_beam",
+            ):
+                ifcb_val = getattr(step, ifcb_attr, None)
+                if ifcb_val is not None:
+                    self.data["sequences"][seq_index]["steps"][index][ifcb_attr] = (
+                        ifcb_val
+                    )
             if step.channel_time:
                 self.data["sequences"][seq_index]["steps"][index]["channel_time"] = {}
                 for channel, times in step.channel_time.items():

@@ -25,7 +25,7 @@ import numpy as np
 from olc.core.tracking import DEFAULT_MIB_FADE_TIME, TrackingEngine
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS
-from olc.step import Step
+from olc.step import Step, get_parameter_family
 
 if typing.TYPE_CHECKING:
     from gi.repository import Gio
@@ -551,6 +551,8 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
     mib_factors: Optional[dict[int, float]] = None,
     mib_parameters: Optional[dict[int, set[str]]] = None,
     intensity_out_factors: Optional[dict[int, float]] = None,
+    family_factors: Optional[dict[str, float]] = None,
+    explicit_families: Optional[set[str]] = None,
 ) -> None:
     """Interpolate continuous physical device parameters at progress factor."""
     if patch is None or not target_values:
@@ -587,12 +589,25 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arg
                 dev.set_intensity(s_val + int_alpha * (t_val - s_val))
                 continue
 
-            param_alpha = alpha
-            if mib_factors is not None and dev_id in mib_factors:
-                if mib_parameters is None or param_name in mib_parameters.get(
-                    dev_id, set()
-                ):
-                    param_alpha = max(0.0, min(1.0, mib_factors[dev_id]))
+            family = get_parameter_family(param_name)
+            param_alpha = (
+                max(0.0, min(1.0, family_factors.get(family, alpha)))
+                if family_factors is not None
+                else alpha
+            )
+            is_explicit_family = (
+                explicit_families is not None and family in explicit_families
+            )
+            if (
+                not is_explicit_family
+                and mib_factors is not None
+                and dev_id in mib_factors
+                and (
+                    mib_parameters is None
+                    or param_name in mib_parameters.get(dev_id, set())
+                )
+            ):
+                param_alpha = max(0.0, min(1.0, mib_factors[dev_id]))
 
             if p_lower in scalar_map:
                 s_key = scalar_map[p_lower]
@@ -703,7 +718,11 @@ class ThreadGo(threading.Thread):
                 * 1000.0,
             )
             for dev_id, mib_params in resolved.mib_parameters.items():
-                if mib_params and self._was_device_lit(dev_id):
+                has_non_explicit_mib = any(
+                    not step.has_explicit_family_timing(get_parameter_family(p))
+                    for p in mib_params
+                )
+                if has_non_explicit_mib and self._was_device_lit(dev_id):
                     t_dark_ms = self._get_device_dark_time_ms(step, dev_id)
                     self.total_time = max(self.total_time, t_dark_ms + mib_dur_ms)
 
@@ -846,21 +865,38 @@ class ThreadGo(threading.Thread):
         i: float,
         step: Step,
         resolved: typing.Any,  # noqa: ANN401
-    ) -> tuple[float, dict[int, float], dict[int, float]]:
-        """Compute LTP, MIB, and intensity-out factors for devices at elapsed ms i."""
-        in_start = self.wait + step.delay_in * 1000.0
-        in_dur = step.time_in * 1000.0
-        if in_dur <= 0:
-            ltp_factor = 1.0 if i >= in_start else 0.0
-        else:
-            ltp_factor = max(0.0, min(1.0, (i - in_start) / in_dur))
+    ) -> tuple[
+        float,
+        dict[int, float],
+        dict[int, float],
+        dict[str, float],
+        set[str],
+    ]:
+        """Compute LTP, MIB, intensity-out, and IFCB family factors at elapsed ms i."""
 
-        out_start = self.wait + step.delay_out * 1000.0
-        out_dur = step.time_out * 1000.0
-        if out_dur <= 0:
-            default_out_factor = 1.0 if i >= out_start else 0.0
-        else:
-            default_out_factor = max(0.0, min(1.0, (i - out_start) / out_dur))
+        def _window_factor(delay_s: float, time_s: float) -> float:
+            start_ms = self.wait + delay_s * 1000.0
+            dur_ms = time_s * 1000.0
+            if dur_ms <= 0:
+                return 1.0 if i >= start_ms else 0.0
+            return max(0.0, min(1.0, (i - start_ms) / dur_ms))
+
+        ltp_factor = _window_factor(step.delay_in, step.time_in)
+        default_out_factor = _window_factor(step.delay_out, step.time_out)
+        family_factors: dict[str, float] = {
+            "position": _window_factor(
+                step.effective_delay_position, step.effective_time_position
+            ),
+            "color": _window_factor(
+                step.effective_delay_color, step.effective_time_color
+            ),
+            "beam": _window_factor(step.effective_delay_beam, step.effective_time_beam),
+        }
+        explicit_families = {
+            fam
+            for fam in ("position", "color", "beam")
+            if step.has_explicit_family_timing(fam)
+        }
 
         mib_factors: dict[int, float] = {}
         intensity_out_factors: dict[int, float] = {}
@@ -873,13 +909,7 @@ class ThreadGo(threading.Thread):
         for dev_id in resolved.device_values:
             if step.channel_time and dev_id in step.channel_time:
                 ct = step.channel_time[dev_id]
-                ct_start = self.wait + ct.delay * 1000.0
-                ct_dur = ct.time * 1000.0
-                if ct_dur <= 0:
-                    ct_factor = 1.0 if i >= ct_start else 0.0
-                else:
-                    ct_factor = max(0.0, min(1.0, (i - ct_start) / ct_dur))
-                intensity_out_factors[dev_id] = ct_factor
+                intensity_out_factors[dev_id] = _window_factor(ct.delay, ct.time)
             else:
                 intensity_out_factors[dev_id] = default_out_factor
 
@@ -899,7 +929,13 @@ class ThreadGo(threading.Thread):
                 else:
                     mib_factors[dev_id] = ltp_factor
 
-        return ltp_factor, mib_factors, intensity_out_factors
+        return (
+            ltp_factor,
+            mib_factors,
+            intensity_out_factors,
+            family_factors,
+            explicit_families,
+        )
 
     def _calculate_transitions_go(  # pylint: disable=too-many-locals
         self, i: float, step: Step
@@ -954,9 +990,13 @@ class ThreadGo(threading.Thread):
 
         # Continuous interpolation of multi-parameter LTP and MIB attributes
         if resolved.device_values and self.sequence.patch is not None:
-            ltp_factor, mib_factors, intensity_out_factors = (
-                self._compute_device_factors_go(i, step, resolved)
-            )
+            (
+                ltp_factor,
+                mib_factors,
+                intensity_out_factors,
+                family_factors,
+                explicit_families,
+            ) = self._compute_device_factors_go(i, step, resolved)
             _interpolate_device_states(
                 self.sequence.patch,
                 self.old_device_states,
@@ -965,6 +1005,8 @@ class ThreadGo(threading.Thread):
                 mib_factors=mib_factors,
                 mib_parameters=resolved.mib_parameters,
                 intensity_out_factors=intensity_out_factors,
+                family_factors=family_factors,
+                explicit_families=explicit_families,
             )
 
         return lvls

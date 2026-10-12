@@ -282,7 +282,9 @@ class SequenceDeleteStepAction(Action):
 class StepUpdateTimesAction(Action):
     """Action to update a sequence step's timing values.
 
-    Modifies time_in, time_out, delay_in, delay_out, and wait.
+    Modifies time_in, time_out, delay_in, delay_out, wait, and IFCB family times.
+    Passing a negative value (< 0) for a family time/delay resets it to None
+    (inherited from time_in / delay_in).
     """
 
     name = "step.update_times"
@@ -297,7 +299,13 @@ class StepUpdateTimesAction(Action):
         self.delay_in: float | None = None
         self.delay_out: float | None = None
         self.wait: float | None = None
-        self.old_times: dict[str, float] = {}
+        self.time_position: float | None = None
+        self.delay_position: float | None = None
+        self.time_color: float | None = None
+        self.delay_color: float | None = None
+        self.time_beam: float | None = None
+        self.delay_beam: float | None = None
+        self.old_times: dict[str, float | None] = {}
 
     # pylint: disable=too-many-arguments, too-many-positional-arguments
     def configure(
@@ -309,6 +317,12 @@ class StepUpdateTimesAction(Action):
         delay_in: float | None = None,
         delay_out: float | None = None,
         wait: float | None = None,
+        time_position: float | None = None,
+        delay_position: float | None = None,
+        time_color: float | None = None,
+        delay_color: float | None = None,
+        time_beam: float | None = None,
+        delay_beam: float | None = None,
     ) -> None:
         """Configure the timing updates for the step."""
         self.sequence_index = sequence_index
@@ -318,6 +332,12 @@ class StepUpdateTimesAction(Action):
         self.delay_in = delay_in
         self.delay_out = delay_out
         self.wait = wait
+        self.time_position = time_position
+        self.delay_position = delay_position
+        self.time_color = time_color
+        self.delay_color = delay_color
+        self.time_beam = time_beam
+        self.delay_beam = delay_beam
 
     def execute(self) -> None:
         lightshow = self.app.lightshow
@@ -338,6 +358,12 @@ class StepUpdateTimesAction(Action):
             "delay_in": step.delay_in,
             "delay_out": step.delay_out,
             "wait": step.wait,
+            "time_position": step.time_position,
+            "delay_position": step.delay_position,
+            "time_color": step.time_color,
+            "delay_color": step.delay_color,
+            "time_beam": step.time_beam,
+            "delay_beam": step.delay_beam,
         }
 
         if self.time_in is not None:
@@ -350,6 +376,18 @@ class StepUpdateTimesAction(Action):
             step.delay_out = self.delay_out
         if self.wait is not None:
             step.wait = self.wait
+
+        for attr in (
+            "time_position",
+            "delay_position",
+            "time_color",
+            "delay_color",
+            "time_beam",
+            "delay_beam",
+        ):
+            val = getattr(self, attr)
+            if val is not None:
+                setattr(step, attr, None if val < 0 else val)
 
         step.update_total_time()
         lightshow.set_modified()
@@ -365,11 +403,17 @@ class StepUpdateTimesAction(Action):
 
         if sequence:
             step = sequence.steps[self.step_index]
-            step.time_in = self.old_times["time_in"]
-            step.time_out = self.old_times["time_out"]
-            step.delay_in = self.old_times["delay_in"]
-            step.delay_out = self.old_times["delay_out"]
-            step.wait = self.old_times["wait"]
+            step.time_in = float(self.old_times["time_in"] or 0.0)
+            step.time_out = float(self.old_times["time_out"] or 0.0)
+            step.delay_in = float(self.old_times["delay_in"] or 0.0)
+            step.delay_out = float(self.old_times["delay_out"] or 0.0)
+            step.wait = float(self.old_times["wait"] or 0.0)
+            step.time_position = self.old_times["time_position"]
+            step.delay_position = self.old_times["delay_position"]
+            step.time_color = self.old_times["time_color"]
+            step.delay_color = self.old_times["delay_color"]
+            step.time_beam = self.old_times["time_beam"]
+            step.delay_beam = self.old_times["delay_beam"]
             step.update_total_time()
             lightshow.set_modified()
             self.app.emit("step.updated", self.sequence_index, self.step_index)

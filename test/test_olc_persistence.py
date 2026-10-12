@@ -319,7 +319,17 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
         },
     }
     show1.cues.add(cue1)
-    step1 = Step(1, cue=cue1, time_in=3.0, time_out=3.0, text="Opening Step")
+    step1 = Step(
+        1,
+        cue=cue1,
+        time_in=3.0,
+        time_out=3.0,
+        text="Opening Step",
+        time_position=5.0,
+        delay_position=0.5,
+        time_color=1.5,
+        time_beam=4.0,
+    )
     show1.main_playback.insert_step(1, step1)
 
     cue2 = Cue(0, 2.0, channels={1: 100}, text="Blackout Barrier")
@@ -385,10 +395,17 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_spot.zoom_degrees == pytest.approx(18.0, abs=0.2)
     assert r_spot.color_profile is not None
 
-    # Verify Main Playback tracking_mode, mib_enabled, mib_fade_time, and cues
+    # Verify Main Playback tracking_mode, mib settings, IFCB times, and cues
     assert show2.main_playback.tracking_mode is True
     assert show2.main_playback.mib_enabled is False
     assert show2.main_playback.mib_fade_time == pytest.approx(3.5)
+    r_step1 = show2.main_playback.steps[1]
+    assert r_step1.time_position == pytest.approx(5.0)
+    assert r_step1.delay_position == pytest.approx(0.5)
+    assert r_step1.time_color == pytest.approx(1.5)
+    assert r_step1.delay_color is None
+    assert r_step1.time_beam == pytest.approx(4.0)
+    assert r_step1.delay_beam is None
     r_cue1 = show2.cues.get(1.0, 0)
     assert r_cue1 is not None
     assert r_cue1.device_values[101]["pan"] == 120.0

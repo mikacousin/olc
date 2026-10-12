@@ -150,17 +150,11 @@ class ChanneltimeTab(Gtk.Paned):
             if sequence == self.sequence.index:
                 path = Gtk.TreePath.new_from_indices([int(self.position) - 1])
                 ct_nb = len(self.step.channel_time)
-                sequences_tab.liststore2[path][8] = "" if ct_nb == 0 else str(ct_nb)
+                sequences_tab.liststore2[path][11] = "" if ct_nb == 0 else str(ct_nb)
 
     def _update_total_time(self) -> None:
         """Recalculate total time for the step"""
-        if self.step.time_in > self.step.time_out:
-            self.step.total_time = self.step.time_in + self.step.wait
-        else:
-            self.step.total_time = self.step.time_out + self.step.wait
-        for ct in self.step.channel_time.values():
-            t = ct.delay + ct.time + self.step.wait
-            self.step.total_time = max(self.step.total_time, t)
+        self.step.update_total_time()
 
     def _update_main_playback(self) -> None:
         """Redraw Main Playback metrics if necessary"""

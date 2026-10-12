@@ -27,6 +27,7 @@ from typing import Any, Optional
 import numpy as np
 
 from olc.define import MAX_CHANNELS
+from olc.step import get_parameter_family
 
 if typing.TYPE_CHECKING:
     from olc.patch import PatchManager
@@ -333,7 +334,14 @@ class TrackingEngine:
         return mib_parameters
 
     @staticmethod
+    def _step_has_explicit_family(step: Any, param_name: str) -> bool:  # noqa: ANN401
+        """Return True if step defines explicit timing for param_name's family."""
+        fn = getattr(step, "has_explicit_family_timing", None)
+        return bool(fn(get_parameter_family(param_name))) if callable(fn) else False
+
+    @classmethod
     def _find_mib_turn_on_step(
+        cls,
         sequence: Any,  # noqa: ANN401
         step_index: int,
         dev_id: int,
@@ -341,15 +349,16 @@ class TrackingEngine:
         """Find the first future step where dev_id lights up, collecting LTP moves.
 
         Stops immediately if a Block Cue or a Cue 0 sentinel is encountered.
+        Excludes any parameter whose family has explicit timing on its move step
+        or on the turn-on step.
         """
-        collected_ltp: dict[str, Any] = {}
+        collected_ltp: dict[str, tuple[Any, bool]] = {}
         for future_idx in range(step_index + 1, len(sequence.steps)):
-            cue = sequence.steps[future_idx].cue
+            future_step = sequence.steps[future_idx]
+            cue = future_step.cue
             if cue is None:
                 continue
-            if getattr(cue, "number", 0) == 0:
-                break
-            if getattr(cue, "is_block", False):
+            if getattr(cue, "number", 0) == 0 or getattr(cue, "is_block", False):
                 break
 
             dev_dict = (
@@ -359,18 +368,28 @@ class TrackingEngine:
             )
             for param_name, val in dev_dict.items():
                 if param_name.lower() not in HTP_PARAMETERS:
-                    collected_ltp[param_name] = val
+                    collected_ltp[param_name] = (
+                        val,
+                        cls._step_has_explicit_family(future_step, param_name),
+                    )
 
             conv_level = (
                 int(cue.channels.get(dev_id, 0)) if hasattr(cue, "channels") else 0
             )
-            dev_intensity = 0.0
-            for key, val in dev_dict.items():
-                if key.lower() in HTP_PARAMETERS:
-                    dev_intensity = float(val)
-                    break
-
+            dev_intensity = next(
+                (
+                    float(val)
+                    for key, val in dev_dict.items()
+                    if key.lower() in HTP_PARAMETERS
+                ),
+                0.0,
+            )
             if conv_level > 0 or dev_intensity > 0.0:
-                return future_idx, collected_ltp
+                filtered_ltp = {
+                    p: val
+                    for p, (val, move_exp) in collected_ltp.items()
+                    if not (move_exp or cls._step_has_explicit_family(future_step, p))
+                }
+                return future_idx, filtered_ltp
 
         return None, {}

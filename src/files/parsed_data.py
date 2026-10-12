@@ -312,6 +312,36 @@ class ParsedData:
             cue.device_values = {}
         cue.is_block = bool(cue_dict.get("is_block", False))
 
+    @staticmethod
+    def _build_step_from_dict(
+        sequence: int, cue: Cue, values: dict[str, typing.Any]
+    ) -> Step:
+        """Construct a Step from parsed dictionary values including IFCB times."""
+        channel_time = {}
+        ct_dict = values.get("channel_time")
+        if isinstance(ct_dict, dict):
+            for channel, times in ct_dict.items():
+                channel_time[channel] = ChannelTime(
+                    times.get("delay", 0.0), times.get("time", 0.0)
+                )
+        return Step(
+            sequence,
+            cue,
+            time_in=float(values.get("time_in", 5.0)),
+            time_out=float(values.get("time_out", 5.0)),
+            delay_in=float(values.get("delay_in", 0.0)),
+            delay_out=float(values.get("delay_out", 0.0)),
+            wait=float(values.get("wait", 0.0)),
+            channel_time=channel_time,
+            text=str(values.get("label", "")),
+            time_position=values.get("time_position"),
+            delay_position=values.get("delay_position"),
+            time_color=values.get("time_color"),
+            delay_color=values.get("delay_color"),
+            time_beam=values.get("time_beam"),
+            delay_beam=values.get("delay_beam"),
+        )
+
     def import_presets(self) -> None:
         """Import presets data"""
         for preset_number, values in self.data["cues"].items():
@@ -365,24 +395,7 @@ class ParsedData:
                 cue = Cue(0, cue_number, cue_channels, text=cue_text)
                 self.lightshow.cues.add(cue)
             self._apply_cue_metadata(cue, cue_dict)
-            channel_time = {}
-            if values.get("channel_time"):
-                for channel, times in values.get("channel_time").items():
-                    channel_time[channel] = ChannelTime(
-                        times.get("delay", 0.0), times.get("time", 0.0)
-                    )
-            # Create new step
-            step = Step(
-                sequence,
-                cue,
-                time_in=values.get("time_in"),
-                time_out=values.get("time_out"),
-                delay_in=values.get("delay_in", 0.0),
-                delay_out=values.get("delay_out", 0.0),
-                wait=values.get("wait", 0.0),
-                channel_time=channel_time,
-                text=values.get("label", ""),
-            )
+            step = self._build_step_from_dict(sequence, cue, values)
             self.lightshow.main_playback.add_step(step)
 
     def _merge_main_playback(self, sequence: int) -> None:
@@ -417,23 +430,7 @@ class ParsedData:
                 self.lightshow.cues.add(cue)
                 self.lightshow.main_playback.update_channels()
                 self._apply_cue_metadata(cue, cue_dict)
-                channel_time = {}
-                if values.get("channel_time"):
-                    for channel, times in values.get("channel_time").items():
-                        channel_time[channel] = ChannelTime(
-                            times.get("delay", 0.0), times.get("time", 0.0)
-                        )
-                step = Step(
-                    sequence,
-                    cue,
-                    time_in=values.get("time_in"),
-                    time_out=values.get("time_out"),
-                    delay_in=values.get("delay_in", 0.0),
-                    delay_out=values.get("delay_out", 0.0),
-                    wait=values.get("wait", 0.0),
-                    channel_time=channel_time,
-                    text=values.get("label", ""),
-                )
+                step = self._build_step_from_dict(sequence, cue, values)
                 self.lightshow.main_playback.insert_step(step_nb, step)
 
     def import_chaser(self, sequence: int, action: Action) -> None:
@@ -497,23 +494,7 @@ class ParsedData:
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
                 self.lightshow.chasers[index].cues.add(cue)
                 self._apply_cue_metadata(cue, cue_dict)
-                channel_time = {}
-                if values.get("channel_time"):
-                    for channel, times in values.get("channel_time").items():
-                        channel_time[channel] = ChannelTime(
-                            times.get("delay", 0.0), times.get("time", 0.0)
-                        )
-                step = Step(
-                    sequence,
-                    cue,
-                    time_in=values.get("time_in"),
-                    time_out=values.get("time_out"),
-                    delay_in=values.get("delay_in", 0.0),
-                    delay_out=values.get("delay_out", 0.0),
-                    wait=values.get("wait", 0.0),
-                    channel_time=channel_time,
-                    text=values.get("label", ""),
-                )
+                step = self._build_step_from_dict(sequence, cue, values)
                 self.lightshow.chasers[index].insert_step(step_nb, step)
 
     def _replace_chaser(self, sequence: int, index: int) -> None:
@@ -534,22 +515,5 @@ class ParsedData:
                 cue = Cue(sequence, cue_number, cue_channels, text=cue_text)
                 self.lightshow.chasers[index].cues.add(cue)
                 self._apply_cue_metadata(cue, cue_dict)
-            channel_time = {}
-            if values.get("channel_time"):
-                for channel, times in values.get("channel_time").items():
-                    channel_time[channel] = ChannelTime(
-                        times.get("delay", 0.0), times.get("time", 0.0)
-                    )
-            # Create new step
-            step = Step(
-                sequence,
-                cue,
-                time_in=values.get("time_in"),
-                time_out=values.get("time_out"),
-                delay_in=values.get("delay_in", 0.0),
-                delay_out=values.get("delay_out", 0.0),
-                wait=values.get("wait", 0.0),
-                channel_time=channel_time,
-                text=values.get("label", ""),
-            )
+            step = self._build_step_from_dict(sequence, cue, values)
             self.lightshow.chasers[index].add_step(step)

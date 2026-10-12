@@ -26,7 +26,7 @@ from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
 from olc.patch import PatchCollisionError, PatchManager
 from olc.sequence import Sequence, ThreadGo
-from olc.step import Step
+from olc.step import Step, get_parameter_family
 
 
 def create_mock_sequence() -> Sequence:
@@ -477,3 +477,158 @@ def test_mib_temporal_model_2_post_extinction_fade() -> None:
     thread_go._calculate_transitions_go(4000.0, step2)
     assert dev.intensity == pytest.approx(0.0, abs=0.02)
     assert dev.pan_degrees == pytest.approx(100.0, abs=0.5)
+
+
+def test_ifcb_family_classification_and_step_total_time() -> None:
+    """Test IFCB parameter family mapping and Step effective/total timing."""
+    assert get_parameter_family("intensity") == "intensity"
+    assert get_parameter_family("Pan") == "position"
+    assert get_parameter_family("tilt") == "position"
+    assert get_parameter_family("color") == "color"
+    assert get_parameter_family("cct") == "color"
+    assert get_parameter_family("zoom") == "beam"
+    assert get_parameter_family("focus") == "beam"
+    assert get_parameter_family("gobo") == "beam"
+
+    step = Step(
+        sequence=1,
+        time_in=2.0,
+        time_out=3.0,
+        delay_in=0.5,
+        wait=1.0,
+    )
+    assert step.effective_time_position == pytest.approx(2.0)
+    assert step.effective_delay_position == pytest.approx(0.5)
+    assert step.has_explicit_family_timing("position") is False
+    assert step.total_time == pytest.approx(4.0)  # wait(1.0) + time_out(3.0)
+
+    step.set_time_position(6.0)
+    step.set_delay_position(1.5)
+    assert step.has_explicit_family_timing("position") is True
+    assert step.get_attribute_timing("pan") == (pytest.approx(1.5), pytest.approx(6.0))
+    assert step.get_attribute_timing("color") == (
+        pytest.approx(0.5),
+        pytest.approx(2.0),
+    )
+    # wait(1.0) + delay_position(1.5) + time_position(6.0) = 8.5s
+    assert step.total_time == pytest.approx(8.5)
+
+
+def test_ifcb_differentiated_interpolation_during_go() -> None:
+    """Test independent interpolation of Intensity, Position, Color, and Beam."""
+    patch = PatchManager()
+    patch.patch_empty()
+    dev = patch.patch_device(1, create_moving_head_definition(), 1, 1)
+
+    class MockDMX:
+        def __init__(self) -> None:
+            self.levels = {
+                "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+                "user": np.full(MAX_CHANNELS, -1, dtype=np.int16),
+            }
+
+        def set_levels(self) -> None:
+            pass
+
+    class MockBackend:
+        def __init__(self) -> None:
+            self.dmx = MockDMX()
+
+    class MockApp:
+        def __init__(self) -> None:
+            self.backend = MockBackend()
+            self.crossfade = None
+            self.midi = None
+
+    class MockLightShow:
+        def __init__(self, p: PatchManager) -> None:
+            self.patch = p
+            self.app = MockApp()
+
+    ls = MockLightShow(patch)
+    seq = Sequence(index=1, text="IFCB Go", lightshow=typing.cast(typing.Any, ls))
+    seq.tracking_mode = True
+    seq.steps.clear()
+    seq.last = 0
+
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    cue1 = Cue(1, 1.0)
+    cue1.set_device_parameter(1, "intensity", 0.0)
+    cue1.set_device_parameter(1, "pan", 0.0)
+    cue1.set_device_parameter(1, "color", "#000000")
+    cue1.set_device_parameter(1, "zoom", 10.0)
+    seq.add_step(Step(sequence=1, cue=cue1, time_in=1.0, time_out=1.0))
+
+    # Cue 2: In=2s, Pos=4s, Color=1s, Beam=8s
+    cue2 = Cue(1, 2.0)
+    cue2.set_device_parameter(1, "intensity", 1.0)
+    cue2.set_device_parameter(1, "pan", 100.0)
+    cue2.set_device_parameter(1, "color", "#ff0000")
+    cue2.set_device_parameter(1, "zoom", 50.0)
+    step2 = Step(
+        sequence=1,
+        cue=cue2,
+        time_in=2.0,
+        time_out=2.0,
+        time_position=4.0,
+        time_color=1.0,
+        time_beam=8.0,
+    )
+    seq.add_step(step2)
+
+    seq.load_step(1)
+    # pylint: disable=protected-access
+    thread_go = ThreadGo(False, seq)
+    thread_go._capture_start_levels()
+    assert thread_go.total_time == pytest.approx(8000.0)
+
+    # At t = 1000ms (1.0s):
+    # - Color (1s) is 100% (#ff0000 -> r=1.0)
+    # - Intensity (2s) is 50% (0.5)
+    # - Position (4s) is 25% (25.0°)
+    # - Beam/Zoom (8s) is 12.5% (10 + 0.125 * 40 = 15.0°)
+    thread_go._calculate_transitions_go(1000.0, step2)
+    assert dev.color_srgb.r == pytest.approx(1.0, abs=0.02)
+    assert dev.intensity == pytest.approx(0.5, abs=0.02)
+    assert dev.pan_degrees == pytest.approx(25.0, abs=0.5)
+    assert dev.zoom_degrees == pytest.approx(15.0, abs=0.5)
+
+
+def test_ifcb_explicit_family_time_overrides_mib() -> None:
+    """Explicit family timing on turn-on step excludes that family from MIB."""
+    seq = create_mock_sequence()
+    seq.tracking_mode = True
+    seq.mib_enabled = True
+
+    # Step 0: Cue 0
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    # Step 1 (Cue 1): Fixture 1 dark (0%), Pan=0°, Color=#0000ff
+    cue1 = Cue(1, 1.0)
+    cue1.set_device_parameter(1, "intensity", 0.0)
+    cue1.set_device_parameter(1, "pan", 0.0)
+    cue1.set_device_parameter(1, "color", "#0000ff")
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    # Step 2 (Cue 2): Dark cue before Cue 3
+    cue2 = Cue(1, 2.0)
+    seq.add_step(Step(sequence=1, cue=cue2))
+
+    # Step 3 (Cue 3): Fixture 1 turns ON at 100% with Pan=120° and Color=#ff0000,
+    # with EXPLICIT time_position=6.0s (live move!) and inherited time_color=None
+    cue3 = Cue(1, 3.0)
+    cue3.set_device_parameter(1, "intensity", 1.0)
+    cue3.set_device_parameter(1, "pan", 120.0)
+    cue3.set_device_parameter(1, "color", "#ff0000")
+    seq.add_step(
+        Step(sequence=1, cue=cue3, time_in=2.0, time_out=2.0, time_position=6.0)
+    )
+
+    # Resolve Step 2:
+    # - Color has inherited timing (None) -> pre-positioned in MIB (#ff0000)
+    # - Position has explicit time_position=6.0 on Step 3 -> stays 0.0°
+    res2 = TrackingEngine.resolve_step_state(seq, 2, tracking_mode=True)
+    assert res2.device_values[1]["color"] == "#ff0000"
+    assert res2.device_values[1]["pan"] == pytest.approx(0.0)
+    assert res2.mib_parameters.get(1) == {"color"}

@@ -271,7 +271,9 @@ class SequenceTab(Gtk.Grid):
         self.channels_view = SeqChannelsView(app=self.window.app)
         self.paned.add1(self.channels_view)
 
-        self.liststore2 = Gtk.ListStore(str, str, str, str, str, str, str, str, str)
+        self.liststore2 = Gtk.ListStore(
+            str, str, str, str, str, str, str, str, str, str, str, str
+        )
         self.treeview2 = Gtk.TreeView(model=self.liststore2)
         self.treeview2.set_enable_search(False)
         self.treeview2.connect("cursor-changed", self.on_cue_changed)
@@ -286,27 +288,30 @@ class SequenceTab(Gtk.Grid):
             "Out",
             "Delay In",
             "In",
+            "Pos",
+            "Color",
+            "Beam",
             "Channel Time",
         ]
+        edit_callbacks = {
+            2: self.text_edited,
+            3: self.wait_edited,
+            4: self.delay_out_edited,
+            5: self.out_edited,
+            6: self.delay_in_edited,
+            7: self.in_edited,
+            8: self.pos_edited,
+            9: self.color_edited,
+            10: self.beam_edited,
+        }
         for i, column_title in enumerate(columns):
             renderer = Gtk.CellRendererText()
             if i % 2 == 0:
                 renderer.set_property("background-rgba", Gdk.RGBA(alpha=0.03))
 
-            if i in (2, 3, 4, 5, 6, 7):
+            if i in edit_callbacks:
                 renderer.set_property("editable", True)
-                if i == 2:
-                    renderer.connect("edited", self.text_edited)
-                elif i == 3:
-                    renderer.connect("edited", self.wait_edited)
-                elif i == 4:
-                    renderer.connect("edited", self.delay_out_edited)
-                elif i == 5:
-                    renderer.connect("edited", self.out_edited)
-                elif i == 6:
-                    renderer.connect("edited", self.delay_in_edited)
-                elif i == 7:
-                    renderer.connect("edited", self.in_edited)
+                renderer.connect("edited", edit_callbacks[i])
 
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             if i == 2:
@@ -412,7 +417,7 @@ class SequenceTab(Gtk.Grid):
                 break
             col_nb += 1
         # Double click on Channel Time
-        if col_nb == 8:
+        if col_nb == 11:
             sequence = self.get_selected_sequence()
             step_str = self.liststore2[path][0]
             if sequence and step_str:
@@ -426,18 +431,7 @@ class SequenceTab(Gtk.Grid):
             sequence: Modified sequence
             step_number: Step number
         """
-        step = sequence.steps[step_number]
-        if step.time_in + step.delay_in > step.time_out + step.delay_out:
-            step.total_time = step.time_in + step.wait + step.delay_in
-        else:
-            step.total_time = step.time_out + step.wait + step.delay_out
-        for channel in step.channel_time.keys():
-            t = (
-                step.channel_time[channel].delay
-                + step.channel_time[channel].time
-                + step.wait
-            )
-            step.total_time = max(step.total_time, t)
+        sequence.steps[step_number].update_total_time()
 
     def wait_edited(
         self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
@@ -502,6 +496,45 @@ class SequenceTab(Gtk.Grid):
         time = string_to_time(text)
         self.window.app.core.action_registry.execute(
             "step.update_times", sequence.index, step, delay_in=time
+        )
+
+    def pos_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
+        """Position family time edited (empty string resets to inherited None)."""
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = int(self.liststore2[path][0])
+        time = -1.0 if text.strip() == "" else string_to_time(text)
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, time_position=time
+        )
+
+    def color_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
+        """Color family time edited (empty string resets to inherited None)."""
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = int(self.liststore2[path][0])
+        time = -1.0 if text.strip() == "" else string_to_time(text)
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, time_color=time
+        )
+
+    def beam_edited(
+        self, _widget: Gtk.CellRendererText, path: Gtk.TreePath, text: str
+    ) -> None:
+        """Beam family time edited (empty string resets to inherited None)."""
+        sequence = self.get_selected_sequence()
+        if not sequence:
+            return
+        step = int(self.liststore2[path][0])
+        time = -1.0 if text.strip() == "" else string_to_time(text)
+        self.window.app.core.action_registry.execute(
+            "step.update_times", sequence.index, step, time_beam=time
         )
 
     def text_edited(
@@ -773,6 +806,15 @@ class SequenceTab(Gtk.Grid):
         )
         dialog.destroy()
 
+    @staticmethod
+    def _format_family_time(val: Optional[float]) -> str:
+        """Format an optional family transition time for TreeView display."""
+        if val is None:
+            return ""
+        if val == 0.0:
+            return "0"
+        return time_to_string(val)
+
     def add_step_to_liststore(self, step: int) -> None:
         """Add Step to the list
 
@@ -782,27 +824,34 @@ class SequenceTab(Gtk.Grid):
         sequence = self.get_selected_sequence()
         if not sequence:
             return
-        wait = time_to_string(sequence.steps[step].wait)
-        t_out = time_to_string(sequence.steps[step].time_out)
-        d_out = time_to_string(sequence.steps[step].delay_out)
-        t_in = time_to_string(sequence.steps[step].time_in)
-        d_in = time_to_string(sequence.steps[step].delay_in)
-        channel_time = str(len(sequence.steps[step].channel_time))
+        step_obj = sequence.steps[step]
+        wait = time_to_string(step_obj.wait)
+        t_out = time_to_string(step_obj.time_out)
+        d_out = time_to_string(step_obj.delay_out)
+        t_in = time_to_string(step_obj.time_in)
+        d_in = time_to_string(step_obj.delay_in)
+        t_pos = self._format_family_time(step_obj.time_position)
+        t_color = self._format_family_time(step_obj.time_color)
+        t_beam = self._format_family_time(step_obj.time_beam)
+        channel_time = str(len(step_obj.channel_time))
         if channel_time == "0":
             channel_time = ""
-        cue = sequence.steps[step].cue
+        cue = step_obj.cue
         cue_number = str(cue.number) if cue is not None else ""
         self.liststore2.insert(
             step - 1,
             [
                 str(step),
                 cue_number,
-                sequence.steps[step].text,
+                step_obj.text,
                 wait,
                 d_out,
                 t_out,
                 d_in,
                 t_in,
+                t_pos,
+                t_color,
+                t_beam,
                 channel_time,
             ],
         )
