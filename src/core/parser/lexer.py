@@ -50,7 +50,10 @@ KEYWORDS: dict[str, TokenType] = {
     "BLOCK": TokenType.BLOCK,
     "UNBLOCK": TokenType.UNBLOCK,
     "DELETE": TokenType.DELETE,
-    # ML Attributes
+    # ML Attributes & Families
+    "POSITION": TokenType.POSITION,
+    "POS": TokenType.POSITION,
+    "BEAM": TokenType.BEAM,
     "PAN": TokenType.PAN,
     "TILT": TokenType.TILT,
     "COLOR": TokenType.COLOR,

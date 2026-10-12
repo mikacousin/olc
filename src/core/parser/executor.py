@@ -370,6 +370,28 @@ class CommandExecutor:
 
         return channels_dict, device_values
 
+    @staticmethod
+    def _apply_record_node_timings(step: Step, node: RecordCueCommandNode) -> None:
+        """Apply optional fade, delay, and IFCB family timings from node to step."""
+        if node.time_in is not None:
+            step.time_in = node.time_in
+            step.time_out = node.time_out if node.time_out is not None else node.time_in
+        if node.delay is not None:
+            step.delay_in = node.delay
+        if node.time_position is not None:
+            step.time_position = node.time_position
+        if node.delay_position is not None:
+            step.delay_position = node.delay_position
+        if node.time_color is not None:
+            step.time_color = node.time_color
+        if node.delay_color is not None:
+            step.delay_color = node.delay_color
+        if node.time_beam is not None:
+            step.time_beam = node.time_beam
+        if node.delay_beam is not None:
+            step.delay_beam = node.delay_beam
+        step.update_total_time()
+
     def _execute_record_cue(  # pylint: disable=too-many-locals,too-many-branches
         self, node: RecordCueCommandNode
     ) -> CommandResult:
@@ -409,14 +431,11 @@ class CommandExecutor:
                 existing_step_idx = idx
                 break
         if step is None:
-            time_in = node.time_in if node.time_in is not None else 5.0
             step = Step(
                 sequence=main_playback.index,
                 cue=cue,
-                time_in=time_in,
-                time_out=node.time_out if node.time_out is not None else time_in,
-                delay_in=node.delay if node.delay is not None else 0.0,
             )
+            self._apply_record_node_timings(step, node)
             if (
                 len(main_playback.steps) >= 2
                 and main_playback.steps[-1].cue is not None
@@ -442,14 +461,7 @@ class CommandExecutor:
                 node.cue_id,
             )
         else:
-            if node.time_in is not None:
-                step.time_in = node.time_in
-                step.time_out = (
-                    node.time_out if node.time_out is not None else node.time_in
-                )
-            if node.delay is not None:
-                step.delay_in = node.delay
-            step.update_total_time()
+            self._apply_record_node_timings(step, node)
             main_playback.update_channels()
             lightshow.set_modified()
             self.app.emit("cue.updated", 1, node.cue_id)
@@ -514,7 +526,7 @@ class CommandExecutor:
         if not lightshow or not lightshow.main_playback:
             return CommandResult(False, "Main playback sequence not available")
 
-        lightshow.main_playback.goto(str(node.cue_id))
+        lightshow.main_playback.goto(str(node.cue_id), override_time=node.time)
         return CommandResult(True, f"Jumped to Cue {node.cue_id}")
 
     def _execute_block_cue(

@@ -257,3 +257,71 @@ def test_highlight_commandline_markup() -> None:
     # 6. Mismatch characters: underline error
     markup_err = highlight_commandline_markup("1 $ 2")
     assert '<span foreground="#FF5252" underline="error">$</span>' in markup_err
+
+
+def test_parser_noun_first_cue_commands() -> None:
+    parser = CommandParser()
+
+    rec = parser.parse("CUE 5 RECORD TIME 3 / 2 DELAY 1 BLOCK")
+    assert isinstance(rec, RecordCueCommandNode)
+    assert rec.cue_id == 5.0
+    assert rec.time_in == 3.0
+    assert rec.time_out == 2.0
+    assert rec.delay == 1.0
+    assert rec.is_block is True
+
+    upd = parser.parse("CUE 4 UPDATE")
+    assert isinstance(upd, UpdateCueCommandNode)
+    assert upd.cue_id == 4.0
+
+    dele = parser.parse("CUE 4 DELETE")
+    assert isinstance(dele, DeleteCueCommandNode)
+    assert dele.cue_id == 4.0
+
+    blk = parser.parse("CUE 8 BLOCK")
+    assert isinstance(blk, BlockCueCommandNode)
+    assert blk.cue_id == 8.0
+
+    unblk = parser.parse("CUE 8 UNBLOCK")
+    assert isinstance(unblk, UnblockCueCommandNode)
+    assert unblk.cue_id == 8.0
+
+    goto = parser.parse("CUE 12 GOTO TIME 0")
+    assert isinstance(goto, GotoCueCommandNode)
+    assert goto.cue_id == 12.0
+    assert goto.time == 0.0
+
+
+def test_parser_record_cue_ifcb_times() -> None:
+    parser = CommandParser()
+
+    node1 = parser.parse(
+        "RECORD CUE 5 TIME 3 POSITION 1.5 DELAY 0.5 COLOR 4 BEAM DELAY 1 TIME 2"
+    )
+    assert isinstance(node1, RecordCueCommandNode)
+    assert node1.cue_id == 5.0
+    assert node1.time_in == 3.0
+    assert node1.time_position == 1.5
+    assert node1.delay_position == 0.5
+    assert node1.time_color == 4.0
+    assert node1.delay_color is None
+    assert node1.time_beam == 2.0
+    assert node1.delay_beam == 1.0
+
+    node2 = parser.parse("CUE 6 RECORD TIME POSITION 2.5 DELAY COLOR 1.0")
+    assert isinstance(node2, RecordCueCommandNode)
+    assert node2.cue_id == 6.0
+    assert node2.time_position == 2.5
+    assert node2.delay_color == 1.0
+
+    expected_after_cue_num = parser.get_expected_tokens("CUE 5 ")
+    assert TokenType.RECORD in expected_after_cue_num
+    assert TokenType.UPDATE in expected_after_cue_num
+    assert TokenType.DELETE in expected_after_cue_num
+    assert TokenType.GOTO in expected_after_cue_num
+
+    expected_after_rec = parser.get_expected_tokens("CUE 5 RECORD ")
+    assert TokenType.TIME in expected_after_rec
+    assert TokenType.POSITION in expected_after_rec
+    assert TokenType.COLOR in expected_after_rec
+    assert TokenType.BEAM in expected_after_rec

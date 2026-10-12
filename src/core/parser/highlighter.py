@@ -60,6 +60,9 @@ COMMAND_KEYWORDS = frozenset(
 
 ATTRIBUTE_KEYWORDS = frozenset(
     {
+        "POSITION",
+        "POS",
+        "BEAM",
         "PAN",
         "TILT",
         "COLOR",

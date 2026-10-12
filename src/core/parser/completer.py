@@ -60,6 +60,8 @@ TOKEN_TO_KEYWORD: dict[TokenType, str] = {
     TokenType.PLUS: "+",
     TokenType.MINUS: "-",
     TokenType.SLASH: "/",
+    TokenType.POSITION: "POSITION",
+    TokenType.BEAM: "BEAM",
     TokenType.PAN: "PAN",
     TokenType.TILT: "TILT",
     TokenType.COLOR: "COLOR",
@@ -93,6 +95,8 @@ KEYWORD_PRIORITY: list[str] = [
     "BLOCK",
     "UNBLOCK",
     "DELETE",
+    "POSITION",
+    "BEAM",
     "PAN",
     "TILT",
     "COLOR",
@@ -283,7 +287,7 @@ class CommandCompleter:
             candidates.extend(groups)
 
         # Contextual presets: Colors
-        if last_keyword in ("COLOR", "COLOUR"):
+        if TokenType.HEX_COLOR in expected and last_keyword in ("COLOR", "COLOUR"):
             candidates.extend(COLOR_PRESETS.keys())
 
         return list(dict.fromkeys(candidates))

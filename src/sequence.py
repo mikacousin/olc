@@ -336,11 +336,12 @@ class Sequence:
                 self.backend.dmx.levels["user"].fill(-1)
             self.load_step(position)
 
-    def goto(self, keystring: str) -> None:
+    def goto(self, keystring: str, override_time: Optional[float] = None) -> None:
         """Jump to cue number
 
         Args:
             keystring: Cue number
+            override_time: Optional override fade time in seconds (0 = instant load)
         """
         old_pos = self.position
 
@@ -355,6 +356,22 @@ class Sequence:
                 self.position = i - 1
                 next_step = self.position + 1
 
+                eff_total = (
+                    override_time
+                    if override_time is not None
+                    else self.steps[next_step].total_time
+                )
+                eff_in = (
+                    override_time
+                    if override_time is not None
+                    else self.steps[next_step].time_in
+                )
+                eff_out = (
+                    override_time
+                    if override_time is not None
+                    else self.steps[next_step].time_out
+                )
+
                 # Emit event for GUI (GuiEventBridge) to setup times and view
                 if self.app is not None:
                     core = getattr(self.app, "core", self.app)
@@ -364,25 +381,61 @@ class Sequence:
                             "old_pos": old_pos,
                             "next_step": next_step,
                             "keystring": keystring,
-                            "total_time": self.steps[next_step].total_time,
-                            "time_in": self.steps[next_step].time_in,
-                            "time_out": self.steps[next_step].time_out,
-                            "delay_in": self.steps[next_step].delay_in,
-                            "delay_out": self.steps[next_step].delay_out,
-                            "wait": self.steps[next_step].wait,
-                            "channel_time": self.steps[next_step].channel_time,
+                            "total_time": eff_total,
+                            "time_in": eff_in,
+                            "time_out": eff_out,
+                            "delay_in": (
+                                0.0
+                                if override_time is not None
+                                else self.steps[next_step].delay_in
+                            ),
+                            "delay_out": (
+                                0.0
+                                if override_time is not None
+                                else self.steps[next_step].delay_out
+                            ),
+                            "wait": (
+                                0.0
+                                if override_time is not None
+                                else self.steps[next_step].wait
+                            ),
+                            "channel_time": (
+                                {}
+                                if override_time is not None
+                                else self.steps[next_step].channel_time
+                            ),
                         },
                     )
 
-                # Launch Go
-                self.do_go(None, True)
+                if override_time is not None and override_time <= 0.0:
+                    self.stop()
+                    if self.backend is not None and self.backend.dmx is not None:
+                        self.backend.dmx.levels["user"].fill(-1)
+                    self.load_step(i)
+                    self.position = i - 1
+                    next_after = _next_step(self)
+                    if self.app is not None:
+                        core = getattr(self.app, "core", self.app)
+                        core.emit(
+                            "playback.transition_completed",
+                            {"next_step": next_after},
+                        )
+                else:
+                    # Launch Go
+                    self.do_go(None, True, override_time=override_time)
                 break
 
-    def do_go(self, _action: Optional[Gio.SimpleAction], goto: bool = False) -> None:
+    def do_go(
+        self,
+        _action: Optional[Gio.SimpleAction],
+        goto: bool = False,
+        override_time: Optional[float] = None,
+    ) -> None:
         """Go
 
         Args:
             goto: True if Goto, False if Go (default)
+            override_time: Optional override fade time in seconds
         """
         if self.app is not None and self.app.midi is not None:
             self.app.midi.button_on("playback.go")
@@ -424,12 +477,12 @@ class Sequence:
                     },
                 )
 
-            self.do_go(None)
+            self.do_go(None, override_time=override_time)
 
         else:
             # Indicates that a Go is in progress
             self.on_go = True
-            self.thread = ThreadGo(goto, self)
+            self.thread = ThreadGo(goto, self, override_time=override_time)
             self.thread.start()
 
     def go_back(self, _action: Optional[Gio.SimpleAction], _param: None) -> bool:
@@ -648,24 +701,39 @@ class ThreadGo(threading.Thread):
     delay_in: float
     delay_out: float
     goto: bool
+    override_time: Optional[float]
     backend: typing.Any
 
-    def __init__(self, goto: bool, sequence: Sequence) -> None:
+    def __init__(
+        self,
+        goto: bool,
+        sequence: Sequence,
+        override_time: Optional[float] = None,
+    ) -> None:
         threading.Thread.__init__(self, name="ThreadGo", daemon=True)
         self._stopevent = threading.Event()
         self.pause = threading.Event()
         self.pause.set()
         self.sequence = sequence
+        self.override_time = override_time
         # To save channels levels when user sends Go
         self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
         self.old_device_states = {}
         next_step = self.sequence.position + 1
-        self.total_time = self.sequence.steps[next_step].total_time * 1000
-        self.time_in = self.sequence.steps[next_step].time_in * 1000
-        self.time_out = self.sequence.steps[next_step].time_out * 1000
-        self.wait = self.sequence.steps[next_step].wait * 1000
-        self.delay_in = self.sequence.steps[next_step].delay_in * 1000
-        self.delay_out = self.sequence.steps[next_step].delay_out * 1000
+        if override_time is not None:
+            self.total_time = override_time * 1000.0
+            self.time_in = override_time * 1000.0
+            self.time_out = override_time * 1000.0
+            self.wait = 0.0
+            self.delay_in = 0.0
+            self.delay_out = 0.0
+        else:
+            self.total_time = self.sequence.steps[next_step].total_time * 1000
+            self.time_in = self.sequence.steps[next_step].time_in * 1000
+            self.time_out = self.sequence.steps[next_step].time_out * 1000
+            self.wait = self.sequence.steps[next_step].wait * 1000
+            self.delay_in = self.sequence.steps[next_step].delay_in * 1000
+            self.delay_out = self.sequence.steps[next_step].delay_out * 1000
         self.goto = goto
 
     @property
@@ -690,10 +758,14 @@ class ThreadGo(threading.Thread):
 
     def _get_device_dark_time_ms(self, step: Step, dev_id: int) -> float:
         """Return elapsed time (ms) when a fading-out device reaches 0% intensity."""
-        if step.channel_time and dev_id in step.channel_time:
+        if (
+            self.override_time is None
+            and step.channel_time
+            and dev_id in step.channel_time
+        ):
             ct = step.channel_time[dev_id]
             return self.wait + (ct.delay + ct.time) * 1000.0
-        return self.wait + (step.delay_out + step.time_out) * 1000.0
+        return self.wait + self.delay_out + self.time_out
 
     def _capture_start_levels(self) -> None:
         """Capture sequential channels levels and device states when Go is sent"""
@@ -881,22 +953,34 @@ class ThreadGo(threading.Thread):
                 return 1.0 if i >= start_ms else 0.0
             return max(0.0, min(1.0, (i - start_ms) / dur_ms))
 
-        ltp_factor = _window_factor(step.delay_in, step.time_in)
-        default_out_factor = _window_factor(step.delay_out, step.time_out)
-        family_factors: dict[str, float] = {
-            "position": _window_factor(
-                step.effective_delay_position, step.effective_time_position
-            ),
-            "color": _window_factor(
-                step.effective_delay_color, step.effective_time_color
-            ),
-            "beam": _window_factor(step.effective_delay_beam, step.effective_time_beam),
-        }
-        explicit_families = {
-            fam
-            for fam in ("position", "color", "beam")
-            if step.has_explicit_family_timing(fam)
-        }
+        if self.override_time is not None:
+            ltp_factor = _window_factor(0.0, self.override_time)
+            default_out_factor = ltp_factor
+            family_factors: dict[str, float] = {
+                "position": ltp_factor,
+                "color": ltp_factor,
+                "beam": ltp_factor,
+            }
+            explicit_families: set[str] = set()
+        else:
+            ltp_factor = _window_factor(step.delay_in, step.time_in)
+            default_out_factor = _window_factor(step.delay_out, step.time_out)
+            family_factors = {
+                "position": _window_factor(
+                    step.effective_delay_position, step.effective_time_position
+                ),
+                "color": _window_factor(
+                    step.effective_delay_color, step.effective_time_color
+                ),
+                "beam": _window_factor(
+                    step.effective_delay_beam, step.effective_time_beam
+                ),
+            }
+            explicit_families = {
+                fam
+                for fam in ("position", "color", "beam")
+                if step.has_explicit_family_timing(fam)
+            }
 
         mib_factors: dict[int, float] = {}
         intensity_out_factors: dict[int, float] = {}
@@ -907,7 +991,11 @@ class ThreadGo(threading.Thread):
         )
 
         for dev_id in resolved.device_values:
-            if step.channel_time and dev_id in step.channel_time:
+            if (
+                self.override_time is None
+                and step.channel_time
+                and dev_id in step.channel_time
+            ):
                 ct = step.channel_time[dev_id]
                 intensity_out_factors[dev_id] = _window_factor(ct.delay, ct.time)
             else:
@@ -924,7 +1012,11 @@ class ThreadGo(threading.Thread):
                         mib_factors[dev_id] = max(
                             0.0, min(1.0, (i - t_dark_ms) / mib_dur_ms)
                         )
-                elif step.channel_time and dev_id in step.channel_time:
+                elif (
+                    self.override_time is None
+                    and step.channel_time
+                    and dev_id in step.channel_time
+                ):
                     mib_factors[dev_id] = intensity_out_factors[dev_id]
                 else:
                     mib_factors[dev_id] = ltp_factor
@@ -955,37 +1047,35 @@ class ThreadGo(threading.Thread):
         # Decays (channels going down)
         decay_mask = next_levels < old_levels
         if np.any(decay_mask):
-            progress_mask = (i > self.wait + step.delay_out * 1000) & (
-                i < (step.time_out + step.wait + step.delay_out) * 1000
+            progress_mask = (i > self.wait + self.delay_out) & (
+                i < self.time_out + self.wait + self.delay_out
             )
-            if np.any(progress_mask & decay_mask):
-                factor = (i - self.wait - step.delay_out * 1000) / (
-                    step.time_out * 1000
-                )
+            if np.any(progress_mask & decay_mask) and self.time_out > 0:
+                factor = (i - self.wait - self.delay_out) / self.time_out
                 diff = (next_levels - old_levels) * factor
                 decay_lvls = np.round(old_levels - np.abs(diff)).astype(np.int32)
                 lvls[progress_mask & decay_mask] = decay_lvls[
                     progress_mask & decay_mask
                 ]
 
-            end_mask = i >= (step.time_out + step.wait + step.delay_out) * 1000
+            end_mask = i >= self.time_out + self.wait + self.delay_out
             lvls[end_mask & decay_mask] = next_levels[end_mask & decay_mask]
 
         # Attacks (channels going up)
         attack_mask = next_levels > old_levels
         if np.any(attack_mask):
-            progress_mask = (i > self.wait + step.delay_in * 1000) & (
-                i < (step.time_in + step.wait + step.delay_in) * 1000
+            progress_mask = (i > self.wait + self.delay_in) & (
+                i < self.time_in + self.wait + self.delay_in
             )
-            if np.any(progress_mask & attack_mask):
-                factor = (i - self.wait - step.delay_in * 1000) / (step.time_in * 1000)
+            if np.any(progress_mask & attack_mask) and self.time_in > 0:
+                factor = (i - self.wait - self.delay_in) / self.time_in
                 diff = (next_levels - old_levels) * factor
                 attack_lvls = np.round(old_levels + diff).astype(np.int32)
                 lvls[progress_mask & attack_mask] = attack_lvls[
                     progress_mask & attack_mask
                 ]
 
-            end_mask = i >= (step.time_in + step.wait + step.delay_in) * 1000
+            end_mask = i >= self.time_in + self.wait + self.delay_in
             lvls[end_mask & attack_mask] = next_levels[end_mask & attack_mask]
 
         # Continuous interpolation of multi-parameter LTP and MIB attributes
@@ -1013,7 +1103,7 @@ class ThreadGo(threading.Thread):
 
     def _apply_channel_times_go(self, lvls: np.ndarray, i: float, step: Step) -> None:
         """Apply individual channel times."""
-        if not step.channel_time:
+        if not step.channel_time or self.override_time is not None:
             return
         old_levels = self.old_channels_levels.astype(np.int32)
         next_step_idx = self.sequence.position + 1

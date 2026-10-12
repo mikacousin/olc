@@ -150,6 +150,9 @@ class CommandParser:
     def _parse_command(self) -> CommandNode:  # pylint: disable=too-many-return-statements
         tok = self.peek()
 
+        if tok.type == TokenType.CUE:
+            return self._parse_cue_first_command()
+
         if tok.type == TokenType.RECORD:
             return self._parse_record_cue()
 
@@ -183,34 +186,133 @@ class CommandParser:
 
     # --- Cue Commands ---
 
-    def _parse_record_cue(self) -> RecordCueCommandNode:
-        self.advance()  # Consume RECORD
-        self.match(TokenType.CUE)  # Optional CUE keyword
-
-        tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after RECORD")
+    def _parse_cue_first_command(  # pylint: disable=too-many-return-statements
+        self,
+    ) -> CommandNode:
+        """Parse noun-first cue commands (e.g. CUE 5 RECORD TIME 3, CUE 4 UPDATE)."""
+        self.advance()  # Consume CUE
+        tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after CUE")
         cue_id = float(tok_num.value)
 
+        tok_action = self.peek()
+        if self.match(TokenType.RECORD):
+            return self._parse_record_cue_options(cue_id)
+        if self.match(TokenType.UPDATE):
+            return UpdateCueCommandNode(cue_id=cue_id)
+        if self.match(TokenType.DELETE):
+            return DeleteCueCommandNode(cue_id=cue_id)
+        if self.match(TokenType.BLOCK):
+            return BlockCueCommandNode(cue_id=cue_id)
+        if self.match(TokenType.UNBLOCK):
+            return UnblockCueCommandNode(cue_id=cue_id)
+        if self.match(TokenType.GOTO):
+            fade_time: float | None = None
+            if self.match(TokenType.TIME):
+                tok_time = self.expect(
+                    TokenType.NUMBER, "Expected fade time after TIME"
+                )
+                fade_time = float(tok_time.value)
+            return GotoCueCommandNode(cue_id=cue_id, time=fade_time)
+
+        raise CommandSyntaxError(
+            f"Expected cue action (RECORD, UPDATE, DELETE, BLOCK, UNBLOCK, GOTO) "
+            f"after CUE {tok_num.raw_text}, got {tok_action.raw_text!r}",
+            tok_action.position,
+            tok_action,
+        )
+
+    def _parse_family_timing_clause(
+        self, family_tok: TokenType
+    ) -> tuple[float | None, float | None]:
+        """Parse [TIME] <t> [DELAY <d>] or DELAY <d> [TIME <t>] for a family."""
+        fam_time: float | None = None
+        fam_delay: float | None = None
+        fam_name = family_tok.name
+
+        if self.match(TokenType.DELAY):
+            tok_d = self.expect(
+                TokenType.NUMBER, f"Expected delay value in seconds after {fam_name}"
+            )
+            fam_delay = float(tok_d.value)
+            if self.match(TokenType.TIME):
+                tok_t = self.expect(
+                    TokenType.NUMBER, f"Expected time value in seconds after {fam_name}"
+                )
+                fam_time = float(tok_t.value)
+        else:
+            self.match(TokenType.TIME)
+            tok_t = self.expect(
+                TokenType.NUMBER, f"Expected time value in seconds after {fam_name}"
+            )
+            fam_time = float(tok_t.value)
+            if self.match(TokenType.DELAY):
+                tok_d = self.expect(
+                    TokenType.NUMBER,
+                    f"Expected delay value in seconds after {fam_name}",
+                )
+                fam_delay = float(tok_d.value)
+
+        return fam_time, fam_delay
+
+    def _parse_record_cue_options(  # pylint: disable=too-many-locals,too-many-branches
+        self, cue_id: float
+    ) -> RecordCueCommandNode:
+        """Parse TIME, DELAY, BLOCK and IFCB family modifiers for RECORD CUE."""
         time_in: float | None = None
         time_out: float | None = None
         delay: float | None = None
         is_block = False
+        family_times: dict[TokenType, float | None] = {
+            TokenType.POSITION: None,
+            TokenType.COLOR: None,
+            TokenType.BEAM: None,
+        }
+        family_delays: dict[TokenType, float | None] = {
+            TokenType.POSITION: None,
+            TokenType.COLOR: None,
+            TokenType.BEAM: None,
+        }
+        family_tokens = (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM)
 
         while self.peek().type != TokenType.EOF:
             if self.match(TokenType.TIME):
-                tok_t1 = self.expect(TokenType.NUMBER, "Expected time value in seconds")
-                time_in = float(tok_t1.value)
-                if self.match(TokenType.SLASH):
-                    tok_t2 = self.expect(
-                        TokenType.NUMBER, "Expected out-fade time value after '/'"
+                if self.peek().type in family_tokens:
+                    fam_tok = self.advance().type
+                    tok_ft = self.expect(
+                        TokenType.NUMBER, "Expected family time value in seconds"
                     )
-                    time_out = float(tok_t2.value)
+                    family_times[fam_tok] = float(tok_ft.value)
                 else:
-                    time_out = time_in
+                    tok_t1 = self.expect(
+                        TokenType.NUMBER, "Expected time value in seconds"
+                    )
+                    time_in = float(tok_t1.value)
+                    if self.match(TokenType.SLASH):
+                        tok_t2 = self.expect(
+                            TokenType.NUMBER, "Expected out-fade time value after '/'"
+                        )
+                        time_out = float(tok_t2.value)
+                    else:
+                        time_out = time_in
             elif self.match(TokenType.DELAY):
-                tok_del = self.expect(
-                    TokenType.NUMBER, "Expected delay value in seconds"
-                )
-                delay = float(tok_del.value)
+                if self.peek().type in family_tokens:
+                    fam_tok = self.advance().type
+                    tok_fd = self.expect(
+                        TokenType.NUMBER, "Expected family delay value in seconds"
+                    )
+                    family_delays[fam_tok] = float(tok_fd.value)
+                else:
+                    tok_del = self.expect(
+                        TokenType.NUMBER, "Expected delay value in seconds"
+                    )
+                    delay = float(tok_del.value)
+            elif self.peek().type in family_tokens:
+                fam_tok = self.advance().type
+                f_time, f_delay = self._parse_family_timing_clause(fam_tok)
+                if f_time is not None:
+                    family_times[fam_tok] = f_time
+                if f_delay is not None:
+                    family_delays[fam_tok] = f_delay
             elif self.match(TokenType.BLOCK):
                 is_block = True
             else:
@@ -222,7 +324,21 @@ class CommandParser:
             time_out=time_out,
             delay=delay,
             is_block=is_block,
+            time_position=family_times[TokenType.POSITION],
+            delay_position=family_delays[TokenType.POSITION],
+            time_color=family_times[TokenType.COLOR],
+            delay_color=family_delays[TokenType.COLOR],
+            time_beam=family_times[TokenType.BEAM],
+            delay_beam=family_delays[TokenType.BEAM],
         )
+
+    def _parse_record_cue(self) -> RecordCueCommandNode:
+        self.advance()  # Consume RECORD
+        self.match(TokenType.CUE)  # Optional CUE keyword
+
+        tok_num = self.expect(TokenType.NUMBER, "Expected Cue number after RECORD")
+        cue_id = float(tok_num.value)
+        return self._parse_record_cue_options(cue_id)
 
     def _parse_update_cue(self) -> UpdateCueCommandNode:
         self.advance()  # Consume UPDATE
@@ -462,6 +578,102 @@ class CommandParser:
             tok,
         )
 
+    @staticmethod
+    def _get_record_expected_tokens(
+        active_tokens: list[Token], text: str
+    ) -> list[TokenType]:
+        """Return expected tokens within a RECORD CUE options clause."""
+        last = active_tokens[-1]
+        prev = active_tokens[-2].type if len(active_tokens) >= 2 else None
+        families = (TokenType.POSITION, TokenType.COLOR, TokenType.BEAM)
+
+        if last.type in (TokenType.TIME, TokenType.DELAY):
+            if prev in families:
+                return [TokenType.NUMBER]
+            return [TokenType.NUMBER, *families]
+
+        if last.type in families:
+            if prev in (TokenType.TIME, TokenType.DELAY):
+                return [TokenType.NUMBER]
+            return [TokenType.NUMBER, TokenType.TIME, TokenType.DELAY]
+
+        if last.type == TokenType.SLASH:
+            return [TokenType.NUMBER]
+
+        res = [
+            TokenType.TIME,
+            TokenType.DELAY,
+            TokenType.BLOCK,
+            *families,
+        ]
+        if last.type == TokenType.NUMBER and prev == TokenType.TIME:
+            res.insert(0, TokenType.SLASH)
+        if last.type == TokenType.NUMBER and not text.endswith(" "):
+            res.append(TokenType.NUMBER)
+        return res
+
+    @staticmethod
+    def _get_goto_expected_tokens(
+        active_tokens: list[Token], text: str
+    ) -> list[TokenType]:
+        """Return expected tokens within a GOTO CUE options clause."""
+        last = active_tokens[-1]
+        if last.type == TokenType.TIME:
+            return [TokenType.NUMBER]
+        if all(t.type != TokenType.TIME for t in active_tokens):
+            res = [TokenType.TIME]
+            if last.type == TokenType.NUMBER and not text.endswith(" "):
+                res.append(TokenType.NUMBER)
+            return res
+        return []
+
+    def _get_cue_expected_tokens(  # pylint: disable=too-many-return-statements
+        self, active_tokens: list[Token], text: str
+    ) -> list[TokenType] | None:
+        """Return expected tokens when the command starts with a cue keyword."""
+        first = active_tokens[0].type
+
+        if first == TokenType.CUE:
+            if len(active_tokens) == 1:
+                return [TokenType.NUMBER]
+            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.NUMBER:
+                res = [
+                    TokenType.RECORD,
+                    TokenType.UPDATE,
+                    TokenType.GOTO,
+                    TokenType.BLOCK,
+                    TokenType.UNBLOCK,
+                    TokenType.DELETE,
+                ]
+                if not text.endswith(" "):
+                    res.append(TokenType.NUMBER)
+                return res
+            if active_tokens[2].type == TokenType.RECORD:
+                return self._get_record_expected_tokens(active_tokens, text)
+            if active_tokens[2].type == TokenType.GOTO:
+                return self._get_goto_expected_tokens(active_tokens, text)
+            return []
+
+        if first in (
+            TokenType.RECORD,
+            TokenType.GOTO,
+            TokenType.UPDATE,
+            TokenType.BLOCK,
+            TokenType.UNBLOCK,
+            TokenType.DELETE,
+        ):
+            if len(active_tokens) == 1:
+                return [TokenType.CUE, TokenType.NUMBER]
+            if len(active_tokens) == 2 and active_tokens[1].type == TokenType.CUE:
+                return [TokenType.NUMBER]
+            if first == TokenType.RECORD:
+                return self._get_record_expected_tokens(active_tokens, text)
+            if first == TokenType.GOTO:
+                return self._get_goto_expected_tokens(active_tokens, text)
+            return []
+
+        return None
+
     def get_expected_tokens(  # pylint: disable=too-many-return-statements,too-many-branches
         self, text: str
     ) -> list[TokenType]:
@@ -473,6 +685,7 @@ class CommandParser:
         if not trimmed:
             return [
                 TokenType.NUMBER,
+                TokenType.CUE,
                 TokenType.GROUP,
                 TokenType.ALL,
                 TokenType.RECORD,
@@ -496,6 +709,10 @@ class CommandParser:
         active_tokens = tokens[:-1]
         if not active_tokens:
             return []
+
+        cue_expected = self._get_cue_expected_tokens(active_tokens, text)
+        if cue_expected is not None:
+            return cue_expected
 
         last = active_tokens[-1]
 
@@ -535,16 +752,7 @@ class CommandParser:
                 return [TokenType.HEX_COLOR, TokenType.STRING, TokenType.IDENT]
             return [TokenType.NUMBER, TokenType.STRING, TokenType.IDENT]
 
-        if last.type == TokenType.RECORD:
-            return [TokenType.CUE, TokenType.NUMBER]
-
-        if last.type == TokenType.UPDATE:
-            return [TokenType.CUE, TokenType.NUMBER]
-
-        if last.type == TokenType.GOTO:
-            return [TokenType.CUE, TokenType.NUMBER]
-
-        if last.type in (TokenType.CUE, TokenType.GROUP):
+        if last.type == TokenType.GROUP:
             return [TokenType.NUMBER]
 
         return []

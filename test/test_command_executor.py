@@ -419,3 +419,69 @@ def test_executor_record_cue_preserves_sentinel_and_sorted_order() -> None:
     assert len(seq.steps) == 4
     assert seq.steps[2].time_in == 4.0
     assert updated_events == [(1.0, 2)]
+
+
+def test_executor_noun_first_ifcb_and_goto_time_override() -> None:
+    """Noun-first CUE commands, IFCB family timings, and GOTO TIME 0."""
+    import numpy as np
+    import pytest
+
+    from olc.devices.builtin import create_rgb_definition
+
+    app = CoreApplication(MagicMock())
+    mock_backend = MagicMock()
+    mock_backend.dmx.levels = {
+        "user": np.full(512, -1, dtype=np.int16),
+        "sequence": np.zeros(512, dtype=np.uint8),
+    }
+    app.backend = mock_backend
+
+    patch = app.lightshow.patch
+    patch.patch_empty()
+    led = patch.patch_device(1, create_rgb_definition(), 1, 1)
+
+    seq = app.lightshow.main_playback
+    executor = CommandExecutor(app)
+    parser = CommandParser()
+
+    # Record Cue 1 with IFCB timings using noun-first syntax
+    executor.execute(parser.parse("1 AT 100 COLOR RED"))
+    executor.execute(
+        parser.parse("CUE 1 RECORD TIME 3 POSITION 1.5 DELAY 0.5 COLOR 4 BEAM 2")
+    )
+
+    step1 = seq.steps[1]
+    assert step1.time_in == pytest.approx(3.0)
+    assert step1.time_position == pytest.approx(1.5)
+    assert step1.delay_position == pytest.approx(0.5)
+    assert step1.time_color == pytest.approx(4.0)
+    assert step1.time_beam == pytest.approx(2.0)
+    assert step1.total_time == pytest.approx(4.0)
+
+    # Record Cue 2 with 50% Green
+    executor.execute(parser.parse("1 AT 50 COLOR GREEN"))
+    executor.execute(parser.parse("CUE 2 RECORD TIME 5"))
+
+    # Block / Unblock via noun-first syntax
+    executor.execute(parser.parse("CUE 2 BLOCK"))
+    assert step1.cue is not None
+    cue2 = seq.steps[2].cue
+    assert cue2 is not None and cue2.is_block is True
+    executor.execute(parser.parse("CUE 2 UNBLOCK"))
+    assert cue2.is_block is False
+
+    # GOTO CUE 1 TIME 0 -> instant load without waiting 4s
+    executor.execute(parser.parse("GOTO CUE 1 TIME 0"))
+    assert seq.position == 1
+    assert not seq.on_go
+    assert int(mock_backend.dmx.levels["sequence"][0]) == 255
+    assert led.intensity == pytest.approx(1.0)
+    assert led.color_srgb.to_hex().upper() == "#FF0000"
+
+    # CUE 2 GOTO TIME 0 -> instant load of Cue 2
+    executor.execute(parser.parse("CUE 2 GOTO TIME 0"))
+    assert seq.position == 2
+    assert not seq.on_go
+    assert int(mock_backend.dmx.levels["sequence"][0]) == 128
+    assert led.intensity == pytest.approx(128 / 255.0)
+    assert led.color_srgb.to_hex().upper() == "#00FF00"

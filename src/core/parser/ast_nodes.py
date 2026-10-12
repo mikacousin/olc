@@ -104,7 +104,7 @@ class AttributeCommandNode(CommandNode):
 
 
 @dataclasses.dataclass
-class RecordCueCommandNode(CommandNode):
+class RecordCueCommandNode(CommandNode):  # pylint: disable=too-many-instance-attributes
     """Command to record a scene cue (e.g. RECORD CUE 5 TIME 3 / 2)."""
 
     cue_id: float
@@ -112,6 +112,12 @@ class RecordCueCommandNode(CommandNode):
     time_out: float | None = None
     delay: float | None = None
     is_block: bool = False
+    time_position: float | None = None
+    delay_position: float | None = None
+    time_color: float | None = None
+    delay_color: float | None = None
+    time_beam: float | None = None
+    delay_beam: float | None = None
 
 
 @dataclasses.dataclass
