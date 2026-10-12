@@ -174,13 +174,14 @@ class CommandExecutor:
                 and hasattr(self.app.lightshow, "patch")
             ):
                 patch_mgr = self.app.lightshow.patch
-                patched = [
+                patched_set: set[int] = set(getattr(patch_mgr, "devices", {}).keys())
+                patched_set.update(
                     ch
                     for ch, outs in getattr(patch_mgr, "channels", {}).items()
                     if outs and outs != [[None, None]] and None not in outs[0]
-                ]
-                if patched:
-                    return set(patched)
+                )
+                if patched_set:
+                    return patched_set
             # Fallback to all channels with level > 0 or 1..MAX_CHANNELS
             backend = getattr(self.app, "backend", None)
             if backend and getattr(backend, "dmx", None):
@@ -288,12 +289,15 @@ class CommandExecutor:
 
         for ch in channels:
             dev = patch.get_device(ch) if patch is not None else None
+            if dev is None:
+                continue
 
             for attr, val in node.attributes.items():
-                if dev is None:
-                    continue
-
-                if attr == "pan" and hasattr(dev, "set_pan_degrees"):
+                if attr == "color":
+                    self._apply_device_color(dev, str(val))
+                elif hasattr(dev, "apply_device_parameter"):
+                    dev.apply_device_parameter(attr, val)
+                elif attr == "pan" and hasattr(dev, "set_pan_degrees"):
                     dev.set_pan_degrees(float(val))
                 elif attr == "tilt" and hasattr(dev, "set_tilt_degrees"):
                     dev.set_tilt_degrees(float(val))
@@ -305,8 +309,6 @@ class CommandExecutor:
                     dev.set_strobe_hz(float(val))
                 elif attr == "cct" and hasattr(dev, "set_color_temp_kelvin"):
                     dev.set_color_temp_kelvin(float(val))
-                elif attr == "color":
-                    self._apply_device_color(dev, str(val))
 
         # Push levels to DMX backend if available
         backend = getattr(self.app, "backend", None)
@@ -366,7 +368,9 @@ class CommandExecutor:
                     device_values[dev_id] = vals
 
         # Check if cue already exists in sequence
-        existing_cue = lightshow.cues.get(node.cue_id, 1)
+        existing_cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(
+            node.cue_id, 0
+        )
         if existing_cue is not None:
             existing_cue.channels = channels_dict
             existing_cue.device_values = device_values
@@ -416,20 +420,27 @@ class CommandExecutor:
         self.app.emit("cue.created", 1, node.cue_id)
         return CommandResult(True, f"Recorded Cue {node.cue_id}")
 
-    def _execute_update_cue(self, node: UpdateCueCommandNode) -> CommandResult:
+    def _execute_update_cue(  # pylint: disable=too-many-locals,too-many-branches
+        self, node: UpdateCueCommandNode
+    ) -> CommandResult:
         lightshow = getattr(self.app, "lightshow", None)
         if not lightshow or not lightshow.main_playback:
             return CommandResult(False, "Main playback sequence not available")
 
         cue_num = node.cue_id
         if cue_num is None:
-            # Use current cue from playback
-            step = lightshow.main_playback.get_current_step()
+            main_pb = lightshow.main_playback
+            if hasattr(main_pb, "get_current_step"):
+                step = main_pb.get_current_step()
+            elif 0 <= main_pb.position < len(main_pb.steps):
+                step = main_pb.steps[main_pb.position]
+            else:
+                step = None
             if not step or not step.cue:
                 return CommandResult(False, "No active cue to update")
             cue_num = step.cue.number
 
-        cue = lightshow.cues.get(cue_num, 1)
+        cue = lightshow.cues.get(cue_num, 1) or lightshow.cues.get(cue_num, 0)
         if cue is None:
             return CommandResult(False, f"Cue {cue_num} does not exist")
 
@@ -443,6 +454,13 @@ class CommandExecutor:
                     cue.channels[ch] = lvl
                 elif ch in cue.channels:
                     cue.channels[ch] = 0
+
+        patch = getattr(lightshow, "patch", None)
+        if patch is not None:
+            for dev_id, dev in patch.devices.items():
+                vals = self._get_device_active_values(dev)
+                if vals:
+                    cue.device_values.setdefault(dev_id, {}).update(vals)
 
         lightshow.set_modified()
         self.app.emit("cue.updated", 1, cue_num)
@@ -463,7 +481,7 @@ class CommandExecutor:
         if not lightshow:
             return CommandResult(False, "LightShow not available")
 
-        cue = lightshow.cues.get(node.cue_id, 1)
+        cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(node.cue_id, 0)
         if cue is None:
             return CommandResult(False, f"Cue {node.cue_id} not found")
 
@@ -477,7 +495,7 @@ class CommandExecutor:
         if not lightshow:
             return CommandResult(False, "LightShow not available")
 
-        cue = lightshow.cues.get(node.cue_id, 1)
+        cue = lightshow.cues.get(node.cue_id, 1) or lightshow.cues.get(node.cue_id, 0)
         if cue is None:
             return CommandResult(False, f"Cue {node.cue_id} not found")
 
@@ -492,15 +510,58 @@ class CommandExecutor:
         self.app.emit("cue.deleted", 1, node.cue_id)
         return CommandResult(True, f"Deleted Cue {node.cue_id}")
 
-    def _get_device_active_values(self, dev: typing.Any) -> dict[str, typing.Any]:  # noqa: ANN401
+    @staticmethod
+    def _is_channel_modified(dev: typing.Any, ch_type_val: str) -> bool:  # noqa: ANN401
+        """Check if any resolution channel of ch_type_val differs from default_value."""
+        for ch in getattr(dev, "channels", []):
+            ctype = getattr(ch, "channel_type", None)
+            if getattr(ctype, "value", ctype) == ch_type_val:
+                if getattr(ch, "value", 0) != getattr(ch, "default_value", 0):
+                    return True
+        return False
+
+    def _get_device_active_values(  # pylint: disable=too-many-branches
+        self,
+        dev: typing.Any,  # noqa: ANN401
+    ) -> dict[str, typing.Any]:
         """Extract active physical parameters from a device instance."""
         vals: dict[str, typing.Any] = {}
-        if hasattr(dev, "pan_degrees") and getattr(dev, "pan_degrees", 0.0) != 0.0:
-            vals["pan"] = dev.pan_degrees
-        if hasattr(dev, "tilt_degrees") and getattr(dev, "tilt_degrees", 0.0) != 0.0:
-            vals["tilt"] = dev.tilt_degrees
-        if hasattr(dev, "zoom_degrees") and dev.zoom_degrees is not None:
-            vals["zoom"] = dev.zoom_degrees
-        if hasattr(dev, "color_srgb") and hasattr(dev.color_srgb, "to_hex"):
-            vals["color"] = dev.color_srgb.to_hex()
+        if hasattr(dev, "channels"):
+            if self._is_channel_modified(dev, "pan"):
+                vals["pan"] = dev.pan_degrees
+            if self._is_channel_modified(dev, "tilt"):
+                vals["tilt"] = dev.tilt_degrees
+            if self._is_channel_modified(dev, "zoom") and dev.zoom_degrees is not None:
+                vals["zoom"] = dev.zoom_degrees
+            if self._is_channel_modified(dev, "focus") and dev.focus_meters is not None:
+                vals["focus"] = dev.focus_meters
+            if self._is_channel_modified(dev, "strobe") and dev.strobe_hz is not None:
+                vals["strobe"] = dev.strobe_hz
+            if (
+                self._is_channel_modified(dev, "color_temp")
+                and dev.color_temp_kelvin is not None
+            ):
+                vals["cct"] = dev.color_temp_kelvin
+            if (
+                self._is_channel_modified(dev, "iris")
+                and getattr(dev, "iris", None) is not None
+            ):
+                vals["iris"] = dev.iris
+            if getattr(dev, "gobo", None) is not None:
+                vals["gobo"] = dev.gobo
+            base_emitters = getattr(dev, "_base_emitters", {})
+            if any(v > 0.0 for v in base_emitters.values()):
+                vals["color"] = dev.color_srgb.to_hex()
+        else:
+            if hasattr(dev, "pan_degrees") and getattr(dev, "pan_degrees", 0.0) != 0.0:
+                vals["pan"] = dev.pan_degrees
+            if (
+                hasattr(dev, "tilt_degrees")
+                and getattr(dev, "tilt_degrees", 0.0) != 0.0
+            ):
+                vals["tilt"] = dev.tilt_degrees
+            if hasattr(dev, "zoom_degrees") and dev.zoom_degrees is not None:
+                vals["zoom"] = dev.zoom_degrees
+            if hasattr(dev, "color_srgb") and hasattr(dev.color_srgb, "to_hex"):
+                vals["color"] = dev.color_srgb.to_hex()
         return vals

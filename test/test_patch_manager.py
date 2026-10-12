@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the unified PatchManager, collision detection, and routing."""
+# pylint: disable=import-outside-toplevel
 
 from __future__ import annotations
 
@@ -244,3 +245,48 @@ def test_engine_vectorized_levels_with_devices() -> None:
         assert dmx.frame[0][9] == 0x12
         # addr 11 (index 10) = pan fine = 0x34
         assert dmx.frame[0][10] == 0x34
+
+
+def test_patch_clear_and_set_1on1_undo_preserves_multi_param_devices() -> None:
+    """Test undo of patch.clear and patch.set_1on1 restores multi-param devices."""
+    from olc.devices.builtin import create_rgbw_definition
+
+    settings = MagicMock()
+    app = CoreApplication(settings)
+    patch = app.lightshow.patch
+    patch.patch_empty()
+
+    mh_def = create_moving_head_definition()
+    rgbw_def = create_rgbw_definition()
+
+    patch.patch_device(
+        device_id=42, fixture_def=mh_def, universe=1, address=100, label="Spot 42"
+    )
+    patch.patch_device(
+        device_id=10, fixture_def=rgbw_def, universe=1, address=20, label="Wash 10"
+    )
+
+    # 1. patch.clear and undo
+    app.action_registry.execute("patch.clear")
+    assert not patch.has_device(42)
+    assert not patch.has_device(10)
+
+    app.history.undo()
+    assert patch.has_device(42)
+    assert patch.has_device(10)
+    dev42 = patch.get_device(42)
+    assert dev42 is not None
+    assert dev42.label == "Spot 42"
+    assert dev42.channel_count() == 8
+
+    # 2. patch.set_1on1 and undo
+    app.action_registry.execute("patch.set_1on1")
+    app.history.undo()
+    dev42_after = patch.get_device(42)
+    dev10_after = patch.get_device(10)
+    assert dev42_after is not None
+    assert dev42_after.label == "Spot 42"
+    assert dev42_after.channel_count() == 8
+    assert dev10_after is not None
+    assert dev10_after.label == "Wash 10"
+    assert dev10_after.uses_virtual_dimmer is True

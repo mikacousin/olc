@@ -1144,6 +1144,26 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         """Return color temperature in Kelvin, or None if no COLOR_TEMP channel."""
         return self._get_physical_parameter(ChannelType.COLOR_TEMP)
 
+    # Iris aperture control
+    def set_iris(self, value: float) -> None:
+        """Set iris aperture value in physical units."""
+        self._set_physical_parameter(ChannelType.IRIS, value)
+
+    @property
+    def iris(self) -> Optional[float]:
+        """Return iris aperture in physical units, or None if no IRIS channel."""
+        return self._get_physical_parameter(ChannelType.IRIS)
+
+    @property
+    def gobo(self) -> Optional[str | int]:
+        """Return active gobo range label or DMX value if modified, else None."""
+        gobo_ch = self.get_channel(ChannelType.GOBO_WHEEL)
+        if gobo_ch is None or gobo_ch.value == gobo_ch.default_value:
+            return None
+        if gobo_ch.active_range is not None:
+            return gobo_ch.active_range.label
+        return gobo_ch.value
+
     def blackout(self) -> None:
         """Set intensity to zero (blackout)."""
         self.set_intensity(0.0)
@@ -1170,16 +1190,25 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             self.set_color_rgb(int(value[0]), int(value[1]), int(value[2]))
 
     def _apply_gobo_param(self, value: Any) -> None:  # noqa: ANN401
-        """Apply gobo parameter from value or range label."""
+        """Apply gobo parameter from slot index, DMX value, or range label."""
         gobo_ch = self.get_channel(ChannelType.GOBO_WHEEL)
-        if gobo_ch is not None:
-            if isinstance(value, int):
-                gobo_ch.set_value(value)
-            elif isinstance(value, str):
-                for r in gobo_ch.ranges:
-                    if r.label.lower() == value.lower():
-                        gobo_ch.activate_range(r.label)
-                        break
+        if gobo_ch is None:
+            return
+        if isinstance(value, (int, float)):
+            int_val = int(round(value))
+            if (
+                gobo_ch.ranges
+                and 1 <= int_val <= len(gobo_ch.ranges)
+                and (len(gobo_ch.ranges) == 1 or int_val < gobo_ch.ranges[1].value_min)
+            ):
+                gobo_ch.activate_range(gobo_ch.ranges[int_val - 1].label)
+            else:
+                gobo_ch.set_value(int_val)
+        elif isinstance(value, str):
+            for r in gobo_ch.ranges:
+                if r.label.lower() == value.lower():
+                    gobo_ch.activate_range(r.label)
+                    break
 
     def apply_device_parameter(  # pylint: disable=too-many-branches
         self,
@@ -1209,6 +1238,8 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             self.set_strobe_hz(float(value))
         elif p_lower in ("color_temp", "colortemp", "cct"):
             self.set_color_temp_kelvin(float(value))
+        elif p_lower == "iris":
+            self.set_iris(float(value))
         elif p_lower in ("gobo", "gobo_wheel"):
             self._apply_gobo_param(value)
 

@@ -12,6 +12,7 @@
 # GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import threading
@@ -315,42 +316,22 @@ class Sequence:
         self.stop()
 
         # Jump to next Step
-        position = self.position
-        position += 1
+        position = self.position + 1
         if position < self.last - 1:  # Stop on the last cue
-            self.position += 1
-
-            # Empty DMX user array
             if self.backend is not None and self.backend.dmx is not None:
                 self.backend.dmx.levels["user"].fill(-1)
-                self.update_channels()
-
-                # Send DMX values
-                self.backend.dmx.levels["sequence"][:] = get_cue(
-                    self.steps[self.position]
-                ).channels_array
-                self.backend.dmx.set_levels()
+            self.load_step(position)
 
     def sequence_minus(self) -> None:
         """Sequence -"""
         self.stop()
 
         # Jump to previous Step
-        position = self.position
-        position -= 1
+        position = self.position - 1
         if position >= 0:
-            self.position -= 1
-
-            # Empty DMX user array
             if self.backend is not None and self.backend.dmx is not None:
                 self.backend.dmx.levels["user"].fill(-1)
-                self.update_channels()
-
-                # Send DMX values
-                self.backend.dmx.levels["sequence"][:] = get_cue(
-                    self.steps[self.position]
-                ).channels_array
-                self.backend.dmx.set_levels()
+            self.load_step(position)
 
     def goto(self, keystring: str) -> None:
         """Jump to cue number
@@ -514,12 +495,112 @@ class Sequence:
                 )
 
 
+def _capture_device_states(
+    patch: Optional[PatchManager],
+) -> dict[int, dict[str, typing.Any]]:
+    """Capture current physical attribute states of all patched devices."""
+    states: dict[int, dict[str, typing.Any]] = {}
+    if patch is None:
+        return states
+    for dev_id, dev in getattr(patch, "devices", {}).items():
+        srgb = getattr(dev, "color_srgb", None)
+        rgb = (srgb.r, srgb.g, srgb.b) if srgb is not None else (0.0, 0.0, 0.0)
+        states[dev_id] = {
+            "intensity": getattr(dev, "intensity", 0.0),
+            "pan": getattr(dev, "pan_degrees", 0.0),
+            "tilt": getattr(dev, "tilt_degrees", 0.0),
+            "zoom": getattr(dev, "zoom_degrees", None),
+            "focus": getattr(dev, "focus_meters", None),
+            "strobe": getattr(dev, "strobe_hz", None),
+            "cct": getattr(dev, "color_temp_kelvin", None),
+            "iris": getattr(dev, "iris", None),
+            "color_rgb": rgb,
+        }
+    return states
+
+
+def _parse_rgb_norm(value: typing.Any) -> Optional[tuple[float, float, float]]:  # noqa: ANN401
+    """Parse hex color or RGB tuple into normalized (r, g, b) in [0.0, 1.0]."""
+    if isinstance(value, str):
+        hex_str = value.strip().lstrip("#")
+        if len(hex_str) in (6, 8):
+            try:
+                return (
+                    int(hex_str[0:2], 16) / 255.0,
+                    int(hex_str[2:4], 16) / 255.0,
+                    int(hex_str[4:6], 16) / 255.0,
+                )
+            except ValueError:
+                return None
+    elif isinstance(value, (tuple, list)) and len(value) >= 3:
+        v0, v1, v2 = float(value[0]), float(value[1]), float(value[2])
+        if max(v0, v1, v2) > 1.0:
+            return (v0 / 255.0, v1 / 255.0, v2 / 255.0)
+        return (v0, v1, v2)
+    return None
+
+
+def _interpolate_device_states(  # pylint: disable=too-many-locals
+    patch: Optional[PatchManager],
+    start_states: dict[int, dict[str, typing.Any]],
+    target_values: dict[int, dict[str, typing.Any]],
+    factor: float,
+) -> None:
+    """Interpolate continuous physical device parameters at progress factor."""
+    if patch is None or not target_values:
+        return
+    alpha = max(0.0, min(1.0, factor))
+    scalar_map = {
+        "pan": "pan",
+        "tilt": "tilt",
+        "zoom": "zoom",
+        "focus": "focus",
+        "strobe": "strobe",
+        "cct": "cct",
+        "color_temp": "cct",
+        "colortemp": "cct",
+        "iris": "iris",
+    }
+    for dev_id, params in target_values.items():
+        dev = patch.get_device(dev_id)
+        if dev is None:
+            continue
+        start = start_states.get(dev_id, {})
+        for param_name, target_val in params.items():
+            p_lower = param_name.lower()
+            if p_lower == "intensity":
+                s_val = float(start.get("intensity", getattr(dev, "intensity", 0.0)))
+                dev.set_intensity(s_val + alpha * (float(target_val) - s_val))
+            elif p_lower in scalar_map:
+                s_key = scalar_map[p_lower]
+                s_opt = start.get(s_key)
+                if s_opt is not None:
+                    interp = float(s_opt) + alpha * (float(target_val) - float(s_opt))
+                    dev.apply_device_parameter(p_lower, interp)
+                else:
+                    dev.apply_device_parameter(p_lower, float(target_val))
+            elif p_lower in ("color", "colour"):
+                target_rgb = _parse_rgb_norm(target_val)
+                if target_rgb is not None and hasattr(dev, "set_color_srgb"):
+                    r0, g0, b0 = start.get("color_rgb", (0.0, 0.0, 0.0))
+                    dev.set_color_srgb(
+                        r0 + alpha * (target_rgb[0] - r0),
+                        g0 + alpha * (target_rgb[1] - g0),
+                        b0 + alpha * (target_rgb[2] - b0),
+                    )
+                else:
+                    dev.apply_device_parameter(p_lower, target_val)
+            elif alpha > 0.0:
+                dev.apply_device_parameter(p_lower, target_val)
+
+
 # pylint: disable=too-many-instance-attributes
 class ThreadGo(threading.Thread):
     """Thread object for Go"""
 
     sequence: Sequence
     old_channels_levels: np.ndarray
+    old_device_states: dict[int, dict[str, typing.Any]]
     total_time: float
     time_in: float
     time_out: float
@@ -537,6 +618,7 @@ class ThreadGo(threading.Thread):
         self.sequence = sequence
         # To save channels levels when user sends Go
         self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.old_device_states = {}
         next_step = self.sequence.position + 1
         self.total_time = self.sequence.steps[next_step].total_time * 1000
         self.time_in = self.sequence.steps[next_step].time_in * 1000
@@ -557,11 +639,12 @@ class ThreadGo(threading.Thread):
         return self.sequence.backend
 
     def _capture_start_levels(self) -> None:
-        """Capture sequential channels levels when Go is sent"""
+        """Capture sequential channels levels and device states when Go is sent"""
         self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
         user_levels = self.backend.dmx.levels["user"]
         user_mask = user_levels != -1
         self.old_channels_levels[user_mask] = user_levels[user_mask]
+        self.old_device_states = _capture_device_states(self.sequence.patch)
 
     def _finalize_go(self) -> None:
         """Finish load cue after sequence transition"""
@@ -748,6 +831,21 @@ class ThreadGo(threading.Thread):
             end_mask = i >= (step.time_in + step.wait + step.delay_in) * 1000
             lvls[end_mask & attack_mask] = next_levels[end_mask & attack_mask]
 
+        # Continuous interpolation of multi-parameter LTP attributes
+        if resolved.device_values and self.sequence.patch is not None:
+            in_start = self.wait + step.delay_in * 1000
+            in_dur = step.time_in * 1000
+            if in_dur <= 0:
+                ltp_factor = 1.0 if i >= in_start else 0.0
+            else:
+                ltp_factor = max(0.0, min(1.0, (i - in_start) / in_dur))
+            _interpolate_device_states(
+                self.sequence.patch,
+                self.old_device_states,
+                resolved.device_values,
+                ltp_factor,
+            )
+
         return lvls
 
     def _apply_channel_times_go(self, lvls: np.ndarray, i: float, step: Step) -> None:
@@ -755,7 +853,14 @@ class ThreadGo(threading.Thread):
         if not step.channel_time:
             return
         old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = get_cue(step).channels_array.astype(np.int32)
+        next_step_idx = self.sequence.position + 1
+        resolved = TrackingEngine.resolve_step_state(
+            self.sequence,
+            next_step_idx,
+            tracking_mode=self.sequence.tracking_mode,
+            patch=self.sequence.patch,
+        )
+        next_levels = resolved.channels.astype(np.int32)
         for channel, ct in step.channel_time.items():
             o_lvl = old_levels[channel - 1]
             n_lvl = next_levels[channel - 1]
@@ -832,6 +937,7 @@ class ThreadGoBack(threading.Thread):
 
     sequence: Sequence
     old_channels_levels: np.ndarray
+    old_device_states: dict[int, dict[str, typing.Any]]
     backend: typing.Any
 
     def __init__(self, sequence: Sequence) -> None:
@@ -842,6 +948,7 @@ class ThreadGoBack(threading.Thread):
         self.sequence = sequence
         # To save channels levels when Go Back starts
         self.old_channels_levels = np.zeros(MAX_CHANNELS, dtype=np.uint8)
+        self.old_device_states = {}
 
     @property
     def app(self) -> CoreApplication | None:
@@ -854,11 +961,12 @@ class ThreadGoBack(threading.Thread):
         return self.sequence.backend
 
     def _capture_start_levels(self) -> None:
-        """Capture sequential channels levels when Go Back starts"""
+        """Capture sequential channels levels and device states when Go Back starts"""
         self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
         user_levels = self.backend.dmx.levels["user"]
         user_mask = user_levels != -1
         self.old_channels_levels[user_mask] = user_levels[user_mask]
+        self.old_device_states = _capture_device_states(self.sequence.patch)
 
     def _finalize_goback(self, prev_step: int) -> None:
         """Finish load cue after sequence transition"""
@@ -981,14 +1089,26 @@ class ThreadGoBack(threading.Thread):
                 },
             )
 
-        # Array-based fade
-        old_levels = self.old_channels_levels.astype(np.int32)
-        next_levels = get_cue(self.sequence.steps[position - 1]).channels_array.astype(
-            np.int32
+        # Resolve previous step state via TrackingEngine
+        resolved = TrackingEngine.resolve_step_state(
+            self.sequence,
+            position - 1,
+            tracking_mode=self.sequence.tracking_mode,
+            patch=self.sequence.patch,
         )
-        factor = i / go_back_time
+        old_levels = self.old_channels_levels.astype(np.int32)
+        next_levels = resolved.channels.astype(np.int32)
+        factor = i / go_back_time if go_back_time > 0 else 1.0
         diff = (next_levels - old_levels) * factor
         lvls = np.round(old_levels + diff).astype(np.int32)
+
+        if resolved.device_values and self.sequence.patch is not None:
+            _interpolate_device_states(
+                self.sequence.patch,
+                self.old_device_states,
+                resolved.device_values,
+                factor,
+            )
 
         self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
         self.backend.dmx.set_levels()

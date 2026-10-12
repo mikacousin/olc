@@ -157,15 +157,19 @@ class PatchClearAction(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.saved_patch: list[tuple[int, int, int, int]] = []
+        self.saved_devices: list[dict[str, typing.Any]] = []
 
     def execute(self) -> None:
         patch = self.app.lightshow.patch
 
-        # Save all patched outputs: (channel, output, univ, curve)
+        # Save all patched outputs and devices
         self.saved_patch = []
         for univ, outputs in patch.outputs.items():
             for output, (channel, curve) in outputs.items():
                 self.saved_patch.append((channel, output, univ, curve))
+        self.saved_devices = [
+            dev.to_dict() for dev in getattr(patch, "devices", {}).values()
+        ]
 
         patch.patch_empty()
 
@@ -177,6 +181,8 @@ class PatchClearAction(Action):
         patch.patch_empty()
         for channel, output, univ, curve in self.saved_patch:
             patch.add_output(channel, output, univ, curve)
+        for dev_data in self.saved_devices:
+            patch.restore_device(LightingDevice.from_dict(dev_data))
 
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
@@ -198,15 +204,19 @@ class PatchSet1on1Action(Action):
     def __init__(self, app: CoreApplication) -> None:
         super().__init__(app)
         self.saved_patch: list[tuple[int, int, int, int]] = []
+        self.saved_devices: list[dict[str, typing.Any]] = []
 
     def execute(self) -> None:
         patch = self.app.lightshow.patch
 
-        # Save all patched outputs: (channel, output, univ, curve)
+        # Save all patched outputs and devices
         self.saved_patch = []
         for univ, outputs in patch.outputs.items():
             for output, (channel, curve) in outputs.items():
                 self.saved_patch.append((channel, output, univ, curve))
+        self.saved_devices = [
+            dev.to_dict() for dev in getattr(patch, "devices", {}).values()
+        ]
 
         patch.patch_1on1()
 
@@ -218,6 +228,8 @@ class PatchSet1on1Action(Action):
         patch.patch_empty()
         for channel, output, univ, curve in self.saved_patch:
             patch.add_output(channel, output, univ, curve)
+        for dev_data in self.saved_devices:
+            patch.restore_device(LightingDevice.from_dict(dev_data))
 
         self.app.lightshow.set_modified()
         self.app.emit("patch.changed")
