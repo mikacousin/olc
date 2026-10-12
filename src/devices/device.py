@@ -214,6 +214,45 @@ class ChannelRange:  # pylint: disable=too-many-instance-attributes
             1,
         )
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize ChannelRange to dictionary."""
+        return {
+            "label": self.label,
+            "channel_type": self.channel_type.value,
+            "value_min": self.value_min,
+            "value_max": self.value_max,
+            "snap_value": self.snap_value,
+            "description": self.description,
+            "physical_min": self.physical_min,
+            "physical_max": self.physical_max,
+            "physical_unit": self.physical_unit,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ChannelRange:
+        """Deserialize ChannelRange from dictionary."""
+        return cls(
+            label=str(data["label"]),
+            channel_type=ChannelType(data["channel_type"]),
+            value_min=int(data["value_min"]),
+            value_max=int(data["value_max"]),
+            snap_value=(
+                int(data["snap_value"]) if data.get("snap_value") is not None else None
+            ),
+            description=str(data.get("description", "")),
+            physical_min=(
+                float(data["physical_min"])
+                if data.get("physical_min") is not None
+                else None
+            ),
+            physical_max=(
+                float(data["physical_max"])
+                if data.get("physical_max") is not None
+                else None
+            ),
+            physical_unit=str(data.get("physical_unit", "")),
+        )
+
     def __repr__(self) -> str:
         return (
             f"<ChannelRange '{self.label}' "
@@ -423,6 +462,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         group: str = "",
         notes: str = "",
         color_profile: Optional[FixtureColorProfile] = None,
+        manufacturer: str = "",
+        model: str = "",
+        mode_name: str = "",
+        gdtf_id: str = "",
     ) -> None:
         self.fixture_id = fixture_id
         self.label = label
@@ -431,6 +474,10 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
         self.group = group
         self.notes = notes
         self.color_profile = color_profile
+        self.manufacturer = manufacturer
+        self.model = model
+        self.mode_name = mode_name
+        self.gdtf_id = gdtf_id
         self._enabled = True
         self._locked = False
         self._created_at = time.time()
@@ -1227,13 +1274,18 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize device to a dictionary."""
-        return {
+        result: dict[str, Any] = {
             "fixture_id": self.fixture_id,
             "label": self.label,
             "fixture_type": self.fixture_type.value,
+            "manufacturer": self.manufacturer,
+            "model": self.model,
+            "mode_name": self.mode_name,
+            "gdtf_id": self.gdtf_id,
             "group": self.group,
             "notes": self.notes,
             "enabled": self._enabled,
+            "locked": self._locked,
             "curve_id": self.curve_id,
             "intensity": self._intensity,
             "target_color": self._target_color.to_hex(),
@@ -1254,44 +1306,21 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
                     "physical_min": ch.physical_min,
                     "physical_max": ch.physical_max,
                     "physical_unit": ch.physical_unit,
-                    "ranges": [
-                        {
-                            "label": r.label,
-                            "channel_type": r.channel_type.value,
-                            "value_min": r.value_min,
-                            "value_max": r.value_max,
-                            "snap_value": r.snap_value,
-                            "description": r.description,
-                            "physical_min": r.physical_min,
-                            "physical_max": r.physical_max,
-                            "physical_unit": r.physical_unit,
-                        }
-                        for r in ch.ranges
-                    ],
+                    "ranges": [r.to_dict() for r in ch.ranges],
                 }
                 for ch in self.channels
             ],
         }
+        if self.color_profile is not None:
+            result["color_profile"] = self.color_profile.to_dict()
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> LightingDevice:
         """Instantiate device from a dictionary."""
         channels = []
         for cd in data.get("channels", []):
-            ranges = [
-                ChannelRange(
-                    label=r["label"],
-                    channel_type=ChannelType(r["channel_type"]),
-                    value_min=r["value_min"],
-                    value_max=r["value_max"],
-                    snap_value=r.get("snap_value"),
-                    description=r.get("description", ""),
-                    physical_min=r.get("physical_min"),
-                    physical_max=r.get("physical_max"),
-                    physical_unit=r.get("physical_unit", ""),
-                )
-                for r in cd.get("ranges", [])
-            ]
+            ranges = [ChannelRange.from_dict(r) for r in cd.get("ranges", [])]
             ctype = ChannelType(cd["channel_type"])
             mm = (
                 MergeMode(cd["merge_mode"])
@@ -1301,34 +1330,46 @@ class LightingDevice:  # pylint: disable=too-many-instance-attributes, too-many-
             channels.append(
                 Channel(
                     channel_type=ctype,
-                    universe=cd["universe"],
-                    address=cd["address"],
-                    value=cd.get("value", 0),
-                    default_value=cd.get("default_value", 0),
-                    fine=cd.get("fine", False),
-                    ultra_fine=cd.get("ultra_fine", False),
-                    label=cd.get("label", ""),
+                    universe=int(cd["universe"]),
+                    address=int(cd["address"]),
+                    value=int(cd.get("value", 0)),
+                    default_value=int(cd.get("default_value", 0)),
+                    fine=bool(cd.get("fine", False)),
+                    ultra_fine=bool(cd.get("ultra_fine", False)),
+                    label=str(cd.get("label", "")),
                     ranges=ranges,
-                    physical_min=cd.get("physical_min", 0.0),
-                    physical_max=cd.get("physical_max", 1.0),
-                    physical_unit=cd.get("physical_unit", ""),
+                    physical_min=float(cd.get("physical_min", 0.0)),
+                    physical_max=float(cd.get("physical_max", 1.0)),
+                    physical_unit=str(cd.get("physical_unit", "")),
                     merge_mode=mm,
                 )
             )
+        color_prof_data = data.get("color_profile")
+        color_profile = (
+            FixtureColorProfile.from_dict(color_prof_data)
+            if isinstance(color_prof_data, dict)
+            else None
+        )
         device = cls(
-            fixture_id=data["fixture_id"],
-            label=data["label"],
+            fixture_id=int(data["fixture_id"]),
+            label=str(data["label"]),
             fixture_type=FixtureType(data["fixture_type"]),
             channels=channels,
-            group=data.get("group", ""),
-            notes=data.get("notes", ""),
+            group=str(data.get("group", "")),
+            notes=str(data.get("notes", "")),
+            color_profile=color_profile,
+            manufacturer=str(data.get("manufacturer", "")),
+            model=str(data.get("model", "")),
+            mode_name=str(data.get("mode_name", "")),
+            gdtf_id=str(data.get("gdtf_id", "")),
         )
-        device._enabled = data.get("enabled", True)
-        device.curve_id = data.get("curve_id", 0)
+        device._enabled = bool(data.get("enabled", True))
+        device._locked = bool(data.get("locked", False))
+        device.curve_id = int(data.get("curve_id", 0))
         if "intensity" in data:
             device.set_intensity(data["intensity"])
         if "target_color" in data:
-            device.set_color_hex(data["target_color"])
+            device.set_color_hex(str(data["target_color"]))
         if "base_emitters" in data:
             device._base_emitters = {
                 ChannelType(k): float(v) for k, v in data["base_emitters"].items()

@@ -26,6 +26,9 @@ from gi.repository import Gio
 from olc.core.action import Action
 from olc.cue import Cue
 from olc.define import MAX_FADER_PAGE, MAX_FADER_PER_PAGE
+from olc.devices.builtin import populate_builtin_library
+from olc.devices.device import LightingDevice
+from olc.devices.fixture import FixtureDefinition
 from olc.fader import FaderType
 from olc.files.export_file import ExportFile
 from olc.files.file_type import FileType
@@ -74,7 +77,8 @@ class ShowNewAction(Action):
         # Reset independents
         lightshow.independents = Independents(lightshow)
 
-        # Reset patch 1:1
+        # Reset fixture library and patch 1:1
+        lightshow.fixture_library = populate_builtin_library()
         lightshow.patch.patch_1on1()
 
         # Reset main playback
@@ -312,12 +316,15 @@ def _copy_cue(cue: Cue | None) -> Cue | None:
     """
     if cue is None:
         return None
-    return Cue(
+    copied = Cue(
         sequence=cue.sequence,
         number=cue.number,
         channels=dict(cue.channels),
         text=cue.text,
     )
+    copied.device_values = copy.deepcopy(cue.device_values)
+    copied.is_block = bool(cue.is_block)
+    return copied
 
 
 def _copy_step(step: Step) -> Step:
@@ -364,6 +371,7 @@ def _copy_sequence(seq: Sequence, lightshow: LightShow) -> Sequence:
     copied.last = seq.last
     copied.run = seq.run
     copied.channels = set(seq.channels)
+    copied.tracking_mode = bool(getattr(seq, "tracking_mode", False))
     return copied
 
 
@@ -500,7 +508,14 @@ class ShowImportAction(Action):
         if hasattr(lightshow, "curves"):
             snapshot["curves"] = dict(lightshow.curves.curves)
 
-        # 2. Patch
+        # 2. Fixture library & Patch
+        if hasattr(lightshow, "fixture_library"):
+            snapshot["fixture_definitions"] = [
+                fdef.to_dict() for fdef in lightshow.fixture_library.all()
+            ]
+        snapshot["patch_devices"] = {
+            dev_id: dev.to_dict() for dev_id, dev in lightshow.patch.devices.items()
+        }
         snapshot["patch_channels"] = {
             ch: [list(item) for item in pairs]
             for ch, pairs in lightshow.patch.channels.items()
@@ -517,16 +532,16 @@ class ShowImportAction(Action):
         ]
 
         # 4. Cues
-        snapshot["cues"] = [
-            Cue(c.sequence, c.number, channels=dict(c.channels), text=c.text)
-            for c in lightshow.cues
-        ]
+        snapshot["cues"] = [_copy_cue(c) for c in lightshow.cues if c is not None]
 
         # 5. Main playback
         mp = lightshow.main_playback
         snapshot["main_playback_steps"] = [_copy_step(s) for s in mp.steps]
         snapshot["main_playback_position"] = mp.position
         snapshot["main_playback_last"] = mp.last
+        snapshot["main_playback_tracking_mode"] = bool(
+            getattr(mp, "tracking_mode", False)
+        )
 
         # 6. Chasers
         snapshot["chasers"] = [_copy_sequence(c, lightshow) for c in lightshow.chasers]
@@ -565,9 +580,19 @@ class ShowImportAction(Action):
     def _restore_curves_and_patch(
         self, snapshot: dict[str, typing.Any], lightshow: LightShow
     ) -> None:
-        """Restore curves and patch from snapshot."""
+        """Restore curves, fixture definitions, and patch from snapshot."""
         if "curves" in snapshot and hasattr(lightshow, "curves"):
             lightshow.curves.curves = dict(snapshot["curves"])
+
+        if "fixture_definitions" in snapshot and hasattr(lightshow, "fixture_library"):
+            lightshow.fixture_library = populate_builtin_library()
+            for fd in snapshot["fixture_definitions"]:
+                lightshow.fixture_library.register(FixtureDefinition.from_dict(fd))
+
+        lightshow.patch.patch_empty()
+        for dev_dict in snapshot.get("patch_devices", {}).values():
+            dev = LightingDevice.from_dict(dev_dict)
+            lightshow.patch.restore_device(dev)
 
         lightshow.patch.channels = {
             ch: [list(item) for item in pairs]
@@ -590,11 +615,10 @@ class ShowImportAction(Action):
         lightshow.cues.clear()
         cues_map: dict[tuple[float, int], Cue] = {}
         for c in snapshot["cues"]:
-            restored_cue = Cue(
-                c.sequence, c.number, channels=dict(c.channels), text=c.text
-            )
-            lightshow.cues.add(restored_cue)
-            cues_map[(restored_cue.number, restored_cue.sequence)] = restored_cue
+            restored_cue = _copy_cue(c)
+            if restored_cue is not None:
+                lightshow.cues.add(restored_cue)
+                cues_map[(restored_cue.number, restored_cue.sequence)] = restored_cue
         return cues_map
 
     def _restore_playbacks(
@@ -616,6 +640,7 @@ class ShowImportAction(Action):
         mp.steps = restored_steps
         mp.position = snapshot["main_playback_position"]
         mp.last = snapshot["main_playback_last"]
+        mp.tracking_mode = bool(snapshot.get("main_playback_tracking_mode", False))
         mp.update_channels()
 
         for chaser in list(lightshow.chasers):

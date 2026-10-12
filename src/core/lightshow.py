@@ -20,6 +20,7 @@ import typing
 from olc.cue import Cues
 from olc.curve import Curves
 from olc.define import DEFAULT_UNIVERSES
+from olc.devices.builtin import populate_builtin_library
 from olc.fader_bank import FaderBank
 from olc.group import Groups
 from olc.independent import Independents
@@ -30,6 +31,7 @@ if typing.TYPE_CHECKING:
     import olc.core.lightshow
     from olc.core.app import CoreApplication
     from olc.cue import Cue
+    from olc.devices.fixture import FixtureLibrary
     from olc.group import Group
 
 
@@ -71,6 +73,7 @@ class LightShow(ShowFile):
     """Light show data"""
 
     app: CoreApplication | None
+    fixture_library: FixtureLibrary
     curves: Curves
     main_playback: Sequence
     cues: Cues
@@ -85,6 +88,8 @@ class LightShow(ShowFile):
         super().__init__(None)
         self.app = app
         lightshow_type = typing.cast("olc.core.lightshow.LightShow", self)
+        # Fixture Library
+        self.fixture_library = populate_builtin_library()
         # Curves
         self.curves = Curves(typing.cast(typing.Any, self))
         # Main Playback
@@ -144,6 +149,7 @@ class LightShow(ShowFile):
     def reset(self) -> None:
         """Reset all"""
         lightshow_type = typing.cast("olc.core.lightshow.LightShow", self)
+        self.fixture_library = populate_builtin_library()
         del self.main_playback.steps[1:]
         self.cues.clear()
         for chaser in self.chasers:

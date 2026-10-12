@@ -136,6 +136,7 @@ def app_gui(app_gui_instance: Application) -> Generator[Application, None, None]
 
     if app.window:
         app.window.show_all()
+        app.window.live_view.channels_view.combo.set_active(0)
 
     process_events()
 

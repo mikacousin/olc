@@ -46,6 +46,8 @@ class OlcWriter(WriteFile):
 
     def export(self) -> None:
         self._curves()
+        self._fixture_definitions()
+        self._devices()
         self._patch()
         self._sequences()
         self._cues()
@@ -59,6 +61,21 @@ class OlcWriter(WriteFile):
 
         if self.stream:
             self.stream.write(bytes(json_str, "utf-8"))
+
+    def _fixture_definitions(self) -> None:
+        if not hasattr(self.lightshow, "fixture_library"):
+            return
+        defs = [fdef.to_dict() for fdef in self.lightshow.fixture_library.all()]
+        if defs:
+            self.data["fixture_definitions"] = defs
+
+    def _devices(self) -> None:
+        if not self.lightshow.patch.devices:
+            return
+        self.data["devices"] = {
+            dev_id: dev.to_dict()
+            for dev_id, dev in self.lightshow.patch.devices.items()
+        }
 
     def _patch(self) -> None:
         self.data["patch"] = {}
@@ -96,6 +113,7 @@ class OlcWriter(WriteFile):
         seq_index = sequence.index
         self.data["sequences"][seq_index] = {
             "label": sequence.text,
+            "tracking_mode": bool(getattr(sequence, "tracking_mode", False)),
             "steps": {},
             "cues": {},
         }

@@ -119,7 +119,8 @@ def test_modifier_shortcuts_ctrl_f_ctrl_a_ctrl_up_down_alt_up_down(
     )
     assert handled is True
     assert cv.view_mode != initial_mode
-    cv.view_mode = VIEW_MODES["All"]
+    assert cv.view_mode == VIEW_MODES["Patched"]
+    cv.combo.set_active(0)
     cv.update()
 
     # 2. <Control>a calls select_all on active ChannelsView

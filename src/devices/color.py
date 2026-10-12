@@ -42,6 +42,19 @@ class CIExyY:
         big_z = ((1.0 - self.x - self.y) / self.y) * self.Y
         return CIEXYZ(big_x, self.Y, big_z)
 
+    def to_dict(self) -> dict[str, float]:
+        """Serialize CIE xyY coordinates to dictionary."""
+        return {"x": float(self.x), "y": float(self.y), "Y": float(self.Y)}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> CIExyY:
+        """Deserialize CIE xyY coordinates from dictionary."""
+        return cls(
+            x=float(data.get("x", 0.3127)),
+            y=float(data.get("y", 0.3290)),
+            Y=float(data.get("Y", 100.0)),
+        )
+
     def __repr__(self) -> str:
         return f"CIExyY(x={self.x:.4f}, y={self.y:.4f}, Y={self.Y:.2f})"
 
@@ -170,6 +183,27 @@ class EmitterProfile:
         """Approximate sRGB color of this emitter."""
         return self.xyz.to_srgb()
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize emitter profile to dictionary."""
+        return {
+            "name": self.name,
+            "cie": self.cie.to_dict(),
+            "dominant_wavelength": float(self.dominant_wavelength),
+            "diode_part": self.diode_part,
+            "gdtf_attribute": self.gdtf_attribute,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> EmitterProfile:
+        """Deserialize emitter profile from dictionary."""
+        return cls(
+            name=str(data.get("name", "")),
+            cie=CIExyY.from_dict(data.get("cie", {})),
+            dominant_wavelength=float(data.get("dominant_wavelength", 0.0)),
+            diode_part=str(data.get("diode_part", "")),
+            gdtf_attribute=str(data.get("gdtf_attribute", "")),
+        )
+
     def __repr__(self) -> str:
         wl = f" λ={self.dominant_wavelength:.0f}nm" if self.dominant_wavelength else ""
         return f"<Emitter '{self.name}' {self.cie}{wl} ≈{self.srgb.hex()}>"
@@ -210,6 +244,25 @@ class FixtureColorProfile:
             return 0.0
         (x1, y1), (x2, y2), (x3, y3) = [(e.cie.x, e.cie.y) for e in chromatic]
         return abs((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1)) / 2.0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize fixture colorimetric profile to dictionary."""
+        return {
+            "fixture_name": self.fixture_name,
+            "emitters": [e.to_dict() for e in self.emitters],
+            "white_point": self.white_point.to_dict(),
+            "color_space_mode": self.color_space_mode,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FixtureColorProfile:
+        """Deserialize fixture colorimetric profile from dictionary."""
+        return cls(
+            fixture_name=str(data.get("fixture_name", "")),
+            emitters=[EmitterProfile.from_dict(ed) for ed in data.get("emitters", [])],
+            white_point=CIExyY.from_dict(data.get("white_point", {})),
+            color_space_mode=str(data.get("color_space_mode", "sRGB")),
+        )
 
     def __repr__(self) -> str:
         names = ", ".join(e.name for e in self.emitters)

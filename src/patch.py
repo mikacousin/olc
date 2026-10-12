@@ -212,6 +212,9 @@ class PatchManager:
                 for c_univ, c_addr, _ in collisions:
                     self.unpatch_address(c_univ, c_addr)
 
+        if self.lightshow is not None and hasattr(self.lightshow, "fixture_library"):
+            self.lightshow.fixture_library.register(fixture_def)
+
         if device_id in self.devices:
             self.unpatch_device(device_id)
 
@@ -222,13 +225,19 @@ class PatchManager:
             address=address,
             mode_name=mode.name,
         )
+        self._register_device_in_grid(device)
+        return device
+
+    def _register_device_in_grid(self, device: LightingDevice) -> None:
+        """Register a device and its channels into grid and legacy mappings."""
+        dev_id = device.fixture_id
         device.set_curve_provider(self._get_curve_by_id)
-        self.devices[device_id] = device
+        self.devices[dev_id] = device
 
         for ch in device.channels:
             if ch.universe not in self._grid:
                 self.add_universe(ch.universe)
-            self._grid[ch.universe][ch.address - 1] = device_id
+            self._grid[ch.universe][ch.address - 1] = dev_id
 
             # Maintain legacy structures for intensity/dimmer channels
             if (
@@ -236,18 +245,17 @@ class PatchManager:
                 and not ch.fine
                 and not ch.ultra_fine
             ):
-                if device_id not in self.channels or self.channels[device_id] == [
+                if dev_id not in self.channels or self.channels[dev_id] == [
                     [None, None]
                 ]:
-                    self.channels[device_id] = [[ch.address, ch.universe]]
-                elif [ch.address, ch.universe] not in self.channels[device_id]:
-                    self.channels[device_id].append([ch.address, ch.universe])
+                    self.channels[dev_id] = [[ch.address, ch.universe]]
+                elif [ch.address, ch.universe] not in self.channels[dev_id]:
+                    self.channels[dev_id].append([ch.address, ch.universe])
                 if ch.universe not in self.outputs:
                     self.outputs[ch.universe] = {}
-                self.outputs[ch.universe][ch.address] = [device_id, 0]
+                self.outputs[ch.universe][ch.address] = [dev_id, device.curve_id]
 
         self._numpy_cache_dirty = True
-        return device
 
     def patch_dimmer(  # pylint: disable=too-many-arguments, too-many-positional-arguments
         self,
@@ -471,12 +479,16 @@ class PatchManager:
 
     def restore_device(self, device: LightingDevice) -> None:
         """Restore an existing device instance into the patch registry."""
-        device.set_curve_provider(self._get_curve_by_id)
-        self.devices[device.fixture_id] = device
+        dev_id = device.fixture_id
+        if dev_id in self.devices:
+            self.unpatch_device(dev_id)
+
         for ch in device.channels:
-            if ch.universe not in self._grid:
-                self.add_universe(ch.universe)
-            self._grid[ch.universe][ch.address - 1] = device.fixture_id
+            occ = self.get_address_occupant(ch.universe, ch.address)
+            if occ is not None and occ != dev_id:
+                self.unpatch_address(ch.universe, ch.address)
+
+        self._register_device_in_grid(device)
         self.invalidate_cache()
 
     # -------------------------------------------------------------------------
@@ -562,7 +574,11 @@ class PatchManager:
                 universe=univ,
                 address=output,
             )
+            dev.set_curve_provider(self._get_curve_by_id)
             self.devices[channel] = dev
+
+        if curve:
+            self.devices[channel].set_curve_id(curve)
 
         self._numpy_cache_dirty = True
 

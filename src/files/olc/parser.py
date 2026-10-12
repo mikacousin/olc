@@ -50,6 +50,8 @@ class OlcParser(ReadFile):
             self._error_dialog("Input file is not a valid file: JSONDecodeError")
             return
         self.data["curves"] = contents.get("curves") or {}
+        self.data["fixture_definitions"] = contents.get("fixture_definitions") or []
+        self.data["devices"] = contents.get("devices") or {}
         self.data["patch"] = contents.get("patch") or {}
         self.data["sequences"] = contents.get("sequences") or {}
         self.data["cues"] = contents.get("cues") or {}

@@ -20,6 +20,8 @@ from olc.channel_time import ChannelTime
 from olc.cue import Cue
 from olc.curve import InterpolateCurve, LimitCurve, SegmentsCurve
 from olc.define import MAX_FADER_PER_PAGE
+from olc.devices.device import LightingDevice
+from olc.devices.fixture import FixtureDefinition
 from olc.fader import FaderType
 from olc.files.import_dialog import Action
 from olc.group import Group
@@ -57,6 +59,8 @@ class ParsedData:
         self.data = {
             "console": {"console": "", "manufacturer": ""},
             "curves": {},
+            "fixture_definitions": [],
+            "devices": {},
             "patch": {},
             "sequences": {1: {"label": "", "mode": "normal", "steps": {}, "cues": {}}},
             "groups": {},
@@ -172,8 +176,69 @@ class ParsedData:
             if label:
                 curve.name = LEGACY_CURVE_NAMES.get(label, label)
 
+    def import_fixture_definitions(self) -> None:
+        """Import embedded fixture definitions into lightshow.fixture_library."""
+        fdefs = self.data.get("fixture_definitions")
+        if not fdefs or not hasattr(self.lightshow, "fixture_library"):
+            return
+        for fdef_dict in fdefs:
+            if isinstance(fdef_dict, dict):
+                fdef = FixtureDefinition.from_dict(fdef_dict)
+                self.lightshow.fixture_library.register(fdef)
+
+    def _sync_legacy_patch_with_devices(self) -> None:
+        """Synchronize per-output curves and extra outputs from legacy patch dict."""
+        if not self.data.get("patch"):
+            return
+        for channel, values in self.data["patch"].items():
+            ch_int = int(channel)
+            for out in values:
+                output = int(out["output"])
+                universe = int(out["universe"])
+                curve_nb = int(out.get("curve", 0))
+                if ch_int in self.lightshow.patch.devices:
+                    existing_pairs = self.lightshow.patch.channels.get(ch_int, [])
+                    if [output, universe] not in existing_pairs:
+                        self.lightshow.patch.add_output(
+                            ch_int, output, universe, curve_nb
+                        )
+                    elif curve_nb:
+                        if (
+                            universe in self.lightshow.patch.outputs
+                            and output in self.lightshow.patch.outputs[universe]
+                        ):
+                            self.lightshow.patch.outputs[universe][output][1] = curve_nb
+                        dev = self.lightshow.patch.devices[ch_int]
+                        if dev.curve_id == 0:
+                            dev.set_curve_id(curve_nb)
+                else:
+                    self.lightshow.patch.add_output(ch_int, output, universe, curve_nb)
+
     def import_patch(self) -> None:
-        """Import data patch"""
+        """Import data patch and lighting devices."""
+        self.import_fixture_definitions()
+        devices_data = self.data.get("devices")
+        if devices_data:
+            for dev_dict in devices_data.values():
+                if not isinstance(dev_dict, dict):
+                    continue
+                device = LightingDevice.from_dict(dev_dict)
+                if (
+                    device.color_profile is None
+                    and device.manufacturer
+                    and device.model
+                    and hasattr(self.lightshow, "fixture_library")
+                ):
+                    fdef = self.lightshow.fixture_library.get_by_key(
+                        f"{device.manufacturer}:{device.model}"
+                    )
+                    if fdef is not None and fdef.color_profile is not None:
+                        device.color_profile = fdef.color_profile
+                self.lightshow.patch.restore_device(device)
+            self._sync_legacy_patch_with_devices()
+            self.lightshow.patch.invalidate_cache()
+            return
+
         for channel, values in self.data["patch"].items():
             for out in values:
                 output = out["output"]
@@ -239,7 +304,12 @@ class ParsedData:
         """Apply device_values and is_block metadata to a cue."""
         dev_vals = cue_dict.get("device_values")
         if dev_vals:
-            cue.device_values = {int(k): dict(v) for k, v in dev_vals.items()}
+            cue.device_values = {
+                int(k): {str(pk): pv for pk, pv in v.items()}
+                for k, v in dev_vals.items()
+            }
+        else:
+            cue.device_values = {}
         cue.is_block = bool(cue_dict.get("is_block", False))
 
     def import_presets(self) -> None:
@@ -270,9 +340,13 @@ class ParsedData:
             self._merge_main_playback(sequence)
 
     def _replace_main_playback(self, sequence: int) -> None:
-        for values in self.data["sequences"][sequence]["steps"].values():
+        seq_data = self.data["sequences"][sequence]
+        self.lightshow.main_playback.tracking_mode = bool(
+            seq_data.get("tracking_mode", False)
+        )
+        for values in seq_data["steps"].values():
             cue_number = values.get("cue")
-            cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
+            cue_dict = seq_data["cues"][cue_number]
             cue_channels = cue_dict["channels"]
             cue_text = cue_dict["label"]
             cue = self.lightshow.cues.get(cue_number, 0)
@@ -306,10 +380,13 @@ class ParsedData:
             self.lightshow.main_playback.add_step(step)
 
     def _merge_main_playback(self, sequence: int) -> None:
+        seq_data = self.data["sequences"][sequence]
+        if "tracking_mode" in seq_data:
+            self.lightshow.main_playback.tracking_mode = bool(seq_data["tracking_mode"])
         del self.lightshow.main_playback.steps[-1]
-        for values in self.data["sequences"][sequence]["steps"].values():
+        for values in seq_data["steps"].values():
             cue_number = values.get("cue")
-            cue_dict = self.data["sequences"][sequence]["cues"][cue_number]
+            cue_dict = seq_data["cues"][cue_number]
             cue_channels = cue_dict["channels"]
             cue_text = cue_dict["label"]
             found, step_nb = self.lightshow.main_playback.get_step(cue_number)
@@ -354,17 +431,27 @@ class ParsedData:
             sequence: Sequence number
             action: Action type
         """
-        label = self.data["sequences"][sequence]["label"]
+        seq_data = self.data["sequences"][sequence]
+        label = seq_data["label"]
         for index, chsr in enumerate(self.lightshow.chasers):
             if chsr.index == sequence:
                 self.lightshow.chasers[index].text = label
                 break
         else:
             self.lightshow.chasers.append(
-                Sequence(sequence, type_seq="Chaser", text=label)
+                Sequence(
+                    sequence,
+                    type_seq="Chaser",
+                    text=label,
+                    lightshow=self.lightshow,
+                )
             )
             index = -1
             del self.lightshow.chasers[index].steps[1:]
+        if "tracking_mode" in seq_data or action is Action.REPLACE:
+            self.lightshow.chasers[index].tracking_mode = bool(
+                seq_data.get("tracking_mode", False)
+            )
         if action is Action.REPLACE:
             self._replace_chaser(sequence, index)
         elif action is Action.MERGE:

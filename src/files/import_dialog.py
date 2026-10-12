@@ -54,7 +54,7 @@ class DialogData(Gtk.Dialog):
         box.set_spacing(6)
         # If you change actions order, you have to modify combo callbacks
         act = ["Replace", "Merge", "Ignore"]
-        if data["patch"]:
+        if data.get("patch") or data.get("devices"):
             self._patch(act, box)
         if data["sequences"]:
             self._sequences(act, box, data)

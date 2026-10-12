@@ -19,9 +19,11 @@ Also provides the FixtureLibrary registry.
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
+from .color import FixtureColorProfile
 from .device import (
     Channel,
     ChannelRange,
@@ -33,7 +35,7 @@ from .device import (
 )
 
 if TYPE_CHECKING:
-    from .color import ColorMatcher, FixtureColorProfile
+    from .color import ColorMatcher
 
 
 @dataclass
@@ -132,6 +134,53 @@ class ChannelDefinition:  # pylint: disable=too-many-instance-attributes
 
         return channels
 
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize ChannelDefinition to dictionary."""
+        return {
+            "channel_type": self.channel_type.value,
+            "offset": self.offset,
+            "label": self.label,
+            "default_value": self.default_value,
+            "fine_offset": self.fine_offset,
+            "ultra_fine_offset": self.ultra_fine_offset,
+            "physical_min": self.physical_min,
+            "physical_max": self.physical_max,
+            "physical_unit": self.physical_unit,
+            "merge_mode": self.merge_mode.value if self.merge_mode else "htp",
+            "ranges": [r.to_dict() for r in self.ranges],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ChannelDefinition:
+        """Deserialize ChannelDefinition from dictionary."""
+        ctype = ChannelType(data["channel_type"])
+        mm = (
+            MergeMode(data["merge_mode"])
+            if "merge_mode" in data
+            else get_default_merge_mode(ctype)
+        )
+        return cls(
+            channel_type=ctype,
+            offset=int(data["offset"]),
+            label=str(data.get("label", "")),
+            default_value=int(data.get("default_value", 0)),
+            fine_offset=(
+                int(data["fine_offset"])
+                if data.get("fine_offset") is not None
+                else None
+            ),
+            ultra_fine_offset=(
+                int(data["ultra_fine_offset"])
+                if data.get("ultra_fine_offset") is not None
+                else None
+            ),
+            ranges=[ChannelRange.from_dict(r) for r in data.get("ranges", [])],
+            physical_min=float(data.get("physical_min", 0.0)),
+            physical_max=float(data.get("physical_max", 1.0)),
+            physical_unit=str(data.get("physical_unit", "")),
+            merge_mode=mm,
+        )
+
 
 @dataclass
 class DmxModeDefinition:
@@ -160,6 +209,25 @@ class DmxModeDefinition:
             if cd.ultra_fine_offset is not None
         ]
         return max(offsets) + 1 if offsets else 0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize DmxModeDefinition to dictionary."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "channel_defs": [cd.to_dict() for cd in self.channel_defs],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DmxModeDefinition:
+        """Deserialize DmxModeDefinition from dictionary."""
+        return cls(
+            name=str(data["name"]),
+            description=str(data.get("description", "")),
+            channel_defs=[
+                ChannelDefinition.from_dict(cd) for cd in data.get("channel_defs", [])
+            ],
+        )
 
     def __repr__(self) -> str:
         return f"<DmxMode '{self.name}' {self.channel_count()}ch>"
@@ -235,6 +303,54 @@ class FixtureDefinition:  # pylint: disable=too-many-instance-attributes
             group=group,
             notes=f"{self.full_name} — {mode.name}",
             color_profile=self.color_profile,
+            manufacturer=self.manufacturer,
+            model=self.model,
+            mode_name=mode.name,
+            gdtf_id=self.gdtf_id,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize FixtureDefinition to dictionary."""
+        result: dict[str, Any] = {
+            "manufacturer": self.manufacturer,
+            "model": self.model,
+            "fixture_type": self.fixture_type.value,
+            "gdtf_id": self.gdtf_id,
+            "notes": self.notes,
+            "dmx_modes": [m.to_dict() for m in self.dmx_modes],
+        }
+        if self.color_profile is not None:
+            result["color_profile"] = self.color_profile.to_dict()
+        if self.thumbnail is not None:
+            result["thumbnail"] = base64.b64encode(self.thumbnail).decode("ascii")
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> FixtureDefinition:
+        """Deserialize FixtureDefinition from dictionary."""
+        color_prof_data = data.get("color_profile")
+        color_profile = (
+            FixtureColorProfile.from_dict(color_prof_data)
+            if isinstance(color_prof_data, dict)
+            else None
+        )
+        thumb_str = data.get("thumbnail")
+        thumbnail = (
+            base64.b64decode(thumb_str.encode("ascii"))
+            if isinstance(thumb_str, str) and thumb_str
+            else None
+        )
+        return cls(
+            manufacturer=str(data["manufacturer"]),
+            model=str(data["model"]),
+            fixture_type=FixtureType(data.get("fixture_type", "generic")),
+            dmx_modes=[
+                DmxModeDefinition.from_dict(md) for md in data.get("dmx_modes", [])
+            ],
+            color_profile=color_profile,
+            gdtf_id=str(data.get("gdtf_id", "")),
+            thumbnail=thumbnail,
+            notes=str(data.get("notes", "")),
         )
 
     @property

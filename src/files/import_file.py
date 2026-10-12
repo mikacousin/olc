@@ -198,6 +198,11 @@ class ImportFile:
         if self.actions["patch"] is Action.IGNORE:
             return
         if self.actions["patch"] is Action.REPLACE:
+            from olc.devices.builtin import (  # pylint: disable=import-outside-toplevel
+                populate_builtin_library,
+            )
+
+            self.lightshow.fixture_library = populate_builtin_library()
             self.lightshow.patch.patch_empty()
         # Import patch
         self.data.import_patch()

@@ -91,7 +91,10 @@ class PatchChannelsTab(Gtk.Box):
         )
         self.commandline = app.core.commandline
         self.last_chan_selected = ""
-        self.fixture_library = populate_builtin_library()
+        self.fixture_library = (
+            getattr(self.lightshow, "fixture_library", None)
+            or populate_builtin_library()
+        )
         self.sort_mode = "logical"
 
         Gtk.Box.__init__(self, orientation=Gtk.Orientation.VERTICAL, spacing=4)
