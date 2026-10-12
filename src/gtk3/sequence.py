@@ -45,6 +45,7 @@ class TrackingDisplayState(Enum):
     INTENSITY_UP = "intensity_up"
     INTENSITY_DOWN = "intensity_down"
     BLOCK = "block"
+    MIB = "mib"
     INACTIVE = "inactive"
 
 
@@ -54,6 +55,7 @@ TRACKING_COLORS: dict[TrackingDisplayState, dict[str, float]] = {
     TrackingDisplayState.INTENSITY_UP: {"red": 0.3, "green": 0.6, "blue": 1.0},
     TrackingDisplayState.INTENSITY_DOWN: {"red": 0.3, "green": 0.85, "blue": 0.4},
     TrackingDisplayState.BLOCK: {"red": 0.9, "green": 0.3, "blue": 0.9},
+    TrackingDisplayState.MIB: {"red": 0.95, "green": 0.75, "blue": 0.2},
     TrackingDisplayState.INACTIVE: {"red": 0.6, "green": 0.6, "blue": 0.6},
 }
 
@@ -65,7 +67,7 @@ def get_tracking_color(state: TrackingDisplayState) -> dict[str, float]:
     )
 
 
-def classify_channel_tracking_state(  # pylint: disable=too-many-return-statements
+def classify_channel_tracking_state(  # pylint: disable=too-many-return-statements, too-many-branches
     sequence: Sequence, step_index: int, channel: int
 ) -> tuple[TrackingDisplayState, int]:
     """Classify a channel's tracking state and resolved level at a sequence step.
@@ -122,6 +124,9 @@ def classify_channel_tracking_state(  # pylint: disable=too-many-return-statemen
     ):
         return TrackingDisplayState.BLOCK, curr_level
 
+    if curr_level == 0 and curr_resolved.mib_parameters.get(channel):
+        return TrackingDisplayState.MIB, 0
+
     if is_explicit_move:
         if step_index > 1 and curr_level != prev_level:
             if curr_level > prev_level:
@@ -168,7 +173,7 @@ class SequenceTab(Gtk.Grid):
         self.attach_next_to(self.paned, self.treeview1, Gtk.PositionType.BOTTOM, 1, 1)
 
     def _setup_header_bar(self) -> None:
-        """Create top control bar with Tracking vs Cue-Only mode switch."""
+        """Create top control bar with Tracking vs Cue-Only and MIB switches."""
         self.header_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.header_box.set_margin_start(6)
         self.header_box.set_margin_end(6)
@@ -182,6 +187,12 @@ class SequenceTab(Gtk.Grid):
         self.tracking_mode_btn.set_active(initial_tracking)
         self.tracking_mode_btn.connect("toggled", self._on_tracking_mode_toggled)
         self.header_box.pack_start(self.tracking_mode_btn, False, False, 0)
+
+        initial_mib = getattr(self.lightshow.main_playback, "mib_enabled", True)
+        self.mib_btn = Gtk.ToggleButton(label="MIB: ON" if initial_mib else "MIB: OFF")
+        self.mib_btn.set_active(initial_mib)
+        self.mib_btn.connect("toggled", self._on_mib_toggled)
+        self.header_box.pack_start(self.mib_btn, False, False, 0)
 
     def _on_tracking_mode_toggled(self, button: Gtk.ToggleButton) -> None:
         self.set_tracking_mode(button.get_active())
@@ -204,6 +215,27 @@ class SequenceTab(Gtk.Grid):
         seq = self.get_selected_sequence() or self.lightshow.main_playback
         new_state = not getattr(seq, "tracking_mode", False)
         self.set_tracking_mode(new_state)
+        return new_state
+
+    def _on_mib_toggled(self, button: Gtk.ToggleButton) -> None:
+        self.set_mib_enabled(button.get_active())
+
+    def set_mib_enabled(self, enabled: bool) -> None:
+        """Enable or disable Move In Black (MIB) on active sequence."""
+        seq = self.get_selected_sequence() or self.lightshow.main_playback
+        seq.mib_enabled = enabled
+        self.lightshow.main_playback.mib_enabled = enabled
+        if self.mib_btn.get_active() != enabled:
+            self.mib_btn.set_active(enabled)
+        self.mib_btn.set_label("MIB: ON" if enabled else "MIB: OFF")
+        self.channels_view.flowbox.invalidate_filter()
+        self.channels_view.flowbox.queue_draw()
+
+    def toggle_mib_mode(self) -> bool:
+        """Toggle Move In Black (MIB) mode and return new state."""
+        seq = self.get_selected_sequence() or self.lightshow.main_playback
+        new_state = not getattr(seq, "mib_enabled", True)
+        self.set_mib_enabled(new_state)
         return new_state
 
     def _setup_sequences_list(self) -> None:

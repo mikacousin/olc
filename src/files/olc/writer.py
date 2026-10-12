@@ -114,6 +114,8 @@ class OlcWriter(WriteFile):
         self.data["sequences"][seq_index] = {
             "label": sequence.text,
             "tracking_mode": bool(getattr(sequence, "tracking_mode", False)),
+            "mib_enabled": bool(getattr(sequence, "mib_enabled", True)),
+            "mib_fade_time": float(getattr(sequence, "mib_fade_time", 2.0)),
             "steps": {},
             "cues": {},
         }

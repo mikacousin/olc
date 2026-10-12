@@ -22,7 +22,7 @@ from typing import Optional
 
 import numpy as np
 
-from olc.core.tracking import TrackingEngine
+from olc.core.tracking import DEFAULT_MIB_FADE_TIME, TrackingEngine
 from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.step import Step
@@ -79,6 +79,9 @@ class Sequence:
         self.thread = None
         # Tracking mode (False = Cue-Only, True = Tracking for intensity)
         self.tracking_mode = False
+        # Move In Black (MIB) pre-positioning and post-extinction fade time (s)
+        self.mib_enabled = True
+        self.mib_fade_time = DEFAULT_MIB_FADE_TIME
 
         # Step and Cue 0
         cue = Cue(0, 0.0)
@@ -540,11 +543,14 @@ def _parse_rgb_norm(value: typing.Any) -> Optional[tuple[float, float, float]]: 
     return None
 
 
-def _interpolate_device_states(  # pylint: disable=too-many-locals
+def _interpolate_device_states(  # pylint: disable=too-many-locals, too-many-arguments, too-many-positional-arguments, too-many-branches
     patch: Optional[PatchManager],
     start_states: dict[int, dict[str, typing.Any]],
     target_values: dict[int, dict[str, typing.Any]],
     factor: float,
+    mib_factors: Optional[dict[int, float]] = None,
+    mib_parameters: Optional[dict[int, set[str]]] = None,
+    intensity_out_factors: Optional[dict[int, float]] = None,
 ) -> None:
     """Interpolate continuous physical device parameters at progress factor."""
     if patch is None or not target_values:
@@ -570,12 +576,31 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals
             p_lower = param_name.lower()
             if p_lower == "intensity":
                 s_val = float(start.get("intensity", getattr(dev, "intensity", 0.0)))
-                dev.set_intensity(s_val + alpha * (float(target_val) - s_val))
-            elif p_lower in scalar_map:
+                t_val = float(target_val)
+                int_alpha = alpha
+                if (
+                    t_val < s_val
+                    and intensity_out_factors is not None
+                    and dev_id in intensity_out_factors
+                ):
+                    int_alpha = max(0.0, min(1.0, intensity_out_factors[dev_id]))
+                dev.set_intensity(s_val + int_alpha * (t_val - s_val))
+                continue
+
+            param_alpha = alpha
+            if mib_factors is not None and dev_id in mib_factors:
+                if mib_parameters is None or param_name in mib_parameters.get(
+                    dev_id, set()
+                ):
+                    param_alpha = max(0.0, min(1.0, mib_factors[dev_id]))
+
+            if p_lower in scalar_map:
                 s_key = scalar_map[p_lower]
                 s_opt = start.get(s_key)
                 if s_opt is not None:
-                    interp = float(s_opt) + alpha * (float(target_val) - float(s_opt))
+                    interp = float(s_opt) + param_alpha * (
+                        float(target_val) - float(s_opt)
+                    )
                     dev.apply_device_parameter(p_lower, interp)
                 else:
                     dev.apply_device_parameter(p_lower, float(target_val))
@@ -584,13 +609,13 @@ def _interpolate_device_states(  # pylint: disable=too-many-locals
                 if target_rgb is not None and hasattr(dev, "set_color_srgb"):
                     r0, g0, b0 = start.get("color_rgb", (0.0, 0.0, 0.0))
                     dev.set_color_srgb(
-                        r0 + alpha * (target_rgb[0] - r0),
-                        g0 + alpha * (target_rgb[1] - g0),
-                        b0 + alpha * (target_rgb[2] - b0),
+                        r0 + param_alpha * (target_rgb[0] - r0),
+                        g0 + param_alpha * (target_rgb[1] - g0),
+                        b0 + param_alpha * (target_rgb[2] - b0),
                     )
                 else:
                     dev.apply_device_parameter(p_lower, target_val)
-            elif alpha > 0.0:
+            elif param_alpha > 0.0:
                 dev.apply_device_parameter(p_lower, target_val)
 
 
@@ -638,6 +663,23 @@ class ThreadGo(threading.Thread):
         """Get parent application's DMX backend safely."""
         return self.sequence.backend
 
+    def _was_device_lit(self, dev_id: int) -> bool:
+        """Return True if dev_id had non-zero intensity when Go was triggered."""
+        if (
+            1 <= dev_id <= len(self.old_channels_levels)
+            and int(self.old_channels_levels[dev_id - 1]) > 0
+        ):
+            return True
+        old_int = float(self.old_device_states.get(dev_id, {}).get("intensity", 0.0))
+        return old_int > 0.0
+
+    def _get_device_dark_time_ms(self, step: Step, dev_id: int) -> float:
+        """Return elapsed time (ms) when a fading-out device reaches 0% intensity."""
+        if step.channel_time and dev_id in step.channel_time:
+            ct = step.channel_time[dev_id]
+            return self.wait + (ct.delay + ct.time) * 1000.0
+        return self.wait + (step.delay_out + step.time_out) * 1000.0
+
     def _capture_start_levels(self) -> None:
         """Capture sequential channels levels and device states when Go is sent"""
         self.old_channels_levels = self.backend.dmx.levels["sequence"].copy()
@@ -645,6 +687,25 @@ class ThreadGo(threading.Thread):
         user_mask = user_levels != -1
         self.old_channels_levels[user_mask] = user_levels[user_mask]
         self.old_device_states = _capture_device_states(self.sequence.patch)
+
+        next_step_idx = self.sequence.position + 1
+        if 0 <= next_step_idx < len(self.sequence.steps):
+            step = self.sequence.steps[next_step_idx]
+            resolved = TrackingEngine.resolve_step_state(
+                self.sequence,
+                next_step_idx,
+                tracking_mode=self.sequence.tracking_mode,
+                patch=self.sequence.patch,
+            )
+            mib_dur_ms = max(
+                0.0,
+                float(getattr(self.sequence, "mib_fade_time", DEFAULT_MIB_FADE_TIME))
+                * 1000.0,
+            )
+            for dev_id, mib_params in resolved.mib_parameters.items():
+                if mib_params and self._was_device_lit(dev_id):
+                    t_dark_ms = self._get_device_dark_time_ms(step, dev_id)
+                    self.total_time = max(self.total_time, t_dark_ms + mib_dur_ms)
 
     def _finalize_go(self) -> None:
         """Finish load cue after sequence transition"""
@@ -780,6 +841,66 @@ class ThreadGo(threading.Thread):
         self.backend.dmx.levels["sequence"][:] = np.clip(lvls, 0, 255).astype(np.uint8)
         self.backend.dmx.set_levels()
 
+    def _compute_device_factors_go(  # pylint: disable=too-many-locals, too-many-branches
+        self,
+        i: float,
+        step: Step,
+        resolved: typing.Any,  # noqa: ANN401
+    ) -> tuple[float, dict[int, float], dict[int, float]]:
+        """Compute LTP, MIB, and intensity-out factors for devices at elapsed ms i."""
+        in_start = self.wait + step.delay_in * 1000.0
+        in_dur = step.time_in * 1000.0
+        if in_dur <= 0:
+            ltp_factor = 1.0 if i >= in_start else 0.0
+        else:
+            ltp_factor = max(0.0, min(1.0, (i - in_start) / in_dur))
+
+        out_start = self.wait + step.delay_out * 1000.0
+        out_dur = step.time_out * 1000.0
+        if out_dur <= 0:
+            default_out_factor = 1.0 if i >= out_start else 0.0
+        else:
+            default_out_factor = max(0.0, min(1.0, (i - out_start) / out_dur))
+
+        mib_factors: dict[int, float] = {}
+        intensity_out_factors: dict[int, float] = {}
+        mib_dur_ms = max(
+            0.0,
+            float(getattr(self.sequence, "mib_fade_time", DEFAULT_MIB_FADE_TIME))
+            * 1000.0,
+        )
+
+        for dev_id in resolved.device_values:
+            if step.channel_time and dev_id in step.channel_time:
+                ct = step.channel_time[dev_id]
+                ct_start = self.wait + ct.delay * 1000.0
+                ct_dur = ct.time * 1000.0
+                if ct_dur <= 0:
+                    ct_factor = 1.0 if i >= ct_start else 0.0
+                else:
+                    ct_factor = max(0.0, min(1.0, (i - ct_start) / ct_dur))
+                intensity_out_factors[dev_id] = ct_factor
+            else:
+                intensity_out_factors[dev_id] = default_out_factor
+
+            if dev_id in resolved.mib_parameters and resolved.mib_parameters[dev_id]:
+                if self._was_device_lit(dev_id):
+                    t_dark_ms = self._get_device_dark_time_ms(step, dev_id)
+                    if i < t_dark_ms:
+                        mib_factors[dev_id] = 0.0
+                    elif mib_dur_ms <= 0:
+                        mib_factors[dev_id] = 1.0
+                    else:
+                        mib_factors[dev_id] = max(
+                            0.0, min(1.0, (i - t_dark_ms) / mib_dur_ms)
+                        )
+                elif step.channel_time and dev_id in step.channel_time:
+                    mib_factors[dev_id] = intensity_out_factors[dev_id]
+                else:
+                    mib_factors[dev_id] = ltp_factor
+
+        return ltp_factor, mib_factors, intensity_out_factors
+
     def _calculate_transitions_go(  # pylint: disable=too-many-locals
         self, i: float, step: Step
     ) -> np.ndarray:
@@ -831,19 +952,19 @@ class ThreadGo(threading.Thread):
             end_mask = i >= (step.time_in + step.wait + step.delay_in) * 1000
             lvls[end_mask & attack_mask] = next_levels[end_mask & attack_mask]
 
-        # Continuous interpolation of multi-parameter LTP attributes
+        # Continuous interpolation of multi-parameter LTP and MIB attributes
         if resolved.device_values and self.sequence.patch is not None:
-            in_start = self.wait + step.delay_in * 1000
-            in_dur = step.time_in * 1000
-            if in_dur <= 0:
-                ltp_factor = 1.0 if i >= in_start else 0.0
-            else:
-                ltp_factor = max(0.0, min(1.0, (i - in_start) / in_dur))
+            ltp_factor, mib_factors, intensity_out_factors = (
+                self._compute_device_factors_go(i, step, resolved)
+            )
             _interpolate_device_states(
                 self.sequence.patch,
                 self.old_device_states,
                 resolved.device_values,
                 ltp_factor,
+                mib_factors=mib_factors,
+                mib_parameters=resolved.mib_parameters,
+                intensity_out_factors=intensity_out_factors,
             )
 
         return lvls

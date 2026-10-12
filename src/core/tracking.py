@@ -33,6 +33,8 @@ if typing.TYPE_CHECKING:
 
 HTP_PARAMETERS: frozenset[str] = frozenset({"intensity"})
 
+DEFAULT_MIB_FADE_TIME: float = 2.0
+
 DEFAULT_PHYSICAL_VALUES: dict[str, Any] = {
     "intensity": 0.0,
     "pan": 0.0,
@@ -52,17 +54,35 @@ class ResolvedState:
     Attributes:
         channels: Conventional channels levels array of length MAX_CHANNELS (0-255).
         device_values: Mapping {device_id: {param_name: physical_or_norm_value}}.
+        mib_parameters: Mapping {device_id: set of LTP param names set by MIB}.
     """
 
     channels: np.ndarray = field(
         default_factory=lambda: np.zeros(MAX_CHANNELS, dtype=np.uint8)
     )
     device_values: dict[int, dict[str, Any]] = field(default_factory=dict)
+    mib_parameters: dict[int, set[str]] = field(default_factory=dict)
 
 
 # pylint: disable=too-few-public-methods
 class TrackingEngine:
     """Universal tracking engine resolving sequential playback states."""
+
+    @staticmethod
+    def is_device_dark(
+        channels: np.ndarray,
+        device_values: dict[int, dict[str, Any]],
+        dev_id: int,
+    ) -> bool:
+        """Return True if device has 0 intensity in channels and device_values."""
+        if 1 <= dev_id <= len(channels) and int(channels[dev_id - 1]) > 0:
+            return False
+        dev_params = device_values.get(dev_id)
+        if dev_params is not None:
+            for key, val in dev_params.items():
+                if key.lower() in HTP_PARAMETERS and float(val) > 0.0:
+                    return False
+        return True
 
     @classmethod
     def resolve_step_state(
@@ -71,6 +91,7 @@ class TrackingEngine:
         step_index: int,
         tracking_mode: bool = False,
         patch: Optional[PatchManager] = None,
+        mib_enabled: Optional[bool] = None,
     ) -> ResolvedState:
         """Resolve full conventional and moving light state for a sequence step.
 
@@ -82,15 +103,22 @@ class TrackingEngine:
             explicitly specified in the target cue.
           - If tracking_mode is True (Tracking): intensities propagate forward until a
             new level or an explicit 0% (Hard Zero), unless stopped by a Block Cue.
+        - Move In Black (MIB):
+          - When mib_enabled is True, devices that are dark (intensity == 0) at
+            step_index look ahead to subsequent steps (stopping at any Block Cue).
+          - If a device turns on (intensity > 0) at a future step m > step_index with
+            new LTP values, those LTP values are pre-applied at step_index and listed
+            in ResolvedState.mib_parameters.
 
         Args:
             sequence: Sequence instance.
             step_index: Target step index in sequence.steps.
             tracking_mode: True for tracked intensity, False for Cue-Only.
             patch: Optional PatchManager to query patched devices.
+            mib_enabled: Optional override for MIB (defaults to sequence.mib_enabled).
 
         Returns:
-            ResolvedState containing resolved channels array and device values.
+            ResolvedState containing resolved channels, device values, and MIB flags.
         """
         if not sequence.steps or step_index < 0 or step_index >= len(sequence.steps):
             return ResolvedState()
@@ -99,7 +127,21 @@ class TrackingEngine:
             sequence, step_index, tracking_mode
         )
         device_values = cls._resolve_devices(sequence, step_index, tracking_mode, patch)
-        return ResolvedState(channels=channels, device_values=device_values)
+        use_mib = (
+            bool(getattr(sequence, "mib_enabled", True))
+            if mib_enabled is None
+            else mib_enabled
+        )
+        mib_parameters: dict[int, set[str]] = {}
+        if use_mib:
+            mib_parameters = cls._apply_mib_lookahead(
+                sequence, step_index, channels, device_values, patch
+            )
+        return ResolvedState(
+            channels=channels,
+            device_values=device_values,
+            mib_parameters=mib_parameters,
+        )
 
     @staticmethod
     def _resolve_conventional_channels(
@@ -243,3 +285,92 @@ class TrackingEngine:
                 return DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0)
 
         return DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0)
+
+    @classmethod
+    def _apply_mib_lookahead(  # pylint: disable=too-many-locals
+        cls,
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        channels: np.ndarray,
+        device_values: dict[int, dict[str, Any]],
+        patch: Optional[PatchManager],
+    ) -> dict[int, set[str]]:
+        """Apply Move In Black look-ahead for devices that are dark at step_index."""
+        curr_cue = sequence.steps[step_index].cue
+        if curr_cue is None or getattr(curr_cue, "number", 0) == 0:
+            return {}
+
+        candidate_ids: set[int] = set(device_values.keys())
+        if patch is not None:
+            candidate_ids.update(patch.devices.keys())
+        for idx in range(step_index + 1, len(sequence.steps)):
+            c = sequence.steps[idx].cue
+            if c is not None and hasattr(c, "device_values"):
+                candidate_ids.update(c.device_values.keys())
+
+        mib_parameters: dict[int, set[str]] = {}
+        for dev_id in sorted(candidate_ids):
+            if not cls.is_device_dark(channels, device_values, dev_id):
+                continue
+            turn_on_idx, future_ltp = cls._find_mib_turn_on_step(
+                sequence, step_index, dev_id
+            )
+            if turn_on_idx is None or not future_ltp:
+                continue
+
+            dev_state = device_values.setdefault(dev_id, {"intensity": 0.0})
+            mib_set: set[str] = set()
+            for param_name, target_val in future_ltp.items():
+                current_val = dev_state.get(
+                    param_name, DEFAULT_PHYSICAL_VALUES.get(param_name.lower(), 0.0)
+                )
+                if param_name not in dev_state or current_val != target_val:
+                    mib_set.add(param_name)
+                dev_state[param_name] = target_val
+            if mib_set:
+                mib_parameters[dev_id] = mib_set
+
+        return mib_parameters
+
+    @staticmethod
+    def _find_mib_turn_on_step(
+        sequence: Any,  # noqa: ANN401
+        step_index: int,
+        dev_id: int,
+    ) -> tuple[Optional[int], dict[str, Any]]:
+        """Find the first future step where dev_id lights up, collecting LTP moves.
+
+        Stops immediately if a Block Cue or a Cue 0 sentinel is encountered.
+        """
+        collected_ltp: dict[str, Any] = {}
+        for future_idx in range(step_index + 1, len(sequence.steps)):
+            cue = sequence.steps[future_idx].cue
+            if cue is None:
+                continue
+            if getattr(cue, "number", 0) == 0:
+                break
+            if getattr(cue, "is_block", False):
+                break
+
+            dev_dict = (
+                cue.device_values.get(dev_id, {})
+                if hasattr(cue, "device_values")
+                else {}
+            )
+            for param_name, val in dev_dict.items():
+                if param_name.lower() not in HTP_PARAMETERS:
+                    collected_ltp[param_name] = val
+
+            conv_level = (
+                int(cue.channels.get(dev_id, 0)) if hasattr(cue, "channels") else 0
+            )
+            dev_intensity = 0.0
+            for key, val in dev_dict.items():
+                if key.lower() in HTP_PARAMETERS:
+                    dev_intensity = float(val)
+                    break
+
+            if conv_level > 0 or dev_intensity > 0.0:
+                return future_idx, collected_ltp
+
+        return None, {}

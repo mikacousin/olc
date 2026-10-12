@@ -344,6 +344,12 @@ class ParsedData:
         self.lightshow.main_playback.tracking_mode = bool(
             seq_data.get("tracking_mode", False)
         )
+        self.lightshow.main_playback.mib_enabled = bool(
+            seq_data.get("mib_enabled", True)
+        )
+        self.lightshow.main_playback.mib_fade_time = float(
+            seq_data.get("mib_fade_time", 2.0)
+        )
         for values in seq_data["steps"].values():
             cue_number = values.get("cue")
             cue_dict = seq_data["cues"][cue_number]
@@ -383,6 +389,12 @@ class ParsedData:
         seq_data = self.data["sequences"][sequence]
         if "tracking_mode" in seq_data:
             self.lightshow.main_playback.tracking_mode = bool(seq_data["tracking_mode"])
+        if "mib_enabled" in seq_data:
+            self.lightshow.main_playback.mib_enabled = bool(seq_data["mib_enabled"])
+        if "mib_fade_time" in seq_data:
+            self.lightshow.main_playback.mib_fade_time = float(
+                seq_data["mib_fade_time"]
+            )
         del self.lightshow.main_playback.steps[-1]
         for values in seq_data["steps"].values():
             cue_number = values.get("cue")
@@ -451,6 +463,14 @@ class ParsedData:
         if "tracking_mode" in seq_data or action is Action.REPLACE:
             self.lightshow.chasers[index].tracking_mode = bool(
                 seq_data.get("tracking_mode", False)
+            )
+        if "mib_enabled" in seq_data or action is Action.REPLACE:
+            self.lightshow.chasers[index].mib_enabled = bool(
+                seq_data.get("mib_enabled", True)
+            )
+        if "mib_fade_time" in seq_data or action is Action.REPLACE:
+            self.lightshow.chasers[index].mib_fade_time = float(
+                seq_data.get("mib_fade_time", 2.0)
             )
         if action is Action.REPLACE:
             self._replace_chaser(sequence, index)

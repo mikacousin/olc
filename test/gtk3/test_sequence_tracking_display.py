@@ -109,9 +109,46 @@ def test_tracking_color_classification_states() -> None:
     assert get_tracking_color(state4_ch1) == TRACKING_COLORS[TrackingDisplayState.BLOCK]
 
 
+def test_tracking_color_classification_mib_state() -> None:
+    """Test TrackingDisplayState.MIB when a dark fixture pre-positions for next cue."""
+    seq = Sequence(index=1, type_seq="Main")
+    seq.tracking_mode = True
+    seq.mib_enabled = True
+    seq.steps.clear()
+    seq.steps.append(Step(sequence=1))
+
+    # Step 1 (Cue 1.0): Fixture 1 ON at Pan 0
+    cue1 = Cue(sequence=1, number=1.0)
+    cue1.set_device_parameter(1, "intensity", 1.0)
+    cue1.set_device_parameter(1, "pan", 0.0)
+    seq.steps.append(Step(sequence=1, cue=cue1))
+
+    # Step 2 (Cue 2.0): Fixture 1 OFF (MIB pre-positions Pan to 90 for Cue 3.0)
+    cue2 = Cue(sequence=1, number=2.0)
+    cue2.set_device_parameter(1, "intensity", 0.0)
+    seq.steps.append(Step(sequence=1, cue=cue2))
+
+    # Step 3 (Cue 3.0): Fixture 1 ON at Pan 90
+    cue3 = Cue(sequence=1, number=3.0)
+    cue3.set_device_parameter(1, "intensity", 1.0)
+    cue3.set_device_parameter(1, "pan", 90.0)
+    seq.steps.append(Step(sequence=1, cue=cue3))
+
+    state2, lvl2 = classify_channel_tracking_state(seq, 2, 1)
+    assert state2 == TrackingDisplayState.MIB
+    assert lvl2 == 0
+    assert get_tracking_color(state2) == TRACKING_COLORS[TrackingDisplayState.MIB]
+
+    # When MIB is disabled, Step 2 is an explicit move to 0 (INTENSITY_DOWN)
+    seq.mib_enabled = False
+    state2_off, lvl2_off = classify_channel_tracking_state(seq, 2, 1)
+    assert state2_off == TrackingDisplayState.INTENSITY_DOWN
+    assert lvl2_off == 0
+
+
 @pytest.mark.gui
 def test_sequence_tab_tracking_mode_toggle(app_gui: Application) -> None:
-    """Test SequenceTab header toggle button switching between Cue-Only and Tracking."""
+    """Test SequenceTab header toggle buttons for Tracking and MIB."""
     app_gui.activate_action("sequences", None)
     process_events()
 
@@ -127,3 +164,15 @@ def test_sequence_tab_tracking_mode_toggle(app_gui: Application) -> None:
     assert new_state is True
     assert app_gui.core.lightshow.main_playback.tracking_mode is True
     assert "Tracking" in seq_tab.tracking_mode_btn.get_label()
+
+    # Test MIB toggle button
+    seq_tab.set_mib_enabled(True)
+    assert app_gui.core.lightshow.main_playback.mib_enabled is True
+    assert "MIB: ON" in seq_tab.mib_btn.get_label()
+
+    mib_state = seq_tab.toggle_mib_mode()
+    assert mib_state is False
+    assert app_gui.core.lightshow.main_playback.mib_enabled is False
+    assert "MIB: OFF" in seq_tab.mib_btn.get_label()
+
+    seq_tab.set_mib_enabled(True)

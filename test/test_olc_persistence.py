@@ -305,6 +305,8 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
 
     # 3. Configure Main Playback in Tracking Mode with device_values and Block Cue
     show1.main_playback.tracking_mode = True
+    show1.main_playback.mib_enabled = False
+    show1.main_playback.mib_fade_time = 3.5
     cue1 = Cue(0, 1.0, channels={1: 200}, text="Opening")
     cue1.device_values = {
         50: {"intensity": 0.6, "color": "#00FF88"},
@@ -330,6 +332,8 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     # 4. Add a Chaser sequence with tracking_mode=True
     chaser = Sequence(2, type_seq="Chaser", text="Effect Chase", lightshow=show1)
     chaser.tracking_mode = True
+    chaser.mib_enabled = False
+    chaser.mib_fade_time = 1.5
     del chaser.steps[1:]
     ch_cue = Cue(2, 1.0, channels={1: 255}, text="Flash 1")
     ch_cue.device_values = {50: {"color": "#FF0000"}}
@@ -381,8 +385,10 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_spot.zoom_degrees == pytest.approx(18.0, abs=0.2)
     assert r_spot.color_profile is not None
 
-    # Verify Main Playback tracking_mode and cues
+    # Verify Main Playback tracking_mode, mib_enabled, mib_fade_time, and cues
     assert show2.main_playback.tracking_mode is True
+    assert show2.main_playback.mib_enabled is False
+    assert show2.main_playback.mib_fade_time == pytest.approx(3.5)
     r_cue1 = show2.cues.get(1.0, 0)
     assert r_cue1 is not None
     assert r_cue1.device_values[101]["pan"] == 120.0
@@ -393,10 +399,12 @@ def test_olc_save_and_open_autonomous_show_with_devices_and_gdtf(  # pylint: dis
     assert r_cue2.is_block is True
     assert r_cue2.device_values[101]["intensity"] == 0.0
 
-    # Verify Chaser sequence tracking_mode and cue metadata
+    # Verify Chaser sequence tracking_mode, mib settings, and cue metadata
     r_chaser = show2.get_chaser(2)
     assert r_chaser is not None
     assert r_chaser.tracking_mode is True
+    assert r_chaser.mib_enabled is False
+    assert r_chaser.mib_fade_time == pytest.approx(1.5)
 
 
 def test_legacy_olc_file_without_devices_key(tmp_path: pathlib.Path) -> None:

@@ -25,7 +25,7 @@ from olc.cue import Cue
 from olc.define import MAX_CHANNELS
 from olc.devices.builtin import create_moving_head_definition, create_rgb_definition
 from olc.patch import PatchCollisionError, PatchManager
-from olc.sequence import Sequence
+from olc.sequence import Sequence, ThreadGo
 from olc.step import Step
 
 
@@ -296,3 +296,184 @@ def test_sequence_load_step_integration() -> None:
     assert seq.backend.dmx.levels["sequence"][19] == 200  # Channel 20 loaded
     assert pytest.approx(dev.pan_degrees, abs=0.5) == 90.0
     assert dev.intensity == 0.5  # Intensity tracked
+
+
+def test_mib_lookahead_prepositions_dark_device() -> None:
+    """Verify Move In Black pre-positions LTP attributes while the fixture is dark."""
+    seq = create_mock_sequence()
+
+    # Step 0 (Cue 1): Fixture 1 lit at Pan 0, Tilt 0, Red
+    cue1 = Cue(1, 1.0)
+    cue1.set_device_parameter(1, "intensity", 1.0)
+    cue1.set_device_parameter(1, "pan", 0.0)
+    cue1.set_device_parameter(1, "tilt", 0.0)
+    cue1.set_device_parameter(1, "color", "#FF0000")
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    # Step 1 (Cue 2): Fixture 1 turns off (dark)
+    cue2 = Cue(1, 2.0)
+    cue2.set_device_parameter(1, "intensity", 0.0)
+    seq.add_step(Step(sequence=1, cue=cue2))
+
+    # Step 2 (Cue 3): Fixture 1 turns back on at Pan 90, Tilt -30, Blue
+    cue3 = Cue(1, 3.0)
+    cue3.set_device_parameter(1, "intensity", 0.8)
+    cue3.set_device_parameter(1, "pan", 90.0)
+    cue3.set_device_parameter(1, "tilt", -30.0)
+    cue3.set_device_parameter(1, "color", "#0000FF")
+    seq.add_step(Step(sequence=1, cue=cue3))
+
+    # At Step 1 (Cue 2), MIB is enabled by default: LTP attributes are pre-positioned!
+    state_mib = TrackingEngine.resolve_step_state(seq, step_index=1, tracking_mode=True)
+    dev1 = state_mib.device_values[1]
+    assert dev1["intensity"] == 0.0
+    assert dev1["pan"] == 90.0
+    assert dev1["tilt"] == -30.0
+    assert dev1["color"] == "#0000FF"
+    assert state_mib.mib_parameters[1] == {"pan", "tilt", "color"}
+
+    # When MIB is disabled, Step 1 keeps the old tracked position from Cue 1
+    state_no_mib = TrackingEngine.resolve_step_state(
+        seq, step_index=1, tracking_mode=True, mib_enabled=False
+    )
+    dev1_no_mib = state_no_mib.device_values[1]
+    assert dev1_no_mib["intensity"] == 0.0
+    assert dev1_no_mib["pan"] == 0.0
+    assert dev1_no_mib["tilt"] == 0.0
+    assert dev1_no_mib["color"] == "#FF0000"
+    assert not state_no_mib.mib_parameters
+
+
+def test_mib_spans_multiple_dark_steps_and_respects_block_cue() -> None:
+    """Verify MIB holds across multiple dark steps and stops at Block Cue barriers."""
+    seq = create_mock_sequence()
+
+    cue1 = Cue(1, 1.0)
+    cue1.set_device_parameter(1, "intensity", 1.0)
+    cue1.set_device_parameter(1, "pan", 10.0)
+    seq.add_step(Step(sequence=1, cue=cue1))
+
+    cue2 = Cue(1, 2.0)
+    cue2.set_device_parameter(1, "intensity", 0.0)
+    seq.add_step(Step(sequence=1, cue=cue2))
+
+    cue3 = Cue(1, 3.0)
+    cue3.set_device_parameter(1, "intensity", 0.0)
+    seq.add_step(Step(sequence=1, cue=cue3))
+
+    cue4 = Cue(1, 4.0)
+    cue4.set_device_parameter(1, "intensity", 1.0)
+    cue4.set_device_parameter(1, "pan", 120.0)
+    seq.add_step(Step(sequence=1, cue=cue4))
+
+    # Both dark steps (index 1 and index 2) pre-position to 120.0
+    state2 = TrackingEngine.resolve_step_state(seq, step_index=1, tracking_mode=True)
+    state3 = TrackingEngine.resolve_step_state(seq, step_index=2, tracking_mode=True)
+    assert state2.device_values[1]["pan"] == 120.0
+    assert state3.device_values[1]["pan"] == 120.0
+    assert "pan" in state2.mib_parameters[1]
+    assert "pan" in state3.mib_parameters[1]
+
+    # If Cue 4 is a Block Cue, MIB must NOT cross the Block barrier
+    cue4.is_block = True
+    state2_blocked = TrackingEngine.resolve_step_state(
+        seq, step_index=1, tracking_mode=True
+    )
+    assert state2_blocked.device_values[1]["pan"] == 10.0
+    assert not state2_blocked.mib_parameters
+
+
+def test_mib_temporal_model_2_post_extinction_fade() -> None:
+    """Verify Model 2: fading-out fixture waits until t_dark before MIB fade."""
+
+    class MockDmx:
+        def __init__(self) -> None:
+            self.levels = {
+                "sequence": np.zeros(MAX_CHANNELS, dtype=np.uint8),
+                "user": np.full(MAX_CHANNELS, -1, dtype=np.int32),
+            }
+
+        def set_levels(self) -> None:
+            pass
+
+    class MockBackend:
+        def __init__(self) -> None:
+            self.dmx = MockDmx()
+
+    class MockApp:
+        def __init__(self, backend: MockBackend) -> None:
+            self.backend = backend
+
+    class MockLightShow:
+        def __init__(self, patch: PatchManager, backend: MockBackend) -> None:
+            self.patch = patch
+            self.app = MockApp(backend)
+
+    pm = PatchManager(universes=[1])
+    pm.patch_empty()
+    mh_def = create_moving_head_definition()
+    dev = pm.patch_device(1, mh_def, 1, 1)
+
+    backend = MockBackend()
+    lightshow: typing.Any = MockLightShow(pm, backend)
+    seq = Sequence(index=1, text="Playback", lightshow=lightshow)
+    seq.tracking_mode = True
+    seq.mib_enabled = True
+    seq.mib_fade_time = 2.0
+    seq.steps.clear()
+    seq.last = 0
+
+    # Step 0: Cue 0
+    seq.add_step(Step(sequence=1, cue=Cue(0, 0.0)))
+
+    # Step 1 (Cue 1): Fixture 1 ON at 100%, Pan = 0.0°
+    cue1 = Cue(1, 1.0)
+    cue1.set_device_parameter(1, "intensity", 1.0)
+    cue1.set_device_parameter(1, "pan", 0.0)
+    seq.add_step(Step(sequence=1, cue=cue1, time_in=1.0, time_out=1.0))
+
+    # Step 2 (Cue 2): Fixture 1 fades out over time_out = 2.0s (t_dark = 2000ms)
+    cue2 = Cue(1, 2.0)
+    cue2.set_device_parameter(1, "intensity", 0.0)
+    seq.add_step(Step(sequence=1, cue=cue2, time_in=2.0, time_out=2.0))
+
+    # Step 3 (Cue 3): Fixture 1 turns back ON at 100% with Pan = 100.0°
+    cue3 = Cue(1, 3.0)
+    cue3.set_device_parameter(1, "intensity", 1.0)
+    cue3.set_device_parameter(1, "pan", 100.0)
+    seq.add_step(Step(sequence=1, cue=cue3, time_in=2.0, time_out=2.0))
+
+    # Load Step 1 so Fixture 1 is lit at 100% and Pan = 0.0°
+    seq.load_step(1)
+    assert dev.intensity == pytest.approx(1.0)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.5)
+
+    # Start Go transition from Step 1 -> Step 2
+    # pylint: disable=protected-access
+    thread_go = ThreadGo(False, seq)
+    thread_go._capture_start_levels()
+
+    # Total time must be extended to t_dark (2000ms) + mib_fade_time (2000ms) = 4000ms
+    assert thread_go.total_time == pytest.approx(4000.0)
+
+    step2 = seq.steps[2]
+
+    # Phase 1 (t = 1000ms < t_dark): fading out (0.5), Pan MUST NOT MOVE (0.0°)
+    thread_go._calculate_transitions_go(1000.0, step2)
+    assert dev.intensity == pytest.approx(0.5, abs=0.02)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.5)
+
+    # Exact end of Fade Out (t = 2000ms == t_dark): intensity = 0.0, Pan starts at 0.0°
+    thread_go._calculate_transitions_go(2000.0, step2)
+    assert dev.intensity == pytest.approx(0.0, abs=0.02)
+    assert dev.pan_degrees == pytest.approx(0.0, abs=0.5)
+
+    # Phase 2 (t = 3000ms, 50% through post-extinction MIB window): Pan is at 50.0°
+    thread_go._calculate_transitions_go(3000.0, step2)
+    assert dev.intensity == pytest.approx(0.0, abs=0.02)
+    assert dev.pan_degrees == pytest.approx(50.0, abs=0.5)
+
+    # End of Phase 2 (t = 4000ms, 100% through MIB window): Pan reaches 100.0° smoothly
+    thread_go._calculate_transitions_go(4000.0, step2)
+    assert dev.intensity == pytest.approx(0.0, abs=0.02)
+    assert dev.pan_degrees == pytest.approx(100.0, abs=0.5)

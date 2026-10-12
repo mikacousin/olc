@@ -372,6 +372,8 @@ def _copy_sequence(seq: Sequence, lightshow: LightShow) -> Sequence:
     copied.run = seq.run
     copied.channels = set(seq.channels)
     copied.tracking_mode = bool(getattr(seq, "tracking_mode", False))
+    copied.mib_enabled = bool(getattr(seq, "mib_enabled", True))
+    copied.mib_fade_time = float(getattr(seq, "mib_fade_time", 2.0))
     return copied
 
 
