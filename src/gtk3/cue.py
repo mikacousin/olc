@@ -19,6 +19,7 @@ from typing import Callable
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.tracking import TrackingDisplayState, get_tracking_color
 from olc.define import MAX_CHANNELS, is_float, is_int
 from olc.gtk3.dialog import ConfirmationDialog
 from olc.gtk3.widgets.channels_view import VIEW_MODES, ChannelsView
@@ -75,7 +76,7 @@ class CuesEditionTab(Gtk.Paned):
         self.liststore = Gtk.ListStore(str, str, int)
 
         for mem in self.lightshow.cues:
-            channels = len(mem.channels)
+            channels = mem.get_active_channels_count()
             self.liststore.append([str(mem.number), mem.text, channels])
 
         self.filter = self.liststore.filter_new()
@@ -134,6 +135,7 @@ class CuesEditionTab(Gtk.Paned):
                         self.treeview.set_cursor(path, None, False)
             else:
                 self.treeview.get_selection().unselect_all()
+            self.channels_view._cache_time = 0.0  # pylint: disable=protected-access
             self.channels_view.flowbox.unselect_all()
             self.channels_view.update()
         finally:
@@ -150,7 +152,7 @@ class CuesEditionTab(Gtk.Paned):
             mem_str = store.get_value(it, 0)
             if mem_str in actual_cues:
                 cue = actual_cues[mem_str]
-                nb_chan = len(cue.channels)
+                nb_chan = cue.get_active_channels_count()
 
                 curr_text = store.get_value(it, 1)
                 curr_chan = store.get_value(it, 2)
@@ -168,7 +170,7 @@ class CuesEditionTab(Gtk.Paned):
         for mem in self.lightshow.cues:
             mem_str = str(mem.number)
             if mem_str not in existing_memories:
-                nb_chan = len(mem.channels)
+                nb_chan = mem.get_active_channels_count()
                 insert_idx = 0
                 it_insert = store.get_iter_first()
                 while isinstance(it_insert, Gtk.TreeIter):
@@ -304,7 +306,7 @@ class CuesEditionTab(Gtk.Paned):
             for chan in range(MAX_CHANNELS):
                 channel_widget = self.channels_view.get_channel_widget(chan + 1)
                 if channel_widget is not None:
-                    if (chan + 1 in cue.channels) or (temp_levels[chan] != -1):
+                    if cue.has_channel_or_device(chan + 1) or (temp_levels[chan] != -1):
                         channels_dict[chan + 1] = channel_widget.level
             self.window.app.core.action_registry.execute(
                 "cue.update", cue.number, cue.sequence, channels_dict
@@ -333,11 +335,11 @@ class CuesEditionTab(Gtk.Paned):
             )
 
     def _update_live_view_channels(self, i: int) -> None:
-        channels_dict = self.lightshow.cues[i].channels
+        cue = self.lightshow.cues[i]
         for channel_num in range(1, MAX_CHANNELS + 1):
             widget = self.window.live_view.channels_view.get_channel_widget(channel_num)
             if widget:
-                widget.next_level = channels_dict.get(channel_num, 0)
+                widget.next_level = cue.get_level(channel_num)
                 widget.queue_draw()
 
     def _keypress_r(self) -> bool:
@@ -653,26 +655,34 @@ class CueChannelsView(ChannelsView):
         cue_editor = self.lightshow.cues.cue_editor
         user_channels = cue_editor.get_levels(cue.number, cue.sequence)
         channel_index = child.get_index()
+        channel_num = channel_index + 1
         channel_widget = child.get_child()
         if channel_widget is None:
             return False
         widget = typing.cast("ChannelWidget", channel_widget)
-        # Channels in Cue
-        channels = cue.channels
-        if channels.get(channel_index + 1) or child.is_selected():
+        cue_level = cue.get_level(channel_num)
+        if cue.has_channel_or_device(channel_num) or child.is_selected():
             if user_channels[channel_index] == -1:
-                widget.level = int(channels.get(channel_index + 1, 0))
-                widget.next_level = int(channels.get(channel_index + 1, 0))
+                widget.level = cue_level
+                widget.next_level = cue_level
+                widget.color_level = get_tracking_color(
+                    TrackingDisplayState.HARD_VALUE
+                    if cue_level > 0
+                    else TrackingDisplayState.INACTIVE
+                )
             else:
                 widget.level = int(user_channels[channel_index])
                 widget.next_level = int(user_channels[channel_index])
+                widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
             return True
         if user_channels[channel_index] == -1:
             widget.level = 0
             widget.next_level = 0
+            widget.color_level = get_tracking_color(TrackingDisplayState.INACTIVE)
             return False
         widget.level = int(user_channels[channel_index])
         widget.next_level = int(user_channels[channel_index])
+        widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         return True
 
     def __filter_patched(self, cue: Cue, child: Gtk.FlowBoxChild) -> bool:
@@ -700,24 +710,32 @@ class CueChannelsView(ChannelsView):
         cue_editor = self.lightshow.cues.cue_editor
         user_channels = cue_editor.get_levels(cue.number, cue.sequence)
         channel_index = child.get_index()
+        channel_num = channel_index + 1
         channel_widget = child.get_child()
         if channel_widget is None:
             return False
         widget = typing.cast("ChannelWidget", channel_widget)
-        # Channels in Cue
-        channels = cue.channels
-        if channels.get(channel_index + 1) or child.is_selected():
+        cue_level = cue.get_level(channel_num)
+        if cue.has_channel_or_device(channel_num) or child.is_selected():
             if user_channels[channel_index] == -1:
-                widget.level = int(channels.get(channel_index + 1, 0))
-                widget.next_level = int(channels.get(channel_index + 1, 0))
+                widget.level = cue_level
+                widget.next_level = cue_level
+                widget.color_level = get_tracking_color(
+                    TrackingDisplayState.HARD_VALUE
+                    if cue_level > 0
+                    else TrackingDisplayState.INACTIVE
+                )
             else:
                 widget.level = int(user_channels[channel_index])
                 widget.next_level = int(user_channels[channel_index])
+                widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
             return True
         if user_channels[channel_index] == -1:
             widget.level = 0
             widget.next_level = 0
+            widget.color_level = get_tracking_color(TrackingDisplayState.INACTIVE)
             return True
         widget.level = int(user_channels[channel_index])
         widget.next_level = int(user_channels[channel_index])
+        widget.color_level = get_tracking_color(TrackingDisplayState.MANUAL)
         return True

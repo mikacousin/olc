@@ -87,3 +87,42 @@ def test_cues_edition_tab_behavior(app_gui: Application) -> None:
     process_events()
     assert len(app_gui.core.lightshow.cues) == 2, "Undo should restore the deleted cue."
     assert len(model) == 2, "TreeView should render 2 rows."
+
+
+def test_cues_edition_tab_device_values_and_colors(app_gui: Application) -> None:
+    """Test CuesEditionTab channel count and CueChannelsView with device_values."""
+    from olc.core.tracking import TRACKING_COLORS, TrackingDisplayState
+
+    app_gui.core.lightshow.cues.clear()
+    cue = Cue(0, 1.0, {1: 128}, "Mixed Cue", device_values={2: {"intensity": 1.0}})
+    app_gui.core.lightshow.cues.append(cue)
+
+    app_gui.activate_action("memories", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    cues_tab = app_gui.tabs.tabs.get("memories")
+    assert isinstance(cues_tab, CuesEditionTab)
+    cues_tab.refresh()
+    process_events()
+
+    # Column 2 ("Channels") counts both channels and device_values (1 + 1 = 2)
+    assert cues_tab.liststore[0][2] == 2
+
+    app_gui.core.action_registry.execute("cue.select", (1.0, 0))
+    process_events()
+
+    w1 = cues_tab.channels_view.get_channel_widget(1)
+    w2 = cues_tab.channels_view.get_channel_widget(2)
+    assert w1 is not None
+    assert w2 is not None
+    assert w1.level == 128
+    assert w2.level == 255
+    assert w2.color_level == TRACKING_COLORS[TrackingDisplayState.HARD_VALUE]
+
+    # Set temp channel edit on channel 2 -> Red/Coral (MANUAL)
+    cues_tab.channels_view.set_channel_level(2, 100)
+    cues_tab.channels_view.update()
+    process_events()
+    assert w2.level == 100
+    assert w2.color_level == TRACKING_COLORS[TrackingDisplayState.MANUAL]

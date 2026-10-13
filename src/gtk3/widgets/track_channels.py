@@ -148,6 +148,8 @@ class TrackChannelsWidget(Gtk.Widget):
         levels: list[int],
         tab: TrackChannelsTab,
         settings: Gio.Settings,
+        colors: list[dict[str, float]] | None = None,
+        states: list[str] | None = None,
     ) -> None:
         super().__init__()
 
@@ -155,6 +157,8 @@ class TrackChannelsWidget(Gtk.Widget):
         self.number = number
         self.text = text
         self.levels = levels
+        self.colors: list[dict[str, float]] = colors if colors is not None else []
+        self.states: list[str] = states if states is not None else []
         self.width = 535 + (len(self.levels) * 65)
         self.height = 60
         self.radius = 10
@@ -299,15 +303,28 @@ class TrackChannelsWidget(Gtk.Widget):
                 cr.set_source_rgb(0.3, 0.3, 0.3)
             rounded_rectangle_fill(cr, area, self.radius)
 
-            # Draw Level number
-            if lvl:
-                level = (
-                    str(int(round(((lvl / 255) * 100))))
-                    if self.settings.get_boolean("percent")
-                    else str(lvl)
-                )
+            state_val = self.states[i] if i < len(self.states) else ""
+            # Draw Level number or MIB marker
+            if lvl or state_val == "mib":
+                if state_val == "mib" and not lvl:
+                    level = "M"
+                else:
+                    level = (
+                        str(int(round(((lvl / 255) * 100))))
+                        if self.settings.get_boolean("percent")
+                        else str(lvl)
+                    )
 
-                cr.set_source_rgb(0.9, 0.9, 0.9)
+                color = (
+                    self.colors[i]
+                    if i < len(self.colors)
+                    else {"red": 0.9, "green": 0.9, "blue": 0.9}
+                )
+                cr.set_source_rgb(
+                    color.get("red", 0.9),
+                    color.get("green", 0.9),
+                    color.get("blue", 0.9),
+                )
                 cr.select_font_face(
                     "Monaco", cairo.FontSlant.NORMAL, cairo.FontWeight.BOLD
                 )

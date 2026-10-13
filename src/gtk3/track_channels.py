@@ -19,6 +19,10 @@ from typing import Callable
 
 from gi.repository import Gdk, Gtk
 
+from olc.core.tracking import (
+    classify_channel_tracking_state,
+    get_tracking_color,
+)
 from olc.define import MAX_CHANNELS
 from olc.gtk3.widgets.track_channels import TrackChannelsHeader, TrackChannelsWidget
 
@@ -92,6 +96,21 @@ class TrackChannelsTab(Gtk.Grid):
 
         self.attach(scrollable, 0, 0, 1, 1)
 
+    def _resolve_step_channels(
+        self, step: int
+    ) -> tuple[list[int], list[dict[str, float]], list[str]]:
+        """Resolve levels, tracking colors, and states for selected channels at step."""
+        step_levels: list[int] = []
+        step_colors: list[dict[str, float]] = []
+        step_states: list[str] = []
+        main_pb = self.lightshow.main_playback
+        for channel in self.channels:
+            state, level = classify_channel_tracking_state(main_pb, step, channel + 1)
+            step_levels.append(level)
+            step_colors.append(get_tracking_color(state))
+            step_states.append(state.value)
+        return step_levels, step_colors, step_states
+
     def populate_steps(self) -> None:
         """Main Playback Steps"""
         # Clear flowbox
@@ -99,24 +118,22 @@ class TrackChannelsTab(Gtk.Grid):
             self.flowbox.remove(child)
         self.steps = []
         self.steps.append(TrackChannelsHeader(self.channels))
-        levels: list[list[int]] = [[]]
         self.flowbox.add(self.steps[0])
         for step in range(1, self.lightshow.main_playback.last):
             cue = self.lightshow.main_playback.steps[step].cue
             number = cue.number if cue is not None else 0.0
             text = self.lightshow.main_playback.steps[step].text
-            levels.append([])
-            for channel in self.channels:
-                level = cue.channels.get(channel + 1, 0) if cue is not None else 0
-                levels[step].append(level)
+            step_levels, step_colors, step_states = self._resolve_step_channels(step)
             self.steps.append(
                 TrackChannelsWidget(
                     step,
                     number,
                     text,
-                    levels[step],
+                    step_levels,
                     typing.cast("olc.gtk3.track_channels.TrackChannelsTab", self),
                     self.settings,
+                    colors=step_colors,
+                    states=step_states,
                 )
             )
             self.flowbox.add(self.steps[step])
@@ -153,14 +170,12 @@ class TrackChannelsTab(Gtk.Grid):
         self.channel_selected = 0
         # Update Track Channels Tab
         typing.cast(TrackChannelsHeader, self.steps[0]).channels = self.channels
-        levels: list[list[int]] = [[]]
-        for step in range(self.lightshow.main_playback.last):
-            levels.append([])
-            cue = self.lightshow.main_playback.steps[step].cue
-            for channel in self.channels:
-                level = cue.channels.get(channel + 1, 0) if cue is not None else 0
-                levels[step].append(level)
-            typing.cast(TrackChannelsWidget, self.steps[step]).levels = levels[step]
+        for step in range(1, min(len(self.steps), self.lightshow.main_playback.last)):
+            step_levels, step_colors, step_states = self._resolve_step_channels(step)
+            widget = typing.cast(TrackChannelsWidget, self.steps[step])
+            widget.levels = step_levels
+            widget.colors = step_colors
+            widget.states = step_states
         self.flowbox.queue_draw()
 
     def refresh(self) -> None:

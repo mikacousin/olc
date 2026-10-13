@@ -265,3 +265,72 @@ def test_live_view_tracking_and_manual_colors(app_gui: Application) -> None:
     assert w1.color_level == TRACKING_COLORS[TrackingDisplayState.MANUAL]
     assert w1.color_level == {"red": 0.95, "green": 0.35, "blue": 0.35}
     dmx.levels["user"].fill(-1)
+
+
+@pytest.mark.gui
+def test_track_channels_tab_tracking_and_device_values(app_gui: Application) -> None:
+    """Test TrackChannelsTab resolves tracked levels, device_values, and colors."""
+    from olc.gtk3.track_channels import (  # pylint: disable=import-outside-toplevel
+        TrackChannelsTab,
+    )
+    from olc.gtk3.widgets.track_channels import (  # pylint: disable=import-outside-toplevel
+        TrackChannelsWidget,
+    )
+
+    main_pb = app_gui.core.lightshow.main_playback
+    main_pb.tracking_mode = True
+    main_pb.steps.clear()
+    main_pb.steps.append(Step(sequence=1))
+    main_pb.steps.append(
+        Step(
+            sequence=1,
+            cue=Cue(1, 1.0, {1: 150}, device_values={2: {"intensity": 0.5}}),
+        )
+    )
+    main_pb.steps.append(
+        Step(
+            sequence=1,
+            cue=Cue(1, 2.0, {}, device_values={2: {"intensity": 1.0}}),
+        )
+    )
+    main_pb.steps.append(Step(sequence=1, cue=Cue(1, 0, {})))
+    main_pb.last = len(main_pb.steps)
+
+    # Ensure channels 1 and 2 are patched and selected in LiveView
+    app_gui.core.lightshow.patch.patch_1on1()
+    assert app_gui.window is not None
+    flowbox = app_gui.window.live_view.channels_view.flowbox
+    flowbox.unselect_all()
+    c1 = flowbox.get_child_at_index(0)
+    c2 = flowbox.get_child_at_index(1)
+    assert c1 is not None and c2 is not None
+    flowbox.select_child(c1)
+    flowbox.select_child(c2)
+
+    app_gui.activate_action("track_channels", None)
+    process_events()
+
+    assert app_gui.tabs is not None
+    tc_tab = app_gui.tabs.tabs.get("track_channels")
+    assert isinstance(tc_tab, TrackChannelsTab)
+    tc_tab.refresh()
+    process_events()
+
+    step1_widget = tc_tab.steps[1]
+    step2_widget = tc_tab.steps[2]
+    assert isinstance(step1_widget, TrackChannelsWidget)
+    assert isinstance(step2_widget, TrackChannelsWidget)
+
+    # Step 1: Ch 1 = 150 (HARD_VALUE), Ch 2 = 128 from device_values 0.5 (HARD_VALUE)
+    assert step1_widget.levels == [150, 128]
+    assert step1_widget.colors == [
+        TRACKING_COLORS[TrackingDisplayState.HARD_VALUE],
+        TRACKING_COLORS[TrackingDisplayState.HARD_VALUE],
+    ]
+
+    # Step 2: Ch 1 = 150 (TRACKED_VALUE), Ch 2 = 255 (INTENSITY_UP)
+    assert step2_widget.levels == [150, 255]
+    assert step2_widget.colors == [
+        TRACKING_COLORS[TrackingDisplayState.TRACKED_VALUE],
+        TRACKING_COLORS[TrackingDisplayState.INTENSITY_UP],
+    ]

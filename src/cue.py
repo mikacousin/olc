@@ -127,7 +127,7 @@ class Cue:
                 self._channels_array[channel - 1] = level
 
     def get_level(self, channel: int) -> int:
-        """Get channel's level
+        """Get channel's level (including fallback to device_values intensity).
 
         Args:
             channel: channel number (1-MAX_CHANNELS)
@@ -135,7 +135,22 @@ class Cue:
         Returns:
             channel's level (0-255)
         """
-        return self.channels.get(channel, 0)
+        lvl = int(self.channels.get(channel, 0))
+        if lvl == 0 and channel in self.device_values:
+            dev_int = self.device_values[channel].get("intensity")
+            if isinstance(dev_int, (int, float)):
+                val = float(dev_int)
+                lvl = round(val * 255.0 if val <= 1.0 else val)
+                lvl = max(0, min(255, lvl))
+        return lvl
+
+    def get_active_channels_count(self) -> int:
+        """Return total number of channels and devices defined in this cue."""
+        return len(set(self.channels.keys()) | set(self.device_values.keys()))
+
+    def has_channel_or_device(self, channel: int) -> bool:
+        """Return True if channel has an explicit level or device parameters."""
+        return bool(self.channels.get(channel) or self.has_device(channel))
 
     def set_device_parameter(
         self,
