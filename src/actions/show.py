@@ -51,7 +51,7 @@ class ShowNewAction(Action):
     can_undo = False
 
     def execute(self) -> None:
-        """Reset all show data to default empty/1:1 state and clear history."""
+        """Reset all show data to default empty state and clear history."""
         lightshow = self.app.lightshow
 
         # Stop and clear chasers
@@ -60,7 +60,7 @@ class ShowNewAction(Action):
                 chaser.run = False
                 chaser.thread.stop()
                 chaser.thread.join()
-        del lightshow.chasers[:]
+            del lightshow.chasers[:]
 
         # Reset cues and groups
         lightshow.cues.clear()
@@ -77,9 +77,9 @@ class ShowNewAction(Action):
         # Reset independents
         lightshow.independents = Independents(lightshow)
 
-        # Reset fixture library and patch 1:1
+        # Reset fixture library and patch (empty)
         lightshow.fixture_library = populate_builtin_library()
-        lightshow.patch.patch_1on1()
+        lightshow.patch.patch_empty()
 
         # Reset main playback
         lightshow.main_playback = Sequence(1, text="Main Playback", lightshow=lightshow)

@@ -64,7 +64,8 @@ def test_show_new_resets_show_state() -> None:
     assert app.lightshow.basename == ""
     assert app.lightshow.modified is False
     assert app.lightshow.main_playback.position == 0
-    assert app.lightshow.patch.outputs[1][1] == [1, 0]  # Patch 1:1
+    assert len(app.lightshow.patch.outputs) == 0
+    assert not app.lightshow.patch.is_patched(1)
 
     if app.backend and app.backend.dmx:
         assert (app.backend.dmx.levels["sequence"] == 0).all()
@@ -272,8 +273,7 @@ def test_show_import_ascii_and_undo_redo() -> None:
     # Initial state
     app.lightshow.groups.add(Group(index=99.0, channels={1: 100}, text="Initial Group"))
     app.lightshow.cues.add(Cue(1, 99.0, channels={1: 50}, text="Initial Cue"))
-    app.lightshow.patch.outputs[1][47] = [1, 0]
-    app.lightshow.patch.invalidate_cache()
+    app.lightshow.patch.add_output(1, 47, 1)
     app.lightshow.set_not_modified()
 
     imported_events: list[tuple[str, object]] = []
@@ -314,8 +314,7 @@ def test_show_import_partial_options() -> None:
     app = CoreApplication(settings)
 
     # Set initial patch
-    app.lightshow.patch.outputs[1][47] = [42, 0]
-    app.lightshow.patch.invalidate_cache()
+    app.lightshow.patch.add_output(42, 47, 1)
 
     # Import with patch ignored
     options = {

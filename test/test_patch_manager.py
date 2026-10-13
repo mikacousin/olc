@@ -31,9 +31,18 @@ from olc.patch import PatchCollisionError, PatchManager
 
 
 def test_patch_manager_initialization() -> None:
-    """Test default initialization with 1:1 patch."""
+    """Test default initialization with empty patch and explicit 1:1 patch."""
     pm = PatchManager(universes=[1, 2])
     assert pm.universes == [1, 2]
+    # Default patch is empty
+    assert not pm.is_patched(1)
+    assert pm.get_address_occupant(1, 1) is None
+    assert pm.is_address_free(1, 1)
+    assert len(pm.outputs) == 0
+    assert len(pm.devices) == 0
+
+    # Explicit 1:1 patch
+    pm.patch_1on1()
     assert pm.is_patched(1)
     assert pm.get_address_occupant(1, 1) == 1
     assert pm.get_address_occupant(1, 512) == 512

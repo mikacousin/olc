@@ -132,7 +132,7 @@ class PatchManager:
         self.map_dev_is_htp = np.array([], dtype=bool)
         self.last_exchange_warnings: list[FixtureExchangeWarning] = []
 
-        self.patch_1on1()
+        self.patch_empty()
 
     def invalidate_cache(self) -> None:
         """Invalidate the numpy cache."""
